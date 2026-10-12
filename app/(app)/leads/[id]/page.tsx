@@ -118,12 +118,14 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
           : Promise.resolve([]),
         loadLeadFollowUpPresentation(lead),
       ]);
+      const proactiveRecommended = followUpPresentation.proactiveRecommended;
       const contextualObservations = observationsForDraftSurface(
         rawObservations,
-        followUpPresentation.draftEligible,
+        proactiveRecommended,
         {
+          proactiveRecommended,
           silence: isFollowUpSilenceBlock({
-            eligible: followUpPresentation.draftEligible,
+            proactiveRecommended,
             tour: followUpPresentation.tour,
             workflowIntent: followUpPresentation.workflowIntent,
           }),
@@ -147,8 +149,10 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         duplicateReview,
         bookingJourney,
         contextualObservations,
-        followUpDraftEligible: followUpPresentation.draftEligible,
+        followUpDraftCapable: followUpPresentation.draftCapable,
+        followUpDraftEligible: followUpPresentation.draftCapable,
         followUpDraftIneligibleReason: followUpPresentation.draftIneligibleReason,
+        followUpProactiveRecommended: followUpPresentation.proactiveRecommended,
         venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
         staffOptions: teamMembers.map((m) => ({ id: m.id, name: m.name })),
         currentStaffId: currentStaff?.id ?? null,
@@ -211,8 +215,10 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       photoUrl={photo?.displayedPhotoUrl ?? null}
       venueTimezone={page.venueTimezone}
       contextualObservations={page.contextualObservations}
+      followUpDraftCapable={page.followUpDraftCapable}
       followUpDraftEligible={page.followUpDraftEligible}
       followUpDraftIneligibleReason={page.followUpDraftIneligibleReason}
+      followUpProactiveRecommended={page.followUpProactiveRecommended}
       spaceOperatingMode={page.spaceOperatingMode}
       holdBlocksAvailability={page.holdBlocksAvailability}
       spacePreferences={page.spacePreferences}

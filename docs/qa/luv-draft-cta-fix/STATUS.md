@@ -1,45 +1,41 @@
-# Luv follow-up drafting — eligibility alignment
+# Luv intelligence + owner-initiated drafting
 
-## Status: GREEN
+## Status: PARTIAL → pending Sandbox deploy verify
 
-**Deployed Sandbox tip:** `73060291cfe5a29ea920f4ce765b14b55ff0a25f`  
-**Evidence (UTC):** 2026-10-12T05:14Z matrix 13/13 PASS  
-**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/38206396959  
-**Artifacts:** `eligibility-matrix-results.json`, `matrix-*.png`
+**Prior tip (insufficient):** `73060291cfe5a29ea920f4ce765b14b55ff0a25f` — matrix GREEN under old criteria; live Oct 12 screenshot still showed duplicate Noticed + interest/silence contradiction. **Do not treat 73060291 as product GREEN.**
 
-## Root cause (screenshot reopen)
+**This assignment tip:** _(filled after commit)_  
 
-1. Completed-tour silence correctly sets `draftEligible = false` and Luv tab silence copy.
-2. Momentum observations still carried `recommendation.type = "draft"` plus urging detail (“may be worth following up while the interest is fresh”).
-3. Tip `47272041` stripped the draft recommendation when ineligible — which hid the CTA but also prevented Noticed from rendering the accurate silence reason, while urging **detail** could still remain.
-4. Screenshot defect: Noticed urged follow-up while the Luv tab said nothing needs a follow-up.
+## Root causes (this pass)
 
-## Correction (tip `73060291`)
+1. **Duplicate “Luv noticed”:** Overview rendered `ContextualLuvObservationsPanel` and `LuvDraftPanel` rendered it again.
+2. **Capability conflated with recommendation:** `followUpDraftEligible` / `resolveFollowUpDraftEligibility` reused completed-tour `no_outreach` as a drafting permission gate — hiding the owner CTA when Luv had nothing urgent to urge.
+3. **Contradiction:** Momentum “strong interest / follow up” survived beside silence empty-state because neutralization kept interest rows and prior tip kept draft recommendations when “ineligible.”
 
-- `observationsForDraftSurface` **keeps** draft recommendations when ineligible so `ContextualLuvObservationsPanel` can show `sameRecordDraftIneligibleReason` (silence).
-- `neutralizeFollowUpUrgingCopy` removes urging detail/message language when the gate is closed; factual interest language may remain.
-- Lead page passes `isFollowUpSilenceBlock` + `workflowIntent` from `loadLeadFollowUpPresentation`.
-- Matrix asserts Ellie: silence present, no draft CTA, no follow-up urging copy.
+## Correction
 
-## Required behavior verified
-
-| Case | Result |
+| Change | Behavior |
 |---|---|
-| Eligible lead, no conflicting outreach | CTA present; draft persisted (`n=1`) |
-| Ellie / screenshot contradiction | Silence; no draft CTA; no follow-up urging |
-| Completed-tour silence | Silence copy; no draft CTA; no false outreach copy |
-| Completed tour + unanswered inbound | CTA allowed |
-| Follow-up already sent | Draft blocked; silence; no false outreach fiction |
-| Existing pending draft | Existing draft visible; CTA safe |
-| Lost lead | No false outreach fiction |
-| Concurrent CTA clicks | 1 draft persisted |
-| Tip gate | `dpl=73060291…` |
+| `draftCapable` vs `proactiveRecommended` | Independent gates in `follow-up-draft-eligibility.ts` |
+| `generateFollowUpDraft` | Blocks only on `!gate.draftCapable`; passes `workflowIntent` (gentle_check_in when proactive silent) |
+| `luvPanelDescription` | Owner-available copy when capable + not proactive; silence is empty-state, not a draft ban |
+| `observationsForDraftSurface` + `observation-coherence` | Dedupe, drop zero-value, suppress interest+draft under proactive silence |
+| Lead detail | Single Noticed mount; `showContextualObservations={false}` on Luv tab panel |
 
-## Tests
+## Acceptance (unit)
 
-- Unit: `lib/luv/draft-recommendation-surface.test.ts` (PASS).
-- Browser: `scripts/qa/luv-draft-eligibility-matrix-browser.mts` with `EXPECTED_TIP_PREFIX=73060291` → **13/13 PASS**.
+- `lib/luv/owner-draft-capability.test.ts`
+- `lib/luv/draft-recommendation-surface.test.ts`
+- `lib/luv/luv-silence-copy.test.ts`
+- `lib/luv/completed-tour-thoughts.test.ts`
+- `lib/luv/venue-facing-tour-thoughts.test.ts`
+
+## Browser matrix (post-deploy)
+
+`scripts/qa/luv-draft-eligibility-matrix-browser.mts` updated:
+- Silence / follow-up-sent → **keeps** owner draft CTA
+- Ellie → no interest/silence contradiction; ≤1 Noticed label; CTA present
 
 ## Safety
 
-No auto-send. Sandbox only. Disposable `@hellotocheers-test.invalid` leads cleaned up after matrix runs.
+No auto-send. Internal notes excluded from draft context. Sandbox only. Discard still deletes `luv_drafts` with no history.

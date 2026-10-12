@@ -71,6 +71,11 @@ export type FollowUpVerifiedFacts = {
   /** Specific unresolved purpose. Completed tours with none must not draft. */
   communicationPurpose?: "unresolved_question" | "explicit_request" | "none";
   communicationExcerpt?: string | null;
+  /**
+   * When set (owner-initiated draft), overrides deriveFollowUpWorkflowIntent so
+   * proactive silence (no_outreach) does not block a review-only draft.
+   */
+  workflowIntent?: FollowUpWorkflowIntent;
 };
 
 type DraftRow = {
@@ -127,11 +132,12 @@ export function buildFollowUpPrompt(
   );
 
   const tour: FollowUpTourState = verified.tour ?? { kind: "none" };
-  const workflowIntent: FollowUpWorkflowIntent = deriveFollowUpWorkflowIntent({
-    tour,
-    nextActionText: lead.nextActionText,
-    communicationPurpose: verified.communicationPurpose,
-  });
+  const workflowIntent: FollowUpWorkflowIntent = verified.workflowIntent
+    ?? deriveFollowUpWorkflowIntent({
+      tour,
+      nextActionText: lead.nextActionText,
+      communicationPurpose: verified.communicationPurpose,
+    });
   const prohibitions = deriveFollowUpProhibitions({
     tour,
     proposalSent: verified.proposalSent,
@@ -395,16 +401,22 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       tour,
       nextActionText: lead.nextActionText,
       completedDecision,
+      leadStatus: lead.status,
+      lostAt: lead.lostAt,
     });
-    if (!gate.eligible) {
+    // Capability gate only — proactive silence must not block owner-initiated drafts.
+    if (!gate.draftCapable) {
       return {
         ok: false,
         message:
-          followUpDraftBlockReason({
-            eligible: false,
+          gate.capabilityBlockReason
+          ?? followUpDraftBlockReason({
+            draftCapable: false,
+            capabilityBlockReason: gate.capabilityBlockReason,
             tour,
             workflowIntent: gate.workflowIntent,
-          }) ?? "Nothing useful to draft for this relationship right now.",
+          })
+          ?? "Luv can’t draft a follow-up for this inquiry right now.",
       };
     }
     const { workflowIntent, communicationPurpose, communicationExcerpt } = gate;
@@ -413,7 +425,14 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       venue.name,
       ownerName,
       settings.preferredTone,
-      { proposalSent, inquiryOrigin, tour, communicationPurpose, communicationExcerpt },
+      {
+        proposalSent,
+        inquiryOrigin,
+        tour,
+        communicationPurpose,
+        communicationExcerpt,
+        workflowIntent,
+      },
     );
     const raw = await generateDraftText(prompt);
     const { subject, body } = parseEmailDraft(raw);

@@ -182,7 +182,7 @@ describe("customer-facing drafts still exclude internal tour notes", () => {
     assert.match(loader, /scheduled_at, status, completed_at, follow_up_sent_at, actual_occurred_at/);
   });
 
-  it("7. customer-originated inquiry remains eligible; SILENCE still hides draft CTA", () => {
+  it("7. customer-originated inquiry remains usable; SILENCE turns off proactive, not drafting", () => {
     const ctx = customerFacingInquiryContext(
       "Can we use the barn for 80 guests?",
       "customer",
@@ -203,7 +203,8 @@ describe("customer-facing drafts still exclude internal tour notes", () => {
       nextActionText: "Follow up after tour",
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, false);
+    assert.equal(gate.proactiveRecommended, false);
+    assert.equal(gate.draftCapable, true);
   });
 });
 

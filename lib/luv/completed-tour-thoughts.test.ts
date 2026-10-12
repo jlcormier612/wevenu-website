@@ -104,7 +104,7 @@ describe("completed-tour Thoughts presentation wiring", () => {
     assert.ok(completedIdx > 0 && ageIdx > completedIdx);
   });
 
-  it("2. Wendy-class: evaluateCompletedTour SILENCE + draft CTA not eligible", () => {
+  it("2. Wendy-class: evaluateCompletedTour SILENCE — proactive off, draft still capable", () => {
     const decision = evaluateCompletedTour(base({ messages: [] }));
     assert.equal(decision.mode, "silence");
     assert.equal(completedTourDraftAllowed(decision), false);
@@ -118,8 +118,10 @@ describe("completed-tour Thoughts presentation wiring", () => {
       nextActionText: "Follow up after tour",
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, false);
-    assert.equal(gate.workflowIntent, "no_outreach");
+    assert.equal(gate.proactiveRecommended, false);
+    assert.equal(gate.draftCapable, true);
+    assert.equal(gate.eligible, true);
+    assert.equal(gate.workflowIntent, "gentle_check_in");
 
     assert.match(panel, /followUpDraftEligible/);
     assert.match(panel, /\{followUpDraftEligible && \(/);
@@ -181,7 +183,7 @@ describe("completed-tour Thoughts presentation wiring", () => {
     assert.equal(gate.communicationPurpose, "unresolved_question");
   });
 
-  it("6. Completed + venue outbound after tour → SILENCE + no draft CTA", () => {
+  it("6. Completed + venue outbound after tour → proactive silence, draft still capable", () => {
     const decision = evaluateCompletedTour(base({
       messages: [
         msg({
@@ -201,7 +203,8 @@ describe("completed-tour Thoughts presentation wiring", () => {
       nextActionText: null,
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, false);
+    assert.equal(gate.proactiveRecommended, false);
+    assert.equal(gate.draftCapable, true);
   });
 
   it("7. Upcoming/confirmed tour recognized as upcoming, never completed", () => {
@@ -239,7 +242,7 @@ describe("completed-tour Thoughts presentation wiring", () => {
     );
   });
 
-  it("9. Follow up after tour remains workflow metadata — not a customer-facing purpose", () => {
+  it("9. Follow up after tour remains workflow metadata — not a proactive purpose", () => {
     const decision = evaluateCompletedTour(base({ messages: [] }));
     const gate = resolveFollowUpDraftEligibility({
       tour: {
@@ -250,17 +253,18 @@ describe("completed-tour Thoughts presentation wiring", () => {
       nextActionText: "Follow up after tour",
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, false);
+    assert.equal(gate.proactiveRecommended, false);
+    assert.equal(gate.draftCapable, true);
     assert.equal(gate.communicationPurpose, "none");
-    assert.equal(gate.workflowIntent, "no_outreach");
+    assert.equal(gate.workflowIntent, "gentle_check_in");
   });
 
   it("10. Shared architecture: drafts use FollowUpTourState / loadFollowUpTourState; Thoughts card is not mounted", () => {
     assert.match(card, /FollowUpTourState/);
     assert.doesNotMatch(panel, /LeadMomentumCard/);
     assert.match(panel, /ContextualLuvObservationsPanel/);
+    assert.match(panel, /showContextualObservations/);
     assert.match(panel, /Ask Luv to draft a follow-up/);
-    assert.doesNotMatch(panel, /emptyHint/);
     const drafts = readFileSync(resolve("lib/luv/drafts.ts"), "utf8");
     assert.match(drafts, /from "@\/lib\/luv\/follow-up-tour-loader"/);
     assert.match(drafts, /resolveFollowUpDraftEligibility/);

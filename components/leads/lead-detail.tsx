@@ -190,7 +190,8 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftEligible = true, followUpDraftIneligibleReason = null, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
+  const draftCapable = followUpDraftCapable && followUpDraftEligible;
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -892,8 +893,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           window.location.hash = "luv";
           setLuvDraftRequest((n) => n + 1);
         }}
-        sameRecordDraftEligible={followUpDraftEligible}
+        sameRecordDraftEligible={draftCapable}
         sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
+        emptyHint={
+          followUpProactiveRecommended
+            ? undefined
+            : "There's nothing that needs a follow-up right now."
+        }
       />
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
@@ -1035,7 +1041,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-1.5"><LuvHeart size={14} /> Luv</CardTitle>
-              <CardDescription>{luvPanelDescription(followUpDraftEligible)}</CardDescription>
+              <CardDescription>
+                {luvPanelDescription({
+                  draftCapable,
+                  proactiveRecommended: followUpProactiveRecommended,
+                  capabilityBlockReason: followUpDraftIneligibleReason,
+                })}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <LuvDraftPanel
@@ -1044,10 +1056,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 onUseDraft={handleUseDraft}
                 autoGenerateDraftType={autoLuvDraft}
                 completedDraftId={completedLuvDraftId}
-                contextualObservations={contextualObservations}
-                followUpDraftEligible={followUpDraftEligible}
+                followUpDraftEligible={draftCapable}
                 followUpDraftIneligibleReason={followUpDraftIneligibleReason}
                 externalDraftRequest={luvDraftRequest}
+                showContextualObservations={false}
               />
             </CardContent>
           </Card>

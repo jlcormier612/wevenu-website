@@ -27,10 +27,16 @@ const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT_DIR = "docs/qa/luv-draft-cta-fix";
 const OUT = `${OUT_DIR}/eligibility-matrix-results.json`;
 const SILENCE = "There's nothing that needs a follow-up right now.";
+const OWNER_AVAILABLE =
+  "No urgent follow-up right now. You can still ask Luv to draft a message when you want.";
 const FALSE_OUTREACH = /recent outreach may still be open/i;
-/** Urging copy that contradicts silence when drafting is blocked. */
+/** Proactive urging that contradicts silence empty-state (not the owner draft CTA label). */
 const FOLLOW_UP_URGING =
-  /may be worth following up|while the interest is fresh|Ask Luv to draft a follow-up/i;
+  /may be worth following up|while the interest is fresh|showing strong interest/i;
+
+function hasProactiveSilenceCopy(body: string): boolean {
+  return body.includes(SILENCE) || body.includes(OWNER_AVAILABLE);
+}
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 if (!url.includes("wvpsldwwjqdannqasrdf")) throw new Error("refusing non-sandbox supabase");
@@ -289,19 +295,23 @@ async function main() {
     }
     await page.screenshot({ path: `${OUT_DIR}/matrix-eligible.png`, fullPage: true });
 
-    // 2) Completed-tour silence — no false outreach copy, no draft CTA
+    // 2) Completed-tour silence — proactive quiet; owner draft CTA remains
     const silence = await seedLead({ first: `Sil${stamp}`, completedTour: true });
     await openLuv(page, silence.id);
     const silBody = await page.locator("body").innerText();
-    const silCta = await page.getByRole("button", { name: /Draft a follow-up email|Ask Luv to draft/i }).count();
+    const silCta = await page.getByRole("button", { name: /Draft a follow-up email/i }).count();
     const falseOutreach = FALSE_OUTREACH.test(silBody);
-    const noticedIneligible = await page.getByTestId("luv-noticed-draft-ineligible").count();
+    const noticedLabels = await page.getByText("Luv noticed", { exact: false }).count();
     record(
       "silence_no_false_outreach_copy",
-      !falseOutreach && silBody.includes(SILENCE),
-      `falseOutreach=${falseOutreach} silence=${silBody.includes(SILENCE)}`,
+      !falseOutreach && hasProactiveSilenceCopy(silBody),
+      `falseOutreach=${falseOutreach} silenceCopy=${hasProactiveSilenceCopy(silBody)}`,
     );
-    record("silence_hides_draft_cta", silCta === 0, `ctaCount=${silCta} noticedIneligible=${noticedIneligible}`);
+    record(
+      "silence_keeps_owner_draft_cta",
+      silCta > 0,
+      `ctaCount=${silCta} noticedLabels=${noticedLabels}`,
+    );
     await page.screenshot({ path: `${OUT_DIR}/matrix-silence.png`, fullPage: true });
 
     // 3) Completed tour + unanswered question → eligible
@@ -320,16 +330,14 @@ async function main() {
     );
     await page.screenshot({ path: `${OUT_DIR}/matrix-actionable.png`, fullPage: true });
 
-    // Ellie real lead forensic (no mutation) — screenshot contradiction must be gone
+    // Ellie real lead forensic (no mutation) — Oct 12 contradiction must be gone
     await openLuv(page, "e26c3be4-d805-4c01-a215-9709cb814f60");
     const ellieBody = await page.locator("body").innerText();
-    const ellieSilence = ellieBody.includes(SILENCE);
+    const ellieSilence = hasProactiveSilenceCopy(ellieBody);
     const ellieUrging = FOLLOW_UP_URGING.test(ellieBody);
-    const ellieDraftCta =
-      (await page.getByTestId("luv-noticed-draft-follow-up").count())
-      + (await page.getByRole("button", { name: /Draft a follow-up email|Ask Luv to draft/i }).count());
-    const ellieNoticedIneligible =
-      (await page.getByTestId("luv-noticed-draft-ineligible").count()) > 0;
+    const ellieDraftCta = await page.getByRole("button", { name: /Draft a follow-up email/i }).count();
+    const ellieNoticedCount = await page.getByText("Luv noticed", { exact: false }).count();
+    const ellieContradiction = ellieUrging && ellieSilence;
     record(
       "ellie_no_false_outreach_copy",
       !FALSE_OUTREACH.test(ellieBody),
@@ -337,20 +345,20 @@ async function main() {
     );
     record(
       "ellie_noticed_luv_tab_consistent",
-      ellieSilence && ellieDraftCta === 0 && !ellieUrging,
-      `silence=${ellieSilence} cta=${ellieDraftCta} urging=${ellieUrging} noticedIneligible=${ellieNoticedIneligible}`,
+      !ellieContradiction && ellieDraftCta > 0 && ellieNoticedCount <= 1,
+      `silenceCopy=${ellieSilence} cta=${ellieDraftCta} urging=${ellieUrging} noticed=${ellieNoticedCount}`,
     );
     await page.screenshot({ path: `${OUT_DIR}/matrix-ellie.png`, fullPage: true });
 
-    // Seeded silence must also neutralize urging detail in Luv Noticed
+    // Seeded silence must not urge follow-up in Noticed; owner CTA may remain
     const silenceUrging = FOLLOW_UP_URGING.test(silBody);
     record(
       "silence_noticed_no_follow_up_urging",
-      !silenceUrging && silCta === 0,
+      !silenceUrging && silCta > 0,
       `urging=${silenceUrging} cta=${silCta}`,
     );
 
-    // 4) Genuine follow-up already sent after completed tour → silence, no false outreach fiction
+    // 4) Follow-up already sent → proactive quiet; owner may still draft; no false outreach fiction
     const sent = await seedLead({
       first: `Sent${stamp}`,
       completedTour: true,
@@ -359,11 +367,11 @@ async function main() {
     });
     await openLuv(page, sent.id);
     const sentBody = await page.locator("body").innerText();
-    const sentCta = await page.getByRole("button", { name: /Draft a follow-up email|Ask Luv to draft/i }).count();
+    const sentCta = await page.getByRole("button", { name: /Draft a follow-up email/i }).count();
     record(
-      "follow_up_sent_blocks_draft_without_false_outreach",
-      sentCta === 0 && !FALSE_OUTREACH.test(sentBody),
-      `cta=${sentCta} falseOutreach=${FALSE_OUTREACH.test(sentBody)} silence=${sentBody.includes(SILENCE)}`,
+      "follow_up_sent_owner_draft_without_false_outreach",
+      sentCta > 0 && !FALSE_OUTREACH.test(sentBody) && !FOLLOW_UP_URGING.test(sentBody),
+      `cta=${sentCta} falseOutreach=${FALSE_OUTREACH.test(sentBody)} silenceCopy=${hasProactiveSilenceCopy(sentBody)}`,
     );
     await page.screenshot({ path: `${OUT_DIR}/matrix-follow-up-sent.png`, fullPage: true });
 

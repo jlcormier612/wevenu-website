@@ -1,5 +1,5 @@
 /**
- * Completed-tour silence copy. Eligibility and discard stay as they are.
+ * Completed-tour silence: proactive recommendation off; owner drafting remains.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -18,8 +18,8 @@ import {
 } from "@/lib/luv/completed-tour-intelligence";
 import { resolveFollowUpDraftEligibility } from "@/lib/luv/follow-up-draft-eligibility";
 import {
+  LUV_FOLLOW_UP_OWNER_AVAILABLE,
   LUV_FOLLOW_UP_PROMISE,
-  LUV_FOLLOW_UP_SILENCE,
   luvPanelDescription,
 } from "@/lib/luv/luv-panel-copy";
 
@@ -65,11 +65,18 @@ describe("Luv silence copy alignment", () => {
       tour: { kind: "none" },
       nextActionText: null,
     });
-    assert.equal(gate.eligible, true);
+    assert.equal(gate.draftCapable, true);
+    assert.equal(gate.proactiveRecommended, true);
     assert.equal(pendingReviewDrafts([]).length, 0);
-    assert.equal(luvPanelDescription(gate.eligible), LUV_FOLLOW_UP_PROMISE);
+    assert.equal(
+      luvPanelDescription({
+        draftCapable: gate.draftCapable,
+        proactiveRecommended: gate.proactiveRecommended,
+      }),
+      LUV_FOLLOW_UP_PROMISE,
+    );
     assert.match(ctaBlock(), /Draft a follow-up email/);
-    assert.match(leadDetail, /luvPanelDescription\(followUpDraftEligible\)/);
+    assert.match(leadDetail, /luvPanelDescription\(\{/);
   });
 
   it("B. eligible lead after discard still offers the CTA and writes no history", () => {
@@ -83,12 +90,12 @@ describe("Luv silence copy alignment", () => {
       tour: { kind: "none" },
       nextActionText: null,
     });
-    assert.equal(gate.eligible, true);
+    assert.equal(gate.draftCapable, true);
     assert.match(ctaBlock(), /Draft a follow-up email/);
     assert.equal(luvPanelDescription(true), LUV_FOLLOW_UP_PROMISE);
   });
 
-  it("C. completed tour silence hides the CTA and the draft promise", () => {
+  it("C. completed tour silence keeps owner draft CTA; panel uses owner-available copy", () => {
     const decision = evaluateCompletedTour({
       tourId: "t1",
       leadId: "L1",
@@ -103,15 +110,17 @@ describe("Luv silence copy alignment", () => {
       nextActionText: null,
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, false);
-    const copy = luvPanelDescription(gate.eligible);
-    assert.equal(copy, LUV_FOLLOW_UP_SILENCE);
-    assert.equal(copy.includes("can help draft a follow-up"), false);
-    assert.equal(copy.includes("Draft a follow-up"), false);
-    assert.match(ctaBlock(), /followUpDraftEligible &&/);
+    assert.equal(gate.proactiveRecommended, false);
+    assert.equal(gate.draftCapable, true);
+    const copy = luvPanelDescription({
+      draftCapable: gate.draftCapable,
+      proactiveRecommended: gate.proactiveRecommended,
+    });
+    assert.equal(copy, LUV_FOLLOW_UP_OWNER_AVAILABLE);
+    assert.match(ctaBlock(), /Draft a follow-up email/);
   });
 
-  it("D. completed tour with an unanswered question keeps the CTA", () => {
+  it("D. completed tour with an unanswered question keeps proactive + CTA", () => {
     const decision = evaluateCompletedTour({
       tourId: "t1",
       leadId: "L1",
@@ -131,13 +140,20 @@ describe("Luv silence copy alignment", () => {
       nextActionText: null,
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, true);
+    assert.equal(gate.draftCapable, true);
+    assert.equal(gate.proactiveRecommended, true);
     assert.equal(gate.communicationPurpose, "unresolved_question");
-    assert.equal(luvPanelDescription(gate.eligible), LUV_FOLLOW_UP_PROMISE);
+    assert.equal(
+      luvPanelDescription({
+        draftCapable: gate.draftCapable,
+        proactiveRecommended: gate.proactiveRecommended,
+      }),
+      LUV_FOLLOW_UP_PROMISE,
+    );
     assert.match(ctaBlock(), /Draft a follow-up email/);
   });
 
-  it("E. an ineligible lead still shows a pending draft, then silence after discard", () => {
+  it("E. proactive-silent lead still shows pending draft; CTA remains for capable owners", () => {
     const before = [draft("stale")];
     assert.deepEqual(pendingReviewDrafts(before).map((d) => d.id), ["stale"]);
     const pendingIdx = panel.indexOf("{/* Pending drafts */}");
@@ -153,9 +169,15 @@ describe("Luv silence copy alignment", () => {
       nextActionText: null,
       completedDecision: { mode: "silence", purpose: "none" },
     });
-    assert.equal(gate.eligible, false);
-    assert.equal(luvPanelDescription(gate.eligible), LUV_FOLLOW_UP_SILENCE);
-    assert.doesNotMatch(ctaBlock(), /followUpDraftEligible === false[\s\S]*Draft a follow-up email/);
+    assert.equal(gate.draftCapable, true);
+    assert.equal(gate.proactiveRecommended, false);
+    assert.equal(
+      luvPanelDescription({
+        draftCapable: gate.draftCapable,
+        proactiveRecommended: gate.proactiveRecommended,
+      }),
+      LUV_FOLLOW_UP_OWNER_AVAILABLE,
+    );
   });
 
   it("F. pricing request with no proposal stays actionable and keeps the CTA", () => {
@@ -179,13 +201,20 @@ describe("Luv silence copy alignment", () => {
       nextActionText: null,
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, true);
+    assert.equal(gate.draftCapable, true);
+    assert.equal(gate.proactiveRecommended, true);
     assert.equal(gate.communicationPurpose, "explicit_request");
-    assert.equal(luvPanelDescription(gate.eligible), LUV_FOLLOW_UP_PROMISE);
+    assert.equal(
+      luvPanelDescription({
+        draftCapable: gate.draftCapable,
+        proactiveRecommended: gate.proactiveRecommended,
+      }),
+      LUV_FOLLOW_UP_PROMISE,
+    );
     assert.match(ctaBlock(), /Draft a follow-up email/);
   });
 
-  it("G. Follow up after tour does not override completed-tour silence", () => {
+  it("G. Follow up after tour does not force proactive outreach; drafting stays capable", () => {
     const decision = evaluateCompletedTour({
       tourId: "t1",
       leadId: "L1",
@@ -199,10 +228,18 @@ describe("Luv silence copy alignment", () => {
       nextActionText: "Follow up after tour",
       completedDecision: decision,
     });
-    assert.equal(gate.eligible, false);
-    assert.equal(gate.workflowIntent, "no_outreach");
-    assert.equal(luvPanelDescription(gate.eligible), LUV_FOLLOW_UP_SILENCE);
+    assert.equal(gate.proactiveRecommended, false);
+    assert.equal(gate.draftCapable, true);
+    assert.equal(gate.workflowIntent, "gentle_check_in");
+    assert.equal(
+      luvPanelDescription({
+        draftCapable: gate.draftCapable,
+        proactiveRecommended: gate.proactiveRecommended,
+      }),
+      LUV_FOLLOW_UP_OWNER_AVAILABLE,
+    );
     assert.match(eligibilitySrc, /completedTourDraftAllowed/);
+    assert.match(eligibilitySrc, /draftCapable/);
   });
 
   it("H. discard does not record a drafted state, so an eligible lead can draft again", () => {
@@ -213,7 +250,7 @@ describe("Luv silence copy alignment", () => {
 
     const generateFn = draftsSrc.slice(
       draftsSrc.indexOf("export async function generateFollowUpDraft"),
-      draftsSrc.indexOf("if (!gate.eligible)"),
+      draftsSrc.indexOf("if (!gate.draftCapable)"),
     );
     assert.match(generateFn, /resolveFollowUpDraftEligibility/);
     assert.doesNotMatch(generateFn, /from\("luv_drafts"\)/);
@@ -228,7 +265,7 @@ describe("Luv silence copy alignment", () => {
       tour: { kind: "none" },
       nextActionText: null,
     });
-    assert.equal(gate.eligible, true);
+    assert.equal(gate.draftCapable, true);
     assert.match(panel, /Draft another/);
   });
 });

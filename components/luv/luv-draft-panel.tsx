@@ -188,6 +188,11 @@ export function LuvDraftPanel({
   followUpDraftIneligibleReason = null,
   /** Increment from parent (e.g. Overview “Ask Luv to draft”) to open drafting. */
   externalDraftRequest = 0,
+  /**
+   * When false, skip Noticed here — lead Overview already renders it once.
+   * Default true for standalone mounts (events/contracts).
+   */
+  showContextualObservations = true,
 }: {
   lead: Lead;
   initialDrafts: LuvDraft[];
@@ -199,13 +204,14 @@ export function LuvDraftPanel({
   /** L3 WHAT/WHY/NEXT insights for this lead (S3/S4 and related). */
   contextualObservations?: LuvObservation[];
   /**
-   * Same eligibility gate as generateFollowUpDraft.
-   * When false, hide the draft CTA (SILENCE / no_outreach).
+   * Draft capability (not proactive recommendation).
+   * When false, hide the owner draft CTA (lost/archived/etc.).
    */
   followUpDraftEligible?: boolean;
-  /** Accurate gate explanation — never invents outreach/stage. */
+  /** Accurate capability-block explanation — never invents outreach/stage. */
   followUpDraftIneligibleReason?: string | null;
   externalDraftRequest?: number;
+  showContextualObservations?: boolean;
 }) {
   // Auto-trigger draft generation when arriving via a Luv recommendation link
   const [allDrafts, setAllDrafts] = React.useState(initialDrafts);
@@ -281,16 +287,18 @@ export function LuvDraftPanel({
 
   return (
     <div className="space-y-5">
-      <ContextualLuvObservationsPanel
-        observations={contextualObservations}
-        currentPath={`/leads/${lead.id}`}
-        onSameRecordDraft={() => void handleGenerate()}
-        sameRecordDraftBusy={generating}
-        sameRecordDraftEligible={followUpDraftEligible}
-        sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
-      />
+      {showContextualObservations ? (
+        <ContextualLuvObservationsPanel
+          observations={contextualObservations}
+          currentPath={`/leads/${lead.id}`}
+          onSameRecordDraft={() => void handleGenerate()}
+          sameRecordDraftBusy={generating}
+          sameRecordDraftEligible={followUpDraftEligible}
+          sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
+        />
+      ) : null}
 
-      {/* Generate button — hidden when drafting engine would return SILENCE / nothing useful */}
+      {/* Owner-initiated draft capability — independent of proactive recommendations */}
       {followUpDraftEligible && (
       <div className="rounded-sm border border-[#D8A7AA]/25 bg-[#D8A7AA]/5 px-4 py-4">
         <div className="flex items-start gap-3">
@@ -320,6 +328,11 @@ export function LuvDraftPanel({
         </div>
       </div>
       )}
+      {!followUpDraftEligible && followUpDraftIneligibleReason ? (
+        <p className="text-xs text-muted-foreground" data-testid="luv-draft-capability-blocked">
+          {followUpDraftIneligibleReason}
+        </p>
+      ) : null}
 
       {/* Pending drafts */}
       {pendingDrafts.length > 0 && (

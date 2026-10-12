@@ -1,70 +1,118 @@
-# Resend capacity & scalable email architecture (Sandbox evidence)
+# Resend capacity & scalable email architecture
 
-**Retrieved (UTC):** 2026-10-12T05:05Z via `htc-sandbox-resend-usage-canary` → Resend `GET /usage`  
-**Production / plan / Spend Cap changes:** none (recommendation only unless authorized)
+**Retrieval date (UTC):** 2026-10-12 (this pass appends; prior readings preserved below)  
+**Production / plan / Spend Cap / DNS / credentials:** untouched — research + Sandbox validation only.
 
-## Current authoritative usage
+## Historical Sandbox readings (do not erase)
 
-| Meter | Value |
-|---|---|
-| Daily | **118 / 100** (**118%** — over daily ceiling) |
-| Monthly | **2348 / 3000** (**78.27%**) |
-| Rate limit | **10 / second** |
-| Days-to-exhaustion at month-to-date pace | **3.33** (`ResendMonthlyDaysToExhaustion`) |
-| Monthly daily pace | **~196** emails/day equivalent |
+| UTC | Daily | Monthly | Source |
+|---|---|---|---|
+| 2026-10-12T02:22Z | 33 / 100 | 2263 / 3000 | Resend `GET /usage` via canary |
+| 2026-10-12T05:05Z | **118 / 100 (118%)** | **2348 / 3000 (78%)** | `htc-sandbox-resend-usage-canary` |
+| 2026-10-12 (this pass) | Treat 05:05Z as last canary snapshot until next invoke | same | Do not re-burn quota for a re-read |
 
-Quota scope: Sandbox Resend API key in Secrets Manager `htc/sandbox/resend-api-key`. Treat as the Sandbox transactional pool (ops alerts + app sends sharing this key). Do not assume Production uses the same pool until Production credentials are separately inventoried.
+Sandbox Free-like ceilings (100/day, 3k/mo, 10/s) are **already breached daily** under QA + dogfood. That is an operational observation, **not** a production demand forecast.
 
-CloudWatch alarms:
-- `htc-sandbox-resend-daily-usage-high` — **ALARM** (≥80%; currently over 100%)
-- `htc-sandbox-resend-monthly-usage-high` — **ALARM** (≥70%)
+---
 
-Ops alert email already dedupes re-observations of the same active incident (`_should_email`) so sustained ALARM does not re-burn quota on every SNS tick. Recovery (OK) still emails.
+## Architecture (evidence)
 
-## Outbound path inventory (code)
+| Category | Who initiates | Provider today | Shared Sandbox pool? |
+|---|---|---|---|
+| Ops alerts (SNS→Lambda→Resend) | Platform | Resend | Yes — `htc/sandbox/resend-api-key` |
+| Venue→customer transactional (`lib/email/send.ts`, notifications engine) | Venue / platform jobs | Resend | Yes |
+| Auth password recovery | Platform | Resend | Yes |
+| Questionnaire / program mail | Platform / venue | Resend when keyed | Yes |
+| Supabase Auth magic-link | Supabase Auth SMTP | Separate unless SMTP points at same Resend | Unknown without Auth SMTP audit |
+| Luv drafts | Owner generate → staff send | Consumes quota **only after** Messages send | Yes after send |
+| SMS | Twilio | No | — |
+| Workflow synthetic | Monitor | **No email** | — |
 
-| Path | Provider | Consumes Sandbox Resend quota? |
-|---|---|---|
-| Ops alerts (`htc-sandbox-ops-alert-email`) | Resend | Yes (deduped per active incident) |
-| Venue/customer transactional (`lib/email/send.ts`, `shared/email/*`, notifications engine) | Resend | Yes (same key in Sandbox) |
-| Password recovery (`lib/auth/send-password-recovery-email.ts`) | Resend | Yes |
-| Questionnaire / program mail | Resend when key set | Yes |
-| Auth magic-link (Supabase Auth) | Supabase Auth SMTP / configured provider | **Separate unless Auth SMTP points at same Resend** |
-| Luv drafts | Not sent until staff sends via Messages | Only after send |
-| SMS | Twilio | No (email quota) |
-| Workflow synthetic | None | No email/SMS |
+Retries / dedupe (Sandbox ops path): ops alert Lambda skips re-emailing the same active incident; recovery OK still emails. App notification engine has its own retry/idempotency — do not double-count retries in the base model; add **+5%** only in high scenario.
 
-## Growth scenarios (assumptions documented)
+---
 
-Assumptions (conservative averages per active venue-month): auth/security 8; inquiry/tour 12; contract/booking/payment 20; reminders/follow-ups 25; ops/internal 3 → **~68 emails / venue / month**. Peak day ≈ 8% of monthly.
+## Editable activity assumptions (per active venue / month)
 
-| Scenario | Venues | Est. emails / month | Est. peak day | vs 3,000/mo | vs 100/day |
-|---|---|---|---|---|---|
-| Modest launch | 25 | ~1,700 | ~136 | Under monthly; **over daily** | Fail |
-| Intermediate | 100 | ~6,800 | ~544 | **2.3× over** | Fail |
-| Intended scale | 400 | ~27,200 | ~2,176 | **9× over** | Fail |
+| Category | Low | Base | High | Scales with |
+|---|---|---|---|---|
+| Inquiries + inquiry responses | 4 | 8 | 16 | venues × inquiry rate |
+| Tour scheduling / updates | 3 | 6 | 12 | venues × tours |
+| Contracts / signatures | 4 | 10 | 20 | venues × bookings |
+| Invoices / payment notices | 3 | 8 | 16 | venues × payments |
+| Reminders / follow-ups | 6 | 15 | 30 | venues × open pipeline |
+| Customer / vendor comms (staff-initiated) | 4 | 12 | 24 | venues × staff activity |
+| Auth / security (platform) | 2 | 4 | 8 | users (sub-linear with venues) |
+| Platform ops alerts | 1 | 3 | 6 | infra incidents (mostly fixed) |
+| Retry / QA overhead | 0 | 2 | 8 | QA intensity |
+| **Total / venue-month** | **27** | **68** | **140** | |
 
-Sandbox is already **over the daily Free-like ceiling** during QA + real traffic. Monthly pace projects exhaustion in ~3.3 days without a plan change.
+Peak day ≈ **8%** of monthly (base); **12%** (high). Burst rate assume ≤ **10 msg/s** shared Free; paid Resend removes daily cap.
 
-## Provider comparison (2026 public pricing; verify before purchase)
+**Avoid double-counting:** Luv drafts are not counted until send (then counted under reminders/comms). Ops alerts counted once per incident open+close, not per SNS tick.
 
-| Option | Fit | Notes |
-|---|---|---|
-| Resend Free (~3k/mo, 100/day, 10/s) | Not for launch+ | Current Sandbox ceiling — already breached daily |
-| Resend Pro / higher tiers | Likely best short-term | Keep API, webhooks, domains; raise monthly + daily |
-| Amazon SES | High volume / low unit cost | More ops (suppression, DKIM, bounce handling); migration effort |
-| Postmark / SendGrid | Transactional peers | Comparable; migration + deliverability work |
+---
 
-**Recommendation (owner authorization required):** Stay on Resend for product continuity; **authorize plan upgrade** before multi-venue launch; keep Sandbox usage canaries + HQ alerts; separate QA/test sends from customer pool when budget allows (second Resend project or SES sandbox). Do **not** cut over Production DNS/provider without explicit authorization.
+## Volume model (venues × scenario)
 
-## Sandbox engineering shipped (no plan purchase)
+| Venues | Low mo / peak day | Base mo / peak day | High mo / peak day |
+|---|---|---|---|
+| 1 | 27 / 3 | 68 / 6 | 140 / 17 |
+| 25 | 675 / 54 | 1,700 / 136 | 3,500 / 420 |
+| 100 | 2,700 / 216 | 6,800 / 544 | 14,000 / 1,680 |
+| 400 | 10,800 / 864 | 27,200 / 2,176 | 56,000 / 6,720 |
 
-- Usage canary publishes `ResendMonthlyDaysToExhaustion` + pace fields.
-- Ops incidents persist independently of email; email skips duplicate ALARM re-observes.
-- Threshold alarms: 70% monthly / 80% daily; canary-down; provider-limit.
-- Workflow synthetic does **not** send mail (inquiry / tour / contract-draft / payment-config only).
-- Controlled capacity ALARM → HQ + owner email proven prior pass.
+---
+
+## Provider comparison (official sources; retrieved 2026-10-12)
+
+| Provider | Source | List price used | Limits / notes |
+|---|---|---|---|
+| **Resend Free** | https://resend.com/pricing | $0 / 3,000 mo | **100/day** hard — Sandbox already over |
+| **Resend Pro** | same | **$20 / 50k** or **$35 / 100k**; overage **$0.90 / 1k**; **no daily limit** | Best continuity with current API |
+| **Resend Scale** | same | $90 / 100k … higher tiers | Domains / SSO / dedicated IP add-ons |
+| **Amazon SES Essentials** | https://aws.amazon.com/ses/pricing/ | **$0.16 / 1k** (0–10M) + attachment data | Lowest unit $; more ops (DKIM, bounce, suppression); approval/sandbox exit |
+| **SES à la carte** | same | **$0.10 / 1k** outbound | Even lower $; still migration effort |
+| **Postmark Basic** | https://postmarkapp.com/pricing | **$15 / 10k**; extra **$1.80 / 1k** | Strong transactional focus; migration |
+| **SendGrid Essentials** | https://www.twilio.com/en-us/products/email-api/pricing (+ PDF) | **$19.95 / 50k** or **$34.95 / 100k** | Peer to Resend Pro; migration |
+
+### Modeled monthly cost (base scenario; plan floor + overage)
+
+| Venues | Est. emails | Resend Free | Resend Pro 50k ($20) | Resend Pro 100k ($35) | SES Essentials | Postmark* | SendGrid Essentials |
+|---|---|---|---|---|---|---|---|
+| 1 | 68 | $0 (fits Free if daily ok) | $20 | $35 | ~$0.01 | $15 | $19.95 |
+| 25 | 1,700 | **Fails daily** | $20 | $35 | ~$0.27 | $15 | $19.95 |
+| 100 | 6,800 | Fail | $20 | $35 | ~$1.09 | ~$15 + overage | $19.95 |
+| 400 | 27,200 | Fail | $20 | $35 | ~$4.35 | higher overage | $19.95 / $34.95 |
+
+\*Postmark: volumes above 10k pay overage at plan rate; at 27k base ≈ $15 + ~17×$1.80 ≈ **~$46** on Basic (illustrative).
+
+**High / 400 venues (56k):** Resend Pro 50k → $20 + ~6k×$0.90/1k ≈ **$25.40**; Pro 100k → **$35**. SES Essentials ≈ **$9**. SendGrid Essentials 50k + overage ≈ **$28** (using ~$1.33/1k extra). Postmark materially higher on overage.
+
+---
+
+## Isolation / deliverability / ops
+
+| Factor | Keep Resend (upgrade) | Segment pools | SES for bulk/ops | Full migrate |
+|---|---|---|---|---|
+| Code change | Minimal | Medium (2 keys/streams) | High | High |
+| DNS / domain | None if same domain | Second subdomain optional | New DKIM | New DKIM |
+| Deliverability risk | Low | Low–med | Med (warm-up) | Med–high |
+| Ops alerts vs customer | Shared reputation today | **Recommended** separate ops key/project | SES for ops cheap | Mixed |
+| Support / UX | Current dashboards | Two dashboards | AWS console | New vendor |
+
+---
+
+## Explicit recommendation (owner authorization required to change plans)
+
+1. **Do not stay on Resend Free for multi-venue launch.** Sandbox is already over the **100/day** ceiling; at 25+ venues base, Free is structurally incapable (daily and eventually monthly).
+2. **Near-term: upgrade Resend to Pro ($20 / 50k)** for product continuity — removes daily cap, covers base through ~100 venues with headroom, and at 400 venues base (~27k) stays inside 50k without overage. This is **not** “materially more expensive” than peers at that volume; SES is cheaper per message but costs migration/ops.
+3. **Segment traffic when budget allows:** separate Resend project (or SES) for **ops alerts + QA** so dogfood never burns customer quota (Sandbox lesson).
+4. **Do not migrate Production to SES/Postmark/SendGrid without a separate authorized project** — savings at 400 venues base are dollars, not hundreds, versus migration risk.
+5. **Spend Cap / Production plan changes remain blocked** until the owner authorizes.
+
+**Financial conclusion:** At modeled production scale (1→400 venues, base), **Resend Pro ~$20–35/mo** is the rational keep/upgrade path. SES wins on unit economics only if HTC invests in SES deliverability ops. Free Resend is already a **hard capacity failure** for Sandbox QA.
 
 ## Capacity status
 
-**YELLOW / NOT GREEN** — daily quota already exceeded (118/100); monthly 78% with ~3.3 days-to-exhaust at pace. Plan upgrade or separate QA pool requires **owner authorization**.
+**YELLOW / NOT GREEN** — Sandbox Free ceilings exceeded; Production upgrade **not** executed (authorization required). Model + recommendation complete.

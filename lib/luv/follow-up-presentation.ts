@@ -23,9 +23,14 @@ import { getCurrentVenue } from "@/lib/venue/service";
 
 export type LeadFollowUpPresentation = {
   tour: FollowUpTourState;
+  /** Owner may initiate a review-only draft (capability). */
+  draftCapable: boolean;
+  /** @deprecated Alias of draftCapable — not proactive recommendation. */
   draftEligible: boolean;
-  /** Accurate explanation when draftEligible is false; never invents outreach/stage. */
+  /** Accurate explanation when draftCapable is false. */
   draftIneligibleReason: string | null;
+  /** Luv should urge outreach (Noticed / silence). Independent of drafting. */
+  proactiveRecommended: boolean;
   workflowIntent: FollowUpWorkflowIntent;
   /** Authoritative commercial_proposals.status=sent AND offered_at — never sales_stage. */
   proposalSent: boolean;
@@ -89,8 +94,7 @@ async function loadLeadThreadMessages(
 }
 
 /**
- * Authoritative tour state + draft CTA eligibility for the Lead Luv tab.
- * Same gates as generateFollowUpDraft (evaluateCompletedTour + workflow intent).
+ * Authoritative tour state + draft capability + proactive judgment for Lead Luv.
  */
 export async function loadLeadFollowUpPresentation(
   lead: Lead,
@@ -98,13 +102,11 @@ export async function loadLeadFollowUpPresentation(
   if (!isSupabaseConfigured) {
     return {
       tour: { kind: "none" },
+      draftCapable: false,
       draftEligible: false,
-      draftIneligibleReason: followUpDraftBlockReason({
-        eligible: false,
-        tour: { kind: "none" },
-        workflowIntent: "no_outreach",
-      }),
-      workflowIntent: "no_outreach",
+      draftIneligibleReason: "Luv drafts require a configured venue database.",
+      proactiveRecommended: false,
+      workflowIntent: "gentle_check_in",
       proposalSent: false,
     };
   }
@@ -112,13 +114,11 @@ export async function loadLeadFollowUpPresentation(
   if (!venue) {
     return {
       tour: { kind: "none" },
+      draftCapable: false,
       draftEligible: false,
-      draftIneligibleReason: followUpDraftBlockReason({
-        eligible: false,
-        tour: { kind: "none" },
-        workflowIntent: "no_outreach",
-      }),
-      workflowIntent: "no_outreach",
+      draftIneligibleReason: "Luv can’t draft without an active venue.",
+      proactiveRecommended: false,
+      workflowIntent: "gentle_check_in",
       proposalSent: false,
     };
   }
@@ -150,16 +150,21 @@ export async function loadLeadFollowUpPresentation(
     tour,
     nextActionText: lead.nextActionText,
     completedDecision,
+    leadStatus: lead.status,
+    lostAt: lead.lostAt,
   });
 
   return {
     tour,
-    draftEligible: gate.eligible,
+    draftCapable: gate.draftCapable,
+    draftEligible: gate.draftCapable,
     draftIneligibleReason: followUpDraftBlockReason({
-      eligible: gate.eligible,
+      draftCapable: gate.draftCapable,
+      capabilityBlockReason: gate.capabilityBlockReason,
       tour,
       workflowIntent: gate.workflowIntent,
     }),
+    proactiveRecommended: gate.proactiveRecommended,
     workflowIntent: gate.workflowIntent,
     proposalSent,
   };
