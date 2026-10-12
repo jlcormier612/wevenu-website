@@ -1,0 +1,115 @@
+{
+  "observedAt": "2026-10-12T00:43:09.073Z",
+  "tip": "45290d6adaeaa446341c8527f4ec81e8fabf3935",
+  "preferredDate": "2027-12-25",
+  "checks": [
+    {
+      "name": "hold_insert",
+      "pass": true,
+      "detail": "c8987acd"
+    },
+    {
+      "name": "readonly_preferred_date_shown",
+      "pass": true,
+      "detail": "EL Tour 1791765789246 Inquiry Form 📅 Schedule a Tour Pick a date and time to visit us. ✉️ Request Information Tell us about your event. Select your tour Octobe"
+    },
+    {
+      "name": "not_forced_to_reselect_calendar",
+      "pass": true,
+      "detail": "no date input inside existing-lead block"
+    },
+    {
+      "name": "copy_mentions_already_shared",
+      "pass": true,
+      "detail": "EL Tour 1791765789246 Inquiry Form 📅 Schedule a Tour Pick a date and time to visit us. ✉️ Request Information Tell us a"
+    },
+    {
+      "name": "tour_section_present",
+      "pass": true,
+      "detail": "tour section"
+    },
+    {
+      "name": "tour_slot_available",
+      "pass": true,
+      "detail": "2026-10-14T14:00:00+00:00"
+    },
+    {
+      "name": "book_with_empty_client_event_date",
+      "pass": true,
+      "detail": "ok=true err= appt=e508b650"
+    },
+    {
+      "name": "attached_existing_lead",
+      "pass": true,
+      "detail": "leadId=0e4aa446 attached=true"
+    },
+    {
+      "name": "invalid_token_rejected",
+      "pass": true,
+      "detail": "This scheduling link is not valid."
+    },
+    {
+      "name": "unavailable_slot_rejected",
+      "pass": true,
+      "detail": "This slot is too far in the future."
+    },
+    {
+      "name": "cross_venue_token_rejected",
+      "pass": true,
+      "detail": "ok=false err=This scheduling link is not valid."
+    },
+    {
+      "name": "generic_link_no_lead_context",
+      "pass": true,
+      "detail": "no existing-lead block"
+    },
+    {
+      "name": "lead_without_preferred_date_allows_tour_ui",
+      "pass": true,
+      "detail": "EL Tour 1791765789246 Inquiry Form 📅 Schedule a Tour Pick a date and time to visit us. ✉️ Request Information Tell us about your event. Select your tour Octobe"
+    },
+    {
+      "name": "reopen_preserves_readonly_context",
+      "pass": true,
+      "detail": "readonly block after reopen"
+    },
+    {
+      "name": "reopen_no_duplicate_tour",
+      "pass": true,
+      "detail": "appointments=1"
+    },
+    {
+      "name": "new_inquiry_blocked_date_still_enforced",
+      "pass": true,
+      "detail": "christmas_in_list=false ok=true exc=384ff3e0"
+    },
+    {
+      "name": "event_date_unchanged",
+      "pass": true,
+      "detail": "before=2027-12-25 after=2027-12-25"
+    },
+    {
+      "name": "no_duplicate_lead",
+      "pass": true,
+      "detail": "before=1 after=1"
+    },
+    {
+      "name": "no_event_created",
+      "pass": true,
+      "detail": "events=0"
+    },
+    {
+      "name": "hold_unchanged",
+      "pass": true,
+      "detail": "{\"id\":\"c8987acd-8d61-4472-a2a2-a34952f035fa\",\"status\":\"active\",\"hold_date\":\"2027-12-25\"}"
+    },
+    {
+      "name": "appointment_on_correct_lead",
+      "pass": true,
+      "detail": "{\"lead\":\"0e4aa446\",\"event_date\":\"2027-12-25\",\"status\":\"scheduled\"}"
+    }
+  ],
+  "passCount": 21,
+  "total": 21,
+  "verdict": "GREEN"
+}
