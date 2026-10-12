@@ -520,35 +520,42 @@ async function main() {
     if (r2Event) cleanupIds.events.push(r2Event.id);
 
     const invoiceTotalBefore = 10000;
-    const { data: r2Invoice } = await admin
+    const { data: r2Invoice, error: invErr } = await admin
       .from("invoices")
       .insert({
         venue_id: FANCY,
         client_id: r2Client!.id,
         event_id: r2Event!.id,
         status: "sent",
+        invoice_number: `QA-R2-${stamp}`,
+        display_name: `QA R2 ${stamp}`,
+        subtotal: invoiceTotalBefore,
+        discount_amount: 0,
+        tax_amount: 0,
         total: invoiceTotalBefore,
         balance_due: invoiceTotalBefore,
-        invoice_number: `QA-R2-${stamp}`,
         issued_at: new Date().toISOString(),
       })
       .select("id,total,balance_due")
       .single();
-    if (r2Invoice) cleanupIds.invoices.push(r2Invoice.id);
+    if (invErr || !r2Invoice) throw invErr ?? new Error("r2 invoice");
+    cleanupIds.invoices.push(r2Invoice.id);
 
-    const { data: r2Schedule } = await admin
+    const { data: r2Schedule, error: schedErr } = await admin
       .from("payment_schedules")
       .insert({
         venue_id: FANCY,
         client_id: r2Client!.id,
         event_id: r2Event!.id,
-        invoice_id: r2Invoice!.id,
+        invoice_id: r2Invoice.id,
+        title: `QA R2 Plan ${stamp}`,
         total_amount: invoiceTotalBefore,
-        status: "active",
+        currency: "usd",
       })
       .select("id")
       .single();
-    if (r2Schedule) cleanupIds.schedules.push(r2Schedule.id);
+    if (schedErr || !r2Schedule) throw schedErr ?? new Error("r2 schedule");
+    cleanupIds.schedules.push(r2Schedule.id);
 
     const { data: line1 } = await admin
       .from("payment_schedule_line_items")
