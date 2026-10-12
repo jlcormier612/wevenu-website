@@ -30,3 +30,11 @@ Package facts sat in `min-w-0` beside a `shrink-0 flex-wrap` action column that 
 ## Tests
 
 Unit: 14/14 related suites PASS (tour context + booking layout + tax discoverability).
+
+Browser (`scripts/qa/tour-link-copy-and-booking-layout-browser.mts`): **11/11 PASS** on tip `dc1bda28`
+- Calendar + lead guidance strings match exactly; **Copy tour link** bold on lead
+- Package facts width desktop **530px**, mobile **320**, tablet **315.5** (not collapsed)
+- View/Change package does not overlap facts or locked tax hint
+- Booking/contract data unchanged; Production untouched
+
+Evidence: `browser-results.json`, `calendar-guidance.png`, `lead-followup-guidance.png`, `booking-details-*.png`
