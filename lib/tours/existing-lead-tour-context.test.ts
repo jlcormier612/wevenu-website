@@ -76,7 +76,7 @@ describe("existing-lead tour preferred event date", () => {
     assert.match(calendar, /calendar-tour-link-lead-guidance/);
     assert.match(
       calendar,
-      /Already working with someone\? Use the personalized scheduling link that resides in their\s+lead record, under &apos;Follow-up&apos;\. That will preserve any preferred date holds and\s+other previously gathered information\./,
+      /Already working with someone\? Use the personalized scheduling link that resides in their\s+lead record, under &apos;Tour &amp; follow-up&apos;\. That will preserve any preferred date holds and\s+other previously gathered information\./,
     );
     const panel = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
     assert.match(panel, /lead-scheduling-link-guidance/);

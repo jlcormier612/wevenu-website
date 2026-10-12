@@ -26,7 +26,7 @@ const OUT_DIR = "docs/qa/tour-link-booking-layout";
 const OUT = `${OUT_DIR}/browser-results.json`;
 
 const CAL_COPY =
-  "Already working with someone? Use the personalized scheduling link that resides in their lead record, under 'Follow-up'. That will preserve any preferred date holds and other previously gathered information.";
+  "Already working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.";
 const LEAD_COPY =
   "Use this personalized scheduling link for this lead. The Calendar page's Copy tour link is a general link for new prospects only.";
 

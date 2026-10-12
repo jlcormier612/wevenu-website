@@ -29,9 +29,10 @@ const createHoldRepo = readFileSync(
 );
 
 describe("Date Hold overview UX placement", () => {
-  it("DateHoldsSection is beside Sales owner on the summary row, not on Tasks", () => {
+  it("DateHoldsSection is beside Sales owner under Sales & availability, not on Tasks", () => {
     assert.match(leadDetail, /desiredEventDate=\{lead\.eventDate\}/);
     assert.match(holdSection, /Date hold/);
+    assert.match(leadDetail, /data-testid="lead-sales-availability"/);
     assert.match(leadDetail, /data-testid="lead-owner-hold-row"/);
     const row = leadDetail.slice(
       leadDetail.indexOf('data-testid="lead-owner-hold-row"'),
@@ -46,7 +47,7 @@ describe("Date Hold overview UX placement", () => {
   });
 
   it("Tasks tab points venues to the header Place hold control", () => {
-    assert.match(leadDetail, /To reserve a date, use Place hold beside the pipeline stage/);
+    assert.match(leadDetail, /To reserve a date, use Place hold/);
   });
 
   it("Hold form wires desiredEventDate into defaultHoldDateFromDesiredEventDate", () => {

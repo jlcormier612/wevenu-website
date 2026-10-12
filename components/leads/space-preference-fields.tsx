@@ -173,15 +173,17 @@ export function LeadSpacePreferenceFields({
   const applicableCount = prefs.filter((p) => isApplicableLeadSpacePreferenceKind(p.preferenceKind)).length;
 
   return (
-    <div className="w-full min-w-0">
-      <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        Space preferences
-      </p>
-      <p className="mb-2 text-xs text-muted-foreground">
-        Which parts of the event are taking place at your venue?
-      </p>
+    <div className="w-full min-w-0" data-testid="lead-space-preferences">
+      <div className="mb-2 space-y-0.5">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Space preferences
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Which parts of the event are taking place at your venue?
+        </p>
+      </div>
       <div
-        className="grid w-full min-w-0 grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid w-full min-w-0 grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         data-testid="space-preference-grid"
         data-applicable-count={applicableCount}
       >
@@ -191,11 +193,11 @@ export function LeadSpacePreferenceFields({
           return (
             <div
               key={use.key}
-              className="min-w-0"
+              className="flex min-w-0 flex-col gap-1.5"
               data-testid={`space-pref-row-${use.key}`}
               data-applicable={applicable ? "true" : "false"}
             >
-              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <label className="flex min-h-5 items-center gap-2 text-sm font-medium text-foreground">
                 <input
                   type="checkbox"
                   className="size-4 shrink-0 rounded border-border"
@@ -228,10 +230,10 @@ export function LeadSpacePreferenceFields({
                     persist(next);
                   }}
                 />
-                <span className="min-w-0 truncate">{use.label}</span>
+                <span className="min-w-0 leading-snug">{use.label}</span>
               </label>
-              {applicable && (
-                <div className="mt-1.5 min-w-0 space-y-1.5">
+              {applicable ? (
+                <div className="min-w-0 pl-6">
                   <PreferenceSpaceControl
                     value={value}
                     spaces={spacesEligibleForUse(spaces, use.key)}
@@ -248,7 +250,7 @@ export function LeadSpacePreferenceFields({
                     }}
                   />
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}

@@ -554,10 +554,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         onConfirm={confirmBookedFromStage}
       />
       <TourScheduleRoot leadId={lead.id} tourAppointments={tourAppointments} now={now} venueTimezone={venueTimezone}>
-      {/* Header */}
-      <div className="space-y-3">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
+      {/* Header: identity → actions → sales & availability → space prefs */}
+      <div className="space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-2">
           <Button
             variant="ghost" size="sm"
             className="-ml-2 text-muted-foreground"
@@ -566,65 +566,45 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
             Leads
           </Button>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <RelationshipPhotoAvatar photoUrl={photoUrl} name={displayName} />
-            <h1 className="font-heading text-2xl font-medium text-heading">
-              {displayName}
-            </h1>
-          </div>
-          <div data-testid="lead-summary-facts" className="space-y-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
-              {lead.eventDate && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {formatDate(lead.eventDate)}
-                  </span>
-                </>
-              )}
-              {lead.guestCount != null && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
-                    {lead.guestCount.toLocaleString()} guests
-                  </span>
-                </>
-              )}
-              {lead.estimatedBudget != null && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="h-3.5 w-3.5" />
-                    {formatCurrency(lead.estimatedBudget)}
-                  </span>
-                </>
-              )}
-            </div>
-            <div
-              data-testid="lead-owner-hold-row"
-              className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 md:flex-nowrap"
-            >
-              <StaffAssignmentField
-                compact
-                label="Sales owner"
-                staff={staffOptions}
-                value={lead.assignedStaffId ?? null}
-                testId="lead-staff-assignment"
-                onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
-              />
-              <DateHoldsSection
-                density="compact"
-                leadId={lead.id}
-                leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-                desiredEventDate={lead.eventDate}
-                initialHolds={holds}
-                spaces={spaces}
-                spacePreferences={spacePreferences}
-                venueTimezone={venueTimezone}
-              />
+            <div className="min-w-0 space-y-1">
+              <h1 className="font-heading text-2xl font-medium leading-tight text-heading sm:text-3xl">
+                {displayName}
+              </h1>
+              <div
+                data-testid="lead-summary-facts"
+                className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
+              >
+                {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
+                {lead.eventDate && (
+                  <>
+                    {lead.eventType ? <span className="text-border" aria-hidden>·</span> : null}
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      {formatDate(lead.eventDate)}
+                    </span>
+                  </>
+                )}
+                {lead.guestCount != null && (
+                  <>
+                    <span className="text-border" aria-hidden>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5 shrink-0" />
+                      {lead.guestCount.toLocaleString()} guests
+                    </span>
+                  </>
+                )}
+                {lead.estimatedBudget != null && (
+                  <>
+                    <span className="text-border" aria-hidden>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                      {formatCurrency(lead.estimatedBudget)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -643,7 +623,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           </div>
         </div>
 
-        <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:max-w-3xl sm:items-end">
+        <div
+          data-testid="lead-action-area"
+          className="flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:max-w-3xl sm:items-end"
+        >
           {showEventSpaceField && (
             <div className="w-full min-w-56">
               <EventSpaceField
@@ -655,7 +638,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             </div>
           )}
           {lead.eventDate && !lead.linkedClientId && currentStage !== "lost" && (
-            <div className="w-full max-w-md text-left">
+            <div className="w-full max-w-md text-left sm:text-right">
               <ConflictWarning
                 date={lead.eventDate}
                 endDate={lead.endDate ?? undefined}
@@ -667,112 +650,115 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               />
             </div>
           )}
-          <div className="flex shrink-0 items-center gap-2 flex-wrap justify-end">
-          <div className="text-right">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline stage</p>
-            <LeadStatusBadge status={currentStage} />
-          </div>
-          {currentStage === "lost" && lead.lostReason && (
-            <Badge variant="outline" className="max-w-[16rem] truncate" title={lead.lostReasonDetail ?? undefined}>
-              {lostReasonLabel(lead.lostReason)}
-              {lead.lostReasonDetail ? ` — ${lead.lostReasonDetail}` : ""}
-            </Badge>
-          )}
-          {assignableStages.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="outline" size="sm" disabled={statusPending || lifecyclePending} />}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="mr-1 text-right">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline stage</p>
+              <LeadStatusBadge status={currentStage} />
+            </div>
+            {currentStage === "lost" && lead.lostReason && (
+              <Badge variant="outline" className="max-w-[16rem] truncate" title={lead.lostReasonDetail ?? undefined}>
+                {lostReasonLabel(lead.lostReason)}
+                {lead.lostReasonDetail ? ` — ${lead.lostReasonDetail}` : ""}
+              </Badge>
+            )}
+            {assignableStages.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<Button variant="outline" size="sm" disabled={statusPending || lifecyclePending} />}
+                >
+                  Change stage
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {assignableStages.map((s) => (
+                    <DropdownMenuItem
+                      key={s.value}
+                      disabled={s.current}
+                      onClick={() => handleStatusChange(s.value)}
+                    >
+                      {s.label}
+                      <span className="ml-auto pl-4 text-xs text-muted-foreground">
+                        {s.description}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href={`/leads/${lead.id}/edit`} />}
+            >
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              Edit
+            </Button>
+            {relationshipArchived ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                disabled={lifecyclePending}
+                onClick={() => {
+                  startLifecycle(async () => {
+                    const result = await restoreLeadRelationshipAction(lead.id);
+                    if (result.ok) {
+                      toast.success("Relationship restored to active lists.");
+                      router.refresh();
+                    } else {
+                      toast.error(result.message ?? "Could not restore.");
+                    }
+                  });
+                }}
               >
-                Change stage
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {assignableStages.map((s) => (
-                  <DropdownMenuItem
-                    key={s.value}
-                    disabled={s.current}
-                    onClick={() => handleStatusChange(s.value)}
-                  >
-                    {s.label}
-                    <span className="ml-auto pl-4 text-xs text-muted-foreground">
-                      {s.description}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            render={<Link href={`/leads/${lead.id}/edit`} />}
+                Restore
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                disabled={lifecyclePending}
+                onClick={() => {
+                  startLifecycle(async () => {
+                    const result = await archiveLeadRelationshipAction(lead.id);
+                    if (result.ok) {
+                      toast.success("Relationship archived. History is preserved.");
+                      router.push("/leads");
+                      router.refresh();
+                    } else {
+                      toast.error(result.message ?? "Could not archive.");
+                    }
+                  });
+                }}
+              >
+                Archive
+              </Button>
+            )}
+            <DeleteRecordButton
+              kind="lead"
+              recordId={lead.id}
+              fallbackName={displayName}
+              previewAction={previewDeleteLeadAction}
+              deleteAction={deleteLeadRecordAction}
+            />
+          </div>
+          <div
+            data-testid="lead-booking-tour-actions"
+            className="flex flex-wrap items-center justify-end gap-2"
           >
-            <Pencil className="mr-1 h-3.5 w-3.5" />
-            Edit
-          </Button>
-          {relationshipArchived ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={lifecyclePending}
-              onClick={() => {
-                startLifecycle(async () => {
-                  const result = await restoreLeadRelationshipAction(lead.id);
-                  if (result.ok) {
-                    toast.success("Relationship restored to active lists.");
-                    router.refresh();
-                  } else {
-                    toast.error(result.message ?? "Could not restore.");
-                  }
-                });
-              }}
-            >
-              Restore
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={lifecyclePending}
-              onClick={() => {
-                startLifecycle(async () => {
-                  const result = await archiveLeadRelationshipAction(lead.id);
-                  if (result.ok) {
-                    toast.success("Relationship archived. History is preserved.");
-                    router.push("/leads");
-                    router.refresh();
-                  } else {
-                    toast.error(result.message ?? "Could not archive.");
-                  }
-                });
-              }}
-            >
-              Archive
-            </Button>
-          )}
-          <DeleteRecordButton
-            kind="lead"
-            recordId={lead.id}
-            fallbackName={displayName}
-            previewAction={previewDeleteLeadAction}
-            deleteAction={deleteLeadRecordAction}
-          />
-          {(previouslyConverted && (relationshipCancelled || (!isBookingStarted && currentStage !== "lost"))) && (
-            <Button
-              size="sm"
-              disabled={lifecyclePending}
-              onClick={() => setConfirmReturnBookedOpen(true)}
-            >
-              Mark as Booked
-            </Button>
-          )}
-          {!previouslyConverted && currentStage !== "lost" ? (
-            <div
-              data-testid="lead-booking-tour-actions"
-              className="flex flex-wrap items-center justify-end gap-2"
-            >
-              <TourScheduleActions includeCopyLink={false} includeSchedule />
+            {(previouslyConverted && (relationshipCancelled || (!isBookingStarted && currentStage !== "lost"))) && (
+              <Button
+                size="sm"
+                disabled={lifecyclePending}
+                onClick={() => setConfirmReturnBookedOpen(true)}
+              >
+                Mark as Booked
+              </Button>
+            )}
+            <TourScheduleActions includeCopyLink={false} includeSchedule />
+            {!previouslyConverted && currentStage !== "lost" ? (
               <Button
                 size="sm"
                 disabled={convertPending || convertBlocked || (!!lead.eventDate && eventDateBlocked)}
@@ -790,13 +776,43 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                   ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Starting…</>
                   : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Start booking file</>}
               </Button>
-            </div>
-          ) : (
-            <TourScheduleActions includeCopyLink={false} includeSchedule />
-          )}
-        </div>
+            ) : null}
+          </div>
         </div>
       </div>
+
+      <div
+        data-testid="lead-sales-availability"
+        className="rounded-lg border border-border/80 bg-muted/20 p-3 sm:p-4"
+      >
+        <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Sales &amp; availability
+        </p>
+        <div
+          data-testid="lead-owner-hold-row"
+          className="grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2"
+        >
+          <StaffAssignmentField
+            compact
+            label="Sales owner"
+            staff={staffOptions}
+            value={lead.assignedStaffId ?? null}
+            testId="lead-staff-assignment"
+            onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
+          />
+          <DateHoldsSection
+            density="compact"
+            leadId={lead.id}
+            leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+            desiredEventDate={lead.eventDate}
+            initialHolds={holds}
+            spaces={spaces}
+            spacePreferences={spacePreferences}
+            venueTimezone={venueTimezone}
+          />
+        </div>
+      </div>
+
       {showUsePreferences && (
         <LeadSpacePreferenceFields
           leadId={lead.id}
@@ -995,7 +1011,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             <CardHeader>
               <CardTitle className="text-base">Venue tasks</CardTitle>
               <CardDescription>
-                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Place hold beside the pipeline stage.
+                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Place hold under Sales & availability.
               </CardDescription>
             </CardHeader>
             <CardContent>

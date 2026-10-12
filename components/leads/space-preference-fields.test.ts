@@ -26,7 +26,7 @@ describe("space preference applicability UI", () => {
     assert.match(fields, /type="checkbox"/);
     assert.match(fields, /space-pref-applicable-/);
     assert.match(fields, /data-applicable=/);
-    assert.match(fields, /\{applicable && \(/);
+    assert.match(fields, /\{applicable \? \(/);
     assert.match(fields, /PreferenceSpaceControl/);
     assert.match(fields, /preferenceKind: "undecided"/);
     assert.match(fields, /preferenceKind: "not_applicable"/);
@@ -46,10 +46,10 @@ describe("space preference applicability UI", () => {
   it("lays out candidates as compact horizontal columns on desktop", () => {
     assert.match(fields, /data-testid="space-preference-grid"/);
     assert.match(fields, /data-applicable-count=/);
-    assert.match(fields, /lg:grid-cols-4/);
+    assert.match(fields, /xl:grid-cols-4/);
+    assert.match(fields, /lg:grid-cols-3/);
     assert.match(fields, /sm:grid-cols-2/);
     assert.match(fields, /grid-cols-1/);
-    assert.doesNotMatch(fields, /flex flex-col gap-2/);
     assert.doesNotMatch(fields, /max-w-xl/);
     assert.doesNotMatch(fields, /max-w-xs/);
   });

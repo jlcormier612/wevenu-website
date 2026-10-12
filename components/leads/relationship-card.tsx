@@ -302,12 +302,17 @@ export function RelationshipCard({
     !lead.tourDate;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">Follow-up</CardTitle>
+    <Card data-testid="lead-tour-followup-card">
+      <CardHeader className="space-y-1">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 space-y-0.5">
+            <CardTitle className="text-base">Tour &amp; follow-up</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Scheduled tours, next steps, and last contact for this lead.
+            </p>
+          </div>
           {!editing && !completing ? (
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
               {lead.followUpDate ? (
                 <Button type="button" size="sm" className="h-8" onClick={startCompletion}>
                   Complete follow-up
@@ -440,64 +445,76 @@ export function RelationshipCard({
             )}
           </div>
         ) : !editing ? (
-          <div className="space-y-0.5">
-            {lead.nextActionText ? (
-              <DisplayRow
-                icon={Clock}
-                label="Next action"
-                value={lead.nextActionText}
-              />
-            ) : null}
-            <DisplayRow icon={Calendar} label="Follow-up" value={formatDate(lead.followUpDate)} />
-            <DisplayRow icon={Phone} label="Last contacted" value={formatDate(lead.lastContactedAt)} />
-            {hideManualTourSummary ? null : lead.tourCompleted && (lead.tourScheduledDate || lead.tourActualDate || lead.tourDate) ? (
-              <>
-                {lead.tourScheduledDate ? (
+          <div className="space-y-3">
+            {(tourAppointments || (!hideManualTourSummary && (lead.tourDate || lead.tourCompleted))) ? (
+              <div className="space-y-1" data-testid="tour-followup-tour-block">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Tours
+                </p>
+                {hideManualTourSummary ? null : lead.tourCompleted && (lead.tourScheduledDate || lead.tourActualDate || lead.tourDate) ? (
+                  <div className="space-y-0.5">
+                    {lead.tourScheduledDate ? (
+                      <DisplayRow
+                        icon={Calendar}
+                        label="Scheduled"
+                        value={`${formatVenueLocalShortDate(lead.tourScheduledDate)}${lead.tourScheduledTime ? ` at ${formatVenueLocalClock(lead.tourScheduledTime)}` : ""}`}
+                      />
+                    ) : null}
+                    <DisplayRow
+                      icon={Calendar}
+                      label="Actually occurred"
+                      value={
+                        lead.tourActualDate
+                          ? `${formatVenueLocalShortDate(lead.tourActualDate)}${lead.tourActualTime ? ` at ${formatVenueLocalClock(lead.tourActualTime)}` : ""}`
+                          : "Not recorded"
+                      }
+                    />
+                    {lead.tourCompletedAt ? (
+                      <DisplayRow
+                        icon={Clock}
+                        label="Marked completed"
+                        value={(() => {
+                          const when = new Date(lead.tourCompletedAt);
+                          const zone = venueTimezone || undefined;
+                          return when.toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            timeZone: zone,
+                          });
+                        })()}
+                      />
+                    ) : null}
+                  </div>
+                ) : lead.tourDate ? (
                   <DisplayRow
                     icon={Calendar}
-                    label="Scheduled"
-                    value={`${formatVenueLocalShortDate(lead.tourScheduledDate)}${lead.tourScheduledTime ? ` at ${formatVenueLocalClock(lead.tourScheduledTime)}` : ""}`}
+                    label="Tour"
+                    value={`${formatVenueLocalShortDate(lead.tourDate)}${lead.tourTime ? ` at ${formatVenueLocalClock(lead.tourTime)}` : ""}`}
                   />
                 ) : null}
-                <DisplayRow
-                  icon={Calendar}
-                  label="Actually occurred"
-                  value={
-                    lead.tourActualDate
-                      ? `${formatVenueLocalShortDate(lead.tourActualDate)}${lead.tourActualTime ? ` at ${formatVenueLocalClock(lead.tourActualTime)}` : ""}`
-                      : "Not recorded"
-                  }
-                />
-                {lead.tourCompletedAt ? (
-                  <DisplayRow
-                    icon={Clock}
-                    label="Marked completed"
-                    value={(() => {
-                      const when = new Date(lead.tourCompletedAt);
-                      const zone = venueTimezone || undefined;
-                      return when.toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                        timeZone: zone,
-                      });
-                    })()}
-                  />
-                ) : null}
-              </>
-            ) : lead.tourDate ? (
-              <DisplayRow
-                icon={Calendar}
-                label="Tour"
-                value={`${formatVenueLocalShortDate(lead.tourDate)}${lead.tourTime ? ` at ${formatVenueLocalClock(lead.tourTime)}` : ""}`}
-              />
+                {tourAppointments}
+              </div>
             ) : null}
-            {tourAppointments}
+            <div className="space-y-0.5" data-testid="tour-followup-followup-block">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Follow-up
+              </p>
+              {lead.nextActionText ? (
+                <DisplayRow
+                  icon={Clock}
+                  label="Next action"
+                  value={lead.nextActionText}
+                />
+              ) : null}
+              <DisplayRow icon={Calendar} label="Follow-up" value={formatDate(lead.followUpDate)} />
+              <DisplayRow icon={Phone} label="Last contacted" value={formatDate(lead.lastContactedAt)} />
+            </div>
             {isEmpty && !tourAppointments && (
               <p className="py-1 text-sm text-muted-foreground">
-                No follow-up details yet. Use Add follow-up details for next steps and dates, or Schedule Tour.
+                No tour or follow-up details yet. Use Add follow-up details for next steps and dates, or Schedule Tour.
               </p>
             )}
           </div>

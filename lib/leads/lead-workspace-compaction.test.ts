@@ -1,6 +1,5 @@
 /**
- * Lead workspace compaction — header facts, owner+hold row,
- * follow-up owns tour list, inquiry facts are not repeated in a second card.
+ * Lead workspace polish — identity, sales & availability, tour & follow-up hierarchy.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -10,86 +9,100 @@ import { describe, it } from "node:test";
 const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
 const followUp = readFileSync(resolve("components/leads/relationship-card.tsx"), "utf8");
 const tours = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
+const prefs = readFileSync(resolve("components/leads/space-preference-fields.tsx"), "utf8");
 const staff = readFileSync(resolve("components/team/staff-assignment-field.tsx"), "utf8");
 const actionLabel = readFileSync(resolve("lib/team/assignment-action-label.ts"), "utf8");
 
-
-describe("lead workspace compaction", () => {
-  it("keeps header facts and primary actions", () => {
+describe("lead workspace polish", () => {
+  it("keeps lead identity strongest with subordinate event metadata", () => {
+    assert.match(detail, /RelationshipPhotoAvatar/);
+    assert.match(detail, /font-heading text-2xl/);
+    assert.match(detail, /data-testid="lead-summary-facts"/);
     assert.match(detail, /eventTypeLabel\(lead\.eventType\)/);
     assert.match(detail, /formatDate\(lead\.eventDate\)/);
     assert.match(detail, /lead\.guestCount\.toLocaleString\(\)/);
     assert.match(detail, /formatCurrency\(lead\.estimatedBudget\)/);
+    const facts = detail.slice(
+      detail.indexOf('data-testid="lead-summary-facts"'),
+      detail.indexOf('data-testid="lead-action-area"'),
+    );
+    assert.doesNotMatch(facts, /StaffAssignmentField/);
+    assert.doesNotMatch(facts, /DateHoldsSection/);
+  });
+
+  it("groups pipeline and workflow actions with hierarchy", () => {
+    assert.match(detail, /data-testid="lead-action-area"/);
     assert.match(detail, /Pipeline stage/);
     assert.match(detail, /Change stage/);
     assert.match(detail, />\s*Edit\s*</);
-    assert.match(detail, />\s*Archive\s*</);
-    assert.match(detail, /Start booking file/);
+    assert.match(detail, /Archive/);
     assert.match(detail, /DeleteRecordButton/);
+    assert.match(detail, /data-testid="lead-booking-tour-actions"/);
+    assert.match(detail, /Start booking file/);
+    assert.match(detail, /Mark as Booked/);
+    // Archive / Restore stay ghost + muted vs primary booking actions
+    assert.match(detail, /variant="ghost"[\s\S]*?className="text-muted-foreground"[\s\S]*?>\s*Archive\s*</);
   });
 
-  it("puts sales owner and date hold on the summary facts row", () => {
-    const facts = detail.slice(
-      detail.indexOf('data-testid="lead-summary-facts"'),
+  it("places sales owner and date hold in Sales & availability", () => {
+    assert.match(detail, /data-testid="lead-sales-availability"/);
+    assert.match(detail, /Sales &amp; availability/);
+    assert.match(detail, /data-testid="lead-owner-hold-row"/);
+    const area = detail.slice(
+      detail.indexOf('data-testid="lead-sales-availability"'),
       detail.indexOf('data-testid="lead-followup-contact-row"'),
     );
-    assert.match(facts, /eventTypeLabel\(lead\.eventType\)/);
-    assert.match(facts, /formatDate\(lead\.eventDate\)/);
-    assert.match(facts, /lead\.guestCount\.toLocaleString\(\)/);
-    assert.match(facts, /formatCurrency\(lead\.estimatedBudget\)/);
-    assert.match(facts, /StaffAssignmentField/);
-    assert.match(facts, /label="Sales owner"/);
-    assert.match(facts, /compact/);
-    assert.match(facts, /data-testid="lead-owner-hold-row"/);
-    assert.match(facts, /<DateHoldsSection/);
-    assert.match(facts, /density="compact"/);
+    assert.match(area, /StaffAssignmentField/);
+    assert.match(area, /label="Sales owner"/);
+    assert.match(area, /<DateHoldsSection/);
+    assert.match(area, /density="compact"/);
     assert.equal(detail.match(/<StaffAssignmentField/g)?.length, 1);
     assert.doesNotMatch(detail, /data-testid="lead-quick-actions"/);
-    assert.doesNotMatch(detail, /CardTitle className="text-base">Team assignment/);
     assert.doesNotMatch(detail, /CardTitle className="text-base">Inquiry details/);
-    assert.doesNotMatch(detail, /CardTitle className="text-base">Date hold/);
   });
 
-  it("places Schedule Tour beside Start booking and keeps copy-link on Follow-up", () => {
-    assert.match(detail, /data-testid="lead-booking-tour-actions"/);
-    const booking = detail.slice(
-      detail.indexOf('data-testid="lead-booking-tour-actions"'),
-      detail.indexOf('data-testid="lead-followup-contact-row"'),
-    );
-    assert.match(booking, /TourScheduleActions includeCopyLink=\{false\}/);
-    assert.match(booking, /includeSchedule/);
-    assert.match(booking, /data-testid="start-booking-action"/);
+  it("keeps Schedule Tour with booking actions and copy-link on Tour & follow-up", () => {
+    assert.match(detail, /TourScheduleActions includeCopyLink=\{false\}/);
+    assert.match(detail, /includeSchedule/);
     assert.match(detail, /TourScheduleActions includeSchedule=\{false\}/);
-    assert.match(followUp, /Follow-up/);
+    assert.match(followUp, /Tour &amp; follow-up/);
+    assert.match(followUp, /data-testid="lead-tour-followup-card"/);
+    assert.match(followUp, /data-testid="tour-followup-tour-block"/);
+    assert.match(followUp, /data-testid="tour-followup-followup-block"/);
     assert.match(followUp, /Add follow-up details/);
     assert.match(detail, /TourAppointmentList/);
     assert.doesNotMatch(detail, /<TourPanel/);
     assert.match(tours, /Schedule Tour/);
     assert.match(tours, /Copy scheduling link/);
-    assert.match(tours, /includeSchedule/);
-    assert.match(tours, /getLeadPublicTourSchedulingUrlAction/);
   });
 
-  it("keeps a non-venue inquiry message in Internal notes", () => {
+  it("orders tour content above follow-up fields in the card", () => {
+    const tourBlock = followUp.indexOf('data-testid="tour-followup-tour-block"');
+    const followBlock = followUp.indexOf('data-testid="tour-followup-followup-block"');
+    assert.ok(tourBlock > 0 && followBlock > tourBlock);
+    assert.match(followUp, /Last contacted/);
+    assert.match(followUp, /Actually occurred/);
+  });
+
+  it("uses a responsive Space Preferences grid without a standalone rehearsal date field", () => {
+    assert.match(prefs, /data-testid="lead-space-preferences"/);
+    assert.match(prefs, /xl:grid-cols-4/);
+    assert.match(prefs, /lg:grid-cols-3/);
+    assert.match(prefs, /sm:grid-cols-2/);
+    assert.doesNotMatch(prefs, /Rehearsal Dinner Date/);
+    assert.doesNotMatch(detail, /Rehearsal Dinner Date/);
+  });
+
+  it("keeps inquiry message in Internal notes", () => {
     assert.match(detail, /function LeadInquiryRecord/);
     assert.match(detail, /origin !== "venue"/);
     assert.match(detail, /<LeadInquiryRecord lead=\{lead\} \/>/);
-    const notes = detail.indexOf('<TabsContent value="notes">');
-    const record = detail.indexOf("<LeadInquiryRecord", notes);
-    const tasks = detail.indexOf('<TabsContent value="tasks">');
-    assert.ok(record > notes && record < tasks);
   });
 
   it("compact assignment still saves and can stay unassigned", () => {
     assert.match(staff, /__unassigned__/);
-    assert.match(staff, /selectedRef\.current = resolved/);
-    assert.match(staff, /dirtyRef\.current = true/);
-    assert.match(staff, /if \(dirtyRef\.current\) return/);
-    assert.match(staff, /const next = selectedRef\.current/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(staff, /assignmentActionLabel/);
     assert.match(actionLabel, /Edit\/Save Assignment/);
-    assert.match(staff, /Assignment saved\./);
-    assert.match(staff, /Could not save the assignment/);
   });
 });

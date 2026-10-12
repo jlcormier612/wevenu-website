@@ -48,7 +48,7 @@ export function ShareTourAvailability({ url }: { url: string | null }) {
           </p>
           <p className="mt-2 text-xs text-muted-foreground" data-testid="calendar-tour-link-lead-guidance">
             Already working with someone? Use the personalized scheduling link that resides in their
-            lead record, under &apos;Follow-up&apos;. That will preserve any preferred date holds and
+            lead record, under &apos;Tour &amp; follow-up&apos;. That will preserve any preferred date holds and
             other previously gathered information.
           </p>
         </>

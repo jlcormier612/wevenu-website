@@ -20,24 +20,26 @@ const actionLabel = readFileSync(resolve("lib/team/assignment-action-label.ts"),
 
 
 describe("lead page layout refinement", () => {
-  it("places Sales owner with summary facts and keeps explicit save", () => {
-    const facts = detail.slice(
-      detail.indexOf('data-testid="lead-summary-facts"'),
+  it("places Sales owner with Date hold under Sales & availability and keeps explicit save", () => {
+    const area = detail.slice(
+      detail.indexOf('data-testid="lead-sales-availability"'),
       detail.indexOf('data-testid="lead-followup-contact-row"'),
     );
-    assert.match(facts, /StaffAssignmentField/);
-    assert.match(facts, /label="Sales owner"/);
-    assert.match(facts, /testId="lead-staff-assignment"/);
-    assert.match(facts, /setLeadAssignedStaffAction/);
-    assert.match(facts, /data-testid="lead-owner-hold-row"/);
-    assert.match(facts, /<DateHoldsSection/);
+    assert.match(area, /StaffAssignmentField/);
+    assert.match(area, /label="Sales owner"/);
+    assert.match(area, /testId="lead-staff-assignment"/);
+    assert.match(area, /setLeadAssignedStaffAction/);
+    assert.match(area, /data-testid="lead-owner-hold-row"/);
+    assert.match(area, /<DateHoldsSection/);
+    const facts = detail.slice(
+      detail.indexOf('data-testid="lead-summary-facts"'),
+      detail.indexOf('data-testid="lead-action-area"'),
+    );
+    assert.doesNotMatch(facts, /StaffAssignmentField/);
     assert.match(staff, /assignmentActionLabel\(persistedId/);
     assert.match(actionLabel, /Edit\/Save Assignment/);
     assert.match(staff, /onSave\(next\.trim\(\) \|\| null\)/);
     assert.match(staff, /dirtyRef\.current = true/);
-
-
-
   });
 
   it("places Schedule Tour immediately before Start booking", () => {
@@ -76,7 +78,7 @@ describe("lead page layout refinement", () => {
     assert.ok(start > 0 && end > start);
     const summary = holds.slice(start - 180, end);
     assert.match(summary, />\s*Held\s*</);
-    assert.match(summary, /formatDate\(hold\.holdDate\)/);
+    assert.match(summary, /holdDateRangeLabel\(hold\)/);
     assert.match(summary, /date-hold-details-toggle/);
     assert.doesNotMatch(summary, /holdResourcesLabel/);
     assert.doesNotMatch(summary, /Expires/);
