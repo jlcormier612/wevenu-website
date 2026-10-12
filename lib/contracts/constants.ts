@@ -39,6 +39,11 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "client_phone", label: "Client Phone", description: "Phone on the client record" },
   { key: "event_name", label: "Event Name", description: "Name of the celebration" },
   { key: "event_date", label: "Event Date", description: "Formatted event date" },
+  {
+    key: "rehearsal_date",
+    label: "Rehearsal Date",
+    description: "Agreed rehearsal dinner date when configured on the booking",
+  },
   { key: "event_type", label: "Event Type", description: "Type of event" },
   { key: "guest_count", label: "Guest Count", description: "Number of guests" },
   { key: "event_spaces", label: "Event Spaces", description: "Spaces already chosen for this booking" },

@@ -497,6 +497,7 @@ export function InvoiceDetail({
             packages={packages}
             invoiceStatus={status}
             lineTypes={invoiceLineTypesForVenue(venue.commercialBookingPrefs)}
+            defaultTaxPercent={venue.commercialBookingPrefs?.defaultTaxPercent ?? null}
           />
         </CardContent>
       </Card>

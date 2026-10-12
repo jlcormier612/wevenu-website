@@ -20,10 +20,11 @@ import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
 describe("ceremony_space / reception_space catalog", () => {
   it("adds ceremony, reception, and additional_event_spaces to the picker", () => {
     const keys = MERGE_FIELDS.map((f) => f.key);
-    assert.equal(MERGE_FIELDS.length, 25);
+    assert.equal(MERGE_FIELDS.length, 26);
     assert.ok(keys.includes("ceremony_space"));
     assert.ok(keys.includes("reception_space"));
     assert.ok(keys.includes("additional_event_spaces"));
+    assert.ok(keys.includes("rehearsal_date"));
     assert.ok(keys.includes("event_spaces"));
     assert.ok(!keys.includes("ceremony_summary"));
     assert.ok(!keys.includes("reception_summary"));
@@ -218,6 +219,7 @@ describe("buildMergeData always resolves the new fields", () => {
     assert.match(starter, /Venue\n\{\{venue_name\}\}/);
     assert.match(starter, /Ceremony\n\{\{ceremony_space\}\}/);
     assert.match(starter, /Reception\n\{\{reception_space\}\}/);
+    assert.match(starter, /Rehearsal Date\n\{\{rehearsal_date\}\}/);
     assert.match(starter, /Additional Event Spaces\n\{\{additional_event_spaces\}\}/);
     assert.doesNotMatch(starter, /Event Spaces: \{\{event_spaces\}\}/);
     assert.doesNotMatch(starter, /VENUE & EVENT SPACES/);

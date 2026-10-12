@@ -1,36 +1,41 @@
-# Tax & discount workflow — forensic + discoverability
+# Tax & discount + multi-date contract workflow
 
-## Forensic summary (Phase 1)
+## Status
 
-| Layer | Finding |
-|---|---|
-| Settings | `useTaxes`, `defaultTaxPercent`, `useDiscounts` under **Invoice adjustments**. Enabling does **not** apply tax/discount; it unlocks apply UI. |
-| Package catalog | Name/price/category only. No package-level tax. Correct: catalog is not the apply surface. |
-| Selected Package | Canonical apply path: **Tax & discount** sheet (`SelectionFinancialTermsSheet`) → `computeAgreedFinancialTerms` → persisted on `commercial_selections` → contract merge + invoice/payment plan. |
-| Invoice builder | Draft invoices can add **Tax** / **Discount** line types when prefs enabled (`invoiceLineTypesForVenue`). Totals via `computeInvoiceTotals`. |
-| Rules (established) | Exclusive tax on discounted package amount; % discount freezes dollars at apply; deposits are not discounts; settings rate is a default input, not auto-apply. |
+**Tax default prefill:** fixed (code) — pending Sandbox deploy verification  
+**Tax/discount apply path:** unchanged product rule (manual apply; Settings unlock UI)  
+**Rehearsal dinner / additional date on contract:** fixed (code + migration) — pending Sandbox verify  
 
-### Root cause of “can’t find tax/discount”
+## Root causes
 
-Not missing calculation. **Discoverability**: apply lived behind a quiet **Financial terms** button that disappears after contract/invoice, while Settings looked like the apply surface.
+### Tax rate shows 7%
 
-## Implementation (this change)
+Invoice “Add tax” left `taxRatePercent` blank and used `placeholder="7"`. Browsers show the placeholder as if it were the value. Venue `defaultTaxPercent` (6.25%) was never passed into `InvoiceLineItemsEditor`.
 
-- Rename CTA to **Tax & discount**; sheet title **Invoice adjustments**.
-- Locked-state hint points to prior Selected Package terms + draft invoice line items.
-- Draft invoice editor: explicit **Invoice adjustments** with Add discount / Add tax.
+### Package / contract without tax breakdown
 
-## Runtime — GREEN
+Enabling Use taxes / Use discounts does **not** auto-apply. Apply path remains Selected Package → **Tax & discount** sheet → persisted `commercial_selections` → contract merge. Draft invoices can add Tax/Discount lines when prefs are enabled.
 
-Deployed: `28ea251ae828ccaa1a940e0503d47625aa5ab617`  
-Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/38017090393  
-Health ok · ECS `:647`
+### Rehearsal dinner missing from contract
 
-Browser proof (`docs/qa/tax-discount-workflow/results.json`):
+1. `{{additional_event_spaces}}` listed bare space names (no use label).  
+2. Pre-booking contracts only loaded ceremony/reception preferences — residual components (rehearsal dinner) were omitted.  
+3. No agreed component date on preferences; calendar holds alone must not invent contract obligations.  
+4. No `{{rehearsal_date}}` Smart Field.
 
-- Lead Selected Package shows **Tax & discount** CTA
-- Sheet titled **Invoice adjustments**; save persists 10% discount + 6.25% tax → total $1,912.50
-- Draft invoice shows **Invoice adjustments** with Add discount / Add tax
-- Fixtures cleaned up
+## Corrections
 
-Unresolved product decisions: none for this discoverability fix — financial rules reused from existing `computeAgreedFinancialTerms` / settings copy.
+- Prefill new Tax lines from `venue.commercialBookingPrefs.defaultTaxPercent`; remove misleading `7` placeholder.
+- `resolveAdditionalEventSpacesLabel` → `Use: Space (Date)` when date set.
+- Pre-booking: residual lead preferences feed `additional_event_spaces`.
+- Migration `scheduled_date` on `lead_event_space_preferences` + UI date for Rehearsal Dinner.
+- `{{rehearsal_date}}` merge field; starter section omitted when empty.
+- On book, copy preference `scheduled_date` → `clients.rehearsal_date` when client date is null (not from holds).
+
+## Calculation order (unchanged)
+
+Package → discount (% or fixed, frozen $) → exclusive tax on discounted amount → final total. Deposit % of agreed total allocation (not a discount).
+
+## Safety
+
+Sandbox only. No auto-tax. Holds ≠ contractual components. Historical executed contracts not rewritten.

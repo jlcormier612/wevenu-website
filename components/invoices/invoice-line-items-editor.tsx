@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatCurrency, LINE_ITEM_TYPES } from "@/lib/invoices/constants";
+import { defaultTaxRateInput } from "@/lib/invoices/tax-rate-default";
 import type { InvoiceLineItem, InvoiceLineItemInput, InvoiceLineItemType } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
 
@@ -60,13 +61,20 @@ function LineItemRow({
 }
 
 export function InvoiceLineItemsEditor({
-  invoiceId, initialItems, packages, invoiceStatus, lineTypes = LINE_ITEM_TYPES,
+  invoiceId,
+  initialItems,
+  packages,
+  invoiceStatus,
+  lineTypes = LINE_ITEM_TYPES,
+  defaultTaxPercent = null,
 }: {
   invoiceId: string;
   initialItems: InvoiceLineItem[];
   packages: Package[];
   invoiceStatus: string;
   lineTypes?: { value: InvoiceLineItemType; label: string }[];
+  /** Venue Invoice Adjustments default tax rate — prefills new Tax lines only. */
+  defaultTaxPercent?: number | null;
 }) {
   // See lib/hooks/use-synced-state.ts — the invoice-status control on this
   // same page calls router.refresh() on status change, and Event-Order-
@@ -170,14 +178,18 @@ export function InvoiceLineItemsEditor({
                   <label className="text-xs font-medium text-muted-foreground">Type</label>
                   <Select
                     value={input.type}
-                    onValueChange={(v) => setInput((p) => ({
-                      ...p,
-                      type: v as InvoiceLineItemType,
-                      discountType: "fixed",
-                      discountValue: "",
-                      taxRatePercent: "",
-                      unitPrice: "",
-                    }))}
+                    onValueChange={(v) => {
+                      const nextType = v as InvoiceLineItemType;
+                      setInput((p) => ({
+                        ...p,
+                        type: nextType,
+                        discountType: "fixed",
+                        discountValue: "",
+                        taxRatePercent:
+                          nextType === "tax" ? defaultTaxRateInput(defaultTaxPercent) : "",
+                        unitPrice: "",
+                      }));
+                    }}
                     items={lineTypes}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -206,11 +218,12 @@ export function InvoiceLineItemsEditor({
                     <Input
                       value={input.taxRatePercent ?? ""}
                       onChange={(e) => setInput((p) => ({ ...p, taxRatePercent: e.target.value, unitPrice: "" }))}
-                      placeholder="7"
+                      placeholder={defaultTaxPercent != null ? String(defaultTaxPercent) : "e.g. 6.25"}
                       inputMode="decimal"
+                      data-testid="invoice-tax-rate-input"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Exclusive tax on (charges − discounts). The calculated amount is saved with this rate so later setting changes do not rewrite it.
+                      Starts from your venue default tax rate when set. Exclusive tax on (charges − discounts). The calculated amount is saved with this rate so later setting changes do not rewrite it.
                     </p>
                   </div>
                 )}
@@ -302,7 +315,12 @@ export function InvoiceLineItemsEditor({
                     className="h-8"
                     data-testid="invoice-add-tax"
                     onClick={() => {
-                      setInput({ ...EMPTY_INPUT, type: "tax", description: "Tax", taxRatePercent: "" });
+                      setInput({
+                        ...EMPTY_INPUT,
+                        type: "tax",
+                        description: "Tax",
+                        taxRatePercent: defaultTaxRateInput(defaultTaxPercent),
+                      });
                       setShowAdd(true);
                     }}
                   >

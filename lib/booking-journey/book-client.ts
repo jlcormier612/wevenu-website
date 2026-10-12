@@ -155,6 +155,30 @@ export async function bookClient(
     }
   }
 
+  // Copy agreed rehearsal dinner date from lead preference → client.rehearsal_date.
+  // Does not invent a date from calendar holds.
+  if (row.lead_id) {
+    try {
+      const { data: pref } = await supabase
+        .from("lead_event_space_preferences")
+        .select("scheduled_date")
+        .eq("lead_id", row.lead_id)
+        .eq("use_key", "rehearsal_dinner")
+        .maybeSingle<{ scheduled_date: string | null }>();
+      const scheduled = pref?.scheduled_date?.trim() || "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(scheduled)) {
+        await supabase
+          .from("clients")
+          .update({ rehearsal_date: scheduled })
+          .eq("id", clientId)
+          .eq("venue_id", venueId)
+          .is("rehearsal_date", null);
+      }
+    } catch (err) {
+      console.error("Rehearsal date preference copy failed:", err);
+    }
+  }
+
   if (row.lead_id && stageChanged) {
     const { data: tour } = await supabase
       .from("tour_appointments")

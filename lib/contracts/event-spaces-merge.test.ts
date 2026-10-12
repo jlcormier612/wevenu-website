@@ -133,7 +133,7 @@ describe("resolveAdditionalEventSpacesLabel", () => {
     );
   });
 
-  it("B: ceremony + reception + cocktail → cocktail space only", () => {
+  it("B: ceremony + reception + cocktail → cocktail labeled", () => {
     assert.equal(
       resolveAdditionalEventSpacesLabel({
         spaces: SPACES,
@@ -143,11 +143,11 @@ describe("resolveAdditionalEventSpacesLabel", () => {
           { useKey: "cocktail_hour", useLabel: "Cocktail Hour", spaceId: "bridge-id", spaceName: "Covered Bridge" },
         ],
       }),
-      "Covered Bridge",
+      "Cocktail Hour: Covered Bridge",
     );
   });
 
-  it("C: cocktail + getting ready → both additional only", () => {
+  it("C: cocktail + getting ready → both additional labeled", () => {
     assert.equal(
       resolveAdditionalEventSpacesLabel({
         spaces: SPACES,
@@ -158,7 +158,7 @@ describe("resolveAdditionalEventSpacesLabel", () => {
           { useKey: "getting_ready", useLabel: "Getting Ready", spaceId: "barn-id", spaceName: "Getting Ready Suite" },
         ],
       }),
-      "Covered Bridge\nGetting Ready Suite",
+      "Cocktail Hour: Covered Bridge\nGetting Ready: Getting Ready Suite",
     );
   });
 
@@ -174,7 +174,26 @@ describe("resolveAdditionalEventSpacesLabel", () => {
     );
     assert.equal(
       resolveAdditionalEventSpacesLabel({ spaces: SPACES, assignments }),
-      "Covered Bridge",
+      "Cocktail Hour: Covered Bridge",
+    );
+  });
+
+  it("rehearsal dinner includes use label, space, and scheduled date", () => {
+    assert.equal(
+      resolveAdditionalEventSpacesLabel({
+        spaces: SPACES,
+        assignments: [
+          { useKey: "ceremony", useLabel: "Ceremony", spaceId: "garden-id", spaceName: "Garden Lawn" },
+          {
+            useKey: "rehearsal_dinner",
+            useLabel: "Rehearsal Dinner",
+            spaceId: "barn-id",
+            spaceName: "Meadowbrook Barn",
+            scheduledDate: "2027-09-03",
+          },
+        ],
+      }),
+      "Rehearsal Dinner: Meadowbrook Barn (September 3, 2027)",
     );
   });
 
@@ -214,7 +233,7 @@ describe("buildContractMergeData uses planned lead space", () => {
     const service = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
     assert.match(service, /resolveEventSpacesLabel/);
     assert.match(service, /resolveAdditionalEventSpacesLabel/);
-    assert.match(service, /omitEmptyAdditionalEventSpacesSection/);
+    assert.match(service, /omitEmptyOptionalEventScheduleSections/);
     assert.match(service, /planned_event_space_id/);
     assert.match(service, /from\("leads"\)/);
     assert.match(service, /getEventIdForClient/);
@@ -229,7 +248,7 @@ describe("buildContractMergeData uses planned lead space", () => {
       service.indexOf("export async function materializeAuthoredContractContent"),
       service.indexOf("export async function previewContractContent"),
     );
-    assert.match(materialize, /omitEmptyAdditionalEventSpacesSection/);
+    assert.match(materialize, /omitEmptyOptionalEventScheduleSections/);
     assert.match(materialize, /mergeContent/);
     const send = service.slice(
       service.indexOf("export async function sendContract"),

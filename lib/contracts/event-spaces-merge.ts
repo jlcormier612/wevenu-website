@@ -13,7 +13,10 @@
  * (excludes ceremony, reception, and legacy event_space). Empty → "".
  */
 
-import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
+import {
+  formatEventSpaceAssignmentsDisplay,
+  labelForUseKey,
+} from "@/lib/venue-spaces/uses";
 
 export const EMPTY_EVENT_SPACES_LABEL =
   "No event spaces are listed on this booking yet.";
@@ -63,14 +66,32 @@ export function resolveEventSpacesLabel(opts: {
   return EMPTY_EVENT_SPACES_LABEL;
 }
 
+export type AdditionalEventSpaceAssignmentRow = EventSpaceAssignmentRow & {
+  /** Optional agreed component date (YYYY-MM-DD). */
+  scheduledDate?: string | null;
+};
+
 /**
  * Residual assigned spaces for {{additional_event_spaces}}.
- * Empty string when none — never missing-value copy (starter omits the section).
+ * Includes use labels (e.g. "Rehearsal Dinner: Meadowbrook Barn") so components
+ * are not collapsed to bare space names. Empty string when none — starter omits.
  */
 export function resolveAdditionalEventSpacesLabel(opts: {
   spaces: EventSpaceNameRow[];
-  assignments?: EventSpaceAssignmentRow[] | null;
+  assignments?: AdditionalEventSpaceAssignmentRow[] | null;
+  /** Optional formatter for scheduledDate (defaults to ISO → long US date). */
+  formatDate?: (isoDate: string) => string;
 }): string {
+  const formatDate = opts.formatDate ?? ((iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    if (!y || !m || !d) return iso;
+    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  });
   const rows = (opts.assignments ?? [])
     .filter((a) => !ADDITIONAL_EVENT_SPACES_EXCLUDED_USE_KEYS.has(a.useKey.trim()))
     .map((a) => {
@@ -78,10 +99,15 @@ export function resolveAdditionalEventSpacesLabel(opts: {
         a.spaceName?.trim() ||
         opts.spaces.find((s) => s.id === a.spaceId)?.name?.trim() ||
         "";
-      return spaceName;
+      if (!spaceName) return "";
+      const label = labelForUseKey(a.useKey, a.useLabel);
+      const date =
+        a.scheduledDate && /^\d{4}-\d{2}-\d{2}$/.test(a.scheduledDate)
+          ? formatDate(a.scheduledDate)
+          : "";
+      return date ? `${label}: ${spaceName} (${date})` : `${label}: ${spaceName}`;
     })
     .filter(Boolean);
-  // Preserve assignment order; one line per residual assignment (space name).
   return rows.join("\n");
 }
 
@@ -94,6 +120,20 @@ export function omitEmptyAdditionalEventSpacesSection(content: string): string {
   return content
     .replace(/(^|\n)Additional Event Spaces\n(?=\n|─|$)/g, "$1")
     .replace(/\n{3,}/g, "\n\n");
+}
+
+/**
+ * After merge: drop "Rehearsal Date" heading when {{rehearsal_date}} resolved empty.
+ */
+export function omitEmptyRehearsalDateSection(content: string): string {
+  return content
+    .replace(/(^|\n)Rehearsal Date\n(?=\n|─|$)/g, "$1")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+/** Drop empty optional schedule sections from starter layouts. */
+export function omitEmptyOptionalEventScheduleSections(content: string): string {
+  return omitEmptyRehearsalDateSection(omitEmptyAdditionalEventSpacesSection(content));
 }
 
 /**

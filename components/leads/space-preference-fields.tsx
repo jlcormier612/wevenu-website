@@ -27,7 +27,13 @@ import { labelForUseKey } from "@/lib/venue-spaces/uses";
 
 /** Never-saved candidate: UI starts unchecked (not_applicable), not undecided. */
 function missingPref(useKey: string): LeadEventSpacePreference {
-  return { useKey, preferenceKind: "not_applicable", spaceId: null, externalLocation: null };
+  return {
+    useKey,
+    preferenceKind: "not_applicable",
+    spaceId: null,
+    externalLocation: null,
+    scheduledDate: null,
+  };
 }
 
 export type LeadSpaceAssignmentDisplay = {
@@ -47,6 +53,7 @@ function preferenceFromSelectValue(
   useKey: string,
   raw: string,
   externalDraft: string,
+  scheduledDate: string | null = null,
 ): LeadEventSpacePreference {
   if (raw === "external") {
     return {
@@ -54,6 +61,7 @@ function preferenceFromSelectValue(
       preferenceKind: "external",
       spaceId: null,
       externalLocation: externalDraft.trim() || null,
+      scheduledDate,
     };
   }
   if (raw.startsWith("space:")) {
@@ -62,9 +70,16 @@ function preferenceFromSelectValue(
       preferenceKind: "venue_space",
       spaceId: raw.slice("space:".length),
       externalLocation: null,
+      scheduledDate,
     };
   }
-  return { useKey, preferenceKind: "undecided", spaceId: null, externalLocation: null };
+  return {
+    useKey,
+    preferenceKind: "undecided",
+    spaceId: null,
+    externalLocation: null,
+    scheduledDate,
+  };
 }
 
 /**
@@ -195,12 +210,14 @@ export function LeadSpacePreferenceFields({
                           preferenceKind: "undecided",
                           spaceId: null,
                           externalLocation: null,
+                          scheduledDate: value.scheduledDate,
                         }
                       : {
                           useKey: use.key,
                           preferenceKind: "not_applicable",
                           spaceId: null,
                           externalLocation: null,
+                          scheduledDate: null,
                         };
                     const next = relevant.map((u) =>
                       u.key === nextPref.useKey
@@ -214,7 +231,7 @@ export function LeadSpacePreferenceFields({
                 <span className="min-w-0 truncate">{use.label}</span>
               </label>
               {applicable && (
-                <div className="mt-1.5 min-w-0">
+                <div className="mt-1.5 min-w-0 space-y-1.5">
                   <PreferenceSpaceControl
                     value={value}
                     spaces={spacesEligibleForUse(spaces, use.key)}
@@ -230,6 +247,38 @@ export function LeadSpacePreferenceFields({
                       persist(next);
                     }}
                   />
+                  {use.key === "rehearsal_dinner" ? (
+                    <div className="min-w-0">
+                      <label
+                        htmlFor={`pref-date-${use.key}`}
+                        className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                      >
+                        Date
+                      </label>
+                      <Input
+                        id={`pref-date-${use.key}`}
+                        type="date"
+                        className="mt-0.5 h-8 font-medium"
+                        value={value.scheduledDate ?? ""}
+                        disabled={pending}
+                        data-testid="space-pref-scheduled-date-rehearsal_dinner"
+                        onChange={(e) => {
+                          const scheduledDate = e.target.value.trim() || null;
+                          const nextPref: LeadEventSpacePreference = {
+                            ...value,
+                            scheduledDate,
+                          };
+                          const next = relevant.map((u) =>
+                            u.key === nextPref.useKey
+                              ? nextPref
+                              : prefs.find((p) => p.useKey === u.key) ?? missingPref(u.key),
+                          );
+                          setPrefs(next);
+                          persist(next);
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -284,7 +333,12 @@ function PreferenceSpaceControl({
       <Select
         value={selectValue}
         onValueChange={(raw) => {
-          const next = preferenceFromSelectValue(value.useKey, raw, externalDraft);
+          const next = preferenceFromSelectValue(
+            value.useKey,
+            raw,
+            externalDraft,
+            value.scheduledDate,
+          );
           if (next.preferenceKind === "external" && !next.externalLocation) {
             onChange({ ...next, externalLocation: null });
             return;
@@ -318,6 +372,7 @@ function PreferenceSpaceControl({
               preferenceKind: "external",
               spaceId: null,
               externalLocation: trimmed,
+              scheduledDate: value.scheduledDate,
             });
           }}
         />

@@ -42,6 +42,7 @@ const APPROVED_CONTRACT_KEYS = [
   "client_phone",
   "event_name",
   "event_date",
+  "rehearsal_date",
   "event_type",
   "guest_count",
   "event_spaces",
@@ -117,6 +118,7 @@ describe("starter / default templates", () => {
   it("contract starter Ceremony/Reception/Additional use lifecycle Smart Fields without duplicating event_spaces", () => {
     assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Ceremony\n\{\{ceremony_space\}\}/);
     assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Reception\n\{\{reception_space\}\}/);
+    assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Rehearsal Date\n\{\{rehearsal_date\}\}/);
     assert.match(WEDDING_VENUE_AGREEMENT_CONTENT, /Additional Event Spaces\n\{\{additional_event_spaces\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{event_spaces\}\}/);
     assert.doesNotMatch(WEDDING_VENUE_AGREEMENT_CONTENT, /\{\{ceremony_summary\}\}/);

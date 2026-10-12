@@ -66,6 +66,8 @@ export type MergeContext = {
   receptionSpace?: string | null;
   /** Residual assignments only; empty string omits the starter section. */
   additionalEventSpaces?: string | null;
+  /** Agreed rehearsal dinner date (YYYY-MM-DD); empty omits starter section. */
+  rehearsalDate?: string | null;
   balanceRemaining?: string | null;
 };
 
@@ -125,6 +127,10 @@ export function buildMergeData(ctx: MergeContext): MergeData {
   data.reception_space = ctx.receptionSpace?.trim() || RECEPTION_SPACE_UNLISTED;
   // Empty → "" so the starter can omit the Additional Event Spaces section.
   data.additional_event_spaces = ctx.additionalEventSpaces?.trim() || "";
+  // Empty → "" so the starter can omit the Rehearsal Date section.
+  data.rehearsal_date = ctx.rehearsalDate
+    ? formatContractDate(ctx.rehearsalDate)
+    : "";
   data.balance_remaining = ctx.balanceRemaining?.trim() || MISSING_BALANCE_REMAINING;
 
   return data;

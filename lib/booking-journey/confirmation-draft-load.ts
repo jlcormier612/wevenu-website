@@ -253,6 +253,7 @@ async function finishDraft(
       preferenceKind: pref.preference_kind as LeadSpacePreferenceKind,
       spaceId: pref.space_id,
       externalLocation: null,
+      scheduledDate: null,
     })),
     assignments,
   });

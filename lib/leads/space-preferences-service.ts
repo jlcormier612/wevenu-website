@@ -22,6 +22,7 @@ type PreferenceRow = {
   preference_kind: string;
   space_id: string | null;
   external_location: string | null;
+  scheduled_date?: string | null;
 };
 
 function mapRow(
@@ -33,6 +34,7 @@ function mapRow(
     preferenceKind: r.preference_kind,
     spaceId: r.space_id,
     externalLocation: r.external_location,
+    scheduledDate: r.scheduled_date ?? null,
   }, { profile });
   return normalized.ok ? normalized.value : null;
 }
@@ -77,7 +79,7 @@ export async function getLeadSpacePreferences(leadId: string): Promise<LeadEvent
   const profile = resolveExperienceProfile(eventType);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("lead_event_space_preferences") as any)
-    .select("use_key, preference_kind, space_id, external_location")
+    .select("use_key, preference_kind, space_id, external_location, scheduled_date")
     .eq("venue_id", venue.id)
     .eq("lead_id", leadId);
   if (error) throw error;
@@ -135,6 +137,7 @@ export async function saveLeadSpacePreferences(
         preference_kind: value.preferenceKind,
         space_id: value.spaceId,
         external_location: value.externalLocation,
+        scheduled_date: value.scheduledDate,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "lead_id,use_key" },

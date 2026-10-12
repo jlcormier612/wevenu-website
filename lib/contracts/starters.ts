@@ -62,6 +62,9 @@ EVENT SCHEDULE
 Event Date
 {{event_date}}
 
+Rehearsal Date
+{{rehearsal_date}}
+
 Venue Access / Event Hours
 Add your venue's approved access hours and event-day timing language here.
 

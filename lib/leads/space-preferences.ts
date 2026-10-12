@@ -34,6 +34,8 @@ export type LeadEventSpacePreference = {
   preferenceKind: LeadSpacePreferenceKind;
   spaceId: string | null;
   externalLocation: string | null;
+  /** Agreed component date (YYYY-MM-DD); not inferred from calendar holds. */
+  scheduledDate: string | null;
 };
 
 export type LeadSpacePreferenceInput = {
@@ -41,6 +43,7 @@ export type LeadSpacePreferenceInput = {
   preferenceKind: string;
   spaceId?: string | null;
   externalLocation?: string | null;
+  scheduledDate?: string | null;
 };
 
 export function isLeadSpacePreferenceKind(value: string): value is LeadSpacePreferenceKind {
@@ -93,6 +96,12 @@ export function normalizeLeadSpacePreference(
   }
   const spaceId = input.spaceId?.trim() || null;
   const externalLocation = input.externalLocation?.trim() || null;
+  const rawScheduled = input.scheduledDate?.trim() || null;
+  const scheduledDate =
+    rawScheduled && /^\d{4}-\d{2}-\d{2}$/.test(rawScheduled) ? rawScheduled : null;
+  if (rawScheduled && !scheduledDate) {
+    return { ok: false, message: "Component date must be a valid calendar date." };
+  }
   const profile = opts?.profile ?? resolveExperienceProfile("wedding");
 
   if (preferenceKind === "venue_space") {
@@ -100,7 +109,10 @@ export function normalizeLeadSpacePreference(
     if (externalLocation) {
       return { ok: false, message: "A venue-space preference cannot include an external location." };
     }
-    return { ok: true, value: { useKey, preferenceKind, spaceId, externalLocation: null } };
+    return {
+      ok: true,
+      value: { useKey, preferenceKind, spaceId, externalLocation: null, scheduledDate },
+    };
   }
   if (preferenceKind === "external") {
     if (!allowsExternalLocation(useKey, profile)) {
@@ -110,7 +122,10 @@ export function normalizeLeadSpacePreference(
       return { ok: false, message: "An external preference cannot include a venue space." };
     }
     if (!externalLocation) return { ok: false, message: "Enter the external location." };
-    return { ok: true, value: { useKey, preferenceKind, spaceId: null, externalLocation } };
+    return {
+      ok: true,
+      value: { useKey, preferenceKind, spaceId: null, externalLocation, scheduledDate },
+    };
   }
   // undecided and not_applicable share the cleared-fields shape.
   if (spaceId || externalLocation) {
@@ -122,7 +137,17 @@ export function normalizeLeadSpacePreference(
           : "An undecided preference cannot include a space or location.",
     };
   }
-  return { ok: true, value: { useKey, preferenceKind, spaceId: null, externalLocation: null } };
+  // not_applicable clears the component date; undecided may keep a planned date.
+  return {
+    ok: true,
+    value: {
+      useKey,
+      preferenceKind,
+      spaceId: null,
+      externalLocation: null,
+      scheduledDate: preferenceKind === "not_applicable" ? null : scheduledDate,
+    },
+  };
 }
 
 export function spaceAllowsPreferenceUse(

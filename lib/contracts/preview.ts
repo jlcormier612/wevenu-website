@@ -4,7 +4,7 @@
  * shown as one combined signature line.
  */
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
-import { omitEmptyAdditionalEventSpacesSection } from "@/lib/contracts/event-spaces-merge";
+import { omitEmptyOptionalEventScheduleSections } from "@/lib/contracts/event-spaces-merge";
 import { mergeContent, type MergeData } from "@/lib/shared-merge/tokens";
 
 export const CONTRACT_PREVIEW_SAMPLE_CLIENT_SIGNERS = [
@@ -28,12 +28,13 @@ export function contractTemplatePreviewMergeData(): MergeData {
     client_phone: "(555) 010-1000",
     event_name: "Buppy & Joy",
     event_date: "October 10, 2026",
+    rehearsal_date: "October 9, 2026",
     event_type: "Wedding",
     guest_count: "120",
     event_spaces: "Garden & Barn",
     ceremony_space: "Garden",
     reception_space: "Barn",
-    additional_event_spaces: "Cocktail Terrace",
+    additional_event_spaces: "Cocktail Hour: Cocktail Terrace",
     venue_access_hours: "Setup 2:00 PM · Event 4:00 PM – 10:00 PM · Teardown 11:00 PM",
     ceremony_summary: "Ceremony at Garden Terrace, 4:00 PM",
     reception_summary: "Reception at The Barn, 6:00 PM",
@@ -51,7 +52,7 @@ export function contractTemplatePreviewMergeData(): MergeData {
 
 /** Preview a template with sample values and individual signature blocks. */
 export function previewContractTemplateContent(templateContent: string): string {
-  const merged = omitEmptyAdditionalEventSpacesSection(
+  const merged = omitEmptyOptionalEventScheduleSections(
     mergeContent(templateContent, contractTemplatePreviewMergeData()),
   );
   return applyRequiredSignerSignatureBlocks(merged, [...CONTRACT_PREVIEW_SAMPLE_CLIENT_SIGNERS]);

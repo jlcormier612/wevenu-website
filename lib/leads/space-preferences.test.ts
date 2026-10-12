@@ -88,7 +88,7 @@ describe("lead space preference shape", () => {
         preferenceKind: "venue_space",
         spaceId: "garden",
       }, { profile: EXPERIENCE_PROFILES.wedding }),
-      { ok: true, value: { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null } },
+      { ok: true, value: { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null , scheduledDate: null } },
     );
     assert.deepEqual(
       normalizeLeadSpacePreference({
@@ -96,11 +96,11 @@ describe("lead space preference shape", () => {
         preferenceKind: "external",
         externalLocation: "  City Hall  ",
       }, { profile: EXPERIENCE_PROFILES.wedding }),
-      { ok: true, value: { useKey: "reception", preferenceKind: "external", spaceId: null, externalLocation: "City Hall" } },
+      { ok: true, value: { useKey: "reception", preferenceKind: "external", spaceId: null, externalLocation: "City Hall" , scheduledDate: null } },
     );
     assert.deepEqual(
       normalizeLeadSpacePreference({ useKey: "ceremony", preferenceKind: "undecided" }, { profile: EXPERIENCE_PROFILES.wedding }),
-      { ok: true, value: { useKey: "ceremony", preferenceKind: "undecided", spaceId: null, externalLocation: null } },
+      { ok: true, value: { useKey: "ceremony", preferenceKind: "undecided", spaceId: null, externalLocation: null , scheduledDate: null } },
     );
     assert.deepEqual(
       normalizeLeadSpacePreference(
@@ -114,6 +114,7 @@ describe("lead space preference shape", () => {
           preferenceKind: "not_applicable",
           spaceId: null,
           externalLocation: null,
+          scheduledDate: null,
         },
       },
     );
@@ -146,7 +147,7 @@ describe("lead space preference shape", () => {
     }, { allowedUseKeys: ["cocktail_hour"], profile: EXPERIENCE_PROFILES.corporate });
     assert.deepEqual(result, {
       ok: true,
-      value: { useKey: "cocktail_hour", preferenceKind: "venue_space", spaceId: "patio", externalLocation: null },
+      value: { useKey: "cocktail_hour", preferenceKind: "venue_space", spaceId: "patio", externalLocation: null , scheduledDate: null },
     });
   });
 
@@ -161,7 +162,7 @@ describe("lead space preference shape", () => {
     });
     assert.deepEqual(result, {
       ok: true,
-      value: { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "lawn", externalLocation: null },
+      value: { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "lawn", externalLocation: null , scheduledDate: null },
     });
   });
 
@@ -235,8 +236,8 @@ describe("occupancy anchor from preferences", () => {
   it("wedding prefers reception venue-space over ceremony", () => {
     assert.equal(
       occupancyAnchorSpaceIdFromPreferences([
-        { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null },
-        { useKey: "reception", preferenceKind: "venue_space", spaceId: "barn", externalLocation: null },
+        { useKey: "ceremony", preferenceKind: "venue_space", spaceId: "garden", externalLocation: null , scheduledDate: null },
+        { useKey: "reception", preferenceKind: "venue_space", spaceId: "barn", externalLocation: null , scheduledDate: null },
       ], { weddingFamily: true }),
       "barn",
     );
@@ -245,7 +246,7 @@ describe("occupancy anchor from preferences", () => {
   it("corporate uses the first relevant venue-space preference", () => {
     assert.equal(
       occupancyAnchorSpaceIdFromPreferences([
-        { useKey: "cocktail_hour", preferenceKind: "venue_space", spaceId: "patio", externalLocation: null },
+        { useKey: "cocktail_hour", preferenceKind: "venue_space", spaceId: "patio", externalLocation: null , scheduledDate: null },
       ], { weddingFamily: false, relevantUseKeys: ["cocktail_hour", "meeting"] }),
       "patio",
     );
@@ -254,8 +255,8 @@ describe("occupancy anchor from preferences", () => {
   it("returns null when no venue-space preference exists", () => {
     assert.equal(
       occupancyAnchorSpaceIdFromPreferences([
-        { useKey: "ceremony", preferenceKind: "external", spaceId: null, externalLocation: "City Hall" },
-        { useKey: "reception", preferenceKind: "undecided", spaceId: null, externalLocation: null },
+        { useKey: "ceremony", preferenceKind: "external", spaceId: null, externalLocation: "City Hall" , scheduledDate: null },
+        { useKey: "reception", preferenceKind: "undecided", spaceId: null, externalLocation: null , scheduledDate: null },
       ]),
       null,
     );
@@ -264,15 +265,15 @@ describe("occupancy anchor from preferences", () => {
   it("not_applicable never contributes an occupancy anchor", () => {
     assert.equal(
       occupancyAnchorSpaceIdFromPreferences([
-        { useKey: "reception", preferenceKind: "not_applicable", spaceId: null, externalLocation: null },
-        { useKey: "ceremony", preferenceKind: "not_applicable", spaceId: null, externalLocation: null },
+        { useKey: "reception", preferenceKind: "not_applicable", spaceId: null, externalLocation: null , scheduledDate: null },
+        { useKey: "ceremony", preferenceKind: "not_applicable", spaceId: null, externalLocation: null , scheduledDate: null },
       ]),
       null,
     );
     assert.equal(
       occupancyAnchorSpaceIdFromPreferences([
-        { useKey: "reception", preferenceKind: "venue_space", spaceId: "barn", externalLocation: null },
-        { useKey: "ceremony", preferenceKind: "not_applicable", spaceId: null, externalLocation: null },
+        { useKey: "reception", preferenceKind: "venue_space", spaceId: "barn", externalLocation: null , scheduledDate: null },
+        { useKey: "ceremony", preferenceKind: "not_applicable", spaceId: null, externalLocation: null , scheduledDate: null },
       ], { weddingFamily: true }),
       "barn",
     );

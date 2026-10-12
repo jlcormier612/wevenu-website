@@ -20,7 +20,7 @@ import {
 } from "@/lib/contracts/merge-extras";
 import {
   EMPTY_EVENT_SPACES_LABEL,
-  omitEmptyAdditionalEventSpacesSection,
+  omitEmptyOptionalEventScheduleSections,
   replaceEmptyEventSpacesLabel,
   resolveAdditionalEventSpacesLabel,
   resolveEventSpacesLabel,
@@ -425,7 +425,7 @@ export async function materializeAuthoredContractContent(opts: {
       requiredClientSignerNames,
     });
     const content = applyRequiredSignerSignatureBlocks(
-      omitEmptyAdditionalEventSpacesSection(
+      omitEmptyOptionalEventScheduleSections(
         replaceEmptyEventSpacesLabel(
           mergeContent(opts.authoredContent, mergeData),
           mergeData.event_spaces ?? EMPTY_EVENT_SPACES_LABEL,
@@ -571,6 +571,7 @@ export async function buildContractMergeData(opts: {
   let ceremonyPreference: CeremonyReceptionPreferenceSource | null = null;
   let receptionPreference: CeremonyReceptionPreferenceSource | null = null;
   let additionalEventSpacesLabel = "";
+  let rehearsalDateIso: string | null = null;
   // Canonical Booked = events.booked_at. Pre-booking contracts use lead preferences.
   const relationshipBooked = Boolean(event?.bookedAt);
 
@@ -630,7 +631,13 @@ export async function buildContractMergeData(opts: {
       plannedEventSpaceId = lead?.planned_event_space_id ?? null;
     }
     const spaces = await getSpaces();
-    let assignments: Array<{ useKey: string; useLabel: string; spaceId: string; spaceName: string | null }> = [];
+    let assignments: Array<{
+      useKey: string;
+      useLabel: string;
+      spaceId: string;
+      spaceName: string | null;
+      scheduledDate?: string | null;
+    }> = [];
     if (event?.id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: rows } = await (supabase.from("event_space_assignments") as any)
@@ -649,6 +656,83 @@ export async function buildContractMergeData(opts: {
         spaceName: r.venue_spaces?.name ?? null,
       }));
     }
+
+    let rehearsalDateFromPreference: string | null = null;
+
+    // Pre-booking only: ceremony/reception Smart Fields + residual additional
+    // components read lead preferences. Post-booking uses event assignments.
+    if (!relationshipBooked && client?.leadId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: prefRows } = await (supabase.from("lead_event_space_preferences") as any)
+        .select("use_key, preference_kind, space_id, external_location, scheduled_date")
+        .eq("lead_id", client.leadId);
+      const spaceNameById = new Map(spaces.map((s) => [s.id, s.name?.trim() || ""]));
+      const prefAssignments: typeof assignments = [];
+      for (const row of (prefRows ?? []) as Array<{
+        use_key: string;
+        preference_kind: string;
+        space_id: string | null;
+        external_location: string | null;
+        scheduled_date: string | null;
+      }>) {
+        const kind = row.preference_kind;
+        if (
+          kind !== "venue_space"
+          && kind !== "external"
+          && kind !== "undecided"
+          && kind !== "not_applicable"
+        ) {
+          continue;
+        }
+        const source: CeremonyReceptionPreferenceSource = {
+          kind,
+          spaceName: row.space_id ? spaceNameById.get(row.space_id) ?? null : null,
+          externalLocation: row.external_location,
+        };
+        if (row.use_key === "ceremony") ceremonyPreference = source;
+        if (row.use_key === "reception") receptionPreference = source;
+        if (row.use_key === "rehearsal_dinner" && row.scheduled_date) {
+          rehearsalDateFromPreference = row.scheduled_date;
+        }
+        // Residual components for {{additional_event_spaces}} — only agreed locations.
+        if (kind === "venue_space" && row.space_id) {
+          prefAssignments.push({
+            useKey: row.use_key,
+            useLabel: labelForUseKey(row.use_key),
+            spaceId: row.space_id,
+            spaceName: spaceNameById.get(row.space_id) ?? null,
+            scheduledDate: row.scheduled_date,
+          });
+        } else if (kind === "external" && row.external_location?.trim()) {
+          prefAssignments.push({
+            useKey: row.use_key,
+            useLabel: labelForUseKey(row.use_key),
+            spaceId: "",
+            spaceName: row.external_location.trim(),
+            scheduledDate: row.scheduled_date,
+          });
+        }
+      }
+      if (assignments.length === 0 && prefAssignments.length > 0) {
+        assignments = prefAssignments;
+      }
+    }
+
+    // Post-booking: attach rehearsal date from client onto the rehearsal assignment line.
+    if (relationshipBooked && client?.rehearsalDate) {
+      assignments = assignments.map((a) =>
+        a.useKey === "rehearsal_dinner"
+          ? { ...a, scheduledDate: a.scheduledDate ?? client.rehearsalDate }
+          : a,
+      );
+    } else if (!relationshipBooked && rehearsalDateFromPreference) {
+      assignments = assignments.map((a) =>
+        a.useKey === "rehearsal_dinner"
+          ? { ...a, scheduledDate: a.scheduledDate ?? rehearsalDateFromPreference }
+          : a,
+      );
+    }
+
     eventSpaces = resolveEventSpacesLabel({
       spaces,
       eventSpaceId: event?.spaceId ?? null,
@@ -672,38 +756,10 @@ export async function buildContractMergeData(opts: {
       receptionSpaceLabel = `${labelForUseKey(receptionAsg.useKey, receptionAsg.useLabel)}: ${receptionAsgName}`;
     }
 
-    // Pre-booking only: ceremony/reception Smart Fields read lead preferences.
-    // Post-booking must not fall back to preferences (Booking-E1 seeds event authority).
-    if (!relationshipBooked && client?.leadId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: prefRows } = await (supabase.from("lead_event_space_preferences") as any)
-        .select("use_key, preference_kind, space_id, external_location")
-        .eq("lead_id", client.leadId);
-      const spaceNameById = new Map(spaces.map((s) => [s.id, s.name?.trim() || ""]));
-      for (const row of (prefRows ?? []) as Array<{
-        use_key: string;
-        preference_kind: string;
-        space_id: string | null;
-        external_location: string | null;
-      }>) {
-        const kind = row.preference_kind;
-        if (
-          kind !== "venue_space"
-          && kind !== "external"
-          && kind !== "undecided"
-          && kind !== "not_applicable"
-        ) {
-          continue;
-        }
-        const source: CeremonyReceptionPreferenceSource = {
-          kind,
-          spaceName: row.space_id ? spaceNameById.get(row.space_id) ?? null : null,
-          externalLocation: row.external_location,
-        };
-        if (row.use_key === "ceremony") ceremonyPreference = source;
-        if (row.use_key === "reception") receptionPreference = source;
-      }
-    }
+    rehearsalDateIso =
+      client?.rehearsalDate?.trim()
+      || rehearsalDateFromPreference
+      || null;
   } catch { /* optional */ }
 
   if (event) {
@@ -844,6 +900,7 @@ export async function buildContractMergeData(opts: {
       preference: receptionPreference,
     }),
     additionalEventSpaces: additionalEventSpacesLabel,
+    rehearsalDate: rehearsalDateIso,
     balanceRemaining,
   });
 }
