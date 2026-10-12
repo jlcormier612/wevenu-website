@@ -4,5 +4,10 @@
   "inquiryHasBlack": false,
   "tourHasSage": true,
   "tourCta": "View this lead",
-  "tourSubject": "New tour booked — Thursday, October 15 at 4:00 PM"
+  "tourSubject": "New tour booked — Thursday, October 15 at 4:00 PM",
+  "deployedSha": "fe50bcabed548a5b4b361c41abe48de6f24468ed",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/38315013435",
+  "servingTip": "fe50bcabed548a5b4b361c41abe48de6f24468ed",
+  "computedCtaRgb": "rgb(93, 111, 93)",
+  "pass": true
 }
