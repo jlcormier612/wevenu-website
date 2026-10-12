@@ -1,10 +1,11 @@
 # Existing-lead tour scheduling — preserve preferred event date
 
-**Status:** SUPERSEDED for Ellie P0 — see `EXISTING-LEAD-ELLIE-INCIDENT.md`  
-**Prior GREEN tip:** `45290d6adaeaa446341c8527f4ec81e8fabf3935` (API-path proof; missed ModeToggle footgun)  
+**Status:** GREEN on Sandbox (Ellie ModeToggle footgun closed — see `EXISTING-LEAD-ELLIE-INCIDENT.md`)  
+**Deployed tip:** `553c8687dd19e1d5196c94fe07b9957cecabec70`  
+**Prior partial GREEN:** `45290d6a` (API-path only; missed ModeToggle + UI Confirm Tour)  
 **Blocked-date fix preserved:** `8e4f911e`  
 **Production:** untouched  
-**Observed:** 2026-10-12T00:43:09Z (prior); Ellie incident reopened 2026-10-12
+**Observed:** 2026-10-12T02:18:27Z
 
 ---
 

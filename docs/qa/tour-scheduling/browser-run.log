@@ -1,0 +1,33 @@
+PASS hold_insert — 2feac289
+PASS readonly_preferred_date_shown — EL Tour 1791771507945 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 2
+PASS not_forced_to_reselect_calendar — no date input inside existing-lead block
+PASS copy_mentions_already_shared — EL Tour 1791771507945 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 
+PASS mode_toggle_hidden_for_existing_lead — Request Information not offered on existing-lead tour link
+PASS guest_count_seeded_from_lead — guest count prefilled
+PASS tour_section_present — tour section
+PASS tour_slot_available — 2026-10-14T14:00:00+00:00
+PASS ui_tour_slot_selected — days=31
+PASS ui_confirm_tour_success — ok=true err= snip=You're booked, Existing! We're looking forward to meeting you at EL Tour 1791771507945. Your tour Date Tuesday, October 
+PASS book_with_empty_client_event_date — eventDate="" appt=c3edd9e5
+PASS attached_existing_lead — leadId=d08af02c attached=true
+PASS ui_payload_has_origin_token — originToken present on UI submit
+PASS held_date_rejected_for_new_inquiry_create — That date is no longer available. Please choose another date.
+PASS invalid_token_rejected — This scheduling link is not valid.
+PASS unavailable_slot_rejected — This slot is too far in the future.
+PASS cross_venue_token_rejected — ok=false err=This scheduling link is not valid.
+PASS generic_link_no_lead_context — no existing-lead block
+PASS lead_without_preferred_date_allows_tour_ui — EL Tour 1791771507945 Inquiry Form Select your tour October 2026 Sun Mon Tue Wed Thu Fri Sat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 2
+PASS reopen_preserves_readonly_context — readonly block after reopen
+PASS reopen_no_duplicate_tour — appointments=1
+PASS new_inquiry_blocked_date_still_enforced — christmas_in_list=false ok=true exc=bd72bf40
+PASS event_date_unchanged — before=2027-12-25 after=2027-12-25
+PASS no_duplicate_lead — before=1 after=1
+PASS no_event_created — events=0
+PASS hold_unchanged — {"id":"2feac289-1817-4f67-a70a-f6d200039a6d","status":"active","hold_date":"2027-12-25"}
+PASS appointment_on_correct_lead — {"lead":"d08af02c","event_date":"2027-12-25","status":"scheduled"}
+{
+  "passCount": 27,
+  "total": 27,
+  "tip": "553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "verdict": "GREEN"
+}
