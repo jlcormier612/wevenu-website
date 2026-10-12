@@ -1201,11 +1201,11 @@ export async function adjustRemainingPaymentPlan(
   if (invoice.status !== "sent" && invoice.status !== "partially_paid") {
     return {
       ok: false,
-      message: "Adjust the remaining plan only on a sent or partially paid invoice.",
+      message:
+        invoice.status === "void"
+          ? "A voided invoice's payment plan cannot be adjusted."
+          : "Adjust the remaining plan only on a sent or partially paid invoice.",
     };
-  }
-  if (invoice.status === "void") {
-    return { ok: false, message: "A voided invoice's payment plan cannot be adjusted." };
   }
 
   const preview = previewAdjustRemainingPlan({
