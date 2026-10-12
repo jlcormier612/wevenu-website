@@ -664,17 +664,38 @@ export async function buildContractMergeData(opts: {
     if (!relationshipBooked && client?.leadId) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: prefRows } = await (supabase.from("lead_event_space_preferences") as any)
-        .select("use_key, preference_kind, space_id, external_location, scheduled_date")
+        .select("id, use_key, preference_kind, space_id, external_location, scheduled_date")
         .eq("lead_id", client.leadId);
       const spaceNameById = new Map(spaces.map((s) => [s.id, s.name?.trim() || ""]));
       const prefAssignments: typeof assignments = [];
+      const prefIds = ((prefRows ?? []) as Array<{ id: string }>).map((r) => r.id).filter(Boolean);
+      const holdDateByPreferenceId = new Map<string, string>();
+      if (prefIds.length > 0 && venue?.id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: linkedHolds } = await (supabase.from("date_holds") as any)
+          .select("preference_id, hold_date")
+          .eq("venue_id", venue.id)
+          .eq("status", "active")
+          .in("preference_id", prefIds)
+          .order("hold_date", { ascending: true });
+        for (const h of (linkedHolds ?? []) as Array<{ preference_id: string | null; hold_date: string }>) {
+          if (h.preference_id && h.hold_date && !holdDateByPreferenceId.has(h.preference_id)) {
+            holdDateByPreferenceId.set(h.preference_id, h.hold_date);
+          }
+        }
+      }
       for (const row of (prefRows ?? []) as Array<{
+        id: string;
         use_key: string;
         preference_kind: string;
         space_id: string | null;
         external_location: string | null;
         scheduled_date: string | null;
       }>) {
+        // Prefer persisted preference date; fall back to linked active hold start.
+        if (!row.scheduled_date && row.id && holdDateByPreferenceId.has(row.id)) {
+          row.scheduled_date = holdDateByPreferenceId.get(row.id) ?? null;
+        }
         const kind = row.preference_kind;
         if (
           kind !== "venue_space"

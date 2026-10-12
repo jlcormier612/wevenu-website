@@ -409,68 +409,72 @@ export function DateHoldsSection({
       {/* Place hold / Place another hold — never gated by an existing active hold. */}
       {showForm ? (
         <div className={compact ? "basis-full w-full space-y-3 rounded-lg border border-border bg-muted/30 p-4" : "space-y-3 rounded-lg border border-border bg-muted/30 p-4"}>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Hold title</Label>
               <Input value={holdTitle} onChange={(e) => setHoldTitle(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Start date *</Label>
-              <Input
-                type="date"
-                value={holdDate}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setHoldDate(next);
-                  if (!endDate || endDate < next) setEndDate(next);
-                }}
-                data-testid="date-hold-hold-date"
-              />
-              {formMode !== "edit" && desiredDefault ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start date *</Label>
+                <Input
+                  type="date"
+                  value={holdDate}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setHoldDate(next);
+                    if (!endDate || endDate < next) setEndDate(next);
+                  }}
+                  data-testid="date-hold-hold-date"
+                />
+                {formMode !== "edit" && desiredDefault ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Defaults to their preferred event date ({formatDate(desiredDefault)}). Change only if you intend to hold a different day.
+                  </p>
+                ) : formMode !== "edit" ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    No preferred event date on this lead — enter the date to hold.
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End date *</Label>
+                <Input
+                  type="date"
+                  value={endDate || holdDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  data-testid="date-hold-end-date"
+                />
                 <p className="text-[11px] text-muted-foreground">
-                  Defaults to their preferred event date ({formatDate(desiredDefault)}). Change only if you intend to hold a different day.
+                  Inclusive. Same as start for a single day; use Fri–Sun for a weekend reservation without separate daily holds.
                 </p>
-              ) : formMode !== "edit" ? (
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start time <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  data-testid="date-hold-start-time"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End time <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  data-testid="date-hold-end-time"
+                />
                 <p className="text-[11px] text-muted-foreground">
-                  No preferred event date on this lead — enter the date to hold.
+                  Leave blank for an all-day / date-range reservation. Times apply to each day in the range.
                 </p>
-              ) : null}
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">End date *</Label>
-              <Input
-                type="date"
-                value={endDate || holdDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                data-testid="date-hold-end-date"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Inclusive. Same as start for a single day; use Fri–Sun for a weekend reservation without separate daily holds.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Start time <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                data-testid="date-hold-start-time"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">End time <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                data-testid="date-hold-end-time"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Leave blank for an all-day / date-range reservation. Times apply to each day in the range.
-              </p>
+              </div>
             </div>
             {spacePreferences.some((p) => p.id) ? (
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs">
                   Link to booking component{" "}
                   <span className="font-normal text-muted-foreground">(optional)</span>
@@ -495,7 +499,7 @@ export function DateHoldsSection({
               </div>
             ) : null}
             {formSpaces.length > 0 && (
-              <div className="space-y-1.5 sm:col-span-2" data-testid="date-hold-spaces">
+              <div className="space-y-1.5" data-testid="date-hold-spaces">
                 <Label className="text-xs">Spaces to hold</Label>
                 <label className="flex items-center gap-2 text-sm">
                   <input

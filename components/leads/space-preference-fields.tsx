@@ -247,38 +247,6 @@ export function LeadSpacePreferenceFields({
                       persist(next);
                     }}
                   />
-                  {use.key === "rehearsal_dinner" ? (
-                    <div className="min-w-0">
-                      <label
-                        htmlFor={`pref-date-${use.key}`}
-                        className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-                      >
-                        Date
-                      </label>
-                      <Input
-                        id={`pref-date-${use.key}`}
-                        type="date"
-                        className="mt-0.5 h-8 font-medium"
-                        value={value.scheduledDate ?? ""}
-                        disabled={pending}
-                        data-testid="space-pref-scheduled-date-rehearsal_dinner"
-                        onChange={(e) => {
-                          const scheduledDate = e.target.value.trim() || null;
-                          const nextPref: LeadEventSpacePreference = {
-                            ...value,
-                            scheduledDate,
-                          };
-                          const next = relevant.map((u) =>
-                            u.key === nextPref.useKey
-                              ? nextPref
-                              : prefs.find((p) => p.useKey === u.key) ?? missingPref(u.key),
-                          );
-                          setPrefs(next);
-                          persist(next);
-                        }}
-                      />
-                    </div>
-                  ) : null}
                 </div>
               )}
             </div>

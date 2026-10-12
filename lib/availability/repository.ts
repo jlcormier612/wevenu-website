@@ -267,10 +267,36 @@ export async function getHold(client: DbClient, venueId: string, holdId: string)
   return mapHold(data, spaceMap.get(data.id));
 }
 
+/**
+ * When a hold is linked to a space preference, copy the hold start date onto
+ * preference.scheduled_date so contract merge / book-client can use one
+ * authoritative date without a separate Space Preferences Date field.
+ * Holds remain reservation-only — this does not invent contract components.
+ */
+export async function syncLinkedPreferenceScheduledDate(
+  client: DbClient,
+  venueId: string,
+  preferenceId: string | null | undefined,
+  holdDate: string,
+): Promise<void> {
+  const id = preferenceId?.trim();
+  if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(holdDate)) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("lead_event_space_preferences") as any)
+    .update({
+      scheduled_date: holdDate,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 export async function insertHold(client: DbClient, venueId: string, input: DateHoldInput): Promise<string> {
   const spaces = holdSpaceIds({ spaceIds: input.spaceIds, spaceId: input.spaceId });
   const legacySpaceId = spaces.length === 1 ? spaces[0]! : null;
   const endDate = input.endDate && input.endDate >= input.holdDate ? input.endDate : input.holdDate;
+  const preferenceId = input.preferenceId?.trim() || null;
   const { data, error } = await client.from("date_holds")
     .insert({
       venue_id: venueId,
@@ -279,7 +305,7 @@ export async function insertHold(client: DbClient, venueId: string, input: DateH
       title: input.title.trim(),
       hold_date: input.holdDate,
       end_date: endDate,
-      preference_id: input.preferenceId?.trim() || null,
+      preference_id: preferenceId,
       start_time: input.startTime || null,
       end_time: input.endTime || null,
       expires_at: input.expiresAt || null,
@@ -294,6 +320,7 @@ export async function insertHold(client: DbClient, venueId: string, input: DateH
     );
     if (spaceError) throw spaceError;
   }
+  await syncLinkedPreferenceScheduledDate(client, venueId, preferenceId, input.holdDate);
   return data.id;
 }
 
@@ -346,6 +373,19 @@ export async function updateHold(
     );
     if (spaceError) throw spaceError;
   }
+  // Prefer the patch value; otherwise read the row so date edits still sync.
+  let linkedPreferenceId: string | null =
+    input.preferenceId !== undefined ? (input.preferenceId?.trim() || null) : null;
+  if (input.preferenceId === undefined) {
+    const { data: row } = await client
+      .from("date_holds")
+      .select("preference_id")
+      .eq("id", holdId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ preference_id: string | null }>();
+    linkedPreferenceId = row?.preference_id ?? null;
+  }
+  await syncLinkedPreferenceScheduledDate(client, venueId, linkedPreferenceId, input.holdDate);
 }
 
 export async function updateHoldStatus(client: DbClient, venueId: string, holdId: string, status: DateHold["status"]): Promise<void> {
