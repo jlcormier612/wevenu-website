@@ -10,6 +10,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from typing import Any
 
 import boto3
@@ -84,6 +85,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         monthly_pct = _pct(monthly_used, monthly_limit)
         rate = (usage.get("rate_limit") or {}) if isinstance(usage, dict) else {}
         rate_limit = float(rate.get("limit") or 0)
+        # Rough pace: remaining monthly / (used/day-of-month approximation).
+        # Day-of-month from UTC; never divide by zero.
+        day = max(1, datetime.now(timezone.utc).day)
+        daily_pace = monthly_used / float(day)
+        remaining = max(0.0, monthly_limit - monthly_used)
+        days_to_exhaust = (remaining / daily_pace) if daily_pace > 0 else 999.0
+        days_to_exhaust = round(min(days_to_exhaust, 999.0), 2)
 
         _put_metrics(
             [
@@ -94,6 +102,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 ("ResendMonthlyLimit", monthly_limit),
                 ("ResendMonthlyUsagePercent", monthly_pct),
                 ("ResendRateLimitPerSecond", rate_limit),
+                ("ResendMonthlyDaysToExhaustion", days_to_exhaust),
                 ("ResendUsageCanaryOk", 1.0),
             ]
         )
@@ -102,6 +111,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "daily": {"used": daily_used, "limit": daily_limit, "pct": daily_pct},
             "monthly": {"used": monthly_used, "limit": monthly_limit, "pct": monthly_pct},
             "rate_limit_per_second": rate_limit,
+            "monthly_days_to_exhaustion_at_pace": days_to_exhaust,
+            "monthly_daily_pace": round(daily_pace, 2),
         }
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")[:300]

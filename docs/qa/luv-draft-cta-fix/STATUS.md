@@ -1,21 +1,29 @@
-# Luv “Ask Luv to draft a follow-up” — GREEN on Sandbox
+# Luv follow-up drafting — eligibility alignment
 
-| Field | Value |
-|---|---|
-| Tip | `0425c4558dab474d0c90b200703801a4689c3971` |
-| Deploy | [Deploy Sandbox](https://github.com/jlcormier612/wevenu-website/actions/runs/38198957084) success |
-| Root cause | Same-record soft `Link` to `?luv=` did not open drafting on the already-open lead |
-| Fix | Same-record draft CTAs call `handleGenerate` (button); Overview bumps `externalDraftRequest` and switches to Luv |
+## Deployed tip (code)
 
-## Browser proof
+Pending deploy of this pass — verify `dpl=` after Sandbox deploy.
 
-`scripts/qa/luv-draft-cta-browser.mts` → `browser-results.json` — **6/6 PASS**
+## Root cause (reconstructed)
 
-- Noticed CTA present on Luv tab
-- Click opens drafting (`drafts 0→1`, pending review UI)
-- No auto-send
-- No unbounded duplicate drafts
+1. Tip `0425c455` fixed the unresponsive same-record **Link** by calling `handleGenerate` / `externalDraftRequest`.
+2. That path also gated the Noticed CTA on `followUpDraftEligible`.
+3. Momentum observations (e.g. “showing strong interest”) still attached `recommendation.type = "draft"` even when **completed-tour silence** correctly set `draftEligible = false`.
+4. UI then showed a false explanation: “recent outreach may still be open, or drafting isn’t available for this stage” — **neither** was Ellie’s actual gate (completed tour → `no_outreach` / silence).
 
-## Unit
+Ellie forensic: completed tour `2026-09-15`, `follow_up_sent_at=null`, no commercial proposal, inquiry origin `unknown` → `evaluateCompletedTour` → silence. Legitimate product silence; illegitimate CTA advertising + wrong reason copy.
 
-`lib/luv/same-record-draft-cta.test.ts` — PASS
+## Correction
+
+- `observationsForDraftSurface` strips draft recommendations when drafting is ineligible (observation text may remain).
+- `followUpDraftBlockReason` returns `LUV_FOLLOW_UP_SILENCE` for completed-tour / `no_outreach` — never invents outreach/stage.
+- Eligible leads still open drafting via Noticed button / primary CTA.
+
+## Tests
+
+- Unit: `lib/luv/draft-recommendation-surface.test.ts` + silence/same-record suites.
+- Browser matrix: `scripts/qa/luv-draft-eligibility-matrix-browser.mts` (eligible draft persist; silence no false outreach; actionable completed tour; Ellie forensic).
+
+## Safety
+
+No auto-send. Internal notes excluded from customer drafts. Sandbox only.

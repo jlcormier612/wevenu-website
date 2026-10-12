@@ -185,6 +185,7 @@ export function LuvDraftPanel({
   completedDraftId,
   contextualObservations = [],
   followUpDraftEligible = true,
+  followUpDraftIneligibleReason = null,
   /** Increment from parent (e.g. Overview “Ask Luv to draft”) to open drafting. */
   externalDraftRequest = 0,
 }: {
@@ -202,6 +203,8 @@ export function LuvDraftPanel({
    * When false, hide the draft CTA (SILENCE / no_outreach).
    */
   followUpDraftEligible?: boolean;
+  /** Accurate gate explanation — never invents outreach/stage. */
+  followUpDraftIneligibleReason?: string | null;
   externalDraftRequest?: number;
 }) {
   // Auto-trigger draft generation when arriving via a Luv recommendation link
@@ -284,11 +287,7 @@ export function LuvDraftPanel({
         onSameRecordDraft={() => void handleGenerate()}
         sameRecordDraftBusy={generating}
         sameRecordDraftEligible={followUpDraftEligible}
-        sameRecordDraftIneligibleReason={
-          followUpDraftEligible
-            ? undefined
-            : "Luv can’t draft a follow-up for this inquiry right now. A recent outreach may still be open, or drafting isn’t available for this stage."
-        }
+        sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
       />
 
       {/* Generate button — hidden when drafting engine would return SILENCE / nothing useful */}

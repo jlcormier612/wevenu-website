@@ -190,7 +190,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftEligible = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftEligible?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftEligible = true, followUpDraftIneligibleReason = null, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -893,11 +893,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           setLuvDraftRequest((n) => n + 1);
         }}
         sameRecordDraftEligible={followUpDraftEligible}
-        sameRecordDraftIneligibleReason={
-          followUpDraftEligible
-            ? undefined
-            : "Luv can’t draft a follow-up for this inquiry right now. A recent outreach may still be open, or drafting isn’t available for this stage."
-        }
+        sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
       />
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
@@ -1050,6 +1046,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 completedDraftId={completedLuvDraftId}
                 contextualObservations={contextualObservations}
                 followUpDraftEligible={followUpDraftEligible}
+                followUpDraftIneligibleReason={followUpDraftIneligibleReason}
                 externalDraftRequest={luvDraftRequest}
               />
             </CardContent>

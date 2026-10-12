@@ -10,6 +10,7 @@ import { getDocuments } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getDraftsForLead } from "@/lib/luv/drafts";
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
+import { observationsForDraftSurface } from "@/lib/luv/draft-recommendation-surface";
 import { loadLeadFollowUpPresentation } from "@/lib/luv/follow-up-presentation";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
@@ -108,12 +109,16 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         linkedClientId: lead.linkedClientId,
         linkedEventId: lead.linkedEventId ?? null,
       });
-      const [contextualObservations, followUpPresentation] = await Promise.all([
+      const [rawObservations, followUpPresentation] = await Promise.all([
         venue
           ? getContextualObservationsForRecord(venue.id, venue.timezone, { leadId: lead.id })
           : Promise.resolve([]),
         loadLeadFollowUpPresentation(lead),
       ]);
+      const contextualObservations = observationsForDraftSurface(
+        rawObservations,
+        followUpPresentation.draftEligible,
+      );
       return {
         lead,
         holds,
@@ -133,6 +138,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         bookingJourney,
         contextualObservations,
         followUpDraftEligible: followUpPresentation.draftEligible,
+        followUpDraftIneligibleReason: followUpPresentation.draftIneligibleReason,
         venueStages: activeTemplate?.stages?.length ? activeTemplate.stages : null,
         staffOptions: teamMembers.map((m) => ({ id: m.id, name: m.name })),
         currentStaffId: currentStaff?.id ?? null,
@@ -196,6 +202,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       venueTimezone={page.venueTimezone}
       contextualObservations={page.contextualObservations}
       followUpDraftEligible={page.followUpDraftEligible}
+      followUpDraftIneligibleReason={page.followUpDraftIneligibleReason}
       spaceOperatingMode={page.spaceOperatingMode}
       holdBlocksAvailability={page.holdBlocksAvailability}
       spacePreferences={page.spacePreferences}

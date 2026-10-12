@@ -63,8 +63,7 @@ export function ContextualLuvObservationsPanel({
               {obs.detail ? (
                 <p className="text-xs text-muted-foreground leading-relaxed">{obs.detail}</p>
               ) : null}
-              {sameRecordDraft && onSameRecordDraft ? (
-                sameRecordDraftEligible ? (
+              {sameRecordDraft && onSameRecordDraft && sameRecordDraftEligible ? (
                   <button
                     type="button"
                     data-testid="luv-noticed-draft-follow-up"
@@ -84,12 +83,10 @@ export function ContextualLuvObservationsPanel({
                       </>
                     )}
                   </button>
-                ) : (
+              ) : sameRecordDraft && !sameRecordDraftEligible && sameRecordDraftIneligibleReason ? (
                   <p className="text-xs text-muted-foreground" data-testid="luv-noticed-draft-ineligible">
-                    {sameRecordDraftIneligibleReason
-                      ?? "Luv can’t draft a follow-up for this inquiry right now. Check recent outreach or try again later."}
+                    {sameRecordDraftIneligibleReason}
                   </p>
-                )
               ) : cta ? (
                 <Link
                   href={cta.href}

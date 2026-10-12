@@ -9,6 +9,7 @@ import {
   type ThreadMessage,
 } from "@/lib/luv/completed-tour-intelligence";
 import { normalizeInquiryMessageOrigin } from "@/lib/luv/draft-context-boundary";
+import { followUpDraftBlockReason } from "@/lib/luv/draft-recommendation-surface";
 import { resolveFollowUpDraftEligibility } from "@/lib/luv/follow-up-draft-eligibility";
 import { loadFollowUpTourState } from "@/lib/luv/follow-up-tour-loader";
 import {
@@ -22,6 +23,8 @@ import { getCurrentVenue } from "@/lib/venue/service";
 export type LeadFollowUpPresentation = {
   tour: FollowUpTourState;
   draftEligible: boolean;
+  /** Accurate explanation when draftEligible is false; never invents outreach/stage. */
+  draftIneligibleReason: string | null;
   /** Authoritative commercial_proposals.status=sent AND offered_at — never sales_stage. */
   proposalSent: boolean;
 };
@@ -91,11 +94,29 @@ export async function loadLeadFollowUpPresentation(
   lead: Lead,
 ): Promise<LeadFollowUpPresentation> {
   if (!isSupabaseConfigured) {
-    return { tour: { kind: "none" }, draftEligible: false, proposalSent: false };
+    return {
+      tour: { kind: "none" },
+      draftEligible: false,
+      draftIneligibleReason: followUpDraftBlockReason({
+        eligible: false,
+        tour: { kind: "none" },
+        workflowIntent: "no_outreach",
+      }),
+      proposalSent: false,
+    };
   }
   const venue = await getCurrentVenue();
   if (!venue) {
-    return { tour: { kind: "none" }, draftEligible: false, proposalSent: false };
+    return {
+      tour: { kind: "none" },
+      draftEligible: false,
+      draftIneligibleReason: followUpDraftBlockReason({
+        eligible: false,
+        tour: { kind: "none" },
+        workflowIntent: "no_outreach",
+      }),
+      proposalSent: false,
+    };
   }
   const supabase = await createClient();
   const [proposalSent, tourState, messages] = await Promise.all([
@@ -127,5 +148,14 @@ export async function loadLeadFollowUpPresentation(
     completedDecision,
   });
 
-  return { tour, draftEligible: gate.eligible, proposalSent };
+  return {
+    tour,
+    draftEligible: gate.eligible,
+    draftIneligibleReason: followUpDraftBlockReason({
+      eligible: gate.eligible,
+      tour,
+      workflowIntent: gate.workflowIntent,
+    }),
+    proposalSent,
+  };
 }

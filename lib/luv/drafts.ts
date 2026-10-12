@@ -29,6 +29,7 @@ import {
 import {
   evaluateCompletedTour,
 } from "@/lib/luv/completed-tour-intelligence";
+import { followUpDraftBlockReason } from "@/lib/luv/draft-recommendation-surface";
 import { resolveFollowUpDraftEligibility } from "@/lib/luv/follow-up-draft-eligibility";
 import { loadFollowUpTourState } from "@/lib/luv/follow-up-tour-loader";
 import {
@@ -396,7 +397,15 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       completedDecision,
     });
     if (!gate.eligible) {
-      return { ok: false, message: "Nothing useful to draft for this relationship right now." };
+      return {
+        ok: false,
+        message:
+          followUpDraftBlockReason({
+            eligible: false,
+            tour,
+            workflowIntent: gate.workflowIntent,
+          }) ?? "Nothing useful to draft for this relationship right now.",
+      };
     }
     const { workflowIntent, communicationPurpose, communicationExcerpt } = gate;
     const prompt = buildFollowUpPrompt(
