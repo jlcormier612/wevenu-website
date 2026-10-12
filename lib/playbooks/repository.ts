@@ -973,7 +973,12 @@ export async function updateEventTaskStatus(
   status: "waived" | "pending",
 ): Promise<void> {
   const patch: Record<string, unknown> = { status };
-  if (status === "pending") patch.completed_at = null; // un-complete or un-waive
+  // Waiver is not completion — never leave completion audit fields set.
+  // Restoring to pending also clears any prior completion stamp.
+  if (status === "waived" || status === "pending") {
+    patch.completed_at = null;
+    patch.completed_by = null;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("event_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
 }
@@ -1013,40 +1018,28 @@ export async function computeEventReadinessFromPlaybook(
   const tasks = await getEventTasks(client, venueId, event.id);
   if (!tasks.length) return null; // no playbook applied yet
 
-  const required = tasks.filter((t) => t.isRequired);
-  const optional = tasks.filter((t) => !t.isRequired);
-  // A waived required task is a deliberate, coordinator-approved skip, not
-  // an open requirement — it must count as satisfied the same way complete
-  // does, or a single waived required task permanently caps this event's
-  // readiness below 100%, forever (Planning Release Readiness Fixes).
-  const completedRequired = required.filter((t) => t.status === "complete" || t.status === "waived").length;
-  const completedOptional = optional.filter((t) => t.status === "complete").length;
-  const score = required.length > 0 ? Math.round((completedRequired / required.length) * 100) : 0;
-
-  return {
-    score,
-    completedRequired,
-    totalRequired: required.length,
-    completedOptional,
-    totalOptional: optional.length,
-    tasks,
-    blockedCount: tasks.filter((t) => t.status === "blocked").length,
-    overdueCount: tasks.filter((t) => t.status === "overdue").length,
-  };
+  return readinessFromTasks(tasks);
 }
 
 function readinessFromTasks(tasks: EventTask[]): EventReadiness | null {
   if (!tasks.length) return null;
   const required = tasks.filter((t) => t.isRequired);
   const optional = tasks.filter((t) => !t.isRequired);
-  // See the matching comment in computeEventReadinessFromPlaybook above —
-  // waived must count as satisfied for a required task.
-  const completedRequired = required.filter((t) => t.status === "complete" || t.status === "waived").length;
+  // Completed and waived are distinct persisted states. Waived satisfies a
+  // required slot for readiness score (so one waiver cannot permanently
+  // cap the event below 100%), but must never be counted or labeled as
+  // completed work.
+  const completedRequired = required.filter((t) => t.status === "complete").length;
+  const waivedRequired = required.filter((t) => t.status === "waived").length;
+  const satisfiedRequired = completedRequired + waivedRequired;
   const completedOptional = optional.filter((t) => t.status === "complete").length;
   return {
-    score: required.length > 0 ? Math.round((completedRequired / required.length) * 100) : 0,
-    completedRequired, totalRequired: required.length,
-    completedOptional, totalOptional: optional.length,
+    score: required.length > 0 ? Math.round((satisfiedRequired / required.length) * 100) : 0,
+    completedRequired,
+    waivedRequired,
+    totalRequired: required.length,
+    completedOptional,
+    totalOptional: optional.length,
     tasks,
     blockedCount: tasks.filter((t) => t.status === "blocked").length,
     overdueCount: tasks.filter((t) => t.status === "overdue").length,

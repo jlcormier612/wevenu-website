@@ -314,9 +314,24 @@ export function FinalDetailsForm({
             {initial?.templateId ? "Questionnaire template applied" : "Use a template? (optional)"}
           </p>
           <div className="flex items-center gap-2">
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
-              <SelectTrigger className="w-56"><SelectValue placeholder="Choose a template…" /></SelectTrigger>
-              <SelectContent>{templates.filter((t) => !t.isArchived).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            <Select
+              value={selectedTemplateId || null}
+              onValueChange={(v) => setSelectedTemplateId(v ?? "")}
+              items={templates.filter((t) => !t.isArchived).map((t) => ({ value: t.id, label: t.name }))}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Choose a template…">
+                  {(value: string | null) => {
+                    if (!value) return null;
+                    return templates.find((t) => t.id === value)?.name ?? "Template unavailable";
+                  }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {templates.filter((t) => !t.isArchived).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
             <Button type="button" variant="outline" size="sm" onClick={handleApplyTemplate} disabled={!selectedTemplateId || applyingTemplate}>
               {applyingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}

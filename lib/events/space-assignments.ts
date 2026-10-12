@@ -28,6 +28,7 @@ type AssignmentRow = {
   sort_order: number;
   start_time?: string | null;
   end_time?: string | null;
+  scheduled_date?: string | null;
   venue_spaces?: { name: string } | null;
 };
 
@@ -40,7 +41,7 @@ export async function getEventSpaceAssignments(
   const supabase = await createClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("event_space_assignments") as any)
-    .select("id, use_key, use_label, space_id, sort_order, start_time, end_time, venue_spaces(name)")
+    .select("id, use_key, use_label, space_id, sort_order, start_time, end_time, scheduled_date, venue_spaces(name)")
     .eq("venue_id", venue.id)
     .eq("event_id", eventId)
     .order("sort_order");
@@ -56,6 +57,7 @@ export async function getEventSpaceAssignments(
     sortOrder: r.sort_order,
     startTime: r.start_time?.slice(0, 5) ?? null,
     endTime: r.end_time?.slice(0, 5) ?? null,
+    scheduledDate: r.scheduled_date ?? null,
     spaceName: r.venue_spaces?.name ?? null,
   }));
 }
@@ -110,6 +112,7 @@ export async function replaceEventSpaceAssignments(
       spaceId: a.spaceId,
       startTime: a.startTime ?? null,
       endTime: a.endTime ?? null,
+      scheduledDate: a.scheduledDate ?? null,
       sortOrder: i,
     })),
   });

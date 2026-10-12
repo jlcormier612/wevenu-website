@@ -14,6 +14,7 @@ function readiness(overrides: Partial<EventReadiness> = {}): EventReadiness {
   return {
     score: 80,
     completedRequired: 4,
+    waivedRequired: 0,
     totalRequired: 5,
     completedOptional: 0,
     totalOptional: 0,

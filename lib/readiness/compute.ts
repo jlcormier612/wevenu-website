@@ -34,23 +34,28 @@ export function computePlanningReadiness(readinessByKind: { client: EventReadine
   const venue = readinessByKind.venue;
   const totalRequired = (client?.totalRequired ?? 0) + (venue?.totalRequired ?? 0);
   const completedRequired = (client?.completedRequired ?? 0) + (venue?.completedRequired ?? 0);
+  const waivedRequired = (client?.waivedRequired ?? 0) + (venue?.waivedRequired ?? 0);
+  const satisfiedRequired = completedRequired + waivedRequired;
   const blockedCount = (client?.blockedCount ?? 0) + (venue?.blockedCount ?? 0);
   const overdueCount = (client?.overdueCount ?? 0) + (venue?.overdueCount ?? 0);
 
   let status: ReadinessStatus;
   if (totalRequired === 0) status = "not_started";
   else if (overdueCount > 0 || blockedCount > 0) status = "needs_attention";
-  else if (completedRequired >= totalRequired) status = "complete";
+  else if (satisfiedRequired >= totalRequired) status = "complete";
   else status = "waiting";
 
   const flags = [overdueCount > 0 ? `${overdueCount} overdue` : null, blockedCount > 0 ? `${blockedCount} blocked` : null].filter(Boolean);
+  const progress = waivedRequired > 0
+    ? `${completedRequired} completed · ${waivedRequired} waived of ${totalRequired} required`
+    : `${completedRequired} of ${totalRequired} required completed`;
   const detail = totalRequired === 0
     ? "No required tasks yet."
-    : `${completedRequired} of ${totalRequired} required tasks done${flags.length ? ` · ${flags.join(", ")}` : ""}`;
+    : `${progress}${flags.length ? ` · ${flags.join(", ")}` : ""}`;
 
   return {
     key: "planning", label: "Planning", status, detail,
-    metric: totalRequired > 0 ? `${completedRequired}/${totalRequired}` : undefined,
+    metric: totalRequired > 0 ? `${satisfiedRequired}/${totalRequired}` : undefined,
     nav: { kind: "tab", tab: "playbook" },
   };
 }

@@ -1,4 +1,12 @@
-import type { PlaybookKind, TaskActionType, TaskCategory, TaskOwner, TaskStatus, TaskVisibility } from "@/lib/playbooks/types";
+import type {
+  EventReadiness,
+  PlaybookKind,
+  TaskActionType,
+  TaskCategory,
+  TaskOwner,
+  TaskStatus,
+  TaskVisibility,
+} from "@/lib/playbooks/types";
 import { clampDaysOffset } from "@/lib/playbooks/due-dates";
 
 // A task becomes navigation into the platform, not a static checklist item
@@ -108,6 +116,18 @@ export const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; i
   overdue:  { label: "Overdue",   color: "var(--destructive)",          icon: "alert" },
   waived:   { label: "Waived",    color: "var(--muted-foreground)",     icon: "minus" },
 };
+
+/** Honest required-task progress — never labels waived work as completed. */
+export function formatRequiredTaskProgress(
+  readiness: Pick<EventReadiness, "completedRequired" | "waivedRequired" | "totalRequired">,
+): string {
+  const { completedRequired, waivedRequired, totalRequired } = readiness;
+  if (totalRequired === 0) return "No required tasks";
+  if (waivedRequired > 0) {
+    return `${completedRequired} completed · ${waivedRequired} waived of ${totalRequired} required`;
+  }
+  return `${completedRequired} of ${totalRequired} required completed`;
+}
 
 export function categoryLabel(cat: TaskCategory): string {
   return TASK_CATEGORIES.find((c) => c.value === cat)?.label ?? cat;

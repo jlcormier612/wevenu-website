@@ -432,9 +432,24 @@ function KindPanel({
           <p className="text-xs font-medium text-heading">{initial?.templateId ? "Library form applied (draft only)" : "Apply a library form? (optional)"}</p>
           <p className="text-xs text-muted-foreground">Applies field configuration to this draft. Does not send anything to the client.</p>
           <div className="flex items-center gap-2">
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} items={kindTemplates.map((t) => ({ value: t.id, label: t.name }))}>
-              <SelectTrigger className="w-64"><SelectValue placeholder="Choose…" /></SelectTrigger>
-              <SelectContent>{kindTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            <Select
+              value={selectedTemplateId || null}
+              onValueChange={(v) => setSelectedTemplateId(v ?? "")}
+              items={kindTemplates.map((t) => ({ value: t.id, label: t.name }))}
+            >
+              <SelectTrigger className="w-64" data-testid={`questionnaire-template-select-${kind}`}>
+                <SelectValue placeholder="Choose…">
+                  {(value: string | null) => {
+                    if (!value) return null;
+                    return kindTemplates.find((t) => t.id === value)?.name ?? "Template unavailable";
+                  }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {kindTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
             <Button type="button" variant="outline" size="sm" disabled={!selectedTemplateId || applying}
               onClick={() => {

@@ -43,7 +43,9 @@ export function buildPlanningWindowObservationsForEvent(
   if (readinessByKind.client || readinessByKind.venue) {
     const planning = computePlanningReadiness(readinessByKind);
     const totalRequired = (readinessByKind.client?.totalRequired ?? 0) + (readinessByKind.venue?.totalRequired ?? 0);
-    const completedRequired = (readinessByKind.client?.completedRequired ?? 0) + (readinessByKind.venue?.completedRequired ?? 0);
+    const completedRequired =
+      (readinessByKind.client?.completedRequired ?? 0) + (readinessByKind.venue?.completedRequired ?? 0)
+      + (readinessByKind.client?.waivedRequired ?? 0) + (readinessByKind.venue?.waivedRequired ?? 0);
 
     if (planning.status === "needs_attention") {
       observations.push({

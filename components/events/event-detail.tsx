@@ -86,6 +86,12 @@ import {
   formatEventDateRange,
   formatTime,
 } from "@/lib/events/constants";
+import {
+  componentDisplayLabel,
+  formatComponentTimeRange,
+  groupBookingSummaryByDate,
+  type BookingSummaryComponent,
+} from "@/lib/events/booking-summary";
 import type { EventWithDetails } from "@/lib/events/types";
 
 // ---- Anniversary Banner (shown on anniversary milestones) ------------------
@@ -139,19 +145,15 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
 
 // ---- Event Date Hero (client-side for live countdown) ----------------------
 
-function parseSpaceLines(spaceLine: string | null): Array<{ use: string; space: string } | string> {
-  if (!spaceLine?.trim()) return [];
-  return spaceLine.split("\n").map((line) => {
-    const trimmed = line.trim();
-    const sep = trimmed.indexOf(": ");
-    if (sep > 0) {
-      return { use: trimmed.slice(0, sep), space: trimmed.slice(sep + 2) };
-    }
-    return trimmed;
-  }).filter((row) => (typeof row === "string" ? row.length > 0 : true));
-}
-
-function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLine: string | null }) {
+function EventHeroCard({
+  event,
+  spaceLine,
+  scheduleComponents = null,
+}: {
+  event: EventWithDetails;
+  spaceLine: string | null;
+  scheduleComponents?: BookingSummaryComponent[] | null;
+}) {
   const [countdown, setCountdown] = React.useState<string>("");
   React.useEffect(() => {
     const days = daysUntil(event.eventDate);
@@ -172,11 +174,14 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
   const days = daysUntil(event.eventDate);
   const urgent = days >= 0 && days <= 14;
 
-  const timeLabel = event.startTime
-    ? `${event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}${multiDay ? "Overall " : ""}${formatTime(event.startTime)}${event.endTime ? ` – ${formatTime(event.endTime)}` : ""}${event.teardownTime ? ` · Teardown ${formatTime(event.teardownTime)}` : ""}`
-    : "All day";
+  const dayGroups = scheduleComponents && scheduleComponents.length > 0
+    ? groupBookingSummaryByDate(scheduleComponents)
+    : [];
+  const useComponentSchedule = dayGroups.length > 0;
 
-  const spaceRows = parseSpaceLines(spaceLine);
+  const timeLabel = event.startTime
+    ? `${event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}${formatTime(event.startTime)}${event.endTime ? ` – ${formatTime(event.endTime)}` : ""}${event.teardownTime ? ` · Teardown ${formatTime(event.teardownTime)}` : ""}`
+    : "All day";
 
   return (
     <Card
@@ -203,43 +208,61 @@ function EventHeroCard({ event, spaceLine }: { event: EventWithDetails; spaceLin
             <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
           </div>
         </div>
-        <dl className="mt-2.5 grid flex-1 grid-cols-1 content-start gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <div className="min-w-0">
-            <dt className="text-xs text-muted-foreground">Time</dt>
-            <dd className="mt-0.5 leading-snug text-foreground" title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}>
-              {timeLabel}
-            </dd>
-          </div>
-          <div className="min-w-0">
-            <dt className="text-xs text-muted-foreground">Guests</dt>
-            <dd className="mt-0.5 leading-snug text-foreground">
-              {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
-            </dd>
-          </div>
-          <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-            <dt className="text-xs text-muted-foreground">Spaces</dt>
-            <dd className="mt-0.5 text-foreground">
-              {spaceRows.length === 0 ? (
-                "No space assigned"
-              ) : (
-                <ul className="space-y-0.5">
-                  {spaceRows.map((row, i) => (
-                    <li key={i} className="leading-snug">
-                      {typeof row === "string" ? (
-                        row
-                      ) : (
-                        <>
-                          <span className="font-medium text-heading">{row.use}</span>
-                          <span className="text-muted-foreground"> · {row.space}</span>
-                        </>
-                      )}
+
+        {useComponentSchedule ? (
+          <div className="mt-3 space-y-3" data-testid="event-booking-component-schedule">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Guests</p>
+              <p className="mt-0.5 text-sm leading-snug text-foreground">
+                {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+              </p>
+            </div>
+            {dayGroups.map((group) => (
+              <div key={group.date ?? "unset"} className="min-w-0 space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </p>
+                <ul className="space-y-1.5">
+                  {group.components.map((c, i) => (
+                    <li
+                      key={`${c.useKey}-${i}`}
+                      className="rounded-md border border-border/50 bg-background/60 px-2.5 py-1.5 text-sm"
+                      data-testid={`booking-component-${c.useKey}`}
+                    >
+                      <p className="font-medium leading-snug text-heading">
+                        {componentDisplayLabel(c)}
+                      </p>
+                      <p className="mt-0.5 leading-snug text-muted-foreground">
+                        {formatComponentTimeRange(c.startTime, c.endTime)}
+                        {" · "}
+                        {c.spaceName?.trim() || "Space not set"}
+                      </p>
                     </li>
                   ))}
                 </ul>
-              )}
-            </dd>
+              </div>
+            ))}
           </div>
-        </dl>
+        ) : (
+          <dl className="mt-2.5 grid flex-1 grid-cols-1 content-start gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">Time</dt>
+              <dd className="mt-0.5 leading-snug text-foreground">{timeLabel}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">Guests</dt>
+              <dd className="mt-0.5 leading-snug text-foreground">
+                {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+              </dd>
+            </div>
+            <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+              <dt className="text-xs text-muted-foreground">Spaces</dt>
+              <dd className="mt-0.5 whitespace-pre-line leading-snug text-foreground">
+                {spaceLine?.trim() || "No space assigned"}
+              </dd>
+            </div>
+          </dl>
+        )}
       </CardContent>
     </Card>
   );
@@ -303,6 +326,7 @@ export function EventDetail({
   conversationMessages = [],
   spaceName = null,
   spaceAssignmentsDisplay = null,
+  scheduleComponents = null,
   venueName = "Your venue",
   clientStatus: _clientStatus = null,
   contractTemplates = [],
@@ -375,6 +399,7 @@ export function EventDetail({
   conversationMessages?: ConversationMessage[];
   spaceName?: string | null;
   spaceAssignmentsDisplay?: string | null;
+  scheduleComponents?: BookingSummaryComponent[] | null;
   venueName?: string;
   clientStatus?: ClientStatus | null;
   contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
@@ -628,6 +653,7 @@ export function EventDetail({
         <EventHeroCard
           event={event}
           spaceLine={spaceAssignmentsDisplay ?? spaceName}
+          scheduleComponents={scheduleComponents}
         />
         <div
           data-testid="client-staffing-column"

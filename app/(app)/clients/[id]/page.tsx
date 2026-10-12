@@ -32,6 +32,7 @@ import { getEvent } from "@/lib/events/service";
 import { getEventSpaceAssignments } from "@/lib/events/space-assignments";
 import { formatEventSpaceAssignmentsDisplay } from "@/lib/venue-spaces/uses";
 import { getQuestionnaires, getQuestionnaireActivities } from "@/lib/events/questionnaire";
+import { ensureQuestionnaireFamilyForCurrentVenue } from "@/lib/questionnaire-family/provision";
 import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-templates/service";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
 import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
@@ -384,7 +385,9 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     // it's additive to the venue-wide catalog every venue already has.
     getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
     getCurrentUserRole(),
-    getQuestionnaireTemplates(),
+    // Ensure Library starters exist before category selectors render — do not
+    // depend on visiting Library or sending another questionnaire first.
+    ensureQuestionnaireFamilyForCurrentVenue().then(() => getQuestionnaireTemplates()),
     getEventFloorPlanOffers(eventId),
     getEventSpaceAssignments(eventId),
     getPortalSessions(id),
@@ -448,6 +451,15 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       spaceName: a.spaceName ?? spaces.find((s) => s.id === a.spaceId)?.name ?? "—",
     })),
   );
+  const scheduleComponents = spaceAssignments.map((a) => ({
+    useKey: a.useKey,
+    useLabel: a.useLabel,
+    spaceName: a.spaceName ?? spaces.find((s) => s.id === a.spaceId)?.name ?? null,
+    scheduledDate: a.scheduledDate ?? null,
+    startTime: a.startTime ?? null,
+    endTime: a.endTime ?? null,
+    sortOrder: a.sortOrder,
+  }));
 
   const questionnaireActivitiesById = Object.fromEntries(activityLists);
   const questionnaireActivities = questionnaire ? (questionnaireActivitiesById[questionnaire.id] ?? []) : [];
@@ -636,6 +648,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       conversationId={conversationId}
       conversationMessages={conversationMessages} spaceName={spaceName}
       spaceAssignmentsDisplay={spaceAssignmentsDisplay}
+      scheduleComponents={scheduleComponents}
       venueName={venue?.name ?? "Your venue"} clientStatus={client.status}
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}

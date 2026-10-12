@@ -33,7 +33,7 @@ import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { sortByDueDateAsc } from "@/lib/tasks/group-by-completion";
 import {
   categoryColor, categoryLabel, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
-  formatScheduledTime, isScheduledActivity, offsetForDirection,
+  formatRequiredTaskProgress, formatScheduledTime, isScheduledActivity, offsetForDirection,
   PLAYBOOK_KINDS, STATUS_CONFIG, TASK_VISIBILITY, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import {
@@ -437,8 +437,11 @@ function TaskRow({
   const cfg = STATUS_CONFIG[task.status];
   const Icon = STATUS_ICONS[task.status];
   const isComplete = task.status === "complete";
+  const isWaived = task.status === "waived";
+  const isClosed = isComplete || isWaived;
 
   function handleComplete() {
+    if (isWaived) return;
     startAction(async () => {
       const result = await completeTaskAction(task.id, eventId, clientId);
       if (result.ok) { onUpdate(task.id, "complete"); celebrateCompletion(kind, task.title); }
@@ -498,6 +501,11 @@ function TaskRow({
         <button type="button" onClick={onToggleExpand} className="min-w-0 flex-1 space-y-0.5 text-left">
           <p className={`text-sm font-medium ${isComplete ? "text-muted-foreground line-through" : "text-heading"}`}>
             {task.title}
+            {isWaived && (
+              <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Waived
+              </span>
+            )}
             {!task.isRequired && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground uppercase tracking-wide">optional</span>}
             {/* Wedding-Day Visibility (Planning Execution — Release
                 Completion) — same milestone_kind get_wedding_day_ops
@@ -559,7 +567,7 @@ function TaskRow({
           </Button>
         )}
 
-        {!isComplete && task.actionType && (
+        {!isClosed && task.actionType && (
           // Navigation into the platform, not a static checklist item — "Choose
           // a florist" opens the Vendor Library, etc. (Vendor Management —
           // Next Iteration, 2026-07-10). Always visible, not hover-only, since
@@ -573,7 +581,7 @@ function TaskRow({
           </Button>
         )}
 
-        {!isComplete && (
+        {!isClosed && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             {!request && (
               <Button type="button" size="sm" variant="ghost" onClick={handleCreateRequest} disabled={creatingRequest} className="h-7 px-2 text-xs text-muted-foreground">
@@ -584,7 +592,15 @@ function TaskRow({
               {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={handleWaive} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">
-              {task.status === "waived" ? "Restore" : "Waive"}
+              Waive
+            </Button>
+          </div>
+        )}
+
+        {isWaived && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <Button type="button" size="sm" variant="ghost" onClick={handleWaive} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">
+              {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Restore"}
             </Button>
           </div>
         )}
@@ -712,7 +728,9 @@ export function PlaybookApplyRow({
             <Badge variant="warning" className="text-[10px] shrink-0">Draft</Badge>
           </div>
           {readiness && (
-            <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground">{readiness.completedRequired} of {readiness.totalRequired} tasks</p>
+            <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground" data-testid="planning-required-progress">
+              {formatRequiredTaskProgress(readiness)}
+            </p>
           )}
           <div className="mt-2 pl-6 flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant="outline" onClick={handleEditDraft} className="h-7 px-2 text-xs">
@@ -759,7 +777,9 @@ export function PlaybookApplyRow({
                 <div className="h-1.5 flex-1 max-w-[120px] rounded-full bg-border overflow-hidden">
                   <div className="h-full bg-primary" style={{ width: `${readiness.score}%` }} />
                 </div>
-                <span className="text-[11px] text-muted-foreground">{readiness.completedRequired} of {readiness.totalRequired} complete</span>
+                <span className="text-[11px] text-muted-foreground" data-testid="planning-required-progress">
+                  {formatRequiredTaskProgress(readiness)}
+                </span>
               </>
             ) : (
               <span className={cn("text-[11px] font-medium", needsAttention === 0 ? "text-success" : "text-warning-foreground")}>
@@ -961,9 +981,10 @@ export function EventTaskList({
   const byDue = (list: EventTask[]) =>
     sortByDueDateAsc(list, (t) => t.dueDate);
   const overdue   = byDue(tasks.filter((t) => t.status === "overdue"));
-  const pending   = byDue(tasks.filter((t) => t.status === "pending"));
+  const pending   = byDue(tasks.filter((t) => t.status === "pending" || t.status === "blocked"));
   const complete  = byDue(tasks.filter((t) => t.status === "complete"));
   const waived    = byDue(tasks.filter((t) => t.status === "waived"));
+  const venueTasks = tasks.filter((t) => t.ownerType !== "couple");
 
   const renderTaskRow = (task: EventTask) => {
     const kind: PlaybookKind = task.ownerType === "couple" ? "client" : "venue";
@@ -1002,6 +1023,7 @@ export function EventTaskList({
     ? tasks.reduce((latest, t) => t.updatedAt > latest ? t.updatedAt : latest, tasks[0].updatedAt)
     : null;
   const openCount = overdue.length + pending.length;
+  const listCount = overdue.length + pending.length + complete.length + waived.length;
 
   return (
     <div className="space-y-4">
@@ -1013,8 +1035,23 @@ export function EventTaskList({
           tasks.length === 0
             ? <Badge variant="muted">No tasks yet</Badge>
             : openCount === 0
-              ? <Badge variant="success">All complete</Badge>
-              : <Badge variant={overdue.length > 0 ? "destructive" : "default"}>{openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}</Badge>
+              ? (
+                <Badge variant="success" data-testid="task-list-status">
+                  {waived.length > 0 && complete.length === 0
+                    ? `${waived.length} waived · none open`
+                    : waived.length > 0
+                      ? `${complete.length} completed · ${waived.length} waived`
+                      : "All complete"}
+                </Badge>
+              )
+              : (
+                <Badge variant={overdue.length > 0 ? "destructive" : "default"} data-testid="task-list-status">
+                  {openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}
+                  {complete.length + waived.length > 0
+                    ? ` · ${complete.length} completed${waived.length > 0 ? ` · ${waived.length} waived` : ""}`
+                    : ""}
+                </Badge>
+              )
         }
         lastUpdated={mostRecentUpdate ? new Date(mostRecentUpdate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
         relationship={eventName ? { name: eventName } : null}
@@ -1054,7 +1091,17 @@ export function EventTaskList({
       {/* "Edit Draft" (in PlaybookApplyRow, above) scrolls here — a Draft
           Client Planning checklist is reviewed and edited in this same list,
           not a separate surface (Draft → Release workflow, 2026-07-10). */}
-      <div id="planning-task-list">
+      <div
+        id="planning-task-list"
+        data-testid="planning-task-list"
+        data-total-tasks={tasks.length}
+        data-listed-tasks={listCount}
+        data-client-tasks={clientTasks.length}
+        data-venue-tasks={venueTasks.length}
+        data-completed={complete.length}
+        data-waived={waived.length}
+        data-open={openCount}
+      >
         {tasks.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-8">
             Apply a Client Planning or Venue Planning checklist above to generate tasks automatically with real due dates.

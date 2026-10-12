@@ -242,8 +242,12 @@ export type TaskReminder = {
 };
 
 export type EventReadiness = {
-  score: number;               // 0–100: completed required / total required × 100
+  /** 0–100: (completed + waived required) / total required × 100 — waived satisfies, but is not completion. */
+  score: number;
+  /** Required tasks with status === "complete" only. */
   completedRequired: number;
+  /** Required tasks with status === "waived" (distinct from completion). */
+  waivedRequired: number;
   totalRequired: number;
   completedOptional: number;
   totalOptional: number;

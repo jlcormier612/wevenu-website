@@ -48,7 +48,11 @@ function SummaryTile({
 
 function readinessLine(readiness: EventReadiness | null): ReactNode {
   if (!readiness) return <span className="text-muted-foreground">Not started</span>;
-  return `${readiness.score}% · ${readiness.completedRequired} of ${readiness.totalRequired} tasks`;
+  const waived = readiness.waivedRequired ?? 0;
+  const progress = waived > 0
+    ? `${readiness.completedRequired} completed · ${waived} waived of ${readiness.totalRequired}`
+    : `${readiness.completedRequired} of ${readiness.totalRequired} completed`;
+  return `${readiness.score}% · ${progress}`;
 }
 
 // ---- Main ---------------------------------------------------------------------
