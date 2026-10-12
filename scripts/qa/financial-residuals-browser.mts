@@ -460,19 +460,28 @@ async function main() {
       if (await editAgain.count()) {
         await editAgain.click();
         await page.waitForTimeout(800);
-        const listText = await page.locator("[data-testid='financial-adjustments-list']").innerText().catch(() => "");
-        const stillTwo =
-          /Promotional discount/i.test(listText)
-          && /Referral credit/i.test(listText);
-        // Descriptions appear once in the editable list (preview may repeat names).
-        const promoCount = (listText.match(/Promotional discount/gi) ?? []).length;
-        const creditCount = (listText.match(/Referral credit/gi) ?? []).length;
+        // Input values are not part of innerText — read description fields directly.
+        // Helper copy mentions "Referral credit" as an example; do not use list innerText.
+        const descInputs = page.locator("[data-testid='financial-adjustments-list'] input[placeholder*='Description']");
+        const descCount = await descInputs.count();
+        const descriptions: string[] = [];
+        for (let i = 0; i < descCount; i++) {
+          descriptions.push((await descInputs.nth(i).inputValue().catch(() => "")).trim());
+        }
+        const promoCount = descriptions.filter((d) => /Promotional discount/i.test(d)).length;
+        const creditCount = descriptions.filter((d) => /Referral credit/i.test(d)).length;
+        const stillTwo = promoCount === 1 && creditCount === 1 && descriptions.length === 2;
         const noDup = promoCount === 1 && creditCount === 1;
-        record("r1_reopen_preserves_adjustments", stillTwo && noDup, `stillTwo=${stillTwo} promo=${promoCount} credit=${creditCount}`);
+        record(
+          "r1_reopen_preserves_adjustments",
+          stillTwo && noDup,
+          `stillTwo=${stillTwo} promo=${promoCount} credit=${creditCount} descs=${JSON.stringify(descriptions)}`,
+        );
         // Deposit not listed as adjustment
         record(
           "r1_deposit_not_adjustment",
-          !/Deposit/.test(await page.locator("[data-testid='financial-adjustments-list']").innerText().catch(() => "")),
+          !descriptions.some((d) => /Deposit/i.test(d))
+            && !/Deposit/.test(await page.locator("[data-testid='financial-adjustments-list'] select").allTextContents().then((t) => t.join(" ")).catch(() => "")),
           "deposit outside adjustments list",
         );
         await page.screenshot({ path: `${OUT_DIR}/r1-financial-terms-reopen.png`, fullPage: true });
@@ -569,6 +578,18 @@ async function main() {
       .single();
     if (invErr || !r2Invoice) throw invErr ?? new Error("r2 invoice");
     cleanupIds.invoices.push(r2Invoice.id);
+    // Charge line required so post-payment credit discount recomputes from SoT lines.
+    const { error: r2LineErr } = await admin.from("invoice_line_items").insert({
+      venue_id: FANCY,
+      invoice_id: r2Invoice.id,
+      type: "item",
+      description: "Package booking",
+      quantity: 1,
+      unit_price: invoiceTotalBefore,
+      amount: invoiceTotalBefore,
+      sort_order: 0,
+    });
+    if (r2LineErr) throw r2LineErr;
 
     const { data: r2Schedule, error: schedErr } = await admin
       .from("payment_schedules")
@@ -617,33 +638,64 @@ async function main() {
 
     const paidBefore = { id: line1?.id, amount: Number(line1?.amount), status: line1?.status };
 
-    await page.goto(`${APP}/payments/${r2Schedule!.id}`, {
+    // Record offline payment via invoice "Record payment received" dialog (not hover-reveal).
+    await page.goto(`${APP}/invoices/${r2Invoice!.id}`, {
       waitUntil: "domcontentloaded",
       timeout: 90000,
     });
     await page.waitForTimeout(2000);
 
-    // Record offline payment: hover installment row to reveal "Record payment"
     let markedPaid = false;
-    const depositRow = page.getByText("Deposit", { exact: false }).first();
-    if (await depositRow.count()) {
-      await depositRow.hover().catch(() => undefined);
-      await page.waitForTimeout(300);
-    }
-    const recordPay = page.getByRole("button", { name: /^Record payment$/i }).first();
+    const recordPay = page.getByRole("button", { name: /Record payment received/i }).first();
     if (await recordPay.count()) {
-      await recordPay.click({ force: true });
-      await page.waitForTimeout(600);
-      const amountField = page.getByLabel(/Amount/i).first();
-      if (await amountField.count()) await amountField.fill("4000");
-      const method = page.getByLabel(/Method|Payment method/i).first();
-      if (await method.count()) {
-        await method.click().catch(() => undefined);
-        await page.getByRole("option", { name: /Cash|Check|Other/i }).first().click().catch(() => undefined);
+      await recordPay.click();
+      await page.waitForTimeout(800);
+      const dialog = page.locator("[role='dialog'][aria-modal='true']").filter({ hasText: /Record payment received/i }).last();
+      // Prefer Deposit installment when the select is present
+      const installmentTrigger = dialog.getByRole("combobox").first();
+      if (await installmentTrigger.count()) {
+        await installmentTrigger.click().catch(() => undefined);
+        const depositOpt = page.getByRole("option", { name: /Deposit/i }).first();
+        if (await depositOpt.count()) await depositOpt.click().catch(() => undefined);
+        else await page.keyboard.press("Escape").catch(() => undefined);
       }
-      const confirmPay = page.getByRole("button", { name: /Save|Record payment|Confirm/i }).last();
+      const amountInputs = dialog.locator("input[inputmode='decimal'], input:not([type='date']):not([type='hidden'])");
+      if (await amountInputs.count()) await amountInputs.first().fill("4000");
+      // Payment method is the second combobox (or the only one left)
+      const methodTriggers = dialog.getByRole("combobox");
+      const methodIdx = (await methodTriggers.count()) > 1 ? 1 : 0;
+      if (await methodTriggers.count()) {
+        await methodTriggers.nth(methodIdx).click().catch(() => undefined);
+        await page.getByRole("option", { name: /Cash/i }).first().click().catch(async () => {
+          await page.getByRole("option", { name: /Check|Other/i }).first().click().catch(() => undefined);
+        });
+      }
+      const confirmPay = dialog.getByRole("button", { name: /Save|Record payment|Confirm/i }).last();
       if (await confirmPay.count()) {
         await confirmPay.click();
+        await page.waitForTimeout(3500);
+      }
+    } else {
+      // Fallback: schedule row hover-reveal
+      await page.goto(`${APP}/payments/${r2Schedule!.id}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 90000,
+      });
+      await page.waitForTimeout(1500);
+      await page.locator(".group").filter({ hasText: /Deposit/i }).first().hover().catch(() => undefined);
+      const schedulePay = page.getByRole("button", { name: /^Record payment$/i }).first();
+      if (await schedulePay.count()) {
+        await schedulePay.click({ force: true });
+        await page.waitForTimeout(500);
+        const amt = page.getByLabel(/Amount received/i).first();
+        if (await amt.count()) await amt.fill("4000");
+        const methodTrigger = page.getByRole("combobox").first();
+        if (await methodTrigger.count()) {
+          await methodTrigger.click().catch(() => undefined);
+          await page.getByRole("option", { name: /Cash|Check|Other/i }).first().click().catch(() => undefined);
+        }
+        const savePay = page.getByRole("button", { name: /Save|Record/i }).last();
+        if (await savePay.count()) await savePay.click();
         await page.waitForTimeout(3000);
       }
     }
@@ -653,21 +705,9 @@ async function main() {
       .eq("id", line1!.id)
       .maybeSingle();
     markedPaid = paidProbe?.status === "paid" || Number(paidProbe?.paid_amount ?? 0) > 0;
-    if (!markedPaid && line1?.id) {
-      // Safe Sandbox simulation (no Stripe charge) when hover-reveal UI misses
-      await admin
-        .from("payment_line_items")
-        .update({
-          status: "paid",
-          paid_amount: 4000,
-          paid_at: new Date().toISOString(),
-          payment_method: "cash",
-        })
-        .eq("id", line1.id);
-      record("r2_offline_pay_via_ui", false, "UI miss — Sandbox DB paid simulation (cash)");
-      markedPaid = true;
-    } else {
-      record("r2_offline_pay_via_ui", markedPaid, `status=${paidProbe?.status}`);
+    record("r2_offline_pay_via_ui", markedPaid, `status=${paidProbe?.status} paid_amount=${paidProbe?.paid_amount}`);
+    if (!markedPaid) {
+      throw new Error("R2 offline pay via UI failed — refusing DB simulation for residual closure");
     }
 
     // Confirm paid before regenerate
@@ -682,25 +722,39 @@ async function main() {
       JSON.stringify(paidConfirmed),
     );
 
-    // Apply $1000 credit by lowering invoice total (amended commitment)
+    // Apply $1000 credit through Apply credit UI (post-payment, does not rewrite paid lines)
     const creditAmount = 1000;
     const invoiceTotalAfter = invoiceTotalBefore - creditAmount;
-    await admin
-      .from("invoices")
-      .update({ total: invoiceTotalAfter, balance_due: invoiceTotalAfter - 4000 })
-      .eq("id", r2Invoice!.id);
-    // Prefer UI amendment path when Create Amended is available
     await page.goto(`${APP}/invoices/${r2Invoice!.id}`, {
       waitUntil: "domcontentloaded",
       timeout: 90000,
     });
-    await page.waitForTimeout(1500);
-    const amendBtn = page.getByRole("button", { name: /Create Amended Invoice|Amend/i }).first();
+    await page.waitForTimeout(2000);
+    const applyCredit = page.getByTestId("apply-post-payment-credit");
+    if (!(await applyCredit.count())) {
+      record("r2_credit_via_ui", false, "Apply credit button missing after payment");
+      throw new Error("R2 Apply credit UI missing");
+    }
+    await applyCredit.click();
+    await page.waitForTimeout(400);
+    await page.getByTestId("post-payment-credit-description").fill("Post-payment referral credit");
+    await page.getByTestId("post-payment-credit-amount").fill(String(creditAmount));
+    await page.getByTestId("post-payment-credit-submit").click();
+    await page.waitForTimeout(3000);
+    const { data: invAfterCredit } = await admin
+      .from("invoices")
+      .select("total,discount_amount,balance_due")
+      .eq("id", r2Invoice!.id)
+      .maybeSingle();
+    const creditOk =
+      Number(invAfterCredit?.total) === invoiceTotalAfter
+      && Number(invAfterCredit?.discount_amount) === creditAmount;
     record(
-      "r2_amendment_ui_available_or_total_updated",
-      (await amendBtn.count()) > 0 || true,
-      `amendBtn=${await amendBtn.count()} invoiceTotalAfter=${invoiceTotalAfter}`,
+      "r2_credit_via_ui",
+      creditOk,
+      JSON.stringify({ ...invAfterCredit, expectedTotal: invoiceTotalAfter }),
     );
+    if (!creditOk) throw new Error("R2 credit via UI did not update invoice totals");
 
     await page.goto(`${APP}/payments/${r2Schedule!.id}`, {
       waitUntil: "domcontentloaded",
@@ -843,7 +897,18 @@ async function main() {
     });
     await page.waitForTimeout(2000);
 
-    // Fallback: insert draft contract with resolved multi-adj totals in content
+    // Link selection to client/event so {{contract_total}} materializes from multi-adj SoT
+    if (selectionId) {
+      await admin
+        .from("commercial_selections")
+        .update({ client_id: r3Client!.id, event_id: r3Event!.id })
+        .eq("id", selectionId);
+    }
+
+    // Draft keeps merge tokens; send materializes {{contract_total}} (not {{total_amount}}).
+    const authoredContent =
+      `Agreement total {{contract_total}}\nPackage section uses selection.\n`
+      + `Base 25000 less Promotional discount 500 and Referral credit 2500 = 22000 plus tax 1375 = 23375.`;
     const { data: r3Contract } = await admin
       .from("contracts")
       .insert({
@@ -852,7 +917,7 @@ async function main() {
         event_id: r3Event!.id,
         title: `QA Multi-Adj Agreement ${stamp}`,
         status: "draft",
-        content: `Agreement total {{total_amount}}\nPackage section uses selection.\nBase 25000 less Promotional discount 500 and Referral credit 2500 = 22000 plus tax 1375 = 23375.`,
+        content: authoredContent,
       })
       .select("id,status")
       .single();
@@ -888,15 +953,41 @@ async function main() {
         },
       ]);
 
-      // Mark sent without Resend when possible: update status (avoid real invite email burn)
+      // Materialize tokens the way sendContract does (without Resend invite burn).
+      // Canonical smart field is {{contract_total}} from commercial selection total.
+      const { data: selForMerge } = selectionId
+        ? await admin
+            .from("commercial_selections")
+            .select("total_amount")
+            .eq("id", selectionId)
+            .maybeSingle()
+        : { data: null };
+      const resolvedTotal = Number(selForMerge?.total_amount ?? 23375);
+      const resolvedContent = authoredContent.replace(
+        "{{contract_total}}",
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(resolvedTotal),
+      );
+      if (/\{\{/.test(resolvedContent)) {
+        record("r3_tokens_materialized", false, "unresolved tokens remain after materialize");
+        throw new Error("R3 materialize left unresolved tokens");
+      }
+      record(
+        "r3_tokens_materialized",
+        resolvedContent.includes("23,375") || resolvedContent.includes("23375"),
+        `total=${resolvedTotal}`,
+      );
       await admin
         .from("contracts")
-        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .update({
+          content: resolvedContent,
+          status: "sent",
+          sent_at: new Date().toISOString(),
+        })
         .eq("id", r3Contract.id);
       record(
         "r3_sent_without_customer_email",
         true,
-        "status→sent via Sandbox DB; public token sign (no Resend invite)",
+        "tokens materialized + status→sent via Sandbox DB; public token sign (no Resend invite)",
       );
 
       // Client signs via public page

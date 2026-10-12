@@ -269,6 +269,63 @@ export async function removeLineItem(invoiceId: string, itemId: string): Promise
   return result as InvoiceActionResult;
 }
 
+/**
+ * Post-payment credit — explicit human decision after money has moved.
+ * Does not rewrite paid installments; adds a discount line, recomputes the
+ * invoice commitment, and leaves payment-plan regeneration to the existing
+ * Needs Review → Regenerate Schedule path. Distinct from draft line edits
+ * (assertInvoiceEditable) and from Event Order "Create Amended Invoice".
+ */
+export async function applyPostPaymentCredit(
+  invoiceId: string,
+  input: { amount: number; description: string },
+): Promise<InvoiceActionResult> {
+  const description = input.description.trim();
+  if (!description) return { ok: false, message: "Credit description is required." };
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, message: "Credit amount must be greater than zero." };
+  }
+  const result = await withVenue(async (c, venueId) => {
+    const invoice = await repo.getInvoice(c, venueId, invoiceId);
+    if (!invoice) return { ok: false, message: "Invoice not found." } as InvoiceActionResult;
+    if (invoice.status !== "sent" && invoice.status !== "partially_paid" && invoice.status !== "paid") {
+      return {
+        ok: false,
+        message: "Credits apply only after an invoice has been issued.",
+      } as InvoiceActionResult;
+    }
+    if (amount > invoice.balanceDue + 0.009) {
+      return {
+        ok: false,
+        message: "Credit cannot exceed the remaining balance.",
+      } as InvoiceActionResult;
+    }
+    await repo.addLineItem(c, venueId, invoiceId, {
+      type: "discount",
+      description,
+      quantity: "1",
+      unitPrice: String(amount),
+      packageId: "",
+      discountType: "fixed",
+      discountValue: String(amount),
+      taxRatePercent: "",
+    });
+    await repo.insertActivity(
+      c,
+      venueId,
+      invoiceId,
+      "credit_applied",
+      `Post-payment credit applied: ${description} ($${amount.toFixed(2)})`,
+    );
+    await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
+    // Do not auto-rewrite the payment plan — coordinator regenerates unpaid
+    // installments explicitly so paid history stays untouched.
+    return { ok: true } as InvoiceActionResult;
+  });
+  return result as InvoiceActionResult;
+}
+
 export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus): Promise<InvoiceActionResult> {
   const result = await withVenue(async (c, venueId) => {
     // Work Package D8 — void is the one status transition here with real,

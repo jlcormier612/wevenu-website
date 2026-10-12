@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/integrations/supabase/server";
 import {
   addLineItem,
+  applyPostPaymentCredit,
   createAmendedInvoice,
   createInvoice,
   dismissEventOrderDrift,
@@ -105,6 +106,19 @@ export async function revertInvoiceToDraftAction(invoiceId: string): Promise<Inv
 export async function createAmendedInvoiceAction(originalInvoiceId: string): Promise<CreateInvoiceResult> {
   const result = await createAmendedInvoice(originalInvoiceId);
   if (result.ok) { revalidatePath(`/invoices/${originalInvoiceId}`); revalidatePath(`/invoices/${result.invoiceId}`); revalidatePath("/invoices"); }
+  return result;
+}
+
+/** Post-payment credit on an issued invoice — does not rewrite paid installments. */
+export async function applyPostPaymentCreditAction(
+  invoiceId: string,
+  input: { amount: number; description: string },
+): Promise<InvoiceActionResult> {
+  const result = await applyPostPaymentCredit(invoiceId, input);
+  if (result.ok) {
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/payments");
+  }
   return result;
 }
 

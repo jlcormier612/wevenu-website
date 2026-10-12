@@ -17,6 +17,7 @@ import {
 import { venueToday } from "@/lib/venue/timezone";
 import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
+import { ApplyPostPaymentCreditDialog } from "@/components/invoices/apply-post-payment-credit-dialog";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
 import { RecordOfflinePaymentDialog } from "@/components/invoices/record-offline-payment-dialog";
@@ -147,6 +148,7 @@ export function InvoiceDetail({
   const [editingPlan, setEditingPlan] = React.useState(false);
   const [editingName, setEditingName] = React.useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = React.useState(false);
+  const [creditOpen, setCreditOpen] = React.useState(false);
   const humanTitle = invoiceHumanLabel({
     displayName: invoice.displayName,
     invoiceNumber: invoice.invoiceNumber,
@@ -191,6 +193,10 @@ export function InvoiceDetail({
     Boolean(linkedScheduleId)
     && hasOpenOfflineInstallment
     && (status === "sent" || status === "partially_paid");
+  const showApplyCredit =
+    invoice.balanceDue > 0
+    && (status === "sent" || status === "partially_paid" || status === "paid")
+    && displayPaidToDate > 0;
 
   function saveDisplayName() {
     startName(async () => {
@@ -279,6 +285,12 @@ export function InvoiceDetail({
         onRecorded={() => router.refresh()}
         acceptedMethods={venue.commercialBookingPrefs?.acceptedPaymentMethods ?? null}
       />
+      <ApplyPostPaymentCreditDialog
+        invoiceId={invoice.id}
+        balanceDue={invoice.balanceDue}
+        open={creditOpen}
+        onOpenChange={setCreditOpen}
+      />
       <BusinessAssetHeader
         backHref={backNav.href}
         backLabel={backNav.label}
@@ -362,6 +374,18 @@ export function InvoiceDetail({
 
       <BusinessAssetActionRow
         secondary={<>
+          {showApplyCredit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCreditOpen(true)}
+              disabled={pending}
+              data-testid="apply-post-payment-credit"
+            >
+              Apply credit
+            </Button>
+          )}
           {invoice.clientId && status !== "void" && (
             <Button type="button" variant="outline" size="sm"
               title="What the client will receive. Preview does not send."
