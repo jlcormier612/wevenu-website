@@ -2,7 +2,7 @@
 
 **Observation (UTC):** 2026-10-12T01:05Z  
 **Scope:** AWS-side Sandbox ops alerts. **No** Supabase/Resend plan / Spend Cap / billing changes.  
-**Tip:** `45290d6a…` on `app.sandbox.hellotocheers.com`
+**Tip:** `d3bb656a…` on `app.sandbox.hellotocheers.com`
 
 ---
 

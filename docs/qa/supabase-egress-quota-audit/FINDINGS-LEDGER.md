@@ -1,7 +1,7 @@
 # Supabase + Resend — findings ledger (closure pass)
 
 **Observation (UTC):** 2026-10-12T01:05Z  
-**Sandbox tip:** `45290d6adaeaa446341c8527f4ec81e8fabf3935` (⊃ `efd12db6`, `459d63fc`, `4656d1ba`, `8e4f911e`)  
+**Sandbox tip:** `d3bb656a04e4e7df5cd15c3b251a438f7c30f64b` (⊃ `efd12db6`, `459d63fc`, `4656d1ba`, `8e4f911e`)  
 **Project:** `wvpsldwwjqdannqasrdf`  
 **No Production / billing / Spend Cap / Resend plan changes.**
 

@@ -1,7 +1,7 @@
 # Production-readiness & incident-prevention closure
 
 **Pass (UTC):** 2026-10-12T01:05Z  
-**Sandbox tip verified:** `45290d6adaeaa446341c8527f4ec81e8fabf3935` on `app.sandbox.hellotocheers.com` (⊃ Auth `efd12db6`, CRM `459d63fc`, identity, early-warning `05a39a1e`, blocked-dates `8e4f911e`)  
+**Sandbox tip verified:** `d3bb656a04e4e7df5cd15c3b251a438f7c30f64b` on `app.sandbox.hellotocheers.com` (⊃ Auth `efd12db6`, CRM `459d63fc`, identity, early-warning `05a39a1e`, blocked-dates `8e4f911e`, Resend limit classification)  
 **Health:** `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`  
 **Evidence JSON:** `closure-pass-verify.json`  
 **Production / marketing / Supabase billing / Spend Cap / Resend billing:** untouched.
@@ -14,7 +14,7 @@
 |---|---|
 | Software amplifiers controlled on tip | **GREEN** |
 | AWS early-warning (metric → alarm → SNS → SQS) | **GREEN** (re-proven 2026-10-12) |
-| Resend failure classification + CW signal | **GREEN** (code + alarm; needs tip deploy for log marker in ECS) |
+| Resend failure classification + CW signal | **GREEN** (deployed on tip; CW filter + alarm live) |
 | Human email notification | **YELLOW** — SNS email **PendingConfirmation** |
 | Current-cycle Usage + Spend Cap | **OPEN — OWNER** |
 | Resend plan / daily·monthly limits | **OPEN — OWNER** |
@@ -41,7 +41,7 @@
 
 | Check | Result | Evidence |
 |---|---|---|
-| Tip | `45290d6a…` | `app.sandbox…/login` `?dpl=` |
+| Tip | `d3bb656a…` | `app.sandbox…/login` `?dpl=` |
 | Fix ancestry | Auth/CRM/eng-closure ⊂ tip | `git merge-base --is-ancestor` |
 | AuthRetryable 24h | **0** | CloudWatch Sum |
 | ALB last 7d | **~201k** (~**28.7k**/day) | CloudWatch RequestCount |
