@@ -1,0 +1,171 @@
+{
+  "ok": true,
+  "servingSha": "b21337d1e4fffa946ca8fa0e3c51c5f938b0c1c7",
+  "checks": [
+    {
+      "name": "db_invoice_total_unchanged",
+      "pass": true,
+      "detail": "36656.25"
+    },
+    {
+      "name": "db_payment_received_unchanged",
+      "pass": true,
+      "detail": "7164.06"
+    },
+    {
+      "name": "db_installment_partial",
+      "pass": true,
+      "detail": "partially_paid"
+    },
+    {
+      "name": "db_installment_remainder",
+      "pass": true,
+      "detail": "2000"
+    },
+    {
+      "name": "db_net_paid",
+      "pass": true,
+      "detail": "7164.06"
+    },
+    {
+      "name": "db_balance_due",
+      "pass": true,
+      "detail": "29492.19"
+    },
+    {
+      "name": "db_rpc_paid",
+      "pass": true,
+      "detail": "7164.06"
+    },
+    {
+      "name": "calc_balance",
+      "pass": true,
+      "detail": "29492.19"
+    },
+    {
+      "name": "no_extra_payment_rows",
+      "pass": true,
+      "detail": "qualifyingLines=1"
+    },
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "b21337d1e4fffa946ca8fa0e3c51c5f938b0c1c7"
+    },
+    {
+      "name": "ui_paid_to_date",
+      "pass": true,
+      "detail": "$7,164.06"
+    },
+    {
+      "name": "ui_balance_remaining",
+      "pass": true,
+      "detail": "$29,492.19"
+    },
+    {
+      "name": "ui_not_full_balance",
+      "pass": true,
+      "detail": "balance must not show full $36,656.25"
+    },
+    {
+      "name": "ui_partial_installment",
+      "pass": true,
+      "detail": "installment Partially Paid + $2,000 due + $7,164.06 received"
+    },
+    {
+      "name": "ui_total_unchanged",
+      "pass": true,
+      "detail": "$36,656.25"
+    },
+    {
+      "name": "print_paid_to_date",
+      "pass": true,
+      "detail": "$7,164.06"
+    },
+    {
+      "name": "print_balance_remaining",
+      "pass": true,
+      "detail": "$29,492.19"
+    },
+    {
+      "name": "print_not_full_as_balance",
+      "pass": true,
+      "detail": "print balance not full total"
+    },
+    {
+      "name": "persisted_unchanged_by_browser",
+      "pass": true,
+      "detail": "{\"total\":36656.25,\"balance_due\":29492.19,\"status\":\"partially_paid\",\"paidRpc\":7164.06,\"initial_paid\":7164.06}"
+    }
+  ],
+  "ids": {
+    "invoiceId": "3b9f4bb6-b44c-484a-b6dd-b2ee47c5d541"
+  },
+  "urls": {
+    "invoice": "https://app.sandbox.hellotocheers.com/invoices/3b9f4bb6-b44c-484a-b6dd-b2ee47c5d541",
+    "print": "https://app.sandbox.hellotocheers.com/invoices/3b9f4bb6-b44c-484a-b6dd-b2ee47c5d541/print"
+  },
+  "db": {
+    "inv": {
+      "id": "3b9f4bb6-b44c-484a-b6dd-b2ee47c5d541",
+      "invoice_number": "INV-2026-3B9F4B",
+      "total": 36656.25,
+      "balance_due": 29492.19,
+      "status": "partially_paid",
+      "client_id": "3f714934-ce57-42ba-96ca-0f3a15ca7e49",
+      "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+    },
+    "lines": [
+      {
+        "id": "51619197-95ee-4255-b20e-d926b2bdfc88",
+        "label": "Initial Payment",
+        "amount": 9164.06,
+        "status": "partially_paid",
+        "paid_amount": 7164.06,
+        "refunded_amount": 0,
+        "sort_order": 0
+      },
+      {
+        "id": "cd8f8910-6bda-4b99-ad86-94a8861d1175",
+        "label": "Planning Payment 1",
+        "amount": 9164.06,
+        "status": "pending",
+        "paid_amount": null,
+        "refunded_amount": 0,
+        "sort_order": 1
+      },
+      {
+        "id": "c90c1e9a-af86-4bd2-bf26-ef6b4770bec3",
+        "label": "Planning Payment 2",
+        "amount": 9164.06,
+        "status": "pending",
+        "paid_amount": null,
+        "refunded_amount": 0,
+        "sort_order": 2
+      },
+      {
+        "id": "19a3a19e-31f5-4753-901b-191599c60a77",
+        "label": "Final Payment",
+        "amount": 9164.07,
+        "status": "pending",
+        "paid_amount": null,
+        "refunded_amount": 0,
+        "sort_order": 3
+      }
+    ],
+    "paidRpc": 7164.06
+  },
+  "before": {
+    "total": 36656.25,
+    "balance_due": 29492.19,
+    "status": "partially_paid",
+    "paidRpc": 7164.06
+  },
+  "after": {
+    "total": 36656.25,
+    "balance_due": 29492.19,
+    "status": "partially_paid",
+    "paidRpc": 7164.06,
+    "initial_paid": 7164.06
+  }
+}
