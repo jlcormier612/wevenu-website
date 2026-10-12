@@ -37,19 +37,38 @@ export async function POST(request: Request) {
     if (result.ok && result.leadId && result.venueId) {
       try {
         const { applyInquiryCommunicationCapture } = await import("@/lib/communication/apply-inquiry-consent");
-        await applyInquiryCommunicationCapture({
+        const { createAdminClient } = await import("@/integrations/supabase/admin");
+        let fallbackPhone: string | null = result.contactPhone ?? null;
+        if (body.smsPermissionGranted === true && !(body.phone ?? "").trim() && !fallbackPhone?.trim()) {
+          const admin = createAdminClient();
+          const { data: leadRow } = await admin
+            .from("leads")
+            .select("phone")
+            .eq("id", result.leadId)
+            .eq("venue_id", result.venueId)
+            .maybeSingle<{ phone: string | null }>();
+          fallbackPhone = leadRow?.phone ?? null;
+        }
+        const capture = await applyInquiryCommunicationCapture({
           venueId: result.venueId,
           venueName: result.venueName ?? "Venue",
           leadId: result.leadId,
           relationshipId: result.relationshipId ?? null,
           phone: body.phone ?? null,
+          fallbackPhone,
           preferredChannels: body.preferredCommunicationChannels,
           smsPermissionGranted: body.smsPermissionGranted === true,
           embedKey: body.key,
           source: "tour_form",
         });
-      } catch {
-        /* lead already created */
+        if (!capture.ok) {
+          console.error("[tours/book] SMS consent not recorded:", capture.message, {
+            leadId: result.leadId,
+            venueId: result.venueId,
+          });
+        }
+      } catch (err) {
+        console.error("[tours/book] SMS consent capture failed:", err);
       }
     }
 

@@ -341,7 +341,7 @@ export function InquiryForm({
   const [firstName, setFirstName] = React.useState(existingLeadTour?.firstName ?? "");
   const [lastName, setLastName] = React.useState(existingLeadTour?.lastName ?? "");
   const [email, setEmail] = React.useState(existingLeadTour?.email ?? "");
-  const [phone, setPhone] = React.useState("");
+  const [phone, setPhone] = React.useState(existingLeadTour?.phone ?? "");
   const [partnerFirst, setPartnerFirst] = React.useState("");
   const [partnerLast, setPartnerLast] = React.useState("");
   const [eventType, setEventType] = React.useState(existingLeadTour?.eventType ?? "");
@@ -555,7 +555,8 @@ export function InquiryForm({
             message,
             sourceData,
             preferredCommunicationChannels,
-            smsPermissionGranted: smsPermissionGranted && !!phone.trim(),
+            // Send the raw checkbox — server resolves phone (form or on-file) before recording.
+            smsPermissionGranted,
             turnstileToken,
           }),
         });
@@ -590,7 +591,8 @@ export function InquiryForm({
             originToken: tourOriginToken
               ?? new URLSearchParams(window.location.search).get("o"),
             preferredCommunicationChannels,
-            smsPermissionGranted: smsPermissionGranted && !!phone.trim(),
+            // Send the raw checkbox — server resolves phone (form or on-file) before recording.
+            smsPermissionGranted,
           }),
         });
         const data = await res.json();

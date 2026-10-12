@@ -1,0 +1,40 @@
+{
+  "phone": "(603) 555-1766",
+  "email": "sms-consent-qa-1791841766143@example.test",
+  "venueId": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+  "leadId": "b6af6db2-885f-40c7-8544-1371ee49783c",
+  "relationshipId": "e7a22d48-818c-494e-a7ae-6bdbc7164ddb",
+  "addressKey": "16035551766",
+  "checkedCapture": {
+    "ok": true,
+    "consentRecorded": true
+  },
+  "afterChecked": {
+    "status": "opted_in",
+    "source": "tour_form",
+    "evidence": {
+      "leadId": "b6af6db2-885f-40c7-8544-1371ee49783c",
+      "embedKey": "qa-fixture",
+      "venueName": "Meadowbrook Valley Venue",
+      "capturedAt": "2026-10-12T21:49:26.611Z",
+      "relationshipId": "e7a22d48-818c-494e-a7ae-6bdbc7164ddb",
+      "languageVersion": "htc_sms_inquiry_v2",
+      "preferredChannels": [
+        "email",
+        "sms"
+      ]
+    },
+    "consent_text": "Yes, I’d like to receive text messages from Meadowbrook Valley Venue about my inquiry, tour, or event. Message and data rates may apply. Reply STOP to opt out."
+  },
+  "uncheckedCapture": {
+    "ok": true,
+    "consentRecorded": false
+  },
+  "afterUnchecked": null,
+  "phoneAloneCapture": {
+    "ok": true,
+    "consentRecorded": false
+  },
+  "afterPhoneAlone": null,
+  "pass": true
+}

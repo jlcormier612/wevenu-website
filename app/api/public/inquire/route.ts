@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
   // First-party prefs + SMS permission (independent of phone presence alone).
   try {
     const { applyInquiryCommunicationCapture } = await import("@/lib/communication/apply-inquiry-consent");
-    await applyInquiryCommunicationCapture({
+    const capture = await applyInquiryCommunicationCapture({
       venueId: venue.id,
       venueName: venue.name,
       leadId: outcome.leadId,
@@ -148,9 +148,17 @@ export async function POST(request: NextRequest) {
       preferredChannels: preferredCommunicationChannels,
       smsPermissionGranted: smsPermissionGranted === true || smsPermissionGranted === "true",
       embedKey: String(embedKey),
+      source: "inquiry_form",
     });
-  } catch {
+    if (!capture.ok) {
+      console.error("[public/inquire] SMS consent not recorded:", capture.message, {
+        leadId: outcome.leadId,
+        venueId: venue.id,
+      });
+    }
+  } catch (err) {
     // Lead already created — do not fail the inquiry if permission write fails.
+    console.error("[public/inquire] SMS consent capture failed:", err);
   }
 
   const inquirerName = `${firstName} ${lastName}`;

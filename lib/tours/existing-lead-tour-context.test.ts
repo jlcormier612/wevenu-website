@@ -68,7 +68,16 @@ describe("existing-lead tour preferred event date", () => {
     assert.match(form, /const submitEventDate = existingLeadScheduleTour \? "" : eventDate/);
     assert.match(form, /!lockedExistingLeadTour && \(/);
     assert.match(form, /existingLeadTour\?\.guestCount/);
+    assert.match(form, /existingLeadTour\?\.phone/);
     assert.match(form, /mode === "schedule_tour" \? "optional"/);
+  });
+
+  it("existing-lead context includes phone so SMS consent can use the on-file number", () => {
+    const ctx = readFileSync(resolve("lib/tours/existing-lead-tour-context.ts"), "utf8");
+    assert.match(ctx, /phone:\s*string/);
+    assert.match(ctx, /phone:\s*\(lead\.phone \?\? ""\)\.trim\(\)/);
+    const form = readFileSync(resolve("components/form/inquiry-form.tsx"), "utf8");
+    assert.match(form, /useState\(existingLeadTour\?\.phone \?\? ""\)/);
   });
 
   it("Calendar and lead surfaces distinguish general tour link vs personal scheduling link", () => {

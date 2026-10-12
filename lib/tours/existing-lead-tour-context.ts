@@ -15,6 +15,8 @@ export type ExistingLeadTourContext = {
   firstName: string;
   lastName: string;
   email: string;
+  /** Authoritative phone from the lead, when set — required to record SMS consent. */
+  phone: string;
   eventType: string;
   /** Authoritative guest count from the lead, when set. */
   guestCount: number | null;
@@ -63,7 +65,7 @@ export async function resolveExistingLeadTourContext(opts: {
 
   const { data: lead } = await admin
     .from("leads")
-    .select("id, venue_id, sales_stage, event_date, first_name, last_name, email, event_type, guest_count")
+    .select("id, venue_id, sales_stage, event_date, first_name, last_name, email, phone, event_type, guest_count")
     .eq("id", payload.leadId)
     .maybeSingle<{
       id: string;
@@ -73,6 +75,7 @@ export async function resolveExistingLeadTourContext(opts: {
       first_name: string | null;
       last_name: string | null;
       email: string | null;
+      phone: string | null;
       event_type: string | null;
       guest_count: number | null;
     }>();
@@ -100,6 +103,7 @@ export async function resolveExistingLeadTourContext(opts: {
       firstName: (lead.first_name ?? "").trim(),
       lastName: (lead.last_name ?? "").trim(),
       email: (lead.email ?? "").trim(),
+      phone: (lead.phone ?? "").trim(),
       eventType: (lead.event_type ?? "").trim(),
       guestCount,
       hasExistingLead: true,
