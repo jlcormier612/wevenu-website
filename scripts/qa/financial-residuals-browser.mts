@@ -517,6 +517,14 @@ async function main() {
     if (r2ClientErr || !r2Client) throw r2ClientErr ?? new Error("r2 client");
     cleanupIds.clients.push(r2Client.id);
 
+    const { data: fancySpace } = await admin
+      .from("venue_spaces")
+      .select("id")
+      .eq("venue_id", FANCY)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+    const spaceId = fancySpace?.id ?? null;
     const { data: r2Event, error: r2EventErr } = await admin
       .from("events")
       .insert({
@@ -525,6 +533,7 @@ async function main() {
         name: `R2 Credit ${stamp}`,
         event_date: "2027-12-01",
         booked_at: new Date().toISOString(),
+        space_id: spaceId,
       })
       .select("id")
       .single();
@@ -771,17 +780,26 @@ async function main() {
       .select("id")
       .single();
     if (r3Client) cleanupIds.clients.push(r3Client.id);
-    const { data: r3Event } = await admin
+    const { data: r3Space } = await admin
+      .from("venue_spaces")
+      .select("id")
+      .eq("venue_id", FANCY)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+    const { data: r3Event, error: r3EventErr } = await admin
       .from("events")
       .insert({
         venue_id: FANCY,
         client_id: r3Client!.id,
         name: `R3 MultiAdj ${stamp}`,
         event_date: "2027-11-14",
+        space_id: r3Space?.id ?? null,
       })
       .select("id")
       .single();
-    if (r3Event) cleanupIds.events.push(r3Event.id);
+    if (r3EventErr || !r3Event) throw r3EventErr ?? new Error("r3 event");
+    cleanupIds.events.push(r3Event.id);
 
     // Create contract via UI if possible
     await page.goto(`${APP}/contracts/new?clientId=${r3Client!.id}&eventId=${r3Event!.id}`, {
