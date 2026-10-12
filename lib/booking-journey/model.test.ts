@@ -198,7 +198,7 @@ describe("Booking Journey derivation", () => {
     assert.equal(j.secondaryLabel, "Start a new proposal");
   });
 
-  it("14. offer-only normal workflow stays proposal-first without a withdrawn proposal", () => {
+  it("14. offer-only stays proposal-first until a venue package is selected; then Create contract", () => {
     const start = buildBookingJourney({
       leadId: "lead-1",
       selection: null,
@@ -211,9 +211,14 @@ describe("Booking Journey derivation", () => {
     assert.equal(start.primaryAction, "create_proposal");
     assert.equal(start.secondaryAction, undefined);
 
+    const venueSel = selection({ proposalId: null, status: "draft" });
+    assert.equal(
+      isVenueManualTakeover({ proposal: null, selection: venueSel, contract: null }),
+      true,
+    );
     const pathB = buildBookingJourney({
       leadId: "lead-1",
-      selection: selection(),
+      selection: venueSel,
       proposal: null,
       contract: null,
       paymentLines: [],
@@ -221,9 +226,19 @@ describe("Booking Journey derivation", () => {
       planningStarted: false,
       prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
     });
-    assert.equal(pathB.primaryAction, "send_offer");
-    assert.notEqual(pathB.primaryAction, "create_contract");
-    assert.equal(pathB.secondaryAction, undefined);
+    assert.equal(pathB.primaryAction, "create_contract");
+    assert.equal(pathB.primaryLabel, "Create contract");
+    assert.equal(pathB.secondaryAction, "create_proposal");
+    assert.equal(pathB.secondaryLabel, "Start a new proposal");
+    assert.equal(
+      canCreateContract({
+        selection: venueSel,
+        proposal: null,
+        contract: null,
+        prefs: { ...DEFAULT_COMMERCIAL_BOOKING_PREFS, agreementMethod: "offer" },
+      }),
+      true,
+    );
   });
 
   it("15. couple-approved proposal is not takeover; Create contract is the next step", () => {
@@ -260,7 +275,7 @@ describe("Booking Journey derivation", () => {
     assert.doesNotMatch(j.direction, /Collect the .* deposit/i);
   });
 
-  it("after package selected offers share link / Create contract", () => {
+  it("after package selected Create contract is primary; new proposal stays secondary", () => {
     const j = buildBookingJourney({
       leadId: "lead-1",
       clientId: "client-1",
@@ -271,11 +286,11 @@ describe("Booking Journey derivation", () => {
       planningStarted: false,
     });
     assert.equal(j.currentKey, "agreement");
-    assert.equal(j.primaryAction, "send_offer");
-    assert.equal(j.primaryLabel, "Create share link");
-    assert.equal(j.secondaryLabel, "Create contract");
-    assert.equal(j.secondaryAction, "create_contract");
-    assert.match(j.secondaryHref ?? "", /selectionId=sel-1/);
+    assert.equal(j.primaryAction, "create_contract");
+    assert.equal(j.primaryLabel, "Create contract");
+    assert.match(j.primaryHref ?? "", /selectionId=sel-1/);
+    assert.equal(j.secondaryAction, "create_proposal");
+    assert.equal(j.secondaryLabel, "Start a new proposal");
   });
 
   it("Create contract remains available without an existing client id", () => {
@@ -287,8 +302,8 @@ describe("Booking Journey derivation", () => {
       portalInvited: false,
       planningStarted: false,
     });
-    assert.equal(j.secondaryAction, "create_contract");
-    assert.match(j.secondaryHref ?? "", /leadId=lead-1/);
+    assert.equal(j.primaryAction, "create_contract");
+    assert.match(j.primaryHref ?? "", /leadId=lead-1/);
   });
 
   it("manual takeover is not a couple acceptance and is not commercial-complete", () => {

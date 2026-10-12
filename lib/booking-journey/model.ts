@@ -167,18 +167,22 @@ function paymentsHref(input: JourneyInputs, selection: CommercialSelection | nul
 }
 
 /**
- * Continue manually → withdraw → venue-selected package → no contract.
- * Scoped takeover: Create contract is the continuation even for offer-only venues.
- * Does not apply to couple-approved selections (proposal_id set).
+ * Venue-authored package path: Create contract without client proposal acceptance.
+ * Covers (1) never offered a proposal, and (2) Continue manually → withdrawn proposal.
+ * Outstanding sent/selected proposals must be withdrawn first. Couple-selected
+ * packages (proposal_id set) use the accepted/approved path instead.
  */
 export function isVenueManualTakeover(input: {
   proposal?: JourneyProposal | null;
   selection: CommercialSelection | null;
   contract: JourneyContract | null;
 }): boolean {
-  if (input.proposal?.status !== "withdrawn") return false;
+  const status = input.proposal?.status;
+  if (status === "sent" || status === "selected") return false;
   if (!input.selection || input.selection.status === "superseded") return false;
   if (input.selection.proposalId) return false;
+  // Couple-accepted packages keep the acceptance branch (copy + gating).
+  if (input.selection.status === "accepted") return false;
   if (input.contract) return false;
   return true;
 }
