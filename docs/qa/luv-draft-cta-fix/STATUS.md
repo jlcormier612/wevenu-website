@@ -4,7 +4,8 @@
 
 **Prior tip (insufficient):** `73060291cfe5a29ea920f4ce765b14b55ff0a25f` — matrix GREEN under old criteria; live Oct 12 screenshot still showed duplicate Noticed + interest/silence contradiction. **Do not treat 73060291 as product GREEN.**
 
-**This assignment tip:** _(filled after commit)_  
+**This assignment tip:** `ef36871baf533b05fc638868011eed580bec1051`  
+
 
 ## Root causes (this pass)
 
