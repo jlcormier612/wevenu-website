@@ -59,7 +59,7 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "additional_items_summary", label: "Additional Items", description: "Additional / optional items already on the order" },
   { key: "payment_schedule_summary", label: "Payment Schedule", description: "Payment plan lines on file when a schedule exists" },
   { key: "contract_total", label: "Contract Total", description: "Total contracted / selected package amount" },
-  { key: "balance_remaining", label: "Balance Remaining", description: "Remaining balance from the payment plan, or selected amount minus deposit" },
+  { key: "balance_remaining", label: "Balance Remaining", description: "Contracted total minus actual qualifying payments received (configured deposits do not reduce this until paid)" },
   { key: "today_date", label: "Today's Date", description: "Date the agreement is generated" },
   { key: "contract_title", label: "Contract Title", description: "Title of this agreement" },
 ];

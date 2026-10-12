@@ -35,9 +35,10 @@ describe("resolveActiveCommercialSelection wiring", () => {
     const src = readFileSync(join(root, "lib/contracts/service.ts"), "utf8");
     assert.match(src, /if \(!packageFromSelection\)/);
     assert.match(src, /contractTotal = fmt\(detail\.totalAmount\)/);
-    // Selection remaining seeds balance; schedule remaining overrides when a plan exists.
-    assert.match(src, /remainingAmount\(selection\.totalAmount/);
-    assert.match(src, /balanceRemaining = formatBalanceRemaining\(totals\.remaining\)/);
+    // Balance = contracted total − payments received; configured deposit is never treated as paid.
+    assert.match(src, /contractDocumentBalanceRemaining/);
+    assert.doesNotMatch(src, /remainingAmount\(selection\.totalAmount/);
+    assert.match(src, /paymentsReceived: totals\.paid/);
   });
 
   it("ensureCommercialCustomer resolves superseded selection ids", () => {

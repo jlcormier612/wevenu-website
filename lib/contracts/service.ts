@@ -32,7 +32,7 @@ import {
 } from "@/lib/contracts/ceremony-reception-merge";
 import { pickPaymentScheduleForBooking } from "@/lib/contracts/payment-schedule-merge";
 import { getSpaces } from "@/lib/availability/service";
-import { remainingAmount } from "@/lib/commercial-selections/constants";
+import { contractDocumentBalanceRemaining } from "@/lib/contracts/balance-remaining";
 import { getEventIdForClient } from "@/lib/events/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getQuestionnaire } from "@/lib/events/questionnaire";
@@ -562,6 +562,8 @@ export async function buildContractMergeData(opts: {
   let paymentScheduleSummary = MISSING_PAYMENT_SCHEDULE;
   let contractTotal: string | null = null;
   let balanceRemaining: string | null = null;
+  /** Numeric contracted total for balance math (selection wins over schedule total). */
+  let contractedTotalAmount: number | null = null;
   let coordinatorName: string | null = null;
   let packageFromSelection = false;
   let ceremonySpaceLabel: string | null = null;
@@ -576,8 +578,9 @@ export async function buildContractMergeData(opts: {
   const relationshipBooked = Boolean(event?.bookedAt);
 
   // Prefer frozen Selected Package (Booking Journey) over Event Order for package merge fields.
-  // Financial SoT for total / deposit / remaining when no payment schedule exists:
-  // commercial_selections.total_amount and deposit_amount (same numbers as formatPackageSection).
+  // Financial SoT for contracted total: commercial_selections.total_amount.
+  // Balance remaining is contracted total minus actual qualifying payments — never a
+  // configured depositAmount (that is a payment-plan allocation, not money received).
   try {
     const { resolveActiveCommercialSelection } =
       await import("@/lib/commercial-selections/service");
@@ -602,10 +605,15 @@ export async function buildContractMergeData(opts: {
           .join("\n");
       }
       // Final agreed total (package − discount + exclusive tax), not package alone.
+      contractedTotalAmount = selection.totalAmount;
       contractTotal = formatContractTotalAmount(selection.totalAmount);
-      // Remaining after deposit allocation — deposit does not change the agreed total.
+      // No qualifying payments yet on this path — full balance remains.
+      // depositAmount must not reduce balance_remaining.
       balanceRemaining = formatBalanceRemaining(
-        remainingAmount(selection.totalAmount, selection.depositAmount ?? 0),
+        contractDocumentBalanceRemaining({
+          contractedTotal: selection.totalAmount,
+          paymentsReceived: 0,
+        }),
       );
     }
   } catch { /* selection optional */ }
@@ -824,12 +832,19 @@ export async function buildContractMergeData(opts: {
           })
           .join("\n");
         const totals = computePortalScheduleTotals(detail.lineItems);
-        // Payment schedule remaining overrides selection projection once a plan exists
-        // (includes paid line status from the authoritative schedule totals).
-        balanceRemaining = formatBalanceRemaining(totals.remaining);
         if (!packageFromSelection) {
+          contractedTotalAmount = detail.totalAmount;
           contractTotal = fmt(detail.totalAmount);
         }
+        // Authoritative balance: contracted total − net retained collections.
+        // Planned / unpaid installments (including a configured deposit) do not reduce balance.
+        const contracted = contractedTotalAmount ?? detail.totalAmount;
+        balanceRemaining = formatBalanceRemaining(
+          contractDocumentBalanceRemaining({
+            contractedTotal: contracted,
+            paymentsReceived: totals.paid,
+          }),
+        );
       }
     }
   } catch { /* optional */ }

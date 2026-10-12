@@ -735,7 +735,7 @@ export function EventDetail({
               (() => {
                 const preferredId = eventSetup.inheritedTemplateRefs?.defaultFloorPlanTemplateId;
                 if (!preferredId) return floorPlanOffers.find((o) => o.isOffered)?.templateName ?? null;
-                return floorPlanOffers.find((o) => o.templateId === preferredId)?.templateName
+                return floorPlanOffers.find((o) => o.floorPlanTemplateId === preferredId)?.templateName
                   ?? floorPlanTemplates.find((t) => t.id === preferredId)?.name
                   ?? null;
               })()

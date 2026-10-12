@@ -10,6 +10,7 @@ import {
   formatPackageSection,
   remainingAmount,
 } from "@/lib/commercial-selections/constants";
+import { contractDocumentBalanceRemaining } from "@/lib/contracts/balance-remaining";
 import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
 import {
   formatBalanceRemaining,
@@ -24,11 +25,12 @@ import {
 import { WEDDING_VENUE_AGREEMENT_CONTENT } from "@/lib/contracts/starters";
 
 describe("balance / package Remaining consistency", () => {
-  it("selection total + deposit → same currency for Remaining and balance_remaining", () => {
+  it("configured deposit is payment allocation; balance_remaining stays full until paid", () => {
     const total = 15000;
     const deposit = 3750;
-    const remaining = remainingAmount(total, deposit);
-    assert.equal(remaining, 11250);
+    // Schedule allocation math (package section) — not money received.
+    const afterDepositAllocation = remainingAmount(total, deposit);
+    assert.equal(afterDepositAllocation, 11250);
 
     const packageSection = formatPackageSection("Garden Package", total, [], {
       packageAmount: total,
@@ -40,8 +42,11 @@ describe("balance / package Remaining consistency", () => {
     assert.match(packageSection, /Deposit \(payment allocation\): \$3750\.00/);
     assert.match(packageSection, /Remaining after deposit: \$11250\.00/);
 
-    const balance = formatBalanceRemaining(remaining);
-    assert.equal(balance, "$11,250.00");
+    // Document balance remaining must not treat the configured deposit as received.
+    const balance = formatBalanceRemaining(
+      contractDocumentBalanceRemaining({ contractedTotal: total, paymentsReceived: 0 }),
+    );
+    assert.equal(balance, "$15,000");
 
     const data = buildMergeData({
       venueName: "Jen's Fancy Venue",
@@ -57,8 +62,9 @@ describe("balance / package Remaining consistency", () => {
       paymentScheduleSummary: MISSING_PAYMENT_SCHEDULE,
     });
 
-    assert.equal(data.contract_total, "$15,000.00");
-    assert.equal(data.balance_remaining, "$11,250.00");
+    assert.equal(data.contract_total, "$15,000");
+    assert.equal(data.balance_remaining, "$15,000");
+    assert.notEqual(data.balance_remaining, "$11,250");
     assert.notEqual(data.balance_remaining, MISSING_BALANCE_REMAINING);
 
     const body = mergeContent(
@@ -66,7 +72,7 @@ describe("balance / package Remaining consistency", () => {
       data,
     );
     assert.match(body, /Remaining after deposit: \$11250\.00/);
-    assert.match(body, /\$11,250\.00/);
+    assert.match(body, /BALANCE\n\$15,000/);
     assert.doesNotMatch(body, /Balance remaining is not listed yet/);
     assert.doesNotMatch(body, /\{\{/);
   });
@@ -97,7 +103,7 @@ describe("balance / package Remaining consistency", () => {
       packageSection: formatPackageSection("Garden", 15000, [], { depositAmount: 3750 }),
       balanceRemaining: formatBalanceRemaining(5000), // schedule says more paid
     });
-    assert.equal(data.balance_remaining, "$5,000.00");
+    assert.equal(data.balance_remaining, "$5,000");
   });
 });
 
@@ -128,7 +134,7 @@ describe("starter catalog hygiene", () => {
     const merged = mergeContent(WEDDING_VENUE_AGREEMENT_CONTENT, data);
     assert.equal((merged.match(/^Balance remaining$/gm) ?? []).length, 1);
     assert.doesNotMatch(merged, /Balance remaining \(confirmation\)/);
-    assert.match(merged, /Balance remaining\n\$24,000\.00/);
+    assert.match(merged, /Balance remaining\n\$24,000/);
   });
 
   it("detects polluted starter content", () => {

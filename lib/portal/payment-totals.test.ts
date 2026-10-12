@@ -34,6 +34,24 @@ describe("computePortalScheduleTotals — refund-net + cancelled", () => {
     assert.equal(t.paid, 0);
     assert.equal(t.remaining, 3200);
   });
+
+  it("counts partially_paid collections toward paid", () => {
+    const t = computePortalScheduleTotals([
+      { amount: 8750, status: "partially_paid", paidAmount: 4000 },
+      { amount: 26250, status: "pending" },
+    ]);
+    assert.equal(t.paid, 4000);
+    assert.equal(t.remaining, 31000);
+  });
+
+  it("does not treat pending deposit as paid", () => {
+    const t = computePortalScheduleTotals([
+      { amount: 8750, status: "pending", paidAmount: 0 },
+      { amount: 26250, status: "pending", paidAmount: 0 },
+    ]);
+    assert.equal(t.paid, 0);
+    assert.equal(t.remaining, 35000);
+  });
 });
 
 describe("remainingBalanceFromSchedules", () => {
