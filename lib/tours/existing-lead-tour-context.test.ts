@@ -74,10 +74,16 @@ describe("existing-lead tour preferred event date", () => {
   it("Calendar and lead surfaces distinguish general tour link vs personal scheduling link", () => {
     const calendar = readFileSync(resolve("components/calendar/share-tour-availability.tsx"), "utf8");
     assert.match(calendar, /calendar-tour-link-lead-guidance/);
-    assert.match(calendar, /Copy scheduling link/);
+    assert.match(
+      calendar,
+      /Already working with someone\? Use the personalized scheduling link that resides in their\s+lead record, under &apos;Follow-up&apos;\. That will preserve any preferred date holds and\s+other previously gathered information\./,
+    );
     const panel = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
     assert.match(panel, /lead-scheduling-link-guidance/);
-    assert.match(panel, /Copy tour link/);
+    assert.match(
+      panel,
+      /Use this personalized scheduling link for this lead\. The Calendar page&apos;s\{\" \"\}\s*<span className="font-medium text-foreground">Copy tour link<\/span> is a general link for new\s+prospects only\./,
+    );
   });
 
   it("book_public_tour_for_lead copies lead.event_date onto the appointment and never updates leads", () => {

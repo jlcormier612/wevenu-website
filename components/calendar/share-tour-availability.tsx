@@ -47,10 +47,9 @@ export function ShareTourAvailability({ url }: { url: string | null }) {
             availability always applies.
           </p>
           <p className="mt-2 text-xs text-muted-foreground" data-testid="calendar-tour-link-lead-guidance">
-            Already working with someone — especially if you placed a hold on their preferred event
-            date? Open that lead and use <span className="font-medium text-foreground">Copy scheduling link</span>{" "}
-            instead. That personal link keeps their preferred date and hold so they can book a tour
-            without picking the held date again.
+            Already working with someone? Use the personalized scheduling link that resides in their
+            lead record, under &apos;Follow-up&apos;. That will preserve any preferred date holds and
+            other previously gathered information.
           </p>
         </>
       ) : (

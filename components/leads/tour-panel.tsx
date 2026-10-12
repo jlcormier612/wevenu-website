@@ -556,9 +556,9 @@ export function TourScheduleActions({
       </div>
       {includeCopyLink ? (
         <p className="text-[11px] text-muted-foreground max-w-md" data-testid="lead-scheduling-link-guidance">
-          Use this personal link for this lead — including when their preferred event date is on hold.
-          The Calendar page&apos;s <span className="font-medium text-foreground">Copy tour link</span> is a
-          general link for new prospects only.
+          Use this personalized scheduling link for this lead. The Calendar page&apos;s{" "}
+          <span className="font-medium text-foreground">Copy tour link</span> is a general link for new
+          prospects only.
         </p>
       ) : null}
     </div>

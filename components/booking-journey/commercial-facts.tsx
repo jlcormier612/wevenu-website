@@ -134,130 +134,143 @@ export function CommercialFacts({
         </div>
       ) : null}
 
-      <ul className="mt-4 divide-y divide-border">
-        {rows.map((row) => (
-          <li key={row.key} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-heading">{row.title}</p>
-              <p className="text-sm text-heading">{row.state}</p>
-              {row.detail ? (
-                <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{row.detail}</p>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {row.key === "package" && !selection && proposalWithdrawn ? (
-                <Button type="button" size="sm" onClick={onSelectPackage}>
-                  Select package
-                </Button>
-              ) : null}
-              {row.key === "package" && selection ? (
-                <Button type="button" size="sm" variant="outline" onClick={onSelectPackage}>
-                  View / Change package
-                </Button>
-              ) : null}
-              {row.key === "package" && selection && onEditFinancialTerms
-                && selection.status === "draft" && !selection.invoiceId && !selection.contractId ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={onEditFinancialTerms}
-                  data-testid="edit-invoice-adjustments"
-                >
-                  Tax &amp; discount
-                </Button>
-              ) : null}
-              {row.key === "package" && selection && onEditFinancialTerms
-                && (selection.invoiceId || selection.contractId || selection.status !== "draft") ? (
-                <p className="basis-full text-xs text-muted-foreground" data-testid="invoice-adjustments-locked-hint">
-                  Tax and discount for this Selected Package were set under Tax &amp; discount before the contract or invoice.
-                  On a draft invoice, add Tax or Discount line items when those options are enabled in Settings.
-                </p>
-              ) : null}
-              {row.key === "package" && selection && !proposal && allowOffer && selection.status !== "accepted" ? (
-                <Button type="button" size="sm" onClick={onCreateShareLink}>
-                  Create share link
-                </Button>
-              ) : null}
-              {row.key === "package" && selection?.acceptToken && !proposal ? (
-                <Button type="button" size="sm" variant="outline" onClick={onCopyShareLink}>
-                  Copy share link
-                </Button>
-              ) : null}
-              {row.key === "package" && selection && !proposal ? (
-                <Button type="button" size="sm" variant="outline" onClick={onPreviewProposal}>
-                  Preview
-                </Button>
-              ) : null}
+      <ul className="mt-4 divide-y divide-border" data-testid="booking-details-rows">
+        {rows.map((row) => {
+          const showLockedTaxHint =
+            row.key === "package"
+            && selection
+            && onEditFinancialTerms
+            && (selection.invoiceId || selection.contractId || selection.status !== "draft");
+          return (
+          <li key={row.key} className="flex flex-col gap-2 py-3" data-testid={`booking-details-row-${row.key}`}>
+            {/*
+              Keep facts and actions in separate flex children. Do not put long
+              helper copy inside the shrink-0 action column — basis-full text
+              there crushed the package details into a narrow left column.
+            */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1" data-testid={row.key === "package" ? "booking-details-package-facts" : undefined}>
+                <p className="text-sm font-medium text-heading">{row.title}</p>
+                <p className="text-sm text-heading">{row.state}</p>
+                {row.detail ? (
+                  <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{row.detail}</p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[min(100%,20rem)] sm:justify-end">
+                {row.key === "package" && !selection && proposalWithdrawn ? (
+                  <Button type="button" size="sm" onClick={onSelectPackage}>
+                    Select package
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection ? (
+                  <Button type="button" size="sm" variant="outline" onClick={onSelectPackage}>
+                    View / Change package
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection && onEditFinancialTerms
+                  && selection.status === "draft" && !selection.invoiceId && !selection.contractId ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={onEditFinancialTerms}
+                    data-testid="edit-invoice-adjustments"
+                  >
+                    Tax &amp; discount
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection && !proposal && allowOffer && selection.status !== "accepted" ? (
+                  <Button type="button" size="sm" onClick={onCreateShareLink}>
+                    Create share link
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection?.acceptToken && !proposal ? (
+                  <Button type="button" size="sm" variant="outline" onClick={onCopyShareLink}>
+                    Copy share link
+                  </Button>
+                ) : null}
+                {row.key === "package" && selection && !proposal ? (
+                  <Button type="button" size="sm" variant="outline" onClick={onPreviewProposal}>
+                    Preview
+                  </Button>
+                ) : null}
 
-              {row.key === "proposal" && proposal ? (
-                <>
-                  {onCreateProposal && (proposal.status === "draft" || proposal.status === "superseded") ? (
-                    <Button type="button" size="sm" onClick={onCreateProposal}>
-                      {proposal.status === "draft" ? "Continue proposal" : "Create proposal"}
-                    </Button>
-                  ) : null}
-                  {proposal.acceptToken && !proposalWithdrawn ? (
-                    <Button type="button" size="sm" variant="outline" onClick={copyProposalLink}>
-                      Copy proposal link
-                    </Button>
-                  ) : null}
-                  {proposalWithdrawn ? (
-                    <p className="self-center text-xs text-muted-foreground">Link no longer active</p>
-                  ) : null}
-                  {proposalWithdrawn && onCreateProposal && allowOffer ? (
-                    <Button type="button" size="sm" variant="ghost" onClick={onCreateProposal}>
-                      {selection ? "Start a new proposal" : "Create proposal"}
-                    </Button>
-                  ) : null}
-                  {onResendProposalEmail && (proposal.status === "sent" || proposal.status === "selected") ? (
-                    <Button type="button" size="sm" variant="outline" onClick={onResendProposalEmail}>
-                      Resend proposal email
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
+                {row.key === "proposal" && proposal ? (
+                  <>
+                    {onCreateProposal && (proposal.status === "draft" || proposal.status === "superseded") ? (
+                      <Button type="button" size="sm" onClick={onCreateProposal}>
+                        {proposal.status === "draft" ? "Continue proposal" : "Create proposal"}
+                      </Button>
+                    ) : null}
+                    {proposal.acceptToken && !proposalWithdrawn ? (
+                      <Button type="button" size="sm" variant="outline" onClick={copyProposalLink}>
+                        Copy proposal link
+                      </Button>
+                    ) : null}
+                    {proposalWithdrawn ? (
+                      <p className="self-center text-xs text-muted-foreground">Link no longer active</p>
+                    ) : null}
+                    {proposalWithdrawn && onCreateProposal && allowOffer ? (
+                      <Button type="button" size="sm" variant="ghost" onClick={onCreateProposal}>
+                        {selection ? "Start a new proposal" : "Create proposal"}
+                      </Button>
+                    ) : null}
+                    {onResendProposalEmail && (proposal.status === "sent" || proposal.status === "selected") ? (
+                      <Button type="button" size="sm" variant="outline" onClick={onResendProposalEmail}>
+                        Resend proposal email
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
 
-              {row.key === "contract" && showCreateContract && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={createContractPrimary ? "default" : "outline"}
-                  disabled={contractPending}
-                  onClick={onCreateContract}
-                >
-                  {contractPending ? "Preparing…" : "Create contract"}
-                </Button>
-              )}
-              {row.key === "contract" && journey.contract && (
-                <Button type="button" size="sm" variant="outline" render={<Link href={`/contracts/${journey.contract.id}`} />}>
-                  {journey.contract.status === "draft" ? "Preview and send" : "Open contract"}
-                </Button>
-              )}
-              {row.key === "payment_plan" && selection && activePaymentLines.length === 0 && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={onSetupPayments}
-                  data-testid="setup-payments"
-                >
-                  Set up payments
-                </Button>
-              )}
-              {row.key === "payment_plan" && selection?.invoiceId && activePaymentLines.length > 0 && (
-                <Button type="button" size="sm" variant="outline" render={<Link href={appendInvoiceReturnTo(`/invoices/${selection.invoiceId}`, invoiceReturnTo) ?? `/invoices/${selection.invoiceId}`} />}>
-                  {journey.paymentRequestSent ? "Open invoice" : "Preview and send"}
-                </Button>
-              )}
-              {row.key === "deposit" && depositDue && journey.prefs.paymentCollection !== "online" && (
-                <Button type="button" size="sm" variant="outline" onClick={onRecordDeposit}>
-                  Record deposit received
-                </Button>
-              )}
+                {row.key === "contract" && showCreateContract && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={createContractPrimary ? "default" : "outline"}
+                    disabled={contractPending}
+                    onClick={onCreateContract}
+                  >
+                    {contractPending ? "Preparing…" : "Create contract"}
+                  </Button>
+                )}
+                {row.key === "contract" && journey.contract && (
+                  <Button type="button" size="sm" variant="outline" render={<Link href={`/contracts/${journey.contract.id}`} />}>
+                    {journey.contract.status === "draft" ? "Preview and send" : "Open contract"}
+                  </Button>
+                )}
+                {row.key === "payment_plan" && selection && activePaymentLines.length === 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={onSetupPayments}
+                    data-testid="setup-payments"
+                  >
+                    Set up payments
+                  </Button>
+                )}
+                {row.key === "payment_plan" && selection?.invoiceId && activePaymentLines.length > 0 && (
+                  <Button type="button" size="sm" variant="outline" render={<Link href={appendInvoiceReturnTo(`/invoices/${selection.invoiceId}`, invoiceReturnTo) ?? `/invoices/${selection.invoiceId}`} />}>
+                    {journey.paymentRequestSent ? "Open invoice" : "Preview and send"}
+                  </Button>
+                )}
+                {row.key === "deposit" && depositDue && journey.prefs.paymentCollection !== "online" && (
+                  <Button type="button" size="sm" variant="outline" onClick={onRecordDeposit}>
+                    Record deposit received
+                  </Button>
+                )}
+              </div>
             </div>
+            {showLockedTaxHint ? (
+              <p className="text-xs text-muted-foreground leading-relaxed" data-testid="invoice-adjustments-locked-hint">
+                Tax and discount for this Selected Package were set under Tax &amp; discount before the contract or invoice.
+                On a draft invoice, add Tax or Discount line items when those options are enabled in Settings.
+              </p>
+            ) : null}
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {waitingOnCouple && onWithdrawProposal ? (
