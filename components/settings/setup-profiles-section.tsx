@@ -105,7 +105,8 @@ function sanitizeRefsAgainstLibrary(
       refs.eventOrderTemplateId && eventOrderIds.has(refs.eventOrderTemplateId)
         ? refs.eventOrderTemplateId
         : null,
-    requiredVendorIds: (refs.requiredVendorIds ?? []).filter((id) => vendorIds.has(id)),
+    // Dead Setup Profile requiredVendorIds — never persist; required vendors live in Vendor Network.
+    requiredVendorIds: [],
     recommendedVendorIds: (refs.recommendedVendorIds ?? []).filter((id) => vendorIds.has(id)),
   };
 }
@@ -265,7 +266,10 @@ export function SetupProfilesSection({
             They do not lock the client or your team into only what you pick here.
           </p>
           <p className="text-sm text-muted-foreground">
-            Once you&apos;re happy with your setup, use <span className="font-medium text-heading">Invite to portal</span> from the client&apos;s event to invite them.
+            Once you&apos;re happy with your setup, use{" "}
+            <span className="font-medium text-heading">Invite client to workspace</span>
+            {" "}
+            from the client&apos;s event to invite them.
           </p>
         </div>
         {canEdit && !draft ? (
@@ -534,15 +538,20 @@ function CapabilityDefaults({
   if (step === "vendors") {
     const recommended = refs.recommendedVendorIds ?? [];
     return (
-      <div className="space-y-3" data-testid="setup-profile-vendors">
-        <fieldset className="space-y-1">
-          <legend className="text-sm font-medium text-heading">Recommended vendors for the client</legend>
+      <div className="space-y-4" data-testid="setup-profile-vendors">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-heading">Vendor directory</p>
           <p className="text-xs text-muted-foreground">
-            Vendors from your library to recommend to the client. When the event is booked, these appear as recommendations the client can review.
-            Your team can add or remove recommendations on the event later.
+            Eligible vendors from your Vendor Network are available for client discovery by default
+            when you invite the client. You do not need to select every vendor here.
           </p>
+        </div>
+        <fieldset className="space-y-1">
+          <legend className="text-sm font-medium text-heading">Optional recommendations</legend>
           <p className="text-xs text-muted-foreground">
-            Required vendors are managed in your Vendor Network and are automatically applied to events when they&apos;re booked.
+            Optionally highlight specific vendors for this event type. Leave unchecked to keep the
+            full eligible directory available without special recommendations. An empty list here
+            does not hide the directory from the client.
           </p>
           {vendors.length === 0 ? (
             <p className="text-sm text-muted-foreground">No vendors in the library yet.</p>
@@ -559,6 +568,14 @@ function CapabilityDefaults({
             ))
           )}
         </fieldset>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-heading">Required vendors</p>
+          <p className="text-xs text-muted-foreground">
+            Required vendors are managed in Vendor Network (including the existing required setting)
+            and are automatically assigned when an event is booked. They are separate from optional
+            recommendations and are not selected here.
+          </p>
+        </div>
       </div>
     );
   }

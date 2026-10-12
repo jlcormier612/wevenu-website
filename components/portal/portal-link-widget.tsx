@@ -28,11 +28,14 @@ export function PortalLinkWidget({
   clientId,
   coupleName,
   primaryEmail = null,
+  inviteLabel = "Invite client to workspace",
 }: {
   clientId: string;
   coupleName: string;
   /** `clients.email` — initial invitation destination only. Not written back. */
   primaryEmail?: string | null;
+  /** Primary CTA when no invitation exists yet. */
+  inviteLabel?: string;
 }) {
   const [invitation, setInvitation] = React.useState<ClientInvitation | null>(null);
   const [grants, setGrants] = React.useState<SupportAccessGrant[]>([]);
@@ -109,33 +112,39 @@ export function PortalLinkWidget({
       {!invitation || invitation.status === "revoked" ? (
         <div className="rounded-xl border border-dashed border-border p-4 space-y-3">
           <div>
-            <p className="text-sm font-medium text-heading">No account yet</p>
+            <p className="text-sm font-medium text-heading">Not invited</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Invite {coupleName} to create their own account and own their planning workspace.
+              Invite {coupleName} to create or access their account and open the planning tools
+              and materials made available for this event.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input type="email" value={email}
-              onChange={(e) => setEmail(e.target.value)} className="h-9" />
+              onChange={(e) => setEmail(e.target.value)} className="h-9 min-w-[12rem] flex-1" />
             <Button type="button" size="sm" onClick={handleInvite} disabled={inviting}>
-              {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Invite"}
+              {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : inviteLabel}
             </Button>
           </div>
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-sm font-medium text-heading">{invitation.email}</p>
               <p className="text-xs text-muted-foreground">
                 {invitation.status === "accepted"
-                  ? `Account created${invitation.acceptedAt ? ` ${new Date(invitation.acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`
+                  ? `Accepted${invitation.acceptedAt ? ` · ${new Date(invitation.acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`
                   : "Invitation sent · awaiting account creation"}
               </p>
             </div>
             {invitation.status === "pending" && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${ROSE}18`, color: "#8A4B4F" }}>
-                Pending
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: `${ROSE}18`, color: "#8A4B4F" }}>
+                Invitation sent
+              </span>
+            )}
+            {invitation.status === "accepted" && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: `${ROSE}18`, color: "#8A4B4F" }}>
+                Accepted
               </span>
             )}
           </div>

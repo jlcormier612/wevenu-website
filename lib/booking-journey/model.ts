@@ -456,7 +456,7 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       ? `${formatCurrency(remaining)} remains on the payment plan. `
       : "";
     direction = `Commercial steps are ready. ${paidNote}${remainNote}Mark them Booked when you're ready, then invite them to the portal and start planning — optional if they won't use planning.`;
-    primaryLabel = input.portalInvited ? "Start planning" : "Invite to portal";
+    primaryLabel = input.portalInvited ? "Start planning" : "Invite client to workspace";
     primaryHref = input.clientId
       ? input.portalInvited
         ? (input.eventId ? `/events/${input.eventId}` : `/clients/${input.clientId}`)

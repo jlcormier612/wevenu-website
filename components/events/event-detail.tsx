@@ -717,12 +717,39 @@ export function EventDetail({
             spaceId={event.spaceId}
             eventStartTime={event.startTime}
             hasTimeline={(event.timeline ?? []).length > 0}
+            timelineItemCount={(event.timeline ?? []).length}
             state={eventSetup}
             applicableSteps={applicableSetupSteps}
             playbookTemplates={playbookTemplates}
             playbookApplications={playbookApplications}
             readinessByKind={readinessByKind}
             timelineTemplates={timelineTemplates}
+            questionnaires={(questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])).map((q) => ({
+              kind: q.kind,
+              status: q.status,
+              templateId: q.templateId ?? null,
+            }))}
+            vendorRecommendationCount={vendorRecommendations.length}
+            floorPlanOfferCount={floorPlanOffers.filter((o) => o.isOffered).length}
+            preferredFloorPlanName={
+              (() => {
+                const preferredId = eventSetup.inheritedTemplateRefs?.defaultFloorPlanTemplateId;
+                if (!preferredId) return floorPlanOffers.find((o) => o.isOffered)?.templateName ?? null;
+                return floorPlanOffers.find((o) => o.templateId === preferredId)?.templateName
+                  ?? floorPlanTemplates.find((t) => t.id === preferredId)?.name
+                  ?? null;
+              })()
+            }
+            hasEventInventory={Boolean(eventInventory)}
+            eventOrder={eventOrder ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt, templateId: eventOrder.templateId ?? null } : null}
+            templateNames={{
+              planning: playbookTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.planningPlaybookTemplateId)?.name
+                ?? playbookApplications.find((a) => a.kind === "client")?.templateName
+                ?? null,
+              timeline: timelineTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.timelineTemplateId)?.name ?? null,
+              inventory: inventoryTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.inventoryTemplateId)?.name ?? null,
+              eventOrder: eventOrderTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.eventOrderTemplateId)?.name ?? null,
+            }}
             onNavigateTab={(tab) => {
               setActiveTab(tab);
               window.location.hash = tab;

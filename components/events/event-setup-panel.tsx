@@ -16,19 +16,32 @@ import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  SETUP_PRESENTATION_LABEL,
+  SETUP_READINESS_LABEL,
+  setupReadinessDetail,
+  type EventOrderReadinessInput,
+  type QuestionnaireReadinessInput,
+} from "@/lib/event-setup/readiness-detail";
+import {
   effectiveDecisionMap,
   effectiveSetupDecision,
   setupDecisionCounts,
   setupDecisionsComplete,
   setupStepLabel,
-  setupStepPresentation,
   setupStepSource,
   type EventSetupState,
   type SetupStepKey,
 } from "@/lib/event-setup/state";
 import type { EventPlaybookApplication, EventReadiness, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 import type { TimelineTemplate } from "@/lib/timeline-templates/types";
+
+function readinessBadgeVariant(
+  status: keyof typeof SETUP_READINESS_LABEL,
+): "success" | "outline" | "warning" | "secondary" {
+  if (status === "included" || status === "shared") return "success";
+  if (status === "not_included") return "outline";
+  if (status === "draft") return "secondary";
+  return "warning";
+}
 
 export function EventSetupPanel({
   eventId,
@@ -41,12 +54,20 @@ export function EventSetupPanel({
   spaceId,
   eventStartTime,
   hasTimeline,
+  timelineItemCount = 0,
   state,
   applicableSteps,
   playbookTemplates,
   playbookApplications,
   readinessByKind,
   timelineTemplates,
+  questionnaires = [],
+  vendorRecommendationCount = 0,
+  floorPlanOfferCount = 0,
+  preferredFloorPlanName = null,
+  hasEventInventory = false,
+  eventOrder = null,
+  templateNames = { planning: null, timeline: null, inventory: null, eventOrder: null },
   onNavigateTab,
 }: {
   eventId: string;
@@ -59,12 +80,25 @@ export function EventSetupPanel({
   spaceId: string | null;
   eventStartTime: string | null;
   hasTimeline: boolean;
+  timelineItemCount?: number;
   state: EventSetupState;
   applicableSteps: SetupStepKey[];
   playbookTemplates: PlaybookTemplateWithStats[];
   playbookApplications: EventPlaybookApplication[];
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
   timelineTemplates: TimelineTemplate[];
+  questionnaires?: QuestionnaireReadinessInput[];
+  vendorRecommendationCount?: number;
+  floorPlanOfferCount?: number;
+  preferredFloorPlanName?: string | null;
+  hasEventInventory?: boolean;
+  eventOrder?: EventOrderReadinessInput | null;
+  templateNames?: {
+    planning: string | null;
+    timeline: string | null;
+    inventory: string | null;
+    eventOrder: string | null;
+  };
   onNavigateTab: (tab: string) => void;
 }) {
   const router = useRouter();
@@ -75,6 +109,7 @@ export function EventSetupPanel({
   const collapsed = Boolean(state.collapsedAt) && complete;
   const counts = setupDecisionCounts(applicableSteps, effective);
   const usingProfile = Boolean(state.usesProfile && state.profileName);
+  const inheritedRefs = state.inheritedTemplateRefs ?? {};
 
   function decide(step: SetupStepKey, decision: "set_up" | "skipped") {
     startTransition(async () => {
@@ -104,11 +139,20 @@ export function EventSetupPanel({
 
   if (collapsed) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
-        <p className="text-sm font-medium text-heading">Event setup complete</p>
-        <Button type="button" variant="outline" size="sm" onClick={reopen} disabled={pending}>
-          Show setup
-        </Button>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-sm font-medium text-heading">Event setup complete</p>
+          <Button type="button" variant="outline" size="sm" onClick={reopen} disabled={pending}>
+            Show setup
+          </Button>
+        </div>
+        {clientId ? (
+          <ClientWorkspaceInvite
+            clientId={clientId}
+            clientName={clientName}
+            clientEmail={clientEmail}
+          />
+        ) : null}
       </div>
     );
   }
@@ -122,7 +166,8 @@ export function EventSetupPanel({
             <>
               <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Most areas follow this venue&apos;s standard starting setup. Change an area only if this event is different.
+                This Setup Profile supplies your venue&apos;s normal starting setup for this event.
+                You can change anything for this event without updating the reusable profile.
               </p>
             </>
           ) : (
@@ -149,26 +194,34 @@ export function EventSetupPanel({
       <ul className="space-y-3">
         {applicableSteps.map((step) => {
           const decision = effectiveSetupDecision(state, step) ?? null;
-          const presentation = setupStepPresentation(decision);
           const source = setupStepSource(state, step);
           const inherited = state.inheritedDecisions?.[step];
-          const showChooser = presentation === "needs_decision" || changing === step;
+          const detail = setupReadinessDetail({
+            step,
+            decision,
+            inheritedRefs,
+            playbookApplications,
+            hasTimeline,
+            timelineItemCount,
+            questionnaires,
+            vendorRecommendationCount,
+            floorPlanOfferCount,
+            preferredFloorPlanName,
+            hasEventInventory,
+            eventOrder,
+            templateNames,
+          });
+          const showChooser = decision == null || changing === step;
           return (
             <li key={step} className="rounded-lg border border-border px-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-heading">{setupStepLabel(step)}</p>
-                  <Badge
-                    variant={
-                      presentation === "included"
-                        ? "success"
-                        : presentation === "skipped"
-                          ? "outline"
-                          : "warning"
-                    }
-                  >
-                    {SETUP_PRESENTATION_LABEL[presentation]}
-                    {source === "profile" && state.profileName ? ` · ${state.profileName}` : ""}
+                  <Badge variant={readinessBadgeVariant(detail.status)}>
+                    {SETUP_READINESS_LABEL[detail.status]}
+                    {source === "profile" && state.profileName && detail.status !== "not_included"
+                      ? ` · ${state.profileName}`
+                      : ""}
                     {source === "event" && state.usesProfile ? " · This event" : ""}
                   </Badge>
                 </div>
@@ -194,6 +247,7 @@ export function EventSetupPanel({
                   </div>
                 ) : null}
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">{detail.summary}</p>
               {decision === "set_up" ? (
                 <div className="mt-3">
                   <SetupTool
@@ -220,25 +274,51 @@ export function EventSetupPanel({
             </li>
           );
         })}
-        {clientId ? (
-          <li className="rounded-lg border border-border px-3 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-heading">Client portal</p>
-                <Badge variant="success">Always included</Badge>
-              </div>
-            </div>
-            <div className="mt-3">
-              <PortalLinkWidget
-                clientId={clientId}
-                coupleName={clientName?.trim() || "your client"}
-                primaryEmail={clientEmail}
-              />
-            </div>
-          </li>
-        ) : null}
       </ul>
+      {clientId ? (
+        <ClientWorkspaceInvite
+          clientId={clientId}
+          clientName={clientName}
+          clientEmail={clientEmail}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function ClientWorkspaceInvite({
+  clientId,
+  clientName,
+  clientEmail,
+}: {
+  clientId: string;
+  clientName: string | null;
+  clientEmail: string | null;
+}) {
+  return (
+    <div
+      className="rounded-lg border border-border px-3 py-3 space-y-3"
+      data-testid="client-workspace-invite"
+    >
+      <div>
+        <h3 className="text-sm font-medium text-heading">Your client&apos;s planning workspace</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your venue&apos;s setup provides the starting point for this event. Review what&apos;s ready,
+          finish any essentials, and invite your client to plan with you in one shared workspace.
+        </p>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Your client will receive an invitation to create or access their account and open the planning
+        tools and materials made available for this event. Drafts and other items that require a
+        separate send or share action will remain private until you share them.
+      </p>
+      <PortalLinkWidget
+        clientId={clientId}
+        coupleName={clientName?.trim() || "your client"}
+        primaryEmail={clientEmail}
+        inviteLabel="Invite client to workspace"
+      />
+    </div>
   );
 }
 

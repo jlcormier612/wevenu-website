@@ -158,7 +158,7 @@ const body = await page.locator("body").innerText();
 record("explanation-present", body.includes("Set up the client experience"), "top explanation heading");
 record("preset-copy", body.includes("preset in their client portal"), "preset portal copy");
 record("starting-choices", body.includes("starting choices"), "team can change later");
-record("invite-cta", body.includes("Invite to portal"), "exact booking-journey CTA wording");
+record("invite-cta", body.includes("Invite client to workspace"), "exact booking-journey CTA wording");
 record("no-skip-warning", !body.includes("cannot be skipped"), "no portal skip implementation warning");
 record("no-impl-jargon", !/template_refs|snapshotting|inheritance/i.test(body), "no internal jargon");
 record("no-additional-timelines", !body.includes("Additional available timelines"), "no second timeline list");
@@ -335,20 +335,20 @@ if (profile) {
 }
 
 // Invitation next step is explained on Setup Profile (exact booking-journey CTA).
-// Booking journey primary label remains "Invite to portal" in product code.
+// Booking journey primary label remains "Invite client to workspace" in product code.
 const bookingModel = (await import("node:fs")).readFileSync(
   "lib/booking-journey/model.ts",
   "utf8",
 );
 record(
   "invite-path-code",
-  bookingModel.includes('Invite to portal'),
+  bookingModel.includes("Invite client to workspace"),
   "booking journey primary CTA wording",
 );
 record(
   "invite-next-step-on-page",
   Boolean(out.checks.find((c) => c.name === "invite-cta" && c.pass)),
-  "Setup Profile points venue to Invite to portal on the client's event",
+  "Setup Profile points venue to Invite client to workspace on the client's event",
 );
 
 const moneyEmail = `moneyfmt-${Date.now()}@example.com`;

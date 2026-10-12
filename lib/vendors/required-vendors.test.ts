@@ -58,8 +58,11 @@ describe("required vendors are not Setup Profile requiredVendorIds", () => {
 
   it("Setup Profile no longer presents the dead team-expects-to-book list", () => {
     assert.doesNotMatch(setupSection, /Vendors your team expects to book/);
-    assert.match(setupSection, /Recommended vendors for the client/);
-    assert.match(setupSection, /Required vendors are managed in your Vendor Network/);
+    assert.match(setupSection, /Vendor directory/);
+    assert.match(setupSection, /available for client discovery by default/);
+    assert.match(setupSection, /Optional recommendations/);
+    assert.match(setupSection, /Required vendors/);
+    assert.match(setupSection, /Vendor Network/);
     // Vendors step must not offer a checkbox list that writes requiredVendorIds.
     const vendorsStep = setupSection.slice(setupSection.indexOf('step === "vendors"'));
     assert.doesNotMatch(vendorsStep, /patchRefs\(\{ requiredVendorIds/);
