@@ -205,21 +205,13 @@ async function main() {
       record("serving_commit", Boolean(out.servingSha), out.servingSha ?? "missing");
     }
 
-    // Open booking confirmation — Mark as Booked / Booked stage control
-    const markBooked = page.getByRole("button", { name: /mark as booked|book this|confirm booking|move to booked/i }).first();
-    const bookedStage = page.locator('[data-testid="sales-stage-booked"], button:has-text("Booked")').first();
-    if (await markBooked.isVisible().catch(() => false)) {
-      await markBooked.click();
-    } else if (await bookedStage.isVisible().catch(() => false)) {
-      await bookedStage.click();
-    } else {
-      // Pipeline stage select
-      const stage = page.getByTestId("lead-sales-stage").or(page.locator('select, [role="combobox"]').filter({ hasText: /stage|pipeline/i })).first();
-      if (await stage.isVisible().catch(() => false)) {
-        await stage.click();
-        await page.getByRole("option", { name: /^Booked$/i }).click();
-      }
-    }
+    // Open booking confirmation by selecting Booked sales stage
+    const stageTrigger = page.getByTestId("lead-sales-stage")
+      .or(page.getByLabel(/sales stage|pipeline stage|stage/i))
+      .or(page.locator('[data-testid="sales-stage-select"]'))
+      .first();
+    await stageTrigger.click({ timeout: 20_000 });
+    await page.getByRole("option", { name: /^Booked$/i }).click();
 
     await page.getByTestId("booking-confirmation").waitFor({ state: "visible", timeout: 30_000 });
     await page.getByTestId("booking-confirm-date").fill(SAT);
