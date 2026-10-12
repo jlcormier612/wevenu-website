@@ -324,22 +324,26 @@ async function main() {
     if ((await selectPkg.count()) > 0) {
       await selectPkg.click();
       await page.waitForTimeout(1000);
-      // First package radio/button inside the open sheet
-      const sheet = page.locator("[role='dialog'], [data-state='open']").last();
-      const pkgChoice = sheet.locator("button, [role='option'], label").filter({ hasText: /.+/ }).nth(0);
-      // Prefer clicking a package card by name when available
-      if (pkg?.name) {
-        const byName = sheet.getByText(pkg.name, { exact: false }).first();
-        if (await byName.count()) await byName.click();
-        else await pkgChoice.click().catch(() => undefined);
+      const sheet = page.locator("[data-slot='sheet-content'], [role='dialog']").last();
+      // Package cards are full-width buttons with the package name
+      const pkgCard = sheet.getByRole("button", { name: /Essential Wedding|Signature Wedding|Weekend Wedding/i }).first();
+      if (await pkgCard.count()) {
+        await pkgCard.click();
+        await page.waitForTimeout(500);
+      } else if (pkg?.name) {
+        await sheet.getByRole("button", { name: new RegExp(pkg.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") }).first().click();
+        await page.waitForTimeout(500);
       }
-      await page.waitForTimeout(400);
       const savePkg = sheet.getByRole("button", { name: /Save selected package/i });
-      if (await savePkg.count()) {
+      const enabled = await savePkg.isEnabled().catch(() => false);
+      if (enabled) {
         await savePkg.click();
         await page.waitForTimeout(3500);
+        record("r1_package_selected", true, "Save selected package clicked");
       } else {
-        record("r1_save_package_button", false, "Save selected package missing");
+        record("r1_package_selected", false, "Save stayed disabled — package card not selected");
+        await page.screenshot({ path: `${OUT_DIR}/r1-package-select-miss.png`, fullPage: true });
+        await page.keyboard.press("Escape").catch(() => undefined);
       }
       await page.screenshot({ path: `${OUT_DIR}/r1-after-select-package.png`, fullPage: true });
     } else {
