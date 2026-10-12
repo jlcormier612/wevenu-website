@@ -498,22 +498,23 @@ export function RelationshipCard({
                 {tourAppointments}
               </div>
             ) : null}
-            <div className="space-y-0.5" data-testid="tour-followup-followup-block">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Follow-up
-              </p>
-              {lead.nextActionText ? (
-                <DisplayRow
-                  icon={Clock}
-                  label="Next action"
-                  value={lead.nextActionText}
-                />
-              ) : null}
-              <DisplayRow icon={Calendar} label="Follow-up" value={formatDate(lead.followUpDate)} />
-              <DisplayRow icon={Phone} label="Last contacted" value={formatDate(lead.lastContactedAt)} />
-            </div>
-            {isEmpty && !tourAppointments && (
-              <p className="py-1 text-sm text-muted-foreground">
+            {!isEmpty || tourAppointments ? (
+              <div className="space-y-0.5" data-testid="tour-followup-followup-block">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Follow-up
+                </p>
+                {lead.nextActionText ? (
+                  <DisplayRow
+                    icon={Clock}
+                    label="Next action"
+                    value={lead.nextActionText}
+                  />
+                ) : null}
+                <DisplayRow icon={Calendar} label="Follow-up" value={formatDate(lead.followUpDate)} />
+                <DisplayRow icon={Phone} label="Last contacted" value={formatDate(lead.lastContactedAt)} />
+              </div>
+            ) : (
+              <p className="py-1 text-sm text-muted-foreground" data-testid="tour-followup-empty">
                 No tour or follow-up details yet. Use Add follow-up details for next steps and dates, or Schedule Tour.
               </p>
             )}
