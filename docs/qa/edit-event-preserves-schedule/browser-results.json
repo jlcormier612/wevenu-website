@@ -1,0 +1,192 @@
+{
+  "ok": true,
+  "servingSha": "889e5494c8b3a766df11753af4cbc629f13d8520",
+  "checks": [
+    {
+      "name": "seeded_five_components",
+      "pass": true,
+      "detail": "ceremony|696791d8-0e6f-4a6c-b99e-031ee7237d38|2035-04-20|18:00|22:00;cocktail_hour|56a70756-5ee3-4e08-8e1b-d1713c5bbbec|2035-04-20|17:00|18:00;getting_ready|e11e9e2f-1930-464d-b9e7-d0c61c30b221|2035-04-20|14:00|16:00;reception|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-20|16:00|17:00;rehearsal_dinner|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-19|18:00|21:00"
+    },
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "889e5494c8b3a766df11753af4cbc629f13d8520"
+    },
+    {
+      "name": "setup_edit_preserves_schedule",
+      "pass": true,
+      "detail": "before=ceremony|696791d8-0e6f-4a6c-b99e-031ee7237d38|2035-04-20|18:00|22:00;cocktail_hour|56a70756-5ee3-4e08-8e1b-d1713c5bbbec|2035-04-20|17:00|18:00;getting_ready|e11e9e2f-1930-464d-b9e7-d0c61c30b221|2035-04-20|14:00|16:00;reception|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-20|16:00|17:00;rehearsal_dinner|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-19|18:00|21:00\nafter=ceremony|696791d8-0e6f-4a6c-b99e-031ee7237d38|2035-04-20|18:00|22:00;cocktail_hour|56a70756-5ee3-4e08-8e1b-d1713c5bbbec|2035-04-20|17:00|18:00;getting_ready|e11e9e2f-1930-464d-b9e7-d0c61c30b221|2035-04-20|14:00|16:00;reception|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-20|16:00|17:00;rehearsal_dinner|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-19|18:00|21:00"
+    },
+    {
+      "name": "setup_time_saved",
+      "pass": true,
+      "detail": "{\"setup_time\":\"13:30:00\",\"guest_count\":100}"
+    },
+    {
+      "name": "guest_edit_preserves_schedule",
+      "pass": true,
+      "detail": "fp=ceremony|696791d8-0e6f-4a6c-b99e-031ee7237d38|2035-04-20|18:00|22:00;cocktail_hour|56a70756-5ee3-4e08-8e1b-d1713c5bbbec|2035-04-20|17:00|18:00;getting_ready|e11e9e2f-1930-464d-b9e7-d0c61c30b221|2035-04-20|14:00|16:00;reception|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-20|16:00|17:00;rehearsal_dinner|6366187b-e7f5-45d0-b9bd-5534a48f6650|2035-04-19|18:00|21:00"
+    },
+    {
+      "name": "schedule_card_not_time_not_set",
+      "pass": true,
+      "detail": "schedule card shows components without Time not set"
+    },
+    {
+      "name": "explicit_schedule_edit_works",
+      "pass": true,
+      "detail": "{\"cocktail\":{\"id\":\"50959c4b-dfd1-46cd-b139-b53a978493b5\",\"use_key\":\"cocktail_hour\",\"space_id\":\"56a70756-5ee3-4e08-8e1b-d1713c5bbbec\",\"scheduled_date\":\"2035-04-20\",\"start_time\":\"17:00:00\",\"end_time\":\"18:30:00\",\"sort_order\":4},\"ceremony\":{\"id\":\"c39df37a-a4ec-4b81-bcea-738af0463b9a\",\"use_key\":\"ceremony\",\"space_id\":\"696791d8-0e6f-4a6c-b99e-031ee7237d38\",\"scheduled_date\":\"2035-04-20\",\"start_time\":\"18:00:00\",\"end_time\":\"22:00:00\",\"sort_order\":2}}"
+    },
+    {
+      "name": "guest_count_saved",
+      "pass": true,
+      "detail": "{\"setup_time\":\"13:30:00\",\"guest_count\":142}"
+    }
+  ],
+  "ids": {
+    "leadId": "6ff6c1cc-05f2-445e-816b-49f8c51f7d32",
+    "clientId": "9b6922a8-8a82-4d0d-8d0f-173a83664c18",
+    "eventId": "baecef0e-ba56-42e3-9f2d-0f2e8b9421ac"
+  },
+  "before": [
+    {
+      "id": "6bc94b3e-64a6-4da9-a47f-5c29e8057315",
+      "use_key": "rehearsal_dinner",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "scheduled_date": "2035-04-19",
+      "start_time": "18:00:00",
+      "end_time": "21:00:00",
+      "sort_order": 0
+    },
+    {
+      "id": "aea8d200-ef0d-4616-a75c-ec33d45dd444",
+      "use_key": "getting_ready",
+      "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+      "scheduled_date": "2035-04-20",
+      "start_time": "14:00:00",
+      "end_time": "16:00:00",
+      "sort_order": 1
+    },
+    {
+      "id": "6bcc91b9-d4e4-4c9d-93ba-c587e0282425",
+      "use_key": "ceremony",
+      "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+      "scheduled_date": "2035-04-20",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "sort_order": 2
+    },
+    {
+      "id": "7405e786-6b82-4e64-b296-e9f1f412c449",
+      "use_key": "reception",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "scheduled_date": "2035-04-20",
+      "start_time": "16:00:00",
+      "end_time": "17:00:00",
+      "sort_order": 3
+    },
+    {
+      "id": "77d51795-03f1-4b30-bb8e-669603f5b29b",
+      "use_key": "cocktail_hour",
+      "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+      "scheduled_date": "2035-04-20",
+      "start_time": "17:00:00",
+      "end_time": "18:00:00",
+      "sort_order": 4
+    }
+  ],
+  "afterSetup": [
+    {
+      "id": "558187f5-1a1a-4789-84ea-27aa00bfa4b4",
+      "use_key": "rehearsal_dinner",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "scheduled_date": "2035-04-19",
+      "start_time": "18:00:00",
+      "end_time": "21:00:00",
+      "sort_order": 0
+    },
+    {
+      "id": "f92a9442-9d11-449c-89bc-967642c8f57e",
+      "use_key": "getting_ready",
+      "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+      "scheduled_date": "2035-04-20",
+      "start_time": "14:00:00",
+      "end_time": "16:00:00",
+      "sort_order": 1
+    },
+    {
+      "id": "072d884e-1040-4913-9d97-9c3e3c23d200",
+      "use_key": "ceremony",
+      "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+      "scheduled_date": "2035-04-20",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "sort_order": 2
+    },
+    {
+      "id": "97a603d6-6a98-4b42-b476-e6101751a9c0",
+      "use_key": "reception",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "scheduled_date": "2035-04-20",
+      "start_time": "16:00:00",
+      "end_time": "17:00:00",
+      "sort_order": 3
+    },
+    {
+      "id": "7b10da4c-e2e9-4da7-98ee-d05188e8853e",
+      "use_key": "cocktail_hour",
+      "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+      "scheduled_date": "2035-04-20",
+      "start_time": "17:00:00",
+      "end_time": "18:00:00",
+      "sort_order": 4
+    }
+  ],
+  "afterGuests": [
+    {
+      "id": "ceacf7e4-368f-4834-ab2a-4adef1e6e7bd",
+      "use_key": "rehearsal_dinner",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "scheduled_date": "2035-04-19",
+      "start_time": "18:00:00",
+      "end_time": "21:00:00",
+      "sort_order": 0
+    },
+    {
+      "id": "5c50fdb4-88e3-444a-beb3-8112b4822e89",
+      "use_key": "getting_ready",
+      "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+      "scheduled_date": "2035-04-20",
+      "start_time": "14:00:00",
+      "end_time": "16:00:00",
+      "sort_order": 1
+    },
+    {
+      "id": "b5cd1283-881d-4e53-b4a1-ae026e95e7de",
+      "use_key": "ceremony",
+      "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+      "scheduled_date": "2035-04-20",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "sort_order": 2
+    },
+    {
+      "id": "71db99a3-a0e1-4d4b-a0eb-e9a3f7609c76",
+      "use_key": "reception",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "scheduled_date": "2035-04-20",
+      "start_time": "16:00:00",
+      "end_time": "17:00:00",
+      "sort_order": 3
+    },
+    {
+      "id": "edaf152d-e6f7-46bf-8315-8fc8c86171ba",
+      "use_key": "cocktail_hour",
+      "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+      "scheduled_date": "2035-04-20",
+      "start_time": "17:00:00",
+      "end_time": "18:00:00",
+      "sort_order": 4
+    }
+  ]
+}

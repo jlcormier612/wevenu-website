@@ -1,5 +1,5 @@
 PASS migration_source_space_use_key — column selectable
-PASS serving_commit — fd2c01a2614bcc6624659636df2bb3a48acd2b51
+PASS serving_commit — 889e5494c8b3a766df11753af4cbc629f13d8520
 PASS a2_contract_builder_guidance — Your agreement, your venue's terms
 
 You are responsible for the terms, policies, taxes, discounts, and practices reflected in your agreements. Hello to Cheers provides tools and ge
@@ -9,10 +9,10 @@ PASS a3_contract_overview_note — You are responsible for your agreement's term
 PASS a4_invoice_overview_note — You are responsible for determining and applying any taxes, discounts, fees, and payment terms appropriate to your venue and event. Tax and discount additions were set under 'Leads & Booking' section 
 PASS overview_notes_on_client_or_lead — at least one Overview note path rendered
 PASS b_five_generated_activities — count=5 keys=rehearsal_dinner,getting_ready,ceremony,reception,cocktail_hour
-PASS b_rehearsal_fri_times — {"id":"d1fadcb7-f7be-4281-9251-84dc863a1520","title":"Rehearsal Dinner","entry_time":"18:00:00","end_time":"21:00:00","day_offset":0,"source_space_use_key":"rehearsal_dinner","description":"Space: Meadowbrook Barn","lock_state":"editable"}
-PASS b_ceremony_unusual_times_preserved — {"id":"84265125-13ef-43e8-b679-2d37b42fdc40","title":"Ceremony","entry_time":"18:00:00","end_time":"22:00:00","day_offset":1,"source_space_use_key":"ceremony","description":"Space: Brook Bridge","lock_state":"editable"}
-PASS b_reception_before_ceremony_preserved — {"id":"03c07143-c560-42b7-bc6e-0e625e59eff9","title":"Reception","entry_time":"16:00:00","end_time":"17:00:00","day_offset":1,"source_space_use_key":"reception","description":"Space: Meadowbrook Barn","lock_state":"editable"}
-PASS b_manual_entry_preserved — {"id":"8c9f347e-a466-4d93-ba33-a302b61bebe4","title":"Manual venue note — do not touch","source_space_use_key":null}
+PASS b_rehearsal_fri_times — {"id":"42d6097e-7dea-484b-b71f-4160cdc206c2","title":"Rehearsal Dinner","entry_time":"18:00:00","end_time":"21:00:00","day_offset":0,"source_space_use_key":"rehearsal_dinner","description":"Space: Meadowbrook Barn","lock_state":"editable"}
+PASS b_ceremony_unusual_times_preserved — {"id":"be6926c1-76dc-436c-a07e-126ca51e0907","title":"Ceremony","entry_time":"18:00:00","end_time":"22:00:00","day_offset":1,"source_space_use_key":"ceremony","description":"Space: Brook Bridge","lock_state":"editable"}
+PASS b_reception_before_ceremony_preserved — {"id":"b2bf30ef-2704-4265-b8c0-4a4956d32dcd","title":"Reception","entry_time":"16:00:00","end_time":"17:00:00","day_offset":1,"source_space_use_key":"reception","description":"Space: Meadowbrook Barn","lock_state":"editable"}
+PASS b_manual_entry_preserved — {"id":"b6f92347-ead5-4abe-8817-9d2f09dd1ef9","title":"Manual venue note — do not touch","source_space_use_key":null}
 PASS b_no_duplicates_after_reload — count=5
 PASS b_ui_shows_component_names — component titles visible after sync
 Wrote docs/qa/tax-discount-schedule-timeline/browser-results.json ok=true

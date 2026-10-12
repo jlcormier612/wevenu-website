@@ -269,6 +269,30 @@ async function cleanup(ids: {
   if (ids.leadId) await admin.from("leads").delete().eq("id", ids.leadId);
 }
 
+async function setControlledInput(
+  page: import("playwright").Page,
+  selector: string,
+  value: string,
+) {
+  const loc = page.locator(selector);
+  await loc.waitFor({ state: "visible", timeout: 15_000 });
+  await loc.click({ clickCount: 3 });
+  await loc.fill(value);
+  // Ensure React controlled state sees the change (time/number inputs).
+  await loc.evaluate((el, v) => {
+    const input = el as HTMLInputElement;
+    const proto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+    proto?.set?.call(input, v);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+  await loc.blur();
+  const seen = await loc.inputValue();
+  if (seen !== value && !seen.startsWith(value)) {
+    throw new Error(`input ${selector} expected ${value}, got ${seen}`);
+  }
+}
+
 async function editUnrelatedField(
   page: import("playwright").Page,
   eventId: string,
@@ -276,17 +300,20 @@ async function editUnrelatedField(
   value: string,
 ) {
   await page.goto(`${APP}/events/${eventId}/edit`, {
-    waitUntil: "domcontentloaded",
+    waitUntil: "networkidle",
     timeout: 90_000,
   });
   if (field === "setup") {
-    await page.locator("#su").fill(value);
+    await setControlledInput(page, "#su", value);
   } else {
-    await page.locator("#gc").fill(value);
+    await setControlledInput(page, "#gc", value);
   }
-  await page.getByRole("button", { name: /Save changes/i }).click();
-  await page.waitForURL(new RegExp(`/events/${eventId}`), { timeout: 60_000 }).catch(() => undefined);
-  await page.waitForTimeout(800);
+  await page.getByRole("button", { name: /^Save changes$/ }).click();
+  await Promise.race([
+    page.waitForURL(new RegExp(`/events/${eventId}/?$`), { timeout: 60_000 }),
+    page.getByText("Event updated.").waitFor({ state: "visible", timeout: 60_000 }),
+  ]);
+  await page.waitForTimeout(500);
 }
 
 async function main() {
@@ -360,10 +387,23 @@ async function main() {
       `fp=${guestsFp}`,
     );
 
-    await page.goto(`${APP}/clients/${seeded.clientId}`, {
-      waitUntil: "domcontentloaded",
-      timeout: 90_000,
-    });
+    async function openClientWorkspace() {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await page.goto(`${APP}/clients/${seeded.clientId}`, {
+            waitUntil: "domcontentloaded",
+            timeout: 90_000,
+          });
+          await page.waitForTimeout(800);
+          return;
+        } catch (err) {
+          if (attempt === 2) throw err;
+          await page.waitForTimeout(1000);
+        }
+      }
+    }
+
+    await openClientWorkspace();
     const body = await page.locator("body").innerText();
     record(
       "schedule_card_not_time_not_set",
@@ -378,11 +418,13 @@ async function main() {
     });
 
     // Explicit Edit schedule still works — change cocktail end only
+    await openClientWorkspace();
     await page.getByTestId("edit-booking-schedule").click();
-    await page.getByTestId("esa-date-cocktail_hour").waitFor({ state: "visible", timeout: 15_000 });
-    await page.locator("#esa-cocktail_hour-end").fill("18:30");
-    await page.getByRole("button", { name: /Save schedule|Save/i }).click();
-    await page.waitForTimeout(1500);
+    await page.getByTestId("edit-booking-schedule-dialog").waitFor({ state: "visible", timeout: 15_000 });
+    await setControlledInput(page, "#esa-cocktail_hour-end", "18:30");
+    await page.getByTestId("edit-schedule-save").click();
+    await page.getByText("Schedule updated.").waitFor({ state: "visible", timeout: 60_000 }).catch(() => undefined);
+    await page.waitForTimeout(1000);
     const afterScheduleEdit = await loadAssignments(seeded.eventId);
     const cocktail = afterScheduleEdit.find((r) => r.use_key === "cocktail_hour");
     const ceremony = afterScheduleEdit.find((r) => r.use_key === "ceremony");
@@ -393,11 +435,36 @@ async function main() {
         && ceremony?.scheduled_date === SAT,
       JSON.stringify({ cocktail, ceremony }),
     );
+
+    const { data: eventFinal } = await admin
+      .from("events")
+      .select("setup_time, guest_count")
+      .eq("id", seeded.eventId)
+      .maybeSingle();
+    record(
+      "guest_count_saved",
+      Number(eventFinal?.guest_count) === 142,
+      JSON.stringify(eventFinal),
+    );
+  } catch (err) {
+    out.ok = false;
+    record("browser_exception", false, String(err));
+    throw err;
   } finally {
     await browser.close();
     writeFileSync(`${OUT_DIR}/browser-results.json`, JSON.stringify(out, null, 2));
     console.log(`Wrote ${OUT_DIR}/browser-results.json ok=${out.ok}`);
-    if (out.ok) {
+    const required = [
+      "setup_edit_preserves_schedule",
+      "setup_time_saved",
+      "guest_edit_preserves_schedule",
+      "guest_count_saved",
+      "schedule_card_not_time_not_set",
+      "explicit_schedule_edit_works",
+    ];
+    const names = new Set(out.checks.map((c) => c.name));
+    const complete = required.every((n) => names.has(n));
+    if (out.ok && complete) {
       await cleanup(seeded);
       console.log("Cleaned disposable fixture");
     } else {

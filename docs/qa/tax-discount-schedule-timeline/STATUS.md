@@ -2,12 +2,14 @@
 
 ## Status: GREEN (Sandbox verified)
 
-**Commit tip:** `fd2c01a2614bcc6624659636df2bb3a48acd2b51`  
+**Commit tip (implementation):** `fd2c01a2614bcc6624659636df2bb3a48acd2b51`  
+**Re-verified serving tip:** `889e5494c8b3a766df11753af4cbc629f13d8520` (includes later Edit-event schedule-preservation fix; A/B behavior unchanged)  
 **Branch:** `feat/spaces-booking-e1-smart-fields`  
 **Migration:** `20261418200000_timeline_schedule_source_use_key.sql` — [apply run 38316655064](https://github.com/jlcormier612/wevenu-website/actions/runs/38316655064) success  
-**Deploy:** [38316699193](https://github.com/jlcormier612/wevenu-website/actions/runs/38316699193) success — serving `dpl=fd2c01a2614bcc6624659636df2bb3a48acd2b51`  
+**Deploy (implementation):** [38316699193](https://github.com/jlcormier612/wevenu-website/actions/runs/38316699193) — `dpl=fd2c01a2…`  
+**Deploy (current tip re-verify):** [38318005494](https://github.com/jlcormier612/wevenu-website/actions/runs/38318005494) — `dpl=889e5494…`  
 **Browser evidence:** `browser-results.json`, `contract-builder-guidance.png`, `lead-overview-copy.png`, `timeline-after-sync.png`, `browser-run.log`  
-**Protected financial workflow:** invoice/payment-plan calc, revision, send-once, redistribute — **not modified**.
+**Protected financial workflow:** invoice/payment-plan calc, revision, send-once, redistribute — **not modified** (74 focused tests PASS on re-verify).
 
 ## Workstream A — Exact copy
 
