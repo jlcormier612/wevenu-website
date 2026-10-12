@@ -8,7 +8,7 @@
 |---|---|
 | `htc-sandbox-resend-usage-canary` | Polls Resend `GET /usage` every 15m → `HTC/Sandbox` gauges |
 | `htc-sandbox-ops-alert-email` | SNS → persist `ops_incidents` + Resend email to `jennifer@hellotocheers.com` |
-| `htc-sandbox-workflow-synthetic` | Health + disposable inquiry write/read/delete every 15m |
+| `htc-sandbox-workflow-synthetic` | Health + disposable inquiry / tour-attach / contract-draft / payment-config paths every 15m (no email, no Stripe charge) |
 | `htc-sandbox-health-canary` | `/api/health` → `HealthSupabaseOk` (deployed separately; EventBridge 5m) |
 | EventBridge `htc-sandbox-resend-usage-15m` | Schedule for usage canary |
 | EventBridge `htc-sandbox-workflow-synthetic-15m` | Schedule for workflow synthetic |
