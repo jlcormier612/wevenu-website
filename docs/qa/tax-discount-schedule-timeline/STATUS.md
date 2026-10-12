@@ -1,9 +1,12 @@
 # Tax/discount guidance copy + booked schedule → timeline
 
-## Status: IN PROGRESS (implementation complete; Sandbox verify pending)
+## Status: GREEN (Sandbox verified)
 
+**Commit tip:** `fd2c01a2614bcc6624659636df2bb3a48acd2b51`  
 **Branch:** `feat/spaces-booking-e1-smart-fields`  
-**Migration:** `20261418200000_timeline_schedule_source_use_key.sql`  
+**Migration:** `20261418200000_timeline_schedule_source_use_key.sql` — [apply run 38316655064](https://github.com/jlcormier612/wevenu-website/actions/runs/38316655064) success  
+**Deploy:** [38316699193](https://github.com/jlcormier612/wevenu-website/actions/runs/38316699193) success — serving `dpl=fd2c01a2614bcc6624659636df2bb3a48acd2b51`  
+**Browser evidence:** `browser-results.json`, `contract-builder-guidance.png`, `lead-overview-copy.png`, `timeline-after-sync.png`, `browser-run.log`  
 **Protected financial workflow:** invoice/payment-plan calc, revision, send-once, redistribute — **not modified**.
 
 ## Workstream A — Exact copy
@@ -45,6 +48,15 @@
 - Protected invoice suite (`financial-terms`, `financial-adjustments`, `tax-discount-controls`, `payment-workflow-regression`, `payment-request-send-once`, `sent-invoice-edit-safety`) — **53/53 PASS**
 - Note: `invoice-payment-plan-customer-journey.test.ts` fails on pre-existing `$8,000` vs `$8,000.00` money-display assertion (unrelated; `payment-workflow-regression` already allows optional `.00`). Not modified.
 
-## Deploy / runtime
+## Browser / DB proof (disposable Meadowbrook)
 
-_Pending — fill after migrate + deploy + browser proof._
+Script: `scripts/qa/tax-discount-schedule-timeline-browser.mts`
+
+All checks PASS on exact tip `fd2c01a2…`:
+- A1–A4 copy visible; locked Selected Package paragraph absent; Contract Builder guidance outside `#cb-content`
+- Five schedule-derived timeline activities with component dates/times/spaces preserved (including unusual ceremony/reception order)
+- Manual timeline entry preserved; reload creates no duplicates
+
+## Production
+
+Untouched. No production deploy or configuration changes.
