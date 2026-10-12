@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "migration": "20261418300000_schedule_overlap_same_calendar_day.sql",
+  "migrationRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/38324248031",
+  "commit": "a5d36b9291285ec6bedaf18383635e2dba11d0cd",
+  "semantics": "Available when any active space can accept a full-day Event; Lawn free → Sept 3–4 Available",
+  "checks": [
+    {
+      "name": "db_sept3_available",
+      "pass": true,
+      "detail": "in dates=true"
+    },
+    {
+      "name": "db_sept4_available",
+      "pass": true,
+      "detail": "in dates=true"
+    },
+    {
+      "name": "db_sept5_available",
+      "pass": true,
+      "detail": "unaffected date present=true"
+    },
+    {
+      "name": "lawn_keeps_date_open",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "name": "barn_fri_full_blocked",
+      "pass": true,
+      "detail": "{\"ok\":false,\"code\":\"space_overlap\",\"message\":\"This space is already booked for \\\"Ellie Yagnesak & Hunter Lomberto\\\" at an overlapping time.\"}"
+    },
+    {
+      "name": "bridge_fri_evening_ok_after_fix",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "name": "public_calendar_loads",
+      "pass": true,
+      "detail": "calendar page rendered"
+    },
+    {
+      "name": "public_calendar_legend",
+      "pass": true,
+      "detail": "legend copy present"
+    },
+    {
+      "name": "reload_stable",
+      "pass": true,
+      "detail": "reload still shows September 2027"
+    }
+  ]
+}
