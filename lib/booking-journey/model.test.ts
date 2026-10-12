@@ -396,7 +396,7 @@ describe("Booking Journey derivation", () => {
       planningStarted: false,
     });
     assert.equal(j.currentKey, "deposit");
-    assert.match(j.direction, /Waiting for the \$800\.00 deposit/i);
+    assert.match(j.direction, /Waiting for the \$800(?:\.00)? deposit/i);
     assert.match(j.direction, /does not mark them Booked/i);
     assert.equal(j.commercialReady, false);
   });

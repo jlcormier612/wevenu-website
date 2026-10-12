@@ -129,14 +129,13 @@ jobs:
           fi
 
       # Docker Hub anonymous pulls/metadata frequently 429 on GitHub-hosted
-      # runners. Prefetch the same official library tags from AWS Public ECR
-      # (public.ecr.aws/docker/library/* — no extra secrets) and retag locally
-      # so Dockerfile FROM lines resolve from the local cache instead of
-      # registry-1.docker.io. Bounded exponential backoff covers residual
-      # transient failures without inventing mirrors or Hub credentials.
-      - name: Prefetch base images (Public ECR mirror)
+      # runners. Prefer our private ECR mirror of the official library tags
+      # (seeded once into htc-ci-bases after OIDC login), then fall back to
+      # AWS Public ECR with bounded backoff. Never invent untrusted mirrors.
+      - name: Prefetch base images (private ECR, then Public ECR)
         run: |
           set -euo pipefail
+          REGISTRY="${{ steps.ecr-login.outputs.registry }}"
           retry_pull() {
             local image="$1"
             local local_tag="$2"
@@ -154,11 +153,29 @@ jobs:
               attempt=$((attempt + 1))
               delay=$((delay * 2))
             done
-            echo "::error::Failed to pull $image after 5 attempts"
             return 1
           }
-          retry_pull public.ecr.aws/docker/library/node:22-alpine node:22-alpine
-          retry_pull public.ecr.aws/docker/library/alpine:3.20 alpine:3.20
+          pull_base() {
+            local private_tag="$1"
+            local public_image="$2"
+            local local_tag="$3"
+            if docker pull "${REGISTRY}/htc-ci-bases:${private_tag}"; then
+              docker tag "${REGISTRY}/htc-ci-bases:${private_tag}" "$local_tag"
+              echo "Using private ECR base ${private_tag} -> ${local_tag}"
+              return 0
+            fi
+            echo "Private ECR miss for ${private_tag}; falling back to Public ECR"
+            if retry_pull "$public_image" "$local_tag"; then
+              # Refresh private mirror for the next rate-limited window.
+              docker tag "$local_tag" "${REGISTRY}/htc-ci-bases:${private_tag}"
+              docker push "${REGISTRY}/htc-ci-bases:${private_tag}" || true
+              return 0
+            fi
+            echo "::error::Failed to pull ${local_tag} from private and Public ECR"
+            return 1
+          }
+          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine node:22-alpine
+          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20 alpine:3.20
 
       - name: Build
         env:
