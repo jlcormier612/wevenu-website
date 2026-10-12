@@ -4,6 +4,8 @@ import { describe, it } from "node:test";
 
 import { decideEventAssignment } from "@/lib/team/booking-assignment";
 
+const dialog = readFileSync("components/leads/pipeline-booked-confirm-dialog.tsx", "utf8");
+
 const SALES = "staff-sales";
 const EVENT = "staff-event";
 const OTHER_VENUE = "staff-other-venue";
@@ -80,6 +82,29 @@ describe("booking team assignment", () => {
     });
     assert.deepEqual(decision, { apply: true, staffId: null });
   });
+
+  it("omitted selection does not clear an existing event owner", () => {
+    const decision = decideEventAssignment({
+      bookingSucceeded: true,
+      cancelled: false,
+      selectedStaffId: undefined,
+      eligibleStaffIds: eligible,
+    });
+    assert.deepEqual(decision, { apply: false, reason: "omitted" });
+  });
+
+  it("lead sales owner and event owner are independent fields in confirmation", () => {
+    assert.match(dialog, /Event team member/);
+    assert.match(dialog, /assignedStaffId: assignedStaffId\.trim\(\) \|\| null/);
+    assert.match(dialog, /eventAssigneeSeededRef/);
+    assert.match(dialog, /if \(!eventAssigneeSeededRef\.current\)/);
+    const service = readFileSync("lib/leads/service.ts", "utf8");
+    assert.match(service, /applyEventAssignmentAfterBooking/);
+    const returnLead = service.slice(service.indexOf("export async function returnLeadToBooked"));
+    const returnClient = service.slice(service.indexOf("export async function returnClientToBooked"));
+    assert.match(returnLead, /applyEventAssignmentAfterBooking/);
+    assert.match(returnClient, /applyEventAssignmentAfterBooking/);
+  });
 });
 
 describe("team tab removed from event planning nav", () => {
@@ -106,7 +131,7 @@ describe("assignment persistence is a single column write after booking succeeds
   it("writes the event assignee only after bookClient succeeds", () => {
     const bookAt = confirm.indexOf("bookClient(");
     const failReturn = confirm.indexOf("if (!booked.ok)");
-    const assignAt = confirm.indexOf("persistEventStaffAssignment");
+    const assignAt = confirm.indexOf("applyEventAssignmentAfterBooking");
     assert.ok(bookAt > 0 && failReturn > bookAt && assignAt > failReturn);
   });
 

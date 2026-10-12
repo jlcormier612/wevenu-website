@@ -47,9 +47,14 @@ export function PipelineBookedConfirmDialog({
   const [formError, setFormError] = React.useState<string | null>(null);
   const [availabilityBlocked, setAvailabilityBlocked] = React.useState(false);
   const [assignedStaffId, setAssignedStaffId] = React.useState("");
+  /** Live draft refresh must not wipe an Event team member already chosen this open. */
+  const eventAssigneeSeededRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      eventAssigneeSeededRef.current = false;
+      return;
+    }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && !confirming) onCancel();
     }
@@ -65,7 +70,10 @@ export function PipelineBookedConfirmDialog({
     setEndTime(draft.endTime);
     setSpaceId(draft.spaceId);
     setAssignments(draft.assignments);
-    setAssignedStaffId(draft.leadAssignedStaffId ?? "");
+    if (!eventAssigneeSeededRef.current) {
+      setAssignedStaffId(draft.leadAssignedStaffId ?? "");
+      eventAssigneeSeededRef.current = true;
+    }
     setFormError(null);
     setAvailabilityBlocked(false);
   }, [open, draft]);

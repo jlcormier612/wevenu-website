@@ -700,32 +700,18 @@ export async function confirmPipelineBookedMove(
       return { ok: false as const, message: booked.message };
     }
 
-    if (booked.eventId && occupancy.assignedStaffId !== undefined) {
-      const { persistEventStaffAssignment } = await import("@/lib/team/staff-assignment");
-      const { decideEventAssignment } = await import("@/lib/team/booking-assignment");
-      const { data: staffRows } = await supabase
-        .from("venue_staff")
-        .select("id")
-        .eq("venue_id", venueId)
-        .eq("is_active", true);
-      const decision = decideEventAssignment({
-        bookingSucceeded: true,
-        cancelled: false,
+    if (booked.eventId) {
+      const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
+      const assigned = await applyEventAssignmentAfterBooking({
+        supabase,
+        venueId,
+        eventId: booked.eventId,
         selectedStaffId: occupancy.assignedStaffId,
-        eligibleStaffIds: (staffRows ?? []).map((row) => row.id as string),
       });
-      if (decision.apply) {
-        const assigned = await persistEventStaffAssignment(
-          supabase,
-          venueId,
-          booked.eventId,
-          decision.staffId,
-        );
-        if (!assigned.ok) {
-          warning = warning
-            ? `${warning} Team assignment was not saved: ${assigned.message}`
-            : `Booked, but the team assignment was not saved: ${assigned.message}`;
-        }
+      if (!assigned.ok) {
+        warning = warning
+          ? `${warning} Team assignment was not saved: ${assigned.message}`
+          : `Booked, but the team assignment was not saved: ${assigned.message}`;
       }
     }
 
@@ -901,6 +887,15 @@ export async function returnLeadToBooked(
       confirmedOccupancy: occupancy,
     });
     if (!booked.ok) return { ok: false as const, message: booked.message };
+    if (booked.eventId) {
+      const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
+      await applyEventAssignmentAfterBooking({
+        supabase,
+        venueId,
+        eventId: booked.eventId,
+        selectedStaffId: occupancy.assignedStaffId,
+      });
+    }
     return {
       ok: true as const,
       clientId: linked.id,
@@ -946,6 +941,15 @@ export async function returnClientToBooked(
       confirmedOccupancy: occupancy,
     });
     if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;
+    if (booked.eventId) {
+      const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
+      await applyEventAssignmentAfterBooking({
+        supabase,
+        venueId,
+        eventId: booked.eventId,
+        selectedStaffId: occupancy.assignedStaffId,
+      });
+    }
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
