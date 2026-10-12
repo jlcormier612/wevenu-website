@@ -55,7 +55,12 @@ export type AvailabilityCheckInput = {
   teardownTime?: string;
   spaceId?: string;
   /** Per-space windows for a booking confirmation. Each space is checked on its own times. */
-  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }>;
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }>;
   type: "event" | "tour";
   excludeId?: string;
   /**

@@ -11,6 +11,7 @@ import {
   eventOccupancyOverlapsTour,
   evaluateEventOccupancy,
   formatOperationalInstant,
+  intervalsForScheduleWindow,
   isInquiryEventDateAvailable,
   isSimpleOperatingModel,
   operationalWindow,
@@ -811,3 +812,106 @@ describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", (
   });
 });
 
+
+describe("component scheduledDate occupancy (Fri rehearsal ≠ Sat reception)", () => {
+  const multi = venue({ effectiveMax: 2, activeSpaceIds: [BALLROOM, GARDEN], allSpaceIds: [BALLROOM, GARDEN] });
+
+  it("intervalsForScheduleWindow limits a dated window to that day", () => {
+    assert.deepEqual(
+      intervalsForScheduleWindow("2027-09-03", "2027-09-04", {
+        start: "18:00",
+        end: "21:00",
+        scheduledDate: "2027-09-03",
+      }).map((r) => r.date),
+      ["2027-09-03"],
+    );
+    assert.deepEqual(
+      intervalsForScheduleWindow("2027-09-03", "2027-09-04", {
+        start: "16:00",
+        end: "22:00",
+        scheduledDate: null,
+      }).map((r) => r.date),
+      ["2027-09-03", "2027-09-04"],
+    );
+  });
+
+  it("Fri barn rehearsal does not conflict with Sat barn reception on the same event range", () => {
+    const existing = [
+      event({
+        id: "booked",
+        eventDate: "2027-09-03",
+        eventEndDate: "2027-09-04",
+        spaceId: BALLROOM,
+        windows: [
+          { spaceId: BALLROOM, startTime: "18:00", endTime: "21:00", scheduledDate: "2027-09-03" },
+          { spaceId: BALLROOM, startTime: "16:00", endTime: "22:00", scheduledDate: "2027-09-04" },
+        ],
+      }),
+    ];
+    // Another lead wants Sat morning barn — should be free relative to Fri evening only occupancy
+    const morning = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-04",
+        spaceId: BALLROOM,
+        startTime: "09:00",
+        endTime: "12:00",
+        windows: [{ spaceId: BALLROOM, startTime: "09:00", endTime: "12:00", scheduledDate: "2027-09-04" }],
+      }),
+      multi,
+      existing,
+    );
+    assert.equal(morning.ok, true, morning.ok ? "" : morning.message);
+
+    // Same Sat evening barn window conflicts
+    const evening = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-04",
+        spaceId: BALLROOM,
+        startTime: "17:00",
+        endTime: "21:00",
+        windows: [{ spaceId: BALLROOM, startTime: "17:00", endTime: "21:00", scheduledDate: "2027-09-04" }],
+      }),
+      multi,
+      existing,
+    );
+    assert.equal(evening.ok, false);
+  });
+
+  it("undated assignment windows still occupy every protected day (legacy)", () => {
+    const existing = [
+      event({
+        id: "legacy",
+        eventDate: "2027-09-03",
+        eventEndDate: "2027-09-04",
+        spaceId: BALLROOM,
+        windows: [
+          { spaceId: BALLROOM, startTime: "18:00", endTime: "21:00" },
+        ],
+      }),
+    ];
+    const fri = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-03",
+        spaceId: BALLROOM,
+        startTime: "18:30",
+        endTime: "20:00",
+        windows: [{ spaceId: BALLROOM, startTime: "18:30", endTime: "20:00", scheduledDate: "2027-09-03" }],
+      }),
+      multi,
+      existing,
+    );
+    const sat = evaluateEventOccupancy(
+      input({
+        eventDate: "2027-09-04",
+        spaceId: BALLROOM,
+        startTime: "18:30",
+        endTime: "20:00",
+        windows: [{ spaceId: BALLROOM, startTime: "18:30", endTime: "20:00", scheduledDate: "2027-09-04" }],
+      }),
+      multi,
+      existing,
+    );
+    assert.equal(fri.ok, false);
+    assert.equal(sat.ok, false);
+  });
+});

@@ -32,6 +32,8 @@ export function EventSpaceAssignmentsEditor({
   onChange,
   uses: usesProp,
   withTimes = false,
+  eventDate = "",
+  eventEndDate = "",
 }: {
   spaces: VenueSpace[];
   value: EventSpaceAssignmentInput[];
@@ -40,8 +42,13 @@ export function EventSpaceAssignmentsEditor({
   uses?: Array<{ key: string; label: string }>;
   /** Start and end belong to this use's space, not one event-wide window. */
   withTimes?: boolean;
+  /** Overall booking start — bounds component dates when withTimes. */
+  eventDate?: string;
+  /** Overall booking end — bounds component dates when withTimes. */
+  eventEndDate?: string;
 }) {
   const uses = usesProp ?? configuredUsesFromSpaces(spaces);
+  const rangeEnd = eventEndDate && eventEndDate >= eventDate ? eventEndDate : eventDate;
 
   if (uses.length === 0) {
     return (
@@ -58,7 +65,15 @@ export function EventSpaceAssignmentsEditor({
 
   function writeRow(useKey: string, useLabel: string, patch: Partial<EventSpaceAssignmentInput>) {
     const current = rowFor(useKey);
-    const next = { useKey, useLabel, spaceId: current?.spaceId ?? "", startTime: current?.startTime ?? null, endTime: current?.endTime ?? null, ...patch };
+    const next = {
+      useKey,
+      useLabel,
+      spaceId: current?.spaceId ?? "",
+      startTime: current?.startTime ?? null,
+      endTime: current?.endTime ?? null,
+      scheduledDate: current?.scheduledDate ?? null,
+      ...patch,
+    };
     const without = value.filter((row) => row.useKey !== useKey);
     if (!next.spaceId) {
       onChange(without);
@@ -89,12 +104,25 @@ export function EventSpaceAssignmentsEditor({
               label: `${s.name}${s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}`,
             })),
           ];
+          const scheduledDate = (current?.scheduledDate ?? "").trim()
+            || (withTimes && currentSpace ? eventDate : "");
           return (
-            <div key={u.key} className={withTimes ? "grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_7.5rem_7.5rem] sm:items-end" : ""}>
+            <div
+              key={u.key}
+              className={withTimes
+                ? "grid gap-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,9rem)_7.5rem_7.5rem] sm:items-end"
+                : ""}
+              data-testid={`esa-row-${u.key}`}
+            >
               <Field label={u.label} htmlFor={`esa-${u.key}`}>
                 <Select
                   value={currentSpace || NONE}
-                  onValueChange={(v) => writeRow(u.key, u.label, { spaceId: v === NONE ? "" : v })}
+                  onValueChange={(v) => writeRow(u.key, u.label, {
+                    spaceId: v === NONE ? "" : v,
+                    scheduledDate: v === NONE
+                      ? null
+                      : (current?.scheduledDate?.trim() || eventDate || null),
+                  })}
                   items={items}
                 >
                   <SelectTrigger id={`esa-${u.key}`}>
@@ -113,6 +141,21 @@ export function EventSpaceAssignmentsEditor({
               </Field>
               {withTimes ? (
                 <>
+                  <Field label="Date" htmlFor={`esa-${u.key}-date`}>
+                    <Input
+                      id={`esa-${u.key}-date`}
+                      type="date"
+                      data-testid={`esa-date-${u.key}`}
+                      value={scheduledDate}
+                      min={eventDate || undefined}
+                      max={rangeEnd || undefined}
+                      disabled={!currentSpace}
+                      onChange={(e) => writeRow(u.key, u.label, {
+                        spaceId: currentSpace,
+                        scheduledDate: e.target.value || null,
+                      })}
+                    />
+                  </Field>
                   <Field label="Start time" htmlFor={`esa-${u.key}-start`}>
                     <Input
                       id={`esa-${u.key}-start`}

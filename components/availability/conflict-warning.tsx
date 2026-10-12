@@ -79,7 +79,12 @@ export function ConflictWarning({
   setupTime?: string;
   teardownTime?: string;
   spaceId?: string;
-  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }>;
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }>;
   type: "event" | "tour";
   excludeId?: string;
   /** date_holds.lead_id of the lead being edited — own hold must not self-block. */

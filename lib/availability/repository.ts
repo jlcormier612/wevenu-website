@@ -653,14 +653,25 @@ export async function checkAvailability(
     setup_time: string | null; start_time: string | null; end_time: string | null; teardown_time: string | null;
   }[];
   const eventSpaceMap = new Map<string, string[]>();
-  const eventWindowMap = new Map<string, Array<{ spaceId: string; startTime: string | null; endTime: string | null }>>();
+  const eventWindowMap = new Map<string, Array<{
+    spaceId: string;
+    startTime: string | null;
+    endTime: string | null;
+    scheduledDate: string | null;
+  }>>();
   if (eventRows.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: assignRows } = await (client.from("event_space_assignments") as any)
-      .select("event_id, space_id, start_time, end_time")
+      .select("event_id, space_id, start_time, end_time, scheduled_date")
       .eq("venue_id", venueId)
       .in("event_id", eventRows.map((e) => e.id));
-    for (const row of (assignRows ?? []) as { event_id: string; space_id: string; start_time?: string | null; end_time?: string | null }[]) {
+    for (const row of (assignRows ?? []) as {
+      event_id: string;
+      space_id: string;
+      start_time?: string | null;
+      end_time?: string | null;
+      scheduled_date?: string | null;
+    }[]) {
       if (!row.event_id || !row.space_id) continue;
       const list = eventSpaceMap.get(row.event_id) ?? [];
       if (!list.includes(row.space_id)) list.push(row.space_id);
@@ -670,6 +681,7 @@ export async function checkAvailability(
         spaceId: row.space_id,
         startTime: row.start_time?.slice(0, 5) ?? null,
         endTime: row.end_time?.slice(0, 5) ?? null,
+        scheduledDate: row.scheduled_date ?? null,
       });
       eventWindowMap.set(row.event_id, timed);
     }

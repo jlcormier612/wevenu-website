@@ -69,6 +69,15 @@ export function bookingConfirmationError(
     if (endTime <= start) {
       return "The end time must be after the start time.";
     }
+    const scheduled = row.scheduledDate?.trim() ?? "";
+    if (scheduled) {
+      if (!DATE.test(scheduled)) {
+        return "Enter a valid date for each event component.";
+      }
+      if (scheduled < eventDate || (end && scheduled > end)) {
+        return "Each component date must fall within the overall event dates.";
+      }
+    }
   }
   if (maxSimultaneousEvents >= 2 && selectedSpaceIds(value).length === 0) {
     return "Assign an Event Space before booking. This venue can host more than one event at the same time.";
@@ -91,6 +100,7 @@ export function toConfirmedBookingOccupancy(input: {
       ...row,
       startTime: cleanTime(row.startTime),
       endTime: cleanTime(row.endTime),
+      scheduledDate: row.scheduledDate?.trim() || null,
     }));
   const primary = assignments.length > 0
     ? primarySpaceIdFromAssignments(assignments, { weddingFamily: input.weddingFamily })

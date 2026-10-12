@@ -133,4 +133,74 @@ describe("confirmed booking occupancy", () => {
     assert.doesNotMatch(requiredFn, /template_refs/);
     assert.doesNotMatch(requiredFn, /from public\.venue_setup_profiles/);
   });
+
+  it("persists component scheduledDate and validates within the overall range", () => {
+    const mig = read("supabase/migrations/20261417100000_assignment_component_scheduled_dates.sql");
+    assert.match(mig, /add column if not exists scheduled_date date/);
+    assert.match(mig, /x\.value->>'scheduledDate'/);
+    assert.match(mig, /occ_date date/);
+    assert.match(dialog, /booking-schedule-preview/);
+    assert.match(dialog, /Proposed final schedule/);
+    assert.equal(
+      bookingConfirmationError({
+        eventDate: "2027-09-03",
+        eventEndDate: "2027-09-04",
+        startTime: "18:00",
+        endTime: "22:00",
+        spaceId: "barn",
+        assignments: [{
+          useKey: "rehearsal_dinner",
+          useLabel: "Rehearsal Dinner",
+          spaceId: "barn",
+          startTime: "18:00",
+          endTime: "21:00",
+          scheduledDate: "2027-09-05",
+        }],
+      }, 2),
+      "Each component date must fall within the overall event dates.",
+    );
+    assert.equal(
+      bookingConfirmationError({
+        eventDate: "2027-09-03",
+        eventEndDate: "2027-09-04",
+        startTime: "18:00",
+        endTime: "22:00",
+        spaceId: "barn",
+        assignments: [
+          {
+            useKey: "rehearsal_dinner",
+            useLabel: "Rehearsal Dinner",
+            spaceId: "barn",
+            startTime: "18:00",
+            endTime: "21:00",
+            scheduledDate: "2027-09-03",
+          },
+          {
+            useKey: "reception",
+            useLabel: "Reception",
+            spaceId: "barn",
+            startTime: "16:00",
+            endTime: "22:00",
+            scheduledDate: "2027-09-04",
+          },
+        ],
+      }, 2),
+      null,
+    );
+    const prefill = prefillBookingConfirmation({
+      eventType: "wedding",
+      eventDate: "2027-09-04",
+      endDate: "2027-09-04",
+      plannedSpaceId: null,
+      preferences: [{
+        id: "p1",
+        useKey: "rehearsal_dinner",
+        preferenceKind: "venue_space",
+        spaceId: "barn",
+        externalLocation: null,
+        scheduledDate: "2027-09-03",
+      }],
+    });
+    assert.equal(prefill.assignments[0]?.scheduledDate, "2027-09-03");
+  });
 });

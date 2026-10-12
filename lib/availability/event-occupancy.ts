@@ -105,9 +105,15 @@ export type OccupancyEvent = {
   spaceIds?: string[];
   /**
    * Per-use windows. When any row has its own times, occupancy uses those
-   * windows instead of one event-wide envelope.
+   * windows instead of one event-wide envelope. Optional scheduledDate limits
+   * the window to that calendar day within the event range.
    */
-  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }> | null;
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }> | null;
   setupTime: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -121,7 +127,12 @@ export type OccupancyInput = {
   /** Additional spaces for the candidate (assignments). */
   spaceIds?: string[] | null;
   /** Per-space windows. When set, each space occupies only its own times. */
-  windows?: Array<{ spaceId: string; startTime?: string | null; endTime?: string | null }> | null;
+  windows?: Array<{
+    spaceId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    scheduledDate?: string | null;
+  }> | null;
   setupTime?: string | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -359,13 +370,20 @@ function occupyingEvents(existing: OccupancyEvent[], excludeEventId?: string | n
   });
 }
 
-type ScheduleWindow = { spaceId: string | null; start: string; end: string };
+type ScheduleWindow = {
+  spaceId: string | null;
+  start: string;
+  end: string;
+  /** Null = every day in the event protected range. */
+  scheduledDate: string | null;
+};
 
 function scheduleWindowsForInput(input: OccupancyInput): ScheduleWindow[] {
   const precise = (input.windows ?? []).filter((row) => row.spaceId?.trim());
   if (precise.length > 0) {
     return precise.map((row) => ({
       spaceId: row.spaceId.trim(),
+      scheduledDate: blankToNull(row.scheduledDate),
       ...operationalWindow({
         setupTime: row.startTime ? null : input.setupTime,
         startTime: row.startTime ?? input.startTime,
@@ -376,8 +394,8 @@ function scheduleWindowsForInput(input: OccupancyInput): ScheduleWindow[] {
   }
   const spaces = occupiedSpaceIds({ spaceId: input.spaceId, spaceIds: input.spaceIds });
   const window = operationalWindow(input);
-  if (spaces.length === 0) return [{ spaceId: null, ...window }];
-  return spaces.map((spaceId) => ({ spaceId, ...window }));
+  if (spaces.length === 0) return [{ spaceId: null, scheduledDate: null, ...window }];
+  return spaces.map((spaceId) => ({ spaceId, scheduledDate: null, ...window }));
 }
 
 function scheduleWindowsForEvent(event: OccupancyEvent): ScheduleWindow[] {
@@ -385,6 +403,7 @@ function scheduleWindowsForEvent(event: OccupancyEvent): ScheduleWindow[] {
   if (precise.length > 0) {
     return precise.map((row) => ({
       spaceId: row.spaceId.trim(),
+      scheduledDate: blankToNull(row.scheduledDate),
       ...operationalWindow({
         setupTime: row.startTime ? null : event.setupTime,
         startTime: row.startTime ?? event.startTime,
@@ -395,27 +414,67 @@ function scheduleWindowsForEvent(event: OccupancyEvent): ScheduleWindow[] {
   }
   const spaces = occupiedSpaceIds(event);
   const window = operationalWindow(event);
-  if (spaces.length === 0) return [{ spaceId: null, ...window }];
-  return spaces.map((spaceId) => ({ spaceId, ...window }));
+  if (spaces.length === 0) return [{ spaceId: null, scheduledDate: null, ...window }];
+  return spaces.map((spaceId) => ({ spaceId, scheduledDate: null, ...window }));
+}
+
+/** Expand a schedule window onto its actual protected day(s). */
+export function intervalsForScheduleWindow(
+  eventDate: string,
+  eventEndDate: string | null | undefined,
+  window: { start: string; end: string; scheduledDate?: string | null },
+): OperationalInterval[] {
+  const range = datesInProtectedRange(eventDate, eventEndDate);
+  const scheduled = blankToNull(window.scheduledDate);
+  const days = scheduled ? (range.includes(scheduled) ? [scheduled] : []) : range;
+  return days.map((date) => ({
+    date,
+    start: operationalInstantMinutes(date, window.start),
+    end: operationalInstantMinutes(date, window.end),
+  }));
+}
+
+type DatedSpaceInterval = OperationalInterval & { spaceId: string | null };
+
+function datedIntervalsForInput(input: OccupancyInput): DatedSpaceInterval[] {
+  return scheduleWindowsForInput(input).flatMap((row) =>
+    intervalsForScheduleWindow(input.eventDate, input.eventEndDate, row).map((interval) => ({
+      ...interval,
+      spaceId: row.spaceId,
+    })),
+  );
+}
+
+function datedIntervalsForEvent(event: OccupancyEvent): DatedSpaceInterval[] {
+  return scheduleWindowsForEvent(event).flatMap((row) =>
+    intervalsForScheduleWindow(event.eventDate, event.eventEndDate, row).map((interval) => ({
+      ...interval,
+      spaceId: row.spaceId,
+    })),
+  );
+}
+
+function datedIntervalsOverlap(a: OperationalInterval, b: OperationalInterval): boolean {
+  return a.date === b.date && a.start < b.end && b.start < a.end;
 }
 
 function eventOverlapsCandidate(event: OccupancyEvent, input: OccupancyInput, _candidateWindow: { start: string; end: string }): boolean {
   if (!dateRangesOverlap(event.eventDate, event.eventEndDate, input.eventDate, input.eventEndDate)) {
     return false;
   }
-  const left = scheduleWindowsForInput(input);
-  const right = scheduleWindowsForEvent(event);
-  return left.some((a) => right.some((b) => windowsOverlap(a, b)));
+  const left = datedIntervalsForInput(input);
+  const right = datedIntervalsForEvent(event);
+  return left.some((a) => right.some((b) => datedIntervalsOverlap(a, b)));
 }
 
 function sameSpaceWindowOverlap(event: OccupancyEvent, input: OccupancyInput): boolean {
   if (!dateRangesOverlap(event.eventDate, event.eventEndDate, input.eventDate, input.eventEndDate)) {
     return false;
   }
-  const left = scheduleWindowsForInput(input);
-  const right = scheduleWindowsForEvent(event);
+  const left = datedIntervalsForInput(input);
+  const right = datedIntervalsForEvent(event);
   return left.some((a) => right.some((b) =>
-    !!a.spaceId && !!b.spaceId && a.spaceId === b.spaceId && windowsOverlap(a, b),
+    !!a.spaceId && !!b.spaceId && a.spaceId === b.spaceId && datedIntervalsOverlap(a, b),
   ));
 }
 
@@ -438,26 +497,14 @@ function spaceSetsIntersect(a: readonly string[], b: readonly string[]): boolean
   return a.some((id) => b.includes(id));
 }
 
-function intervalsForWindow(
-  eventDate: string,
-  eventEndDate: string | null | undefined,
-  window: { start: string; end: string },
-): OperationalInterval[] {
-  return datesInProtectedRange(eventDate, eventEndDate).map((date) => ({
-    date,
-    start: operationalInstantMinutes(date, window.start),
-    end: operationalInstantMinutes(date, window.end),
-  }));
-}
-
 function turnaroundForSharedWindows(
   input: OccupancyInput,
   event: OccupancyEvent,
   hours: number,
   simultaneous: boolean,
 ): { earliestStart: number; otherIsBefore: boolean } | null {
-  const left = scheduleWindowsForInput(input);
-  const right = scheduleWindowsForEvent(event);
+  const left = datedIntervalsForInput(input);
+  const right = datedIntervalsForEvent(event);
   const spaces = new Set<string>();
   if (!simultaneous) {
     for (const row of left) if (row.spaceId) spaces.add(row.spaceId);
@@ -471,11 +518,7 @@ function turnaroundForSharedWindows(
   for (const spaceId of spaces) {
     const cand = left.filter((row) => !simultaneous || row.spaceId === spaceId || spaceId === "");
     const other = right.filter((row) => !simultaneous || row.spaceId === spaceId || spaceId === "");
-    const violation = turnaroundViolation(
-      cand.flatMap((row) => intervalsForWindow(input.eventDate, input.eventEndDate, row)),
-      other.flatMap((row) => intervalsForWindow(event.eventDate, event.eventEndDate, row)),
-      hours,
-    );
+    const violation = turnaroundViolation(cand, other, hours);
     if (!violation) continue;
     if (!found || (violation.otherIsBefore && violation.earliestStart > found.earliestStart)) {
       found = violation;

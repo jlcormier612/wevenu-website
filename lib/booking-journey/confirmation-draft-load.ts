@@ -211,7 +211,7 @@ async function finishDraft(
   const holds = row.leadId
     ? (await supabase
       .from("date_holds")
-      .select("id, status, hold_date, start_time, end_time, space_id")
+      .select("id, status, hold_date, end_date, start_time, end_time, space_id")
       .eq("lead_id", row.leadId)
       .eq("venue_id", venueId)
       .eq("status", "active")).data ?? []
@@ -227,7 +227,7 @@ async function finishDraft(
   const preferences = row.leadId
     ? (await supabase
       .from("lead_event_space_preferences")
-      .select("use_key, preference_kind, space_id")
+      .select("use_key, preference_kind, space_id, scheduled_date")
       .eq("lead_id", row.leadId)
       .eq("venue_id", venueId)).data ?? []
     : [];
@@ -242,6 +242,7 @@ async function finishDraft(
       return {
         status: "active" as const,
         holdDate: hold.hold_date,
+        endDate: (hold as { end_date?: string | null }).end_date ?? hold.hold_date,
         startTime: hold.start_time,
         endTime: hold.end_time,
         spaceId: hold.space_id,
@@ -253,7 +254,7 @@ async function finishDraft(
       preferenceKind: pref.preference_kind as LeadSpacePreferenceKind,
       spaceId: pref.space_id,
       externalLocation: null,
-      scheduledDate: null,
+      scheduledDate: (pref as { scheduled_date?: string | null }).scheduled_date ?? null,
     })),
     assignments,
   });
@@ -298,6 +299,7 @@ async function finishDraft(
           const linked = holdSpaceRows.filter((row) => row.hold_id === hold.id).map((row) => row.space_id).filter(Boolean);
           return {
             holdDate: hold.hold_date,
+            endDate: (hold as { end_date?: string | null }).end_date ?? hold.hold_date,
             startTime: hold.start_time,
             endTime: hold.end_time,
             spaceId: hold.space_id,

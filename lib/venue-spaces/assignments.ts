@@ -13,6 +13,11 @@ export type EventSpaceAssignmentInput = {
   /** When set, this use occupies only this window. Blank uses the event window. */
   startTime?: string | null;
   endTime?: string | null;
+  /**
+   * Calendar day this use occupies (YYYY-MM-DD). Null = every day in the
+   * event's protected range (legacy multi-day envelope).
+   */
+  scheduledDate?: string | null;
 };
 
 export type EventSpaceAssignment = EventSpaceAssignmentInput & {
@@ -96,6 +101,7 @@ export function normalizeAssignmentInputs(
       spaceId,
       startTime: raw.startTime ?? null,
       endTime: raw.endTime ?? null,
+      scheduledDate: raw.scheduledDate?.trim() || null,
     });
   }
   return [...byKey.values()];

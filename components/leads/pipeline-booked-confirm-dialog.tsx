@@ -200,6 +200,8 @@ export function PipelineBookedConfirmDialog({
                     onChange={setAssignments}
                     uses={relevantUses}
                     withTimes
+                    eventDate={eventDate}
+                    eventEndDate={eventEndDate}
                   />
                 ) : (
                   <div className="space-y-3" data-testid="booking-confirm-space">
@@ -241,13 +243,23 @@ export function PipelineBookedConfirmDialog({
                   startTime={showAssignments ? undefined : (startTime || undefined)}
                   endTime={showAssignments ? undefined : (endTime || undefined)}
                   spaceId={(showAssignments ? occupancySpace(assignments, experience.isWeddingSpecific) : spaceId) || undefined}
-                  windows={showAssignments ? assignmentWindows(assignments) : undefined}
+                  windows={showAssignments ? assignmentWindows(assignments, eventDate) : undefined}
                   type="event"
                   purpose="booking"
                   excludeLeadId={draft.leadId ?? undefined}
                   onStatusChange={setAvailabilityBlocked}
                 />
               )}
+
+              {showAssignments ? (
+                <BookingSchedulePreview
+                  eventDate={eventDate}
+                  eventEndDate={eventEndDate}
+                  assignments={assignments}
+                  spaces={spaces}
+                />
+              ) : null}
+
               {formError && <p className="text-sm text-destructive">{formError}</p>}
 
               <section className="rounded-lg border border-border bg-muted/40 px-3 py-2.5" data-testid="booking-team-assignment">
@@ -312,18 +324,77 @@ function occupancySpace(assignments: EventSpaceAssignmentInput[], weddingFamily:
   return primarySpaceIdFromAssignments(assignments, { weddingFamily }) ?? "";
 }
 
-function assignmentWindows(assignments: EventSpaceAssignmentInput[]) {
+function assignmentWindows(assignments: EventSpaceAssignmentInput[], fallbackDate: string) {
   return assignments
     .filter((row) => row.spaceId.trim())
     .map((row) => ({
       spaceId: row.spaceId,
       startTime: row.startTime ?? null,
       endTime: row.endTime ?? null,
+      scheduledDate: row.scheduledDate?.trim() || fallbackDate || null,
     }));
 }
 
+function BookingSchedulePreview({
+  eventDate,
+  eventEndDate,
+  assignments,
+  spaces,
+}: {
+  eventDate: string;
+  eventEndDate: string;
+  assignments: EventSpaceAssignmentInput[];
+  spaces: { id: string; name: string }[];
+}) {
+  const rows = assignments
+    .filter((row) => row.spaceId.trim() && row.startTime && row.endTime)
+    .map((row) => ({
+      date: row.scheduledDate?.trim() || eventDate,
+      useLabel: row.useLabel || row.useKey,
+      spaceName: spaces.find((s) => s.id === row.spaceId)?.name ?? "Selected space",
+      start: formatClock(row.startTime ?? null),
+      end: formatClock(row.endTime ?? null),
+    }))
+    .filter((row) => row.date)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.start!.localeCompare(b.start!));
+  if (rows.length === 0) return null;
+  const byDate = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const list = byDate.get(row.date) ?? [];
+    list.push(row);
+    byDate.set(row.date, list);
+  }
+  return (
+    <section className="rounded-lg border border-border bg-muted/40 px-3 py-2.5" data-testid="booking-schedule-preview">
+      <h3 className="text-sm font-semibold text-heading">Proposed final schedule</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Each component reserves only its own date and time window
+        {eventEndDate && eventEndDate !== eventDate ? " within the overall event dates" : ""}.
+      </p>
+      <div className="mt-3 space-y-3">
+        {[...byDate.entries()].map(([date, items]) => (
+          <div key={date}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {formatHoldDate(date)}
+            </p>
+            <ul className="mt-1 space-y-1 text-sm text-foreground">
+              {items.map((item) => (
+                <li key={`${date}-${item.useLabel}-${item.spaceName}`}>
+                  {item.useLabel} — {item.spaceName} — {item.start}–{item.end}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function formatHoldDetail(hold: OwnHoldSummary): string {
-  const date = formatHoldDate(hold.holdDate);
+  const date = hold.endDate && hold.endDate !== hold.holdDate
+    ? `${formatHoldDate(hold.holdDate)} – ${formatHoldDate(hold.endDate)}`
+    : formatHoldDate(hold.holdDate);
   const start = formatClock(hold.startTime);
   const end = formatClock(hold.endTime);
   const time = start && end ? `${start}–${end}` : "All day";

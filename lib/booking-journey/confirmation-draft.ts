@@ -38,6 +38,8 @@ export type BookingConfirmationDraft = {
 
 export type OwnHoldSummary = {
   holdDate: string;
+  /** Inclusive end; equals holdDate for single-day holds. */
+  endDate: string;
   startTime: string | null;
   endTime: string | null;
   /** No space on the hold means it covers the whole venue. */
@@ -46,7 +48,14 @@ export type OwnHoldSummary = {
 };
 
 export function summarizeOwnHolds(
-  holds: Array<{ holdDate: string; startTime?: string | null; endTime?: string | null; spaceId?: string | null; spaceIds?: string[] | null }>,
+  holds: Array<{
+    holdDate: string;
+    endDate?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    spaceId?: string | null;
+    spaceIds?: string[] | null;
+  }>,
   namedSpaces: Array<{ spaceId: string; spaceName: string | null }>,
 ): OwnHoldSummary[] {
   return holds.map((hold) => {
@@ -56,8 +65,12 @@ export function summarizeOwnHolds(
     const names = spaceIds
       .map((id) => namedSpaces.find((space) => space.spaceId === id)?.spaceName?.trim() || null)
       .filter((name): name is string => !!name);
+    const endDate = hold.endDate?.trim() && hold.endDate >= hold.holdDate
+      ? hold.endDate.trim()
+      : hold.holdDate;
     return {
       holdDate: hold.holdDate,
+      endDate,
       startTime: hhmm(hold.startTime) || null,
       endTime: hhmm(hold.endTime) || null,
       wholeVenue: spaceIds.length === 0,
@@ -76,7 +89,7 @@ export function prefillBookingConfirmation(input: {
   eventDate: string | null;
   endDate: string | null;
   plannedSpaceId: string | null;
-  holds?: Array<Pick<DateHold, "status" | "holdDate" | "startTime" | "endTime" | "spaceId" | "spaceIds">>;
+  holds?: Array<Pick<DateHold, "status" | "holdDate" | "endDate" | "startTime" | "endTime" | "spaceId" | "spaceIds">>;
   preferences?: LeadEventSpacePreference[];
   assignments?: EventSpaceAssignmentInput[];
 }): Omit<BookingConfirmationDraft, "spaces" | "maxSimultaneousEvents" | "spaceOperatingMode" | "leadId" | "holdBlocksAvailability" | "hasOwnActiveHold" | "sourceHoldDates" | "ownHolds"> {
@@ -91,9 +104,13 @@ export function prefillBookingConfirmation(input: {
       useKey: row.useKey,
       useLabel: row.useKey,
       spaceId: row.spaceId!,
+      scheduledDate: row.scheduledDate?.trim() || null,
     }));
   const assignments = (input.assignments ?? []).filter((row) => row.spaceId.trim()).length > 0
-    ? (input.assignments ?? []).filter((row) => row.spaceId.trim())
+    ? (input.assignments ?? []).filter((row) => row.spaceId.trim()).map((row) => ({
+      ...row,
+      scheduledDate: row.scheduledDate?.trim() || null,
+    }))
     : preferenceAssignments;
   const weddingFamily = resolveExperienceProfile(input.eventType).isWeddingSpecific;
   const fromAssignments = primarySpaceIdFromAssignments(assignments, { weddingFamily });
