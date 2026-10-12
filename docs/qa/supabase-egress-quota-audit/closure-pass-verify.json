@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-12T01:05:00.000Z",
+  "tip": "45290d6adaeaa446341c8527f4ec81e8fabf3935",
+  "projectRef": "wvpsldwwjqdannqasrdf",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  },
+  "fixAncestry": {
+    "efd12db6_auth_amp": true,
+    "459d63fc_crm": true,
+    "4656d1ba_eng_closure": true,
+    "05a39a1e_early_warning_doc": true,
+    "8e4f911e_blocked_dates": true
+  },
+  "authRetryable24hSum": 0,
+  "albRequestCount7dSum": 201008,
+  "albApproxPerDay": 28715,
+  "alarms": {
+    "count": 7,
+    "names": [
+      "htc-sandbox-alb-target-5xx",
+      "htc-sandbox-auth-retryable-spike",
+      "htc-sandbox-crm-contention-spike",
+      "htc-sandbox-health-supabase-down",
+      "htc-sandbox-supabase-restriction-signal",
+      "htc-sandbox-venue-unhealthy-hosts",
+      "htc-sandbox-resend-provider-limit"
+    ],
+    "healthStateAfterRestore": "OK"
+  },
+  "sns": {
+    "topic": "arn:aws:sns:us-east-1:405254329873:htc-sandbox-ops-alerts",
+    "sqsSubscription": "Confirmed",
+    "emailSubscription": "PendingConfirmation",
+    "emailEndpoint": "jennifer@hellotocheers.com",
+    "notificationsFailed24hSum": 2
+  },
+  "sqsDeliveryReproof": {
+    "file": "early-warning-reverify-sqs.json",
+    "health_alarm_in_sqs": true
+  },
+  "canary": {
+    "function": "htc-sandbox-health-canary",
+    "schedule": "rate(5 minutes) ENABLED",
+    "HEALTH_URL": "https://app.sandbox.hellotocheers.com/api/health",
+    "invokeOk": true
+  },
+  "resend": {
+    "secretPresent": "htc/sandbox/resend-api-key",
+    "domainsApiFromOperatorHost": "403 Cloudflare 1010 — not usable as plan evidence",
+    "appClassification": "lib/email/resend-failure.ts + sendEmail wiring",
+    "metricFilter": "htc-sandbox-resend-provider-limit on /ecs/htc-sandbox/venue-app",
+    "alarm": "htc-sandbox-resend-provider-limit threshold Sum>=3 / 5m",
+    "planLimits": "OWNER — Resend dashboard"
+  },
+  "supabaseUsageSpendCap": "OWNER — Dashboard B1–B10",
+  "customerTrafficReadiness": "YELLOW"
+}

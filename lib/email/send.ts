@@ -16,6 +16,11 @@
  */
 
 import { getCommunicationMode, sandboxEmailRecipient } from "@/lib/communication/mode";
+import {
+  classifyResendHttpFailure,
+  formatResendLimitLogLine,
+  type ResendFailureCode,
+} from "@/lib/email/resend-failure";
 
 export type EmailAttachment = {
   /** Public URL Resend can fetch (preferred for conversation uploads). */
@@ -37,7 +42,7 @@ export type EmailPayload = {
 
 export type SendResult =
   | { ok: true; method: "resend" | "mailto" | "disabled"; providerId?: string; mailtoUrl?: string; sandboxRedirectedFrom?: string }
-  | { ok: false; message: string };
+  | { ok: false; message: string; code?: ResendFailureCode | "disabled" | "misconfigured"; retryUnsafe?: boolean };
 
 export function isEmailConfigured(): boolean {
   return !!process.env.RESEND_API_KEY;
@@ -106,7 +111,17 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
 
     if (!res.ok) {
       const err = await res.text();
-      return { ok: false, message: `Email send failed: ${err}` };
+      const classified = classifyResendHttpFailure({ status: res.status, bodyText: err });
+      if (classified.code === "quota" || classified.code === "rate_limit") {
+        // Marker scraped by Sandbox CloudWatch metric filter → early-warning alarm.
+        console.warn(formatResendLimitLogLine(classified.code, res.status));
+      }
+      return {
+        ok: false,
+        message: classified.message,
+        code: classified.code,
+        retryUnsafe: classified.retryUnsafe,
+      };
     }
     // Resend's own message id — without this, no delivery/open/click/bounce
     // webhook can ever be matched back to this send (it matches on this id

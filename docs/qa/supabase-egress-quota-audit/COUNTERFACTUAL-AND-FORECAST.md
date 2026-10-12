@@ -2,9 +2,9 @@
 
 **Type:** Evidence-based reconstruction + provisional forecast. Distinguishes **observed facts**, **estimates**, **projections**, **assumptions**, **unknowns**.  
 **Project:** Sandbox `wvpsldwwjqdannqasrdf`  
-**Observation (UTC):** 2026-10-11T23:20Z  
-**Sources:** Owner prior-cycle meters (`USAGE-FORENSICS.md`), Auth storm forensics (`ROOT-CAUSE-VERDICT.md`), ALB CloudWatch (this pass + prior), CRM/Auth re-verify this pass.  
-**No invoice fabrication. No Spend Cap assumed.**
+**Observation (UTC):** 2026-10-12T01:05Z (re-verify pass; model unchanged)  
+**Sources:** Owner prior-cycle meters (`USAGE-FORENSICS.md`), Auth storm forensics (`ROOT-CAUSE-VERDICT.md`), ALB CloudWatch (7d Sum **201,008** ≈ **28.7k**/day), Auth/CRM re-verify, official Supabase pricing docs (2026-10-11).  
+**No invoice fabrication. No Spend Cap assumed. No Management Usage API access. Current-cycle GB still owner-only.**
 
 ---
 
@@ -32,8 +32,10 @@
 | MAU | 62–82 | Cycle / metrics | — | Owner / privileged | HIGH |
 | ALB RequestCount | ~27k/day avg (~835k / ~30d) | ~2026-09-11→10-10 | n/a | CloudWatch | HIGH |
 | AuthRetryable (Sept 28) | 10,278 | ~4h UTC | n/a | CW Insights | HIGH |
-| AuthRetryable (this pass, 24h) | **0** | 2026-10-11 | n/a | CW Insights | HIGH |
-| Last 7d ALB Sum (this pass) | ~200k (≈28.6k/day) | 2026-10-04→10 | n/a | CloudWatch | HIGH |
+| AuthRetryable (closure pass, 24h) | **0** | 2026-10-11 | n/a | CloudWatch Sum | HIGH |
+| Last 7d ALB Sum (closure) | ~201k (≈**28.7k**/day) | 2026-10-04→10 | n/a | CloudWatch | HIGH |
+| Current-cycle Usage GB | **UNKNOWN** | Current billing cycle | Pro allowances | Owner Dashboard required | — |
+| Spend Cap | **UNKNOWN** | Current | On by default on Pro (docs) | Owner Cost Control | — |
 
 **Unknown:** exact billing cycle calendar dates; service-level ingest split; current-cycle GB after Pro; Spend Cap state; org multi-project share.
 
@@ -43,18 +45,19 @@
 
 | Category | Role | Quantified evidence | Byte attribution |
 |---|---|---|---|
-| Auth 3× amp (pre-`efd12db6`) | Defect | Health alone ~8.6k/day × 3 Auth calls until Sept 28 deploy; storm day 10k+ AuthRetryable | **Not byte-split** |
-| QA / automation / ALB | Abnormal vs paying customers | ~27k req/day sustained; peaks 40–52k | Dominant request volume — **HIGH** |
+| Auth 3× amp (pre-`efd12db6`) | Confirmed defect | Health alone ~8.6k/day × 3 Auth calls until Sept 28 deploy; storm day 10k+ AuthRetryable | **Not byte-split** |
+| QA / automation / ALB | Abnormal vs paying customers | ~27–28.7k req/day sustained; peaks 40–52k | Dominant request volume — **HIGH** |
 | Normal product activity | Present but minority of Sandbox | 65 venues / ~82 users / small tables | Intensity per venue **not** Production-proven |
 | Background jobs | Ongoing | Scheduler `*/10` automations HTTP 200 post-fix | Modest vs ALB |
 | CRM conflict hang | Log/latency amplifier when storming | 125s → ~80 ms after fix | Contributed when storming; **not** sole 290 GB proof |
+| Unattributed platform logging | Residual | Service split still missing | **HIGH uncertainty** on ingest |
 | AWS ECS CloudWatch | Ruled out for Supabase ingest | ~0.058 GB / 30d | Not the meter |
 
 ---
 
 ## 4. Three scenarios
 
-Pricing references (docs, not invoice): Pro egress included 250 GB then ~$0.09/GB; log ingest included 20 GB then ~$0.50/GB **after grace through start of 2027** (informational until then). Free allowances for incident comparison only.
+**Official Pro pricing (docs verified 2026-10-11):** base from $25/mo; egress 250/250 GB then $0.09/$0.03; log ingest **20 GB** then $0.50/GB; Spend Cap **default On** on Pro. Log-ingest overage billing subject to provider Fair Use / grace messaging — treat $0.50/GB as the published overage rate when Spend Cap is Off.
 
 ### A. Observed incident (facts)
 
@@ -73,10 +76,11 @@ Pricing references (docs, not invoice): Pro egress included 250 GB then ~$0.09/G
 
 **Method (transparent):**
 
-1. Treat ALB ~27k/day as ~70–85% QA/engineering (assumption; health alone ≈31%).  
+1. Treat ALB ~28k/day as ~70–85% QA/engineering (assumption; health alone ≈31%).  
 2. Auth amp removed ~⅔ of Auth network calls on matched traffic for ~17 pre-fix days of a ~30-day cycle (structural fact of 3×→1×).  
 3. Log ingest correlates with platform Auth/API/Postgres activity under request volume (probable; service split unknown).  
-4. Do **not** treat 1 AuthRetryable ≈ 1 billable egress byte.
+4. Do **not** treat 1 AuthRetryable ≈ 1 billable egress byte.  
+5. Closure pass did **not** obtain Usage-by-service — **do not tighten** central log bounds beyond prior defensibility.
 
 | Dimension | Low (optimistic) | Expected (central) | High (pessimistic) | Uncertainty |
 |---|---|---|---|---|
@@ -96,8 +100,8 @@ Assumes: tip includes Auth+CRM fixes; ALB continues ~15–30k/day Sandbox QA; Pr
 |---|---|---|---|
 | Egress GB / month | 4 | 10–20 | 40 |
 | Log ingest GB / month | 30 | 60–120 | 200 |
-| vs Pro included | Egress inside 250 | Log ingest **often above** 20 GB included | Cost/warning risk post-grace |
-| Variable cost (illustrative post-grace, Spend Cap Off) | — | Logs: max(0, ingest−20)×$0.50 | Egress overage unlikely at <50 GB |
+| vs Pro included | Egress inside 250 | Log ingest **often above** 20 GB included | Cost/warning risk when overages bill or Spend Cap On |
+| Variable cost (illustrative, Spend Cap Off) | — | Logs: max(0, ingest−20)×$0.50 | Egress overage unlikely at <50 GB |
 
 **Current-cycle meters still OPEN** — these are operational envelopes, not verified October current-cycle facts.
 
@@ -114,7 +118,7 @@ Assumes: tip includes Auth+CRM fixes; ALB continues ~15–30k/day Sandbox QA; Pr
 | Venues | 65 |
 | Clients / leads / events | 131 / 104 / 55 |
 | Auth users | ~82 |
-| ALB | ~27k req/day (mostly non-customer) |
+| ALB | ~28.7k req/day last 7d (mostly non-customer) |
 
 ### Assumptions (labeled)
 
@@ -129,27 +133,33 @@ Assumes: tip includes Auth+CRM fixes; ALB continues ~15–30k/day Sandbox QA; Pr
 
 ### Request & usage projection (central)
 
-| Active venues | Est. staff MAU | Est. portal MAU | Req/day (central) | Egress GB/mo (L/E/H) | Log ingest GB/mo (L/E/H) |
-|---|---|---|---|---|---|
-| 100 | ~300 | ~800 | ~18k | 8 / 20 / 45 | 25 / 70 / 160 |
-| 250 | ~750 | ~2,000 | ~45k | 15 / 45 / 100 | 50 / 150 / 350 |
-| 500 | ~1,500 | ~4,000 | ~90k | 25 / 80 / 180 | 80 / 280 / 650 |
+| Active venues | Est. staff MAU | Est. portal MAU | Req/day (central) | Egress GB/mo (L/E/H) | Log ingest GB/mo (L/E/H) | Central logs overage $ (Spend Cap Off) |
+|---|---|---|---|---|---|---|
+| 100 | ~300 | ~800 | ~18k | 8 / 20 / 45 | 25 / 70 / 160 | ≈ (70−20)×$0.50 ≈ **$25**/mo |
+| 250 | ~750 | ~2,000 | ~45k | 15 / 45 / 100 | 50 / 150 / 350 | ≈ **$65**/mo |
+| 500 | ~1,500 | ~4,000 | ~90k | 25 / 80 / 180 | 80 / 280 / 650 | ≈ **$130**/mo; egress usually ≤250 |
 
 **Interpretation:**
 
 - Egress at 500 venues **expected** still inside Pro 250 GB if chatty defects stay fixed; **high** case approaches overage.  
-- Log ingest at 250–500 venues **likely exceeds** 20 GB included once grace ends — primary cost/risk meter.  
-- Model is **provisional** until Production (or Sandbox dogfood) exports daily egress + ingest for ≥14 days with known venue counts.
+- Log ingest at 250–500 venues **likely exceeds** 20 GB included — **first bottleneck**.  
+- If old ~290 GB ingest recurred: ≈ (290−20)×$0.50 ≈ **~$135**/cycle logs alone (Spend Cap Off), or Fair Use restriction risk if Spend Cap On.  
+- Model is **provisional** until current-cycle meters + ≥14 days Production (or Sandbox dogfood) daily egress/ingest with known venue counts.
 
-### Validation needed
+### Pro sufficiency answers
 
-1. Owner current-cycle meters (daily if possible).  
-2. Service-level ingest split.  
-3. Production ALB/Auth request rates per venue after launch.  
-4. Spend Cap policy decision (restrict vs pay).
+| Question | Answer | Confidence |
+|---|---|---|
+| Is Pro a reasonable starting plan? | **YES** for egress/DB/MAU at measured Sandbox scale | MEDIUM |
+| Supports 100 / 250 / 500? | **100:** plausible; **250–500:** expect log overage or Spend Cap pressure | LOW–MEDIUM (absolute GB) |
+| First bottleneck | **Logs Ingest (20 GB)** | HIGH (shape) |
+| Review trigger | Current-cycle ingest **>15 GB** or +20% WoW; egress **>100 GB**; Fair Use email; Auth/CRM alarms | — |
+| Conditional on owner evidence? | **YES** — Spend Cap + current-cycle GB required before GREEN | — |
 
 ---
 
 ## 6. Answer to the counterfactual question
 
 **Most likely without identified defects and abnormal testing:** egress on the order of **~5–8 GB/cycle** (possibly under Free’s 5 GB in the optimistic bound), and log ingestion still **tens to low hundreds of GB** under residual Sandbox engineering traffic — **far below** the observed **289.808 GB** if QA intensity and Auth amp are both removed, but **not** proven to fit Free’s 1 GB log allowance. Exact point estimates are **not supportable** without Usage-by-service; the tables above are the defensible bounds.
+
+**Minimum additional measurement:** owner Usage-by-service for the ~289.8 GB prior cycle (`OWNER-EVIDENCE-CHECKLIST.md` B9) plus current-cycle B3–B6.
