@@ -127,13 +127,19 @@ export function TourSettingsSection({ initialSettings }: Props) {
           {/* Booking link */}
           <div className="space-y-1.5">
             <Label className="text-xs">Booking link</Label>
-            <p className="text-xs text-muted-foreground">Share this on your website so clients can schedule a tour directly.</p>
+            <p className="text-xs text-muted-foreground">
+              General public link for your website. For a lead who already inquired (or has a hold), open
+              their lead and use Copy scheduling link instead.
+            </p>
             <div className="flex gap-2">
               <div className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2">
                 <p className="text-[11px] font-mono text-muted-foreground break-all">{bookingUrl}</p>
               </div>
               <Button type="button" variant="outline" size="sm" className="shrink-0"
-                onClick={() => { navigator.clipboard.writeText(absoluteBookingUrl()); toast.success("Copied!"); }}>
+                onClick={() => {
+                  navigator.clipboard.writeText(absoluteBookingUrl());
+                  toast.success("General tour booking link copied. Use Copy scheduling link on a lead for personal links.");
+                }}>
                 <Copy className="h-3.5 w-3.5" />
               </Button>
               <Button type="button" variant="outline" size="sm" className="shrink-0"

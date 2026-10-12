@@ -20,11 +20,13 @@ describe("public tour scheduling link", () => {
     assert.match(calendar, /publicTourSchedulingPath\(tourSettings\.tourEmbedKey\)/);
     assert.match(calendar, /tourSettings\?\.tourSchedulingEnabled/);
     assert.match(card, /Tour availability/);
-    assert.match(card, /Let couples choose an available time to schedule a tour\./);
+    assert.match(card, /Let new prospects choose an available time to schedule a tour\./);
     assert.match(card, /Copy tour link/);
     assert.match(card, /Preview tour scheduling/);
-    assert.match(card, /Share this link in emails, texts, and other sales messages\. Couples can choose from your available tour times\. Your link always reflects your current availability\./);
-    assert.match(card, /Tour link copied\./);
+    assert.match(card, /general tour link/);
+    assert.match(card, /Copy scheduling link/);
+    assert.match(card, /calendar-tour-link-lead-guidance/);
+    assert.match(card, /General tour link copied/);
     assert.match(card, /Online tour booking is not offered\./);
     assert.match(card, /\/settings\/availability#tour-availability/);
     assert.match(card, /href=\{url\}/);

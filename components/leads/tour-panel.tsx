@@ -496,7 +496,9 @@ export function TourScheduleRoot({
       }
       const url = `${window.location.origin}${path}`;
       await navigator.clipboard.writeText(url);
-      toast.success("Tour scheduling link copied.");
+      toast.success(
+        "Personal scheduling link copied. Send this when they already inquired — it keeps their preferred date and hold. The Calendar “Copy tour link” is for general promotion only.",
+      );
     } finally {
       setCopyingLink(false);
     }
@@ -532,16 +534,32 @@ export function TourScheduleActions({
   const { copyingLink, copyLink, openSchedule } = useTourSchedule();
   if (!includeCopyLink && !includeSchedule) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2" data-testid="tour-schedule-actions">
+    <div className="space-y-1.5" data-testid="tour-schedule-actions">
+      <div className="flex flex-wrap items-center gap-2">
+        {includeCopyLink ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={copyingLink}
+            onClick={() => void copyLink()}
+            data-testid="lead-copy-scheduling-link"
+          >
+            <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy scheduling link
+          </Button>
+        ) : null}
+        {includeSchedule ? (
+          <Button size="sm" className="h-8" onClick={openSchedule} data-testid="schedule-tour-action">
+            <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
+          </Button>
+        ) : null}
+      </div>
       {includeCopyLink ? (
-        <Button size="sm" variant="outline" className="h-8" disabled={copyingLink} onClick={() => void copyLink()}>
-          <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy scheduling link
-        </Button>
-      ) : null}
-      {includeSchedule ? (
-        <Button size="sm" className="h-8" onClick={openSchedule} data-testid="schedule-tour-action">
-          <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
-        </Button>
+        <p className="text-[11px] text-muted-foreground max-w-md" data-testid="lead-scheduling-link-guidance">
+          Use this personal link for this lead — including when their preferred event date is on hold.
+          The Calendar page&apos;s <span className="font-medium text-foreground">Copy tour link</span> is a
+          general link for new prospects only.
+        </p>
       ) : null}
     </div>
   );

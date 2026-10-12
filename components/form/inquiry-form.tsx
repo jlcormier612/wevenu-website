@@ -813,8 +813,20 @@ export function InquiryForm({
               ) : fields.preferred_event_date !== "hidden" ? (
                 <div className="space-y-1.5 sm:col-span-2">
                   <label className="block text-sm font-medium text-foreground">
-                    {fieldLabel("Preferred event date", fields.preferred_event_date)}
+                    {fieldLabel(
+                      "Preferred event date",
+                      // Tour booking must not require re-picking a date that may be
+                      // held for an existing inquiry (generic Calendar tour links).
+                      mode === "schedule_tour" ? "optional" : fields.preferred_event_date,
+                    )}
                   </label>
+                  {mode === "schedule_tour" && (
+                    <p className="text-xs text-muted-foreground">
+                      Optional for tours. Already working with {venue.name}? Use the personal
+                      scheduling link from your venue so your preferred date and hold are preserved —
+                      you do not need to select that date again here.
+                    </p>
+                  )}
                   {inquiryEventDateMode === "choose_available" ? (
                     <div className="rounded-lg border border-gray-200 p-4">
                       {loadingEventDates ? (

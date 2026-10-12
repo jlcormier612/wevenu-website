@@ -10,24 +10,26 @@ export function ShareTourAvailability({ url }: { url: string | null }) {
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Tour link copied.");
+      toast.success(
+        "General tour link copied. For a lead who already inquired (or has a hold), open their lead and use Copy scheduling link instead.",
+      );
     } catch {
       toast.error("Could not copy the link. Select it and copy it manually.");
     }
   }
 
   return (
-    <div className="h-full rounded-lg border border-border bg-card px-4 py-3">
+    <div className="h-full rounded-lg border border-border bg-card px-4 py-3" data-testid="calendar-share-tour-link">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Tour availability
       </p>
       {url ? (
         <>
           <p className="mt-1 text-sm text-foreground">
-            Let couples choose an available time to schedule a tour.
+            Let new prospects choose an available time to schedule a tour.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button type="button" size="lg" onClick={copy}>
+            <Button type="button" size="lg" onClick={copy} data-testid="calendar-copy-tour-link">
               Copy tour link
             </Button>
             <Button
@@ -41,7 +43,14 @@ export function ShareTourAvailability({ url }: { url: string | null }) {
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Share this link in emails, texts, and other sales messages. Couples can choose from your available tour times. Your link always reflects your current availability.
+            This is a general tour link for websites, QR codes, and new prospects. Your current tour
+            availability always applies.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground" data-testid="calendar-tour-link-lead-guidance">
+            Already working with someone — especially if you placed a hold on their preferred event
+            date? Open that lead and use <span className="font-medium text-foreground">Copy scheduling link</span>{" "}
+            instead. That personal link keeps their preferred date and hold so they can book a tour
+            without picking the held date again.
           </p>
         </>
       ) : (

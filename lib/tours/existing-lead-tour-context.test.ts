@@ -7,11 +7,18 @@ import { createTourOriginToken } from "@/lib/tours/origin-context";
 import { shouldSkipPreferredEventDateRequirement } from "@/lib/tours/existing-lead-tour-context";
 
 describe("existing-lead tour preferred event date", () => {
-  it("skips preferred-date requirement only for schedule_tour with existing lead", () => {
+  it("skips preferred-date requirement for all schedule_tour modes (not Request Information)", () => {
     assert.equal(
       shouldSkipPreferredEventDateRequirement({
         mode: "schedule_tour",
         existingLeadTour: true,
+      }),
+      true,
+    );
+    assert.equal(
+      shouldSkipPreferredEventDateRequirement({
+        mode: "schedule_tour",
+        existingLeadTour: false,
       }),
       true,
     );
@@ -24,7 +31,7 @@ describe("existing-lead tour preferred event date", () => {
     );
     assert.equal(
       shouldSkipPreferredEventDateRequirement({
-        mode: "schedule_tour",
+        mode: "request_information",
         existingLeadTour: false,
       }),
       false,
@@ -61,6 +68,16 @@ describe("existing-lead tour preferred event date", () => {
     assert.match(form, /const submitEventDate = existingLeadScheduleTour \? "" : eventDate/);
     assert.match(form, /!lockedExistingLeadTour && \(/);
     assert.match(form, /existingLeadTour\?\.guestCount/);
+    assert.match(form, /mode === "schedule_tour" \? "optional"/);
+  });
+
+  it("Calendar and lead surfaces distinguish general tour link vs personal scheduling link", () => {
+    const calendar = readFileSync(resolve("components/calendar/share-tour-availability.tsx"), "utf8");
+    assert.match(calendar, /calendar-tour-link-lead-guidance/);
+    assert.match(calendar, /Copy scheduling link/);
+    const panel = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
+    assert.match(panel, /lead-scheduling-link-guidance/);
+    assert.match(panel, /Copy tour link/);
   });
 
   it("book_public_tour_for_lead copies lead.event_date onto the appointment and never updates leads", () => {
