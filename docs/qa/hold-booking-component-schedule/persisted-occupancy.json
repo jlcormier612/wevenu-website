@@ -1,0 +1,45 @@
+{
+  "primary": {
+    "event": {
+      "id": "c9fa734a-5d12-4e8a-be2b-cc7df0288803",
+      "status": "confirmed",
+      "booked_at": "2026-10-12",
+      "event_date": "2027-09-03",
+      "event_end_date": "2027-09-04",
+      "start_time": "15:00:00",
+      "end_time": "22:00:00",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7"
+    },
+    "assignments": [
+      {
+        "use_key": "rehearsal_dinner",
+        "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+        "start_time": "18:00:00",
+        "end_time": "21:00:00",
+        "scheduled_date": "2027-09-03"
+      },
+      {
+        "use_key": "ceremony",
+        "space_id": "40f81c67-199d-47f8-bf7d-79c118e34198",
+        "start_time": "15:00:00",
+        "end_time": "16:00:00",
+        "scheduled_date": "2027-09-04"
+      },
+      {
+        "use_key": "reception",
+        "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+        "start_time": "17:00:00",
+        "end_time": "22:00:00",
+        "scheduled_date": "2027-09-04"
+      },
+      {
+        "use_key": "cocktail_hour",
+        "space_id": "f6df6024-e6a0-4df8-b391-27f2eae61238",
+        "start_time": "16:00:00",
+        "end_time": "17:00:00",
+        "scheduled_date": "2027-09-04"
+      }
+    ]
+  },
+  "conflict": []
+}

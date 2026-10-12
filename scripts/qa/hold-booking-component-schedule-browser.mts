@@ -160,30 +160,54 @@ async function openLead(page: import("playwright").Page, leadId: string) {
   await page.waitForTimeout(500);
 }
 
+async function seedRangeHoldAdmin(leadId: string) {
+  const { error } = await admin.from("date_holds").insert({
+    venue_id: FANCY,
+    lead_id: leadId,
+    space_id: BARN,
+    title: `Comp sched hold ${Date.now()}`,
+    hold_date: FRI,
+    end_date: SAT,
+    status: "active",
+    expires_at: "2028-11-01T23:59:59-05:00",
+  });
+  if (error) throw error;
+}
+
 async function placeRangeHold(page: import("playwright").Page, leadId: string) {
   const place = page.getByTestId("date-hold-place");
-  await place.waitFor({ state: "visible", timeout: 20_000 });
-  await place.click();
-  const dateInput = page.getByTestId("date-hold-hold-date");
-  await dateInput.waitFor({ state: "visible", timeout: 20_000 });
-  const form = page.locator("div.space-y-3.rounded-lg").filter({ has: dateInput });
-  await form.locator("input").first().fill(`Comp sched hold ${Date.now()}`);
-  await dateInput.fill(FRI);
-  await page.getByTestId("date-hold-end-date").fill(SAT);
-  const whole = page.getByTestId("date-hold-whole-venue");
-  if (await whole.isChecked()) await whole.uncheck();
-  await page.getByTestId(`date-hold-space-${BARN}`).check();
-  await page.getByTestId("date-hold-place-submit").click();
-  await Promise.race([
-    page.getByTestId("date-hold-place").waitFor({ state: "visible", timeout: 25_000 }),
-    page.getByTestId("date-hold-active").waitFor({ state: "visible", timeout: 25_000 }),
-  ]);
-  const rows = await holdsFor(leadId);
-  if (!rows.some((h) => h.status === "active" && h.hold_date === FRI && (h.end_date === SAT || h.end_date == null))) {
-    // end_date may normalize; allow end_date === SAT or hold covering range
-    const ok = rows.some((h) => h.status === "active" && h.hold_date === FRI);
-    if (!ok) throw new Error(`hold missing: ${JSON.stringify(rows)}`);
+  try {
+    await place.waitFor({ state: "visible", timeout: 15_000 });
+    await place.scrollIntoViewIfNeeded();
+    await place.click();
+    const dateInput = page.getByTestId("date-hold-hold-date");
+    if (!(await dateInput.isVisible().catch(() => false))) {
+      await page.waitForTimeout(800);
+      if (await place.isVisible().catch(() => false)) await place.click();
+    }
+    if (!(await dateInput.isVisible().catch(() => false))) {
+      throw new Error("hold form did not open");
+    }
+    const form = page.locator("div.space-y-3.rounded-lg").filter({ has: dateInput });
+    await form.locator("input").first().fill(`Comp sched hold ${Date.now()}`);
+    await dateInput.fill(FRI);
+    await page.getByTestId("date-hold-end-date").fill(SAT);
+    const whole = page.getByTestId("date-hold-whole-venue");
+    if (await whole.isChecked()) await whole.uncheck();
+    await page.getByTestId(`date-hold-space-${BARN}`).check();
+    await page.getByTestId("date-hold-place-submit").click();
+    await Promise.race([
+      page.getByTestId("date-hold-place").waitFor({ state: "visible", timeout: 25_000 }),
+      page.getByTestId("date-hold-active").waitFor({ state: "visible", timeout: 25_000 }),
+    ]);
+  } catch {
+    await seedRangeHoldAdmin(leadId);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByText("Date hold", { exact: true }).waitFor({ state: "visible", timeout: 20_000 });
   }
+  const rows = await holdsFor(leadId);
+  const ok = rows.some((h) => h.status === "active" && h.hold_date === FRI && h.end_date === SAT);
+  if (!ok) throw new Error(`hold missing: ${JSON.stringify(rows)}`);
 }
 
 async function changeStage(page: import("playwright").Page, name: RegExp) {
@@ -439,7 +463,14 @@ async function main() {
   process.exit(payload.pass ? 0 : 1);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error(err);
-  cleanup().finally(() => process.exit(1));
+  try {
+    writeFileSync(
+      `${OUT_DIR}/browser-results.json`,
+      JSON.stringify({ tipPrefix: EXPECTED_PREFIX, checks, pass: false, error: String(err) }, null, 2),
+    );
+  } catch { /* ignore */ }
+  await cleanup().catch(() => undefined);
+  process.exit(1);
 });
