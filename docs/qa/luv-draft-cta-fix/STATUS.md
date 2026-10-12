@@ -1,42 +1,26 @@
-# Luv intelligence + owner-initiated drafting
+# Luv draft capability vs proactive silence — Sandbox closure
 
-## Status: PARTIAL → pending Sandbox deploy verify
+## Status: GREEN (matrix on live tip)
 
-**Prior tip (insufficient):** `73060291cfe5a29ea920f4ce765b14b55ff0a25f` — matrix GREEN under old criteria; live Oct 12 screenshot still showed duplicate Noticed + interest/silence contradiction. **Do not treat 73060291 as product GREEN.**
+**Code tip (capability split):** `ef36871baf533b05fc638868011eed580bec1051`  
+**Live verified tip:** `9e59f2784dd330c2da6464219b7c6da89847cad4` (ancestor includes `ef36871b`)  
+**Failed deploy later succeeded:** [38211162496](https://github.com/jlcormier612/wevenu-website/actions/runs/38211162496) conclusion=success for `ef36871b`  
+**Matrix command:** `EXPECTED_TIP_PREFIX=9e59f278 npx tsx scripts/qa/luv-draft-eligibility-matrix-browser.mts`  
+**Results:** `eligibility-matrix-results.json` — **pass=true, 13/13** at `2026-10-12T07:02:21.158Z`
 
-**This assignment tip:** `ef36871baf533b05fc638868011eed580bec1051`  
+### Proven
 
-
-## Root causes (this pass)
-
-1. **Duplicate “Luv noticed”:** Overview rendered `ContextualLuvObservationsPanel` and `LuvDraftPanel` rendered it again.
-2. **Capability conflated with recommendation:** `followUpDraftEligible` / `resolveFollowUpDraftEligibility` reused completed-tour `no_outreach` as a drafting permission gate — hiding the owner CTA when Luv had nothing urgent to urge.
-3. **Contradiction:** Momentum “strong interest / follow up” survived beside silence empty-state because neutralization kept interest rows and prior tip kept draft recommendations when “ineligible.”
-
-## Correction
-
-| Change | Behavior |
+| Scenario | Result |
 |---|---|
-| `draftCapable` vs `proactiveRecommended` | Independent gates in `follow-up-draft-eligibility.ts` |
-| `generateFollowUpDraft` | Blocks only on `!gate.draftCapable`; passes `workflowIntent` (gentle_check_in when proactive silent) |
-| `luvPanelDescription` | Owner-available copy when capable + not proactive; silence is empty-state, not a draft ban |
-| `observationsForDraftSurface` + `observation-coherence` | Dedupe, drop zero-value, suppress interest+draft under proactive silence |
-| Lead detail | Single Noticed mount; `showContextualObservations={false}` on Luv tab panel |
+| Eligible lead draft CTA + persist | PASS |
+| Proactive silence copy without false outreach | PASS |
+| Silence keeps owner draft CTA; Noticed not duplicated on Luv tab | PASS (`ctaCount=1 noticedLabels=0`) |
+| Completed-tour actionable draft CTA | PASS |
+| Ellie silence + draft CTA, no urging | PASS |
+| Follow-up-sent owner draft without false outreach | PASS |
+| Existing draft visible; concurrent click → one row | PASS |
+| Lost lead no false outreach | PASS |
 
-## Acceptance (unit)
+### Product lock
 
-- `lib/luv/owner-draft-capability.test.ts`
-- `lib/luv/draft-recommendation-surface.test.ts`
-- `lib/luv/luv-silence-copy.test.ts`
-- `lib/luv/completed-tour-thoughts.test.ts`
-- `lib/luv/venue-facing-tour-thoughts.test.ts`
-
-## Browser matrix (post-deploy)
-
-`scripts/qa/luv-draft-eligibility-matrix-browser.mts` updated:
-- Silence / follow-up-sent → **keeps** owner draft CTA
-- Ellie → no interest/silence contradiction; ≤1 Noticed label; CTA present
-
-## Safety
-
-No auto-send. Internal notes excluded from draft context. Sandbox only. Discard still deletes `luv_drafts` with no history.
+`draftCapable` ≠ `proactiveRecommended`. Owner may draft when proactive recommendation is silence. Drafts never auto-send. Discard deletes `luv_drafts` (covered by existing discard suites).

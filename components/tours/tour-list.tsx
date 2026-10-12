@@ -252,53 +252,57 @@ function TourRow({
   return (
     <>
     <div className="py-4 border-b border-border/50 last:border-0">
-      <div className="flex items-start gap-3">
-        {/* Date block */}
-        <div className="shrink-0 w-12 text-center">
-          <p className="text-lg font-bold text-heading leading-none">{dayNum}</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{monthShort}</p>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          {/* Date block */}
+          <div className="shrink-0 w-12 text-center">
+            <p className="text-lg font-bold text-heading leading-none">{dayNum}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{monthShort}</p>
+          </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-heading truncate">{displayName}</p>
-            <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[appt.status] === "amber" ? "border-amber-300 text-amber-700 bg-amber-50" : STATUS_COLORS[appt.status] === "green" ? "border-green-300 text-green-700 bg-green-50" : "border-border text-muted-foreground"}`}>
-              {STATUS_LABELS[appt.status]}
-            </Badge>
-            {appt.origin === "walk_in" && (
-              <Badge variant="outline" className="text-[10px] shrink-0 border-border text-muted-foreground">Walk-in</Badge>
-            )}
-            {archivedView && (
-              <Badge variant="muted" className="text-[10px] shrink-0">{LIBRARY_LABELS.archived}</Badge>
+          {/* Content — status badge only here; Select below owns the control to change status */}
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-heading break-words">{displayName}</p>
+              <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[appt.status] === "amber" ? "border-amber-300 text-amber-700 bg-amber-50" : STATUS_COLORS[appt.status] === "green" ? "border-green-300 text-green-700 bg-green-50" : "border-border text-muted-foreground"}`}>
+                {STATUS_LABELS[appt.status]}
+              </Badge>
+              {appt.origin === "walk_in" && (
+                <Badge variant="outline" className="text-[10px] shrink-0 border-border text-muted-foreground">Walk-in</Badge>
+              )}
+              {archivedView && (
+                <Badge variant="muted" className="text-[10px] shrink-0">{LIBRARY_LABELS.archived}</Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {timeLabel} · {appt.durationMinutes} min
+              {appt.eventType && ` · ${appt.eventType}`}
+            </p>
+            {showScheduledAside && scheduledAside ? (
+              <p className="text-[11px] text-muted-foreground">
+                Scheduled {scheduledAside.dateLabel} · {scheduledAside.timeLabel}
+              </p>
+            ) : null}
+            {appt.status === "completed" && appt.completedAt ? (
+              <p className="text-[11px] text-muted-foreground">
+                Marked completed{" "}
+                {new Date(appt.completedAt).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </p>
+            ) : null}
+            {appt.contactEmail && (
+              <p className="text-xs text-muted-foreground break-all">{appt.contactEmail}</p>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {timeLabel} · {appt.durationMinutes} min
-            {appt.eventType && ` · ${appt.eventType}`}
-          </p>
-          {showScheduledAside && scheduledAside ? (
-            <p className="text-[11px] text-muted-foreground">
-              Scheduled {scheduledAside.dateLabel} · {scheduledAside.timeLabel}
-            </p>
-          ) : null}
-          {appt.status === "completed" && appt.completedAt ? (
-            <p className="text-[11px] text-muted-foreground">
-              Marked completed{" "}
-              {new Date(appt.completedAt).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </p>
-          ) : null}
-          {appt.contactEmail && <p className="text-xs text-muted-foreground">{appt.contactEmail}</p>}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Actions — full-width wrap on mobile so status control never overlays details */}
+        <div className="flex flex-wrap items-center gap-2 pl-12 sm:pl-0 sm:shrink-0 sm:justify-end">
           {!archivedView && (
             updating ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -306,17 +310,17 @@ function TourRow({
               <>
                 {appt.status === "scheduled" && (
                   <>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleRequestConfirmation()}>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => void handleRequestConfirmation()}>
                       Send Confirmation Request
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleMarkConfirmed()}>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => void handleMarkConfirmed()}>
                       Mark as Confirmed
                     </Button>
                   </>
                 )}
                 {/* Confirmed is never a free-pick option here — see handleMarkConfirmed above. */}
                 <Select value={appt.status} onValueChange={handleStatus} items={STATUS_LABELS}>
-                  <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 w-full min-w-[8rem] max-w-[10rem] text-xs sm:w-32"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>

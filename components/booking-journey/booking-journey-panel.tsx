@@ -188,6 +188,8 @@ export function BookingJourneyPanel({
         return;
       }
       toast.success("Proposal withdrawn. Select the package to continue.");
+      // Immediate next step for manual takeover when no venue package exists yet.
+      if (!selection) setSelectOpen(true);
       router.refresh();
     });
   }

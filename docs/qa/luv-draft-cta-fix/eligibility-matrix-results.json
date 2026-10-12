@@ -1,11 +1,11 @@
 {
-  "at": "2026-10-12T05:14:54.815Z",
+  "at": "2026-10-12T07:02:21.158Z",
   "pass": true,
   "checks": [
     {
       "name": "deployed_sha_prefix",
       "pass": true,
-      "detail": "sha=73060291cfe5a29ea920f4ce765b14b55ff0a25f"
+      "detail": "sha=9e59f2784dd330c2da6464219b7c6da89847cad4"
     },
     {
       "name": "eligible_shows_draft_cta",
@@ -20,12 +20,12 @@
     {
       "name": "silence_no_false_outreach_copy",
       "pass": true,
-      "detail": "falseOutreach=false silence=true"
+      "detail": "falseOutreach=false silenceCopy=true"
     },
     {
-      "name": "silence_hides_draft_cta",
+      "name": "silence_keeps_owner_draft_cta",
       "pass": true,
-      "detail": "ctaCount=0 noticedIneligible=0"
+      "detail": "ctaCount=1 noticedLabels=0"
     },
     {
       "name": "actionable_completed_tour_allows_draft",
@@ -40,17 +40,17 @@
     {
       "name": "ellie_noticed_luv_tab_consistent",
       "pass": true,
-      "detail": "silence=true cta=0 urging=false noticedIneligible=false"
+      "detail": "silenceCopy=true cta=1 urging=false noticed=0"
     },
     {
       "name": "silence_noticed_no_follow_up_urging",
       "pass": true,
-      "detail": "urging=false cta=0"
+      "detail": "urging=false cta=1"
     },
     {
-      "name": "follow_up_sent_blocks_draft_without_false_outreach",
+      "name": "follow_up_sent_owner_draft_without_false_outreach",
       "pass": true,
-      "detail": "cta=0 falseOutreach=false silence=true"
+      "detail": "cta=1 falseOutreach=false silenceCopy=true"
     },
     {
       "name": "existing_draft_visible_and_cta_safe",

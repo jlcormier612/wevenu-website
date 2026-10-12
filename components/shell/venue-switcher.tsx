@@ -92,14 +92,14 @@ export function VenueSwitcher({
           render={
             <Button
               variant="ghost"
-              className="h-9 max-w-[16rem] gap-1.5 px-2"
+              className="h-9 w-full max-w-[9rem] sm:max-w-[12rem] lg:max-w-[16rem] gap-1.5 px-1.5 sm:px-2"
               aria-label="Switch venue"
               disabled={pendingId !== null}
             />
           }
         >
           <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="truncate text-sm font-medium text-heading">{label}</span>
+          <span className="min-w-0 truncate text-sm font-medium text-heading">{label}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-72">

@@ -1,0 +1,60 @@
+PASS sent_shows_continue_manually — visible
+PASS sent_hides_create_contract — no Create contract while waiting
+PASS proposal_withdrawn_persisted — status=withdrawn
+PASS select_package_after_withdraw — count=1
+PASS package_saved — Save selected package
+PASS selection_proposal_id_null — {"id":"7ba5b0f9-0b69-437d-ac70-a3760755ece8","status":"draft","proposal_id":null,"total_amount":15000,"package_amount":15000}
+PASS create_contract_visible — count=1
+PASS create_contract_navigates — https://app.sandbox.hellotocheers.com/contracts/new?selectionId=7ba5b0f9-0b69-437d-ac70-a3760755ece8&clientId=5e4e8af5-224d-43bb-b65a-b665e5a25f54
+PASS withdrawn_history_intact — {"id":"f64782c7-ae79-47e5-a3a7-7791ace49f7a","status":"withdrawn"}
+{
+  "at": "2026-10-12T07:04:27.172Z",
+  "pass": true,
+  "checks": [
+    {
+      "name": "sent_shows_continue_manually",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "sent_hides_create_contract",
+      "pass": true,
+      "detail": "no Create contract while waiting"
+    },
+    {
+      "name": "proposal_withdrawn_persisted",
+      "pass": true,
+      "detail": "status=withdrawn"
+    },
+    {
+      "name": "select_package_after_withdraw",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "package_saved",
+      "pass": true,
+      "detail": "Save selected package"
+    },
+    {
+      "name": "selection_proposal_id_null",
+      "pass": true,
+      "detail": "{\"id\":\"7ba5b0f9-0b69-437d-ac70-a3760755ece8\",\"status\":\"draft\",\"proposal_id\":null,\"total_amount\":15000,\"package_amount\":15000}"
+    },
+    {
+      "name": "create_contract_visible",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "create_contract_navigates",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/contracts/new?selectionId=7ba5b0f9-0b69-437d-ac70-a3760755ece8&clientId=5e4e8af5-224d-43bb-b65a-b665e5a25f54"
+    },
+    {
+      "name": "withdrawn_history_intact",
+      "pass": true,
+      "detail": "{\"id\":\"f64782c7-ae79-47e5-a3a7-7791ace49f7a\",\"status\":\"withdrawn\"}"
+    }
+  ]
+}

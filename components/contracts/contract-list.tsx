@@ -90,59 +90,103 @@ export function ContractList({
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Event Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((contract) => {
-                const href = `/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`;
-                return (
-                <TableRow key={contract.id} className="group">
-                  <TableCell className="font-medium text-foreground">
-                    <div className="flex flex-col gap-0.5">
-                      <Link href={href} className="hover:text-primary">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          {/* Mobile cards — full event date visible without horizontal clipping */}
+          <ul className="divide-y divide-border sm:hidden">
+            {filtered.map((contract) => {
+              const href = `/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`;
+              return (
+                <li key={contract.id} className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <Link href={href} className="block text-sm font-medium text-foreground hover:text-primary">
                         {contractListPrimaryTitle(contract)}
                       </Link>
-                      <span className="text-xs font-normal text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {contractListSecondaryLabel(contract)}
                         {contract.listFamilySize > 1
                           ? ` · ${formatVersionLabel(contract.listVersionNumber)}`
                           : ""}
-                      </span>
+                      </p>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <ContractStatusBadge
-                      status={contract.status}
-                      executionOrigin={contract.executionOrigin}
-                      venueSigned={contract.venueSigned}
-                      requiredClientTotal={contract.requiredClientTotal}
-                      requiredClientSigned={contract.requiredClientSigned}
-                      expiresAt={contract.expiresAt}
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatContractDate(contract.createdAt.slice(0, 10))}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" render={<Link href={href} />}>View →</Button>
-                  </TableCell>
+                    <Button variant="ghost" size="sm" className="shrink-0" render={<Link href={href} />}>
+                      View →
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="whitespace-nowrap">
+                      Event {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
+                    </span>
+                    <span className="whitespace-nowrap">
+                      Created {formatContractDate(contract.createdAt.slice(0, 10))}
+                    </span>
+                  </div>
+                  <ContractStatusBadge
+                    status={contract.status}
+                    executionOrigin={contract.executionOrigin}
+                    venueSigned={contract.venueSigned}
+                    requiredClientTotal={contract.requiredClientTotal}
+                    requiredClientSigned={contract.requiredClientSigned}
+                    expiresAt={contract.expiresAt}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden sm:block overflow-x-auto">
+            <Table className="min-w-[36rem]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead className="whitespace-nowrap">Event Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Created</TableHead>
+                  <TableHead className="w-16" />
                 </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((contract) => {
+                  const href = `/contracts/${contract.id}?returnTo=${encodeURIComponent("/contracts")}`;
+                  return (
+                  <TableRow key={contract.id} className="group">
+                    <TableCell className="font-medium text-foreground">
+                      <div className="flex flex-col gap-0.5">
+                        <Link href={href} className="hover:text-primary">
+                          {contractListPrimaryTitle(contract)}
+                        </Link>
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {contractListSecondaryLabel(contract)}
+                          {contract.listFamilySize > 1
+                            ? ` · ${formatVersionLabel(contract.listVersionNumber)}`
+                            : ""}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <ContractStatusBadge
+                        status={contract.status}
+                        executionOrigin={contract.executionOrigin}
+                        venueSigned={contract.venueSigned}
+                        requiredClientTotal={contract.requiredClientTotal}
+                        requiredClientSigned={contract.requiredClientSigned}
+                        expiresAt={contract.expiresAt}
+                      />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      {formatContractDate(contract.createdAt.slice(0, 10))}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" render={<Link href={href} />}>View →</Button>
+                    </TableCell>
+                  </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>
