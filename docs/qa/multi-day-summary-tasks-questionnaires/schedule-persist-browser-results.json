@@ -1,0 +1,253 @@
+{
+  "ok": true,
+  "servingSha": "c76096fa6e556faed945b1ea4817330e4f8c2dd1",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "c76096fa6e556faed945b1ea4817330e4f8c2dd1"
+    },
+    {
+      "name": "row_present_rehearsal_dinner",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "row_present_getting_ready",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "row_present_ceremony",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "row_present_cocktail_hour",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "row_present_reception",
+      "pass": true,
+      "detail": "visible"
+    },
+    {
+      "name": "date_value_rehearsal_dinner",
+      "pass": true,
+      "detail": "2031-05-24"
+    },
+    {
+      "name": "date_value_getting_ready",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "date_value_ceremony",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "date_value_cocktail_hour",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "date_value_reception",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "pre_submit_availability",
+      "pass": true,
+      "detail": "clear"
+    },
+    {
+      "name": "booking_created",
+      "pass": true,
+      "detail": "{\"id\":\"d6d060ce-95d0-47ab-93ec-a82ffd071e9a\",\"event_date\":\"2031-05-24\",\"event_end_date\":\"2031-05-25\",\"status\":\"confirmed\",\"booked_at\":\"2026-10-12\"}"
+    },
+    {
+      "name": "db_rehearsal_sat",
+      "pass": true,
+      "detail": "2031-05-24"
+    },
+    {
+      "name": "db_getting_ready_sun",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "db_ceremony_sun",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "db_cocktail_sun",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "db_reception_sun",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "db_no_null_dates",
+      "pass": true,
+      "detail": "[\"2031-05-24\",\"2031-05-25\",\"2031-05-25\",\"2031-05-25\",\"2031-05-25\"]"
+    },
+    {
+      "name": "ui_saturday_group",
+      "pass": true,
+      "detail": "Saturday, May 24, 2031 :: Guests\n\nNot recorded\n\nSATURDAY, MAY 24, 2031\n\nRehearsal Dinner\n\n6:00 PM – 10:00 PM · Meadowbrook Barn\n\nSUNDAY, MAY 25, 2031\n\nGetting Ready\n\n2:00 PM – 4:00 PM · Meadowbrook Villa\n\nCeremony\n\n4:00 PM – 5:00 PM · Brook Bridge\n\nCocktail Hour\n\n5:00 PM – 6:00 PM · Meadow Lawn\n\nReception\n\n6:00 PM – 10:00 PM"
+    },
+    {
+      "name": "ui_sunday_group",
+      "pass": true,
+      "detail": "Sunday, May 25, 2031"
+    },
+    {
+      "name": "ui_no_date_not_set",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "ui_390_groups",
+      "pass": true,
+      "detail": "Guests\n\nNot recorded\n\nSATURDAY, MAY 24, 2031\n\nRehearsal Dinner\n\n6:00 PM – 10:00 PM · Meadowbrook Barn\n\nSUNDAY, MAY 25, 2031\n\nGetting Ready\n\n2:00 PM – 4:00 PM · Meadowbrook Villa\n\nCeremony\n\n4:00 PM – 5:00 PM · Brook Bridge\n\nCocktail Hour\n\n5:00 PM – 6:00 PM · Meadow Lawn\n\nReception\n\n6:00 PM – 10:00 PM"
+    },
+    {
+      "name": "edit_prefill_reception",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "edit_cancel_no_persist",
+      "pass": true,
+      "detail": "2031-05-25"
+    },
+    {
+      "name": "edit_save_time",
+      "pass": true,
+      "detail": "17:15:00"
+    },
+    {
+      "name": "edit_preserves_others",
+      "pass": true,
+      "detail": "others intact"
+    },
+    {
+      "name": "edit_conflict_rejected",
+      "pass": true,
+      "detail": "error shown"
+    },
+    {
+      "name": "booking_status_unchanged",
+      "pass": true,
+      "detail": "{\"status\":\"confirmed\",\"booked_at\":\"2026-10-12\"}"
+    }
+  ],
+  "ids": {
+    "leadId": "abd03e52-f814-4f0c-9232-120bda8b699f",
+    "clientId": "470065b4-4cfe-4dd2-a6d1-9e264d228d90",
+    "eventId": "d6d060ce-95d0-47ab-93ec-a82ffd071e9a"
+  },
+  "urls": {
+    "client": "https://app.sandbox.hellotocheers.com/clients/470065b4-4cfe-4dd2-a6d1-9e264d228d90"
+  },
+  "persisted": [
+    {
+      "use_key": "rehearsal_dinner",
+      "use_label": "Rehearsal Dinner",
+      "scheduled_date": "2031-05-24",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "sort_order": 1
+    },
+    {
+      "use_key": "getting_ready",
+      "use_label": "Getting Ready",
+      "scheduled_date": "2031-05-25",
+      "start_time": "14:00:00",
+      "end_time": "16:00:00",
+      "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+      "sort_order": 2
+    },
+    {
+      "use_key": "ceremony",
+      "use_label": "Ceremony",
+      "scheduled_date": "2031-05-25",
+      "start_time": "16:00:00",
+      "end_time": "17:00:00",
+      "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+      "sort_order": 3
+    },
+    {
+      "use_key": "cocktail_hour",
+      "use_label": "Cocktail Hour",
+      "scheduled_date": "2031-05-25",
+      "start_time": "17:00:00",
+      "end_time": "18:00:00",
+      "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+      "sort_order": 4
+    },
+    {
+      "use_key": "reception",
+      "use_label": "Reception",
+      "scheduled_date": "2031-05-25",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "sort_order": 5
+    }
+  ],
+  "afterEdit": [
+    {
+      "use_key": "rehearsal_dinner",
+      "use_label": "Rehearsal Dinner",
+      "scheduled_date": "2031-05-24",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "sort_order": 0
+    },
+    {
+      "use_key": "getting_ready",
+      "use_label": "Getting Ready",
+      "scheduled_date": "2031-05-25",
+      "start_time": "14:00:00",
+      "end_time": "16:00:00",
+      "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+      "sort_order": 1
+    },
+    {
+      "use_key": "ceremony",
+      "use_label": "Ceremony",
+      "scheduled_date": "2031-05-25",
+      "start_time": "16:00:00",
+      "end_time": "17:00:00",
+      "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+      "sort_order": 2
+    },
+    {
+      "use_key": "reception",
+      "use_label": "Reception",
+      "scheduled_date": "2031-05-25",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "sort_order": 3
+    },
+    {
+      "use_key": "cocktail_hour",
+      "use_label": "Cocktail Hour",
+      "scheduled_date": "2031-05-25",
+      "start_time": "17:15:00",
+      "end_time": "18:00:00",
+      "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+      "sort_order": 4
+    }
+  ]
+}

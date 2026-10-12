@@ -1,36 +1,40 @@
-# Multi-day booking summary + task waiver + questionnaire selectors
+# Multi-day booking summary + Edit schedule — STATUS
 
-**Status:** GREEN — Sandbox serving tip verified with 390/1280 browser proof
+**Status:** GREEN (reopened after Sunday-date acceptance failure; re-verified)  
+**Environment:** Sandbox only · Production untouched
 
 | Field | Value |
 |---|---|
-| Feature commit | `d1531f9e823b702f87262552928116ed4547d827` |
-| Branch | `feat/spaces-booking-e1-smart-fields` |
-| Deploy run | https://github.com/jlcormier612/wevenu-website/actions/runs/38301712810 (rerun of failed venue-app prefetch; success) |
-| Serving tip | `d1531f9e823b702f87262552928116ed4547d827` (`dpl=` match) |
-| Browser script | `scripts/qa/multi-day-summary-tasks-questionnaires-browser.mts` |
-| Evidence | `docs/qa/multi-day-summary-tasks-questionnaires/` |
-| QA event | Ellie `ef980240-359a-439b-a731-5ef80d1f1471` / client `406d7558-8293-43c3-802d-f2ad6fd6913c` (Meadowbrook) |
+| Feature commits | `14a4a424` (persist + Edit schedule), `c76096fa` (intra-event overlap guard) |
+| Serving tip verified | `c76096fa6e556faed945b1ea4817330e4f8c2dd1` |
+| Deploy | [38311066890](https://github.com/jlcormier612/wevenu-website/actions/runs/38311066890) success |
+| Browser script | `scripts/qa/multi-day-booking-schedule-persist-browser.mts` |
+| Evidence | `schedule-persist-browser-results.json`, `schedule-persist-browser-run.log`, confirm/summary screenshots |
+| Disposable event | `d6d060ce-95d0-47ab-93ec-a82ffd071e9a` (Sat/Sun 2031-05-24/25) |
 
-## Root causes
+## Prior GREEN invalidated
 
-1. **Event summary** — space-assignment load/save omitted `scheduledDate`; hero card showed one Overall window from `event.startTime`/`endTime`.
-2. **Task waiver** — readiness counted waived inside `completedRequired` and UI labeled it “complete”; waived rows still offered Complete.
-3. **Questionnaire selectors** — Library starters only ensured on Library page; Base UI `SelectValue` fell back to raw UUID without a name formatter.
+Prior tip `d1531f9e` / Ellie proof seeded rehearsal `scheduled_date` and did **not** exercise booking confirmation for all components. Nicole May 8–9 (`e15869c8-…`) still has Sunday components with `scheduled_date` null — summary correctly shows Date not set. Recover via **Edit schedule** (do not silently invent Sundays). See `FORENSIC-SUNDAY-DATES.md`.
 
-## Runtime proof (serving `d1531f9e`)
+## Root cause
 
-- Summary shows Fri Sep 3 Rehearsal Dinner 5–10 PM · Meadowbrook Barn and Sat Sep 4 Getting Ready / Cocktail / Ceremony / Reception with distinct times/spaces — no Overall 2:00 PM–10:00 PM.
-- Persists after reload; same at 390px.
-- Task list counts reconcile (`listed=total`); after waive: `0 completed · 1 waived of 6 required` (waive restored after proof).
-- All three questionnaire templates selectable with human labels before any send.
-- Setup Profile includes Vendors; vendor-directory default copy verified on edit form.
+`EventSpaceAssignmentsEditor` (`withTimes`) displayed `eventDate` in date inputs when `scheduledDate` was null without writing it into assignment state. Preview/availability also fell back to `eventDate`. Submit persisted null. Validation did not require component dates.
+
+## Fix (minimal)
+
+1. `materializeMissingScheduledDates` — persist the displayed default into state.
+2. `bookingConfirmationError` — require a date for every timed component.
+3. Honest preview (no phantom `eventDate` fallback).
+4. **Edit schedule** on booking summary → `replace_event_space_assignments`.
+5. `intraEventSpaceOverlapError` — reject same-space same-day overlaps inside one event.
+
+## Runtime proof (serving `c76096fa`)
+
+- Booking confirmation with explicit Sat/Sun component dates → all five `scheduled_date` persisted.
+- Summary: Saturday Rehearsal Dinner; Sunday Getting Ready / Ceremony / Cocktail / Reception — no Date not set. 1280 + 390.
+- Edit schedule: prefill, cancel (no persist), save time change (others preserved), same-space Sat overlap rejected.
+- Booking status remains confirmed.
 
 ## Automated
 
-Focused suites green: booking-summary, space-assignments scheduledDate, task-waiver-counts, questionnaire selector-availability, setup-profile readiness-detail, booking-workspace slices.
-
-## Notes
-
-- First deploy attempt failed venue-app ECR public rate limit (`toomanyrequests`); failed-job rerun succeeded.
-- Rehearsal `scheduled_date` was null in DB; seeded to `2027-09-03` (matching event start / hold day) so persisted distinction is visible — times were already saved; summary no longer invents wedding-day hours for rehearsal.
+`npx tsx --test lib/venue-spaces/assignments.test.ts lib/booking-journey/confirmed-occupancy.test.ts lib/events/space-assignments-scheduled-date.test.ts lib/events/booking-summary.test.ts` — **25 pass / 0 fail**

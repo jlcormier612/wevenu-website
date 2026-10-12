@@ -30,9 +30,18 @@ const SPACE = {
 const OUT_DIR = "docs/qa/multi-day-summary-tasks-questionnaires";
 const EXPECTED_PREFIX = process.env.EXPECTED_SHA_PREFIX ?? "";
 
-// Unique Sat/Sun weekend far from Nicole May 2027 dogfood and prior QA holds
-const SAT = "2030-06-08";
-const SUN = "2030-06-09";
+// Unique Sat/Sun weekend per run (far future) to avoid leftover disposable occupancy.
+function weekendPair(): { sat: string; sun: string } {
+  const base = new Date(Date.UTC(2031, 0, 4)); // Sat
+  const weeks = Math.floor(Date.now() / 60000) % 400;
+  base.setUTCDate(base.getUTCDate() + weeks * 7);
+  const sat = base.toISOString().slice(0, 10);
+  const sunDate = new Date(base);
+  sunDate.setUTCDate(sunDate.getUTCDate() + 1);
+  const sun = sunDate.toISOString().slice(0, 10);
+  return { sat, sun };
+}
+const { sat: SAT, sun: SUN } = weekendPair();
 
 const out: {
   ok: boolean;
@@ -248,14 +257,46 @@ async function main() {
       if (await start.count()) await setInput(start, row.start);
       if (await end.count()) await setInput(end, row.end);
     }
-    // Verify date values stuck (materialize + fill)
+    // Verify date/time values stuck (materialize + fill); re-apply if cleared
     for (const row of schedule) {
       const date = page.getByTestId(`esa-date-${row.key}`);
       if (!(await date.count())) continue;
       const v = await date.inputValue();
       record(`date_value_${row.key}`, v === row.date, v);
       if (v !== row.date) await setInput(date, row.date);
+      const start = page.locator(`#esa-${row.key}-start`);
+      const end = page.locator(`#esa-${row.key}-end`);
+      if (await start.count()) {
+        const sv = await start.inputValue();
+        if (sv.slice(0, 5) !== row.start) await setInput(start, row.start);
+      }
+      if (await end.count()) {
+        const ev = await end.inputValue();
+        if (ev.slice(0, 5) !== row.end) await setInput(end, row.end);
+      }
     }
+    // Final time pass — type=time can drop React state on rapid fills
+    for (const row of schedule) {
+      const start = page.locator(`#esa-${row.key}-start`);
+      const end = page.locator(`#esa-${row.key}-end`);
+      if (await start.count()) {
+        await start.evaluate((el: HTMLInputElement, value: string) => {
+          const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+          proto?.set?.call(el, value);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }, row.start);
+      }
+      if (await end.count()) {
+        await end.evaluate((el: HTMLInputElement, value: string) => {
+          const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+          proto?.set?.call(el, value);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }, row.end);
+      }
+    }
+    await page.waitForTimeout(400);
     // Clear availability block if only soft warning — wait briefly for conflict check
     await page.waitForTimeout(1500);
     const unavailable = await page.getByText(/this time is unavailable/i).isVisible().catch(() => false);
@@ -311,15 +352,28 @@ async function main() {
     await page.goto(out.urls.client, { waitUntil: "networkidle", timeout: 90_000 });
     await page.getByTestId("event-booking-summary").waitFor({ state: "visible", timeout: 30_000 });
     const summary = await page.getByTestId("event-booking-component-schedule").innerText();
+    const satLabel = new Date(SAT + "T12:00:00Z").toLocaleDateString("en-US", {
+      weekday: "long", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+    });
+    const sunLabel = new Date(SUN + "T12:00:00Z").toLocaleDateString("en-US", {
+      weekday: "long", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+    });
+    // UI uses venue-local formatting; match by date pieces + components.
+    const satDay = String(Number(SAT.slice(8, 10)));
+    const sunDay = String(Number(SUN.slice(8, 10)));
+    const satYear = SAT.slice(0, 4);
     record(
       "ui_saturday_group",
-      /Saturday,\s*Jun(e)?\s*8,\s*2030/i.test(summary) && /Rehearsal Dinner/i.test(summary),
-      summary.slice(0, 400),
+      new RegExp(`Saturday[\\s\\S]{0,40}${satDay}[\\s\\S]{0,20}${satYear}`, "i").test(summary)
+        && /Rehearsal Dinner/i.test(summary),
+      `${satLabel} :: ${summary.slice(0, 300)}`,
     );
     record(
       "ui_sunday_group",
-      /Sunday,\s*Jun(e)?\s*9,\s*2030/i.test(summary) && /Reception/i.test(summary) && /Ceremony/i.test(summary),
-      "sunday components",
+      new RegExp(`Sunday[\\s\\S]{0,40}${sunDay}[\\s\\S]{0,20}${satYear}`, "i").test(summary)
+        && /Reception/i.test(summary)
+        && /Ceremony/i.test(summary),
+      `${sunLabel}`,
     );
     record("ui_no_date_not_set", !/Date not set/i.test(summary), summary.includes("Date not set") ? "has Date not set" : "clean");
     await page.screenshot({ path: `${OUT_DIR}/summary-persist-1280.png`, fullPage: true });
@@ -329,7 +383,9 @@ async function main() {
     const summary390 = await page.getByTestId("event-booking-component-schedule").innerText();
     record(
       "ui_390_groups",
-      /Jun(e)?\s*8,\s*2030/i.test(summary390) && /Jun(e)?\s*9,\s*2030/i.test(summary390) && !/Date not set/i.test(summary390),
+      new RegExp(`Saturday[\\s\\S]{0,40}${satDay}`, "i").test(summary390)
+        && new RegExp(`Sunday[\\s\\S]{0,40}${sunDay}`, "i").test(summary390)
+        && !/Date not set/i.test(summary390),
       summary390.slice(0, 300),
     );
     await page.screenshot({ path: `${OUT_DIR}/summary-persist-390.png`, fullPage: true });
