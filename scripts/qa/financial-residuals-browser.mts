@@ -317,27 +317,36 @@ async function main() {
     });
     await page.waitForTimeout(2000);
 
-    // Select package
+    // Select package through Booking Journey sheet
     const selectPkg = page.getByRole("button", { name: /Select package/i }).first();
-    if ((await selectPkg.count()) > 0 && pkg) {
+    if ((await selectPkg.count()) > 0) {
       await selectPkg.click();
-      await page.waitForTimeout(800);
-      const pkgOption = page.getByRole("button", { name: new RegExp(pkg.name.slice(0, 12), "i") }).first()
-        .or(page.locator(`[data-package-id="${pkg.id}"]`)).first();
-      if (await pkgOption.count()) {
-        await pkgOption.click();
-        await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
+      // First package radio/button inside the open sheet
+      const sheet = page.locator("[role='dialog'], [data-state='open']").last();
+      const pkgChoice = sheet.locator("button, [role='option'], label").filter({ hasText: /.+/ }).nth(0);
+      // Prefer clicking a package card by name when available
+      if (pkg?.name) {
+        const byName = sheet.getByText(pkg.name, { exact: false }).first();
+        if (await byName.count()) await byName.click();
+        else await pkgChoice.click().catch(() => undefined);
       }
-      const confirm = page.getByRole("button", { name: /Select|Save|Confirm|Use this package/i }).last();
-      if (await confirm.count()) {
-        await confirm.click();
-        await page.waitForTimeout(2500);
+      await page.waitForTimeout(400);
+      const savePkg = sheet.getByRole("button", { name: /Save selected package/i });
+      if (await savePkg.count()) {
+        await savePkg.click();
+        await page.waitForTimeout(3500);
+      } else {
+        record("r1_save_package_button", false, "Save selected package missing");
       }
+      await page.screenshot({ path: `${OUT_DIR}/r1-after-select-package.png`, fullPage: true });
+    } else {
+      record("r1_select_package_button", false, "Select package missing on lead");
     }
 
-    // Open financial terms
+    // Open financial terms (label is "Tax & discount")
     const editTerms = page.getByTestId("edit-invoice-adjustments")
-      .or(page.getByRole("button", { name: /Invoice adjustments|Edit adjustments|Financial terms/i }))
+      .or(page.getByRole("button", { name: /Tax & discount|Invoice adjustments|Financial terms/i }))
       .first();
     let r1SelectionId: string | null = null;
     if (await editTerms.count()) {
@@ -492,11 +501,12 @@ async function main() {
       .single();
     if (r2Lead) cleanupIds.leads.push(r2Lead.id);
 
-    const { data: r2Client } = await admin
+    if (!r2Lead) throw new Error("r2 lead insert failed");
+    const { data: r2Client, error: r2ClientErr } = await admin
       .from("clients")
       .insert({
         venue_id: FANCY,
-        lead_id: r2Lead!.id,
+        lead_id: r2Lead.id,
         first_name: "Credit",
         last_name: `R2${stamp % 10000}`,
         email: `credit-r2-${stamp}@hellotocheers-test.invalid`,
@@ -504,20 +514,22 @@ async function main() {
       })
       .select("id")
       .single();
-    if (r2Client) cleanupIds.clients.push(r2Client.id);
+    if (r2ClientErr || !r2Client) throw r2ClientErr ?? new Error("r2 client");
+    cleanupIds.clients.push(r2Client.id);
 
-    const { data: r2Event } = await admin
+    const { data: r2Event, error: r2EventErr } = await admin
       .from("events")
       .insert({
         venue_id: FANCY,
-        client_id: r2Client!.id,
+        client_id: r2Client.id,
         name: `R2 Credit ${stamp}`,
         event_date: "2027-12-01",
         booked_at: new Date().toISOString(),
       })
       .select("id")
       .single();
-    if (r2Event) cleanupIds.events.push(r2Event.id);
+    if (r2EventErr || !r2Event) throw r2EventErr ?? new Error("r2 event");
+    cleanupIds.events.push(r2Event.id);
 
     const invoiceTotalBefore = 10000;
     const { data: r2Invoice, error: invErr } = await admin
