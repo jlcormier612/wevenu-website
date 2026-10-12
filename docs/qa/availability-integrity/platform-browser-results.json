@@ -1,0 +1,49 @@
+{
+  "observedAt": "2026-10-12T01:53:16.225Z",
+  "tip": "c00749be9f39026029256e43c408ab9789bea7c1",
+  "checks": [
+    {
+      "name": "inquiry_api_excludes_christmas",
+      "pass": true,
+      "detail": "n=11"
+    },
+    {
+      "name": "create_public_lead_rejects_blocked",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"date_unavailable\"}"
+    },
+    {
+      "name": "create_public_form_lead_rejects_blocked",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"date_unavailable\"}"
+    },
+    {
+      "name": "no_form_lead_on_reject",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "create_public_form_lead_allows_open_date",
+      "pass": true,
+      "detail": "{\"ok\":true,\"lead\":\"59911fb9\"}"
+    },
+    {
+      "name": "annual_helper_covers_future_christmas",
+      "pass": true,
+      "detail": "2030-12-25"
+    },
+    {
+      "name": "staff_preferred_date_warns_tour_blocked",
+      "pass": true,
+      "detail": "[\"tour_exception\"]"
+    },
+    {
+      "name": "sql_exception_covers_christmas",
+      "pass": true,
+      "detail": "true"
+    }
+  ],
+  "passCount": 8,
+  "total": 8,
+  "verdict": "GREEN"
+}

@@ -78,9 +78,9 @@ Secondary hardening: `_is_event_date_available` could previously `return true` o
 
 ## Remaining risks / limitations
 
-1. **Staff UI preferred-date precheck** still loads tour exceptions only for `type === "tour"` snapshots; public inquiry is SQL-authoritative. A follow-up could mirror exceptions into preferred_date precheck for in-portal warnings.
-2. **`create_public_form_lead`** (legacy public_forms) may not call `_is_event_date_available` — venue embed form path used here is `create_public_lead`. Documented as adjacent; not exercised on Meadowbrook embed.
-3. Concurrent exclusive **booking** protections were inspected (existing assert/lock path) but not re-load-tested in this pass — out of preferred-date selection scope.
+1. **Staff UI preferred-date precheck** — **closed** on tip `c00749be` (annual-aware tour exceptions for event/preferred_date). See `PLATFORM-CALENDAR-INTEGRITY.md`.
+2. **`create_public_form_lead`** — **closed** via migration `20261415100000` (same `_is_event_date_available` gate as `create_public_lead` when `choose_available`).
+3. Concurrent exclusive **booking** protections were inspected (existing assert/lock path) but not re-load-tested in the original blocked-date pass — out of preferred-date selection scope.
 
 ## Production
 
