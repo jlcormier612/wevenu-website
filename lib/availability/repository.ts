@@ -10,6 +10,10 @@ import { effectiveMinTurnaroundHours, protectedEndDate } from "@/lib/availabilit
 import { holdSpaceIds } from "@/lib/availability/hold-occupancy";
 import { foreignHoldCount } from "@/lib/availability/holds";
 import { buildAvailabilityConflicts } from "@/lib/availability/precheck";
+import {
+  normalizeTourBlockedRecurrence,
+  tourExceptionCoversDate,
+} from "@/lib/tours/blocked-date-recurrence";
 import { venueLocalToUtcIso } from "@/lib/venue/timezone";
 import type {
   AvailabilityStatus,
@@ -551,12 +555,14 @@ export async function checkAvailability(
       .lte("scheduled_at", lookaheadIso)
     : Promise.resolve({ data: [] as unknown[] });
 
-  const exceptionsPromise = opts.type === "tour"
-    ? client.from("tour_availability_exceptions").select("label")
+  // Tour Blocked Dates close event-date selection too (same authority as
+  // _is_event_date_available). Load for tours and for event/preferred_date
+  // prechecks; annual rows are matched in JS via tourExceptionCoversDate.
+  const needsTourExceptions = opts.type === "tour" || opts.type === "event";
+  const exceptionsPromise = needsTourExceptions
+    ? client.from("tour_availability_exceptions")
+      .select("label, start_date, end_date, recurrence_rule")
       .eq("venue_id", venueId)
-      .lte("start_date", opts.date)
-      .gte("end_date", opts.date)
-      .limit(1)
     : Promise.resolve({ data: [] as unknown[] });
 
   const windowsPromise = opts.type === "tour"
@@ -651,7 +657,39 @@ export async function checkAvailability(
     durationMinutes: t.duration_minutes,
   }));
 
-  const exceptionRow = ((exceptionsRes.data ?? []) as { label: string | null }[])[0];
+  const exceptionRows = ((exceptionsRes.data ?? []) as {
+    label: string | null;
+    start_date: string;
+    end_date: string;
+    recurrence_rule?: string | null;
+  }[]);
+  const exceptionCheckDates: string[] = [];
+  {
+    let cursor = opts.date;
+    const end = rangeEnd;
+    for (let i = 0; i < 366; i += 1) {
+      exceptionCheckDates.push(cursor);
+      if (cursor >= end) break;
+      cursor = shiftIsoDate(cursor, 1);
+    }
+  }
+  let coveringExceptionLabel: string | undefined;
+  for (const row of exceptionRows) {
+    const covers = exceptionCheckDates.some((day) =>
+      tourExceptionCoversDate(
+        {
+          startDate: row.start_date.slice(0, 10),
+          endDate: row.end_date.slice(0, 10),
+          recurrenceRule: normalizeTourBlockedRecurrence(row.recurrence_rule),
+        },
+        day,
+      ),
+    );
+    if (covers) {
+      coveringExceptionLabel = row.label ?? "";
+      break;
+    }
+  }
   const tourWindows = ((windowsRes.data ?? []) as { day_of_week: number; start_time: string; end_time: string }[])
     .map((w) => ({
       dayOfWeek: w.day_of_week,
@@ -699,7 +737,7 @@ export async function checkAvailability(
       activeSpaceIds: spaces.filter((s) => s.is_active).map((s) => s.id),
       allSpaceIds: spaces.map((s) => s.id),
       tours,
-      tourExceptionLabel: exceptionRow ? (exceptionRow.label ?? "") : undefined,
+      tourExceptionLabel: coveringExceptionLabel,
       tourWindows: opts.type === "tour" ? tourWindows : undefined,
     },
   );

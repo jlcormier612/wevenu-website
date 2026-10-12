@@ -30,5 +30,6 @@ export const PUBLIC_FORM_API_ERRORS: Record<string, string> = {
   event_type_required: "Event type is required.",
   event_date_required: "Preferred event date is required.",
   guest_count_required: "Guest count is required.",
+  date_unavailable: "That date is no longer available. Please choose another date.",
   form_unavailable: "This form is not available.",
 };

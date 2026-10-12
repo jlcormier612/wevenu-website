@@ -220,6 +220,19 @@ export function buildAvailabilityConflicts(
   }
 
   if (input.type === "event") {
+    // Settings → Availability → Blocked Dates (tour_availability_exceptions)
+    // close preferred event dates and bookings the same way public inquiry does.
+    if (snapshot.tourExceptionLabel !== undefined && snapshot.tourExceptionLabel !== null) {
+      const extra = snapshot.tourExceptionLabel.trim();
+      conflicts.push({
+        type: "tour_exception",
+        message: extra
+          ? `This date is blocked on the venue calendar (${extra}).`
+          : "This date is blocked on the venue calendar.",
+        severity: "error",
+      });
+    }
+
     const venueOccupancy = {
       effectiveMax,
       minTurnaroundHours: effectiveMinTurnaroundHours(snapshot.rules),
