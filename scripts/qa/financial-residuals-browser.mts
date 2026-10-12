@@ -109,6 +109,8 @@ async function ensureFancyCommercialPrefs() {
     useDiscounts: true,
     useTaxes: true,
     defaultTaxPercent: 6.25,
+    // "offer" alone hides Select package — need contract|either for residual UI.
+    agreementMethod: "either",
   };
   await admin.from("venues").update({ commercial_booking_prefs: next }).eq("id", FANCY);
 }
@@ -615,39 +617,64 @@ async function main() {
     });
     await page.waitForTimeout(2000);
 
-    // Record offline payment on deposit via UI if available
-    const recordPay = page.getByRole("button", { name: /Record payment|Mark paid|Record offline/i }).first();
+    // Record offline payment: hover installment row to reveal "Record payment"
     let markedPaid = false;
+    const depositRow = page.getByText("Deposit", { exact: false }).first();
+    if (await depositRow.count()) {
+      await depositRow.hover().catch(() => undefined);
+      await page.waitForTimeout(300);
+    }
+    const recordPay = page.getByRole("button", { name: /^Record payment$/i }).first();
     if (await recordPay.count()) {
-      await recordPay.click();
-      await page.waitForTimeout(500);
+      await recordPay.click({ force: true });
+      await page.waitForTimeout(600);
       const amountField = page.getByLabel(/Amount/i).first();
       if (await amountField.count()) await amountField.fill("4000");
-      const confirmPay = page.getByRole("button", { name: /Save|Record|Confirm|Mark paid/i }).last();
+      const method = page.getByLabel(/Method|Payment method/i).first();
+      if (await method.count()) {
+        await method.click().catch(() => undefined);
+        await page.getByRole("option", { name: /Cash|Check|Other/i }).first().click().catch(() => undefined);
+      }
+      const confirmPay = page.getByRole("button", { name: /Save|Record payment|Confirm/i }).last();
       if (await confirmPay.count()) {
         await confirmPay.click();
-        await page.waitForTimeout(2500);
-        markedPaid = true;
+        await page.waitForTimeout(3000);
       }
     }
+    const { data: paidProbe } = await admin
+      .from("payment_line_items")
+      .select("id,status,paid_amount")
+      .eq("id", line1!.id)
+      .maybeSingle();
+    markedPaid = paidProbe?.status === "paid" || Number(paidProbe?.paid_amount ?? 0) > 0;
     if (!markedPaid && line1?.id) {
-      // Safe Sandbox simulation: mark paid without Stripe charge
+      // Safe Sandbox simulation (no Stripe charge) when hover-reveal UI misses
       await admin
         .from("payment_line_items")
-        .update({ status: "paid", paid_amount: 4000, paid_at: new Date().toISOString() })
+        .update({
+          status: "paid",
+          paid_amount: 4000,
+          paid_at: new Date().toISOString(),
+          payment_method: "cash",
+        })
         .eq("id", line1.id);
-      record("r2_offline_pay_via_ui", false, "UI record payment unavailable — used Sandbox DB paid simulation");
+      record("r2_offline_pay_via_ui", false, "UI miss — Sandbox DB paid simulation (cash)");
       markedPaid = true;
     } else {
-      record("r2_offline_pay_via_ui", markedPaid, `marked=${markedPaid}`);
+      record("r2_offline_pay_via_ui", markedPaid, `status=${paidProbe?.status}`);
     }
 
-    const { data: paidLine } = await admin
+    // Confirm paid before regenerate
+    const { data: paidConfirmed } = await admin
       .from("payment_line_items")
       .select("id,amount,status,paid_amount")
       .eq("id", line1!.id)
       .maybeSingle();
-    void paidLine;
+    record(
+      "r2_paid_before_regen",
+      paidConfirmed?.status === "paid",
+      JSON.stringify(paidConfirmed),
+    );
 
     // Apply $1000 credit by lowering invoice total (amended commitment)
     const creditAmount = 1000;
@@ -889,25 +916,28 @@ async function main() {
         .maybeSingle();
       record("r3_client_signed", !!clientSigner?.signed_at, `signed_at=${clientSigner?.signed_at}`);
 
-      // Venue countersign
+      // Venue countersign — card may already be open after client signed
       await page.goto(`${APP}/contracts/${r3Contract.id}`, {
         waitUntil: "domcontentloaded",
         timeout: 90000,
       });
-      await page.waitForTimeout(2000);
-      const venueSign = page.getByRole("button", { name: /Sign as venue/i }).first();
-      if (await venueSign.count()) {
-        await venueSign.click();
-        await page.waitForTimeout(400);
-        const vName = page.getByLabel(/Full name|Name/i).first();
-        if (await vName.count()) await vName.fill("Jennifer QA");
-        const vConsent = page.getByRole("checkbox").first();
-        if (await vConsent.count()) await vConsent.check().catch(() => vConsent.click());
-        const confirmVenue = page.getByRole("button", { name: /Sign as venue|Confirm|Sign/i }).last();
-        if (await confirmVenue.count()) {
-          await confirmVenue.click();
-          await page.waitForTimeout(3000);
-        }
+      await page.waitForTimeout(2500);
+      const openVenue = page.getByRole("button", { name: /Sign as venue|Countersign/i }).first();
+      if (await openVenue.count()) await openVenue.click().catch(() => undefined);
+      await page.waitForTimeout(500);
+      const vName = page.locator("#venue-signer-name");
+      if (await vName.count()) await vName.fill("Jennifer QA");
+      const vConsent = page.locator("#venue-consent");
+      if (await vConsent.count()) {
+        const checked = await vConsent.isChecked().catch(() => false);
+        if (!checked) await vConsent.click({ force: true });
+      }
+      const confirmVenue = page.getByRole("button", { name: /^Sign as venue$/i }).last();
+      if (await confirmVenue.count()) {
+        await confirmVenue.click();
+        await page.waitForTimeout(3500);
+      } else {
+        record("r3_venue_sign_button", false, "Sign as venue submit missing");
       }
       const { data: finalContract } = await admin
         .from("contracts")
