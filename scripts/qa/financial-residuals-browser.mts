@@ -411,9 +411,10 @@ async function main() {
 
       await page.waitForTimeout(400);
       const sheetText = await page.locator("[role='dialog'], [data-state='open']").last().innerText().catch(() => "");
-      const sees22000 = /22,?000/.test(sheetText);
-      const seesTax = /6\.25|1,?375|1375/.test(sheetText); // 22000 * 0.0625 = 1375
-      record("r1_ui_preview_totals", sees22000, `sheet has 22000=${sees22000} taxish=${seesTax}`);
+      // Pre-tax adjusted $22,000 and/or taxed total $23,375 (22000 × 1.0625)
+      const seesAdjusted = /22,?000/.test(sheetText) || /23,?375/.test(sheetText);
+      const seesTax = /6\.25|1,?375|1375/.test(sheetText);
+      record("r1_ui_preview_totals", seesAdjusted && seesTax, `adjusted=${seesAdjusted} taxish=${seesTax}`);
 
       const saveTerms = page.getByRole("button", { name: /Save/i }).last();
       await saveTerms.click();
@@ -459,14 +460,15 @@ async function main() {
       if (await editAgain.count()) {
         await editAgain.click();
         await page.waitForTimeout(800);
-        const reopenText = await page.locator("[role='dialog'], [data-state='open']").last().innerText().catch(() => "");
+        const listText = await page.locator("[data-testid='financial-adjustments-list']").innerText().catch(() => "");
         const stillTwo =
-          /Promotional discount/i.test(reopenText)
-          && /Referral credit/i.test(reopenText);
-        const noDup =
-          (reopenText.match(/Promotional discount/gi) ?? []).length === 1
-          && (reopenText.match(/Referral credit/gi) ?? []).length === 1;
-        record("r1_reopen_preserves_adjustments", stillTwo && noDup, `stillTwo=${stillTwo} noDup=${noDup}`);
+          /Promotional discount/i.test(listText)
+          && /Referral credit/i.test(listText);
+        // Descriptions appear once in the editable list (preview may repeat names).
+        const promoCount = (listText.match(/Promotional discount/gi) ?? []).length;
+        const creditCount = (listText.match(/Referral credit/gi) ?? []).length;
+        const noDup = promoCount === 1 && creditCount === 1;
+        record("r1_reopen_preserves_adjustments", stillTwo && noDup, `stillTwo=${stillTwo} promo=${promoCount} credit=${creditCount}`);
         // Deposit not listed as adjustment
         record(
           "r1_deposit_not_adjustment",
@@ -930,15 +932,21 @@ async function main() {
       if (await openVenue.count()) await openVenue.click().catch(() => undefined);
       await page.waitForTimeout(500);
       const vName = page.locator("#venue-signer-name");
-      if (await vName.count()) await vName.fill("Jennifer QA");
-      const vConsent = page.locator("#venue-consent");
-      if (await vConsent.count()) {
-        const checked = await vConsent.isChecked().catch(() => false);
-        if (!checked) await vConsent.click({ force: true });
+      if (await vName.count()) {
+        await vName.scrollIntoViewIfNeeded().catch(() => undefined);
+        await vName.fill("Jennifer QA");
+      }
+      const vConsentLabel = page.locator("label[for='venue-consent']");
+      if (await vConsentLabel.count()) {
+        await vConsentLabel.scrollIntoViewIfNeeded().catch(() => undefined);
+        await vConsentLabel.click({ force: true }).catch(() => undefined);
+      } else {
+        await page.locator("#venue-consent").check({ force: true }).catch(() => undefined);
       }
       const confirmVenue = page.getByRole("button", { name: /^Sign as venue$/i }).last();
       if (await confirmVenue.count()) {
-        await confirmVenue.click();
+        await confirmVenue.scrollIntoViewIfNeeded().catch(() => undefined);
+        await confirmVenue.click({ force: true });
         await page.waitForTimeout(3500);
       } else {
         record("r3_venue_sign_button", false, "Sign as venue submit missing");
