@@ -205,13 +205,9 @@ async function main() {
       record("serving_commit", Boolean(out.servingSha), out.servingSha ?? "missing");
     }
 
-    // Open booking confirmation by selecting Booked sales stage
-    const stageTrigger = page.getByTestId("lead-sales-stage")
-      .or(page.getByLabel(/sales stage|pipeline stage|stage/i))
-      .or(page.locator('[data-testid="sales-stage-select"]'))
-      .first();
-    await stageTrigger.click({ timeout: 20_000 });
-    await page.getByRole("option", { name: /^Booked$/i }).click();
+    // Open booking confirmation via Change stage → Booked
+    await page.getByRole("button", { name: /^Change stage$/i }).click({ timeout: 20_000 });
+    await page.getByRole("menuitem", { name: /Booked/i }).click();
 
     await page.getByTestId("booking-confirmation").waitFor({ state: "visible", timeout: 30_000 });
     await page.getByTestId("booking-confirm-date").fill(SAT);
