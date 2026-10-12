@@ -108,14 +108,15 @@ async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
 
   // Lead with a commercial selection (package + contract/invoice preferred for locked hint)
-  const { data: selections } = await admin
+  const { data: selections, error: selErr } = await admin
     .from("commercial_selections")
-    .select("id, lead_id, package_name, status, contract_id, invoice_id, total_amount")
+    .select("id, lead_id, name, status, contract_id, invoice_id, total_amount")
     .eq("venue_id", FANCY)
     .not("lead_id", "is", null)
     .order("updated_at", { ascending: false })
     .limit(20);
-  const withPackage = (selections ?? []).find((s) => s.lead_id && s.package_name);
+  if (selErr) throw selErr;
+  const withPackage = (selections ?? []).find((s) => s.lead_id && s.name);
   if (!withPackage?.lead_id) throw new Error("no Fancy lead with selected package");
 
   const browser = await chromium.launch({ headless: true });
