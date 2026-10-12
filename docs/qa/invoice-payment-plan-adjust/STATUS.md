@@ -1,11 +1,11 @@
 # Venue-controlled invoice / payment-plan adjustment — STATUS
 
 **Environment:** Sandbox only  
-**Overall:** FORENSIC COMPLETE · IMPLEMENTATION IN PROGRESS  
+**Overall:** GREEN  
 **Production:** not touched  
-**Balance-fix lineage:** `0e9b572a` is an ancestor of tip; partial-payment balance GREEN on `b21337d1` (also ancestor). Tip at audit: `94a42bcb`.
+**Balance-fix lineage:** `0e9b572a` is an ancestor of tip; partial-payment balance GREEN on `b21337d1` (also ancestor).
 
-## Forensic finding — what works today
+## Forensic finding — what worked before this change
 
 | Capability | Reachable? | Notes |
 |---|---|---|
@@ -14,28 +14,57 @@
 | Draft line-item / plan edit | YES | Locked once invoice ≠ draft (`scheduleHasPaymentActivity`) |
 | Post-payment credit on issued invoice | YES | Adds discount line; does **not** regenerate plan |
 | Regenerate unpaid installments | PARTIAL | Only via Needs Review when schedule total ≠ invoice total; preset-only; over-allocates if `partially_paid` lines remain |
-| Edit unpaid installment amounts/dates after send | NO | UI + `assertSchedulePlanEditable` lock |
-| Redistribute remaining after partial pay (same invoice total) | NO | No entry point when totals still match |
-| Preview revised arrangement after change | NO | Preview blocked once `invoice_email` accepted |
-| Send / resend revised plan to client | NO | Send-once on `sourceType=invoice_email` |
+| Edit unpaid installment amounts/dates after send | NO (before) | UI + `assertSchedulePlanEditable` lock |
+| Redistribute remaining after partial pay (same invoice total) | NO (before) | No entry point when totals still match |
+| Preview revised arrangement after change | NO (before) | Preview blocked once `invoice_email` accepted |
+| Send / resend revised plan to client | NO (before) | Send-once on `sourceType=invoice_email` |
 | Amend invoice (EO-linked) | YES | Separate draft; not collection-plan adjust |
 | Signed contract mutation from invoice edit | NO (good) | Contract stays separate |
 
-## Authoritative sources of truth
+## What this change delivers
 
-- **Money received:** payment line `paid_amount` / refunds (net) — never a configured deposit alone  
+1. **Adjust invoice / payment plan** on sent / partially_paid invoices with balance due (`data-testid="adjust-invoice-payment-plan"`).
+2. Closes `partially_paid` shortfalls by setting installment `amount = paid_amount` and `status = paid` — receipts unchanged.
+3. Replaces only `pending` / `overdue` lines; venue edits amounts/dates or redistributes (equal / proportional); preview must reconcile to `balanceDue`.
+4. Preview + **Send revised to client** via distinct outbound `sourceType=invoice_plan_revision` (first `invoice_email` send-once preserved).
+5. Explicit copy that signed contracts are not changed.
+
+## Authoritative sources of truth (unchanged)
+
+- **Money received:** payment line `paid_amount` / refunds (net)  
 - **Invoice balance:** `_compute_invoice_total_paid` / `computeInvoiceBalanceDue`  
-- **Outbound send-once:** `conversation_messages` with `sourceType=invoice_email`  
-- **Schedule structure after activity:** locked by design for accidental rewrite; regenerate only replaces `pending`/`overdue`
+- **First payment-request send-once:** `conversation_messages` with `sourceType=invoice_email`  
+- **Revised plan sends:** `sourceType=invoice_plan_revision`
 
-## Smallest safe plan
+## Commits / deploy
 
-1. Add **Adjust invoice / payment plan** on issued invoices with a linked schedule (`sent` / `partially_paid`).  
-2. Service replaces only unresolved (`pending`/`overdue`) lines; closes partial shortfalls by setting installment `amount = paid_amount` (status → `paid`) **without** mutating recorded receipts.  
-3. Venue edits remaining installment amounts/dates or redistributes outstanding balance; preview must reconcile to `balanceDue`.  
-4. **Send revised** uses a distinct outbound source (`invoice_plan_revision`) so initial payment-request send-once remains intact.  
-5. Activity + tests + Sandbox browser on Nicole/Colby-style fixture.
+| Item | Value |
+|---|---|
+| Feature commit | `462e5a9e` |
+| Type-check fixes | `60fb4f9f`, `6a7a47b5` |
+| Serving tip (verified) | `6a7a47b563670230e44b81fc7558dfd2486e6a97` |
+| Sandbox deploy | [38306553603](https://github.com/jlcormier612/wevenu-website/actions/runs/38306553603) success |
+| Production | not touched |
 
-## Gaps this closes
+## Automated tests
 
-Venue can record a true partial ($7,164.06 of $9,164.06), revise the remaining collection arrangement without fabricating a full payment, preview, and send the client the updated plan.
+`npx tsx --test lib/payments/adjust-remaining-plan.test.ts lib/invoices/payment-workflow-regression.test.ts` — **29 pass / 0 fail**
+
+## Browser + DB proof (Sandbox)
+
+`EXPECTED_SHA_PREFIX=6a7a47b5 npx tsx scripts/qa/invoice-payment-plan-adjust-browser.mts` — **all PASS**
+
+Disposable Meadowbrook fixture (controlled recipient `jlcormier612@gmail.com`):
+
+| Check | Result |
+|---|---|
+| Serving SHA | `6a7a47b5…` |
+| Adjust entry + reconcile preview | PASS |
+| Save revised plan | `$2,500` receipt immutable; shortfall closed; remaining sum = `$7,500` balance |
+| Send preview totals / schedule / contract note | PASS |
+| Revised email | `invoice_plan_revision` **delivered**; first `invoice_email` preserved |
+| Nicole/Colby Adjust reachable (read-only) | PASS |
+
+Evidence: `browser-results.json`, `browser-run.log`, `adjust-dialog.png`, `send-preview.png`, `invoice-after-adjust.png`, `nicole-adjust-entry.png`
+
+Proof invoice: `998a51d5-e6be-4cec-a7da-d77daa33fd81`

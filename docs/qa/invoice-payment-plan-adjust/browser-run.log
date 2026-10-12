@@ -1,0 +1,40 @@
+◇ injected env (0) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+PASS serving_commit — 6a7a47b563670230e44b81fc7558dfd2486e6a97
+PASS adjust_button_visible — Adjust invoice / payment plan
+PASS preview_reconciles — reconciled
+PASS send_preview_total — To: jlcormier612@gmail.com
+
+Subject: Updated: Your invoice and payment plan — Meadowbrook Valley Venue
+
+Total: $10,000
+
+Paid to date: $2,500
+
+Outstanding: $7,500
+
+PAYMENT SCHEDULE (AS CLIENT WILL SEE)
+PASS send_preview_paid — paid to date in preview
+PASS send_preview_outstanding — outstanding in preview
+PASS send_preview_contract_note — contract separation note
+PASS send_revised_completed — revision recorded status=delivered; dialogClosed=false
+PASS ui_paid_unchanged — paid to date still $2,500
+PASS ui_balance — balance $7,500
+PASS ui_initial_not_partial_shortfall — initial shortfall closed in UI
+PASS db_receipt_immutable — {"id":"a1cb868e-9979-45a5-b7c3-b3296a53ecf6","label":"Initial Payment","amount":2500,"status":"paid","paid_amount":2500,"due_date":"2026-10-01","sort_order":0,"payment_method":"check","reference_number":"ADJ-1791839010167"}
+PASS db_invoice_total — 10000
+PASS db_balance_due — 7500
+PASS db_remaining_sum — pendingSum=7500 balance=7500
+PASS db_activity — remaining_plan_adjusted
+PASS db_first_send_preserved — invoice_email=1
+PASS db_revision_sent — invoice_plan_revision=1 status=delivered
+PASS nicole_adjust_reachable — Nicole/Colby Adjust visible
+{
+  "ok": true,
+  "servingSha": "6a7a47b563670230e44b81fc7558dfd2486e6a97",
+  "ids": {
+    "invoiceId": "998a51d5-e6be-4cec-a7da-d77daa33fd81",
+    "scheduleId": "c00cb082-3437-4b13-8910-3163e1aaeace",
+    "clientId": "7738dbc2-a27b-4fad-8475-20129eefef8f",
+    "receivedPaymentId": "a1cb868e-9979-45a5-b7c3-b3296a53ecf6"
+  }
+}
