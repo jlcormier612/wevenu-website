@@ -46,7 +46,7 @@ export default async function AvailabilityCapacitySettingsPage() {
       />
       <SettingsTabs />
 
-      <section className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5">
+      <section className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5" data-testid="availability-settings-guidance">
         <h2 className="text-base font-semibold text-heading">How date availability works</h2>
         <div className="mt-2 space-y-3 text-sm leading-relaxed text-muted-foreground">
           <p>
@@ -54,6 +54,22 @@ export default async function AvailabilityCapacitySettingsPage() {
           </p>
           <p>
             A preferred date from an inquiry does not reserve the date. A date is protected only when you place a Hold or move a relationship to Booked. HTC does not decide that a contract, payment, or other milestone means a booking — your venue&apos;s workflow determines when a relationship is Booked.
+          </p>
+          <p>
+            <span className="font-medium text-heading">Public Available / Not available. </span>
+            On your public availability calendar, Available means a prospect can still request that date — it is not a reservation or a guarantee that every space and time is free. Not available means your venue cannot take an event that day under your current holds, blocked dates, capacity, and booked occupancy. Prospects often read Available as a real chance to hold their event, and may be disappointed if you later explain that you cannot accommodate them.
+          </p>
+          <p>
+            <span className="font-medium text-heading">When to block an entire day. </span>
+            Use Blocked Dates, a full-day calendar block, or a whole-venue hold when you do not want any new event interest that day — for example private buyouts, venue closures, or days that are fully committed even if a side lawn is technically unused. Leaving a date Available can still let someone inquire when an existing booking already makes their eventual schedule impractical.
+          </p>
+          <p>
+            <span className="font-medium text-heading">Spaces and same-day events. </span>
+            If you allow more than one simultaneous event and define Event Spaces, space-specific bookings can leave other spaces open on the same date when times and turnaround genuinely permit it. That is intentional. Set simultaneous events to 1 if your venue practice is one event per day venue-wide.
+          </p>
+          <p>
+            <span className="font-medium text-heading">Your responsibility. </span>
+            Choose holds, blocked dates, capacity, and spaces so the public calendar matches how you actually book. HTC enforces the rules you configure; it does not invent a stricter one-event-per-day policy for you.
           </p>
           <p>
             <span className="font-medium text-heading">Holds. </span>

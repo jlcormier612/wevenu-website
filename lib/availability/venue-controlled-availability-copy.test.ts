@@ -26,6 +26,27 @@ describe("Venue-controlled availability education copy", () => {
     );
     assert.match(
       settings,
+      /Available means a prospect can still request that date — it is not a reservation or a guarantee/,
+    );
+    assert.match(
+      settings,
+      /Prospects often read Available as a real chance to hold their event/,
+    );
+    assert.match(settings, /When to block an entire day\./);
+    assert.match(
+      settings,
+      /Leaving a date Available can still let someone inquire when an existing booking already makes their eventual schedule impractical/,
+    );
+    assert.match(
+      settings,
+      /space-specific bookings can leave other spaces open on the same date when times and turnaround genuinely permit it/,
+    );
+    assert.match(
+      settings,
+      /Choose holds, blocked dates, capacity, and spaces so the public calendar matches how you actually book/,
+    );
+    assert.match(
+      settings,
       /Choose whether venue-created Holds prevent other bookings\. This setting applies wherever HTC checks availability\./,
     );
     assert.match(
