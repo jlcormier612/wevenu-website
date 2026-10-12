@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-12T03:20:57.611Z",
+  "sha": "0425c4558dab474d0c90b200703801a4689c3971",
+  "expectedPrefix": "0425c455",
+  "pass": true,
+  "checks": [
+    {
+      "name": "deployed_sha_prefix",
+      "pass": true,
+      "detail": "sha=0425c4558dab474d0c90b200703801a4689c3971"
+    },
+    {
+      "name": "hq_home_banner",
+      "pass": true,
+      "detail": "banner visible"
+    },
+    {
+      "name": "ops_list_visible",
+      "pass": true,
+      "detail": "list=true row=true"
+    },
+    {
+      "name": "ops_detail_visible",
+      "pass": true,
+      "detail": "detail ok"
+    },
+    {
+      "name": "acknowledge_not_resolve",
+      "pass": true,
+      "detail": "status=acknowledged resolved=null"
+    },
+    {
+      "name": "hq_still_authorized",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/admin/ops-alerts"
+    }
+  ],
+  "incidentId": "cd20c1e4-b1d0-414e-bc42-f223dcc42989"
+}

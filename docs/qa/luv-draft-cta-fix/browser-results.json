@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-12T03:30:42.190Z",
+  "expectedPrefix": "0425c455",
+  "pass": true,
+  "checks": [
+    {
+      "name": "deployed_sha_prefix",
+      "pass": true,
+      "detail": "sha=0425c4558dab474d0c90b200703801a4689c3971"
+    },
+    {
+      "name": "not_silence",
+      "pass": true,
+      "detail": "eligible copy"
+    },
+    {
+      "name": "luv_noticed_draft_cta",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "name": "drafting_workflow_opens",
+      "pass": true,
+      "detail": "drafts 0->1 ui=true"
+    },
+    {
+      "name": "no_unbounded_duplicates",
+      "pass": true,
+      "detail": "drafts=1"
+    },
+    {
+      "name": "no_auto_send",
+      "pass": true,
+      "detail": "send not invoked"
+    }
+  ],
+  "leadId": "86910617-ea12-4a6a-af47-6230edaac7be"
+}
