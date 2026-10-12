@@ -1,0 +1,110 @@
+PASS serving_commit — 5223e14dde3e04c9783a70fda055c17afe036f83
+PASS pre_book_inquiry_visible — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fan
+PASS one_client_from_lead — [{"id":"62b577b2-cf53-490b-8b47-fb81c7d4b5b4","lead_id":"01b86675-71a5-4739-8d02-f3e4affad8c4"}]
+PASS celebration_link_visible — View original lead
+PASS workspace_link_canonical — href=/leads/01b86675-71a5-4739-8d02-f3e4affad8c4 text=View original lead
+PASS original_lead_opens — {"url":"https://app.sandbox.hellotocheers.com/leads/01b86675-71a5-4739-8d02-f3e4affad8c4","leadAfter":{"id":"01b86675-71a5-4739-8d02-f3e4affad8c4","inquiry_message":"[qa] original-lead-link disposable inquiry 384685","sales_stage":"booked"}}
+PASS inquiry_history_intact — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+3
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+15
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+Leads
+OL
+Orig Lead384685
+Wedding
+·
+Apr 5
+PASS workspace_link_after_reload — https://app.sandbox.hellotocheers.com/clients/62b577b2-cf53-490b-8b47-fb81c7d4b5b4
+PASS no_duplicate_lead — count=1
+ALL PASS

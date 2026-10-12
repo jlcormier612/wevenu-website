@@ -22,7 +22,6 @@ const EXPECTED_PREFIX = process.env.EXPECTED_TIP_PREFIX ?? "";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT_DIR = "docs/qa/view-original-lead-link";
-const EVENT_DATE = "2030-06-14";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 if (!url.includes("wvpsldwwjqdannqasrdf")) throw new Error("refusing non-sandbox supabase");
@@ -97,7 +96,11 @@ async function cleanup() {
       await admin.from("clients").delete().eq("id", c.id);
     }
     await admin.from("date_holds").delete().eq("lead_id", leadId);
-    await admin.from("lead_notes").delete().eq("lead_id", leadId).catch(() => undefined);
+    try {
+      await admin.from("lead_notes").delete().eq("lead_id", leadId);
+    } catch {
+      /* optional table / RLS */
+    }
     await admin.from("leads").delete().eq("id", leadId);
   }
 }
@@ -106,6 +109,9 @@ async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   const stamp = String(Date.now()).slice(-6);
   const inquiry = `[qa] original-lead-link disposable inquiry ${stamp}`;
+  const dayOffset = Number(stamp) % 300;
+  const d = new Date(Date.UTC(2031, 0, 10 + dayOffset));
+  const EVENT_DATE = d.toISOString().slice(0, 10);
 
   const { data: lead, error: leadErr } = await admin
     .from("leads")
@@ -152,35 +158,70 @@ async function main() {
     record("pre_book_inquiry_visible", leadBody.includes(inquiry) || leadBody.includes("Orig"), leadBody.slice(0, 300));
     await page.screenshot({ path: `${OUT_DIR}/01-lead-before.png`, fullPage: true });
 
-    await page.getByRole("button", { name: "Change stage" }).click();
-    await page.getByRole("menuitem", { name: /^Booked/ }).click();
-    const dialog = page.getByTestId("booking-confirmation");
-    await dialog.waitFor({ timeout: 25_000 });
-    // Wait for live draft if present
-    await page.waitForTimeout(800);
-    await page.getByTestId("booking-confirm-date").fill(EVENT_DATE);
-    await page.getByTestId("booking-confirm-start").fill("10:00");
-    await page.getByTestId("booking-confirm-end").fill("16:00");
-    const reception = dialog.locator("#esa-reception");
-    if (await reception.count()) {
-      await reception.click();
-      await page.getByRole("option", { name: /^Barn/ }).first().click();
-      const date = dialog.getByTestId("esa-date-reception");
-      if (await date.count()) await date.fill(EVENT_DATE);
-      const start = dialog.locator("#esa-reception-start");
-      const end = dialog.locator("#esa-reception-end");
-      if (await start.count()) await start.fill("10:00");
-      if (await end.count()) await end.fill("16:00");
-    } else {
-      // single-space venues
-      const space = dialog.locator("#booking-confirm-space, [data-testid='booking-confirm-space']").first();
-      if (await space.count()) {
-        await space.click();
-        await page.getByRole("option", { name: /^Barn/ }).first().click().catch(() => undefined);
+    const bookedItem = page.locator('[data-slot="dropdown-menu-item"]').filter({ hasText: /^Booked/ });
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await page.getByRole("button", { name: "Change stage" }).click();
+      try {
+        await bookedItem.first().waitFor({ state: "visible", timeout: 5_000 });
+        break;
+      } catch {
+        await page.keyboard.press("Escape").catch(() => undefined);
+        await page.waitForTimeout(400);
       }
     }
-    await page.getByTestId("booking-confirm-submit").click();
-    await page.waitForURL(/\/clients\/.+\/booked|\/clients\/[^/]+$/, { timeout: 60_000 });
+    await bookedItem.first().waitFor({ state: "visible", timeout: 10_000 });
+    await bookedItem.first().click();
+    const dialog = page.getByTestId("booking-confirmation");
+    await dialog.waitFor({ timeout: 25_000 });
+    await page.waitForTimeout(1200);
+    await page.getByTestId("booking-confirm-date").fill(EVENT_DATE);
+    const endDate = page.getByTestId("booking-confirm-end-date");
+    if (await endDate.count()) await endDate.fill("");
+    const wideStart = page.getByTestId("booking-confirm-start");
+    if (await wideStart.count()) {
+      await wideStart.fill("10:00");
+      await page.getByTestId("booking-confirm-end").fill("16:00");
+    }
+
+    async function pickUse(useKey: string, option: RegExp) {
+      const trigger = dialog.locator(`#esa-${useKey}`);
+      if (!(await trigger.count())) return false;
+      await trigger.click();
+      const opt = page.getByRole("option", { name: option }).first();
+      try {
+        await opt.waitFor({ state: "visible", timeout: 8_000 });
+      } catch {
+        await trigger.click({ force: true });
+        await opt.waitFor({ state: "visible", timeout: 8_000 });
+      }
+      await opt.click({ force: true });
+      const date = dialog.getByTestId(`esa-date-${useKey}`);
+      if (await date.count()) await date.fill(EVENT_DATE);
+      const start = dialog.locator(`#esa-${useKey}-start`);
+      const end = dialog.locator(`#esa-${useKey}-end`);
+      if (await start.count()) await start.fill("10:00");
+      if (await end.count()) await end.fill("16:00");
+      return true;
+    }
+
+    const assigned =
+      (await pickUse("reception", /^Barn/))
+      || (await pickUse("ceremony", /^Barn/));
+    if (!assigned) {
+      throw new Error(`no space assignment controls: ${await dialog.innerText().then((t) => t.slice(0, 400))}`);
+    }
+
+    const submit = page.getByTestId("booking-confirm-submit");
+    if (await submit.isDisabled()) {
+      throw new Error(`confirm disabled: ${await dialog.innerText().then((t) => t.slice(0, 600))}`);
+    }
+    await submit.click();
+    try {
+      await page.waitForURL(/\/clients\/.+\/booked|\/clients\/[^/]+$/, { timeout: 60_000 });
+    } catch (err) {
+      const body = await page.locator("body").innerText();
+      throw new Error(`book redirect failed url=${page.url()} body=${body.slice(0, 800)} cause=${err}`);
+    }
 
     const clients = await admin.from("clients").select("id, lead_id").eq("lead_id", lead.id).eq("venue_id", FANCY);
     const clientRows = clients.data ?? [];
@@ -194,8 +235,12 @@ async function main() {
       await celebLink.waitFor({ state: "visible", timeout: 15_000 });
       record("celebration_link_visible", await celebLink.isVisible(), await celebLink.innerText());
       await page.screenshot({ path: `${OUT_DIR}/02-celebration.png`, fullPage: true });
-      await page.getByRole("link", { name: /Open Event/i }).click();
-      await page.waitForURL(new RegExp(`/clients/${clientId}`), { timeout: 30_000 });
+      const openEvent = page.getByRole("link", { name: /Open Event/i })
+        .or(page.getByRole("button", { name: /Open Event/i }));
+      if (await openEvent.count()) {
+        await openEvent.first().click();
+        await page.waitForURL(new RegExp(`/clients/${clientId}`), { timeout: 30_000 }).catch(() => undefined);
+      }
     }
 
     if (clientId && !page.url().includes(`/clients/${clientId}`)) {
@@ -244,8 +289,12 @@ async function main() {
       .eq("email", `orig-lead-${stamp}@hellotocheers-test.invalid`);
     record("no_duplicate_lead", leadCount === 1, `count=${leadCount}`);
   } finally {
-    await browser.close();
-    await cleanup();
+    await browser.close().catch(() => undefined);
+    try {
+      await cleanup();
+    } catch (cleanupErr) {
+      console.error("cleanup failed", cleanupErr);
+    }
   }
 
   const payload = {
