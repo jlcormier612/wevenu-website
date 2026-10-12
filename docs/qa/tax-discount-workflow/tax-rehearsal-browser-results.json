@@ -1,0 +1,79 @@
+PASS venue_default_tax_6_25 — 6.25
+PASS deployed_sha — sha=ee3b67a9ae3e2935355d191ffa209c209fd21718
+PASS tax_prefill_6_25 — rate=6.25
+PASS tax_override_7_persisted — {"type":"tax","tax_rate_value":7,"amount":70,"description":"Tax"}
+PASS second_tax_starts_at_default — rate=6.25
+PASS contract_includes_rehearsal_dinner_location — Additional Event Spaces
+Rehearsal Dinner: Barn (September 3, 2027)
+
+────────────────────────────────
+SERVICES & PACKAGE
+────────────────────────────────
+No package is currently selected for this booking.
+
+Total contracted a
+PASS contract_includes_rehearsal_date_sep3 — Rehearsal Date
+September 3, 2027
+
+Venue Access / Event Hours
+Add your venue's approved access 
+PASS contract_main_event_still_sep4 — September 4, 2027
+PASS hold_alone_not_required — Sep 3 appears because preference scheduled_date was set, not because of hold
+PASS browser_contract_shows_rehearsal — reh=true sep3=false persistedOk=true
+{
+  "at": "2026-10-12T04:52:34.449Z",
+  "pass": true,
+  "tipExpected": "ee3b67a9",
+  "checks": [
+    {
+      "name": "venue_default_tax_6_25",
+      "pass": true,
+      "detail": "6.25"
+    },
+    {
+      "name": "deployed_sha",
+      "pass": true,
+      "detail": "sha=ee3b67a9ae3e2935355d191ffa209c209fd21718"
+    },
+    {
+      "name": "tax_prefill_6_25",
+      "pass": true,
+      "detail": "rate=6.25"
+    },
+    {
+      "name": "tax_override_7_persisted",
+      "pass": true,
+      "detail": "{\"type\":\"tax\",\"tax_rate_value\":7,\"amount\":70,\"description\":\"Tax\"}"
+    },
+    {
+      "name": "second_tax_starts_at_default",
+      "pass": true,
+      "detail": "rate=6.25"
+    },
+    {
+      "name": "contract_includes_rehearsal_dinner_location",
+      "pass": true,
+      "detail": "Additional Event Spaces\nRehearsal Dinner: Barn (September 3, 2027)\n\n────────────────────────────────\nSERVICES & PACKAGE\n────────────────────────────────\nNo package is currently selected for this booking.\n\nTotal contracted a"
+    },
+    {
+      "name": "contract_includes_rehearsal_date_sep3",
+      "pass": true,
+      "detail": "Rehearsal Date\nSeptember 3, 2027\n\nVenue Access / Event Hours\nAdd your venue's approved access "
+    },
+    {
+      "name": "contract_main_event_still_sep4",
+      "pass": true,
+      "detail": "September 4, 2027"
+    },
+    {
+      "name": "hold_alone_not_required",
+      "pass": true,
+      "detail": "Sep 3 appears because preference scheduled_date was set, not because of hold"
+    },
+    {
+      "name": "browser_contract_shows_rehearsal",
+      "pass": true,
+      "detail": "reh=true sep3=false persistedOk=true"
+    }
+  ]
+}
