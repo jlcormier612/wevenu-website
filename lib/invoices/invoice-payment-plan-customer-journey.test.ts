@@ -62,7 +62,8 @@ describe("Invoice & Payment Plan email — single financial CTA", () => {
     assert.match(email.html, /View Invoice &amp; Payment Plan|View Invoice & Payment Plan/);
     assert.match(email.html, new RegExp(PLAN_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.match(email.html, /background:#E8A0BF/);
-    assert.match(email.html, /Initial Payment: \$8,000\.00/);
+    // Whole dollars omit ".00" via canonical formatMoneyDisplay (see lib/money/format.ts).
+    assert.match(email.html, /Initial Payment: \$8,000(?:\.00)?/);
     assert.match(email.html, /Due October 1, 2026/);
   });
 
@@ -77,7 +78,7 @@ describe("Invoice & Payment Plan email — single financial CTA", () => {
 
   it("does not duplicate a Pay-now CTA in the email", () => {
     const email = sampleEmail();
-    assert.doesNotMatch(email.html, />Pay \$8,000\.00 now</);
+    assert.doesNotMatch(email.html, />Pay \$8,000(?:\.00)? now</);
     assert.doesNotMatch(email.text, /^Pay now:/m);
     assert.equal(email.paymentUrl, null);
   });
@@ -86,7 +87,8 @@ describe("Invoice & Payment Plan email — single financial CTA", () => {
     const email = sampleEmail();
     assert.match(email.text, /View Invoice & Payment Plan:/);
     assert.match(email.text, new RegExp(PLAN_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.match(email.text, /Initial Payment: \$8,000\.00/);
+    // Whole dollars omit ".00" via canonical formatMoneyDisplay (see lib/money/format.ts).
+    assert.match(email.text, /Initial Payment: \$8,000(?:\.00)?/);
     assert.match(email.text, /Due October 1, 2026/);
   });
 
