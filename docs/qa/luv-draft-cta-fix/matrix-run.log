@@ -1,0 +1,84 @@
+PASS deployed_sha_prefix — sha=73060291cfe5a29ea920f4ce765b14b55ff0a25f
+PASS eligible_shows_draft_cta — cta=true
+PASS eligible_draft_persisted — n=1
+PASS silence_no_false_outreach_copy — falseOutreach=false silence=true
+PASS silence_hides_draft_cta — ctaCount=0 noticedIneligible=0
+PASS actionable_completed_tour_allows_draft — cta=1
+PASS ellie_no_false_outreach_copy — clean
+PASS ellie_noticed_luv_tab_consistent — silence=true cta=0 urging=false noticedIneligible=false
+PASS silence_noticed_no_follow_up_urging — urging=false cta=0
+PASS follow_up_sent_blocks_draft_without_false_outreach — cta=0 falseOutreach=false silence=true
+PASS existing_draft_visible_and_cta_safe — cta=true seesExisting=true
+PASS lost_lead_no_false_outreach_copy — falseOutreach=false
+PASS concurrent_clicks_persist_draft — n=1
+{
+  "at": "2026-10-12T05:14:54.815Z",
+  "pass": true,
+  "checks": [
+    {
+      "name": "deployed_sha_prefix",
+      "pass": true,
+      "detail": "sha=73060291cfe5a29ea920f4ce765b14b55ff0a25f"
+    },
+    {
+      "name": "eligible_shows_draft_cta",
+      "pass": true,
+      "detail": "cta=true"
+    },
+    {
+      "name": "eligible_draft_persisted",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "name": "silence_no_false_outreach_copy",
+      "pass": true,
+      "detail": "falseOutreach=false silence=true"
+    },
+    {
+      "name": "silence_hides_draft_cta",
+      "pass": true,
+      "detail": "ctaCount=0 noticedIneligible=0"
+    },
+    {
+      "name": "actionable_completed_tour_allows_draft",
+      "pass": true,
+      "detail": "cta=1"
+    },
+    {
+      "name": "ellie_no_false_outreach_copy",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "ellie_noticed_luv_tab_consistent",
+      "pass": true,
+      "detail": "silence=true cta=0 urging=false noticedIneligible=false"
+    },
+    {
+      "name": "silence_noticed_no_follow_up_urging",
+      "pass": true,
+      "detail": "urging=false cta=0"
+    },
+    {
+      "name": "follow_up_sent_blocks_draft_without_false_outreach",
+      "pass": true,
+      "detail": "cta=0 falseOutreach=false silence=true"
+    },
+    {
+      "name": "existing_draft_visible_and_cta_safe",
+      "pass": true,
+      "detail": "cta=true seesExisting=true"
+    },
+    {
+      "name": "lost_lead_no_false_outreach_copy",
+      "pass": true,
+      "detail": "falseOutreach=false"
+    },
+    {
+      "name": "concurrent_clicks_persist_draft",
+      "pass": true,
+      "detail": "n=1"
+    }
+  ]
+}
