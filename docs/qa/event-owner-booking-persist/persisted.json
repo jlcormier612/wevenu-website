@@ -1,0 +1,21 @@
+{
+  "staffA": {
+    "id": "67458154-e6fe-41e3-830e-ea39844e4e19",
+    "full_name": "Jen Fancy"
+  },
+  "staffB": {
+    "id": "53447f3a-6b85-42bd-91ce-2acc67ead5f3",
+    "full_name": "Terry Tuttle"
+  },
+  "staffC": {
+    "id": "72495b35-c11b-4a84-8bcb-911135eac2bd",
+    "full_name": "Ron Cormier"
+  },
+  "leadId": "38324a9e-0d2e-4bb2-82f6-aa68c4222673",
+  "clientId": "871c9d7d-f0e4-42c4-ae78-69e210851616",
+  "event": {
+    "id": "71c44882-df39-4095-b7c4-38d60700fd33",
+    "assigned_staff_id": "53447f3a-6b85-42bd-91ce-2acc67ead5f3",
+    "booked_at": "2026-10-12"
+  }
+}
