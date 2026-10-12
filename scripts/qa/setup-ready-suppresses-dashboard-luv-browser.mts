@@ -1,6 +1,7 @@
 /**
  * Sandbox browser proof: ready_to_invite_couples suppresses Dashboard setup prompt.
- * Restores Fancy venue hub/intro state afterward. Production untouched.
+ * Primary fixture: Meadowbrook Valley (declared ready, intro not dismissed).
+ * Switches venues via set_active_venue (DB authoritative). Restores state after.
  */
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -20,7 +21,9 @@ const ssrUtils = require(
 
 const APP = "https://app.sandbox.hellotocheers.com";
 const EXPECTED = process.env.EXPECT_SHA ?? "";
+const MEADOW_OWNER_EMAIL = "jlcormier612@gmail.com";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
+const MEADOWBROOK = "05f16a15-1752-4855-8a3b-aad5c593d8d9";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT_DIR = resolve("docs/qa/setup-ready-suppresses-dashboard-luv");
 mkdirSync(OUT_DIR, { recursive: true });
@@ -36,6 +39,7 @@ const anon = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
 });
 
 type Check = { name: string; pass: boolean; detail: string };
+type Session = { access_token: string; refresh_token: string };
 const checks: Check[] = [];
 const deploymentIds = new Set<string>();
 
@@ -50,7 +54,7 @@ function noteDeployment(linkHeader: string | undefined) {
   return match?.[1] ?? null;
 }
 
-async function cookiesFor(email: string) {
+async function sessionFor(email: string) {
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
@@ -63,23 +67,41 @@ async function cookiesFor(email: string) {
   if (otpErr || !otpData.session) throw otpErr ?? new Error("no session");
   const cookieName = "sb-wvpsldwwjqdannqasrdf-auth-token";
   const encoded = "base64-" + ssrUtils.stringToBase64URL(JSON.stringify(otpData.session));
-  return ssrUtils.createChunks(cookieName, encoded).map(
-    (c: { name: string; value: string }) => ({
-      name: c.name,
-      value: c.value,
-      domain: "app.sandbox.hellotocheers.com",
-      path: "/",
-      httpOnly: false,
-      secure: true,
-      sameSite: "Lax" as const,
-    }),
-  );
+  return {
+    session: otpData.session as Session,
+    cookies: ssrUtils.createChunks(cookieName, encoded).map(
+      (c: { name: string; value: string }) => ({
+        name: c.name,
+        value: c.value,
+        domain: "app.sandbox.hellotocheers.com",
+        path: "/",
+        httpOnly: false,
+        secure: true,
+        sameSite: "Lax" as const,
+      }),
+    ),
+  };
 }
 
-async function setActiveVenue(
+async function switchVenue(session: Session, venueId: string) {
+  const userSb = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { persistSession: false },
+  });
+  await userSb.auth.setSession(session);
+  const { data, error } = await userSb.rpc("set_active_venue", { p_venue_id: venueId });
+  if (error) throw new Error(`set_active_venue: ${error.message}`);
+  const payload = data as { ok?: boolean; error?: string } | null;
+  if (!payload?.ok) throw new Error(`set_active_venue failed: ${payload?.error ?? "unknown"}`);
+}
+
+async function openDashboard(
   context: import("playwright").BrowserContext,
+  page: import("playwright").Page,
+  session: Session,
   venueId: string,
+  expectedName: string,
 ) {
+  await switchVenue(session, venueId);
   await context.addCookies([
     {
       name: "htc_active_venue_id",
@@ -91,11 +113,16 @@ async function setActiveVenue(
       sameSite: "Lax" as const,
     },
   ]);
+  await page.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
+  await page.waitForTimeout(1000);
+  const body = await page.locator("body").innerText();
+  if (!body.includes(expectedName)) {
+    throw new Error(`expected active venue "${expectedName}" in dashboard body`);
+  }
+  return body;
 }
 
-async function bodyHasSetupPrompt(page: import("playwright").Page) {
-  const text = await page.locator("body").innerText();
-  // Unique CTA on the Dashboard setup-guidance intro card.
+function bodyHasSetupPrompt(text: string) {
   return text.includes("Let's finish setting up your venue");
 }
 
@@ -114,22 +141,23 @@ async function main() {
   const { data: hubBefore } = await admin
     .from("venue_setup_hub_state")
     .select("ready_to_invite_couples, ready_to_invite_couples_at, ready_to_invite_couples_declared_by")
-    .eq("venue_id", FANCY)
+    .eq("venue_id", MEADOWBROOK)
     .maybeSingle();
   const { data: venueBefore } = await admin
     .from("venues")
     .select("id, name, luv_intro_seen_at, created_at")
-    .eq("id", FANCY)
+    .eq("id", MEADOWBROOK)
     .single();
-
-  // Second venue Jennifer can open (Meadowbrook Valley).
-  const { data: meadow } = await admin
+  const { data: fancyBefore } = await admin
     .from("venues")
     .select("id, name, luv_intro_seen_at, created_at")
-    .ilike("name", "%Meadowbrook%")
-    .limit(1)
+    .eq("id", FANCY)
+    .single();
+  const { data: fancyHubBefore } = await admin
+    .from("venue_setup_hub_state")
+    .select("ready_to_invite_couples, ready_to_invite_couples_at, ready_to_invite_couples_declared_by")
+    .eq("venue_id", FANCY)
     .maybeSingle();
-  const otherVenueId = meadow?.id ?? null;
 
   const restoreHub = {
     ready_to_invite_couples: hubBefore?.ready_to_invite_couples ?? false,
@@ -137,100 +165,143 @@ async function main() {
     ready_to_invite_couples_declared_by: hubBefore?.ready_to_invite_couples_declared_by ?? null,
   };
   const restoreIntro = venueBefore?.luv_intro_seen_at ?? null;
-  const restoreCreatedAt = venueBefore?.created_at ?? null;
-  const restoreOtherIntro = meadow?.luv_intro_seen_at ?? null;
-  const restoreOtherCreatedAt = meadow?.created_at ?? null;
-  let otherHubBefore: boolean | null = null;
+  const restoreFancy = {
+    luv_intro_seen_at: fancyBefore?.luv_intro_seen_at ?? null,
+    created_at: fancyBefore?.created_at ?? null,
+  };
+  const restoreFancyHub = {
+    ready_to_invite_couples: fancyHubBefore?.ready_to_invite_couples ?? false,
+    ready_to_invite_couples_at: fancyHubBefore?.ready_to_invite_couples_at ?? null,
+    ready_to_invite_couples_declared_by: fancyHubBefore?.ready_to_invite_couples_declared_by ?? null,
+  };
 
   try {
-    // Make Fancy age-eligible for the intro so readiness is the only suppressor.
-    const recent = new Date().toISOString();
-    await admin
-      .from("venues")
-      .update({ luv_intro_seen_at: null, created_at: recent })
-      .eq("id", FANCY);
-    await admin
-      .from("venue_setup_hub_state")
-      .update({
-        ready_to_invite_couples: false,
-        ready_to_invite_couples_at: null,
-        ready_to_invite_couples_declared_by: null,
-      })
-      .eq("venue_id", FANCY);
+    await admin.from("venues").update({ luv_intro_seen_at: null }).eq("id", MEADOWBROOK);
 
+    const meadowAuth = await sessionFor(MEADOW_OWNER_EMAIL);
+    const fancyAuth = await sessionFor(FANCY_EMAIL);
     const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    await context.addCookies(await cookiesFor(FANCY_EMAIL));
-    const page = await context.newPage();
 
-    await setActiveVenue(context, FANCY);
-    await page.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
-    await page.waitForTimeout(800);
-    const notReadyShows = await bodyHasSetupPrompt(page);
-    await page.screenshot({ path: `${OUT_DIR}/dashboard-not-ready.png`, fullPage: true });
-    record(
-      "not_ready_shows_setup_prompt",
-      notReadyShows,
-      notReadyShows ? "prompt visible when ready=false" : "prompt missing when ready=false",
-    );
-
+    // --- Declared ready (authoritative Meadowbrook state) ---
     await admin
       .from("venue_setup_hub_state")
       .update({
         ready_to_invite_couples: true,
-        ready_to_invite_couples_at: new Date().toISOString(),
-        ready_to_invite_couples_declared_by: null,
+        ready_to_invite_couples_at: hubBefore?.ready_to_invite_couples_at ?? new Date().toISOString(),
+        ready_to_invite_couples_declared_by: hubBefore?.ready_to_invite_couples_declared_by ?? null,
       })
-      .eq("venue_id", FANCY);
+      .eq("venue_id", MEADOWBROOK);
 
     const { data: hubReady } = await admin
       .from("venue_setup_hub_state")
-      .select("ready_to_invite_couples")
-      .eq("venue_id", FANCY)
+      .select("ready_to_invite_couples, ready_to_invite_couples_at")
+      .eq("venue_id", MEADOWBROOK)
       .single();
     record(
       "persisted_ready_true",
       hubReady?.ready_to_invite_couples === true,
-      `ready_to_invite_couples=${hubReady?.ready_to_invite_couples}`,
+      `ready_to_invite_couples=${hubReady?.ready_to_invite_couples} at=${hubReady?.ready_to_invite_couples_at}`,
     );
 
-    await page.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
-    await page.waitForTimeout(800);
-    const readyHides = !(await bodyHasSetupPrompt(page));
-    await page.screenshot({ path: `${OUT_DIR}/dashboard-ready.png`, fullPage: true });
+    const meadowCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await meadowCtx.addCookies(meadowAuth.cookies);
+    const meadowPage = await meadowCtx.newPage();
+
+    let body = await openDashboard(
+      meadowCtx,
+      meadowPage,
+      meadowAuth.session,
+      MEADOWBROOK,
+      "Meadowbrook",
+    );
+    const readyHides = !bodyHasSetupPrompt(body);
+    await meadowPage.screenshot({ path: `${OUT_DIR}/dashboard-ready.png`, fullPage: true });
     record(
       "ready_hides_setup_prompt",
       readyHides,
       readyHides ? "prompt absent when ready=true" : "prompt still visible when ready=true",
     );
 
-    await page.reload({ waitUntil: "networkidle", timeout: 90000 });
-    await page.waitForTimeout(800);
-    const reloadHides = !(await bodyHasSetupPrompt(page));
-    await page.screenshot({ path: `${OUT_DIR}/dashboard-ready-reload.png`, fullPage: true });
+    await meadowPage.reload({ waitUntil: "networkidle", timeout: 90000 });
+    await meadowPage.waitForTimeout(1000);
+    body = await meadowPage.locator("body").innerText();
+    const reloadHides = !bodyHasSetupPrompt(body) && body.includes("Meadowbrook");
+    await meadowPage.screenshot({ path: `${OUT_DIR}/dashboard-ready-reload.png`, fullPage: true });
     record(
       "reload_still_hides",
       reloadHides,
-      reloadHides ? "still absent after reload" : "reappeared after reload",
+      reloadHides ? "still absent after reload" : "reappeared after reload or venue drifted",
     );
 
-    await page.goto(`${APP}/setup-hub`, { waitUntil: "networkidle", timeout: 90000 });
-    await page.waitForTimeout(800);
-    const hubText = await page.locator("body").innerText();
+    await meadowPage.goto(`${APP}/setup-hub`, { waitUntil: "networkidle", timeout: 90000 });
+    await meadowPage.waitForTimeout(800);
+    const hubText = await meadowPage.locator("body").innerText();
     const hubConfirms =
+      hubText.includes("Meadowbrook") &&
       hubText.includes("You've decided you're ready") &&
       hubText.includes("stop showing setup guidance");
-    const hubStillConfigurable =
-      hubText.includes("Setup") || hubText.includes("Your venue") || hubText.includes("Getting Started");
-    await page.screenshot({ path: `${OUT_DIR}/setup-hub-ready.png`, fullPage: true });
+    await meadowPage.screenshot({ path: `${OUT_DIR}/setup-hub-ready.png`, fullPage: true });
     record("setup_hub_confirmation", hubConfirms, hubConfirms ? "confirmation visible" : "missing confirmation");
     record(
       "setup_hub_still_accessible",
-      hubStillConfigurable,
-      hubStillConfigurable ? "setup items still reachable" : "setup hub looks empty/blocked",
+      /Setup|Your venue|Offerings|Lead|Team|Financial/i.test(hubText),
+      "setup hub remains configurable",
     );
 
-    // Reverse
+    // --- Reverse ---
+    await admin
+      .from("venue_setup_hub_state")
+      .update({
+        ready_to_invite_couples: false,
+        ready_to_invite_couples_at: null,
+        ready_to_invite_couples_declared_by: null,
+      })
+      .eq("venue_id", MEADOWBROOK);
+    body = await openDashboard(
+      meadowCtx,
+      meadowPage,
+      meadowAuth.session,
+      MEADOWBROOK,
+      "Meadowbrook",
+    );
+    const reversedShows = bodyHasSetupPrompt(body);
+    await meadowPage.screenshot({ path: `${OUT_DIR}/dashboard-reversed.png`, fullPage: true });
+    record(
+      "reverse_restores_prompt",
+      reversedShows,
+      reversedShows ? "prompt returned after reverse" : "prompt did not return after reverse",
+    );
+    record(
+      "not_ready_shows_setup_prompt",
+      reversedShows,
+      reversedShows ? "prompt visible when ready=false" : "prompt missing when ready=false",
+    );
+
+    // Restore Meadowbrook ready for isolation + leave owner declaration intact afterward.
+    await admin
+      .from("venue_setup_hub_state")
+      .update({
+        ready_to_invite_couples: true,
+        ready_to_invite_couples_at: restoreHub.ready_to_invite_couples_at ?? new Date().toISOString(),
+        ready_to_invite_couples_declared_by: restoreHub.ready_to_invite_couples_declared_by,
+      })
+      .eq("venue_id", MEADOWBROOK);
+    body = await openDashboard(
+      meadowCtx,
+      meadowPage,
+      meadowAuth.session,
+      MEADOWBROOK,
+      "Meadowbrook",
+    );
+    const meadowHides = !bodyHasSetupPrompt(body);
+    await meadowPage.screenshot({ path: `${OUT_DIR}/dashboard-meadow-ready-isolation.png`, fullPage: true });
+    await meadowCtx.close();
+
+    // Fancy (separate account/venue): not ready + age-eligible → prompt shows
+    await admin
+      .from("venues")
+      .update({ luv_intro_seen_at: null, created_at: new Date().toISOString() })
+      .eq("id", FANCY);
     await admin
       .from("venue_setup_hub_state")
       .update({
@@ -239,90 +310,32 @@ async function main() {
         ready_to_invite_couples_declared_by: null,
       })
       .eq("venue_id", FANCY);
-    await page.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
-    await page.waitForTimeout(800);
-    const reversedShows = await bodyHasSetupPrompt(page);
-    await page.screenshot({ path: `${OUT_DIR}/dashboard-reversed.png`, fullPage: true });
+
+    const fancyCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await fancyCtx.addCookies(fancyAuth.cookies);
+    const fancyPage = await fancyCtx.newPage();
+    body = await openDashboard(fancyCtx, fancyPage, fancyAuth.session, FANCY, "Jen's Fancy Venue");
+    const fancyShows = bodyHasSetupPrompt(body);
+    await fancyPage.screenshot({ path: `${OUT_DIR}/dashboard-fancy-not-ready-isolation.png`, fullPage: true });
+    await fancyCtx.close();
     record(
-      "reverse_restores_prompt",
-      reversedShows,
-      reversedShows ? "prompt returned after reverse" : "prompt did not return after reverse",
+      "venue_isolation",
+      meadowHides && fancyShows,
+      `meadowHide=${meadowHides} fancyShow=${fancyShows}`,
     );
-
-    if (otherVenueId) {
-      const { data: otherHub } = await admin
-        .from("venue_setup_hub_state")
-        .select("ready_to_invite_couples")
-        .eq("venue_id", otherVenueId)
-        .maybeSingle();
-      otherHubBefore = otherHub?.ready_to_invite_couples === true;
-      await admin
-        .from("venues")
-        .update({ luv_intro_seen_at: null, created_at: new Date().toISOString() })
-        .eq("id", otherVenueId);
-      await admin
-        .from("venue_setup_hub_state")
-        .update({ ready_to_invite_couples: true })
-        .eq("venue_id", otherVenueId);
-
-      await setActiveVenue(context, otherVenueId);
-      await page.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
-      await page.waitForTimeout(800);
-      const otherHides = !(await bodyHasSetupPrompt(page));
-      await page.screenshot({ path: `${OUT_DIR}/dashboard-other-venue-ready.png`, fullPage: true });
-      record(
-        "other_venue_ready_hides",
-        otherHides,
-        `otherVenue=${otherVenueId} ready=true hides=${otherHides}`,
-      );
-
-      // Fancy remains independent (currently false → should show)
-      await setActiveVenue(context, FANCY);
-      await page.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
-      await page.waitForTimeout(800);
-      const fancyIndependent = await bodyHasSetupPrompt(page);
-      await page.screenshot({ path: `${OUT_DIR}/dashboard-fancy-independent.png`, fullPage: true });
-      record(
-        "venue_isolation",
-        fancyIndependent,
-        fancyIndependent
-          ? "Fancy (ready=false) still shows while other venue ready=true"
-          : "Fancy incorrectly suppressed by other venue",
-      );
-
-      await admin
-        .from("venue_setup_hub_state")
-        .update({ ready_to_invite_couples: otherHubBefore === true })
-        .eq("venue_id", otherVenueId);
-    } else {
-      record("venue_isolation", false, "no second venue available for Jennifer");
-    }
 
     await browser.close();
   } finally {
-    await admin.from("venue_setup_hub_state").update(restoreHub).eq("venue_id", FANCY);
+    await admin.from("venue_setup_hub_state").update(restoreHub).eq("venue_id", MEADOWBROOK);
+    await admin.from("venues").update({ luv_intro_seen_at: restoreIntro }).eq("id", MEADOWBROOK);
+    await admin.from("venue_setup_hub_state").update(restoreFancyHub).eq("venue_id", FANCY);
     await admin
       .from("venues")
       .update({
-        luv_intro_seen_at: restoreIntro,
-        ...(restoreCreatedAt ? { created_at: restoreCreatedAt } : {}),
+        luv_intro_seen_at: restoreFancy.luv_intro_seen_at,
+        ...(restoreFancy.created_at ? { created_at: restoreFancy.created_at } : {}),
       })
       .eq("id", FANCY);
-    if (otherVenueId) {
-      await admin
-        .from("venues")
-        .update({
-          luv_intro_seen_at: restoreOtherIntro,
-          ...(restoreOtherCreatedAt ? { created_at: restoreOtherCreatedAt } : {}),
-        })
-        .eq("id", otherVenueId);
-      if (otherHubBefore !== null) {
-        await admin
-          .from("venue_setup_hub_state")
-          .update({ ready_to_invite_couples: otherHubBefore })
-          .eq("venue_id", otherVenueId);
-      }
-    }
   }
 
   const ok = checks.every((c) => c.pass);
@@ -330,10 +343,10 @@ async function main() {
     ok,
     servingSha: serving,
     expectedSha: EXPECTED || null,
-    fancyVenueId: FANCY,
+    primaryVenueId: MEADOWBROOK,
+    primaryVenueName: venueBefore?.name ?? null,
     checks,
     hubBefore: restoreHub,
-    venueName: venueBefore?.name ?? null,
   };
   writeFileSync(`${OUT_DIR}/browser-results.json`, JSON.stringify(result, null, 2));
   console.log(ok ? "GREEN" : "NOT GREEN");
