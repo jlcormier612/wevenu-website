@@ -558,6 +558,18 @@ export function ContractBuilder({
         {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
       </div>
 
+      <div
+        className="rounded-lg border border-border/70 bg-muted/30 px-3 py-3 space-y-1.5"
+        data-testid="contract-builder-agreement-guidance"
+      >
+        <p className="text-sm font-semibold text-heading">Your agreement, your venue&apos;s terms</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          You are responsible for the terms, policies, taxes, discounts, and practices reflected in
+          your agreements. Hello to Cheers provides tools and general guidance, not legal or tax
+          advice. Review and customize your agreement to suit your venue and event.
+        </p>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         <div className="flex min-h-0 flex-col gap-1.5 lg:col-span-2">
           <Label htmlFor="cb-content">Contract content</Label>

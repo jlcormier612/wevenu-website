@@ -124,5 +124,12 @@ export async function replaceEventSpaceAssignments(
     return { ok: false, message: fail?.message ?? error.message };
   }
 
+  try {
+    const { syncTimelineFromEventSpaceAssignments } = await import("@/lib/timeline/schedule-sync");
+    await syncTimelineFromEventSpaceAssignments(supabase, venue.id, eventId);
+  } catch (err) {
+    console.error("[replaceEventSpaceAssignments] timeline schedule sync failed:", err);
+  }
+
   return { ok: true };
 }

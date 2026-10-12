@@ -17,7 +17,10 @@ describe("tax and discount discoverability", () => {
   it("Selected Package exposes Tax & discount before contract/invoice lock", () => {
     assert.match(facts, /data-testid="edit-invoice-adjustments"/);
     assert.match(facts, /Tax &amp; discount|Tax & discount/);
-    assert.match(facts, /data-testid="invoice-adjustments-locked-hint"/);
+    assert.doesNotMatch(
+      facts,
+      /Tax and discount for this Selected Package were set under Tax/,
+    );
     assert.match(sheet, /Invoice adjustments/);
     assert.match(sheet, /computeAgreedFinancialTerms/);
     assert.match(sheet, /Apply tax/);

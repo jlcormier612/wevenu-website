@@ -41,7 +41,14 @@ export async function getTimelineEntries(eventId: string): Promise<TimelineEntry
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getTimelineEntries(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  try {
+    const { syncTimelineFromEventSpaceAssignments } = await import("@/lib/timeline/schedule-sync");
+    await syncTimelineFromEventSpaceAssignments(supabase, venue.id, eventId);
+  } catch (err) {
+    console.error("[getTimelineEntries] timeline schedule sync failed:", err);
+  }
+  return repo.getTimelineEntries(supabase, venue.id, eventId);
 }
 
 export async function addEntry(eventId: string, input: TimelineEntryInput): Promise<AddEntryResult> {

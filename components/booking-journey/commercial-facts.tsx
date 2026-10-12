@@ -136,11 +136,6 @@ export function CommercialFacts({
 
       <ul className="mt-4 divide-y divide-border" data-testid="booking-details-rows">
         {rows.map((row) => {
-          const showLockedTaxHint =
-            row.key === "package"
-            && selection
-            && onEditFinancialTerms
-            && (selection.invoiceId || selection.contractId || selection.status !== "draft");
           return (
           <li key={row.key} className="flex flex-col gap-2 py-3" data-testid={`booking-details-row-${row.key}`}>
             {/*
@@ -154,6 +149,28 @@ export function CommercialFacts({
                 <p className="text-sm text-heading">{row.state}</p>
                 {row.detail ? (
                   <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{row.detail}</p>
+                ) : null}
+                {row.key === "contract" ? (
+                  <p
+                    className="mt-2 text-xs text-muted-foreground leading-relaxed"
+                    data-testid="contract-responsibility-note"
+                  >
+                    You are responsible for your agreement&apos;s terms and policies, including any
+                    applicable taxes, discounts, and venue-specific practices. Review your agreement
+                    before sending it to your clients.
+                  </p>
+                ) : null}
+                {row.key === "payment_plan" ? (
+                  <p
+                    className="mt-2 text-xs text-muted-foreground leading-relaxed"
+                    data-testid="invoice-payment-plan-responsibility-note"
+                  >
+                    You are responsible for determining and applying any taxes, discounts, fees, and
+                    payment terms appropriate to your venue and event. Tax and discount additions were
+                    set under &apos;Leads &amp; Booking&apos; section in Settings under Invoice
+                    Adjustments. If applicable/enabled, add Tax and/or Discount line items on the
+                    Invoice draft itself.
+                  </p>
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[min(100%,20rem)] sm:justify-end">
@@ -262,12 +279,6 @@ export function CommercialFacts({
                 )}
               </div>
             </div>
-            {showLockedTaxHint ? (
-              <p className="text-xs text-muted-foreground leading-relaxed" data-testid="invoice-adjustments-locked-hint">
-                Tax and discount for this Selected Package were set under Tax &amp; discount before the contract or invoice.
-                On a draft invoice, add Tax or Discount line items when those options are enabled in Settings.
-              </p>
-            ) : null}
           </li>
           );
         })}
