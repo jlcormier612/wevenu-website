@@ -209,8 +209,10 @@ async function main() {
     );
     record(
       "ui_partial_installment",
-      /Partially Paid/i.test(body) && (body.includes("$2,000") || body.includes(money(REMAINDER))),
-      "installment Partially Paid + $2,000 remaining",
+      /Partially Paid/i.test(body)
+        && (/\$2,000(?:\.00)?\s*due/i.test(body) || body.includes(money(REMAINDER)))
+        && (/\$7,164(?:\.06)?\s*received/i.test(body) || body.includes(money(RECEIVED))),
+      "installment Partially Paid + $2,000 due + $7,164.06 received",
     );
     record(
       "ui_total_unchanged",

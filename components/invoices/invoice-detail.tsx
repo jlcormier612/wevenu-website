@@ -640,7 +640,12 @@ export function InvoiceDetail({
                   </div>
                 ) : (
                 <ul className="space-y-2 text-sm">
-                  {scheduleLines.map((line, i) => (
+                  {scheduleLines.map((line, i) => {
+                    const isPartial = line.status === "partially_paid" && line.paidAmount != null;
+                    const remainingOnLine = isPartial
+                      ? Math.max(0, Math.round((line.amount - Number(line.paidAmount)) * 100) / 100)
+                      : null;
+                    return (
                     <li
                       key={`${line.label}-${i}`}
                       className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/40 pb-2 last:border-0 last:pb-0"
@@ -657,11 +662,29 @@ export function InvoiceDetail({
                             : "No due date"}
                           {" · "}
                           <span className="capitalize">{line.status.replace(/_/g, " ")}</span>
+                          {isPartial ? (
+                            <>
+                              {" · "}
+                              {formatCurrency(Number(line.paidAmount))} received
+                            </>
+                          ) : null}
                         </p>
                       </div>
-                      <p className="font-semibold text-heading">{formatCurrency(line.amount)}</p>
+                      <p className="text-right font-semibold text-heading">
+                        {isPartial && remainingOnLine != null ? (
+                          <>
+                            <span className="block">{formatCurrency(remainingOnLine)} due</span>
+                            <span className="block text-xs font-normal text-muted-foreground">
+                              of {formatCurrency(line.amount)}
+                            </span>
+                          </>
+                        ) : (
+                          formatCurrency(line.amount)
+                        )}
+                      </p>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
                 )}
               </div>
