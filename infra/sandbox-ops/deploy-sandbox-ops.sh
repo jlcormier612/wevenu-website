@@ -8,7 +8,10 @@ ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 ROLE_NAME="htc-sandbox-ops-canary-role"
 TOPIC_ARN="arn:aws:sns:${REGION}:${ACCOUNT_ID}:htc-sandbox-ops-alerts"
 RESEND_SECRET_ARN="arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:htc/sandbox/resend-api-key*"
+SUPABASE_SECRET_ARN="arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:htc/sandbox/supabase-service-role-key*"
+SUPABASE_URL="${SUPABASE_URL:-https://wvpsldwwjqdannqasrdf.supabase.co}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+LAMBDA_ENV="Variables={RESEND_SECRET_ID=htc/sandbox/resend-api-key,SUPABASE_SERVICE_ROLE_SECRET_ID=htc/sandbox/supabase-service-role-key,SUPABASE_URL=${SUPABASE_URL},OPS_ALERT_TO=jennifer@hellotocheers.com,OPS_ALERT_FROM=Hello to Cheers Ops <jennifer@hellotocheers.com>}"
 
 echo "account=${ACCOUNT_ID} region=${REGION}"
 
@@ -37,7 +40,7 @@ aws iam put-role-policy --role-name "${ROLE_NAME}" --policy-name htc-sandbox-ops
     {
       \"Effect\": \"Allow\",
       \"Action\": [\"secretsmanager:GetSecretValue\"],
-      \"Resource\": \"${RESEND_SECRET_ARN}\"
+      \"Resource\": [\"${RESEND_SECRET_ARN}\", \"${SUPABASE_SECRET_ARN}\"]
     }
   ]
 }"
@@ -63,7 +66,7 @@ deploy_lambda() {
       --handler "${handler}" \
       --timeout "${timeout}" \
       --memory-size 256 \
-      --environment "Variables={RESEND_SECRET_ID=htc/sandbox/resend-api-key,OPS_ALERT_TO=jennifer@hellotocheers.com,OPS_ALERT_FROM=Hello to Cheers Ops <jennifer@hellotocheers.com>}" \
+      --environment "${LAMBDA_ENV}" \
       --region "${REGION}" >/dev/null
     aws lambda wait function-updated --function-name "${name}" --region "${REGION}"
   else
@@ -75,7 +78,7 @@ deploy_lambda() {
       --timeout "${timeout}" \
       --memory-size 256 \
       --zip-file "fileb://${zip}" \
-      --environment "Variables={RESEND_SECRET_ID=htc/sandbox/resend-api-key,OPS_ALERT_TO=jennifer@hellotocheers.com,OPS_ALERT_FROM=Hello to Cheers Ops <jennifer@hellotocheers.com>}" \
+      --environment "${LAMBDA_ENV}" \
       --region "${REGION}" >/dev/null
   fi
   echo "lambda=${name} ok"

@@ -14,6 +14,8 @@ describe("sandbox ops early-warning seams", () => {
     assert.match(usage, /ResendDailyUsagePercent/);
     assert.doesNotMatch(usage, /print\(api_key\)/);
     const email = readFileSync(resolve(root, "lambdas/ops_alert_email/handler.py"), "utf8");
+    assert.match(email, /_persist_incident/);
+    assert.match(email, /ops_incidents/);
     assert.match(email, /OpsAlertEmailSuccess/);
     assert.match(email, /OpsAlertEmailFailure/);
     assert.match(email, /jennifer@hellotocheers\.com/);

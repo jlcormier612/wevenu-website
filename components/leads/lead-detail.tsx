@@ -197,6 +197,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   /** Draft opened via "Send this →"; completed only after authoritative send. */
   const [activeLuvDraftId, setActiveLuvDraftId] = React.useState<string | null>(null);
   const [completedLuvDraftId, setCompletedLuvDraftId] = React.useState<string | null>(null);
+  /** Bumped when Overview “Ask Luv to draft” should start drafting on the Luv tab. */
+  const [luvDraftRequest, setLuvDraftRequest] = React.useState(0);
 
   React.useEffect(() => {
     const syncFromHash = () => {
@@ -209,6 +211,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
   }, []);
+
+  // Soft-nav or prop arrival with ?luv= must land on the Luv drafting tab.
+  React.useEffect(() => {
+    if (autoLuvDraft) setActiveTab("luv");
+  }, [autoLuvDraft]);
 
   function handleUseDraft(draftId: string, subject: string | null, body: string) {
     setActiveLuvDraftId(draftId);
@@ -880,6 +887,17 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <ContextualLuvObservationsPanel
         observations={contextualObservations}
         currentPath={`/leads/${lead.id}`}
+        onSameRecordDraft={() => {
+          setActiveTab("luv");
+          window.location.hash = "luv";
+          setLuvDraftRequest((n) => n + 1);
+        }}
+        sameRecordDraftEligible={followUpDraftEligible}
+        sameRecordDraftIneligibleReason={
+          followUpDraftEligible
+            ? undefined
+            : "Luv can’t draft a follow-up for this inquiry right now. A recent outreach may still be open, or drafting isn’t available for this stage."
+        }
       />
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); window.location.hash = v; }}>
@@ -1032,6 +1050,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 completedDraftId={completedLuvDraftId}
                 contextualObservations={contextualObservations}
                 followUpDraftEligible={followUpDraftEligible}
+                externalDraftRequest={luvDraftRequest}
               />
             </CardContent>
           </Card>

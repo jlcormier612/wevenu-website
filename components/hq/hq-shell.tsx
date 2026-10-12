@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  BellRing,
   Gauge,
   GraduationCap,
   HandHeart,
@@ -13,6 +14,7 @@ import {
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { canAccessHqLegalAdmin } from "@/lib/hq/legal-access";
+import { countActiveOpsIncidents } from "@/lib/hq/ops-incidents";
 import { getHqAdmin } from "@/lib/hq/service";
 import { getSupportOpsData } from "@/lib/hq/support-service";
 
@@ -23,7 +25,7 @@ type NavItem =
       label: string;
       icon: React.ComponentType<{ className?: string }>;
       soon?: boolean;
-      badgeKey?: "support";
+      badgeKey?: "support" | "ops";
       legalOnly?: boolean;
     };
 
@@ -36,6 +38,7 @@ const NAV: NavItem[] = [
   // wevenu-hq-architecture.md §1 IA sketch — folded into venue-detail pages
   // until White-Glove's Onboarding Engagement (Hospitality Success
   // Platform §2.2a) gave it something real to stand on.
+  { href: "/admin/ops-alerts", label: "Ops Alerts", icon: BellRing, badgeKey: "ops" },
   { href: "/admin/onboarding", label: "Customer Success", icon: HandHeart },
   { href: "/admin/success-library", label: "Help & Guides", icon: GraduationCap },
   { href: "/admin/support", label: "Support", icon: Headset, badgeKey: "support" },
@@ -55,9 +58,10 @@ const NAV: NavItem[] = [
  * company for the next 6–12 months, so it's the home page, not a sub-page.
  */
 export async function HqShell({ children }: { children: React.ReactNode }) {
-  const [supportData, hqAdmin] = await Promise.all([
+  const [supportData, hqAdmin, opsBadge] = await Promise.all([
     getSupportOpsData().catch(() => null),
     getHqAdmin(),
+    countActiveOpsIncidents().catch(() => 0),
   ]);
   const supportBadge = supportData
     ? supportData.stuckVendorInvites.length + supportData.stuckTeamInvites.length + supportData.notificationFailureCount7d
@@ -111,6 +115,14 @@ export async function HqShell({ children }: { children: React.ReactNode }) {
                       {item.badgeKey === "support" && supportBadge > 0 && (
                         <span className="rounded-full bg-destructive/20 px-1.5 py-0.5 text-[9px] font-semibold text-destructive">
                           {supportBadge}
+                        </span>
+                      )}
+                      {item.badgeKey === "ops" && opsBadge > 0 && (
+                        <span
+                          data-testid="ops-alerts-nav-badge"
+                          className="rounded-full bg-destructive/20 px-1.5 py-0.5 text-[9px] font-semibold text-destructive"
+                        >
+                          {opsBadge}
                         </span>
                       )}
                     </Link>
