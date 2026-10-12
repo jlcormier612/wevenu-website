@@ -30,9 +30,9 @@ const SPACE = {
 const OUT_DIR = "docs/qa/multi-day-summary-tasks-questionnaires";
 const EXPECTED_PREFIX = process.env.EXPECTED_SHA_PREFIX ?? "";
 
-// Unique Sat/Sun weekend far from Nicole May 2027 dogfood
-const SAT = "2028-05-13";
-const SUN = "2028-05-14";
+// Unique Sat/Sun weekend far from Nicole May 2027 dogfood and prior QA holds
+const SAT = "2030-06-08";
+const SUN = "2030-06-09";
 
 const out: {
   ok: boolean;
@@ -114,7 +114,7 @@ async function seedLeadReadyToBook() {
     first_name: "Sched",
     last_name: `Persist${stamp}`,
     email,
-    sales_stage: "tour_completed",
+    sales_stage: "tour_scheduled",
     status: "active",
     source: "website",
     event_type: "wedding",
@@ -146,6 +146,7 @@ async function seedLeadReadyToBook() {
     venue_id: VENUE,
     lead_id: lead.id,
     status: "active",
+    title: `Sched Persist ${stamp}`,
     hold_date: SAT,
     end_date: SUN,
     start_time: "14:00",
@@ -220,7 +221,7 @@ async function main() {
     }
 
     // Wait for materialize effect, then set Sunday component dates + times
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
     const schedule: Array<{ key: string; date: string; start: string; end: string }> = [
       { key: "rehearsal_dinner", date: SAT, start: "18:00", end: "22:00" },
       { key: "getting_ready", date: SUN, start: "14:00", end: "16:00" },
@@ -228,19 +229,64 @@ async function main() {
       { key: "cocktail_hour", date: SUN, start: "17:00", end: "18:00" },
       { key: "reception", date: SUN, start: "18:00", end: "22:00" },
     ];
+    async function setInput(locator: ReturnType<typeof page.locator>, value: string) {
+      await locator.click({ timeout: 10_000 });
+      await locator.fill("");
+      await locator.fill(value);
+      await locator.press("Tab");
+    }
     for (const row of schedule) {
       const date = page.getByTestId(`esa-date-${row.key}`);
-      await date.waitFor({ state: "visible", timeout: 15_000 });
-      await date.fill(row.date);
+      if (!(await date.count())) {
+        record(`row_present_${row.key}`, false, "missing in confirmation editor");
+        continue;
+      }
+      record(`row_present_${row.key}`, true, "visible");
+      await setInput(date, row.date);
       const start = page.locator(`#esa-${row.key}-start`);
       const end = page.locator(`#esa-${row.key}-end`);
-      if (await start.count()) await start.fill(row.start);
-      if (await end.count()) await end.fill(row.end);
+      if (await start.count()) await setInput(start, row.start);
+      if (await end.count()) await setInput(end, row.end);
+    }
+    // Verify date values stuck (materialize + fill)
+    for (const row of schedule) {
+      const date = page.getByTestId(`esa-date-${row.key}`);
+      if (!(await date.count())) continue;
+      const v = await date.inputValue();
+      record(`date_value_${row.key}`, v === row.date, v);
+      if (v !== row.date) await setInput(date, row.date);
+    }
+    // Clear availability block if only soft warning — wait briefly for conflict check
+    await page.waitForTimeout(1500);
+    const unavailable = await page.getByText(/this time is unavailable/i).isVisible().catch(() => false);
+    if (unavailable) {
+      // Rehearsal Sat + Reception Sun on Barn must not collide when dates persist.
+      // Capture conflict detail for forensics.
+      const conflict = await page.locator("[data-testid='conflict-warning'], .text-destructive").allTextContents();
+      record("pre_submit_availability", false, JSON.stringify(conflict).slice(0, 400));
+    } else {
+      record("pre_submit_availability", true, "clear");
     }
 
     await page.screenshot({ path: `${OUT_DIR}/confirm-schedule-1280.png`, fullPage: true });
-    await page.getByTestId("booking-confirm-submit").click();
-    await page.getByTestId("booking-confirmation").waitFor({ state: "hidden", timeout: 60_000 }).catch(() => null);
+    const submit = page.getByTestId("booking-confirm-submit");
+    await submit.waitFor({ state: "visible" });
+    const disabled = await submit.isDisabled();
+    if (disabled) {
+      const errText = await page.locator(".text-destructive, [data-testid='booking-confirm-error']").allTextContents().catch(() => []);
+      record("submit_enabled", false, `disabled; errors=${JSON.stringify(errText)}`);
+      await page.screenshot({ path: `${OUT_DIR}/confirm-blocked.png`, fullPage: true });
+      throw new Error(`Confirm submit disabled: ${errText.join(" | ")}`);
+    }
+    await submit.click();
+    try {
+      await page.getByTestId("booking-confirmation").waitFor({ state: "hidden", timeout: 60_000 });
+    } catch {
+      const errText = await page.locator(".text-destructive").allTextContents().catch(() => []);
+      const body = await page.getByTestId("booking-confirmation").innerText().catch(() => "");
+      await page.screenshot({ path: `${OUT_DIR}/confirm-failed.png`, fullPage: true });
+      throw new Error(`Confirmation stayed open. errors=${JSON.stringify(errText)} body=${body.slice(0, 500)}`);
+    }
     await page.waitForTimeout(2000);
 
     const { data: client } = await admin.from("clients").select("id").eq("lead_id", seeded.leadId).maybeSingle();
@@ -265,15 +311,27 @@ async function main() {
     await page.goto(out.urls.client, { waitUntil: "networkidle", timeout: 90_000 });
     await page.getByTestId("event-booking-summary").waitFor({ state: "visible", timeout: 30_000 });
     const summary = await page.getByTestId("event-booking-component-schedule").innerText();
-    record("ui_saturday_group", /Saturday,\s*May 13,\s*2028/i.test(summary) && /Rehearsal Dinner/i.test(summary), summary.slice(0, 400));
-    record("ui_sunday_group", /Sunday,\s*May 14,\s*2028/i.test(summary) && /Reception/i.test(summary) && /Ceremony/i.test(summary), "sunday components");
+    record(
+      "ui_saturday_group",
+      /Saturday,\s*Jun(e)?\s*8,\s*2030/i.test(summary) && /Rehearsal Dinner/i.test(summary),
+      summary.slice(0, 400),
+    );
+    record(
+      "ui_sunday_group",
+      /Sunday,\s*Jun(e)?\s*9,\s*2030/i.test(summary) && /Reception/i.test(summary) && /Ceremony/i.test(summary),
+      "sunday components",
+    );
     record("ui_no_date_not_set", !/Date not set/i.test(summary), summary.includes("Date not set") ? "has Date not set" : "clean");
     await page.screenshot({ path: `${OUT_DIR}/summary-persist-1280.png`, fullPage: true });
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "networkidle" });
     const summary390 = await page.getByTestId("event-booking-component-schedule").innerText();
-    record("ui_390_groups", /May 13/i.test(summary390) && /May 14/i.test(summary390) && !/Date not set/i.test(summary390), summary390.slice(0, 300));
+    record(
+      "ui_390_groups",
+      /Jun(e)?\s*8,\s*2030/i.test(summary390) && /Jun(e)?\s*9,\s*2030/i.test(summary390) && !/Date not set/i.test(summary390),
+      summary390.slice(0, 300),
+    );
     await page.screenshot({ path: `${OUT_DIR}/summary-persist-390.png`, fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
 

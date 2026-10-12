@@ -4,7 +4,11 @@
  * Storage stays on the Event: date, end date, times, space_id, and
  * event_space_assignments. This is not a second occupancy model.
  */
-import { primarySpaceIdFromAssignments, type EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
+import {
+  intraEventSpaceOverlapError,
+  primarySpaceIdFromAssignments,
+  type EventSpaceAssignmentInput,
+} from "@/lib/venue-spaces/assignments";
 
 export type ConfirmedBookingOccupancy = {
   eventDate: string;
@@ -79,6 +83,8 @@ export function bookingConfirmationError(
       return "Each component date must fall within the overall event dates.";
     }
   }
+  const intra = intraEventSpaceOverlapError(value.assignments);
+  if (intra) return intra;
   if (maxSimultaneousEvents >= 2 && selectedSpaceIds(value).length === 0) {
     return "Assign an Event Space before booking. This venue can host more than one event at the same time.";
   }

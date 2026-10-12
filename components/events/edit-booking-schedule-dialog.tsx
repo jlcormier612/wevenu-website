@@ -18,7 +18,11 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import type { VenueSpace } from "@/lib/availability/types";
-import { materializeMissingScheduledDates, type EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
+import {
+  intraEventSpaceOverlapError,
+  materializeMissingScheduledDates,
+  type EventSpaceAssignmentInput,
+} from "@/lib/venue-spaces/assignments";
 import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
 import { resolveExperienceProfile } from "@/lib/event-experience";
 
@@ -63,6 +67,12 @@ export function EditBookingScheduleDialog({
   function save() {
     startPending(async () => {
       setError(null);
+      const intra = intraEventSpaceOverlapError(draft);
+      if (intra) {
+        setError(intra);
+        toast.error(intra);
+        return;
+      }
       const result = await saveEventSpaceAssignmentsAction(eventId, draft, clientId);
       if (!result.ok) {
         setError(result.message ?? "Could not save the schedule.");

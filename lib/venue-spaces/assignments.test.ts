@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import type { VenueSpace } from "@/lib/availability/types";
 import {
   configuredUsesFromSpaces,
+  intraEventSpaceOverlapError,
   materializeMissingScheduledDates,
   normalizeAssignmentInputs,
   primarySpaceIdFromAssignments,
@@ -92,6 +93,49 @@ describe("event space assignments", () => {
     assert.equal(changed, true);
     assert.equal(next[0]?.scheduledDate, "2027-05-08");
     assert.equal(next[1]?.scheduledDate, "2027-05-08");
+  });
+
+  it("rejects same-space same-date overlapping components inside one event", () => {
+    const err = intraEventSpaceOverlapError([
+      {
+        useKey: "rehearsal_dinner",
+        useLabel: "Rehearsal Dinner",
+        spaceId: "barn",
+        scheduledDate: "2030-06-08",
+        startTime: "18:00",
+        endTime: "22:00",
+      },
+      {
+        useKey: "reception",
+        useLabel: "Reception",
+        spaceId: "barn",
+        scheduledDate: "2030-06-08",
+        startTime: "18:00",
+        endTime: "22:00",
+      },
+    ]);
+    assert.match(err ?? "", /overlap/i);
+    assert.equal(
+      intraEventSpaceOverlapError([
+        {
+          useKey: "rehearsal_dinner",
+          useLabel: "Rehearsal Dinner",
+          spaceId: "barn",
+          scheduledDate: "2030-06-08",
+          startTime: "18:00",
+          endTime: "22:00",
+        },
+        {
+          useKey: "reception",
+          useLabel: "Reception",
+          spaceId: "barn",
+          scheduledDate: "2030-06-09",
+          startTime: "18:00",
+          endTime: "22:00",
+        },
+      ]),
+      null,
+    );
   });
 
   it("restricts eligible spaces by permitted use; empty uses = unrestricted", () => {

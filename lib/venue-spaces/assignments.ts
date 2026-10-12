@@ -131,3 +131,38 @@ export function materializeMissingScheduledDates(
   });
   return { next, changed };
 }
+
+function hhmm(value: string | null | undefined): string | null {
+  const t = value?.trim() ?? "";
+  if (!t) return null;
+  return t.slice(0, 5);
+}
+
+/**
+ * Same physical space cannot host overlapping component windows on the same
+ * calendar date within one event (e.g. Sat rehearsal + Sat reception).
+ */
+export function intraEventSpaceOverlapError(
+  assignments: EventSpaceAssignmentInput[],
+): string | null {
+  const timed = assignments
+    .map((row) => ({
+      label: row.useLabel.trim() || labelForUseKey(row.useKey),
+      spaceId: row.spaceId.trim(),
+      date: row.scheduledDate?.trim() || "",
+      start: hhmm(row.startTime),
+      end: hhmm(row.endTime),
+    }))
+    .filter((row) => row.spaceId && row.date && row.start && row.end);
+  for (let i = 0; i < timed.length; i++) {
+    for (let j = i + 1; j < timed.length; j++) {
+      const a = timed[i]!;
+      const b = timed[j]!;
+      if (a.spaceId !== b.spaceId || a.date !== b.date) continue;
+      if (a.start! < b.end! && b.start! < a.end!) {
+        return `${a.label} and ${b.label} overlap in the same space on ${a.date}.`;
+      }
+    }
+  }
+  return null;
+}

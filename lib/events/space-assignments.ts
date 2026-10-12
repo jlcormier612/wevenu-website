@@ -8,6 +8,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { occupancyFailureFromUnknown } from "@/lib/availability/event-occupancy";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
+  intraEventSpaceOverlapError,
   normalizeAssignmentInputs,
   primarySpaceIdFromAssignments,
   type EventSpaceAssignment,
@@ -95,6 +96,8 @@ export async function replaceEventSpaceAssignments(
   if (eventErr || !event) return { ok: false, message: "Event not found." };
 
   const normalized = normalizeAssignmentInputs(assignments);
+  const intra = intraEventSpaceOverlapError(normalized);
+  if (intra) return { ok: false, message: intra };
   const primarySpaceId = primarySpaceIdFromAssignments(normalized, {
     weddingFamily: resolveExperienceProfile(event.event_type).isWeddingSpecific,
   });
