@@ -10,6 +10,7 @@ import { getEventOrderDrift, getInvoice } from "@/lib/invoices/service";
 import { getPackages } from "@/lib/packages/service";
 import {
   computeCancelledPlanAmount,
+  computeInvoiceBalanceDue,
   computeNetPaid,
 } from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
@@ -42,8 +43,13 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
   const returnToPaymentSchedule = safePaymentScheduleReturnPath(returnToRaw);
   const linkedSummary = scheduleSummaries.find((s) => s.invoiceId === invoice.id) ?? null;
   const linked = linkedSummary ? await getPaymentSchedule(linkedSummary.id) : null;
+  // Authoritative balance = total − cancelled − net retained (same as DB trigger + reconcile).
+  const balanceDue = linked
+    ? computeInvoiceBalanceDue(invoice.total, linked.lineItems)
+    : invoice.balanceDue;
+  const invoiceView = { ...invoice, balanceDue };
   const amountDueNow = resolveAmountDueNow({
-    balanceDue: invoice.balanceDue,
+    balanceDue,
     scheduleLines: linked
       ? linked.lineItems.map((i) => ({
           amount: i.amount,
@@ -70,7 +76,7 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
   const relationshipBooked = Boolean(invoice.bookedAt);
   return (
     <InvoiceDetail
-      invoice={invoice}
+      invoice={invoiceView}
       packages={packages}
       eventOrderDrift={eventOrderDrift}
       emailConfigured={isEmailConfigured()}
@@ -102,8 +108,8 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       scheduleTiming={
         linked
           ? {
-              eventDate: invoice.eventDate,
-              bookingDate: invoice.bookedAt,
+              eventDate: invoiceView.eventDate,
+              bookingDate: invoiceView.bookedAt,
               executedAt: null,
               today: venueToday(venue.timezone),
             }

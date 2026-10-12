@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import {
@@ -135,6 +137,216 @@ describe("invoice balance after payment-plan cancellation", () => {
     assert.equal(portal.planTotal, 800);
     assert.ok(!portal.planTotal.toString().includes("2400"));
     assert.equal(computeActivePlanTotal(lines), 800);
+  });
+});
+
+describe("Nicole/Colby reported partial installment (INV-2026-3B9F4B)", () => {
+  const TOTAL = 36_656.25;
+  const INITIAL = 9_164.06;
+  const RECEIVED = 7_164.06;
+  const REMAINDER = 2_000.0;
+  const EXPECTED_BALANCE = 29_492.19;
+
+  const nicoleLines = [
+    { amount: INITIAL, status: "partially_paid", paidAmount: RECEIVED, refundedAmount: 0 },
+    { amount: 9_164.06, status: "pending", paidAmount: null, refundedAmount: null },
+    { amount: 9_164.06, status: "pending", paidAmount: null, refundedAmount: null },
+    { amount: 9_164.07, status: "pending", paidAmount: null, refundedAmount: null },
+  ];
+
+  it("1 — $7,164.06 retained against $9,164.06 → balance $29,492.19; installment remainder $2,000", () => {
+    assert.equal(computeNetPaid(nicoleLines), RECEIVED);
+    assert.equal(computeInvoiceBalanceDue(TOTAL, nicoleLines), EXPECTED_BALANCE);
+    assert.equal(
+      Math.round((INITIAL - RECEIVED) * 100) / 100,
+      REMAINDER,
+    );
+    assert.notEqual(computeInvoiceBalanceDue(TOTAL, nicoleLines), TOTAL);
+    assert.equal(
+      deriveInvoicePaymentStatus({
+        balanceDue: EXPECTED_BALANCE,
+        netPaid: RECEIVED,
+        currentStatus: "sent",
+      }),
+      "partially_paid",
+    );
+    const overview = paymentPlanOverview({
+      invoiceStatus: "partially_paid",
+      items: nicoleLines.map((l) => ({
+        status: l.status as "partially_paid" | "pending",
+        amount: l.amount,
+        paidAmount: l.paidAmount,
+      })),
+    });
+    assert.equal(overview.invoiceLabel, "Partially Paid");
+    assert.equal(overview.paidInstallments, 0); // none fully paid
+    assert.equal(overview.totalInstallments, 4);
+    assert.equal(overview.paidAmount, RECEIVED);
+    assert.equal(overview.remainingAmount, EXPECTED_BALANCE);
+    assert.match(overview.summaryLine, /Partially Paid/);
+    assert.match(overview.summaryLine, /\$7,164\.06 paid/);
+    assert.match(overview.summaryLine, /\$29,492\.19 remaining/);
+    const portal = computePortalScheduleTotals(nicoleLines);
+    assert.equal(portal.paid, RECEIVED);
+    assert.equal(portal.remaining, EXPECTED_BALANCE);
+    assert.equal(portal.remaining, computeInvoiceBalanceDue(TOTAL, nicoleLines));
+  });
+
+  it("2 — no payments: balance equals full invoice total", () => {
+    const unpaid = nicoleLines.map((l) => ({
+      ...l,
+      status: "pending",
+      paidAmount: null,
+      refundedAmount: null,
+    }));
+    assert.equal(computeNetPaid(unpaid), 0);
+    assert.equal(computeInvoiceBalanceDue(TOTAL, unpaid), TOTAL);
+  });
+
+  it("3 — exact installment payment marks that line fully paid only", () => {
+    const exact = [
+      { amount: INITIAL, status: "paid", paidAmount: INITIAL, refundedAmount: 0 },
+      ...nicoleLines.slice(1),
+    ];
+    assert.equal(computeNetPaid(exact), INITIAL);
+    assert.equal(
+      Math.round(computeInvoiceBalanceDue(TOTAL, exact) * 100) / 100,
+      Math.round((TOTAL - INITIAL) * 100) / 100,
+    );
+    assert.equal(
+      deriveInvoicePaymentStatus({
+        balanceDue: computeInvoiceBalanceDue(TOTAL, exact),
+        netPaid: INITIAL,
+        currentStatus: "sent",
+      }),
+      "partially_paid",
+    );
+  });
+
+  it("4 — partial then second payment accumulate without overstating", () => {
+    const afterSecond = [
+      { amount: INITIAL, status: "paid", paidAmount: INITIAL, refundedAmount: 0 },
+      ...nicoleLines.slice(1),
+    ];
+    // $7,164.06 + $2,000.00 = full installment
+    assert.equal(computeNetPaid(afterSecond), INITIAL);
+    assert.equal(
+      Math.round(computeInvoiceBalanceDue(TOTAL, afterSecond) * 100) / 100,
+      Math.round((TOTAL - INITIAL) * 100) / 100,
+    );
+  });
+
+  it("5 — multiple partial payments across installments", () => {
+    const multi = [
+      { amount: INITIAL, status: "partially_paid", paidAmount: RECEIVED, refundedAmount: 0 },
+      { amount: 9_164.06, status: "partially_paid", paidAmount: 1_000, refundedAmount: 0 },
+      { amount: 9_164.06, status: "pending", paidAmount: null, refundedAmount: null },
+      { amount: 9_164.07, status: "pending", paidAmount: null, refundedAmount: null },
+    ];
+    const net = RECEIVED + 1_000;
+    assert.equal(computeNetPaid(multi), net);
+    assert.equal(
+      Math.round(computeInvoiceBalanceDue(TOTAL, multi) * 100) / 100,
+      Math.round((TOTAL - net) * 100) / 100,
+    );
+  });
+
+  it("6 — duplicate / replay does not double-count (idempotent net from line state)", () => {
+    // Authoritative state is the line's paid_amount once — replaying the same
+    // retained total must not invent a second collection.
+    assert.equal(computeNetPaid(nicoleLines), RECEIVED);
+    assert.equal(computeNetPaid(nicoleLines), computeNetPaid(nicoleLines));
+    assert.equal(computeInvoiceBalanceDue(TOTAL, nicoleLines), EXPECTED_BALANCE);
+  });
+
+  it("7 — partial refund reduces net retained and raises balance; history fields preserved", () => {
+    const refunded = [
+      {
+        amount: INITIAL,
+        status: "partially_refunded",
+        paidAmount: RECEIVED,
+        refundedAmount: 500,
+      },
+      ...nicoleLines.slice(1),
+    ];
+    assert.equal(computeNetPaid(refunded), RECEIVED - 500);
+    assert.equal(
+      Math.round(computeInvoiceBalanceDue(TOTAL, refunded) * 100) / 100,
+      Math.round((TOTAL - (RECEIVED - 500)) * 100) / 100,
+    );
+    assert.equal(refunded[0]!.paidAmount, RECEIVED);
+    assert.equal(refunded[0]!.refundedAmount, 500);
+  });
+
+  it("8 — full refund of the partial restores full invoice balance", () => {
+    const fullRefund = [
+      {
+        amount: INITIAL,
+        status: "refunded",
+        paidAmount: RECEIVED,
+        refundedAmount: RECEIVED,
+      },
+      ...nicoleLines.slice(1),
+    ];
+    assert.equal(computeNetPaid(fullRefund), 0);
+    assert.equal(computeInvoiceBalanceDue(TOTAL, fullRefund), TOTAL);
+  });
+
+  it("9 — pending / failed / non-qualifying statuses do not reduce balance", () => {
+    const nonQualifying = [
+      { amount: INITIAL, status: "pending", paidAmount: RECEIVED, refundedAmount: 0 },
+      { amount: 9_164.06, status: "processing", paidAmount: null, refundedAmount: null },
+      { amount: 9_164.06, status: "overdue", paidAmount: null, refundedAmount: null },
+      { amount: 9_164.07, status: "pending", paidAmount: null, refundedAmount: null },
+    ];
+    assert.equal(computeNetPaid(nonQualifying), 0);
+    assert.equal(computeInvoiceBalanceDue(TOTAL, nonQualifying), TOTAL);
+  });
+
+  it("10 — rounding / final-installment remainder reconciles to the cent", () => {
+    const cents = [
+      { amount: 9_164.06, status: "paid", paidAmount: 9_164.06, refundedAmount: 0 },
+      { amount: 9_164.06, status: "paid", paidAmount: 9_164.06, refundedAmount: 0 },
+      { amount: 9_164.06, status: "paid", paidAmount: 9_164.06, refundedAmount: 0 },
+      { amount: 9_164.07, status: "paid", paidAmount: 9_164.07, refundedAmount: 0 },
+    ];
+    assert.equal(computeNetPaid(cents), TOTAL);
+    assert.equal(computeInvoiceBalanceDue(TOTAL, cents), 0);
+    assert.equal(
+      cents.reduce((s, l) => s + l.amount, 0),
+      TOTAL,
+    );
+  });
+
+  it("11 — invoice, payment-plan, and portal summaries agree", () => {
+    const balanceDue = computeInvoiceBalanceDue(TOTAL, nicoleLines);
+    const netPaid = computeNetPaid(nicoleLines);
+    const portal = computePortalScheduleTotals(nicoleLines);
+    const overview = paymentPlanOverview({
+      invoiceStatus: "partially_paid",
+      items: nicoleLines.map((l) => ({
+        status: l.status as "partially_paid" | "pending",
+        amount: l.amount,
+        paidAmount: l.paidAmount,
+      })),
+    });
+    assert.equal(portal.paid, netPaid);
+    assert.equal(portal.remaining, balanceDue);
+    assert.equal(overview.paidAmount, netPaid);
+    assert.equal(overview.remainingAmount, balanceDue);
+  });
+});
+
+describe("DB balance trigger migration counts partially_paid", () => {
+  it("12 — migration SQL includes partially_paid and cancelled in balance formula", () => {
+    const sql = readFileSync(
+      resolve("supabase/migrations/20261417200000_invoice_balance_counts_partially_paid.sql"),
+      "utf8",
+    );
+    assert.match(sql, /partially_paid/);
+    assert.match(sql, /_compute_invoice_cancelled_plan_amount/);
+    assert.match(sql, /_compute_invoice_balance_due/);
+    assert.match(sql, /'paid', 'partially_paid', 'partially_refunded', 'refunded'/);
   });
 });
 

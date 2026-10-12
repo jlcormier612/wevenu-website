@@ -7,6 +7,11 @@
  * or payment/refund rows.
  *
  * balance_due = max(0, invoice.total − cancelled_plan_amounts − net_paid)
+ *
+ * Net paid includes partially_paid installments (actual money retained).
+ * The Sandbox/production DB trigger `_compute_invoice_total_paid` /
+ * `_compute_invoice_balance_due` must use the same status set — see
+ * supabase/migrations/20261417200000_invoice_balance_counts_partially_paid.sql.
  */
 
 export type BalanceLine = {

@@ -6,6 +6,7 @@ import { resolveAmountDueNow } from "@/lib/invoices/amount-due-now";
 import { getInvoice } from "@/lib/invoices/service";
 import {
   computeCancelledPlanAmount,
+  computeInvoiceBalanceDue,
   computeNetPaid,
 } from "@/lib/payments/invoice-balance";
 import { getPaymentSchedule, getPaymentSchedules } from "@/lib/payments/service";
@@ -28,6 +29,10 @@ export default async function InvoicePrintPage({ params }: Props) {
 
   const linkedSummary = scheduleSummaries.find((s) => s.invoiceId === invoice.id) ?? null;
   const linked = linkedSummary ? await getPaymentSchedule(linkedSummary.id) : null;
+  const balanceDue = linked
+    ? computeInvoiceBalanceDue(invoice.total, linked.lineItems)
+    : invoice.balanceDue;
+  const invoiceView = { ...invoice, balanceDue };
   const scheduleLines = linked
     ? linked.lineItems.map((i) => ({
         amount: i.amount,
@@ -39,7 +44,7 @@ export default async function InvoicePrintPage({ params }: Props) {
       }))
     : null;
   const amountDueNow = resolveAmountDueNow({
-    balanceDue: invoice.balanceDue,
+    balanceDue,
     scheduleLines,
     today: venueToday(venue.timezone),
   });
@@ -49,7 +54,7 @@ export default async function InvoicePrintPage({ params }: Props) {
           (i) =>
             i.amount === amountDueNow.amount
             && i.label === (amountDueNow.label ?? i.label)
-            && (i.status === "pending" || i.status === "overdue" || i.status === "processing"),
+            && (i.status === "pending" || i.status === "overdue" || i.status === "processing" || i.status === "partially_paid"),
         ) ?? null
       : null;
   const paidToDateOverride = linked ? computeNetPaid(linked.lineItems) : null;
@@ -61,14 +66,14 @@ export default async function InvoicePrintPage({ params }: Props) {
         <PrintButton />
       </div>
       <InvoicePrintDocument
-        invoice={invoice}
+        invoice={invoiceView}
         venue={venue}
         milestone={nextOpen ? { label: nextOpen.label, obligationKind: nextOpen.obligationKind ?? null } : null}
         amountDueNow={amountDueNow}
         paidToDateOverride={paidToDateOverride}
         cancelledPlanAmount={cancelledPlanAmount}
         scheduleLines={scheduleLines}
-        paymentInstructions={linked?.notes ?? invoice.notes}
+        paymentInstructions={linked?.notes ?? invoiceView.notes}
         venuePaymentInstructions={
           venue.commercialBookingPrefs?.clientPaymentInstructions ?? null
         }

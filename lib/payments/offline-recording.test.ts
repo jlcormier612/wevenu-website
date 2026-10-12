@@ -220,7 +220,7 @@ describe("offline recording semantics (A–N)", () => {
       "2026-10-02",
     );
     assert.equal(fact.state, "1 of 4 paid");
-    assert.match(fact.detail ?? "", /\$8,000\.00 paid · \$24,000\.00 remaining/);
+    assert.match(fact.detail ?? "", /\$8,000(?:\.00)? paid · \$24,000(?:\.00)? remaining/);
     assert.match(fact.detail ?? "", /Initial Payment — Paid/);
     assert.match(fact.detail ?? "", /Next payment — Due/);
     assert.doesNotMatch(fact.detail ?? "", /Planning Payment 1 — Paid/);

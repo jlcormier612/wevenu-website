@@ -553,7 +553,11 @@ export async function reconcileInvoiceBalance(client: DbClient, venueId: string,
   });
   if (nextStatus) patch.status = nextStatus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (client.from("invoices") as any).update(patch).eq("id", invoiceId).eq("venue_id", venueId);
+  const { error } = await (client.from("invoices") as any)
+    .update(patch)
+    .eq("id", invoiceId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 /**
