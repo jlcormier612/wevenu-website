@@ -17,6 +17,7 @@ import {
 import { venueToday } from "@/lib/venue/timezone";
 import { invoiceHumanLabel } from "@/lib/invoices/display-name";
 import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
+import { AdjustPaymentPlanDialog } from "@/components/invoices/adjust-payment-plan-dialog";
 import { ApplyPostPaymentCreditDialog } from "@/components/invoices/apply-post-payment-credit-dialog";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
@@ -112,6 +113,7 @@ export function InvoiceDetail({
   paymentRequestAlreadySent?: boolean;
   linkedScheduleId?: string | null;
   scheduleLines?: {
+    id?: string;
     label: string;
     amount: number;
     dueDate: string | null;
@@ -149,6 +151,7 @@ export function InvoiceDetail({
   const [editingName, setEditingName] = React.useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = React.useState(false);
   const [creditOpen, setCreditOpen] = React.useState(false);
+  const [adjustPlanOpen, setAdjustPlanOpen] = React.useState(false);
   const humanTitle = invoiceHumanLabel({
     displayName: invoice.displayName,
     invoiceNumber: invoice.invoiceNumber,
@@ -197,6 +200,10 @@ export function InvoiceDetail({
     invoice.balanceDue > 0
     && (status === "sent" || status === "partially_paid" || status === "paid")
     && displayPaidToDate > 0;
+  const showAdjustPlan =
+    Boolean(linkedScheduleId && scheduleLines && scheduleLines.length > 0)
+    && invoice.balanceDue > 0
+    && (status === "sent" || status === "partially_paid");
 
   function saveDisplayName() {
     startName(async () => {
@@ -291,6 +298,17 @@ export function InvoiceDetail({
         open={creditOpen}
         onOpenChange={setCreditOpen}
       />
+      {linkedScheduleId && scheduleLines && (
+        <AdjustPaymentPlanDialog
+          open={adjustPlanOpen}
+          onOpenChange={setAdjustPlanOpen}
+          invoiceId={invoice.id}
+          scheduleId={linkedScheduleId}
+          invoiceTotal={invoice.total}
+          balanceDue={invoice.balanceDue}
+          scheduleLines={scheduleLines}
+        />
+      )}
       <BusinessAssetHeader
         backHref={backNav.href}
         backLabel={backNav.label}
@@ -384,6 +402,18 @@ export function InvoiceDetail({
               data-testid="apply-post-payment-credit"
             >
               Apply credit
+            </Button>
+          )}
+          {showAdjustPlan && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAdjustPlanOpen(true)}
+              disabled={pending}
+              data-testid="adjust-invoice-payment-plan"
+            >
+              Adjust invoice / payment plan
             </Button>
           )}
           {invoice.clientId && status !== "void" && (

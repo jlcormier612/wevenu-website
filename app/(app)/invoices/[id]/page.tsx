@@ -93,6 +93,7 @@ export default async function InvoiceDetailPage({ params, searchParams }: Props)
       scheduleLines={
         linked
           ? linked.lineItems.map((i) => ({
+              id: i.id,
               label: i.label,
               amount: i.amount,
               dueDate: i.dueDate,

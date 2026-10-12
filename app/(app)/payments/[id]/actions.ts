@@ -2,14 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 
+import type { AdjustableDraftLine } from "@/lib/payments/adjust-remaining-plan";
 import {
   addLineItem,
   addReviewInstallment,
+  adjustRemainingPaymentPlan,
   cancelLineItem_,
   collectRemainingBalanceManually,
   deleteLineItem_,
   keepExistingSchedule,
   markLineItemPaid,
+  previewRemainingPaymentPlanAdjustment,
   refundLineItem_,
   regeneratePaymentSchedule,
   replacePendingScheduleLines,
@@ -117,6 +120,27 @@ export async function replacePendingScheduleLinesAction(
   invoiceId?: string,
 ): Promise<PaymentActionResult> {
   const result = await replacePendingScheduleLines(scheduleId, lines);
+  if (result.ok) {
+    revalidate(scheduleId);
+    revalidatePath("/invoices");
+    if (invoiceId) revalidatePath(`/invoices/${invoiceId}`);
+  }
+  return result;
+}
+
+export async function previewRemainingPaymentPlanAdjustmentAction(
+  scheduleId: string,
+  proposedRemaining: AdjustableDraftLine[],
+) {
+  return previewRemainingPaymentPlanAdjustment(scheduleId, proposedRemaining);
+}
+
+export async function adjustRemainingPaymentPlanAction(
+  scheduleId: string,
+  proposedRemaining: AdjustableDraftLine[],
+  invoiceId?: string,
+): Promise<PaymentActionResult> {
+  const result = await adjustRemainingPaymentPlan(scheduleId, proposedRemaining);
   if (result.ok) {
     revalidate(scheduleId);
     revalidatePath("/invoices");

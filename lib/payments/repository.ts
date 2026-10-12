@@ -230,6 +230,38 @@ export async function deleteUnresolvedLineItems(client: DbClient, venueId: strin
   if (error) throw error;
 }
 
+/**
+ * Close partial-installment shortfalls into the redistributable pool by setting
+ * amount = paid_amount and status = paid. Does not change paid_amount, paid_at,
+ * refunds, or payment method — only the installment's expected total.
+ */
+export async function closePartialInstallmentShortfalls(
+  client: DbClient,
+  venueId: string,
+  scheduleId: string,
+): Promise<number> {
+  const { data, error } = await client.from("payment_line_items")
+    .select("id, amount, paid_amount")
+    .eq("schedule_id", scheduleId)
+    .eq("venue_id", venueId)
+    .eq("status", "partially_paid");
+  if (error) throw error;
+  let closed = 0;
+  for (const row of (data ?? []) as Array<{ id: string; amount: number; paid_amount: number | null }>) {
+    const paid = Number(row.paid_amount ?? 0);
+    const shortfall = Math.round((Number(row.amount) - paid) * 100) / 100;
+    if (shortfall <= 0.009) continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updErr } = await (client.from("payment_line_items") as any)
+      .update({ amount: paid, status: "paid" })
+      .eq("id", row.id)
+      .eq("venue_id", venueId);
+    if (updErr) throw updErr;
+    closed = Math.round((closed + shortfall) * 100) / 100;
+  }
+  return closed;
+}
+
 export async function insertLineItem(client: DbClient, venueId: string, scheduleId: string, input: LineItemInput, sortOrder: number): Promise<PaymentLineItem> {
   const { data, error } = await client.from("payment_line_items")
     .insert({

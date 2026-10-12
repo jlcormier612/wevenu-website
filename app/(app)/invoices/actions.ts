@@ -35,6 +35,7 @@ import {
   dueDateLabelFromContext,
   endOutboundSend,
   hasSuccessfulPaymentRequestSend,
+  INVOICE_PLAN_REVISION_SOURCE_TYPE,
   loadInvoiceOutboundContext,
   PAYMENT_REQUEST_SOURCE_TYPE,
   type InvoiceOutboundContext,
@@ -134,6 +135,13 @@ export type InvoiceAndPaymentPlanPreview = {
   remainingBalance: string;
   invoicePlanUrl: string | null;
   payableNow: boolean;
+  /** Remaining / open schedule lines as the client-facing email will show them. */
+  scheduleLines: Array<{
+    label: string;
+    amount: number;
+    dueDate: string | null;
+    status: string;
+  }>;
 };
 
 export async function paymentRequestAlreadySentAction(
@@ -188,6 +196,12 @@ function previewFromEmail(
     remainingBalance: email.remainingBalance,
     invoicePlanUrl: email.invoicePlanUrl,
     payableNow: ctx.dueNow.kind === "next_installment",
+    scheduleLines: ctx.scheduleLines.map((l) => ({
+      label: l.label,
+      amount: l.amount,
+      dueDate: l.dueDate,
+      status: l.status,
+    })),
   };
 }
 
@@ -264,6 +278,90 @@ export async function sendInvoiceAndPaymentPlanAction(
     return result;
   } finally {
     endOutboundSend("payment_request", invoiceId);
+  }
+}
+
+/**
+ * Preview a revised invoice / payment plan after Adjust — allowed even when
+ * the original payment request was already sent. Uses the same materialization
+ * as the client email.
+ */
+export async function previewRevisedInvoiceAndPaymentPlanAction(
+  invoiceId: string,
+): Promise<
+  | { ok: true; preview: InvoiceAndPaymentPlanPreview; alreadySent: boolean }
+  | InvoiceActionResult
+> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Invoice or venue not found." };
+  const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: false });
+  if (!loaded.ok) return loaded;
+  if (loaded.ctx.invoice.status !== "sent" && loaded.ctx.invoice.status !== "partially_paid") {
+    return { ok: false, message: "Only a sent or partially paid invoice can send a revised plan." };
+  }
+  const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const alreadySent = await hasSuccessfulPaymentRequestSend(createAdminClient(), {
+    venueId: venue.id,
+    invoiceId,
+  });
+  return { ok: true, preview: previewFromEmail(loaded.ctx, email), alreadySent };
+}
+
+/**
+ * Explicit send of a revised collection arrangement. Distinct sourceType from
+ * the first payment-request send so send-once on invoice_email remains intact.
+ */
+export async function sendRevisedInvoiceAndPaymentPlanAction(
+  invoiceId: string,
+): Promise<{ ok: true; method: "resend" | "mailto"; mailtoUrl?: string } | InvoiceActionResult> {
+  if (!beginOutboundSend("plan_revision", invoiceId)) {
+    return { ok: false, message: "This revised invoice and payment plan is already sending." };
+  }
+  try {
+    const venue = await getCurrentVenue();
+    if (!venue) return { ok: false, message: "Invoice or venue not found." };
+    const loaded = await loadInvoiceOutboundContext(invoiceId, { publish: true });
+    if (!loaded.ok) return loaded;
+    if (loaded.ctx.invoice.status !== "sent" && loaded.ctx.invoice.status !== "partially_paid") {
+      return { ok: false, message: "Only a sent or partially paid invoice can send a revised plan." };
+    }
+    const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
+    const revisedSubject = email.subject.startsWith("Updated:")
+      ? email.subject
+      : `Updated: ${email.subject}`;
+    const result = await sendEmail({
+      to: email.to,
+      subject: revisedSubject,
+      text: email.text,
+      html: email.html,
+      replyTo: email.replyTo,
+    });
+    if (result.ok && result.method === "resend") {
+      const { createAdminClient } = await import("@/integrations/supabase/admin");
+      const admin = createAdminClient();
+      const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
+      const recorded = await recordExternalClientOutbound(admin, {
+        venueId: loaded.ctx.venueId,
+        clientId: loaded.ctx.clientId,
+        channel: "email",
+        body: email.text,
+        providerId: result.providerId ?? null,
+        status: "accepted",
+        sourceType: INVOICE_PLAN_REVISION_SOURCE_TYPE,
+        sourceId: invoiceId,
+      });
+      if (!recorded.ok) {
+        console.error("[sendRevisedInvoiceAndPaymentPlanAction] conversation record failed", recorded);
+      }
+      revalidatePath(`/invoices/${invoiceId}`);
+      revalidatePath(`/clients/${loaded.ctx.clientId}`);
+      revalidatePath("/payments");
+      revalidatePath("/documents");
+    }
+    return result;
+  } finally {
+    endOutboundSend("plan_revision", invoiceId);
   }
 }
 

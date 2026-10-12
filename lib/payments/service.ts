@@ -14,6 +14,10 @@ import * as repo from "@/lib/payments/repository";
 import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import type { Invoice } from "@/lib/invoices/types";
 import {
+  type AdjustableDraftLine,
+  previewAdjustRemainingPlan,
+} from "@/lib/payments/adjust-remaining-plan";
+import {
   computeTotalPaid,
   deriveScheduleStatus,
   paymentPlanOverview,
@@ -1175,4 +1179,117 @@ export async function syncPaymentPlanToInvoiceCommitment(invoiceId: string): Pro
     );
     return { ok: true } as PaymentActionResult;
   });
+}
+
+/**
+ * Adjust remaining unpaid installments on an issued invoice's plan.
+ * Preserves paid / refunded / cancelled / processing rows and recorded receipts.
+ * Closes partially_paid shortfalls (amount → paid_amount, status → paid) so the
+ * outstanding balance can be redistributed without inventing collections.
+ */
+export async function adjustRemainingPaymentPlan(
+  scheduleId: string,
+  proposedRemaining: AdjustableDraftLine[],
+): Promise<PaymentActionResult & { preview?: ReturnType<typeof previewAdjustRemainingPlan> }> {
+  const schedule = await getPaymentSchedule(scheduleId);
+  if (!schedule) return { ok: false, message: "Payment schedule not found." };
+  if (!schedule.invoiceId) {
+    return { ok: false, message: "This payment plan isn't linked to an invoice." };
+  }
+  const invoice = await getInvoice(schedule.invoiceId);
+  if (!invoice) return { ok: false, message: "Linked invoice not found." };
+  if (invoice.status !== "sent" && invoice.status !== "partially_paid") {
+    return {
+      ok: false,
+      message: "Adjust the remaining plan only on a sent or partially paid invoice.",
+    };
+  }
+  if (invoice.status === "void") {
+    return { ok: false, message: "A voided invoice's payment plan cannot be adjusted." };
+  }
+
+  const preview = previewAdjustRemainingPlan({
+    invoiceTotal: invoice.total,
+    balanceDue: invoice.balanceDue,
+    lines: schedule.lineItems,
+    proposedRemaining,
+  });
+  if (!preview.ok) {
+    return { ok: false, message: preview.message ?? "Remaining installments do not reconcile.", preview };
+  }
+
+  const result = await withVenue(async (supabase, venueId) => {
+    const partialIds = schedule.lineItems
+      .filter((l) => l.status === "partially_paid")
+      .map((l) => l.id);
+    const closed = await repo.closePartialInstallmentShortfalls(supabase, venueId, scheduleId);
+    for (const itemId of partialIds) {
+      await cancelRemindersForPaymentLineItem(supabase, venueId, itemId);
+    }
+    await repo.deleteUnresolvedLineItems(supabase, venueId, scheduleId);
+
+    const { data: maxSort } = await supabase.from("payment_line_items")
+      .select("sort_order")
+      .eq("schedule_id", scheduleId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    let nextSort = ((maxSort?.[0] as { sort_order?: number } | undefined)?.sort_order ?? -1) + 1;
+
+    for (const line of preview.proposedRemaining) {
+      const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
+        label: line.label,
+        amount: String(line.amount),
+        dueDate: line.dueDate ?? "",
+        obligationKind: line.obligationKind ?? undefined,
+      }, nextSort++);
+      await bindFinalPaymentTaskToLine(
+        supabase, venueId, schedule.eventId, item.id, line.obligationKind,
+      );
+      if (line.dueDate) {
+        const cadence = await getReminderCadence();
+        await createRemindersForPaymentLineItem(supabase, venueId, item.id, line.dueDate, cadence);
+      }
+    }
+
+    await repo.updateScheduleTotalAmount(supabase, venueId, scheduleId, invoice.total);
+    await repo.setAcknowledgedInvoiceTotal(supabase, venueId, scheduleId, invoice.total);
+    await repo.insertPaymentActivity(
+      supabase,
+      venueId,
+      scheduleId,
+      "remaining_plan_adjusted",
+      closed > 0
+        ? `Remaining payment plan adjusted. $${closed.toFixed(2)} of partial-installment shortfall redistributed. Recorded payments unchanged.`
+        : `Remaining payment plan adjusted across ${preview.proposedRemaining.length} installment(s). Recorded payments unchanged.`,
+    );
+    return { ok: true, preview } as PaymentActionResult & { preview: typeof preview };
+  });
+  return result as PaymentActionResult & { preview?: typeof preview };
+}
+
+/** Load adjust preview without writing — for the venue dialog. */
+export async function previewRemainingPaymentPlanAdjustment(
+  scheduleId: string,
+  proposedRemaining: AdjustableDraftLine[],
+): Promise<
+  | { ok: true; preview: ReturnType<typeof previewAdjustRemainingPlan> }
+  | { ok: false; message: string; preview?: ReturnType<typeof previewAdjustRemainingPlan> }
+> {
+  const schedule = await getPaymentSchedule(scheduleId);
+  if (!schedule) return { ok: false, message: "Payment schedule not found." };
+  if (!schedule.invoiceId) {
+    return { ok: false, message: "This payment plan isn't linked to an invoice." };
+  }
+  const invoice = await getInvoice(schedule.invoiceId);
+  if (!invoice) return { ok: false, message: "Linked invoice not found." };
+  const preview = previewAdjustRemainingPlan({
+    invoiceTotal: invoice.total,
+    balanceDue: invoice.balanceDue,
+    lines: schedule.lineItems,
+    proposedRemaining,
+  });
+  if (!preview.ok) {
+    return { ok: false, message: preview.message ?? "Could not preview.", preview };
+  }
+  return { ok: true, preview };
 }

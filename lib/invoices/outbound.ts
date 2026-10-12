@@ -50,16 +50,37 @@ const sendingDocumentCopy = new Set<string>();
 /** Persisted after a successful Resend payment-request send (not document copy). */
 export const PAYMENT_REQUEST_SOURCE_TYPE = "invoice_email";
 export const DOCUMENT_COPY_SOURCE_TYPE = "invoice_document_copy";
+/** Explicit revised plan send after Adjust invoice / payment plan — distinct from first payment request. */
+export const INVOICE_PLAN_REVISION_SOURCE_TYPE = "invoice_plan_revision";
 
-export function beginOutboundSend(kind: "payment_request" | "document_copy", invoiceId: string): boolean {
-  const lock = kind === "payment_request" ? sendingPaymentRequest : sendingDocumentCopy;
+const sendingPlanRevision = new Set<string>();
+
+export function beginOutboundSend(
+  kind: "payment_request" | "document_copy" | "plan_revision",
+  invoiceId: string,
+): boolean {
+  const lock =
+    kind === "payment_request"
+      ? sendingPaymentRequest
+      : kind === "document_copy"
+        ? sendingDocumentCopy
+        : sendingPlanRevision;
   if (lock.has(invoiceId)) return false;
   lock.add(invoiceId);
   return true;
 }
 
-export function endOutboundSend(kind: "payment_request" | "document_copy", invoiceId: string): void {
-  (kind === "payment_request" ? sendingPaymentRequest : sendingDocumentCopy).delete(invoiceId);
+export function endOutboundSend(
+  kind: "payment_request" | "document_copy" | "plan_revision",
+  invoiceId: string,
+): void {
+  const lock =
+    kind === "payment_request"
+      ? sendingPaymentRequest
+      : kind === "document_copy"
+        ? sendingDocumentCopy
+        : sendingPlanRevision;
+  lock.delete(invoiceId);
 }
 
 type AdminLike = { from: (table: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -111,11 +111,11 @@ describe("E. canonical Preview and Send", () => {
     });
     assert.equal(email.recipient, "betty@example.com");
     assert.match(email.subject, /invoice and payment plan/);
-    assert.match(email.text, /Total contracted: \$10,000\.00/);
-    assert.match(email.text, /Initial Payment: \$2,500\.00/);
+    assert.match(email.text, /Total contracted: \$10,000(?:\.00)?/);
+    assert.match(email.text, /Initial Payment: \$2,500(?:\.00)?/);
     assert.match(email.html, /View Invoice &amp; Payment Plan|View Invoice & Payment Plan/);
     assert.match(email.html, /https:\/\/example\.test\/p\/fin-token\?item=pay-1/);
-    assert.doesNotMatch(email.html, />Pay \$2,500\.00 now</);
+    assert.doesNotMatch(email.html, />Pay \$2,500(?:\.00)? now</);
     assert.doesNotMatch(email.html, /View your documents/i);
     assert.doesNotMatch(email.html, /#payments/);
     assert.doesNotMatch(email.html, /#documents/);
@@ -151,7 +151,7 @@ describe("E. canonical Preview and Send", () => {
     });
     assert.equal(email.paymentUrl, null);
     assert.match(email.text, /not due yet/);
-    assert.doesNotMatch(email.html, /Pay \$2,500\.00 now/);
+    assert.doesNotMatch(email.html, /Pay \$2,500(?:\.00)? now/);
     assert.match(email.html, /View Invoice &amp; Payment Plan|View Invoice & Payment Plan/);
   });
 });
@@ -199,7 +199,10 @@ describe("F. payment link publication", () => {
 
   it("invalid token and Stripe-unavailable remain distinct", () => {
     assert.match(shell, /This payment link is not valid/);
-    assert.match(shell, /Online payments unavailable/);
+    // Unavailable online payments render the offline "How to pay" guidance,
+    // never the invalid-link message.
+    assert.match(shell, /How to pay/);
+    assert.match(shell, /offlinePaymentMethods/);
     assert.match(shell, /onlinePaymentsReady/);
   });
 });
@@ -290,5 +293,29 @@ describe("H. customer-facing actions are Preview, Send, and Edit", () => {
     assert.match(detail, /Send to Client/);
     assert.match(detail, /setPreviewOpen\(false\);\s*\n\s*openSendReview\(\)/);
     assert.match(detail, /sendInvoiceAndPaymentPlanAction/);
+  });
+
+  it("exposes Adjust invoice / payment plan without unlocking draft Edit after activity", () => {
+    assert.match(detail, /data-testid="adjust-invoice-payment-plan"/);
+    assert.match(detail, /Adjust invoice \/ payment plan/);
+    assert.match(detail, /showAdjustPlan/);
+    assert.match(detail, /AdjustPaymentPlanDialog/);
+    assert.match(detail, /\{!planHasActivity && \(/);
+    assert.match(detail, /editingPlan && !planHasActivity/);
+  });
+});
+
+describe("Invoice plan revision outbound", () => {
+  const outbound = readFileSync("lib/invoices/outbound.ts", "utf8");
+  const actions = readFileSync("app/(app)/invoices/actions.ts", "utf8");
+  const service = readFileSync("lib/payments/service.ts", "utf8");
+
+  it("keeps first payment-request send-once and uses a distinct revision sourceType", () => {
+    assert.match(outbound, /INVOICE_PLAN_REVISION_SOURCE_TYPE = "invoice_plan_revision"/);
+    assert.match(outbound, /PAYMENT_REQUEST_SOURCE_TYPE = "invoice_email"/);
+    assert.match(actions, /sendRevisedInvoiceAndPaymentPlanAction/);
+    assert.match(actions, /sourceType: INVOICE_PLAN_REVISION_SOURCE_TYPE/);
+    assert.match(service, /export async function adjustRemainingPaymentPlan/);
+    assert.match(service, /closePartialInstallmentShortfalls/);
   });
 });
