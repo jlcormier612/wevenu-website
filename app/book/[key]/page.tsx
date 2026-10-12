@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { InquiryForm } from "@/components/form/inquiry-form";
 import { getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { resolveExistingLeadTourContext } from "@/lib/tours/existing-lead-tour-context";
 
@@ -23,8 +24,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TourBookingPage({ params, searchParams }: Props) {
   const { key } = await params;
   const { o: tourOriginToken } = await searchParams;
-  const supabase = await createClient();
-  const { data: venueRow } = await supabase
+  // Public visitors have no venue session; cookie-bound createClient() cannot
+  // read venues under RLS. Resolve embed_key with the admin client (same trust
+  // boundary as getPublicInquiryFormConfig), then load the public form config.
+  const admin = createAdminClient();
+  const { data: venueRow } = await admin
     .from("venues")
     .select("embed_key")
     .eq("tour_embed_key", key)

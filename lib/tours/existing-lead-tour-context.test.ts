@@ -36,6 +36,8 @@ describe("existing-lead tour preferred event date", () => {
     assert.match(book, /resolveExistingLeadTourContext/);
     assert.match(book, /existingLeadTour=\{existingLeadTour\}/);
     assert.doesNotMatch(book, /leadId=\{/);
+    // Anonymous RLS cannot select venues; page must resolve embed_key via admin.
+    assert.match(book, /createAdminClient/);
   });
 
   it("InquiryForm shows read-only preferred date for existing-lead tour and does not use availability calendar", () => {

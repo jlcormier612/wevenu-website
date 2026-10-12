@@ -210,36 +210,22 @@ async function main() {
     const tourSection = page.getByText(/Select your tour/i);
     record("tour_section_present", (await tourSection.count()) > 0, "tour section");
 
-    // Fetch slots via API and click matching time
-    const slotsRes = await fetch(
-      `${APP}/api/tours/slots?key=${encodeURIComponent(tourEmbedKey)}&start=${ymd}&end=${ymd}`,
-    ).then((r) => r.json() as Promise<{ slots?: { start: string; time: string; date: string }[] }>);
-    const slot = (slotsRes.slots ?? [])[0];
-    if (!slot) {
-      // broaden range
-      const start = new Date();
-      start.setUTCDate(start.getUTCDate() + 1);
-      const end = new Date();
-      end.setUTCDate(end.getUTCDate() + 21);
-      const wide = await fetch(
-        `${APP}/api/tours/slots?key=${encodeURIComponent(tourEmbedKey)}&start=${start.toISOString().slice(0, 10)}&end=${end.toISOString().slice(0, 10)}`,
+    // Fetch slots via API (UI context already verified above)
+    async function firstSlot(startYmd: string, endYmd: string) {
+      const res = await fetch(
+        `${APP}/api/tours/slots?key=${encodeURIComponent(tourEmbedKey)}&start=${startYmd}&end=${endYmd}`,
       ).then((r) => r.json() as Promise<{ slots?: { start: string; time: string; date: string }[] }>);
-      const s2 = (wide.slots ?? [])[0];
-      if (!s2) {
-        record("tour_slot_available", false, "no slots");
-      } else {
-        Object.assign(slot ?? {}, s2);
-      }
+      return (res.slots ?? [])[0] ?? null;
     }
+    const rangeStart = new Date();
+    rangeStart.setUTCDate(rangeStart.getUTCDate() + 1);
+    const rangeEnd = new Date();
+    rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 21);
+    let chosen =
+      (await firstSlot(ymd, ymd)) ??
+      (await firstSlot(rangeStart.toISOString().slice(0, 10), rangeEnd.toISOString().slice(0, 10)));
 
     let bookedOk = false;
-    const chosen = slot ?? (await fetch(
-      `${APP}/api/tours/slots?key=${encodeURIComponent(tourEmbedKey)}&start=${new Date(Date.now() + 86400000).toISOString().slice(0, 10)}&end=${new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10)}`,
-    ).then(async (r) => {
-      const j = await r.json() as { slots?: { start: string; time: string; date: string }[] };
-      return (j.slots ?? [])[0];
-    }));
-
     if (chosen) {
       record("tour_slot_available", true, chosen.start);
       // Navigate month if needed then click day + time via UI is fragile; submit via API with origin token for persistence proof,
@@ -301,6 +287,64 @@ async function main() {
     }).then((r) => r.json() as Promise<Record<string, unknown>>);
     record("invalid_token_rejected", bad.ok === false, String(bad.error ?? ""));
 
+    // Unavailable slot rejected
+    const unavailable = await fetch(`${APP}/api/tours/book`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        key: tourEmbedKey,
+        slotStart: "2099-01-01T03:15:00.000Z",
+        firstName: "Existing",
+        lastName: "Lead",
+        partnerName: "",
+        email: `couple.${stamp}@example.com`,
+        phone: "",
+        eventType: "wedding",
+        eventDate: "",
+        guestCount: null,
+        notes: "",
+        originToken: token,
+      }),
+    }).then((r) => r.json() as Promise<Record<string, unknown>>);
+    record("unavailable_slot_rejected", unavailable.ok === false, String(unavailable.error ?? ""));
+
+    // Cross-venue: token for this lead must not book against a foreign tour key
+    const foreignVenue = await admin
+      .from("venues")
+      .select("id, tour_embed_key")
+      .neq("id", venueId)
+      .eq("tour_scheduling_enabled", true)
+      .not("tour_embed_key", "is", null)
+      .limit(1)
+      .maybeSingle<{ id: string; tour_embed_key: string }>();
+    if (foreignVenue.data?.tour_embed_key) {
+      const cross = await fetch(`${APP}/api/tours/book`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          key: foreignVenue.data.tour_embed_key,
+          slotStart: chosen?.start ?? new Date(Date.now() + 3 * 86400000).toISOString(),
+          firstName: "Existing",
+          lastName: "Lead",
+          partnerName: "",
+          email: `couple.${stamp}@example.com`,
+          phone: "",
+          eventType: "wedding",
+          eventDate: preferredDate,
+          guestCount: null,
+          notes: "",
+          originToken: token,
+        }),
+      }).then((r) => r.json() as Promise<Record<string, unknown>>);
+      record(
+        "cross_venue_token_rejected",
+        cross.ok === false || cross.leadId !== leadId,
+        `ok=${cross.ok} err=${cross.error ?? ""}`,
+      );
+    } else {
+      record("cross_venue_token_rejected", true, "no foreign venue with tour key — skipped");
+    }
+
     // Generic book page (no o=) must not show existing-lead block
     await page.goto(`${APP}/book/${encodeURIComponent(tourEmbedKey)}`, { waitUntil: "load" });
     await page.waitForTimeout(1500);
@@ -309,6 +353,65 @@ async function main() {
       (await page.locator('[data-testid="existing-lead-preferred-event-date"]').count()) === 0,
       "no existing-lead block",
     );
+
+    // Lead without preferred date: clear event_date, reopen with fresh token
+    await admin.from("leads").update({ event_date: null }).eq("id", leadId);
+    const tokenNoDate = createTourOriginToken(
+      { venueId, leadId },
+      process.env.TOUR_ORIGIN_SIGNING_SECRET!,
+    );
+    await page.goto(
+      `${APP}/book/${encodeURIComponent(tourEmbedKey)}?o=${encodeURIComponent(tokenNoDate)}`,
+      { waitUntil: "load" },
+    );
+    await page.waitForTimeout(2000);
+    const noDateBody = ((await page.locator("body").innerText()) as string).replace(/\s+/g, " ");
+    const noDateBlock = (await page.locator('[data-testid="existing-lead-preferred-event-date"]').count()) > 0;
+    record(
+      "lead_without_preferred_date_allows_tour_ui",
+      noDateBlock && /No preferred event date is on file/i.test(noDateBody),
+      noDateBody.slice(0, 160),
+    );
+    // Restore preferred date for persistence assertions below
+    await admin.from("leads").update({ event_date: preferredDate }).eq("id", leadId);
+
+    // Refresh/reopen preserves context without duplicating appointment
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    record(
+      "reopen_preserves_readonly_context",
+      (await page.locator('[data-testid="existing-lead-preferred-event-date"]').count()) > 0,
+      "readonly block after reopen",
+    );
+    const { count: apptCount } = await admin
+      .from("tour_appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_id", leadId);
+    record("reopen_no_duplicate_tour", (apptCount ?? 0) <= 1, `appointments=${apptCount}`);
+
+    // New inquiry blocked-date still enforced (tour availability exception → public dates API)
+    const exceptionIns = await admin.from("tour_availability_exceptions").insert({
+      venue_id: venueId,
+      start_date: "2027-12-25",
+      end_date: "2027-12-25",
+      label: "Christmas",
+      recurrence_rule: "annual",
+    }).select("id").maybeSingle();
+    const inquiryDates = await fetch(
+      `${APP}/api/public/inquiry-available-dates?key=${encodeURIComponent(venue.embed_key as string)}&start=2027-12-20&end=2027-12-31`,
+    ).then(async (r) => {
+      const j = (await r.json()) as { dates?: string[]; ok?: boolean; error?: string };
+      return j;
+    });
+    const christmasAvailable = (inquiryDates.dates ?? []).includes("2027-12-25");
+    record(
+      "new_inquiry_blocked_date_still_enforced",
+      !christmasAvailable && inquiryDates.ok !== false,
+      `christmas_in_list=${christmasAvailable} ok=${inquiryDates.ok} exc=${exceptionIns.error?.message ?? exceptionIns.data?.id?.slice(0, 8) ?? ""}`,
+    );
+    if (exceptionIns.data?.id) {
+      await admin.from("tour_availability_exceptions").delete().eq("id", exceptionIns.data.id);
+    }
 
     // Persisted checks
     const { data: leadAfter } = await admin
@@ -365,6 +468,7 @@ async function main() {
       await admin.from("leads").delete().eq("id", leadId);
     }
     if (venueId) {
+      await admin.from("tour_availability_exceptions").delete().eq("venue_id", venueId);
       await admin.from("tour_availability_windows").delete().eq("venue_id", venueId);
       await admin.from("venue_onboarding_intake").delete().eq("venue_id", venueId);
       await admin.from("venue_staff").delete().eq("venue_id", venueId);
