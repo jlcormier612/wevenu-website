@@ -127,7 +127,7 @@ async function cleanup() {
     await admin.from("contracts").delete().eq("id", id);
   }
   for (const id of cleanupIds.schedules) {
-    await admin.from("payment_schedule_line_items").delete().eq("schedule_id", id);
+    await admin.from("payment_line_items").delete().eq("schedule_id", id);
     await admin.from("payment_schedules").delete().eq("id", id);
   }
   for (const id of cleanupIds.invoices) {
@@ -558,10 +558,10 @@ async function main() {
     cleanupIds.schedules.push(r2Schedule.id);
 
     const { data: line1 } = await admin
-      .from("payment_schedule_line_items")
+      .from("payment_line_items")
       .insert({
         venue_id: FANCY,
-        schedule_id: r2Schedule!.id,
+        schedule_id: r2Schedule.id,
         label: "Deposit",
         amount: 4000,
         due_date: "2026-10-01",
@@ -572,10 +572,10 @@ async function main() {
       .select("id,amount,status")
       .single();
     const { data: line2 } = await admin
-      .from("payment_schedule_line_items")
+      .from("payment_line_items")
       .insert({
         venue_id: FANCY,
-        schedule_id: r2Schedule!.id,
+        schedule_id: r2Schedule.id,
         label: "Final",
         amount: 6000,
         due_date: "2027-11-01",
@@ -612,7 +612,7 @@ async function main() {
     if (!markedPaid && line1?.id) {
       // Safe Sandbox simulation: mark paid without Stripe charge
       await admin
-        .from("payment_schedule_line_items")
+        .from("payment_line_items")
         .update({ status: "paid", paid_amount: 4000, paid_at: new Date().toISOString() })
         .eq("id", line1.id);
       record("r2_offline_pay_via_ui", false, "UI record payment unavailable — used Sandbox DB paid simulation");
@@ -622,10 +622,11 @@ async function main() {
     }
 
     const { data: paidLine } = await admin
-      .from("payment_schedule_line_items")
+      .from("payment_line_items")
       .select("id,amount,status,paid_amount")
       .eq("id", line1!.id)
       .maybeSingle();
+    void paidLine;
 
     // Apply $1000 credit by lowering invoice total (amended commitment)
     const creditAmount = 1000;
@@ -667,9 +668,9 @@ async function main() {
     }
 
     const { data: linesAfter } = await admin
-      .from("payment_schedule_line_items")
+      .from("payment_line_items")
       .select("id,amount,status,paid_amount,label")
-      .eq("schedule_id", r2Schedule!.id)
+      .eq("schedule_id", r2Schedule.id)
       .order("sort_order");
     const paidAfter = (linesAfter ?? []).find((l) => l.id === paidBefore.id);
     const unpaid = (linesAfter ?? []).filter((l) => l.status === "pending" || l.status === "overdue");
@@ -810,7 +811,7 @@ async function main() {
           signer_email: `adj-ui-${stamp}@hellotocheers-test.invalid`,
           sign_token: clientToken,
           sign_order: 1,
-          required: true,
+          is_required: true,
         },
         {
           venue_id: FANCY,
@@ -820,7 +821,7 @@ async function main() {
           signer_email: FANCY_EMAIL,
           sign_token: venueToken,
           sign_order: 2,
-          required: true,
+          is_required: true,
         },
       ]);
 
