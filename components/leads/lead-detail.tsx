@@ -31,6 +31,7 @@ import {
   restoreLeadRelationshipAction,
   deleteLeadRecordAction,
   confirmPipelineBookedMoveAction,
+  getBookingConfirmationDraftAction,
   setLeadPlannedEventSpaceAction,
   markLeadLostAction,
   moveLeadBackToSalesPipelineAction,
@@ -49,7 +50,11 @@ import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-aut
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import { StaffAssignmentField } from "@/components/team/staff-assignment-field";
 import { setLeadAssignedStaffAction } from "@/app/(app)/leads/[id]/actions";
-import { prefillBookingConfirmation, summarizeOwnHolds } from "@/lib/booking-journey/confirmation-draft";
+import {
+  prefillBookingConfirmation,
+  summarizeOwnHolds,
+  type BookingConfirmationDraft,
+} from "@/lib/booking-journey/confirmation-draft";
 import { formatPhoneDisplay } from "@/lib/sms/phone";
 import type { ConfirmedBookingOccupancy } from "@/lib/booking-journey/confirmed-occupancy";
 import type { StageChangeMessagePlan } from "@/lib/message-sequences/confirm-preview";
@@ -243,6 +248,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
   const [confirmReturnBookedOpen, setConfirmReturnBookedOpen] = React.useState(false);
   const [lostMove, setLostMove] = React.useState<{ targetKey: string; label: string } | null>(null);
   const [bookedMove, setBookedMove] = React.useState<{ targetKey: string; label: string } | null>(null);
+  const [liveBookingDraft, setLiveBookingDraft] = React.useState<BookingConfirmationDraft | null>(null);
+  const [bookingDraftError, setBookingDraftError] = React.useState<string | null>(null);
   const [eventDateBlocked, setEventDateBlocked] = React.useState(false);
   const spaceNeededForBooked = maxSimultaneousEvents >= 2 && !!lead.eventDate;
   const spacesRequired = spaceNeededForBooked;
@@ -345,7 +352,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     const label = LEAD_STATUSES.find((s) => s.value === status)?.label ?? status;
 
     if (kind === "booked") {
+      setLiveBookingDraft(null);
+      setBookingDraftError(null);
       setBookedMove({ targetKey: status, label });
+      void getBookingConfirmationDraftAction(lead.id).then((loaded) => {
+        if (!loaded.ok) {
+          setBookingDraftError(loaded.message);
+          return;
+        }
+        setLiveBookingDraft(loaded.draft);
+      });
       return;
     }
     if (kind === "lost") {
@@ -535,8 +551,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <PipelineBookedConfirmDialog
         open={confirmReturnBookedOpen}
         confirming={lifecyclePending}
-        draft={bookingDraft}
-        onCancel={() => setConfirmReturnBookedOpen(false)}
+        draft={liveBookingDraft ?? bookingDraft}
+        loadError={bookingDraftError}
+        onCancel={() => {
+          setConfirmReturnBookedOpen(false);
+          setLiveBookingDraft(null);
+          setBookingDraftError(null);
+        }}
         onConfirm={confirmMarkAsBooked}
       />
       <LostReasonDialog
@@ -549,8 +570,13 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       <PipelineBookedConfirmDialog
         open={bookedMove != null}
         confirming={lifecyclePending}
-        draft={bookingDraft}
-        onCancel={() => setBookedMove(null)}
+        draft={liveBookingDraft ?? bookingDraft}
+        loadError={bookingDraftError}
+        onCancel={() => {
+          setBookedMove(null);
+          setLiveBookingDraft(null);
+          setBookingDraftError(null);
+        }}
         onConfirm={confirmBookedFromStage}
       />
       <TourScheduleRoot leadId={lead.id} tourAppointments={tourAppointments} now={now} venueTimezone={venueTimezone}>
@@ -752,7 +778,18 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               <Button
                 size="sm"
                 disabled={lifecyclePending}
-                onClick={() => setConfirmReturnBookedOpen(true)}
+                onClick={() => {
+                  setLiveBookingDraft(null);
+                  setBookingDraftError(null);
+                  setConfirmReturnBookedOpen(true);
+                  void getBookingConfirmationDraftAction(lead.id).then((loaded) => {
+                    if (!loaded.ok) {
+                      setBookingDraftError(loaded.message);
+                      return;
+                    }
+                    setLiveBookingDraft(loaded.draft);
+                  });
+                }}
               >
                 Mark as Booked
               </Button>
