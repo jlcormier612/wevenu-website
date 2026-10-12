@@ -28,6 +28,10 @@ import { venueLocalToUtcIso, venueToday } from "@/lib/venue/timezone";
 import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
 import { resolveDashboardGreetingFirstName } from "@/lib/dashboard/owner-greeting";
 import {
+  shouldIncludeDashboardSetupGapObservations,
+  shouldShowDashboardLuvIntro,
+} from "@/lib/dashboard/luv-intro-eligibility";
+import {
   leadBelongsInFocusPopulation,
   leadMatchesFocusTourRules,
 } from "@/lib/dashboard/focus-lead-membership";
@@ -37,6 +41,7 @@ import {
   forensicSetVenue,
   forensicTime,
 } from "@/lib/dashboard/forensic-timing";
+import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getCurrentStaffMember } from "@/lib/team/service";
 import type {
   AttentionLead,
@@ -502,6 +507,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     activationScore,
     venueReadiness,
     nextPendingMilestone,
+    readyToInviteCouples,
   ] = await forensicTime("wave2_parallel_wall", () =>
     Promise.all([
       forensicTime("get_communication_observations", () =>
@@ -515,6 +521,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       forensicTime("next_pending_milestone", () =>
         getNextPendingMilestone(venue.id).catch(() => null),
       ),
+      // Read-only. On failure, suppress setup guidance rather than inventing
+      // ready=false and contradicting a possible saved declaration. Never write.
+      forensicTime("ready_to_invite_couples", () =>
+        isVenueReadyToInviteCouples(venue.id).catch(() => true),
+      ),
     ]),
   );
 
@@ -526,7 +537,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   forensicCount("communication_observations", communicationObservations.length);
   forensicCount("dismissed_ids", dismissedObservationIds.size);
 
-  const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
+  const setupGapObservations =
+    activationScore && shouldIncludeDashboardSetupGapObservations(readyToInviteCouples)
+      ? computeSetupGapObservations(activationScore.checklist)
+      : [];
   const readinessObservations = venueReadiness ? readinessDashboardObservations(venueReadiness) : [];
   const observationsOn = luvSettings?.observationsEnabled !== false;
   // Preserve existing remaining-source order: communication, then setup-gap,
@@ -583,10 +597,12 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     activationScore,
     nextPendingMilestone,
     luvObservationsEnabled: observationsOn,
-    showLuvIntro: !venue.luvIntroSeenAt && (
-      activationScore?.phase === "setup" ||
-      Date.now() - new Date(venue.createdAt).getTime() < 14 * 86_400_000
-    ),
+    showLuvIntro: shouldShowDashboardLuvIntro({
+      readyToInviteCouples,
+      luvIntroSeenAt: venue.luvIntroSeenAt,
+      activationPhase: activationScore?.phase ?? null,
+      venueCreatedAt: venue.createdAt,
+    }),
   };
 }
 

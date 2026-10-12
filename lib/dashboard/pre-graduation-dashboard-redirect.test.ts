@@ -22,7 +22,8 @@ describe("ready_to_invite_couples is not a workspace access wall", () => {
   });
 
   it("does not withhold Dashboard data because the flag is false", () => {
-    assert.doesNotMatch(dashboardService, /isVenueReadyToInviteCouples/);
+    // Flag may suppress setup guidance (showLuvIntro) but must not null the payload.
+    assert.match(dashboardService, /isVenueReadyToInviteCouples\(venue\.id\)/);
     assert.doesNotMatch(dashboardService, /if \(!readyToInviteCouples\) return null/);
     assert.match(repository, /return data\?\.ready_to_invite_couples === true/);
     assert.match(repository, /This flag does not gate the workspace/);
