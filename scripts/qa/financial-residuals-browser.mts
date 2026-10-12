@@ -214,7 +214,10 @@ async function main() {
       waitUntil: "domcontentloaded",
       timeout: 90000,
     });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
+    await page.getByRole("button", { name: /Place hold/i }).first()
+      .waitFor({ state: "visible", timeout: 20000 })
+      .catch(() => undefined);
 
     record(
       "rehearsal_date_field_absent",
@@ -222,8 +225,10 @@ async function main() {
       "standalone Date under Rehearsal Dinner",
     );
 
-    const placeBtn = page.getByRole("button", { name: /Place hold|Place another hold/i }).first();
+    // Button copy includes the preferred date, e.g. "Place hold on Oct 10, 2027".
+    const placeBtn = page.getByRole("button", { name: /Place hold/i }).first();
     if (await placeBtn.count()) {
+      await placeBtn.scrollIntoViewIfNeeded().catch(() => undefined);
       await placeBtn.click();
       await page.waitForTimeout(600);
       const titleBox = await page.locator("label", { hasText: /^Hold title$/i }).boundingBox().catch(() => null);
@@ -289,8 +294,9 @@ async function main() {
     // ── R1: Selected Package multi-adjustment UI ──────────────────────
     const { data: pkg } = await admin
       .from("packages")
-      .select("id,name,price")
+      .select("id,name,base_price")
       .eq("venue_id", FANCY)
+      .eq("is_active", true)
       .limit(1)
       .maybeSingle();
 
@@ -614,7 +620,7 @@ async function main() {
         schedule_id: r2Schedule.id,
         label: "Deposit",
         amount: 4000,
-        due_date: "2026-10-01",
+        due_date: new Date().toISOString().slice(0, 10),
         status: "pending",
         sort_order: 0,
         obligation_kind: "deposit",
@@ -643,25 +649,30 @@ async function main() {
       waitUntil: "domcontentloaded",
       timeout: 90000,
     });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
+    await page.getByRole("button", { name: /Record payment received/i }).first()
+      .waitFor({ state: "visible", timeout: 15000 })
+      .catch(() => undefined);
 
     let markedPaid = false;
     const recordPay = page.getByRole("button", { name: /Record payment received/i }).first();
     if (await recordPay.count()) {
       await recordPay.click();
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(1200);
       const dialog = page.locator("[role='dialog'][aria-modal='true']").filter({ hasText: /Record payment received/i }).last();
+      await dialog.waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
       // Prefer Deposit installment when the select is present
       const installmentTrigger = dialog.getByRole("combobox").first();
       if (await installmentTrigger.count()) {
         await installmentTrigger.click().catch(() => undefined);
         const depositOpt = page.getByRole("option", { name: /Deposit/i }).first();
         if (await depositOpt.count()) await depositOpt.click().catch(() => undefined);
-        else await page.keyboard.press("Escape").catch(() => undefined);
+        await page.keyboard.press("Escape").catch(() => undefined);
+        await page.waitForTimeout(150);
       }
-      const amountInputs = dialog.locator("input[inputmode='decimal'], input:not([type='date']):not([type='hidden'])");
+      const amountInputs = dialog.locator("input[inputmode='decimal']");
       if (await amountInputs.count()) await amountInputs.first().fill("4000");
-      // Payment method is the second combobox (or the only one left)
+      // Payment method is typically the second combobox
       const methodTriggers = dialog.getByRole("combobox");
       const methodIdx = (await methodTriggers.count()) > 1 ? 1 : 0;
       if (await methodTriggers.count()) {
@@ -669,12 +680,20 @@ async function main() {
         await page.getByRole("option", { name: /Cash/i }).first().click().catch(async () => {
           await page.getByRole("option", { name: /Check|Other/i }).first().click().catch(() => undefined);
         });
+        // Close any lingering select portal that intercepts the submit click.
+        await page.keyboard.press("Escape").catch(() => undefined);
+        await page.waitForTimeout(200);
       }
-      const confirmPay = dialog.getByRole("button", { name: /Save|Record payment|Confirm/i }).last();
+      // Submit label is like "Record $4,000.00 payment"
+      const confirmPay = dialog.getByRole("button", { name: /Record .*payment/i }).last();
       if (await confirmPay.count()) {
-        await confirmPay.click();
-        await page.waitForTimeout(3500);
+        await confirmPay.click({ force: true });
+        await page.waitForTimeout(4000);
+      } else {
+        await dialog.getByRole("button", { name: /Save|Confirm|Recording/i }).last().click({ force: true }).catch(() => undefined);
+        await page.waitForTimeout(4000);
       }
+      await page.screenshot({ path: `${OUT_DIR}/r2-after-record-pay.png`, fullPage: true });
     } else {
       // Fallback: schedule row hover-reveal
       await page.goto(`${APP}/payments/${r2Schedule!.id}`, {
@@ -707,6 +726,7 @@ async function main() {
     markedPaid = paidProbe?.status === "paid" || Number(paidProbe?.paid_amount ?? 0) > 0;
     record("r2_offline_pay_via_ui", markedPaid, `status=${paidProbe?.status} paid_amount=${paidProbe?.paid_amount}`);
     if (!markedPaid) {
+      await page.screenshot({ path: `${OUT_DIR}/r2-pay-ui-miss.png`, fullPage: true });
       throw new Error("R2 offline pay via UI failed — refusing DB simulation for residual closure");
     }
 
@@ -1098,6 +1118,13 @@ async function main() {
 
 main().catch(async (e) => {
   console.error(e);
+  writeFileSync(OUT, JSON.stringify({
+    at: new Date().toISOString(),
+    tipPrefix: EXPECTED_PREFIX || null,
+    pass: false,
+    error: String(e),
+    checks,
+  }, null, 2));
   await cleanup().catch(() => undefined);
   process.exit(1);
 });
