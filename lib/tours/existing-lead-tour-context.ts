@@ -1,0 +1,106 @@
+/**
+ * Server-only: resolve a lead-scoped public tour scheduling context from
+ * the opaque `o=` origin token. Never trusts a raw leadId from the browser.
+ */
+import { createAdminClient } from "@/integrations/supabase/admin";
+import { isOpenLeadLifecycle } from "@/lib/leads/open-lifecycle";
+import {
+  tourOriginSigningSecret,
+  verifyTourOriginToken,
+} from "@/lib/tours/origin-context";
+
+export type ExistingLeadTourContext = {
+  /** Authoritative preferred event date (YYYY-MM-DD), or null when unset. */
+  preferredEventDate: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+  eventType: string;
+  /** Opaque — never expose raw leadId to the client HTML as an input. */
+  hasExistingLead: true;
+};
+
+export type ExistingLeadTourContextResult =
+  | { ok: true; context: ExistingLeadTourContext }
+  | { ok: false; error: "invalid_token" | "lead_not_found" | "lead_not_open" | "venue_mismatch" };
+
+function asIsoDate(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const day = raw.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+}
+
+/**
+ * Resolve public tour UI context for an origin token bound to a tour embed key.
+ * Returns only fields needed to render the form — not full lead records.
+ */
+export async function resolveExistingLeadTourContext(opts: {
+  tourEmbedKey: string;
+  originToken: string | null | undefined;
+  nowMs?: number;
+}): Promise<ExistingLeadTourContextResult | null> {
+  const token = opts.originToken?.trim();
+  if (!token) return null;
+
+  const secret = tourOriginSigningSecret();
+  if (!secret) return { ok: false, error: "invalid_token" };
+
+  const payload = verifyTourOriginToken(token, secret, opts.nowMs);
+  if (!payload) return { ok: false, error: "invalid_token" };
+
+  const admin = createAdminClient();
+  const { data: venue } = await admin
+    .from("venues")
+    .select("id")
+    .eq("tour_embed_key", opts.tourEmbedKey)
+    .eq("tour_scheduling_enabled", true)
+    .maybeSingle<{ id: string }>();
+  if (!venue || venue.id !== payload.venueId) {
+    return { ok: false, error: "venue_mismatch" };
+  }
+
+  const { data: lead } = await admin
+    .from("leads")
+    .select("id, venue_id, sales_stage, event_date, first_name, last_name, email, event_type")
+    .eq("id", payload.leadId)
+    .maybeSingle<{
+      id: string;
+      venue_id: string;
+      sales_stage: string | null;
+      event_date: string | null;
+      first_name: string | null;
+      last_name: string | null;
+      email: string | null;
+      event_type: string | null;
+    }>();
+
+  if (!lead || lead.id !== payload.leadId) {
+    return { ok: false, error: "lead_not_found" };
+  }
+  if (lead.venue_id !== venue.id) {
+    return { ok: false, error: "venue_mismatch" };
+  }
+  if (!isOpenLeadLifecycle(lead.sales_stage)) {
+    return { ok: false, error: "lead_not_open" };
+  }
+
+  return {
+    ok: true,
+    context: {
+      preferredEventDate: asIsoDate(lead.event_date),
+      firstName: (lead.first_name ?? "").trim(),
+      lastName: (lead.last_name ?? "").trim(),
+      email: (lead.email ?? "").trim(),
+      eventType: (lead.event_type ?? "").trim(),
+      hasExistingLead: true,
+    },
+  };
+}
+
+/** Client-safe validation: when attaching to an existing lead, do not require re-picking event date. */
+export function shouldSkipPreferredEventDateRequirement(opts: {
+  mode: string | null | undefined;
+  existingLeadTour: boolean;
+}): boolean {
+  return opts.mode === "schedule_tour" && opts.existingLeadTour;
+}

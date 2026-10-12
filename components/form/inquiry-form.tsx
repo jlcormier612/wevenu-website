@@ -48,8 +48,21 @@ import {
   SMS_PUBLIC_CONSENT_DISCLOSURES,
   buildInquirySmsConsentText,
 } from "@/lib/communication/sms-consent";
+import type { ExistingLeadTourContext } from "@/lib/tours/existing-lead-tour-context";
+import { shouldSkipPreferredEventDateRequirement } from "@/lib/tours/existing-lead-tour-context";
 import type { TourSlot } from "@/lib/tours/types";
 import { inkOn, publicFormSurfaceStyle } from "@/lib/theme/public-form-surface";
+
+function formatPreferredEventDateLabel(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -282,6 +295,7 @@ export function InquiryForm({
   initialMode = null,
   initialEventDate,
   tourOriginToken = null,
+  existingLeadTour = null,
   preview = false,
 }: {
   embedKey: string;
@@ -289,6 +303,12 @@ export function InquiryForm({
   initialMode?: InquiryMode | null;
   initialEventDate?: string;
   tourOriginToken?: string | null;
+  /**
+   * Server-resolved lead context for `?o=` tour links. Preferred event date
+   * is authoritative — never invent or re-validate it against new-inquiry
+   * availability calendars.
+   */
+  existingLeadTour?: ExistingLeadTourContext | null;
   /** Authenticated builder preview — same renderer, submissions disabled. */
   preview?: boolean;
 }) {
@@ -313,15 +333,18 @@ export function InquiryForm({
   const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
   const [tourConfirmation, setTourConfirmation] = React.useState<TourBookingConfirmation | null>(null);
 
-  const [firstName, setFirstName] = React.useState("");
-  const [lastName, setLastName] = React.useState("");
-  const [email, setEmail] = React.useState("");
+  const [firstName, setFirstName] = React.useState(existingLeadTour?.firstName ?? "");
+  const [lastName, setLastName] = React.useState(existingLeadTour?.lastName ?? "");
+  const [email, setEmail] = React.useState(existingLeadTour?.email ?? "");
   const [phone, setPhone] = React.useState("");
   const [partnerFirst, setPartnerFirst] = React.useState("");
   const [partnerLast, setPartnerLast] = React.useState("");
-  const [eventType, setEventType] = React.useState("");
-  const seededDate =
-    initialEventDate && /^\d{4}-\d{2}-\d{2}$/.test(initialEventDate) ? initialEventDate : "";
+  const [eventType, setEventType] = React.useState(existingLeadTour?.eventType ?? "");
+  const seededDate = (() => {
+    if (existingLeadTour?.preferredEventDate) return existingLeadTour.preferredEventDate;
+    if (initialEventDate && /^\d{4}-\d{2}-\d{2}$/.test(initialEventDate)) return initialEventDate;
+    return "";
+  })();
   const seededParts = seededDate ? seededDate.split("-").map(Number) : null;
   const [eventDate, setEventDate] = React.useState(seededDate);
   const [guestCount, setGuestCount] = React.useState("");
@@ -346,7 +369,13 @@ export function InquiryForm({
   const [selectedTourDate, setSelectedTourDate] = React.useState<string | null>(null);
   const [selectedTourSlot, setSelectedTourSlot] = React.useState<TourSlot | null>(null);
 
+  const existingLeadScheduleTour = Boolean(
+    existingLeadTour?.hasExistingLead && mode === "schedule_tour",
+  );
+
   React.useEffect(() => {
+    // Existing-lead tour: do not load new-inquiry availability for the locked preferred date.
+    if (existingLeadScheduleTour) return;
     if (inquiryEventDateMode !== "choose_available" || fields.preferred_event_date === "hidden") return;
     setLoadingEventDates(true);
     const start = isoDate(eventYear, eventMonth, 1);
@@ -358,7 +387,14 @@ export function InquiryForm({
       .then((d: { dates?: string[] }) => setAvailableEventDates(new Set(d.dates ?? [])))
       .catch(() => setAvailableEventDates(new Set()))
       .finally(() => setLoadingEventDates(false));
-  }, [embedKey, eventMonth, eventYear, inquiryEventDateMode, fields.preferred_event_date]);
+  }, [
+    embedKey,
+    eventMonth,
+    eventYear,
+    inquiryEventDateMode,
+    fields.preferred_event_date,
+    existingLeadScheduleTour,
+  ]);
 
   React.useEffect(() => {
     if (mode !== "schedule_tour" || !tourEmbedKey) return;
@@ -459,7 +495,13 @@ export function InquiryForm({
     if (!lastName.trim()) errors.lastName = "Last name is required.";
     if (!email.trim()) errors.email = "Email is required.";
     if (!eventType) errors.eventType = "Event type is required.";
-    Object.assign(errors, validateConfigurableFields(fields, {
+    const fieldsForValidation = shouldSkipPreferredEventDateRequirement({
+      mode,
+      existingLeadTour: Boolean(existingLeadTour?.hasExistingLead),
+    })
+      ? { ...fields, preferred_event_date: "optional" as const }
+      : fields;
+    Object.assign(errors, validateConfigurableFields(fieldsForValidation, {
       phone, partnerFirst, partnerLast, eventDate, guestCount, budget, message,
     }));
     Object.assign(errors, validateCustomAnswers(customQuestions, customAnswers));
@@ -731,7 +773,30 @@ export function InquiryForm({
                 {fieldErrors.eventType && <p className="text-xs text-red-600">{fieldErrors.eventType}</p>}
               </div>
 
-              {fields.preferred_event_date !== "hidden" && (
+              {existingLeadTour?.hasExistingLead && mode === "schedule_tour" ? (
+                <div
+                  className="space-y-1.5 sm:col-span-2"
+                  data-testid="existing-lead-preferred-event-date"
+                >
+                  <p className="text-sm font-medium text-foreground">Preferred event date</p>
+                  {existingLeadTour.preferredEventDate ? (
+                    <div className="rounded-lg border border-border bg-muted px-3 py-3 text-sm text-foreground">
+                      <p className="font-medium">
+                        {formatPreferredEventDateLabel(existingLeadTour.preferredEventDate)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        This is the preferred event date already shared with {venue.name}. You do not
+                        need to select it again — choose a tour time below.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No preferred event date is on file yet. You can schedule a tour without selecting
+                      one here.
+                    </p>
+                  )}
+                </div>
+              ) : fields.preferred_event_date !== "hidden" ? (
                 <div className="space-y-1.5 sm:col-span-2">
                   <label className="block text-sm font-medium text-foreground">
                     {fieldLabel("Preferred event date", fields.preferred_event_date)}
@@ -757,7 +822,7 @@ export function InquiryForm({
                   )}
                   {fieldErrors.eventDate && <p className="text-xs text-red-600">{fieldErrors.eventDate}</p>}
                 </div>
-              )}
+              ) : null}
 
               {fields.guest_count !== "hidden" && (
                 <div className="space-y-1.5">

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { InquiryForm } from "@/components/form/inquiry-form";
 import { getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
 import { createClient } from "@/integrations/supabase/server";
+import { resolveExistingLeadTourContext } from "@/lib/tours/existing-lead-tour-context";
 
 type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ o?: string; qr?: string }> };
 
@@ -39,12 +40,22 @@ export default async function TourBookingPage({ params, searchParams }: Props) {
     redirect(`/form/${venueRow.embed_key}`);
   }
 
+  const leadCtxResult = await resolveExistingLeadTourContext({
+    tourEmbedKey: key,
+    originToken: tourOriginToken,
+  });
+  // Stale/invalid origin tokens: still show the generic scheduler (no lead PII).
+  // Booking with that token is rejected server-side at submit.
+  const existingLeadTour =
+    leadCtxResult?.ok === true ? leadCtxResult.context : null;
+
   return (
     <InquiryForm
       embedKey={venueRow.embed_key}
       config={config}
       initialMode="schedule_tour"
       tourOriginToken={tourOriginToken ?? null}
+      existingLeadTour={existingLeadTour}
     />
   );
 }

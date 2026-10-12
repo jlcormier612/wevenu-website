@@ -145,17 +145,28 @@ export async function startProtectedTour(opts: {
   let intakeAttemptId: string | null | undefined;
   let attachedExistingLead = false;
 
+  /** When attaching, prefer the authoritative lead event_date — never client-supplied. */
+  let attachEventDate: string | null = null;
+
   if (opts.attachLeadId) {
     const { data: existing } = await admin
       .from("leads")
-      .select("id, relationship_id, sales_stage")
+      .select("id, relationship_id, sales_stage, event_date")
       .eq("id", opts.attachLeadId)
       .eq("venue_id", venue.id)
-      .maybeSingle<{ id: string; relationship_id: string | null; sales_stage: string | null }>();
+      .maybeSingle<{
+        id: string;
+        relationship_id: string | null;
+        sales_stage: string | null;
+        event_date: string | null;
+      }>();
     if (!existing) return { ok: false, error: "This scheduling link is not valid." };
     leadId = existing.id;
     relationshipId = existing.relationship_id;
     attachedExistingLead = true;
+    attachEventDate = existing.event_date
+      ? String(existing.event_date).slice(0, 10)
+      : null;
   } else {
     const outcome = await ingestLead({
       supabase: admin,
@@ -230,7 +241,9 @@ export async function startProtectedTour(opts: {
     contact_email: opts.fields.email,
     contact_phone: opts.fields.phone || null,
     event_type: opts.fields.eventType,
-    event_date: opts.fields.eventDate || null,
+    event_date: attachedExistingLead
+      ? attachEventDate
+      : opts.fields.eventDate || null,
     guest_count: opts.fields.guestCount,
     notes: opts.fields.notes || null,
     source_data: opts.sourceData ?? {},
