@@ -108,6 +108,34 @@ export function normalizeAssignmentInputs(
 }
 
 /**
+ * When an event update omits component schedule fields (partial payload),
+ * keep the persisted date/times for matching use keys. Explicit null clears.
+ * Does not invent dates from the overall event date.
+ */
+export function preserveOmittedComponentScheduleFields(
+  incoming: EventSpaceAssignmentInput[],
+  existing: Array<Pick<EventSpaceAssignmentInput, "useKey" | "startTime" | "endTime" | "scheduledDate">>,
+): EventSpaceAssignmentInput[] {
+  const prevByKey = new Map(existing.map((e) => [e.useKey, e]));
+  return incoming.map((row) => {
+    const prev = prevByKey.get(row.useKey);
+    if (!prev) return row;
+    return {
+      ...row,
+      startTime: Object.prototype.hasOwnProperty.call(row, "startTime")
+        ? row.startTime
+        : prev.startTime ?? null,
+      endTime: Object.prototype.hasOwnProperty.call(row, "endTime")
+        ? row.endTime
+        : prev.endTime ?? null,
+      scheduledDate: Object.prototype.hasOwnProperty.call(row, "scheduledDate")
+        ? row.scheduledDate
+        : prev.scheduledDate ?? null,
+    };
+  });
+}
+
+/**
  * When the timed assignment editor shows a date input for a row that has a
  * space but no scheduledDate, the visible default is the overall event date.
  * Materialize that value into state so submit persists what the venue saw —

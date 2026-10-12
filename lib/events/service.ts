@@ -132,8 +132,21 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
     if (input.spaceAssignments !== undefined) {
       const venue = await getCurrentVenue();
       if (venue?.spaceOperatingMode === "multi") {
-        const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
-        const assigned = await replaceEventSpaceAssignments(eventId, input.spaceAssignments);
+        const {
+          getEventSpaceAssignments,
+          replaceEventSpaceAssignments,
+        } = await import("@/lib/events/space-assignments");
+        const { preserveOmittedComponentScheduleFields } = await import(
+          "@/lib/venue-spaces/assignments"
+        );
+        // Edit-event (and any partial assignment payload) must not null out
+        // component dates/times that the caller did not include.
+        const existingAssignments = await getEventSpaceAssignments(eventId);
+        const assignments = preserveOmittedComponentScheduleFields(
+          input.spaceAssignments,
+          existingAssignments,
+        );
+        const assigned = await replaceEventSpaceAssignments(eventId, assignments);
         if (!assigned.ok) return { ok: false, message: assigned.message };
       }
     }

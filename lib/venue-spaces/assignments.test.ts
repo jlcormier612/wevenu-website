@@ -9,6 +9,7 @@ import {
   intraEventSpaceOverlapError,
   materializeMissingScheduledDates,
   normalizeAssignmentInputs,
+  preserveOmittedComponentScheduleFields,
   primarySpaceIdFromAssignments,
   spacesEligibleForUse,
 } from "@/lib/venue-spaces/assignments";
@@ -69,6 +70,44 @@ describe("event space assignments", () => {
     ]);
     assert.equal(normalized.length, 2);
     assert.equal(primarySpaceIdFromAssignments(normalized), "barn");
+  });
+
+  it("preserves omitted component schedule fields and honors explicit null clears", () => {
+    const existing = [
+      {
+        useKey: "ceremony",
+        useLabel: "Ceremony",
+        spaceId: "bridge",
+        startTime: "18:00",
+        endTime: "22:00",
+        scheduledDate: "2028-03-30",
+      },
+      {
+        useKey: "reception",
+        useLabel: "Reception",
+        spaceId: "barn",
+        startTime: "16:00",
+        endTime: "17:00",
+        scheduledDate: "2028-03-30",
+      },
+    ];
+    const partial = [
+      { useKey: "ceremony", useLabel: "Ceremony", spaceId: "bridge" },
+      {
+        useKey: "reception",
+        useLabel: "Reception",
+        spaceId: "barn",
+        startTime: null,
+        endTime: null,
+        scheduledDate: null,
+      },
+    ];
+    const merged = preserveOmittedComponentScheduleFields(partial, existing);
+    assert.equal(merged[0]?.startTime, "18:00");
+    assert.equal(merged[0]?.endTime, "22:00");
+    assert.equal(merged[0]?.scheduledDate, "2028-03-30");
+    assert.equal(merged[1]?.startTime, null);
+    assert.equal(merged[1]?.scheduledDate, null);
   });
 
   it("materializes display eventDate into null scheduledDate without overwriting explicit dates", () => {

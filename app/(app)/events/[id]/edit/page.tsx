@@ -70,6 +70,9 @@ export default async function EditEventPage({ params }: Props) {
               useKey: a.useKey,
               useLabel: a.useLabel,
               spaceId: a.spaceId,
+              startTime: a.startTime ?? null,
+              endTime: a.endTime ?? null,
+              scheduledDate: a.scheduledDate ?? null,
             }))}
             excludeLeadId={ownerLeadId}
           />
