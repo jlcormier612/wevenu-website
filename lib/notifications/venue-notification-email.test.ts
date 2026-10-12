@@ -7,6 +7,7 @@ import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notificat
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { emailBrandFromVenue } from "@/lib/email/venue-brand";
+import { HTC_EMAIL_CTA_BACKGROUND } from "@/lib/email/htc-cta";
 
 const ORIGIN = "https://app.sandbox.hellotocheers.com";
 
@@ -45,6 +46,22 @@ describe("venue staff notification emails", () => {
     assert.equal(email.ctaLabel, "View Nicole's lead");
     assert.match(email.html, /wedding · May 09, 2027/);
     assert.doesNotMatch(visible(email.html), /https?:\/\//);
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
+    assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
+    assert.doesNotMatch(email.html, /background:#1a1a1a/);
+  });
+
+  it("date-based new-tour-booked subjects do not invent a weekday CTA name", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New tour booked — Thursday, October 15 at 4:00 PM",
+      body: "Date: Thursday, October 15 at 4:00 PM\nDuration: 60 minutes",
+      link: "/leads/33333333-3333-3333-3333-333333333333",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.subject, "New tour booked — Thursday, October 15 at 4:00 PM");
+    assert.equal(email.ctaLabel, "View this lead");
+    assert.doesNotMatch(email.ctaLabel ?? "", /Thursday/i);
+    assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
     assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
   });
 

@@ -4,6 +4,7 @@
  * (lib/email/vendor-invite.ts).
  */
 
+import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
 
 function escapeHtml(s: string): string {
@@ -52,10 +53,7 @@ export function buildVendorAssignmentHtml({
           ${escapeHtml(vendorName)} has been assigned to ${escapeHtml(eventLabel)} at ${escapeHtml(venueName)}.
           Open your vendor workspace to message the venue and the couple, and see event details.
         </p>
-        <a href="${ctaUrl}"
-          style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          ${ctaLabel}
-        </a>
+        ${htcEmailCtaAnchorHtml(escapeHtml(ctaUrl), escapeHtml(ctaLabel))}
         <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
           You'll see separate Venue and Couple threads in Messages for this event.
           <br>

@@ -3,6 +3,7 @@
  * preference-gated alerts). Same destination as the in-app notification.
  * Hello to Cheers owns this mail; the venue name is the subject of the alert.
  */
+import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
 
 export type VenueNotificationEmailInput = {
@@ -28,13 +29,17 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+const DATE_SUBJECT_TOKEN =
+  /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2})$/i;
+
 function personFirstName(title: string): string | null {
   const dash = title.split("—")[1]?.trim() || title.split(" - ")[1]?.trim();
   const from = title.match(/\bfrom\s+(.+)$/i)?.[1]?.trim();
   const name = dash || from;
   if (!name) return null;
-  const first = name.split(/\s+/).filter(Boolean)[0];
-  return first || null;
+  const first = name.split(/\s+/).filter(Boolean)[0]?.replace(/[^\p{L}\p{N}]+$/u, "") ?? "";
+  if (!first || DATE_SUBJECT_TOKEN.test(first)) return null;
+  return first;
 }
 
 export function venueNotificationCta(title: string, link: string | null): { label: string; hrefPath: string } | null {
@@ -64,7 +69,7 @@ export function buildVenueNotificationEmail(input: VenueNotificationEmailInput):
     ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">${escapeHtml(detail)}</p>`
     : "";
   const buttonHtml = cta && href
-    ? `<a href="${escapeHtml(href)}" style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">${escapeHtml(cta.label)}</a>`
+    ? htcEmailCtaAnchorHtml(escapeHtml(href), escapeHtml(cta.label))
     : "";
 
   const html = `<!DOCTYPE html>

@@ -2,6 +2,7 @@
  * Team invitation email templates.
  */
 
+import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
 import { ACCESS_TITLE_LABELS } from "@/lib/authorization/access-copy";
 import type { AccessTitle } from "@/lib/authorization/types";
@@ -48,10 +49,7 @@ export function buildTeamInviteHtml({
           ${escapeHtml(venueName)} has invited you to join their team on Hello to Cheers — where they manage clients, events, vendors, and workflows.
         </p>
         ${titleLine}
-        <a href="${acceptUrl}"
-          style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          Accept Invitation →
-        </a>
+        ${htcEmailCtaAnchorHtml(escapeHtml(acceptUrl), "Accept Invitation →")}
         <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
           If you weren't expecting this invitation, you can safely ignore it.<br>
           <a href="${acceptUrl}" style="color:#9ca3af;word-break:break-all">${acceptUrl}</a>
@@ -130,10 +128,7 @@ export function buildOwnerInviteHtml({
           You've been invited as an Owner so you can access the venue, see who is managing it, and control ownership and access permissions whenever you want.
           You don't need to finish day-to-day setup yourself — your Administrator can keep running the account while this invitation is pending.
         </p>
-        <a href="${acceptUrl}"
-          style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          Accept Owner Invitation →
-        </a>
+        ${htcEmailCtaAnchorHtml(escapeHtml(acceptUrl), "Accept Owner Invitation →")}
         <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
           If you weren't expecting this invitation, you can safely ignore it.<br>
           <a href="${acceptUrl}" style="color:#9ca3af;word-break:break-all">${acceptUrl}</a>

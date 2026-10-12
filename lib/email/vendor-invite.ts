@@ -2,6 +2,7 @@
  * Vendor invitation email template.
  */
 
+import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
 
 export function buildVendorInviteHtml({
@@ -45,10 +46,7 @@ export function buildVendorInviteHtml({
         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
           It only takes a minute to get started.
         </p>
-        <a href="${acceptUrl}"
-          style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
-          Claim My Vendor Profile →
-        </a>
+        ${htcEmailCtaAnchorHtml(escapeHtml(acceptUrl), "Claim My Vendor Profile →")}
         <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
           This invitation expires in 7 days. If you weren't expecting this, you can safely ignore it.<br>
           <a href="${acceptUrl}" style="color:#9ca3af;word-break:break-all">${acceptUrl}</a>

@@ -4,6 +4,7 @@
 import { sendEmail } from "@/lib/email/send";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 import type { BookingResult } from "@/lib/tours/types";
 
 export async function runTourBookedSideEffects(result: BookingResult): Promise<void> {
@@ -54,21 +55,29 @@ async function sendCoordinatorNotification(result: BookingResult): Promise<void>
     weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
   });
 
+  const detailParts = [
+    `A new tour has been scheduled at ${result.venueName ?? "your venue"}.`,
+    `Date: ${scheduledDate}`,
+    `Duration: ${result.duration ?? 60} minutes`,
+    result.contactName ? `Contact: ${result.contactName}` : null,
+    result.attachedExistingLead
+      ? "A tour was scheduled on an existing lead in Hello to Cheers."
+      : "A new lead has been created in Hello to Cheers.",
+  ].filter(Boolean);
+
+  const email = buildVenueNotificationEmail({
+    // Preserve the established date-based subject for this side-effect path.
+    title: `New tour booked — ${scheduledDate}`,
+    body: detailParts.join("\n"),
+    link: result.leadId ? `/leads/${result.leadId}` : "/tours",
+    appOrigin: appUrl,
+  });
+
   const emailResult = await sendEmail({
     to: coordinatorEmail,
-    subject: `New tour booked — ${scheduledDate}`,
-    text: [
-      `A new tour has been scheduled at ${result.venueName}.`,
-      "",
-      `Date: ${scheduledDate}`,
-      `Duration: ${result.duration ?? 60} minutes`,
-      result.contactName ? `Contact: ${result.contactName}` : null,
-      "",
-      result.attachedExistingLead
-        ? "A tour was scheduled on an existing lead in Hello to Cheers."
-        : "A new lead has been created in Hello to Cheers.",
-      result.leadId ? `${appUrl}/leads/${result.leadId}` : `${appUrl}/leads`,
-    ].filter(Boolean).join("\n"),
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
   });
   if (result.intakeAttemptId) {
     await recordNotificationStatus(createAdminClient(), result.intakeAttemptId, emailResult.ok ? "sent" : "failed");
