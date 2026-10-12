@@ -90,6 +90,9 @@ deploy_lambda "htc-sandbox-resend-usage-canary" \
 deploy_lambda "htc-sandbox-ops-alert-email" \
   "${ROOT}/lambdas/ops_alert_email" "handler.handler" 30
 
+deploy_lambda "htc-sandbox-workflow-synthetic" \
+  "${ROOT}/lambdas/workflow_synthetic" "handler.handler" 45
+
 # EventBridge schedule for usage canary (15 minutes — stay within Resend rate limits)
 RULE="htc-sandbox-resend-usage-15m"
 aws events put-rule \
@@ -111,6 +114,29 @@ aws lambda add-permission \
 aws events put-targets \
   --rule "${RULE}" \
   --targets "Id=usageCanary,Arn=${USAGE_ARN}" \
+  --region "${REGION}" >/dev/null
+
+# Workflow synthetic every 15 minutes (disposable lead write path)
+WF_RULE="htc-sandbox-workflow-synthetic-15m"
+aws events put-rule \
+  --name "${WF_RULE}" \
+  --schedule-expression "rate(15 minutes)" \
+  --state ENABLED \
+  --description "Sandbox health + disposable inquiry write/read/delete synthetic" \
+  --region "${REGION}" >/dev/null
+
+WF_ARN="arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:htc-sandbox-workflow-synthetic"
+aws lambda add-permission \
+  --function-name htc-sandbox-workflow-synthetic \
+  --statement-id AllowEventBridgeWorkflowSynthetic \
+  --action lambda:InvokeFunction \
+  --principal events.amazonaws.com \
+  --source-arn "arn:aws:events:${REGION}:${ACCOUNT_ID}:rule/${WF_RULE}" \
+  --region "${REGION}" >/dev/null 2>&1 || true
+
+aws events put-targets \
+  --rule "${WF_RULE}" \
+  --targets "Id=workflowSynthetic,Arn=${WF_ARN}" \
   --region "${REGION}" >/dev/null
 
 # SNS → email fanout Lambda
@@ -163,6 +189,11 @@ put_alarm "htc-sandbox-resend-monthly-usage-high" "ResendMonthlyUsagePercent" Gr
 put_alarm "htc-sandbox-resend-daily-usage-high" "ResendDailyUsagePercent" GreaterThanOrEqualToThreshold 80 900 notBreaching
 put_alarm "htc-sandbox-resend-usage-canary-down" "ResendUsageCanaryOk" LessThanThreshold 1 900 breaching
 put_alarm "htc-sandbox-ops-alert-email-failures" "OpsAlertEmailFailure" GreaterThanOrEqualToThreshold 1 300 notBreaching
+put_alarm "htc-sandbox-workflow-synthetic-down" "WorkflowSyntheticOk" LessThanThreshold 1 900 breaching
+put_alarm "htc-sandbox-inquiry-write-path-down" "InquiryWritePathOk" LessThanThreshold 1 900 breaching
+put_alarm "htc-sandbox-tour-attach-path-down" "TourAttachPathOk" LessThanThreshold 1 900 breaching
+put_alarm "htc-sandbox-contract-draft-path-down" "ContractDraftPathOk" LessThanThreshold 1 900 breaching
+put_alarm "htc-sandbox-payment-config-path-down" "PaymentConfigPathOk" LessThanThreshold 1 900 breaching
 
 # SNS delivery failure (email PendingConfirmation contributes; monitor visibility)
 aws cloudwatch put-metric-alarm \
@@ -186,5 +217,9 @@ echo "alarm=htc-sandbox-sns-notifications-failed"
 aws lambda invoke --function-name htc-sandbox-resend-usage-canary --region "${REGION}" \
   --cli-binary-format raw-in-base64-out --payload '{}' /tmp/htc-resend-usage-invoke.json >/tmp/htc-resend-usage-invoke-meta.json
 echo "usage_invoke=$(cat /tmp/htc-resend-usage-invoke.json)"
+
+aws lambda invoke --function-name htc-sandbox-workflow-synthetic --region "${REGION}" \
+  --cli-binary-format raw-in-base64-out --payload '{}' /tmp/htc-workflow-synthetic-invoke.json >/tmp/htc-workflow-synthetic-invoke-meta.json
+echo "workflow_invoke=$(cat /tmp/htc-workflow-synthetic-invoke.json)"
 
 echo "DEPLOY_OK"

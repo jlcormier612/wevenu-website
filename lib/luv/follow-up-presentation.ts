@@ -15,6 +15,7 @@ import { loadFollowUpTourState } from "@/lib/luv/follow-up-tour-loader";
 import {
   classifyFollowUpTourState,
   type FollowUpTourState,
+  type FollowUpWorkflowIntent,
 } from "@/lib/luv/follow-up-workflow-context";
 import type { Lead } from "@/lib/leads/types";
 import type { TourAppointment } from "@/lib/tours/types";
@@ -25,6 +26,7 @@ export type LeadFollowUpPresentation = {
   draftEligible: boolean;
   /** Accurate explanation when draftEligible is false; never invents outreach/stage. */
   draftIneligibleReason: string | null;
+  workflowIntent: FollowUpWorkflowIntent;
   /** Authoritative commercial_proposals.status=sent AND offered_at — never sales_stage. */
   proposalSent: boolean;
 };
@@ -102,6 +104,7 @@ export async function loadLeadFollowUpPresentation(
         tour: { kind: "none" },
         workflowIntent: "no_outreach",
       }),
+      workflowIntent: "no_outreach",
       proposalSent: false,
     };
   }
@@ -115,6 +118,7 @@ export async function loadLeadFollowUpPresentation(
         tour: { kind: "none" },
         workflowIntent: "no_outreach",
       }),
+      workflowIntent: "no_outreach",
       proposalSent: false,
     };
   }
@@ -156,6 +160,7 @@ export async function loadLeadFollowUpPresentation(
       tour,
       workflowIntent: gate.workflowIntent,
     }),
+    workflowIntent: gate.workflowIntent,
     proposalSent,
   };
 }

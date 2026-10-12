@@ -1,29 +1,38 @@
 # Luv follow-up drafting — eligibility alignment
 
-## Deployed tip (code)
+## Status: IN PROGRESS (contradiction fix awaiting Sandbox tip)
 
-Pending deploy of this pass — verify `dpl=` after Sandbox deploy.
+**Working tip (local):** Luv Noticed / silence consistency — neutralize follow-up urging when draft gate closed; keep draft recommendation so Noticed shows server ineligible reason.  
+**Last deployed Sandbox tip (pre-fix):** `ee3b67a9ae3e2935355d191ffa209c209fd21718`  
+**Artifacts:** `eligibility-matrix-results.json`, `matrix-*.png` (re-run after deploy)
 
-## Root cause (reconstructed)
+## Root cause (screenshot reopen)
 
-1. Tip `0425c455` fixed the unresponsive same-record **Link** by calling `handleGenerate` / `externalDraftRequest`.
-2. That path also gated the Noticed CTA on `followUpDraftEligible`.
-3. Momentum observations (e.g. “showing strong interest”) still attached `recommendation.type = "draft"` even when **completed-tour silence** correctly set `draftEligible = false`.
-4. UI then showed a false explanation: “recent outreach may still be open, or drafting isn’t available for this stage” — **neither** was Ellie’s actual gate (completed tour → `no_outreach` / silence).
+1. Completed-tour silence correctly sets `draftEligible = false` and Luv tab silence copy.
+2. Momentum observations still carried `recommendation.type = "draft"` plus urging detail (“may be worth following up while the interest is fresh”).
+3. Tip `47272041` stripped the draft recommendation when ineligible — which hid the CTA but also prevented Noticed from rendering the accurate silence reason, while urging **detail** could still remain.
+4. Screenshot defect: Noticed urged follow-up while the Luv tab said nothing needs a follow-up.
 
-Ellie forensic: completed tour `2026-09-15`, `follow_up_sent_at=null`, no commercial proposal, inquiry origin `unknown` → `evaluateCompletedTour` → silence. Legitimate product silence; illegitimate CTA advertising + wrong reason copy.
+## Correction (this pass)
 
-## Correction
+- `observationsForDraftSurface` **keeps** draft recommendations when ineligible so `ContextualLuvObservationsPanel` can show `sameRecordDraftIneligibleReason` (silence).
+- `neutralizeFollowUpUrgingCopy` removes urging detail/message language when the gate is closed; factual interest language may remain.
+- Lead page passes `isFollowUpSilenceBlock` + `workflowIntent` from `loadLeadFollowUpPresentation`.
+- Matrix asserts Ellie: silence present, no draft CTA, no follow-up urging copy.
 
-- `observationsForDraftSurface` strips draft recommendations when drafting is ineligible (observation text may remain).
-- `followUpDraftBlockReason` returns `LUV_FOLLOW_UP_SILENCE` for completed-tour / `no_outreach` — never invents outreach/stage.
-- Eligible leads still open drafting via Noticed button / primary CTA.
+## Required behavior
 
-## Tests
-
-- Unit: `lib/luv/draft-recommendation-surface.test.ts` + silence/same-record suites.
-- Browser matrix: `scripts/qa/luv-draft-eligibility-matrix-browser.mts` (eligible draft persist; silence no false outreach; actionable completed tour; Ellie forensic).
+| Case | Expected |
+|---|---|
+| Eligible lead | Draft CTA; draft persisted; no auto-send |
+| Screenshot / Ellie silence | Silence on Luv tab; Noticed does not urge follow-up; ineligible reason when draft rec present |
+| Completed-tour silence | Silence; no draft CTA; no false outreach fiction |
+| Follow-up already sent | Blocked; no false outreach fiction |
+| Existing draft | Visible; not duplicated |
+| Lost lead | No inappropriate follow-up |
+| Concurrent clicks | Single durable draft path |
+| Internal notes | Never in customer draft context |
 
 ## Safety
 
-No auto-send. Internal notes excluded from customer drafts. Sandbox only.
+No auto-send. Sandbox only. Disposable `@hellotocheers-test.invalid` leads cleaned after matrix runs.

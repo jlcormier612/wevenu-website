@@ -28,6 +28,9 @@ const OUT_DIR = "docs/qa/luv-draft-cta-fix";
 const OUT = `${OUT_DIR}/eligibility-matrix-results.json`;
 const SILENCE = "There's nothing that needs a follow-up right now.";
 const FALSE_OUTREACH = /recent outreach may still be open/i;
+/** Urging copy that contradicts silence when drafting is blocked. */
+const FOLLOW_UP_URGING =
+  /may be worth following up|while the interest is fresh|Ask Luv to draft a follow-up/i;
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 if (!url.includes("wvpsldwwjqdannqasrdf")) throw new Error("refusing non-sandbox supabase");
@@ -101,21 +104,38 @@ async function seedLead(opts: {
   first: string;
   completedTour?: boolean;
   unansweredInbound?: string;
+  /** Genuine completed-tour follow-up already sent — silence. */
+  followUpSent?: boolean;
+  /** Seed an existing pending_review Luv draft. */
+  existingDraft?: boolean;
+  leadStatus?: "active" | "lost" | "booked";
 }) {
+  const email = `${opts.first.toLowerCase()}-${Date.now()}@hellotocheers-test.invalid`;
+  const { data: relationshipId, error: relErr } = await admin.rpc("find_or_create_relationship", {
+    p_venue_id: FANCY,
+    p_email: email,
+    p_first_name: opts.first,
+    p_last_name: "Matrix",
+  });
+  if (relErr || !relationshipId) throw new Error(`relationship: ${relErr?.message}`);
+
   const { data: lead, error } = await admin
     .from("leads")
     .insert({
       venue_id: FANCY,
       first_name: opts.first,
       last_name: "Matrix",
-      email: `${opts.first.toLowerCase()}-${Date.now()}@hellotocheers-test.invalid`,
+      email,
+      relationship_id: relationshipId,
       sales_stage: opts.completedTour ? "tour_scheduled" : "new_inquiry",
-      status: "active",
+      status: opts.leadStatus ?? "active",
       source: "website",
       inquiry_message: "We would love to tour Saturday.",
       inquiry_message_origin: "customer",
       last_contacted_at: opts.completedTour ? null : hoursAgo(6),
       created_at: hoursAgo(72),
+      ...(opts.leadStatus === "lost" ? { lost_at: hoursAgo(1) } : {}),
+      ...(opts.leadStatus === "booked" ? { first_booked_at: hoursAgo(1) } : {}),
     })
     .select("id,relationship_id")
     .single();
@@ -134,32 +154,68 @@ async function seedLead(opts: {
       contact_name: `${opts.first} Matrix`,
       status: "completed",
       origin: "scheduled",
+      follow_up_sent_at: opts.followUpSent ? hoursAgo(3) : null,
     });
     if (te) throw te;
   }
 
-  if (opts.unansweredInbound && lead.relationship_id) {
-    const { data: conv } = await admin
+  if (opts.existingDraft) {
+    const { error: dErr } = await admin.from("luv_drafts").insert({
+      venue_id: FANCY,
+      entity_type: "lead",
+      entity_id: lead.id,
+      draft_type: "follow_up_email",
+      subject: "Existing matrix draft",
+      content: "Disposable existing draft body.",
+      status: "pending_review",
+      context: { seeded: true },
+    });
+    if (dErr) throw new Error(`draft seed: ${dErr.message}`);
+  }
+
+  if (opts.unansweredInbound) {
+    let conversationId: string | null = null;
+    const { data: existing } = await admin
       .from("conversations")
-      .insert({
-        venue_id: FANCY,
-        relationship_id: lead.relationship_id,
-        subject: "Tour follow-up",
-      })
       .select("id")
-      .single();
-    if (conv?.id) {
-      await admin.from("conversation_messages").insert({
-        venue_id: FANCY,
-        conversation_id: conv.id,
-        relationship_id: lead.relationship_id,
-        lead_id: lead.id,
-        sender_type: "lead_or_client",
-        channel: "email",
-        body: opts.unansweredInbound,
-        sent_at: hoursAgo(2),
-      });
+      .eq("venue_id", FANCY)
+      .eq("relationship_id", lead.relationship_id)
+      .eq("conversation_kind", "venue_couple")
+      .maybeSingle();
+    if (existing?.id) {
+      conversationId = existing.id;
+      await admin
+        .from("conversations")
+        .update({
+          inbox_owner_kind: "lead",
+          inbox_owner_lead_id: lead.id,
+        })
+        .eq("id", existing.id);
+    } else {
+      const { data: conv, error: cErr } = await admin
+        .from("conversations")
+        .insert({
+          venue_id: FANCY,
+          relationship_id: lead.relationship_id,
+          conversation_kind: "venue_couple",
+          inbox_owner_kind: "lead",
+          inbox_owner_lead_id: lead.id,
+        })
+        .select("id")
+        .single();
+      if (cErr || !conv) throw new Error(`conversation: ${cErr?.message}`);
+      conversationId = conv.id;
     }
+    const { error: mErr } = await admin.from("conversation_messages").insert({
+      venue_id: FANCY,
+      conversation_id: conversationId,
+      sender_type: "lead_or_client",
+      channel: "email",
+      body: opts.unansweredInbound,
+      sent_at: hoursAgo(2),
+      status: "delivered",
+    });
+    if (mErr) throw new Error(`message: ${mErr.message}`);
   }
 
   return lead;
@@ -264,15 +320,108 @@ async function main() {
     );
     await page.screenshot({ path: `${OUT_DIR}/matrix-actionable.png`, fullPage: true });
 
-    // Ellie real lead forensic (no mutation)
+    // Ellie real lead forensic (no mutation) — screenshot contradiction must be gone
     await openLuv(page, "e26c3be4-d805-4c01-a215-9709cb814f60");
     const ellieBody = await page.locator("body").innerText();
+    const ellieSilence = ellieBody.includes(SILENCE);
+    const ellieUrging = FOLLOW_UP_URGING.test(ellieBody);
+    const ellieDraftCta =
+      (await page.getByTestId("luv-noticed-draft-follow-up").count())
+      + (await page.getByRole("button", { name: /Draft a follow-up email|Ask Luv to draft/i }).count());
+    const ellieNoticedIneligible =
+      (await page.getByTestId("luv-noticed-draft-ineligible").count()) > 0;
     record(
       "ellie_no_false_outreach_copy",
       !FALSE_OUTREACH.test(ellieBody),
       FALSE_OUTREACH.test(ellieBody) ? "still shows outreach fiction" : "clean",
     );
+    record(
+      "ellie_noticed_luv_tab_consistent",
+      ellieSilence && ellieDraftCta === 0 && !ellieUrging,
+      `silence=${ellieSilence} cta=${ellieDraftCta} urging=${ellieUrging} noticedIneligible=${ellieNoticedIneligible}`,
+    );
     await page.screenshot({ path: `${OUT_DIR}/matrix-ellie.png`, fullPage: true });
+
+    // Seeded silence must also neutralize urging detail in Luv Noticed
+    const silenceUrging = FOLLOW_UP_URGING.test(silBody);
+    record(
+      "silence_noticed_no_follow_up_urging",
+      !silenceUrging && silCta === 0,
+      `urging=${silenceUrging} cta=${silCta}`,
+    );
+
+    // 4) Genuine follow-up already sent after completed tour → silence, no false outreach fiction
+    const sent = await seedLead({
+      first: `Sent${stamp}`,
+      completedTour: true,
+      followUpSent: true,
+      unansweredInbound: "What is the pricing?",
+    });
+    await openLuv(page, sent.id);
+    const sentBody = await page.locator("body").innerText();
+    const sentCta = await page.getByRole("button", { name: /Draft a follow-up email|Ask Luv to draft/i }).count();
+    record(
+      "follow_up_sent_blocks_draft_without_false_outreach",
+      sentCta === 0 && !FALSE_OUTREACH.test(sentBody),
+      `cta=${sentCta} falseOutreach=${FALSE_OUTREACH.test(sentBody)} silence=${sentBody.includes(SILENCE)}`,
+    );
+    await page.screenshot({ path: `${OUT_DIR}/matrix-follow-up-sent.png`, fullPage: true });
+
+    // 5) Existing pending draft — CTA still available; draft row visible; no auto-send
+    const withDraft = await seedLead({ first: `Draft${stamp}`, existingDraft: true });
+    await openLuv(page, withDraft.id);
+    const draftBody = await page.locator("body").innerText();
+    const draftCta =
+      (await page.getByTestId("luv-noticed-draft-follow-up").count()) > 0
+      || (await page.getByRole("button", { name: /Draft a follow-up email/i }).count()) > 0;
+    const seesExisting = /Existing matrix draft|pending review|Pending review/i.test(draftBody);
+    record(
+      "existing_draft_visible_and_cta_safe",
+      seesExisting && !FALSE_OUTREACH.test(draftBody),
+      `cta=${draftCta} seesExisting=${seesExisting}`,
+    );
+    await page.screenshot({ path: `${OUT_DIR}/matrix-existing-draft.png`, fullPage: true });
+
+    // 6) Lost lead — drafting not advertised with outreach fiction
+    const lost = await seedLead({ first: `Lost${stamp}`, leadStatus: "lost" });
+    await openLuv(page, lost.id);
+    const lostBody = await page.locator("body").innerText();
+    record(
+      "lost_lead_no_false_outreach_copy",
+      !FALSE_OUTREACH.test(lostBody),
+      `falseOutreach=${FALSE_OUTREACH.test(lostBody)}`,
+    );
+    await page.screenshot({ path: `${OUT_DIR}/matrix-lost.png`, fullPage: true });
+
+    // 7) Concurrent generate clicks on eligible lead — at least one draft, no crash
+    const concurrent = await seedLead({ first: `Conc${stamp}` });
+    await openLuv(page, concurrent.id);
+    const concCta = page.getByRole("button", { name: /Draft a follow-up email/i }).first();
+    if ((await concCta.count()) > 0) {
+      await Promise.all([concCta.click(), concCta.click().catch(() => undefined)]);
+      for (let i = 0; i < 45; i++) {
+        const { data } = await admin
+          .from("luv_drafts")
+          .select("id")
+          .eq("entity_type", "lead")
+          .eq("entity_id", concurrent.id);
+        if ((data ?? []).length > 0) break;
+        await page.waitForTimeout(1000);
+      }
+      const { data: concDrafts } = await admin
+        .from("luv_drafts")
+        .select("id,status")
+        .eq("entity_type", "lead")
+        .eq("entity_id", concurrent.id);
+      record(
+        "concurrent_clicks_persist_draft",
+        (concDrafts ?? []).length >= 1,
+        `n=${concDrafts?.length}`,
+      );
+    } else {
+      record("concurrent_clicks_persist_draft", false, "no CTA");
+    }
+    await page.screenshot({ path: `${OUT_DIR}/matrix-concurrent.png`, fullPage: true });
   } finally {
     await browser.close();
     await cleanup();

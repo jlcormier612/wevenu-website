@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 
 import {
   followUpDraftBlockReason,
+  neutralizeFollowUpUrgingCopy,
+  observationUrgesFollowUp,
   observationsForDraftSurface,
 } from "@/lib/luv/draft-recommendation-surface";
 import { LUV_FOLLOW_UP_SILENCE } from "@/lib/luv/luv-panel-copy";
@@ -13,6 +15,7 @@ const hot: LuvObservation = {
   kind: "inference",
   priority: "medium",
   message: "Casey is showing strong interest right now.",
+  detail: "Good timing — may be worth following up while the interest is fresh.",
   link: "/leads/L1",
   recommendation: {
     label: "Ask Luv to draft a follow-up",
@@ -25,12 +28,32 @@ describe("observationsForDraftSurface", () => {
   it("keeps draft recommendations when drafting is eligible", () => {
     const out = observationsForDraftSurface([hot], true);
     assert.equal(out[0]?.recommendation?.type, "draft");
+    assert.match(out[0]?.detail ?? "", /follow/);
   });
 
-  it("strips draft recommendations when completed-tour silence blocks drafting", () => {
-    const out = observationsForDraftSurface([hot], false);
-    assert.equal(out[0]?.recommendation, undefined);
+  it("keeps draft recommendation when ineligible so Noticed can show the silence reason", () => {
+    const out = observationsForDraftSurface([hot], false, { silence: true });
+    assert.equal(out[0]?.recommendation?.type, "draft");
     assert.match(out[0]?.message ?? "", /strong interest/);
+  });
+
+  it("removes follow-up urging detail under silence so Noticed does not contradict the Luv tab", () => {
+    const out = observationsForDraftSurface([hot], false, { silence: true });
+    assert.equal(out[0]?.detail, undefined);
+    assert.doesNotMatch(out[0]?.message ?? "", /follow/i);
+    assert.ok(!observationUrgesFollowUp({
+      message: out[0]!.message,
+      detail: out[0]?.detail,
+      recommendation: undefined,
+    }));
+  });
+});
+
+describe("neutralizeFollowUpUrgingCopy", () => {
+  it("drops urging detail and keeps factual interest", () => {
+    const out = neutralizeFollowUpUrgingCopy(hot);
+    assert.match(out.message, /strong interest/);
+    assert.equal(out.detail, undefined);
   });
 });
 

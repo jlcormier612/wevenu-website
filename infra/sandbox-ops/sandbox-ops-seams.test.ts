@@ -9,6 +9,7 @@ describe("sandbox ops early-warning seams", () => {
     assert.equal(existsSync(resolve(root, "deploy-sandbox-ops.sh")), true);
     assert.equal(existsSync(resolve(root, "lambdas/resend_usage_canary/handler.py")), true);
     assert.equal(existsSync(resolve(root, "lambdas/ops_alert_email/handler.py")), true);
+    assert.equal(existsSync(resolve(root, "lambdas/workflow_synthetic/handler.py")), true);
     const usage = readFileSync(resolve(root, "lambdas/resend_usage_canary/handler.py"), "utf8");
     assert.match(usage, /ResendMonthlyUsagePercent/);
     assert.match(usage, /ResendDailyUsagePercent/);
@@ -19,5 +20,20 @@ describe("sandbox ops early-warning seams", () => {
     assert.match(email, /OpsAlertEmailSuccess/);
     assert.match(email, /OpsAlertEmailFailure/);
     assert.match(email, /jennifer@hellotocheers\.com/);
+    const wf = readFileSync(resolve(root, "lambdas/workflow_synthetic/handler.py"), "utf8");
+    assert.match(wf, /WorkflowSyntheticOk/);
+    assert.match(wf, /InquiryWritePathOk/);
+    assert.match(wf, /TourAttachPathOk/);
+    assert.match(wf, /ContractDraftPathOk/);
+    assert.match(wf, /PaymentConfigPathOk/);
+    assert.match(wf, /hellotocheers-test\.invalid/);
+    assert.doesNotMatch(wf, /status["']:\s*["']sent["']/);
+    assert.doesNotMatch(wf, /print\(key\)/);
+    const deploy = readFileSync(resolve(root, "deploy-sandbox-ops.sh"), "utf8");
+    assert.match(deploy, /htc-sandbox-workflow-synthetic/);
+    assert.match(deploy, /htc-sandbox-inquiry-write-path-down/);
+    assert.match(deploy, /htc-sandbox-tour-attach-path-down/);
+    assert.match(deploy, /htc-sandbox-contract-draft-path-down/);
+    assert.match(deploy, /htc-sandbox-payment-config-path-down/);
   });
 });

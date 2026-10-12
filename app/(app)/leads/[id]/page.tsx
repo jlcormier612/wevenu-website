@@ -10,7 +10,10 @@ import { getDocuments } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getDraftsForLead } from "@/lib/luv/drafts";
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
-import { observationsForDraftSurface } from "@/lib/luv/draft-recommendation-surface";
+import {
+  isFollowUpSilenceBlock,
+  observationsForDraftSurface,
+} from "@/lib/luv/draft-recommendation-surface";
 import { loadLeadFollowUpPresentation } from "@/lib/luv/follow-up-presentation";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
@@ -118,6 +121,13 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       const contextualObservations = observationsForDraftSurface(
         rawObservations,
         followUpPresentation.draftEligible,
+        {
+          silence: isFollowUpSilenceBlock({
+            eligible: followUpPresentation.draftEligible,
+            tour: followUpPresentation.tour,
+            workflowIntent: followUpPresentation.workflowIntent,
+          }),
+        },
       );
       return {
         lead,
