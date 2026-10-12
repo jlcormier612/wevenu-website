@@ -1,9 +1,10 @@
 # Production-readiness & incident-prevention closure
 
-**Pass (UTC):** 2026-10-12T01:05Z  
-**Sandbox tip verified:** `d3bb656a04e4e7df5cd15c3b251a438f7c30f64b` on `app.sandbox.hellotocheers.com` (⊃ Auth `efd12db6`, CRM `459d63fc`, identity, early-warning `05a39a1e`, blocked-dates `8e4f911e`, Resend limit classification)  
+**Pass (UTC):** 2026-10-12T02:28Z  
+**Sandbox tip verified:** `553c8687dd19e1d5196c94fe07b9957cecabec70` on `app.sandbox.hellotocheers.com`  
+**ECS image:** `htc-sandbox-venue-app:553c8687…` (task def `:672`, PRIMARY COMPLETED)  
 **Health:** `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`  
-**Evidence JSON:** `closure-pass-verify.json`  
+**Evidence:** `closure-pass-verify.json`, `ops-alert-verify.json`  
 **Production / marketing / Supabase billing / Spend Cap / Resend billing:** untouched.
 
 ---
@@ -12,101 +13,77 @@
 
 | Gate | Status |
 |---|---|
-| Software amplifiers controlled on tip | **GREEN** |
-| AWS early-warning (metric → alarm → SNS → SQS) | **GREEN** (re-proven 2026-10-12) |
-| Resend failure classification + CW signal | **GREEN** (deployed on tip; CW filter + alarm live) |
-| Human email notification | **YELLOW** — SNS email **PendingConfirmation** |
-| Current-cycle Usage + Spend Cap | **OPEN — OWNER** |
-| Resend plan / daily·monthly limits | **OPEN — OWNER** |
-| Customer-traffic readiness | **YELLOW / NOT GREEN** |
+| A. Incident understanding | **GREEN** |
+| B. Supabase capacity (accessible evidence) | **YELLOW** — current-cycle GB + Spend Cap still inaccessible without Management PAT / Dashboard |
+| C. Resend capacity | **GREEN** (API-verified limits + usage + app classification + CW) |
+| D. Proactive alerts | **GREEN** (12 CW alarms; usage canaries; health canary) |
+| E. Notification delivery | **GREEN** via Resend fanout (delivered); SNS native email still **PendingConfirmation** |
+| F. Recovery | **GREEN** (ALARM + OK emails delivered; SQS ALARM proven) |
+| G. Runtime | **GREEN** tip `553c8687` + health ok |
+| H. Safety | **GREEN** |
+| **Customer-traffic readiness** | **YELLOW / NOT GREEN** |
 
-**Launch recommendation:** Do **not** declare customer-traffic GREEN until (1) SNS email is Confirmed and one test ALARM is seen in inbox, (2) owner attaches current-cycle Usage + Spend Cap (B1–B10), and (3) owner attaches active Resend plan + limits (C1–C5). Engineering reliability of known Auth/CRM failure modes and AWS→SQS alerting is verified; cost/Fair-Use headroom and human inbox delivery are not.
+**Why not overall GREEN:** Supabase current-cycle Usage GB and Spend Cap remain unverified (no Management API token; Dashboard org sign-in). Resend is on Free-like allowances (**100/day, 3000/month**) with monthly usage **~75%** — capacity headroom for growth is tight until an authorized plan change (out of scope).
 
----
-
-## 2. Executive answers
-
-| Question | Answer |
-|---|---|
-| What caused the historical spike / restriction? | **Verified:** Auth 3× `getUser` amp (storm 2026-09-28) + high Sandbox QA/ALB volume + platform logging; Free egress Fair Use lockout 2026-10-11 on ~14.777 GB egress. Log ingest ~289.8 GB **service split still unknown**. |
-| Normal vs QA/incident? | Sandbox ALB still ~**28.7k**/day (7d Sum **201,008**). Healthy product traffic is a minority of this intensity. Counterfactual egress central **~5–8 GB/cycle**; log ingest **80–140** central — **bounds, not meters**. |
-| Adequate headroom on Pro? | Egress headroom vs 250 GB is plausible; **first bottleneck = Logs Ingest (20 GB included)** once grace ends. **Current-cycle meters UNKNOWN** until owner B3–B5. |
-| Detect before customer outage? | AWS path: Auth/CRM/restriction/ALB/unhealthy/health canary + **new Resend limit signal**. Supabase Usage GB remains **dashboard/billing-email lag**. Human email **not proven**. |
-| Resend safe on limit? | App now returns `ok:false` with `code=quota|rate_limit`, `retryUnsafe`, and does **not** report success. Alarm on sustained signals. Plan limits still owner-verified. |
-| 100 / 250 / 500 venues? | Provisional model unchanged — measure current-cycle ingest before relying on forecasts (`COUNTERFACTUAL-AND-FORECAST.md`). |
+**Engineering + ops alerting:** complete for Sandbox with a **verified human notification channel** (Resend fanout to `jennifer@hellotocheers.com`, `last_event=delivered`).
 
 ---
 
-## 3. Re-verification this pass (2026-10-12)
+## 2. Executive answers (required)
 
-| Check | Result | Evidence |
+| # | Question | Answer |
 |---|---|---|
-| Tip | `d3bb656a…` | `app.sandbox…/login` `?dpl=` |
-| Fix ancestry | Auth/CRM/eng-closure ⊂ tip | `git merge-base --is-ancestor` |
-| AuthRetryable 24h | **0** | CloudWatch Sum |
-| ALB last 7d | **~201k** (~**28.7k**/day) | CloudWatch RequestCount |
-| SNS email | **PendingConfirmation** | `list-subscriptions-by-topic` (re-subscribe requested) |
-| SNS delivery failures (24h) | **Sum=2** | `NumberOfNotificationsFailed` |
-| Alarms | **7** present (prior 6 + Resend) | `describe-alarms` |
-| Health ALARM→SQS | **YES** | `early-warning-reverify-sqs.json` |
-| Canary | ENABLED `rate(5 minutes)`; invoke `ok:true` | Lambda + EventBridge |
-| Management Usage API | **Unavailable** | no `SUPABASE_ACCESS_TOKEN` |
-| Resend Domains API (operator host) | **403 CF 1010** | not plan evidence |
-| Resend classification tests | **6/6** | `lib/email/resend-failure.test.ts` |
+| 1 | What is monitored now? | AuthRetryable, CRM contention, Supabase restriction strings, ALB 5xx, unhealthy hosts, health canary (`HealthSupabaseOk`), Resend provider-limit log signals, **Resend daily/monthly usage %**, usage-canary liveness, ops-email fanout failures, SNS delivery failures |
+| 2 | What triggers alerts / lead time? | See `EARLY-WARNING.md`. Usage canary every **15 min**; monthly alarm at **≥70%** (currently **ALARM** at 75.43%); daily at **≥80%**; health canary every **5 min**; log-filter alarms ~5 min after ECS logs |
+| 3 | Verified human channel? | **Resend ops fanout** from SNS topic → Lambda → `jennifer@hellotocheers.com` (**delivered**). Native SNS email still PendingConfirmation |
+| 4 | Test ALARM + recovery received? | **YES** — `[ALARM]` and `[OK]` for `htc-sandbox-health-supabase-down`; monthly usage ALARM also delivered (`ops-alert-verify.json`) |
+| 5 | Verified Supabase / Resend numbers? | Supabase: health ok; ALB ~**28.8k**/day; AuthRetryable 24h **0**; venues **108**, auth users **114**; **current-cycle GB / Spend Cap UNKNOWN**. Resend: daily **33/100**, monthly **2263/3000**, rate **10/s**, domains verified |
+| 6 | 100 / 250 / 500 venues? | Provisional model in `COUNTERFACTUAL-AND-FORECAST.md` — Logs Ingest first Supabase bottleneck; Resend Free-like monthly 3000 is a near-term send bottleneck |
+| 7 | Fixed / committed / deployed / tested? | Prior Auth/CRM fixes ⊂ tip; Resend classification ⊂ tip; **new** usage canary + email fanout + 5 alarms deployed via `infra/sandbox-ops/`; verify script **GREEN** for human path |
+| 8 | Remaining unverified? | Supabase Spend Cap + current-cycle Usage GB (no PAT); SNS native email Confirm click; historical log-ingest service split |
+| 9 | GREEN or YELLOW? | **YELLOW / NOT GREEN** for customer-traffic cost headroom; **ops alerting human path GREEN** |
 
 ---
 
-## 4. Email notification (human)
+## 3. Re-verification this pass
 
-| Item | Status |
+| Check | Result |
 |---|---|
-| Endpoint | `jennifer@hellotocheers.com` |
-| State | **PendingConfirmation** |
-| SQS proof | Re-proven 2026-10-12 |
-| Inbox receipt | **NOT PROVEN** |
-| Owner action | Confirm subscription (Spam/Promotions); `OWNER-EVIDENCE-CHECKLIST.md` Action A |
+| Tip / ECS image | `553c8687…` |
+| AuthRetryable 24h | **0** |
+| ALB 7d Sum | **201,462** (~**28.8k**/day) |
+| ALB 5xx 24h Sum | **1064** (alarm OK — not sustained ≥20/5m) |
+| Health canary | ENABLED 5m; invoke `ok:true` |
+| Resend `/usage` | **Retrieved** via Secrets Manager key (not logged) |
+| SNS email | **PendingConfirmation** (re-subscribe requested) |
+| SNS→SQS ALARM | **YES** |
+| SNS→Resend human ALARM/OK | **YES delivered** |
+| Monthly usage alarm | **ALARM** (75.43% ≥ 70%) — intentional lead-time signal |
+| Alarm count | **12** |
 
 ---
 
-## 5. Counterfactual (unchanged shape; meters still historical)
+## 4. Owner-only remainder (minimal)
 
-**Observed prior cycle (owner UI, facts):** egress **14.777 GB**, log ingest **289.808 GB**, log query **99.732 GB**.
+| Item | Why autonomous path failed |
+|---|---|
+| Spend Cap On/Off | No `SUPABASE_ACCESS_TOKEN`; Cost Control is org Dashboard |
+| Current-cycle egress / log ingest / log query GB | Same — Management Usage API unavailable |
+| Log ingest by service (prior ~289.8 GB) | Dashboard breakdown only |
+| SNS native email Confirm | Requires recipient inbox click; no API confirm without token from email |
 
-Do **not** promote reconstructed normal baselines to measured current-cycle facts. See `COUNTERFACTUAL-AND-FORECAST.md`.
-
----
-
-## 6. Pro sufficiency & 100 / 250 / 500
-
-Unchanged provisional model: Pro reasonable for egress start; **Logs Ingest** first bottleneck; confidence **LOW** on absolute log GB until B5/B9. See forecast doc.
-
----
-
-## 7. Operational response (critical conditions)
-
-Prior table in prior revision remains valid. **Added:**
-
-| Condition | Signal | Threshold | Destination | First response |
-|---|---|---|---|---|
-| Resend quota / rate limit | `htc-sandbox-resend-provider-limit` (`ResendProviderLimitSignal`) | ≥3 / 5 min | SNS → SQS; email when Confirmed | Check Resend dashboard usage; halt bulk/QA sends; do not retry-storm; wait for quota reset |
+**Do not** treat these as a substitute for engineering work already done. Resend plan/limits/usage are **no longer owner-only**.
 
 ---
 
-## 8. Remaining owner actions (only)
-
-1. **Confirm** SNS subscription (Action A).  
-2. **Capture** Spend Cap + current-cycle Usage (Action B1–B10).  
-3. **Capture** Resend plan + limits + current usage (Action C1–C5).
-
----
-
-## 9. Document index
+## 5. Document index
 
 | Doc | Role |
 |---|---|
-| `OWNER-EVIDENCE-CHECKLIST.md` | Exact owner captures (A/B/C) |
+| `OWNER-EVIDENCE-CHECKLIST.md` | Remaining B1–B10 + optional SNS Confirm |
 | `FINDINGS-LEDGER.md` | Open/closed tracker |
-| `COUNTERFACTUAL-AND-FORECAST.md` | Detailed scenarios |
-| `EARLY-WARNING.md` | Alarm/canary config + delivery |
-| `RESEND-CAPACITY.md` | Resend reliability notes |
-| `INCIDENT-CLOSURE.md` / `USAGE-FORENSICS.md` / `ROOT-CAUSE-VERDICT.md` | Historical forensics |
+| `COUNTERFACTUAL-AND-FORECAST.md` | Scenarios + 100/250/500 |
+| `EARLY-WARNING.md` | Alarm/canary/fanout config |
+| `RESEND-CAPACITY.md` | Verified Resend limits + behavior |
+| `ops-alert-verify.json` | Human delivery proof |
+| `infra/sandbox-ops/` | Deployable canaries |

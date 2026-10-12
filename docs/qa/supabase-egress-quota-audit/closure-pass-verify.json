@@ -1,6 +1,8 @@
 {
-  "at": "2026-10-12T01:05:00.000Z",
-  "tip": "d3bb656a04e4e7df5cd15c3b251a438f7c30f64b",
+  "at": "2026-10-12T02:28:00.000Z",
+  "tip": "553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "ecsImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "taskDefinition": "htc-sandbox-venue-app:672",
   "projectRef": "wvpsldwwjqdannqasrdf",
   "health": {
     "ok": true,
@@ -12,51 +14,83 @@
   "fixAncestry": {
     "efd12db6_auth_amp": true,
     "459d63fc_crm": true,
-    "4656d1ba_eng_closure": true,
-    "05a39a1e_early_warning_doc": true,
-    "8e4f911e_blocked_dates": true
+    "8e4f911e_blocked_dates": true,
+    "553c8687_ellie_tour": true
   },
   "authRetryable24hSum": 0,
-  "albRequestCount7dSum": 201008,
-  "albApproxPerDay": 28715,
+  "albRequestCount7dSum": 201462,
+  "albApproxPerDay": 28780,
+  "albTarget5xx24hSum": 1064,
+  "sandboxCounts": {
+    "venues": 108,
+    "clients": 131,
+    "leads": 108,
+    "events": 55,
+    "authUsers": 114
+  },
   "alarms": {
-    "count": 7,
+    "count": 12,
     "names": [
       "htc-sandbox-alb-target-5xx",
       "htc-sandbox-auth-retryable-spike",
       "htc-sandbox-crm-contention-spike",
       "htc-sandbox-health-supabase-down",
+      "htc-sandbox-ops-alert-email-failures",
+      "htc-sandbox-resend-daily-usage-high",
+      "htc-sandbox-resend-monthly-usage-high",
+      "htc-sandbox-resend-provider-limit",
+      "htc-sandbox-resend-usage-canary-down",
+      "htc-sandbox-sns-notifications-failed",
       "htc-sandbox-supabase-restriction-signal",
-      "htc-sandbox-venue-unhealthy-hosts",
-      "htc-sandbox-resend-provider-limit"
+      "htc-sandbox-venue-unhealthy-hosts"
     ],
-    "healthStateAfterRestore": "OK"
+    "monthlyUsageState": "ALARM"
   },
   "sns": {
     "topic": "arn:aws:sns:us-east-1:405254329873:htc-sandbox-ops-alerts",
     "sqsSubscription": "Confirmed",
+    "lambdaEmailFanout": "Confirmed",
     "emailSubscription": "PendingConfirmation",
     "emailEndpoint": "jennifer@hellotocheers.com",
-    "notificationsFailed24hSum": 2
+    "notificationsFailed24hSum": 2,
+    "notificationsDelivered24hSum": 26
   },
-  "sqsDeliveryReproof": {
-    "file": "early-warning-reverify-sqs.json",
-    "health_alarm_in_sqs": true
+  "humanNotification": {
+    "channel": "SNS → Lambda htc-sandbox-ops-alert-email → Resend",
+    "recipient": "jennifer@hellotocheers.com",
+    "alarmDelivered": true,
+    "okDelivered": true,
+    "monthlyUsageAlarmDelivered": true,
+    "evidence": "ops-alert-verify.json"
   },
   "canary": {
-    "function": "htc-sandbox-health-canary",
-    "schedule": "rate(5 minutes) ENABLED",
-    "HEALTH_URL": "https://app.sandbox.hellotocheers.com/api/health",
-    "invokeOk": true
+    "healthFunction": "htc-sandbox-health-canary",
+    "healthSchedule": "rate(5 minutes) ENABLED",
+    "healthInvokeOk": true,
+    "resendUsageFunction": "htc-sandbox-resend-usage-canary",
+    "resendUsageSchedule": "rate(15 minutes) ENABLED",
+    "resendUsageInvokeOk": true
   },
   "resend": {
     "secretPresent": "htc/sandbox/resend-api-key",
-    "domainsApiFromOperatorHost": "403 Cloudflare 1010 — not usable as plan evidence",
-    "appClassification": "lib/email/resend-failure.ts + sendEmail wiring",
-    "metricFilter": "htc-sandbox-resend-provider-limit on /ecs/htc-sandbox/venue-app",
-    "alarm": "htc-sandbox-resend-provider-limit threshold Sum>=3 / 5m",
-    "planLimits": "OWNER — Resend dashboard"
+    "usageApi": "GET /usage OK",
+    "daily": { "used": 33, "limit": 100 },
+    "monthly": { "used": 2263, "limit": 3000, "pct": 75.43 },
+    "rateLimitPerSecond": 10,
+    "domains": {
+      "hellotocheers.com": "verified sending enabled",
+      "replies.hellotocheers.com": "verified receiving"
+    },
+    "appClassification": "lib/email/resend-failure.ts",
+    "planNameFromApi": null,
+    "allowanceShape": "matches Free 100/day 3000/month"
   },
-  "supabaseUsageSpendCap": "OWNER — Dashboard B1–B10",
-  "customerTrafficReadiness": "YELLOW"
+  "supabaseUsageSpendCap": "OWNER — Dashboard B1–B10 (no SUPABASE_ACCESS_TOKEN)",
+  "customerTrafficReadiness": "YELLOW",
+  "safety": {
+    "productionUntouched": true,
+    "billingUntouched": true,
+    "spendCapUntouched": true,
+    "noCustomerCommsTests": true
+  }
 }

@@ -1,37 +1,38 @@
-# Supabase + Resend — findings ledger (closure pass)
+# Supabase + Resend — findings ledger
 
-**Observation (UTC):** 2026-10-12T01:05Z  
-**Sandbox tip:** `d3bb656a04e4e7df5cd15c3b251a438f7c30f64b` (⊃ `efd12db6`, `459d63fc`, `4656d1ba`, `8e4f911e`)  
+**Observation (UTC):** 2026-10-12T02:28Z  
+**Sandbox tip:** `553c8687dd19e1d5196c94fe07b9957cecabec70`  
 **Project:** `wvpsldwwjqdannqasrdf`  
 **No Production / billing / Spend Cap / Resend plan changes.**
 
-| ID | Question | Evidence required | Owner | Status | Notes |
+| ID | Question | Evidence | Owner | Status | Notes |
 |---|---|---|---|---|---|
-| F1 | Current-cycle egress / log ingest / log query GB | Usage Dashboard | Owner | **OPEN** | Checklist B3–B6 |
-| F2 | Spend Cap On/Off | Billing Cost Control | Owner | **OPEN** | Checklist B1 |
-| F3 | Log ingest by service (prior cycle) | Usage-by-service | Owner | **OPEN** | Checklist B9 |
-| F4 | Auth amp controlled on tip | Tests + Insights | Cursor | **CLOSED** | 0 AuthRetryable/24h @ 01:00Z |
-| F5 | CRM hang controlled | Probe + lineage | Cursor | **CLOSED** | Fix ⊂ tip |
-| F6 | Early-warning pipeline | Alarms + SQS | Cursor | **CLOSED** | Health ALARM→SQS re-proven 2026-10-12 |
-| F7 | Health canary real check | Invoke | Cursor | **CLOSED** | `ok:true` + schedule ENABLED |
-| F8 | Counterfactual | Forensics + ALB | Cursor | **CLOSED (bounds)** | ALB ~28.7k/d; not a point meter |
-| F9 | 100/250/500 forecast | Model + pricing | Cursor | **CLOSED (provisional)** | Logs = first bottleneck |
-| F10 | Customer-traffic GREEN | F1+F2+F12+F14 | Joint | **NOT GREEN** | YELLOW |
-| F11 | Identity / tip lineage | git | Cursor | **CLOSED** | ⊂ tip |
-| F12 | Human email delivery | Confirmed SNS + inbox | Owner | **OPEN** | PendingConfirmation; Action A |
-| F13 | Org Supabase usage alerts | Dashboard | Owner | **OPEN** | Checklist B10 |
-| F14 | Resend plan + limits + usage | Resend dashboard | Owner | **OPEN** | Checklist C1–C5 |
-| F15 | Resend failure not reported as success | Code + tests | Cursor | **CLOSED** | `classifyResendHttpFailure`; send returns `ok:false` |
-| F16 | Resend CW early-warning | Filter + alarm | Cursor | **CLOSED** | `htc-sandbox-resend-provider-limit` |
+| F1 | Current-cycle egress / log ingest / log query GB | Usage Dashboard / Mgmt API | Owner | **OPEN** | B3–B6; no PAT |
+| F2 | Spend Cap On/Off | Cost Control | Owner | **OPEN** | B1 |
+| F3 | Log ingest by service (prior cycle) | Usage-by-service | Owner | **OPEN** | B9 |
+| F4 | Auth amp controlled on tip | CW Sum 24h = 0 | Cursor | **CLOSED** | tip ⊃ `efd12db6` |
+| F5 | CRM hang controlled | lineage + metrics | Cursor | **CLOSED** | tip ⊃ `459d63fc` |
+| F6 | Early-warning pipeline | Alarms + SQS | Cursor | **CLOSED** | SQS ALARM re-proven |
+| F7 | Health canary | Invoke + schedule | Cursor | **CLOSED** | 5m ENABLED |
+| F8 | Counterfactual | Forensics + ALB | Cursor | **CLOSED (bounds)** | ALB ~28.8k/d |
+| F9 | 100/250/500 forecast | Model | Cursor | **CLOSED (provisional)** | Logs + Resend Free limits |
+| F10 | Customer-traffic GREEN | F1+F2+Resend headroom | Joint | **NOT GREEN** | YELLOW |
+| F11 | Tip lineage | git + ECS image | Cursor | **CLOSED** | `553c8687` |
+| F12 | Human notification | Resend fanout delivered | Cursor | **CLOSED** | SNS email still Pending |
+| F13 | Org Supabase usage alerts | Dashboard | Owner | **OPEN** | B10 |
+| F14 | Resend plan + limits + usage | Resend `/usage` API | Cursor | **CLOSED** | 100/day, 3000/mo, 75% mo |
+| F15 | Resend failure ≠ success | tests + send.ts | Cursor | **CLOSED** | |
+| F16 | Resend CW provider-limit | filter + alarm | Cursor | **CLOSED** | |
+| F17 | Resend usage early-warning | usage canary + alarms | Cursor | **CLOSED** | monthly ALARM at 75% |
+| F18 | Alert-path failure visibility | OpsAlertEmailFailure + SNS failed alarms | Cursor | **CLOSED** | |
 
 ## Status board
 
 | Gate | Result |
 |---|---|
 | Software amplifiers fixed & re-verified | **YES** |
-| AWS early-warning with SQS delivery | **YES** (re-proven) |
-| Resend classification + alarm | **YES** |
-| Human email notification | **NO** (PendingConfirmation) |
-| Usage / cost headroom verified | **NO** (owner Dashboard) |
-| Resend plan headroom verified | **NO** (owner Dashboard) |
+| AWS early-warning + SQS | **YES** |
+| Human notification (independent of SNS email Confirm) | **YES** (Resend fanout delivered) |
+| Resend limits/usage verified | **YES** |
+| Supabase Usage / Spend Cap verified | **NO** |
 | Customer-traffic readiness | **YELLOW / NOT GREEN** |

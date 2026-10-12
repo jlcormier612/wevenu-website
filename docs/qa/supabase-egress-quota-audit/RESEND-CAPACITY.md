@@ -1,38 +1,52 @@
 # Resend capacity & delivery reliability (Sandbox)
 
-**Observation (UTC):** 2026-10-12T01:05Z  
+**Observation (UTC):** 2026-10-12T02:28Z  
 **No Resend plan / domain / billing changes performed.**  
 **Production untouched.**
 
 ---
 
-## Verified vs unknown
+## Verified (API)
 
-| Item | Status | Evidence |
+| Item | Value | Source |
 |---|---|---|
-| Sandbox API key secret present | **YES** | `htc/sandbox/resend-api-key` (value not logged) |
-| Domains / plan via API from operator host | **BLOCKED** | HTTP 403 Cloudflare error 1010 |
-| Active plan + daily/monthly limits | **UNKNOWN — OWNER** | Checklist C1–C3 |
-| Current usage vs limit | **UNKNOWN — OWNER** | Checklist C4 |
-| Historical Free-tier stress | **PROBABLE** | Prior warnings reached 100% / &gt;200% of **100 emails/day** (historical; not current plan proof) |
-| App reports success on provider failure | **NO** (fixed path) | `sendEmail` → `ok:false` + `code` |
-| Quota vs rate-limit distinguishable | **YES** (app-side) | `lib/email/resend-failure.ts` |
-| Retry-unsafe flag | **YES** | `retryUnsafe: true` for quota/rate_limit |
-| Early-warning alarm | **YES** | `htc-sandbox-resend-provider-limit` (≥3 signals / 5 min) → SNS |
-| Duplicate-send / retry storms | **CALLER-DEPENDENT** | Classification marks retry unsafe; callers must not busy-loop (no global queue yet) |
-| Recovery after quota reset | **MANUAL / natural** | Re-send from product UI or staff action after limit resets; no automatic drain queue |
+| Secret present | `htc/sandbox/resend-api-key` | AWS Secrets Manager |
+| Daily | **33 used / 100 limit** | `GET /usage` |
+| Monthly | **2263 used / 3000 limit** (75.43%) | `GET /usage` |
+| Daily reset | 2026-10-12T23:59:59.999Z | API |
+| Monthly reset | ~2026-10-14T00:04:08.777Z | API |
+| Rate limit | **10 / 1000ms** | API |
+| Domains | `hellotocheers.com` verified, **sending enabled**; `replies.hellotocheers.com` verified, receiving | `GET /domains` |
+| Plan name string | Not returned by `/usage` | — |
+| Allowance shape | Matches **Free** published limits (100/day, 3000/month) | API + docs |
+| Recent sample events | Of last 100 listed emails: 85 delivered, 15 bounced | `GET /emails?limit=100` (no bulk PII stored) |
 
 ---
 
-## Application path
+## Application behavior
 
-All primary transactional email should go through `lib/email/send.ts` (`sendEmail`). On non-OK Resend HTTP:
+| Behavior | Status |
+|---|---|
+| Failed send reported as success | **NO** — `sendEmail` returns `ok:false` |
+| Classification | `quota` / `rate_limit` / `provider` via `lib/email/resend-failure.ts` |
+| Retry-unsafe on quota/rate_limit | **YES** |
+| Log marker for CW | `ResendProviderLimitSignal` |
+| Provider-limit alarm | `htc-sandbox-resend-provider-limit` ≥3 / 5m |
+| Usage gauges + alarms | Usage canary 15m; daily ≥80%; monthly ≥70% (**ALARM**) |
 
-1. Classify → `quota` | `rate_limit` | `provider`
-2. For `quota` / `rate_limit`, emit log line `ResendProviderLimitSignal code=… status=…`
-3. Return `{ ok: false, message, code, retryUnsafe }` — **never** `{ ok: true }`
+Unit tests: `lib/email/resend-failure.test.ts`.
 
-Sandbox communication mode (`COMMUNICATION_MODE=sandbox`) still redirects recipients to `COMMUNICATION_SANDBOX_EMAIL` when set — tests must not target real customers.
+---
+
+## Growth implications
+
+| Scenario | Implication |
+|---|---|
+| Current Sandbox | Monthly **75%** used with ~2 days to reset — **tight** |
+| 100 venues transactional | Likely needs **>3000/mo** or careful send budgeting |
+| 250–500 venues | Free-like monthly limit is a **hard bottleneck** before Supabase egress |
+
+**Do not** upgrade plan without explicit authorization. Alarm `htc-sandbox-resend-monthly-usage-high` is the proactive signal.
 
 ---
 
@@ -40,15 +54,6 @@ Sandbox communication mode (`COMMUNICATION_MODE=sandbox`) still redirects recipi
 
 | Signal | Action |
 |---|---|
-| Alarm `htc-sandbox-resend-provider-limit` | Open Resend Usage; stop bulk/QA sends; wait for daily/monthly reset; confirm critical templates can be re-sent manually |
-| Product UI shows send failed | Trust failure — do not assume queued delivery unless a separate outbox exists for that workflow |
-| Owner sees plan near limit | Raise plan **only with explicit authorization** (out of engineering scope here) |
-
----
-
-## What must be measured before growth claims
-
-- Actual daily/monthly allowance (C2/C3)  
-- Peak Sandbox/Production sends per day under real venues  
-- Bounce/complaint rates (domain reputation)  
-- Whether any workflow retries Resend without backoff on `retryUnsafe`
+| Monthly/daily usage high | Halt bulk/QA; prioritize transactional; wait for reset |
+| Provider-limit alarm | Same; confirm `retryUnsafe` callers are not looping |
+| Product shows send failed | Trust failure — no silent success |

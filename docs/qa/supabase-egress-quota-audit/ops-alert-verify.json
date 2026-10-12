@@ -1,0 +1,88 @@
+{
+  "at": "2026-10-12T02:26:59.515Z",
+  "tip": "553c8687dd19e1d5196c94fe07b9957cecabec70",
+  "health": {
+    "ok": true,
+    "checks": {
+      "env": "ok",
+      "supabase": "ok"
+    }
+  },
+  "usageCanary": {
+    "invokeStatus": 200,
+    "body": {
+      "ok": true,
+      "daily": {
+        "used": 33,
+        "limit": 100,
+        "pct": 33
+      },
+      "monthly": {
+        "used": 2263,
+        "limit": 3000,
+        "pct": 75.43
+      },
+      "rate_limit_per_second": 10
+    }
+  },
+  "resendUsage": {
+    "daily": {
+      "used": 33,
+      "limit": 100,
+      "sent": 33,
+      "received": 0,
+      "resets_at": "2026-10-12T23:59:59.999Z"
+    },
+    "monthly": {
+      "used": 2263,
+      "limit": 3000,
+      "sent": 2259,
+      "received": 4,
+      "resets_at": "2026-10-14T00:04:08.777Z"
+    }
+  },
+  "sns": {
+    "emailSubscription": "PendingConfirmation",
+    "emailEndpoint": "jennifer@hellotocheers.com",
+    "sqsSubscription": "Confirmed",
+    "lambdaEmailFanout": "Confirmed",
+    "lambdaEndpoint": "arn:aws:lambda:us-east-1:405254329873:function:htc-sandbox-ops-alert-email"
+  },
+  "delivery": {
+    "marker": "ops-verify-1791772023542",
+    "sqsAlarmSeen": true,
+    "sqsOkSeen": false,
+    "resendOpsEmailsRecent": [
+      {
+        "id": "01a12def-7fc9-7893-832f-1328a82b73ed",
+        "subject": "[OK] HTC Sandbox: htc-sandbox-health-supabase-down",
+        "last_event": "delivered",
+        "created_at": "2026-10-12 02:27:13.123000+00"
+      },
+      {
+        "id": "01a12def-649a-7265-a406-41baf7991550",
+        "subject": "[ALARM] HTC Sandbox: htc-sandbox-health-supabase-down",
+        "last_event": "delivered",
+        "created_at": "2026-10-12 02:27:06.158000+00"
+      }
+    ],
+    "resendAlarmEmail": true,
+    "resendOkEmail": true,
+    "resendHumanPathProven": true
+  },
+  "alarmCount": 12,
+  "alarmNames": [
+    "htc-sandbox-alb-target-5xx",
+    "htc-sandbox-auth-retryable-spike",
+    "htc-sandbox-crm-contention-spike",
+    "htc-sandbox-health-supabase-down",
+    "htc-sandbox-ops-alert-email-failures",
+    "htc-sandbox-resend-daily-usage-high",
+    "htc-sandbox-resend-monthly-usage-high",
+    "htc-sandbox-resend-provider-limit",
+    "htc-sandbox-resend-usage-canary-down",
+    "htc-sandbox-sns-notifications-failed",
+    "htc-sandbox-supabase-restriction-signal",
+    "htc-sandbox-venue-unhealthy-hosts"
+  ]
+}

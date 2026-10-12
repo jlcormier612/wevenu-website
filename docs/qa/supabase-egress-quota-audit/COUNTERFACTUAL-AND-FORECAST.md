@@ -2,9 +2,9 @@
 
 **Type:** Evidence-based reconstruction + provisional forecast. Distinguishes **observed facts**, **estimates**, **projections**, **assumptions**, **unknowns**.  
 **Project:** Sandbox `wvpsldwwjqdannqasrdf`  
-**Observation (UTC):** 2026-10-12T01:05Z (re-verify pass; model unchanged)  
-**Sources:** Owner prior-cycle meters (`USAGE-FORENSICS.md`), Auth storm forensics (`ROOT-CAUSE-VERDICT.md`), ALB CloudWatch (7d Sum **201,008** ≈ **28.7k**/day), Auth/CRM re-verify, official Supabase pricing docs (2026-10-11).  
-**No invoice fabrication. No Spend Cap assumed. No Management Usage API access. Current-cycle GB still owner-only.**
+**Observation (UTC):** 2026-10-12T02:28Z (capacity + alerting closure pass)  
+**Sources:** Owner prior-cycle meters (`USAGE-FORENSICS.md`), Auth storm forensics (`ROOT-CAUSE-VERDICT.md`), ALB CloudWatch (7d Sum **201,462** ≈ **28.8k**/day), Auth/CRM re-verify, Resend `GET /usage` (API), service-role row counts, official Supabase pricing docs (2026-10-11).  
+**No invoice fabrication. No Spend Cap assumed. No Management Usage API access. Current-cycle Supabase GB still owner-only. Resend limits/usage are API-verified.**
 
 ---
 
@@ -33,8 +33,11 @@
 | ALB RequestCount | ~27k/day avg (~835k / ~30d) | ~2026-09-11→10-10 | n/a | CloudWatch | HIGH |
 | AuthRetryable (Sept 28) | 10,278 | ~4h UTC | n/a | CW Insights | HIGH |
 | AuthRetryable (closure pass, 24h) | **0** | 2026-10-11 | n/a | CloudWatch Sum | HIGH |
-| Last 7d ALB Sum (closure) | ~201k (≈**28.7k**/day) | 2026-10-04→10 | n/a | CloudWatch | HIGH |
-| Current-cycle Usage GB | **UNKNOWN** | Current billing cycle | Pro allowances | Owner Dashboard required | — |
+| Last 7d ALB Sum (closure) | ~201.5k (≈**28.8k**/day) | 2026-10-05→11 window | n/a | CloudWatch | HIGH |
+| Auth users (admin count) | **114** | 2026-10-12 | n/a | Auth admin API | HIGH |
+| Venues / clients / events | **108 / 131 / 55** | 2026-10-12 | n/a | REST count | HIGH |
+| Resend daily / monthly | **33/100**, **2263/3000** | 2026-10-12 | Free-like | Resend `/usage` | HIGH |
+| Current-cycle Supabase Usage GB | **UNKNOWN** | Current billing cycle | Pro allowances | Owner Dashboard / Mgmt PAT | — |
 | Spend Cap | **UNKNOWN** | Current | On by default on Pro (docs) | Owner Cost Control | — |
 
 **Unknown:** exact billing cycle calendar dates; service-level ingest split; current-cycle GB after Pro; Spend Cap state; org multi-project share.
@@ -115,10 +118,11 @@ Assumes: tip includes Auth+CRM fixes; ALB continues ~15–30k/day Sandbox QA; Pr
 
 | Signal | Value |
 |---|---|
-| Venues | 65 |
-| Clients / leads / events | 131 / 104 / 55 |
-| Auth users | ~82 |
-| ALB | ~28.7k req/day last 7d (mostly non-customer) |
+| Venues | **108** (was 65 in earlier forensics — fixture growth) |
+| Clients / leads / events | 131 / 108 / 55 |
+| Auth users | **114** |
+| ALB | ~28.8k req/day last 7d (mostly non-customer) |
+| Resend | Free-like **100/day**, **3000/month**; monthly **75%** used |
 
 ### Assumptions (labeled)
 
@@ -152,9 +156,20 @@ Assumes: tip includes Auth+CRM fixes; ALB continues ~15–30k/day Sandbox QA; Pr
 |---|---|---|
 | Is Pro a reasonable starting plan? | **YES** for egress/DB/MAU at measured Sandbox scale | MEDIUM |
 | Supports 100 / 250 / 500? | **100:** plausible; **250–500:** expect log overage or Spend Cap pressure | LOW–MEDIUM (absolute GB) |
-| First bottleneck | **Logs Ingest (20 GB)** | HIGH (shape) |
-| Review trigger | Current-cycle ingest **>15 GB** or +20% WoW; egress **>100 GB**; Fair Use email; Auth/CRM alarms | — |
-| Conditional on owner evidence? | **YES** — Spend Cap + current-cycle GB required before GREEN | — |
+| First Supabase bottleneck | **Logs Ingest (20 GB)** | HIGH (shape) |
+| First email bottleneck (current Resend allowances) | **Monthly 3000** (already 75% in Sandbox QA month) | HIGH |
+| Review trigger | Current-cycle ingest **>15 GB** or +20% WoW; egress **>100 GB**; Fair Use email; Auth/CRM alarms; Resend monthly ≥70% | — |
+| Conditional on owner evidence? | **YES** for Supabase cost GREEN — Spend Cap + current-cycle GB | — |
+
+### Resend send-volume sketch (assumption-labeled)
+
+Assumes ~8–20 transactional emails / active venue / month (central **12**) for bookings, tours, contracts — **not** measured Production.
+
+| Active venues | Central emails/mo | vs 3000 Free-like | Confidence |
+|---|---|---|---|
+| 100 | ~1,200 | Inside | LOW |
+| 250 | ~3,000 | At ceiling | LOW |
+| 500 | ~6,000 | **Exceeds** — needs higher plan (authorization required) | LOW |
 
 ---
 
