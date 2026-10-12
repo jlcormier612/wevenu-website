@@ -1,0 +1,107 @@
+{
+  "expectedSha": "c7bb386ac5850d30a967488989216d4b07bf7376",
+  "deploymentIds": [
+    "c7bb386ac5850d30a967488989216d4b07bf7376"
+  ],
+  "serving": "c7bb386ac5850d30a967488989216d4b07bf7376",
+  "checks": [
+    {
+      "name": "serving_tip",
+      "pass": true,
+      "detail": "serving=c7bb386ac5850d30a967488989216d4b07bf7376 expected=c7bb386ac5850d30a967488989216d4b07bf7376"
+    },
+    {
+      "name": "personal_links",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/book/06d9570c05b77ccfe65b0a750363c5e5?o=v1.a415ac52-cd74-42a6-"
+    },
+    {
+      "name": "phone_prefilled_on_personal_link",
+      "pass": true,
+      "detail": "(978) 555-1368"
+    },
+    {
+      "name": "consent_checkbox_visible",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "book_checked_ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"appointmentId\":\"d547fc35-72f4-47ae-88c9-bd9b37b96870\",\"checkout\":false}"
+    },
+    {
+      "name": "book_unchecked_ok",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "name": "checked_db_opted_in",
+      "pass": true,
+      "detail": "{\"status\":\"opted_in\",\"source\":\"tour_form\",\"evidence\":{\"leadId\":\"1cf2062d-acbd-4804-b563-e981bab6b424\",\"embedKey\":\"06d9570c05b77ccfe65b0a750363c5e5\",\"venueName\":\"Jen's Fancy Venue\",\"capturedAt\":\"2026-10-12T22:05:49.148Z\",\"relationshipId\":\"8650d070-3434-4cac-929f-2623e379c43a\",\"languageVersion\":\"htc_sms_inquiry_v2\",\"preferredChannels\":[\"email\",\"sms\"]}}"
+    },
+    {
+      "name": "unchecked_db_no_consent",
+      "pass": true,
+      "detail": "null"
+    },
+    {
+      "name": "checked_ui_opted_in",
+      "pass": true,
+      "detail": "Allowed"
+    },
+    {
+      "name": "checked_ui_opted_in_390",
+      "pass": true,
+      "detail": "Allowed"
+    },
+    {
+      "name": "texting_setup_independent",
+      "pass": true,
+      "detail": "no setup notice; consent label authoritative"
+    }
+  ],
+  "pass": true,
+  "leadChecked": "1cf2062d-acbd-4804-b563-e981bab6b424",
+  "leadUnchecked": "e6f08cb2-b918-4671-837f-60ba53268fe0",
+  "phoneChecked": "(978) 555-1368",
+  "phoneUnchecked": "(978) 554-1368",
+  "bookChecked": {
+    "ok": true,
+    "leadId": "1cf2062d-acbd-4804-b563-e981bab6b424",
+    "relationshipId": "8650d070-3434-4cac-929f-2623e379c43a",
+    "appointmentId": "d547fc35-72f4-47ae-88c9-bd9b37b96870",
+    "scheduledAt": "2026-10-15T13:00:00+00:00",
+    "venueName": "Jen's Fancy Venue",
+    "duration": 60,
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "attachedExistingLead": true,
+    "venueEmail": "jennifer@hellotocheers.com",
+    "venuePhone": "603-555-3647",
+    "addressLine1": "123 Fancy Lane",
+    "city": "Fancyville",
+    "stateRegion": "SC",
+    "contactEmail": "sms-consent-checked-1791842721368@example.test",
+    "contactName": "SmsConsent Browser1368",
+    "contactPhone": "(978) 555-1368"
+  },
+  "bookUnchecked": {
+    "ok": true,
+    "leadId": "1cf2062d-acbd-4804-b563-e981bab6b424",
+    "relationshipId": "8650d070-3434-4cac-929f-2623e379c43a",
+    "appointmentId": "54860645-187a-4fb4-8b40-f62cfd9aacdf",
+    "scheduledAt": "2026-10-15T14:45:00+00:00",
+    "venueName": "Jen's Fancy Venue",
+    "duration": 60,
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "attachedExistingLead": true,
+    "venueEmail": "jennifer@hellotocheers.com",
+    "venuePhone": "603-555-3647",
+    "addressLine1": "123 Fancy Lane",
+    "city": "Fancyville",
+    "stateRegion": "SC",
+    "contactEmail": "sms-consent-checked-1791842721368@example.test",
+    "contactName": "SmsConsent Browser1368",
+    "contactPhone": "(978) 555-1368"
+  }
+}
