@@ -24,9 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { formatCurrency } from "@/lib/invoices/constants";
 import {
   type AdjustableDraftLine,
@@ -34,9 +31,11 @@ import {
   formatAdjustAmountInput,
   parseAdjustAmountInput,
   previewAdjustRemainingPlan,
+  remainingAmountGap,
 } from "@/lib/payments/adjust-remaining-plan";
 import { OBLIGATION_KIND_OPTIONS } from "@/lib/payments/constants";
 import type { PaymentLineItem, PaymentObligationKind } from "@/lib/payments/types";
+import { cn } from "@/lib/utils";
 
 type ScheduleLineForAdjust = {
   id?: string;
@@ -49,6 +48,11 @@ type ScheduleLineForAdjust = {
 };
 
 type DraftRow = AdjustableDraftLine & { key: string };
+
+type OpeningSnapshot = {
+  rows: DraftRow[];
+  amountInputs: Record<string, string>;
+};
 
 type Props = {
   open: boolean;
@@ -75,6 +79,11 @@ function amountInputsFromRows(rows: DraftRow[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const row of rows) out[row.key] = formatAdjustAmountInput(row.amount);
   return out;
+}
+
+function cloneSnapshot(rows: DraftRow[]): OpeningSnapshot {
+  const cloned = rows.map((row) => ({ ...row }));
+  return { rows: cloned, amountInputs: amountInputsFromRows(cloned) };
 }
 
 function toPayload(rows: DraftRow[]): AdjustableDraftLine[] {
@@ -113,6 +122,12 @@ function toPreviewSourceLines(
   }));
 }
 
+const kindSelectClassName = cn(
+  "flex h-9 w-full min-w-0 items-center rounded-lg border border-input bg-transparent px-2 py-1 text-sm text-foreground outline-none",
+  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+  "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+);
+
 export function AdjustPaymentPlanDialog({
   open,
   onOpenChange,
@@ -132,6 +147,7 @@ export function AdjustPaymentPlanDialog({
   const [sendPreview, setSendPreview] = React.useState<InvoiceAndPaymentPlanPreview | null>(null);
   const [step, setStep] = React.useState<"edit" | "send">("edit");
   const seededOpenSession = React.useRef(false);
+  const openingSnapshot = React.useRef<OpeningSnapshot | null>(null);
 
   const applyRows = React.useCallback((next: DraftRow[]) => {
     setRows(next);
@@ -161,6 +177,7 @@ export function AdjustPaymentPlanDialog({
   React.useEffect(() => {
     if (!open) {
       seededOpenSession.current = false;
+      openingSnapshot.current = null;
       return;
     }
     // Seed once per open session so parent RSC refreshes cannot reset draft rows mid-edit.
@@ -177,6 +194,7 @@ export function AdjustPaymentPlanDialog({
         dueDate: l.dueDate,
         obligationKind: l.obligationKind ?? null,
       }));
+    // Opening draft is the stored remaining plan (not a forced equal split).
     const seed = unresolved.length > 0
       ? unresolved
       : [{
@@ -185,13 +203,8 @@ export function AdjustPaymentPlanDialog({
           dueDate: null,
           obligationKind: "installment" as PaymentObligationKind,
         }];
-    // Default open uses equal split (matches Split equally / cent allocation).
-    const redistributed = buildRedistributedRemaining({
-      balanceDue,
-      template: seed,
-      mode: "equal",
-    });
-    const next = toDraftRows(redistributed);
+    const next = toDraftRows(seed);
+    openingSnapshot.current = cloneSnapshot(next);
     applyRows(next);
     refreshPreview(next);
   }, [open, scheduleId, balanceDue, scheduleLines, applyRows, refreshPreview]);
@@ -222,12 +235,12 @@ export function AdjustPaymentPlanDialog({
     updateRow(key, { amount: parsed.value });
   }
 
-  function redistribute(mode: "equal" | "proportional") {
+  function splitEqually() {
     const next = toDraftRows(
       buildRedistributedRemaining({
         balanceDue,
         template: toPayload(rows),
-        mode,
+        mode: "equal",
       }).map((line, i) => ({
         ...line,
         // Preserve row keys / ids so focused fields do not jump.
@@ -239,6 +252,15 @@ export function AdjustPaymentPlanDialog({
     }));
     applyRows(next);
     refreshPreview(next);
+  }
+
+  function resetToDefault() {
+    const snap = openingSnapshot.current;
+    if (!snap) return;
+    const restored = snap.rows.map((row) => ({ ...row }));
+    setRows(restored);
+    setAmountInputs({ ...snap.amountInputs });
+    refreshPreview(restored);
   }
 
   function addLine() {
@@ -304,6 +326,11 @@ export function AdjustPaymentPlanDialog({
     l.status === "paid" || l.status === "partially_paid" || l.status === "partially_refunded" || l.status === "refunded",
   );
 
+  const remainingAmount = remainingAmountGap(
+    balanceDue,
+    rows.map((row) => Number(row.amount) || 0),
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl" data-testid="adjust-payment-plan-dialog">
@@ -330,8 +357,20 @@ export function AdjustPaymentPlanDialog({
                 <p className="font-semibold">{formatCurrency(balanceDue)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Remaining lines</p>
-                <p className="font-semibold">{formatCurrency(rows.reduce((s, l) => s + (Number(l.amount) || 0), 0))}</p>
+                <p className="text-xs text-muted-foreground">Remaining amount</p>
+                <p
+                  className={cn(
+                    "font-semibold",
+                    remainingAmount < -0.009
+                      ? "text-destructive"
+                      : remainingAmount > 0.009
+                        ? "text-foreground"
+                        : "text-success",
+                  )}
+                  data-testid="adjust-remaining-amount"
+                >
+                  {formatCurrency(remainingAmount)}
+                </p>
               </div>
             </div>
 
@@ -357,11 +396,11 @@ export function AdjustPaymentPlanDialog({
             )}
 
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => redistribute("equal")} disabled={pending}>
+              <Button type="button" size="sm" variant="outline" onClick={splitEqually} disabled={pending}>
                 Split equally
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => redistribute("proportional")} disabled={pending}>
-                Keep proportions
+              <Button type="button" size="sm" variant="outline" onClick={resetToDefault} disabled={pending} data-testid="adjust-plan-reset-default">
+                Reset to default
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={addLine} disabled={pending}>
                 <Plus className="mr-1 h-3.5 w-3.5" /> Add installment
@@ -398,18 +437,28 @@ export function AdjustPaymentPlanDialog({
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Kind</Label>
-                    <Select
+                    <Label className="text-xs" htmlFor={`adjust-line-kind-${index}`}>Kind</Label>
+                    {/*
+                      Native select: Base UI Select portals at z-50 (below Dialog z-[250]) and
+                      outside-press on the portal dismisses the dialog before a kind can be chosen.
+                    */}
+                    <select
+                      id={`adjust-line-kind-${index}`}
+                      className={kindSelectClassName}
                       value={line.obligationKind ?? "installment"}
-                      onValueChange={(v) => updateRow(line.key, { obligationKind: (v ?? "installment") as PaymentObligationKind })}
+                      disabled={pending}
+                      onChange={(e) =>
+                        updateRow(line.key, {
+                          obligationKind: (e.target.value || "installment") as PaymentObligationKind,
+                        })
+                      }
+                      data-testid={`adjust-line-kind-${index}`}
+                      aria-label={`Kind for installment ${index + 1}`}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {OBLIGATION_KIND_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {OBLIGATION_KIND_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="flex items-end">
                     <Button type="button" size="sm" variant="ghost" onClick={() => removeLine(line.key)} disabled={rows.length <= 1 || pending} aria-label="Remove">

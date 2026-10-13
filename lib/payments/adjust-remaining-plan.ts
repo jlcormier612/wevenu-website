@@ -44,6 +44,16 @@ function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * Live “Remaining amount” for the adjust dialog:
+ * outstanding balance minus the sum of current remaining-installment draft amounts.
+ * Positive = still to allocate; zero = reconciled; negative = over-allocated.
+ */
+export function remainingAmountGap(balanceDue: number, draftAmounts: number[]): number {
+  const sum = roundMoney(draftAmounts.reduce((s, a) => s + (Number(a) || 0), 0));
+  return roundMoney(Math.max(0, balanceDue) - sum);
+}
+
 /** Format a stored amount for the adjust dialog amount field (no currency symbol). */
 export function formatAdjustAmountInput(amount: number): string {
   if (!Number.isFinite(amount)) return "";

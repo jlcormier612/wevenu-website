@@ -9,6 +9,7 @@ import {
   formatAdjustAmountInput,
   parseAdjustAmountInput,
   previewAdjustRemainingPlan,
+  remainingAmountGap,
 } from "@/lib/payments/adjust-remaining-plan";
 import type { PaymentLineItem } from "@/lib/payments/types";
 
@@ -255,12 +256,25 @@ describe("adjust amount input parsing", () => {
     assert.equal(formatAdjustAmountInput(4302.08), "4302.08");
   });
 
+  it("remainingAmountGap is outstanding minus current draft installment sum", () => {
+    assert.equal(remainingAmountGap(12_906.25, [4302.08, 4302.08, 4302.09]), 0);
+    assert.equal(remainingAmountGap(12_906.25, [4000, 4000, 4000]), 906.25);
+    assert.equal(remainingAmountGap(12_906.25, [5000, 5000, 3000]), -93.75);
+  });
+
   it("dialog wires parse helper, stable row keys, and client-side preview", () => {
     const src = readFileSync("components/invoices/adjust-payment-plan-dialog.tsx", "utf8");
     assert.match(src, /parseAdjustAmountInput/);
     assert.match(src, /formatAdjustAmountInput/);
     assert.match(src, /previewAdjustRemainingPlan/);
     assert.match(src, /seededOpenSession/);
+    assert.match(src, /openingSnapshot/);
+    assert.match(src, /Reset to default/);
+    assert.match(src, /remainingAmountGap/);
+    assert.match(src, /Remaining amount/);
+    assert.match(src, /adjust-line-kind-/);
+    assert.match(src, /<select/);
+    assert.doesNotMatch(src, /Keep proportions/);
     assert.doesNotMatch(src, /previewRemainingPaymentPlanAdjustmentAction/);
     assert.doesNotMatch(src, /Number\(e\.target\.value\.replace/);
     assert.match(src, /mode:\s*"equal"/);
