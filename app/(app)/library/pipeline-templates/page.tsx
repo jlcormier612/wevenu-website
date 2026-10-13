@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PipelineTemplateList } from "@/components/settings/pipeline-template-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,7 @@ export default async function PipelineTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/leads"
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Back to Leads
-      </Link>
+      <CollectionBackLink href="/leads" label="Back to Leads" />
       <PageHeader
         title="Pipeline Templates"
         description="Define the steps your team follows to move a lead from first contact to booking. Your stage names appear on the Leads board; reporting categories keep analytics consistent."
