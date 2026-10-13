@@ -86,8 +86,8 @@ No Sandbox deploy required: test-only correction; runtime gate unchanged.
 
 ## D. Final state
 
-- Fix commit: (recorded after commit)
-- Serving tip for calendar work remains `c7e1fcf4` (docs evidence `275de0e0`) — not redeployed
+- Fix commit: `54df77824f3877e08a8aed04b910591f64dc965a`
+- Serving tip for calendar work remains `c7e1fcf4` (docs evidence `275de0e0`) — not redeployed (test-only fix)
 - Production untouched
 - Dirty/untracked work preserved
 
