@@ -50,9 +50,18 @@ describe("allow_simultaneous_public_availability migration + settings", () => {
   });
 
   it("clamps public _is_event_date_available to venue-wide when opt-in is off", () => {
-    const fn = sql.slice(sql.indexOf("function public._is_event_date_available"));
+    const fix = readFileSync(
+      resolve("supabase/migrations/20261418700000_fix_public_availability_venue_wide_default.sql"),
+      "utf8",
+    );
+    const fn = fix.slice(fix.indexOf("function public._is_event_date_available"));
     assert.match(fn, /allow_simultaneous_public_availability/);
-    assert.match(fn, /if not v_allow_simul then\s+v_max := 1;/);
+    assert.match(fn, /any booked Event occupying the date closes it venue-wide/i);
+    assert.match(fn, /e\.booked_at is not null/);
+    assert.doesNotMatch(
+      fn.slice(fn.indexOf("if not v_allow_simul then"), fn.indexOf("v_result := public.evaluate_event_availability")),
+      /evaluate_event_availability\(\s*p_venue_id, p_date, null, null, null, null, null, null, null\s*\)/,
+    );
   });
 
   it("Settings control and action persist the preference", () => {
