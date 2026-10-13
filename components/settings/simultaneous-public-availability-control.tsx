@@ -74,9 +74,6 @@ export function SimultaneousPublicAvailabilityControl({
           </span>
         </span>
       </label>
-      <p className="text-xs text-muted-foreground">
-        Recommended: close the date for the public when a confirmed event means you do not want new same-day event interest, even if a side lawn is technically unused.
-      </p>
     </fieldset>
   );
 }

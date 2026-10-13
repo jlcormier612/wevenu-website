@@ -137,7 +137,7 @@ export default async function AvailabilityCapacitySettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Scheduling Capacity</CardTitle>
           <CardDescription>
-            Event and tour simultaneous limits and event turnaround are enforced when booking. A missing simultaneous setting is treated as 1 — never unlimited. Turnaround of 0 means events may be back-to-back.
+            Event and tour simultaneous limits and event turnaround are enforced when booking. A missing simultaneous setting is treated as 1 — never unlimited. Turnaround of 0 means events may be back-to-back. These limits guide staff scheduling and do not override the separate public confirmed-event availability preference under Date holds and availability.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

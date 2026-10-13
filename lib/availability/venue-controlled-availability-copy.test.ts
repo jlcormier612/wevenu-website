@@ -10,7 +10,7 @@ import { describe, it } from "node:test";
 import { FINAL_HELP_ARTICLES } from "@/lib/help-guides/final-articles";
 
 const settings = readFileSync(resolve("app/(app)/settings/availability/page.tsx"), "utf8");
-const calendar = readFileSync(resolve("app/(app)/calendar/page.tsx"), "utf8");
+const calendar = readFileSync(resolve("components/calendar/calendar-page-client.tsx"), "utf8");
 const calendarView = readFileSync(resolve("components/calendar/calendar-view.tsx"), "utf8");
 const bookedDialog = readFileSync(resolve("components/leads/pipeline-booked-confirm-dialog.tsx"), "utf8");
 const conflictWarning = readFileSync(resolve("components/availability/conflict-warning.tsx"), "utf8");
@@ -39,11 +39,19 @@ describe("Venue-controlled availability education copy", () => {
     );
     assert.match(
       settings,
-      /space-specific bookings can leave other spaces open on the same date when times and turnaround genuinely permit it/,
+      /Confirmed events and public availability\./,
     );
     assert.match(
       settings,
-      /Choose holds, blocked dates, capacity, and spaces so the public calendar matches how you actually book/,
+      /By default, a confirmed event closes that date for prospective clients/,
+    );
+    assert.match(
+      settings,
+      /Choose holds, blocked dates, capacity, spaces, and the confirmed-event public preference so the public calendar matches how you actually book/,
+    );
+    assert.match(
+      settings,
+      /These limits guide staff scheduling and do not override the separate public confirmed-event availability preference/,
     );
     assert.match(
       settings,
@@ -97,12 +105,12 @@ describe("Venue-controlled availability education copy", () => {
   });
 
   it("Hold confirmation uses the locked heading and settings copy", () => {
-    assert.match(holdSection, /You&apos;re placing a Hold on this date\./);
+    assert.match(holdSection, /You(?:'|\&apos;)re placing a Hold on this date\./);
     assert.match(
       holdSection,
       /Whether this Hold prevents booking is controlled by your availability settings\./,
     );
-    assert.match(calendarView, /You&apos;re placing a Hold on this date\./);
+    assert.match(calendarView, /You(?:'|\&apos;)re placing a Hold on this date\./);
     assert.match(
       calendarView,
       /Whether this Hold prevents booking is controlled by your availability settings\./,
@@ -134,6 +142,41 @@ describe("Venue-controlled availability education copy", () => {
       article.body,
       /A preferred date is not a reservation\. A couple can tell you they want June 14, but June 14 remains available until you deliberately protect it\./,
     );
+    assert.match(
+      article.body,
+      /By default, a confirmed \(Booked\) event closes that date for prospective clients/,
+    );
+    assert.match(
+      article.body,
+      /Date holds and availability → When a confirmed event is already on the calendar/,
+    );
+    assert.match(
+      article.body,
+      /raising it alone does not change public Available \/ Not available/,
+    );
+    assert.match(article.body, /Tour availability is controlled separately/);
     assert.doesNotMatch(article.body, /booked_at|advisory lock|RPC|database (?:transaction|constraint)/i);
+  });
+
+  it("Scheduling Capacity copy separates staff limits from public confirmed-event preference", () => {
+    const capacity = readFileSync(resolve("components/availability/capacity-rules-section.tsx"), "utf8");
+    assert.match(capacity, /Choose 1 if your venue hosts one event at a time/);
+    assert.match(capacity, /does not make dates with confirmed events available for new public inquiries/);
+    assert.doesNotMatch(capacity, /simple venue/i);
+    assert.match(capacity, /Venues that host one event at a time apply this venue-wide/);
+    assert.match(capacity, /Turnaround does not change public Available/);
+  });
+
+  it("setup guide covers confirmed-event public preference and current section list", () => {
+    const setup = readFileSync(resolve("lib/help-guides/setup-guides.ts"), "utf8");
+    const calendarGuide = setup.slice(setup.indexOf('slug: "setup-calendar-availability"'));
+    assert.match(calendarGuide, /Date holds and availability/);
+    assert.match(calendarGuide, /Choose what a confirmed event means for the public/);
+    assert.match(
+      calendarGuide,
+      /Do not assume raising Scheduling Capacity alone opens simultaneous public availability/,
+    );
+    assert.doesNotMatch(calendarGuide, /three sections, in this order/);
+    assert.doesNotMatch(setup, /Hold doesn't block bookings by design/);
   });
 });

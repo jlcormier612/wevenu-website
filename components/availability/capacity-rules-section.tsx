@@ -76,7 +76,7 @@ export function CapacityRulesSection({ initialRules }: { initialRules: VenueCapa
         value={maxEvents}
         onChange={setMaxEvents}
         label="Maximum simultaneous events"
-        hint="How many events can occupy the venue at the same time. 1 is a simple venue. 2 or more requires Event Spaces for overlapping events."
+        hint="Choose 1 if your venue hosts one event at a time. Increasing this number sets your scheduling capacity; it does not make dates with confirmed events available for new public inquiries. Configure that separately under Settings → Availability → Date holds and availability → When a confirmed event is already on the calendar. 2 or more also requires Event Spaces for overlapping staff bookings."
       />
       <CountSelect
         value={maxTours}
@@ -86,7 +86,7 @@ export function CapacityRulesSection({ initialRules }: { initialRules: VenueCapa
       />
       <div className="space-y-1.5">
         <Label className="text-sm font-medium text-heading">Minimum turnaround between events (hours)</Label>
-        <p className="text-xs text-muted-foreground">Enforced when an event is booked. Hours required between one event&apos;s operational end (including teardown) and the next event&apos;s operational start (including setup). Simple venues apply this venue-wide; overlapping-event venues apply it per Event Space. Set to 0 if events can be back-to-back.</p>
+        <p className="text-xs text-muted-foreground">Enforced when an event is booked. Hours required between one event&apos;s operational end (including teardown) and the next event&apos;s operational start (including setup). Venues that host one event at a time apply this venue-wide; venues that book overlapping events apply it per Event Space. Set to 0 if events can be back-to-back. Turnaround does not change public Available / Not available for confirmed events.</p>
         <Input
           type="number"
           value={turnaround}
