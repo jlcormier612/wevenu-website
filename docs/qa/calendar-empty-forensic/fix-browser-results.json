@@ -1,0 +1,130 @@
+{
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": {
+        "tip": "727a92caf62af61fd05c7f9c8d5b3d1727a2ff1e",
+        "EXPECTED": "727a92caf62af61fd05c7f9c8d5b3d1727a2ff1e"
+      }
+    },
+    {
+      "name": "db_lucy_unchanged",
+      "pass": true,
+      "detail": {
+        "id": "061714de-b785-4b47-ad3e-ecc53616e853",
+        "status": "confirmed",
+        "scheduled_at": "2026-10-15T14:30:00+00:00",
+        "actual_occurred_at": null,
+        "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+      }
+    },
+    {
+      "name": "db_christmas_unchanged",
+      "pass": true,
+      "detail": {
+        "id": "a32242fa-852b-4b34-85c8-8db9f879517d",
+        "label": "Christmas",
+        "start_date": "2026-12-25",
+        "recurrence_rule": "annual",
+        "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+      }
+    },
+    {
+      "name": "browser_dpl",
+      "pass": true,
+      "detail": "727a92caf62af61fd05c7f9c8d5b3d1727a2ff1e"
+    },
+    {
+      "name": "oct_cleared_glance_has_tours",
+      "pass": true,
+      "detail": "at a glance — 4 items"
+    },
+    {
+      "name": "oct_cleared_lucy_visible",
+      "pass": true,
+      "detail": "Thursday, October 15\n\nTOUR\n\n10:30 AM\n\nVenue Tour — Lucy Wraps & Adam Cormier\n\nWedding\n\nOctober at a glance — 4 items\n4 Tours"
+    },
+    {
+      "name": "oct_tour_barn_lucy_visible",
+      "pass": true,
+      "detail": {
+        "hasLucy": true,
+        "glance": "at a glance — 4 items"
+      }
+    },
+    {
+      "name": "oct15_panel_lucy_under_barn",
+      "pass": true,
+      "detail": "Thursday, October 15\n\nTOUR\n\n10:30 AM\n\nVenue Tour — Lucy Wraps & Adam Cormier\n\nWedding\n\nOctober at a glance — 4 items\n4 Tours"
+    },
+    {
+      "name": "oct_tour_chip_no_blank",
+      "pass": true,
+      "detail": {
+        "glance": "at a glance — 4 items",
+        "hasTour": true
+      }
+    },
+    {
+      "name": "oct_after_clear_tours_return",
+      "pass": true,
+      "detail": "at a glance — 4 items"
+    },
+    {
+      "name": "oct_completed_on_actual_dates",
+      "pass": true,
+      "detail": {
+        "hasEllie": true,
+        "hasNicole": true,
+        "hasLydia": true
+      }
+    },
+    {
+      "name": "day_oct15_barn_lucy",
+      "pass": true,
+      "detail": "Venue Tour — Lucy Wraps & Adam Cormier"
+    },
+    {
+      "name": "week_barn_shows_tours",
+      "pass": true,
+      "detail": [
+        "Venue Tour — Ellie Yagnesak & Hunter Lomberto",
+        "Venue Tour — Lydia Cormier & Ali Shazam",
+        "Venue Tour — Nicole Bethune & Colby Yagnesak",
+        "Venue Tour — Lucy Wraps & Adam Cormier",
+        "Venue Tour — Ellie Yagnesak & Hunter Lomberto"
+      ]
+    },
+    {
+      "name": "agenda_barn_lucy",
+      "pass": true,
+      "detail": [
+        "Venue Tour — Lydia Cormier & Ali Shazam",
+        "Venue Tour — Nicole Bethune & Colby Yagnesak",
+        "Venue Tour — Lucy Wraps & Adam Cormier"
+      ]
+    },
+    {
+      "name": "dec25_all_spaces_christmas",
+      "pass": true,
+      "detail": "Christmas"
+    },
+    {
+      "name": "dec25_barn_christmas",
+      "pass": true,
+      "detail": "Friday, December 25\n\nBLOCKED TIME\n\nAll day\n\nChristmas\n\nDecember at a glance — 1 item\n1 Blocked Time"
+    },
+    {
+      "name": "dec_blocked_chip_no_blank",
+      "pass": true,
+      "detail": {
+        "hasChristmas": true,
+        "glance": "at a glance — 1 item"
+      }
+    }
+  ],
+  "tip": "727a92caf62af61fd05c7f9c8d5b3d1727a2ff1e",
+  "EXPECTED": "727a92caf62af61fd05c7f9c8d5b3d1727a2ff1e",
+  "ok": true
+}

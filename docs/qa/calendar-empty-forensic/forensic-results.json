@@ -1,0 +1,218 @@
+{
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "2e9bf5df96d72fe0326786111ce031469443beaf"
+    },
+    {
+      "name": "projection_oct15_tour_present",
+      "pass": true,
+      "detail": [
+        {
+          "id": "tour-061714de-b785-4b47-ad3e-ecc53616e853",
+          "type": "tour",
+          "date": "2026-10-15",
+          "title": "Venue Tour — Lucy Wraps & Adam Cormier",
+          "subtitle": "Wedding",
+          "time": "10:30",
+          "link": "/leads/450fc189-c0da-46e0-99c7-53b3f5adcd50"
+        }
+      ]
+    },
+    {
+      "name": "projection_oct15_tour_has_no_space",
+      "pass": true,
+      "detail": "no space on tour items"
+    },
+    {
+      "name": "barn_filter_hides_tour",
+      "pass": true,
+      "detail": "Barn selected → tour excluded"
+    },
+    {
+      "name": "all_spaces_shows_tour",
+      "pass": true,
+      "detail": "All spaces → tour included"
+    },
+    {
+      "name": "oct15_confirmed_local_date",
+      "pass": true,
+      "detail": {
+        "date": "2026-10-15",
+        "time": "10:30"
+      }
+    },
+    {
+      "name": "projection_dec25_christmas",
+      "pass": true,
+      "detail": [
+        {
+          "id": "tour-exception-a32242fa-852b-4b34-85c8-8db9f879517d-2026-12-25",
+          "type": "calendar_block",
+          "date": "2026-12-25",
+          "title": "Christmas",
+          "subtitle": null,
+          "time": null,
+          "endTime": null,
+          "link": "/settings/availability",
+          "manualType": "blocked_time"
+        }
+      ]
+    },
+    {
+      "name": "barn_filter_hides_christmas",
+      "pass": true,
+      "detail": "Barn → christmas blocked excluded"
+    },
+    {
+      "name": "browser_serving",
+      "pass": true,
+      "detail": "2e9bf5df96d72fe0326786111ce031469443beaf"
+    },
+    {
+      "name": "ui_barn_plus_tour_shows_no_venue_tour",
+      "pass": true,
+      "detail": {
+        "tourVisible": false,
+        "note": "screenshot conditions: Barn + Tour should hide spaceless tours"
+      }
+    },
+    {
+      "name": "ui_all_spaces_shows_tour",
+      "pass": false,
+      "detail": "tour title visible with All spaces"
+    },
+    {
+      "name": "schedule_panel_oct15_tour",
+      "pass": false,
+      "detail": "missing"
+    },
+    {
+      "name": "day_oct15_shows_tour",
+      "pass": true,
+      "detail": "Venue Tour — Lucy Wraps & Adam Cormier"
+    },
+    {
+      "name": "day_oct15_barn_hides_tour",
+      "pass": true,
+      "detail": "Barn day view hides spaceless tour"
+    },
+    {
+      "name": "week_oct15_shows_tour",
+      "pass": true,
+      "detail": "Venue Tour — Ellie Yagnesak & Hunter Lomberto"
+    },
+    {
+      "name": "dec25_all_spaces_shows_christmas",
+      "pass": true,
+      "detail": "Christmas"
+    },
+    {
+      "name": "dec25_barn_hides_christmas",
+      "pass": true,
+      "detail": "Barn hides spaceless blocked date"
+    },
+    {
+      "name": "reload_day_oct15_tour",
+      "pass": true,
+      "detail": "Venue Tour — Lucy Wraps & Adam Cormier"
+    }
+  ],
+  "evidence": {
+    "servingTip": "2e9bf5df96d72fe0326786111ce031469443beaf",
+    "tourItemsOct": [
+      {
+        "id": "tour-061714de-b785-4b47-ad3e-ecc53616e853",
+        "date": "2026-10-15",
+        "time": "10:30",
+        "title": "Venue Tour — Lucy Wraps & Adam Cormier",
+        "spaceId": null,
+        "spaceIds": null,
+        "type": "tour"
+      },
+      {
+        "id": "tour-e34c7bf3-1fbb-4583-9e48-35e7ec62da91",
+        "date": "2026-10-12",
+        "time": "13:00",
+        "title": "Venue Tour — Nicole Bethune & Colby Yagnesak",
+        "spaceId": null,
+        "spaceIds": null,
+        "type": "tour"
+      },
+      {
+        "id": "tour-6c5254be-f42d-4c2f-83f9-babef9329553",
+        "date": "2026-10-11",
+        "time": "16:00",
+        "title": "Venue Tour — Ellie Yagnesak & Hunter Lomberto",
+        "spaceId": null,
+        "spaceIds": null,
+        "type": "tour"
+      },
+      {
+        "id": "tour-3d5825b5-c5d7-4a3d-a3d7-05fee4136637",
+        "date": "2026-10-12",
+        "time": "11:00",
+        "title": "Venue Tour — Lydia Cormier & Ali Shazam",
+        "spaceId": null,
+        "spaceIds": null,
+        "type": "tour"
+      }
+    ],
+    "xmasItems": [
+      {
+        "id": "tour-exception-a32242fa-852b-4b34-85c8-8db9f879517d-2026-12-25",
+        "type": "calendar_block",
+        "date": "2026-12-25",
+        "title": "Christmas",
+        "subtitle": null,
+        "time": null,
+        "endTime": null,
+        "link": "/settings/availability",
+        "manualType": "blocked_time"
+      }
+    ],
+    "octToursDb": [
+      {
+        "id": "e34c7bf3-1fbb-4583-9e48-35e7ec62da91",
+        "status": "completed",
+        "scheduled_at": "2026-10-14T14:30:00+00:00",
+        "actual_occurred_at": "2026-10-12T17:00:00+00:00",
+        "origin": "scheduled",
+        "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+      },
+      {
+        "id": "6c5254be-f42d-4c2f-83f9-babef9329553",
+        "status": "completed",
+        "scheduled_at": "2026-10-14T14:30:00+00:00",
+        "actual_occurred_at": "2026-10-11T20:00:00+00:00",
+        "origin": "scheduled",
+        "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+      },
+      {
+        "id": "061714de-b785-4b47-ad3e-ecc53616e853",
+        "status": "confirmed",
+        "scheduled_at": "2026-10-15T14:30:00+00:00",
+        "actual_occurred_at": null,
+        "origin": "scheduled",
+        "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+      },
+      {
+        "id": "3d5825b5-c5d7-4a3d-a3d7-05fee4136637",
+        "status": "completed",
+        "scheduled_at": "2026-10-15T16:00:00+00:00",
+        "actual_occurred_at": "2026-10-12T15:00:00+00:00",
+        "origin": "scheduled",
+        "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+      }
+    ],
+    "xmasDb": null,
+    "browserDpl": "2e9bf5df96d72fe0326786111ce031469443beaf",
+    "barnSelectValue": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+    "octBarnTourBodySnippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nMeadowbrook Valley Venue\nSearch\n⌘K\n1\nJ\njlcormier612@gmail.com\nCalendar\n\nYour venue’s schedule — events, appointments, holds, and blocked time.\n\nAdd Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nMonth\nWeek\nDay\nMonth list\nOctober\n2026\nEvent\nTour\nAppointment\nHold\nBlocked Time\nTour\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\nClear filters\nSUN\nMON\nTUE\nWED\nTHU\nFRI\nSAT\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n",
+    "octAllSpacesSnippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nMeadowbrook Valley Venue\nSearch\n⌘K\n1\nJ\njlcormier612@gmail.com\nCalendar\n\nYour venue’s schedule — events, appointments, holds, and blocked time.\n\nAdd Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nMonth\nWeek\nDay\nMonth list\nOctober\n2026\nEvent\nTour\nAppointment\nHold\nBlocked Time\nTour\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\nClear filters\nSUN\nMON\nTUE\nWED\nTHU\nFRI\nSAT\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n",
+    "oct15PanelSnippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nMeadowbrook Valley Venue\nSearch\n⌘K\n1\nJ\njlcormier612@gmail.com\nCalendar\n\nYour venue’s schedule — events, appointments, holds, and blocked time.\n\nAdd Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nMonth\nWeek\nDay\nMonth list\nOctober\n2026\nEvent\nTour\nAppointment\nHold\nBlocked Time\nTour\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\nClear filters\nSUN\nMON\nTUE\nWED\nTHU\nFRI\nSAT\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\nSchedule\n\nThursday, October 15\n\nNothing scheduled for this day. Add a schedule item, or book a tour from Tours."
+  },
+  "expectedServing": "2e9bf5df96d72fe0326786111ce031469443beaf",
+  "tip": "2e9bf5df96d72fe0326786111ce031469443beaf"
+}
