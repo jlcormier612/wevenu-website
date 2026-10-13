@@ -17,10 +17,7 @@ import {
   sendRevisedInvoiceAndPaymentPlanAction,
   type InvoiceAndPaymentPlanPreview,
 } from "@/app/(app)/invoices/actions";
-import {
-  adjustRemainingPaymentPlanAction,
-  previewRemainingPaymentPlanAdjustmentAction,
-} from "@/app/(app)/payments/[id]/actions";
+import { adjustRemainingPaymentPlanAction } from "@/app/(app)/payments/[id]/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -36,9 +33,10 @@ import {
   buildRedistributedRemaining,
   formatAdjustAmountInput,
   parseAdjustAmountInput,
+  previewAdjustRemainingPlan,
 } from "@/lib/payments/adjust-remaining-plan";
 import { OBLIGATION_KIND_OPTIONS } from "@/lib/payments/constants";
-import type { PaymentObligationKind } from "@/lib/payments/types";
+import type { PaymentLineItem, PaymentObligationKind } from "@/lib/payments/types";
 
 type ScheduleLineForAdjust = {
   id?: string;
@@ -83,6 +81,38 @@ function toPayload(rows: DraftRow[]): AdjustableDraftLine[] {
   return rows.map(({ key: _key, ...rest }) => rest);
 }
 
+/** Narrow schedule props into the shape previewAdjustRemainingPlan reads. */
+function toPreviewSourceLines(
+  scheduleId: string,
+  lines: ScheduleLineForAdjust[],
+): PaymentLineItem[] {
+  return lines.map((l, index) => ({
+    id: l.id ?? `adjust-src-${index}`,
+    venueId: "",
+    scheduleId,
+    label: l.label,
+    amount: Number(l.amount) || 0,
+    dueDate: l.dueDate,
+    status: l.status as PaymentLineItem["status"],
+    paidAmount: l.paidAmount ?? null,
+    paidAt: null,
+    paymentMethod: null,
+    referenceNumber: null,
+    notes: null,
+    sortOrder: index,
+    obligationKind: l.obligationKind ?? null,
+    refundedAmount: 0,
+    refundedAt: null,
+    refundReason: null,
+    quickbooksSyncStatus: "not_synced" as const,
+    stripeCheckoutSessionId: null,
+    stripePaymentIntentId: null,
+    stripePaymentMethodType: null,
+    createdAt: "",
+    updatedAt: "",
+  }));
+}
+
 export function AdjustPaymentPlanDialog({
   open,
   onOpenChange,
@@ -101,34 +131,41 @@ export function AdjustPaymentPlanDialog({
   const [closedShortfall, setClosedShortfall] = React.useState(0);
   const [sendPreview, setSendPreview] = React.useState<InvoiceAndPaymentPlanPreview | null>(null);
   const [step, setStep] = React.useState<"edit" | "send">("edit");
-  const previewSeq = React.useRef(0);
+  const seededOpenSession = React.useRef(false);
 
   const applyRows = React.useCallback((next: DraftRow[]) => {
     setRows(next);
     setAmountInputs(amountInputsFromRows(next));
   }, []);
 
+  // Client-side preview only — calling a Server Action on every keystroke soft-refreshes
+  // the invoice RSC tree, remounts this dialog, and wipes in-progress edits.
   const refreshPreview = React.useCallback((nextRows: DraftRow[]) => {
-    const seq = ++previewSeq.current;
-    const payload = toPayload(nextRows);
-    startPending(async () => {
-      const result = await previewRemainingPaymentPlanAdjustmentAction(scheduleId, payload);
-      // Ignore stale responses so mid-edit "amount 0" previews cannot stick.
-      if (seq !== previewSeq.current) return;
-      if (result.ok) {
-        setPreviewNote(null);
-        setDiscrepancy(result.preview.discrepancy);
-        setClosedShortfall(result.preview.closedPartialShortfall);
-      } else {
-        setPreviewNote(result.message ?? "Could not preview.");
-        setDiscrepancy(result.preview?.discrepancy ?? 0);
-        setClosedShortfall(result.preview?.closedPartialShortfall ?? 0);
-      }
+    const preview = previewAdjustRemainingPlan({
+      invoiceTotal,
+      balanceDue,
+      lines: toPreviewSourceLines(scheduleId, scheduleLines),
+      proposedRemaining: toPayload(nextRows),
     });
-  }, [scheduleId]);
+    if (preview.ok) {
+      setPreviewNote(null);
+      setDiscrepancy(preview.discrepancy);
+      setClosedShortfall(preview.closedPartialShortfall);
+    } else {
+      setPreviewNote(preview.message ?? "Could not preview.");
+      setDiscrepancy(preview.discrepancy);
+      setClosedShortfall(preview.closedPartialShortfall);
+    }
+  }, [invoiceTotal, balanceDue, scheduleId, scheduleLines]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      seededOpenSession.current = false;
+      return;
+    }
+    // Seed once per open session so parent RSC refreshes cannot reset draft rows mid-edit.
+    if (seededOpenSession.current) return;
+    seededOpenSession.current = true;
     setStep("edit");
     setSendPreview(null);
     const unresolved = scheduleLines
@@ -157,8 +194,7 @@ export function AdjustPaymentPlanDialog({
     const next = toDraftRows(redistributed);
     applyRows(next);
     refreshPreview(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-seed when dialog opens
-  }, [open, scheduleId, balanceDue]);
+  }, [open, scheduleId, balanceDue, scheduleLines, applyRows, refreshPreview]);
 
   function updateRow(key: string, patch: Partial<AdjustableDraftLine>) {
     setRows((prev) => {
@@ -339,7 +375,7 @@ export function AdjustPaymentPlanDialog({
                     <Label className="text-xs">Label</Label>
                     <Input
                       value={line.label}
-                      onChange={(e) => updateRow(line.key, { label: e.target.value })}
+                      onValueChange={(v) => updateRow(line.key, { label: v })}
                       data-testid={`adjust-line-label-${index}`}
                     />
                   </div>
@@ -348,7 +384,7 @@ export function AdjustPaymentPlanDialog({
                     <Input
                       inputMode="decimal"
                       value={amountInputs[line.key] ?? formatAdjustAmountInput(line.amount)}
-                      onChange={(e) => onAmountInputChange(line.key, e.target.value)}
+                      onValueChange={(v) => onAmountInputChange(line.key, v)}
                       data-testid={`adjust-line-amount-${index}`}
                     />
                   </div>
@@ -357,7 +393,7 @@ export function AdjustPaymentPlanDialog({
                     <Input
                       type="date"
                       value={line.dueDate ?? ""}
-                      onChange={(e) => updateRow(line.key, { dueDate: e.target.value || null })}
+                      onValueChange={(v) => updateRow(line.key, { dueDate: v || null })}
                       data-testid={`adjust-line-due-${index}`}
                     />
                   </div>

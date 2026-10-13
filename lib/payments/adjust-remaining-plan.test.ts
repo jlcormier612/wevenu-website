@@ -255,14 +255,17 @@ describe("adjust amount input parsing", () => {
     assert.equal(formatAdjustAmountInput(4302.08), "4302.08");
   });
 
-  it("dialog wires parse helper, stable row keys, and stale-preview sequencing", () => {
+  it("dialog wires parse helper, stable row keys, and client-side preview", () => {
     const src = readFileSync("components/invoices/adjust-payment-plan-dialog.tsx", "utf8");
     assert.match(src, /parseAdjustAmountInput/);
     assert.match(src, /formatAdjustAmountInput/);
-    assert.match(src, /previewSeq/);
-    assert.match(src, /seq !== previewSeq\.current/);
+    assert.match(src, /previewAdjustRemainingPlan/);
+    assert.match(src, /seededOpenSession/);
+    assert.match(src, /onValueChange/);
+    assert.doesNotMatch(src, /previewRemainingPaymentPlanAdjustmentAction/);
     assert.doesNotMatch(src, /Number\(e\.target\.value\.replace/);
     assert.match(src, /mode:\s*"equal"/);
     assert.match(src, /key=\{line\.key\}/);
   });
 });
+
