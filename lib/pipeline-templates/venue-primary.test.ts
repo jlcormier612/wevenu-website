@@ -28,4 +28,12 @@ describe("Pipeline Templates venue-primary UX", () => {
     assert.doesNotMatch(board, /usingVenue/);
     assert.doesNotMatch(board, /salesStageForCanonical/);
   });
+
+  it("Pipeline Templates list offers Back to Leads above the page heading", () => {
+    const page = readFileSync(resolve("app/(app)/library/pipeline-templates/page.tsx"), "utf8");
+    const back = page.indexOf("← Back to Leads");
+    const heading = page.indexOf('title="Pipeline Templates"');
+    assert.ok(back >= 0 && heading > back, "Back to Leads must render above Pipeline Templates");
+    assert.match(page, /href="\/leads"/);
+  });
 });

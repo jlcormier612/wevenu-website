@@ -178,6 +178,19 @@ describe("Add Schedule Item form exposes time fields", () => {
       "Start time must sit between Start date and Related to");
   });
 
+  it("keeps Start date and End date on one equal-width row beneath Type", () => {
+    const typeLabel = form.indexOf('Type <span className="font-normal text-muted-foreground">(optional)</span>');
+    const dateRow = form.indexOf('grid gap-3 sm:col-span-2 sm:grid-cols-2');
+    const startDate = form.indexOf("Start date *");
+    const endDate = form.indexOf(">End date<");
+    assert.ok(typeLabel >= 0 && dateRow > typeLabel, "date row must follow Type");
+    assert.ok(startDate > dateRow && endDate > startDate, "Start/End sit inside the shared date row");
+    // Dates must not be loose sm:grid-cols-2 siblings that sit beside Type when Reason is absent.
+    const startBlock = form.slice(dateRow, endDate + 40);
+    assert.match(startBlock, /Start date \*/);
+    assert.match(startBlock, /End date/);
+  });
+
   it("clears clock inputs when All day is checked", () => {
     assert.match(form, /if \(next\) \{\s*setBlockStartTime\(""\);\s*setBlockEndTime\(""\);/s);
   });

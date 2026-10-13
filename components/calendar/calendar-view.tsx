@@ -881,22 +881,25 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
                 ) : null}
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Start date *</Label>
-              <Input
-                type="date"
-                value={blockStart}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setBlockStart(next);
-                  // Keep a multi-day span coherent — never leave end before start.
-                  if (!blockEnd || blockEnd < next) setBlockEnd(next);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">End date</Label>
-              <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
+            {/* Own full-width row so Start/End sit together beneath Type (not beside it). */}
+            <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start date *</Label>
+                <Input
+                  type="date"
+                  value={blockStart}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setBlockStart(next);
+                    // Keep a multi-day span coherent — never leave end before start.
+                    if (!blockEnd || blockEnd < next) setBlockEnd(next);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End date</Label>
+                <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
+              </div>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <label className="flex items-center gap-2 cursor-pointer select-none">

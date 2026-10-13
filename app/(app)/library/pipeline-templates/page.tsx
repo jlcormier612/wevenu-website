@@ -13,6 +13,12 @@ export default async function PipelineTemplatesPage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/leads"
+        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Back to Leads
+      </Link>
       <PageHeader
         title="Pipeline Templates"
         description="Define the steps your team follows to move a lead from first contact to booking. Your stage names appear on the Leads board; reporting categories keep analytics consistent."
