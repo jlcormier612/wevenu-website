@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail, MessageSquare, Smartphone } from "lucide-react";
+import { ArrowLeft, Mail, Smartphone } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatTile } from "@/components/dashboard-system/stat-tile";
@@ -22,6 +22,13 @@ export default async function CommunicationHealthPage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/messaging"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+        Back to Inbox
+      </Link>
       <div>
         <h1 className="font-heading text-2xl font-medium text-heading">Communication Health</h1>
         <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients.</p>
@@ -126,10 +133,6 @@ export default async function CommunicationHealthPage() {
           )}
         </CardContent>
       </Card>
-
-      <Link href="/messaging" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <MessageSquare className="h-3.5 w-3.5" /> Back to Inbox
-      </Link>
     </div>
   );
 }
