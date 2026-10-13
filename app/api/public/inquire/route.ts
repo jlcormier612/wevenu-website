@@ -11,6 +11,7 @@ import { INQUIRY_API_ERRORS } from "@/lib/inquiry-form/constants";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 import { parsePublicLeadRpcSuccess } from "@/lib/lead-intake/public-lead-rpc";
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 
 function clientIp(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -186,24 +187,31 @@ export async function POST(request: NextRequest) {
   }
 
   if (fromEmail && venue.email) {
+    const appOrigin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const detailLines = [
+      `New inquiry received via ${venue.name}'s website form.`,
+      "",
+      `Name: ${inquirerName}`,
+      `Email: ${inquirerEmail}`,
+      phone ? `Phone: ${phone}` : null,
+      partnerFirst ? `Partner: ${partnerFirst} ${partnerLast ?? ""}`.trim() : null,
+      eventType ? `Event type: ${String(eventType)}` : null,
+      eventDate ? `Preferred event date: ${eventDate}` : null,
+      guestCount ? `Guests: ${guestCount}` : null,
+      estimatedBudget ? `Budget: $${Number(estimatedBudget).toLocaleString()}` : null,
+      inquiryMessage ? `\nMessage:\n${inquiryMessage}` : null,
+    ].filter(Boolean).join("\n");
+    const venueEmail = buildVenueNotificationEmail({
+      title: `New inquiry from ${inquirerName}`,
+      body: detailLines,
+      link: `/leads/${outcome.leadId}`,
+      appOrigin,
+    });
     sendEmail({
       to: venue.email,
-      subject: `New inquiry: ${inquirerName}`,
-      text: [
-        `New inquiry received via ${venue.name}'s website form.`,
-        "",
-        `Name: ${inquirerName}`,
-        `Email: ${inquirerEmail}`,
-        phone ? `Phone: ${phone}` : null,
-        partnerFirst ? `Partner: ${partnerFirst} ${partnerLast ?? ""}`.trim() : null,
-        eventType ? `Event type: ${String(eventType)}` : null,
-        eventDate ? `Preferred event date: ${eventDate}` : null,
-        guestCount ? `Guests: ${guestCount}` : null,
-        estimatedBudget ? `Budget: $${Number(estimatedBudget).toLocaleString()}` : null,
-        inquiryMessage ? `\nMessage:\n${inquiryMessage}` : null,
-        "",
-        `View in Hello to Cheers: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/leads`,
-      ].filter(Boolean).join("\n"),
+      subject: venueEmail.subject,
+      text: venueEmail.text,
+      html: venueEmail.html,
     }).then(
       (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
       () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
