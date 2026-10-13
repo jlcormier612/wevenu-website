@@ -27,7 +27,7 @@ function toIso(d: Date): string {
 }
 
 export function WeekView({
-  weekStart, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  weekStart, items, today, onEditBlock, onViewBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
   showSpaceFilter = false,
   venueSpaces = [],
 }: {
@@ -36,6 +36,7 @@ export function WeekView({
   items: CalendarItem[];
   today: string;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
@@ -144,7 +145,7 @@ export function WeekView({
             {days.flatMap((d) => d.dayItems).map((item) => (
               <ItemRow
                 key={item.id} item={item} showDate
-                onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+                onEditBlock={onEditBlock} onViewBlock={onViewBlock} onDeleteBlock={onDeleteBlock}
                 deleting={!!deletePending && deletingId === item.rawId}
               />
             ))}

@@ -21,7 +21,7 @@ import type { CalendarItem } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
 
 export function AgendaView({
-  items, today, year, month, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  items, today, year, month, onEditBlock, onViewBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
   showSpaceFilter = false,
   venueSpaces = [],
 }: {
@@ -30,6 +30,7 @@ export function AgendaView({
   year: number;
   month: number;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
@@ -113,7 +114,7 @@ export function AgendaView({
                   {dateItems.map((item) => (
                     <ItemRow
                       key={item.id} item={item}
-                      onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+                      onEditBlock={onEditBlock} onViewBlock={onViewBlock} onDeleteBlock={onDeleteBlock}
                       deleting={!!deletePending && deletingId === item.rawId}
                     />
                   ))}

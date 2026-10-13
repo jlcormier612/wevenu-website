@@ -127,12 +127,14 @@ export function formatTime(hhmm: string | null): string {
 // delete affordance for the one editable type (calendar_block).
 
 export function ItemRow({
-  item, onDeleteBlock, onEditBlock, deleting, showDate,
+  item, onDeleteBlock, onEditBlock, onViewBlock, deleting, showDate,
 }: {
   item: CalendarItem;
   onDeleteBlock?: (blockId: string) => void;
   /** Manual Schedule Items are the one editable type; omitted on read-only surfaces (print). */
   onEditBlock?: (blockId: string) => void;
+  /** Opens read-only details — must not be the same path as onEditBlock. */
+  onViewBlock?: (blockId: string) => void;
   deleting?: boolean;
   /** Agenda spans many days — show each row's own date. */
   showDate?: boolean;
@@ -176,6 +178,9 @@ export function ItemRow({
               {item.endTime ? `${formatTime(item.time)} – ${formatTime(item.endTime)}` : formatTime(item.time)}
             </span>
           )}
+          {!item.time && isBlock && (
+            <span className="text-xs text-muted-foreground">All day</span>
+          )}
         </div>
         <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
         {item.subtitle && (
@@ -194,10 +199,22 @@ export function ItemRow({
     </>
   );
 
-  if (isBlock && !isConverted && item.rawId && (onDeleteBlock || onEditBlock)) {
+  if (isBlock && !isConverted && item.rawId && (onDeleteBlock || onEditBlock || onViewBlock)) {
     return (
       <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
-        {inner}
+        {onViewBlock ? (
+          <button
+            type="button"
+            onClick={() => onViewBlock(item.rawId!)}
+            className="flex min-w-0 flex-1 items-start gap-3 text-left rounded-md hover:bg-muted/40 transition-colors -m-1 p-1"
+            data-testid="schedule-item-view"
+            aria-label={`View ${item.title}`}
+          >
+            {inner}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-start gap-3">{inner}</div>
+        )}
         <div className="ml-1 mt-0.5 flex shrink-0 items-center gap-1">
           {isPlaceholder && (
             <Link
@@ -207,9 +224,8 @@ export function ItemRow({
               Convert to Lead
             </Link>
           )}
-          {/* Until now a manual item could only be created or deleted, so
-              correcting a typo or a time meant deleting and re-entering it —
-              losing the item's own history and any relationship set on it. */}
+          {/* Explicit edit — opening the row is view-only so a glance cannot
+              overwrite times or notes by landing in the Schedule Item form. */}
           {onEditBlock && (
             <button
               type="button"
@@ -218,6 +234,7 @@ export function ItemRow({
               className="shrink-0 rounded p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
               title="Edit schedule item"
               aria-label="Edit schedule item"
+              data-testid="schedule-item-edit"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>

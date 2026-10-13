@@ -48,8 +48,11 @@ export function publicMonthCells(
 
   for (let day = 1; day <= days; day++) {
     const iso = `${year}-${pad(month)}-${pad(day)}`;
-    const isAvailable = available.has(iso);
-    const inquireHref = isAvailable && iso >= today
+    // Past days must not read as "Available" to prospects — even when the
+    // engine would have allowed an event historically, they are no longer
+    // requestable. Inquiry already required iso >= today; the label must match.
+    const isAvailable = available.has(iso) && iso >= today;
+    const inquireHref = isAvailable
       ? `/form/${encodeURIComponent(token)}?date=${iso}`
       : null;
     cells.push({ iso, inMonth: true, available: isAvailable, inquireHref });

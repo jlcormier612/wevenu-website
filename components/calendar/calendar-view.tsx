@@ -34,6 +34,7 @@ import type { VenueEventTypeOption } from "@/lib/event-types/venue-options";
 import { buildVenueEventTypeOptions } from "@/lib/event-types/venue-options";
 import { toast } from "sonner";
 import { describeRecurrence } from "@/lib/calendar/recurrence";
+import { formScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import type { CalendarItem, ScheduleRelationOption } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
 import {
@@ -45,6 +46,7 @@ import {
   resolveItemMeta,
   venueCalendarLegendEntries,
 } from "@/components/calendar/calendar-shared";
+import { ScheduleItemDetailDialog } from "@/components/calendar/schedule-item-detail-dialog";
 import { ScheduleRelationPicker } from "@/components/calendar/schedule-relation-picker";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
@@ -73,18 +75,22 @@ const MONTH_NAMES = [
 // platform, never a different tool (closing instruction of Phase 3).
 
 function ViewSwitcher({ current, onChange }: { current: "month" | "week" | "day" | "agenda"; onChange: (v: "month" | "week" | "day" | "agenda") => void }) {
-  const views: { value: "month" | "week" | "day" | "agenda"; label: string }[] = [
-    { value: "month", label: "Month" },
-    { value: "week", label: "Week" },
-    { value: "day", label: "Day" },
-    { value: "agenda", label: "Agenda" },
+  // Day = one calendar day. Agenda = upcoming list for the selected month.
+  // Labels spell that out so the two list-like views are not confused.
+  const views: { value: "month" | "week" | "day" | "agenda"; label: string; title: string }[] = [
+    { value: "month", label: "Month", title: "Month grid" },
+    { value: "week", label: "Week", title: "Seven-day week" },
+    { value: "day", label: "Day", title: "One day" },
+    { value: "agenda", label: "Month list", title: "Upcoming list for this month" },
   ];
   return (
-    <div className="inline-flex rounded-lg border border-border p-0.5">
+    <div className="inline-flex rounded-lg border border-border p-0.5" role="group" aria-label="Calendar view">
       {views.map((v) => (
         <button
           key={v.value}
           type="button"
+          title={v.title}
+          aria-label={v.title}
           onClick={() => onChange(v.value)}
           className={cn(
             "rounded-md px-3 py-1 text-sm font-medium transition-colors",
@@ -221,12 +227,13 @@ function CalendarGrid({
 // ---- Day detail panel -------------------------------------------------------
 
 function DayDetail({
-  date, items, onDeleteBlock, onEditBlock, deletingId, deletePending,
+  date, items, onDeleteBlock, onEditBlock, onViewBlock, deletingId, deletePending,
 }: {
   date: string | null;
   items: CalendarItem[];
   onDeleteBlock: (blockId: string) => void;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   deletingId: string | null;
   deletePending: boolean;
 }) {
@@ -257,6 +264,7 @@ function DayDetail({
           {dateItems.map((item) => (
             <ItemRow
               key={item.id} item={item} onDeleteBlock={onDeleteBlock} onEditBlock={onEditBlock}
+              onViewBlock={onViewBlock}
               deleting={deletePending && deletingId === item.rawId}
             />
           ))}
@@ -368,8 +376,9 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
   const [blockStart, setBlockStart] = React.useState(today);
   const [blockEnd, setBlockEnd] = React.useState(today);
   const [blockIsAllDay, setBlockIsAllDay] = React.useState(false);
-  const [blockStartTime, setBlockStartTime] = React.useState("09:00");
-  const [blockEndTime, setBlockEndTime] = React.useState("17:00");
+  // Empty until the coordinator types clock times — do not invent 09:00–17:00.
+  const [blockStartTime, setBlockStartTime] = React.useState("");
+  const [blockEndTime, setBlockEndTime] = React.useState("");
   // Recurrence is now frequency + interval + one end condition, rather than a
   // fixed four-item list. The simple presets still map onto interval 1, so
   // "Every week" is unchanged for anyone who never opens Custom.
@@ -399,6 +408,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
   const [blockPending, startBlock] = React.useTransition();
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [deletePending, startDelete] = React.useTransition();
+  const [viewingBlockId, setViewingBlockId] = React.useState<string | null>(null);
   const formRef = React.useRef<HTMLDivElement>(null);
 
   const holdEventTypeOptions = React.useMemo(
@@ -469,7 +479,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
     setBlockTitle("");
     applySafeDefaultType();
     setBlockReason("other"); setBlockStart(date); setBlockEnd(date);
-    setBlockIsAllDay(false); setBlockStartTime("09:00"); setBlockEndTime("17:00");
+    setBlockIsAllDay(false); setBlockStartTime(""); setBlockEndTime("");
     setBlockRecurrence("none"); setBlockRecurrenceCustom(false); setBlockRecurrenceInterval("1");
     setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
     setBlockRelatedTo(null);
@@ -568,8 +578,14 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
     });
   }
 
+  /** Read-only details — never opens the Schedule Item form. */
+  function handleViewBlock(blockId: string) {
+    setViewingBlockId(blockId);
+  }
+
   /** Opens the form pre-filled from an existing item. */
   function handleEditBlock(blockId: string) {
+    setViewingBlockId(null);
     setLoadingBlock(true);
     setShowBlockForm(true);
     setEditingBlockId(blockId);
@@ -595,8 +611,9 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
       setBlockStart(block.startDate);
       setBlockEnd(block.endDate);
       setBlockIsAllDay(block.isAllDay);
-      setBlockStartTime(block.startTime ?? "09:00");
-      setBlockEndTime(block.endTime ?? "17:00");
+      const times = formScheduleItemTimes(block.isAllDay, block.startTime, block.endTime);
+      setBlockStartTime(times.startTime);
+      setBlockEndTime(times.endTime);
       setBlockRecurrence(block.recurrenceRule);
       setBlockRecurrenceInterval(String(block.recurrenceInterval || 1));
       // Anything that isn't a plain every-one series opens with Custom already
@@ -858,7 +875,16 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
             )}
             <div className="space-y-1.5">
               <Label className="text-xs">Start date *</Label>
-              <Input type="date" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} />
+              <Input
+                type="date"
+                value={blockStart}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setBlockStart(next);
+                  // Keep a multi-day span coherent — never leave end before start.
+                  if (!blockEnd || blockEnd < next) setBlockEnd(next);
+                }}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">End date</Label>
@@ -869,7 +895,16 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
                 <input
                   type="checkbox"
                   checked={blockIsAllDay}
-                  onChange={(e) => setBlockIsAllDay(e.target.checked)}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setBlockIsAllDay(next);
+                    // All-day rows store null times — clear the inputs so a later
+                    // uncheck cannot resurrect fabricated placeholders.
+                    if (next) {
+                      setBlockStartTime("");
+                      setBlockEndTime("");
+                    }
+                  }}
                   className="h-4 w-4 rounded border-border"
                 />
                 <span className="text-xs text-foreground">All day</span>
@@ -1065,10 +1100,19 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
         </div>
       )}
 
+      <ScheduleItemDetailDialog
+        item={viewingBlockId
+          ? (items.find((i) => i.type === "calendar_block" && i.rawId === viewingBlockId) ?? null)
+          : null}
+        open={Boolean(viewingBlockId)}
+        onOpenChange={(next) => { if (!next) setViewingBlockId(null); }}
+        onEdit={handleEditBlock}
+      />
+
       {view === "week" && (
         <WeekView
           weekStart={weekStart || today} items={items} today={today}
-          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          onEditBlock={handleEditBlock} onViewBlock={handleViewBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
           showSpaceFilter={showSpaceFilter}
@@ -1078,7 +1122,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
       {view === "day" && (
         <DayView
           date={dayDate || today} items={items} today={today}
-          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          onEditBlock={handleEditBlock} onViewBlock={handleViewBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
           showSpaceFilter={showSpaceFilter}
@@ -1088,7 +1132,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
       {view === "agenda" && (
         <AgendaView
           items={items} today={today} year={year} month={month}
-          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          onEditBlock={handleEditBlock} onViewBlock={handleViewBlock} onDeleteBlock={handleDeleteBlock}
           deletingId={deletingId} deletePending={deletePending}
           tastingEnabled={tastingEnabled}
           showSpaceFilter={showSpaceFilter}
@@ -1146,6 +1190,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
               items={displayItems}
               onDeleteBlock={handleDeleteBlock}
               onEditBlock={handleEditBlock}
+              onViewBlock={handleViewBlock}
               deletingId={deletingId}
               deletePending={deletePending}
             />

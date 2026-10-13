@@ -4,7 +4,10 @@
 import { createClient } from "@/integrations/supabase/server";
 import { BOOKING_SCHEDULE_TYPES } from "@/lib/availability/types";
 import type { OccupancyInput, OccupancyResult } from "@/lib/availability/event-occupancy";
-import { persistScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
+import {
+  normalizeScheduleItemAllDay,
+  persistScheduleItemTimes,
+} from "@/lib/calendar/schedule-item-times";
 import { mapCalendarBlockRow } from "@/lib/availability/calendar-block-coverage";
 import { effectiveMinTurnaroundHours, protectedEndDate } from "@/lib/availability/event-occupancy";
 import { holdSpaceIds } from "@/lib/availability/hold-occupancy";
@@ -449,7 +452,11 @@ function blockColumns(input: CalendarBlockInput & {
     // reason only means something for Blocked Time — every other manual
     // type has no sub-reason concept.
     reason: input.type === "blocked_time" ? input.reason : null,
-    start_date: input.startDate, end_date: input.endDate || input.startDate, is_all_day: input.isAllDay,
+    // is_all_day defaults to true in Postgres — always send an explicit boolean
+    // so a missing/undefined client flag cannot silently store an all-day row.
+    start_date: input.startDate,
+    end_date: input.endDate || input.startDate,
+    is_all_day: normalizeScheduleItemAllDay(input.isAllDay),
     ...persistScheduleItemTimes(input.isAllDay, input.startTime, input.endTime),
     notes: input.notes.trim() || null,
     recurrence_rule: input.recurrenceRule ?? "none",

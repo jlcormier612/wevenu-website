@@ -49,9 +49,11 @@ describe("public month grid", () => {
     assert.equal(day?.inquireHref, "/form/abc%20key?date=2026-09-20");
   });
 
-  it("does not offer inquiry for an available date in the past", () => {
+  it("does not offer inquiry or Available for a date in the past", () => {
     const cells = publicMonthCells(2026, 9, new Set(["2026-09-01"]), "2026-09-20", "key");
-    assert.equal(cells.find((c) => c.iso === "2026-09-01")?.inquireHref, null);
+    const past = cells.find((c) => c.iso === "2026-09-01");
+    assert.equal(past?.inquireHref, null);
+    assert.equal(past?.available, false);
   });
 
   it("crosses the year boundary without dropping December or January", () => {

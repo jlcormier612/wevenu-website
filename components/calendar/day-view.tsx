@@ -19,7 +19,7 @@ import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 
 export function DayView({
-  date, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
+  date, items, today, onEditBlock, onViewBlock, onDeleteBlock, deletingId, deletePending, tastingEnabled = false,
   showSpaceFilter = false,
   venueSpaces = [],
 }: {
@@ -27,6 +27,7 @@ export function DayView({
   items: CalendarItem[];
   today: string;
   onEditBlock?: (blockId: string) => void;
+  onViewBlock?: (blockId: string) => void;
   onDeleteBlock?: (blockId: string) => void;
   deletingId?: string | null;
   deletePending?: boolean;
@@ -82,7 +83,7 @@ export function DayView({
           {dayItems.map((item) => (
             <ItemRow
               key={item.id} item={item}
-              onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+              onEditBlock={onEditBlock} onViewBlock={onViewBlock} onDeleteBlock={onDeleteBlock}
               deleting={!!deletePending && deletingId === item.rawId}
             />
           ))}
