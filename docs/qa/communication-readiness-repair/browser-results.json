@@ -1,0 +1,73 @@
+{
+  "expected": "6abedcfb408d653b94ab1f4d3d65fc58ef3a3e3d",
+  "dpl": "6abedcfb408d653b94ab1f4d3d65fc58ef3a3e3d",
+  "feedbackText": "Test email accepted by the email provider for jennifer@hellotocheers.com. Delivery confirmation comes later from the provider — this is not the same as Delivered.",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "6abedcfb408d653b94ab1f4d3d65fc58ef3a3e3d"
+    },
+    {
+      "name": "status_sent_def",
+      "pass": true,
+      "detail": "defs"
+    },
+    {
+      "name": "status_delivered_def",
+      "pass": true,
+      "detail": "defs"
+    },
+    {
+      "name": "status_received_def",
+      "pass": true,
+      "detail": "defs"
+    },
+    {
+      "name": "status_replied_def",
+      "pass": true,
+      "detail": "defs"
+    },
+    {
+      "name": "setup_still_present",
+      "pass": true,
+      "detail": "setup"
+    },
+    {
+      "name": "dashboard_count_note",
+      "pass": true,
+      "detail": "tiles"
+    },
+    {
+      "name": "sms_disabled_when_unconfigured",
+      "pass": true,
+      "detail": "sms button"
+    },
+    {
+      "name": "sms_unconfigured_copy",
+      "pass": true,
+      "detail": "sms copy"
+    },
+    {
+      "name": "email_enabled",
+      "pass": true,
+      "detail": "email button"
+    },
+    {
+      "name": "email_test_inline_feedback",
+      "pass": true,
+      "detail": "Test email accepted by the email provider for jennifer@hellotocheers.com. Delivery confirmation comes later from the provider — this is not the same as Delivered."
+    },
+    {
+      "name": "email_feedback_not_false_delivered",
+      "pass": true,
+      "detail": "Test email accepted by the email provider for jennifer@hellotocheers.com. Delivery confirmation comes later from the provider — this is not the same as Delivered."
+    },
+    {
+      "name": "narrow_status_defs",
+      "pass": true,
+      "detail": "390"
+    }
+  ],
+  "pass": true
+}
