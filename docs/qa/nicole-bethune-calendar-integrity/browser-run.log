@@ -1,0 +1,44 @@
+PASS serving_commit — d753eafb4c24b918a682736f119674ec4bd18585
+PASS db_five_components — count=5
+PASS db_has_Rehearsal_Dinner — Rehearsal Dinner
+PASS db_has_Getting_Ready — Getting Ready
+PASS db_has_Ceremony — Ceremony
+PASS db_has_Cocktail_Hour — Cocktail Hour
+PASS db_has_Reception — Reception
+PASS db_rehearsal_may8_barn_1800_2100 — {"id":"52899236-dada-4567-b56d-501d6a9bb8da","use_key":"rehearsal_dinner","use_label":"Rehearsal Dinner","scheduled_date":"2027-05-08","start_time":"18:00:00","end_time":"21:00:00","space_id":"6366187b-e7f5-45d0-b9bd-5534a48f6650","spaceName":"Meadowbrook Barn","start":"18:00","end":"21:00"}
+PASS db_getting_ready_may9_villa_1400_1600 — {"id":"887f685d-38a7-46df-b63c-6725efe9f27b","use_key":"getting_ready","use_label":"Getting Ready","scheduled_date":"2027-05-09","start_time":"14:00:00","end_time":"16:00:00","space_id":"e11e9e2f-1930-464d-b9e7-d0c61c30b221","spaceName":"Meadowbrook Villa","start":"14:00","end":"16:00"}
+PASS db_ceremony_may9_bridge_1600_1700 — {"id":"f4ce5096-a2ef-47a8-83ce-200f703fa1d5","use_key":"ceremony","use_label":"Ceremony","scheduled_date":"2027-05-09","start_time":"16:00:00","end_time":"17:00:00","space_id":"696791d8-0e6f-4a6c-b99e-031ee7237d38","spaceName":"Brook Bridge","start":"16:00","end":"17:00"}
+PASS db_cocktail_may9_lawn_1700_1800 — {"id":"29e14c04-5a80-475c-b999-67cf79a3c432","use_key":"cocktail_hour","use_label":"Cocktail Hour","scheduled_date":"2027-05-09","start_time":"17:00:00","end_time":"18:00:00","space_id":"56a70756-5ee3-4e08-8e1b-d1713c5bbbec","spaceName":"Meadow Lawn","start":"17:00","end":"18:00"}
+PASS db_reception_may9_barn_1800_2200 — {"id":"2ecc5624-ecc0-4525-8e09-f96bea2deca4","use_key":"reception","use_label":"Reception","scheduled_date":"2027-05-09","start_time":"18:00:00","end_time":"22:00:00","space_id":"6366187b-e7f5-45d0-b9bd-5534a48f6650","spaceName":"Meadowbrook Barn","start":"18:00","end":"22:00"}
+PASS projection_not_untimed — object
+PASS projection_sat_only_rehearsal — [{"date":"2027-05-08","spaceId":"6366187b-e7f5-45d0-b9bd-5534a48f6650","useLabel":"Rehearsal Dinner","startTime":"18:00","endTime":"21:00","index":0}]
+PASS projection_sun_no_rehearsal — ["Getting Ready","Ceremony","Cocktail Hour","Reception"]
+PASS projection_sun_four_components — ["Getting Ready@14:00-16:00","Ceremony@16:00-17:00","Cocktail Hour@17:00-18:00","Reception@18:00-22:00"]
+PASS projection_barn_sat_rehearsal_only — [{"date":"2027-05-08","spaceId":"6366187b-e7f5-45d0-b9bd-5534a48f6650","useLabel":"Rehearsal Dinner","startTime":"18:00","endTime":"21:00","index":0}]
+PASS projection_barn_sun_reception_only — [{"date":"2027-05-09","spaceId":"6366187b-e7f5-45d0-b9bd-5534a48f6650","useLabel":"Reception","startTime":"18:00","endTime":"22:00","index":4}]
+PASS projection_barn_hides_other_spaces — ok
+PASS ui_sat_heading — day heading
+PASS ui_sat_rehearsal_label — label
+PASS ui_sat_rehearsal_times — 18:00–21:00 cues
+PASS ui_sat_no_getting_ready — absent
+PASS ui_sat_no_cocktail — absent
+PASS ui_sat_no_reception_component — reception not on Sat
+PASS ui_sun_heading — day heading
+PASS ui_sun_no_rehearsal — rehearsal not misplaced
+PASS ui_sun_getting_ready — 14:00–16:00
+PASS ui_sun_ceremony — 16:00–17:00
+PASS ui_sun_cocktail — 17:00–18:00
+PASS ui_sun_reception — 18:00–22:00
+PASS ui_barn_sat_shows_rehearsal — barn sat
+PASS ui_barn_sat_hides_non_barn — non-barn hidden
+PASS ui_barn_sun_shows_reception — barn sun
+PASS ui_barn_sun_hides_villa_bridge_lawn — other spaces filtered out — not misplaced onto Barn
+PASS ui_barn_sun_no_rehearsal — rehearsal stays Saturday
+PASS ui_clear_filter_restores_sunday_components — all four back
+PASS reload_sun_no_rehearsal — stable
+PASS reload_sun_components_intact — stable
+PASS reload_sat_rehearsal_intact — stable
+PASS reload_sat_still_no_sunday_components — stable
+PASS runtime_stayed_expected — d753eafb4c24b918a682736f119674ec4bd18585
+
+GREEN: 42/42 passed → docs/qa/nicole-bethune-calendar-integrity/browser-results.json

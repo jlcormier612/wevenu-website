@@ -1,0 +1,330 @@
+{
+  "verdict": "GREEN",
+  "expected": "d753eafb4c24b918a682736f119674ec4bd18585",
+  "note": "GREEN only when all checks pass — deploy success alone is insufficient",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "d753eafb4c24b918a682736f119674ec4bd18585"
+    },
+    {
+      "name": "db_five_components",
+      "pass": true,
+      "detail": "count=5"
+    },
+    {
+      "name": "db_has_Rehearsal_Dinner",
+      "pass": true,
+      "detail": "Rehearsal Dinner"
+    },
+    {
+      "name": "db_has_Getting_Ready",
+      "pass": true,
+      "detail": "Getting Ready"
+    },
+    {
+      "name": "db_has_Ceremony",
+      "pass": true,
+      "detail": "Ceremony"
+    },
+    {
+      "name": "db_has_Cocktail_Hour",
+      "pass": true,
+      "detail": "Cocktail Hour"
+    },
+    {
+      "name": "db_has_Reception",
+      "pass": true,
+      "detail": "Reception"
+    },
+    {
+      "name": "db_rehearsal_may8_barn_1800_2100",
+      "pass": true,
+      "detail": "{\"id\":\"52899236-dada-4567-b56d-501d6a9bb8da\",\"use_key\":\"rehearsal_dinner\",\"use_label\":\"Rehearsal Dinner\",\"scheduled_date\":\"2027-05-08\",\"start_time\":\"18:00:00\",\"end_time\":\"21:00:00\",\"space_id\":\"6366187b-e7f5-45d0-b9bd-5534a48f6650\",\"spaceName\":\"Meadowbrook Barn\",\"start\":\"18:00\",\"end\":\"21:00\"}"
+    },
+    {
+      "name": "db_getting_ready_may9_villa_1400_1600",
+      "pass": true,
+      "detail": "{\"id\":\"887f685d-38a7-46df-b63c-6725efe9f27b\",\"use_key\":\"getting_ready\",\"use_label\":\"Getting Ready\",\"scheduled_date\":\"2027-05-09\",\"start_time\":\"14:00:00\",\"end_time\":\"16:00:00\",\"space_id\":\"e11e9e2f-1930-464d-b9e7-d0c61c30b221\",\"spaceName\":\"Meadowbrook Villa\",\"start\":\"14:00\",\"end\":\"16:00\"}"
+    },
+    {
+      "name": "db_ceremony_may9_bridge_1600_1700",
+      "pass": true,
+      "detail": "{\"id\":\"f4ce5096-a2ef-47a8-83ce-200f703fa1d5\",\"use_key\":\"ceremony\",\"use_label\":\"Ceremony\",\"scheduled_date\":\"2027-05-09\",\"start_time\":\"16:00:00\",\"end_time\":\"17:00:00\",\"space_id\":\"696791d8-0e6f-4a6c-b99e-031ee7237d38\",\"spaceName\":\"Brook Bridge\",\"start\":\"16:00\",\"end\":\"17:00\"}"
+    },
+    {
+      "name": "db_cocktail_may9_lawn_1700_1800",
+      "pass": true,
+      "detail": "{\"id\":\"29e14c04-5a80-475c-b999-67cf79a3c432\",\"use_key\":\"cocktail_hour\",\"use_label\":\"Cocktail Hour\",\"scheduled_date\":\"2027-05-09\",\"start_time\":\"17:00:00\",\"end_time\":\"18:00:00\",\"space_id\":\"56a70756-5ee3-4e08-8e1b-d1713c5bbbec\",\"spaceName\":\"Meadow Lawn\",\"start\":\"17:00\",\"end\":\"18:00\"}"
+    },
+    {
+      "name": "db_reception_may9_barn_1800_2200",
+      "pass": true,
+      "detail": "{\"id\":\"2ecc5624-ecc0-4525-8e09-f96bea2deca4\",\"use_key\":\"reception\",\"use_label\":\"Reception\",\"scheduled_date\":\"2027-05-09\",\"start_time\":\"18:00:00\",\"end_time\":\"22:00:00\",\"space_id\":\"6366187b-e7f5-45d0-b9bd-5534a48f6650\",\"spaceName\":\"Meadowbrook Barn\",\"start\":\"18:00\",\"end\":\"22:00\"}"
+    },
+    {
+      "name": "projection_not_untimed",
+      "pass": true,
+      "detail": "object"
+    },
+    {
+      "name": "projection_sat_only_rehearsal",
+      "pass": true,
+      "detail": "[{\"date\":\"2027-05-08\",\"spaceId\":\"6366187b-e7f5-45d0-b9bd-5534a48f6650\",\"useLabel\":\"Rehearsal Dinner\",\"startTime\":\"18:00\",\"endTime\":\"21:00\",\"index\":0}]"
+    },
+    {
+      "name": "projection_sun_no_rehearsal",
+      "pass": true,
+      "detail": "[\"Getting Ready\",\"Ceremony\",\"Cocktail Hour\",\"Reception\"]"
+    },
+    {
+      "name": "projection_sun_four_components",
+      "pass": true,
+      "detail": "[\"Getting Ready@14:00-16:00\",\"Ceremony@16:00-17:00\",\"Cocktail Hour@17:00-18:00\",\"Reception@18:00-22:00\"]"
+    },
+    {
+      "name": "projection_barn_sat_rehearsal_only",
+      "pass": true,
+      "detail": "[{\"date\":\"2027-05-08\",\"spaceId\":\"6366187b-e7f5-45d0-b9bd-5534a48f6650\",\"useLabel\":\"Rehearsal Dinner\",\"startTime\":\"18:00\",\"endTime\":\"21:00\",\"index\":0}]"
+    },
+    {
+      "name": "projection_barn_sun_reception_only",
+      "pass": true,
+      "detail": "[{\"date\":\"2027-05-09\",\"spaceId\":\"6366187b-e7f5-45d0-b9bd-5534a48f6650\",\"useLabel\":\"Reception\",\"startTime\":\"18:00\",\"endTime\":\"22:00\",\"index\":4}]"
+    },
+    {
+      "name": "projection_barn_hides_other_spaces",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "ui_sat_heading",
+      "pass": true,
+      "detail": "day heading"
+    },
+    {
+      "name": "ui_sat_rehearsal_label",
+      "pass": true,
+      "detail": "label"
+    },
+    {
+      "name": "ui_sat_rehearsal_times",
+      "pass": true,
+      "detail": "18:00–21:00 cues"
+    },
+    {
+      "name": "ui_sat_no_getting_ready",
+      "pass": true,
+      "detail": "absent"
+    },
+    {
+      "name": "ui_sat_no_cocktail",
+      "pass": true,
+      "detail": "absent"
+    },
+    {
+      "name": "ui_sat_no_reception_component",
+      "pass": true,
+      "detail": "reception not on Sat"
+    },
+    {
+      "name": "ui_sun_heading",
+      "pass": true,
+      "detail": "day heading"
+    },
+    {
+      "name": "ui_sun_no_rehearsal",
+      "pass": true,
+      "detail": "rehearsal not misplaced"
+    },
+    {
+      "name": "ui_sun_getting_ready",
+      "pass": true,
+      "detail": "14:00–16:00"
+    },
+    {
+      "name": "ui_sun_ceremony",
+      "pass": true,
+      "detail": "16:00–17:00"
+    },
+    {
+      "name": "ui_sun_cocktail",
+      "pass": true,
+      "detail": "17:00–18:00"
+    },
+    {
+      "name": "ui_sun_reception",
+      "pass": true,
+      "detail": "18:00–22:00"
+    },
+    {
+      "name": "ui_barn_sat_shows_rehearsal",
+      "pass": true,
+      "detail": "barn sat"
+    },
+    {
+      "name": "ui_barn_sat_hides_non_barn",
+      "pass": true,
+      "detail": "non-barn hidden"
+    },
+    {
+      "name": "ui_barn_sun_shows_reception",
+      "pass": true,
+      "detail": "barn sun"
+    },
+    {
+      "name": "ui_barn_sun_hides_villa_bridge_lawn",
+      "pass": true,
+      "detail": "other spaces filtered out — not misplaced onto Barn"
+    },
+    {
+      "name": "ui_barn_sun_no_rehearsal",
+      "pass": true,
+      "detail": "rehearsal stays Saturday"
+    },
+    {
+      "name": "ui_clear_filter_restores_sunday_components",
+      "pass": true,
+      "detail": "all four back"
+    },
+    {
+      "name": "reload_sun_no_rehearsal",
+      "pass": true,
+      "detail": "stable"
+    },
+    {
+      "name": "reload_sun_components_intact",
+      "pass": true,
+      "detail": "stable"
+    },
+    {
+      "name": "reload_sat_rehearsal_intact",
+      "pass": true,
+      "detail": "stable"
+    },
+    {
+      "name": "reload_sat_still_no_sunday_components",
+      "pass": true,
+      "detail": "stable"
+    },
+    {
+      "name": "runtime_stayed_expected",
+      "pass": true,
+      "detail": "d753eafb4c24b918a682736f119674ec4bd18585"
+    }
+  ],
+  "evidence": {
+    "dbAssignments": [
+      {
+        "id": "52899236-dada-4567-b56d-501d6a9bb8da",
+        "use_key": "rehearsal_dinner",
+        "use_label": "Rehearsal Dinner",
+        "scheduled_date": "2027-05-08",
+        "start_time": "18:00:00",
+        "end_time": "21:00:00",
+        "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+        "spaceName": "Meadowbrook Barn",
+        "start": "18:00",
+        "end": "21:00"
+      },
+      {
+        "id": "887f685d-38a7-46df-b63c-6725efe9f27b",
+        "use_key": "getting_ready",
+        "use_label": "Getting Ready",
+        "scheduled_date": "2027-05-09",
+        "start_time": "14:00:00",
+        "end_time": "16:00:00",
+        "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+        "spaceName": "Meadowbrook Villa",
+        "start": "14:00",
+        "end": "16:00"
+      },
+      {
+        "id": "f4ce5096-a2ef-47a8-83ce-200f703fa1d5",
+        "use_key": "ceremony",
+        "use_label": "Ceremony",
+        "scheduled_date": "2027-05-09",
+        "start_time": "16:00:00",
+        "end_time": "17:00:00",
+        "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+        "spaceName": "Brook Bridge",
+        "start": "16:00",
+        "end": "17:00"
+      },
+      {
+        "id": "29e14c04-5a80-475c-b999-67cf79a3c432",
+        "use_key": "cocktail_hour",
+        "use_label": "Cocktail Hour",
+        "scheduled_date": "2027-05-09",
+        "start_time": "17:00:00",
+        "end_time": "18:00:00",
+        "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+        "spaceName": "Meadow Lawn",
+        "start": "17:00",
+        "end": "18:00"
+      },
+      {
+        "id": "2ecc5624-ecc0-4525-8e09-f96bea2deca4",
+        "use_key": "reception",
+        "use_label": "Reception",
+        "scheduled_date": "2027-05-09",
+        "start_time": "18:00:00",
+        "end_time": "22:00:00",
+        "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+        "spaceName": "Meadowbrook Barn",
+        "start": "18:00",
+        "end": "22:00"
+      }
+    ],
+    "projected": [
+      {
+        "date": "2027-05-08",
+        "spaceId": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+        "useLabel": "Rehearsal Dinner",
+        "startTime": "18:00",
+        "endTime": "21:00",
+        "index": 0
+      },
+      {
+        "date": "2027-05-09",
+        "spaceId": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+        "useLabel": "Getting Ready",
+        "startTime": "14:00",
+        "endTime": "16:00",
+        "index": 1
+      },
+      {
+        "date": "2027-05-09",
+        "spaceId": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+        "useLabel": "Ceremony",
+        "startTime": "16:00",
+        "endTime": "17:00",
+        "index": 2
+      },
+      {
+        "date": "2027-05-09",
+        "spaceId": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+        "useLabel": "Cocktail Hour",
+        "startTime": "17:00",
+        "endTime": "18:00",
+        "index": 3
+      },
+      {
+        "date": "2027-05-09",
+        "spaceId": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+        "useLabel": "Reception",
+        "startTime": "18:00",
+        "endTime": "22:00",
+        "index": 4
+      }
+    ],
+    "satAllSpaces": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nMeadowbrook Valley Venue\nSearch\n⌘K\n1\nJ\njlcormier612@gmail.com\nCalendar\n\nYour venue’s schedule — events, appointments, holds, and blocked time.\n\nAdd Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nMonth\nWeek\nDay\nAgenda\nSaturday, May 8, 2027\nToday\nEvent\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\n\nEVENT\n\n6:00 PM – 9:00 PM\n\nNicole Bethune\n\nWedding · Rehearsal Dinner",
+    "sunAllSpaces": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nMeadowbrook Valley Venue\nSearch\n⌘K\n1\nJ\njlcormier612@gmail.com\nCalendar\n\nYour venue’s schedule — events, appointments, holds, and blocked time.\n\nAdd Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nMonth\nWeek\nDay\nAgenda\nSunday, May 9, 2027\nToday\nEvent\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\n\nEVENT\n\n2:00 PM – 4:00 PM\n\nNicole Bethune\n\nWedding · Getting Ready\n\nEVENT\n\n4:00 PM – 5:00 PM\n\nNicole Bethune\n\nWedding · Ceremony\n\nEVENT\n\n5:00 PM – 6:00 PM\n\nNicole Bethune\n\nWedding · Cocktail Hour\n\nEVENT\n\n6:00 PM – 10:00 PM\n\nNicole Bethune\n\nWedding · Reception",
+    "satBarn": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nMeadowbrook Valley Venue\nSearch\n⌘K\n1\nJ\njlcormier612@gmail.com\nCalendar\n\nYour venue’s schedule — events, appointments, holds, and blocked time.\n\nAdd Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nMonth\nWeek\nDay\nAgenda\nSaturday, May 8, 2027\nToday\nEvent\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\nClear filters\n\nEVENT\n\n6:00 PM – 9:00 PM\n\nNicole Bethune\n\nWedding · Rehearsal Dinner",
+    "sunBarn": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nMeadowbrook Valley Venue\nSearch\n⌘K\n1\nJ\njlcormier612@gmail.com\nCalendar\n\nYour venue’s schedule — events, appointments, holds, and blocked time.\n\nAdd Schedule Item\nPrint / Export\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information.\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nMonth\nWeek\nDay\nAgenda\nSunday, May 9, 2027\nToday\nEvent\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbrook Villa\nMeadow Lawn\nClear filters\n\nEVENT\n\n6:00 PM – 10:00 PM\n\nNicole Bethune\n\nWedding · Reception"
+  },
+  "deploymentIds": [
+    "d753eafb4c24b918a682736f119674ec4bd18585"
+  ]
+}
