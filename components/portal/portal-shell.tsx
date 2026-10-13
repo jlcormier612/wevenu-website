@@ -4351,7 +4351,7 @@ function AccountSettingsPanel({ token, venueName }: { token: string; venueName: 
         </div>
         <button type="button" onClick={handleChangePassword} disabled={savingPassword}
           className="text-xs font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-60" style={{ background: SAGE }}>
-          {savingPassword ? "Saving…" : "Update Password"}
+          {savingPassword ? "Saving…" : "Change password"}
         </button>
       </div>
 
