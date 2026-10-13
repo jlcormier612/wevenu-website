@@ -34,6 +34,8 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import {
   type AdjustableDraftLine,
   buildRedistributedRemaining,
+  formatAdjustAmountInput,
+  parseAdjustAmountInput,
 } from "@/lib/payments/adjust-remaining-plan";
 import { OBLIGATION_KIND_OPTIONS } from "@/lib/payments/constants";
 import type { PaymentObligationKind } from "@/lib/payments/types";
@@ -48,6 +50,8 @@ type ScheduleLineForAdjust = {
   paidAmount?: number | null;
 };
 
+type DraftRow = AdjustableDraftLine & { key: string };
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,6 +61,27 @@ type Props = {
   balanceDue: number;
   scheduleLines: ScheduleLineForAdjust[];
 };
+
+function newRowKey(): string {
+  return `adj-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function toDraftRows(lines: AdjustableDraftLine[]): DraftRow[] {
+  return lines.map((l) => ({
+    ...l,
+    key: (l.id && String(l.id)) || newRowKey(),
+  }));
+}
+
+function amountInputsFromRows(rows: DraftRow[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const row of rows) out[row.key] = formatAdjustAmountInput(row.amount);
+  return out;
+}
+
+function toPayload(rows: DraftRow[]): AdjustableDraftLine[] {
+  return rows.map(({ key: _key, ...rest }) => rest);
+}
 
 export function AdjustPaymentPlanDialog({
   open,
@@ -68,13 +93,39 @@ export function AdjustPaymentPlanDialog({
   scheduleLines,
 }: Props) {
   const router = useRouter();
-  const [lines, setLines] = React.useState<AdjustableDraftLine[]>([]);
+  const [rows, setRows] = React.useState<DraftRow[]>([]);
+  const [amountInputs, setAmountInputs] = React.useState<Record<string, string>>({});
   const [pending, startPending] = React.useTransition();
   const [previewNote, setPreviewNote] = React.useState<string | null>(null);
   const [discrepancy, setDiscrepancy] = React.useState(0);
   const [closedShortfall, setClosedShortfall] = React.useState(0);
   const [sendPreview, setSendPreview] = React.useState<InvoiceAndPaymentPlanPreview | null>(null);
   const [step, setStep] = React.useState<"edit" | "send">("edit");
+  const previewSeq = React.useRef(0);
+
+  const applyRows = React.useCallback((next: DraftRow[]) => {
+    setRows(next);
+    setAmountInputs(amountInputsFromRows(next));
+  }, []);
+
+  const refreshPreview = React.useCallback((nextRows: DraftRow[]) => {
+    const seq = ++previewSeq.current;
+    const payload = toPayload(nextRows);
+    startPending(async () => {
+      const result = await previewRemainingPaymentPlanAdjustmentAction(scheduleId, payload);
+      // Ignore stale responses so mid-edit "amount 0" previews cannot stick.
+      if (seq !== previewSeq.current) return;
+      if (result.ok) {
+        setPreviewNote(null);
+        setDiscrepancy(result.preview.discrepancy);
+        setClosedShortfall(result.preview.closedPartialShortfall);
+      } else {
+        setPreviewNote(result.message ?? "Could not preview.");
+        setDiscrepancy(result.preview?.discrepancy ?? 0);
+        setClosedShortfall(result.preview?.closedPartialShortfall ?? 0);
+      }
+    });
+  }, [scheduleId]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -85,7 +136,7 @@ export function AdjustPaymentPlanDialog({
       .map((l) => ({
         id: l.id,
         label: l.label,
-        amount: l.amount,
+        amount: Number(l.amount) || 0,
         dueDate: l.dueDate,
         obligationKind: l.obligationKind ?? null,
       }));
@@ -97,73 +148,97 @@ export function AdjustPaymentPlanDialog({
           dueDate: null,
           obligationKind: "installment" as PaymentObligationKind,
         }];
+    // Default open uses equal split (matches Split equally / cent allocation).
     const redistributed = buildRedistributedRemaining({
       balanceDue,
       template: seed,
-      mode: "proportional",
+      mode: "equal",
     });
-    setLines(redistributed);
-    refreshPreview(redistributed);
+    const next = toDraftRows(redistributed);
+    applyRows(next);
+    refreshPreview(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-seed when dialog opens
   }, [open, scheduleId, balanceDue]);
 
-  function refreshPreview(next: AdjustableDraftLine[]) {
-    startPending(async () => {
-      const result = await previewRemainingPaymentPlanAdjustmentAction(scheduleId, next);
-      if (result.ok) {
-        setPreviewNote(null);
-        setDiscrepancy(result.preview.discrepancy);
-        setClosedShortfall(result.preview.closedPartialShortfall);
-      } else {
-        setPreviewNote(result.message ?? "Could not preview.");
-        setDiscrepancy(result.preview?.discrepancy ?? 0);
-        setClosedShortfall(result.preview?.closedPartialShortfall ?? 0);
-      }
-    });
-  }
-
-  function updateLine(index: number, patch: Partial<AdjustableDraftLine>) {
-    setLines((prev) => {
-      const next = prev.map((l, i) => (i === index ? { ...l, ...patch } : l));
+  function updateRow(key: string, patch: Partial<AdjustableDraftLine>) {
+    setRows((prev) => {
+      const next = prev.map((row) => (row.key === key ? { ...row, ...patch } : row));
       refreshPreview(next);
       return next;
     });
   }
 
+  function onAmountInputChange(key: string, raw: string) {
+    setAmountInputs((prev) => ({ ...prev, [key]: raw }));
+    const parsed = parseAdjustAmountInput(raw);
+    if (parsed.kind === "incomplete") {
+      // Keep prior numeric amount + preview until the typed value is complete.
+      return;
+    }
+    if (parsed.kind === "empty") {
+      updateRow(key, { amount: 0 });
+      return;
+    }
+    if (parsed.kind === "invalid") {
+      updateRow(key, { amount: 0 });
+      return;
+    }
+    updateRow(key, { amount: parsed.value });
+  }
+
   function redistribute(mode: "equal" | "proportional") {
-    const next = buildRedistributedRemaining({ balanceDue, template: lines, mode });
-    setLines(next);
+    const next = toDraftRows(
+      buildRedistributedRemaining({
+        balanceDue,
+        template: toPayload(rows),
+        mode,
+      }).map((line, i) => ({
+        ...line,
+        // Preserve row keys / ids so focused fields do not jump.
+        id: rows[i]?.id,
+      })),
+    ).map((row, i) => ({
+      ...row,
+      key: rows[i]?.key ?? row.key,
+    }));
+    applyRows(next);
     refreshPreview(next);
   }
 
   function addLine() {
-    setLines((prev) => {
-      const next = [
-        ...prev,
-        {
-          label: "Installment",
-          amount: 0,
-          dueDate: null,
-          obligationKind: "installment" as PaymentObligationKind,
-        },
-      ];
+    setRows((prev) => {
+      const row: DraftRow = {
+        key: newRowKey(),
+        label: "Installment",
+        amount: 0,
+        dueDate: null,
+        obligationKind: "installment",
+      };
+      const next = [...prev, row];
+      setAmountInputs((inputs) => ({ ...inputs, [row.key]: "" }));
       refreshPreview(next);
       return next;
     });
   }
 
-  function removeLine(index: number) {
-    setLines((prev) => {
+  function removeLine(key: string) {
+    setRows((prev) => {
       if (prev.length <= 1) return prev;
-      const next = prev.filter((_, i) => i !== index);
+      const next = prev.filter((row) => row.key !== key);
+      setAmountInputs((inputs) => {
+        const copy = { ...inputs };
+        delete copy[key];
+        return copy;
+      });
       refreshPreview(next);
       return next;
     });
   }
 
   function save() {
+    const payload = toPayload(rows);
     startPending(async () => {
-      const result = await adjustRemainingPaymentPlanAction(scheduleId, lines, invoiceId);
+      const result = await adjustRemainingPaymentPlanAction(scheduleId, payload, invoiceId);
       if (!result.ok) {
         toast.error(result.message ?? "Could not save the revised plan.");
         return;
@@ -220,7 +295,7 @@ export function AdjustPaymentPlanDialog({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Remaining lines</p>
-                <p className="font-semibold">{formatCurrency(lines.reduce((s, l) => s + (Number(l.amount) || 0), 0))}</p>
+                <p className="font-semibold">{formatCurrency(rows.reduce((s, l) => s + (Number(l.amount) || 0), 0))}</p>
               </div>
             </div>
 
@@ -258,21 +333,22 @@ export function AdjustPaymentPlanDialog({
             </div>
 
             <div className="space-y-3">
-              {lines.map((line, index) => (
-                <div key={index} className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_6rem_8rem_7rem_auto]">
+              {rows.map((line, index) => (
+                <div key={line.key} className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_6rem_8rem_7rem_auto]">
                   <div className="space-y-1">
                     <Label className="text-xs">Label</Label>
                     <Input
                       value={line.label}
-                      onChange={(e) => updateLine(index, { label: e.target.value })}
+                      onChange={(e) => updateRow(line.key, { label: e.target.value })}
                       data-testid={`adjust-line-label-${index}`}
                     />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Amount</Label>
                     <Input
-                      value={String(line.amount)}
-                      onChange={(e) => updateLine(index, { amount: Number(e.target.value.replace(/[$,]/g, "")) || 0 })}
+                      inputMode="decimal"
+                      value={amountInputs[line.key] ?? formatAdjustAmountInput(line.amount)}
+                      onChange={(e) => onAmountInputChange(line.key, e.target.value)}
                       data-testid={`adjust-line-amount-${index}`}
                     />
                   </div>
@@ -281,7 +357,7 @@ export function AdjustPaymentPlanDialog({
                     <Input
                       type="date"
                       value={line.dueDate ?? ""}
-                      onChange={(e) => updateLine(index, { dueDate: e.target.value || null })}
+                      onChange={(e) => updateRow(line.key, { dueDate: e.target.value || null })}
                       data-testid={`adjust-line-due-${index}`}
                     />
                   </div>
@@ -289,7 +365,7 @@ export function AdjustPaymentPlanDialog({
                     <Label className="text-xs">Kind</Label>
                     <Select
                       value={line.obligationKind ?? "installment"}
-                      onValueChange={(v) => updateLine(index, { obligationKind: (v ?? "installment") as PaymentObligationKind })}
+                      onValueChange={(v) => updateRow(line.key, { obligationKind: (v ?? "installment") as PaymentObligationKind })}
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -300,7 +376,7 @@ export function AdjustPaymentPlanDialog({
                     </Select>
                   </div>
                   <div className="flex items-end">
-                    <Button type="button" size="sm" variant="ghost" onClick={() => removeLine(index)} disabled={lines.length <= 1 || pending} aria-label="Remove">
+                    <Button type="button" size="sm" variant="ghost" onClick={() => removeLine(line.key)} disabled={rows.length <= 1 || pending} aria-label="Remove">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>

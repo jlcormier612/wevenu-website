@@ -44,6 +44,36 @@ function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Format a stored amount for the adjust dialog amount field (no currency symbol). */
+export function formatAdjustAmountInput(amount: number): string {
+  if (!Number.isFinite(amount)) return "";
+  return String(roundMoney(amount));
+}
+
+/**
+ * Parse venue-typed installment amounts. Incomplete values (e.g. "4302.") must not
+ * coerce to a different number or to 0 — that desyncs the controlled input and
+ * falsely trips "greater than zero" validation mid-edit.
+ */
+export function parseAdjustAmountInput(
+  raw: string,
+):
+  | { kind: "empty" }
+  | { kind: "incomplete" }
+  | { kind: "invalid" }
+  | { kind: "ok"; value: number } {
+  const cleaned = raw.replace(/[$,\s]/g, "").trim();
+  if (cleaned === "") return { kind: "empty" };
+  // Allow typing through intermediate forms without committing.
+  if (cleaned === "." || cleaned === "-" || cleaned === "-." || /\.$/.test(cleaned)) {
+    return { kind: "incomplete" };
+  }
+  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return { kind: "invalid" };
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return { kind: "invalid" };
+  return { kind: "ok", value: roundMoney(value) };
+}
+
 export function isUnresolvedInstallmentStatus(status: string): boolean {
   return status === "pending" || status === "overdue";
 }
@@ -170,13 +200,17 @@ export function buildRedistributedRemaining(input: {
   const template = input.template.length > 0
     ? input.template
     : [{ label: "Remaining balance", amount: balanceDue, dueDate: null, obligationKind: "installment" as const }];
-  const amounts = input.mode === "equal"
+  // Proportional weights of 0 stay 0 and fail validation while siblings look fine.
+  // Fall back to equal split when every weight is unusable.
+  const weights = template.map((t) => roundMoney(Math.max(0, Number(t.amount) || 0)));
+  const useEqual = input.mode === "equal" || weights.every((w) => w <= 0);
+  const amounts = useEqual
     ? redistributeUnpaidInstallments({
         unpaidAmounts: template.map(() => 1),
         remainingBalance: balanceDue,
       })
     : redistributeUnpaidInstallments({
-        unpaidAmounts: template.map((t) => t.amount),
+        unpaidAmounts: weights,
         remainingBalance: balanceDue,
       });
   return template.map((t, i) => ({
