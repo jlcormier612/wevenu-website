@@ -14,7 +14,7 @@ export default async function PipelineTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <CollectionBackLink href="/leads" label="Back to Leads" />
+      <CollectionBackLink href="/leads" label="Leads" />
       <PageHeader
         title="Pipeline Templates"
         description="Define the steps your team follows to move a lead from first contact to booking. Your stage names appear on the Leads board; reporting categories keep analytics consistent."

@@ -29,14 +29,16 @@ describe("Pipeline Templates venue-primary UX", () => {
     assert.doesNotMatch(board, /salesStageForCanonical/);
   });
 
-  it("Pipeline Templates uses CollectionBackLink to Leads like Contract Templates uses Templates", () => {
+  it("Pipeline Templates uses CollectionBackLink labeled Leads like Contract Templates uses Templates", () => {
     const page = readFileSync(resolve("app/(app)/library/pipeline-templates/page.tsx"), "utf8");
     const contracts = readFileSync(resolve("app/(app)/library/contracts/page.tsx"), "utf8");
     assert.match(contracts, /CollectionBackLink[\s\S]*href="\/library"[\s\S]*label="Templates"/);
-    assert.match(page, /CollectionBackLink[\s\S]*href="\/leads"[\s\S]*label="Back to Leads"/);
+    assert.match(page, /CollectionBackLink[\s\S]*href="\/leads"[\s\S]*label="Leads"/);
     const back = page.indexOf("CollectionBackLink");
     const heading = page.indexOf('title="Pipeline Templates"');
     assert.ok(back >= 0 && heading > back, "back link must render above Pipeline Templates");
+    assert.doesNotMatch(page, /Back to Leads/);
     assert.doesNotMatch(page, /← Back to Leads/);
+    assert.equal((page.match(/label="Leads"/g) ?? []).length, 1);
   });
 });
