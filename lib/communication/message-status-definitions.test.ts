@@ -11,9 +11,17 @@ import { MESSAGE_STATUS_META } from "@/lib/communication/status-labels";
 import { aggregateOutboundStatusCounts } from "@/lib/communication/dashboard-counts";
 
 describe("message status definitions vs real mapping", () => {
-  it("covers Sent, Delivered, Received, Replied, and failure attention", () => {
+  it("covers Sent, Delivered, Opened, Clicked, Received, Replied, and failure attention", () => {
     const keys = MESSAGE_STATUS_DEFINITIONS.map((d) => d.key);
-    assert.deepEqual(keys, ["sent", "delivered", "received", "replied", "needs_attention"]);
+    assert.deepEqual(keys, [
+      "sent",
+      "delivered",
+      "opened",
+      "clicked",
+      "received",
+      "replied",
+      "needs_attention",
+    ]);
   });
 
   it("Sent maps to accepted (provider took it), not delivered", () => {
@@ -23,10 +31,15 @@ describe("message status definitions vs real mapping", () => {
     assert.match(webhook, /"email\.sent":\s*"accepted"/);
     assert.match(webhook, /"email\.delivered":\s*"delivered"/);
     const sentDef = MESSAGE_STATUS_DEFINITIONS.find((d) => d.key === "sent")!;
-    assert.match(sentDef.definition, /does not confirm delivery/i);
+    assert.match(sentDef.definition, /does not necessarily mean/i);
     const deliveredDef = MESSAGE_STATUS_DEFINITIONS.find((d) => d.key === "delivered")!;
-    assert.match(deliveredDef.definition, /does not prove/i);
-    assert.match(deliveredDef.definition, /opened or read/i);
+    assert.match(deliveredDef.definition, /does not mean the recipient read/i);
+    const openedDef = MESSAGE_STATUS_DEFINITIONS.find((d) => d.key === "opened")!;
+    assert.match(openedDef.definition, /indicative tracking signal/i);
+    assert.match(openedDef.definition, /not proof/i);
+    const clickedDef = MESSAGE_STATUS_DEFINITIONS.find((d) => d.key === "clicked")!;
+    assert.match(clickedDef.definition, /does not prove/i);
+    assert.match(clickedDef.definition, /completed the action/i);
   });
 
   it("Received and Replied match inbound / reply-association behavior", () => {
@@ -44,8 +57,11 @@ describe("message status definitions vs real mapping", () => {
 
   it("distinguishes email engagement from Delivered and notes SMS has no Read", () => {
     assert.match(EMAIL_ENGAGEMENT_NOTE, /Opened and Clicked/i);
-    assert.match(EMAIL_ENGAGEMENT_NOTE, /not that Hello to Cheers watched someone read a text/i);
+    assert.match(EMAIL_ENGAGEMENT_NOTE, /email only/i);
+    assert.match(EMAIL_ENGAGEMENT_NOTE, /not texts/i);
+    assert.match(EMAIL_ENGAGEMENT_NOTE, /not proof/i);
     assert.equal(MESSAGE_STATUS_META.opened.label, "Opened");
+    assert.equal(MESSAGE_STATUS_META.clicked.label, "Clicked");
   });
 
   it("aggregates dashboard counts: pending accepted is Sent only; failures need attention", () => {

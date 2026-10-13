@@ -22,24 +22,17 @@ import {
   SMS_TEST_NOT_CONFIGURED_MESSAGE,
   formatTestEmailSuccessMessage,
 } from "@/lib/communication/test-send";
+import {
+  buildChannelTestReadinessItems,
+  readinessItemCountsTowardAllReady,
+} from "@/lib/communication/readiness-channel-tests";
+import type {
+  CommunicationReadiness,
+  ReadinessItem,
+  ReadinessState,
+} from "@/lib/communication/readiness-types";
 
-export type ReadinessState = "ready" | "not_ready" | "untested";
-
-export type ReadinessItem = {
-  key: string;
-  label: string;
-  state: ReadinessState;
-  detail: string;
-};
-
-export type CommunicationReadiness = {
-  allReady: boolean;
-  items: ReadinessItem[];
-  venueEmail: string | null;
-  venuePhone: string | null;
-  emailConfigured: boolean;
-  smsConfigured: boolean;
-};
+export type { CommunicationReadiness, ReadinessItem, ReadinessState };
 
 const EMPTY: CommunicationReadiness = {
   allReady: false,
@@ -49,6 +42,8 @@ const EMPTY: CommunicationReadiness = {
   emailConfigured: false,
   smsConfigured: false,
 };
+
+export { buildChannelTestReadinessItems, readinessItemCountsTowardAllReady };
 
 export async function getCommunicationReadiness(): Promise<CommunicationReadiness> {
   if (!isSupabaseConfigured) return EMPTY;
@@ -67,7 +62,13 @@ export async function getCommunicationReadiness(): Promise<CommunicationReadines
       .eq("id", venue.id).maybeSingle<{ communication_test_email_at: string | null; communication_test_sms_at: string | null }>(),
   ]);
 
-  const testedOk = !!(venueRow.data?.communication_test_email_at || venueRow.data?.communication_test_sms_at);
+  const emailTested = !!venueRow.data?.communication_test_email_at;
+  const smsTested = !!venueRow.data?.communication_test_sms_at;
+  const channelTests = buildChannelTestReadinessItems({
+    emailTested,
+    smsTested,
+    smsConfigured,
+  });
 
   const items: ReadinessItem[] = [
     {
@@ -96,13 +97,7 @@ export async function getCommunicationReadiness(): Promise<CommunicationReadines
       state: hasReceivedMessage ? "ready" : "untested",
       detail: hasReceivedMessage ? "A reply has been received and matched correctly." : "Not yet tested — this confirms itself the first time a lead or client replies.",
     },
-    {
-      key: "test_message", label: "Test message successful",
-      state: testedOk ? "ready" : "untested",
-      detail: testedOk
-        ? "A test message was accepted by the delivery provider."
-        : "Send yourself a test message below to confirm the provider accepts it.",
-    },
+    ...channelTests,
     {
       key: "notifications", label: "Notifications working",
       state: hasNotification ? "ready" : "untested",
@@ -116,7 +111,9 @@ export async function getCommunicationReadiness(): Promise<CommunicationReadines
   ];
 
   return {
-    allReady: items.every((i) => i.state === "ready"),
+    allReady: items.every(
+      (i) => !readinessItemCountsTowardAllReady(i, smsConfigured) || i.state === "ready",
+    ),
     items,
     venueEmail: venue.email,
     venuePhone: venue.phone,

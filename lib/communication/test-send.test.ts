@@ -8,6 +8,10 @@ import {
   isEmailTestActionAvailable,
   isSmsTestActionAvailable,
 } from "@/lib/communication/test-send";
+import {
+  buildChannelTestReadinessItems,
+  readinessItemCountsTowardAllReady,
+} from "@/lib/communication/readiness-channel-tests";
 
 describe("test-send availability and messaging", () => {
   it("email test requires platform email config and a venue email", () => {
@@ -89,5 +93,53 @@ describe("sendTestEmail honesty vs provider accept", () => {
     assert.match(emailFn, /providerId/);
     assert.match(emailFn, /did not return a send id/);
     assert.match(emailFn, /communication_test_email_at/);
+  });
+});
+
+describe("channel-specific readiness test results", () => {
+  it("email-only success never shows SMS test as ready when texting is unconfigured", () => {
+    const items = buildChannelTestReadinessItems({
+      emailTested: true,
+      smsTested: false,
+      smsConfigured: false,
+    });
+    const email = items.find((i) => i.key === "test_email")!;
+    const sms = items.find((i) => i.key === "test_sms")!;
+    assert.equal(email.state, "ready");
+    assert.match(email.label, /Test email successful/);
+    assert.match(email.detail, /email provider/i);
+    assert.equal(sms.state, "untested");
+    assert.match(sms.detail, /Not applicable/i);
+    assert.doesNotMatch(sms.detail, /accepted by the texting provider/i);
+    assert.equal(readinessItemCountsTowardAllReady(sms, false), false);
+  });
+
+  it("SMS success is independent and only ready when configured and tested", () => {
+    const untested = buildChannelTestReadinessItems({
+      emailTested: false,
+      smsTested: false,
+      smsConfigured: true,
+    });
+    assert.equal(untested.find((i) => i.key === "test_sms")!.state, "untested");
+
+    const ready = buildChannelTestReadinessItems({
+      emailTested: false,
+      smsTested: true,
+      smsConfigured: true,
+    });
+    const sms = ready.find((i) => i.key === "test_sms")!;
+    assert.equal(sms.state, "ready");
+    assert.match(sms.detail, /texting provider/i);
+    assert.equal(readinessItemCountsTowardAllReady(sms, true), true);
+  });
+
+  it("getCommunicationReadiness no longer ORs email and SMS into one test_message item", () => {
+    const src = readFileSync("lib/communication/readiness.ts", "utf8");
+    assert.doesNotMatch(src, /key:\s*"test_message"/);
+    assert.match(src, /buildChannelTestReadinessItems/);
+    assert.doesNotMatch(
+      src,
+      /communication_test_email_at\s*\|\|\s*.*communication_test_sms_at/,
+    );
   });
 });

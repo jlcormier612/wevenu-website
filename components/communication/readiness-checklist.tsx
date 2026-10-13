@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { sendTestEmailAction, sendTestSmsAction, getCommunicationReadinessAction } from "@/app/(app)/messaging/actions";
-import type { CommunicationReadiness, ReadinessState } from "@/lib/communication/readiness";
+import type { CommunicationReadiness, ReadinessState } from "@/lib/communication/readiness-types";
 import {
   EMAIL_ENGAGEMENT_NOTE,
   MESSAGE_STATUS_DEFINITIONS,

@@ -1,0 +1,60 @@
+{
+  "stamp": 1791928827685,
+  "email": "jlcormier612+inqbrand1791928827685@gmail.com",
+  "lead": {
+    "id": "3924e887-d0bb-4c83-9365-35658effc96a"
+  },
+  "subject": "New inquiry from Brand Probe1791928827685",
+  "emailId": "01a13748-0529-7747-9925-9c2e423d656d",
+  "checks": [
+    {
+      "name": "Resend email found",
+      "pass": true,
+      "detail": "subject=New inquiry from Brand Probe1791928827685"
+    },
+    {
+      "name": "Has HTC logo asset",
+      "pass": true,
+      "detail": "logo"
+    },
+    {
+      "name": "Has Heritage Sage CTA",
+      "pass": true,
+      "detail": "cta color"
+    },
+    {
+      "name": "Has View lead CTA label",
+      "pass": true,
+      "detail": "cta label"
+    },
+    {
+      "name": "Lead deep link present",
+      "pass": true,
+      "detail": "/leads/3924e887-d0bb-4c83-9365-35658effc96a"
+    },
+    {
+      "name": "Sandbox app host in CTA",
+      "pass": true,
+      "detail": "sandbox host"
+    },
+    {
+      "name": "No venue-internal notes field",
+      "pass": true,
+      "detail": "privacy"
+    },
+    {
+      "name": "Inquiry details preserved",
+      "pass": true,
+      "detail": "name+email"
+    },
+    {
+      "name": "No visible raw http URL in body text",
+      "pass": true,
+      "detail": " New inquiry from Brand Probe1791928827685 New inquiry received via Meadowbrook Valley Venue's website form. Name: Brand Probe1791928827685 Email: jlcormier612+inqbrand179192882768"
+    }
+  ],
+  "pass": true,
+  "servingImage": "htc-sandbox-venue-app:5b7d35d16844f241e508ecd3926b8e725f558593",
+  "deployRun": 38473146376,
+  "limitation": "Captured delivered Resend HTML for synthetic inquire (venue notify). Local .env.local lacked RESEND_API_KEY so first script pass missed API poll; re-fetched with Sandbox Secrets Manager key. Inquirer confirmation email is a separate plain-text path (Gate 2)."
+}

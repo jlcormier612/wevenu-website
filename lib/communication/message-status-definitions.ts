@@ -19,13 +19,25 @@ export const MESSAGE_STATUS_DEFINITIONS: MessageStatusDefinition[] = [
     key: "sent",
     label: "Sent",
     definition:
-      "Hello to Cheers submitted the message and the delivery provider accepted it for sending. This alone does not confirm delivery to the recipient.",
+      "The sending system accepted the send request. This does not necessarily mean the message reached the recipient’s inbox.",
   },
   {
     key: "delivered",
     label: "Delivered",
     definition:
-      "The delivery provider reports that the recipient’s mail server or messaging endpoint accepted the message. It does not prove that the person opened or read it.",
+      "The email or texting provider reported the message as delivered. This does not mean the recipient read it.",
+  },
+  {
+    key: "opened",
+    label: "Opened",
+    definition:
+      "An email-open tracking event was recorded. This is an indicative tracking signal, not proof that the recipient personally read the email — email clients and privacy features can affect tracking.",
+  },
+  {
+    key: "clicked",
+    label: "Clicked",
+    definition:
+      "A tracked link-click event was recorded on an email. This does not prove that the recipient completed the action on the destination page.",
   },
   {
     key: "received",
@@ -49,8 +61,7 @@ export const MESSAGE_STATUS_DEFINITIONS: MessageStatusDefinition[] = [
 
 /** Email-only engagement — never invent Read for SMS. */
 export const EMAIL_ENGAGEMENT_NOTE =
-  "Opened and Clicked are email engagement signals when tracking is available. They mean more than Delivered, not that Hello to Cheers watched someone read a text.";
-
+  "Opened and Clicked apply to email only — not texts. They are provider tracking signals when open/click tracking is available, not proof someone personally read the message or finished a linked action. Privacy features can suppress opens.";
 /**
  * Dashboard tile semantics (last N days, outbound only):
  * - Sent = every non-draft outbound row (includes accepted/sending and later states)
