@@ -18,7 +18,7 @@ const ssrUtils = require(
 );
 
 const APP = "https://app.sandbox.hellotocheers.com";
-const EXPECTED = process.env.EXPECTED_SHA ?? "af0f8555e4ff1a5c27724f34f0ef5b30d61e79aa";
+const EXPECTED = process.env.EXPECTED_SHA ?? "8d9eb28bdef67382657666edae04e26b3f3b86ab";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT = "docs/qa/inbox-attention-delivery-display";
