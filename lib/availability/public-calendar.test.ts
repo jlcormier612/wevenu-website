@@ -62,7 +62,7 @@ describe("public month grid", () => {
       "utf8",
     );
     assert.match(mig, /p_date < v_today/);
-    assert.match(mig, /timezone\(v_tz, now\(\)\)::date/);
+    assert.match(mig, /\(timezone\(v_tz, now\(\)\)\)::date/);
   });
 
   it("crosses the year boundary without dropping December or January", () => {
