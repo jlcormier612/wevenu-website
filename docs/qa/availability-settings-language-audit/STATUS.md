@@ -1,52 +1,21 @@
 # Availability settings language — copy corrections
 
-**Status:** Copy committed — Sandbox deploy queued; UI verify pending  
-**Date:** 2026-10-13  
-**Commit:** `841b27065cbbfb6500b6f013bc87760e059f325f`  
-**Scope:** Copy/documentation only. No availability logic, defaults, DB, or layout redesign.
+**Status: GREEN**
 
-## Locked behavior preserved
+**Copy commit:** `841b2706`  
+**Serving tip (includes copy + IAM template):** `ffbe34c7`  
+**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/38478298669 **success**
 
-- Default: confirmed event closes public availability venue-wide.
-- Opt-in: `allow_simultaneous_public_availability` + max simultaneous events ≥ 2 + free Event Space.
-- Capacity alone does not enable simultaneous public availability.
-- Tours remain a separate setting.
+## Browser (Fancy owner, `/settings/availability`)
 
-## Exact changes
+Evidence: `browser-results.json`, `availability-settings-1280.png`
 
-| Surface | Change |
-|---------|--------|
-| `components/availability/capacity-rules-section.tsx` | Max simultaneous events hint: neutral “hosts one event at a time”; states capacity ≠ public inquiries; points to Date holds → confirmed-event control; Event Spaces note for 2+. |
-| Same | Turnaround hint: neutral wording; states turnaround does not change public Available for confirmed events. |
-| `app/(app)/settings/availability/page.tsx` | Scheduling Capacity description: staff limits do not override public confirmed-event preference. |
-| `lib/help-guides/final-articles.ts` (`how-does-date-availability-work`) | Default close + Settings opt-in path + max≥2/space requirement + capacity/tour separation. |
-| `lib/help-guides/setup-guides.ts` (`setup-calendar-availability`) | Current section list; new step for confirmed-event public preference; capacity tip clarifies public opt-in is separate. |
-| Same (`understanding-your-calendar`) | Hold troubleshooting + completion corrected to match Hold setting (default closes public; not “doesn't block by design”). |
-| `components/settings/simultaneous-public-availability-control.tsx` | Removed duplicate “Recommended” footer (radio already says Recommended). |
-| `lib/availability/venue-controlled-availability-copy.test.ts` | Locked expectations updated to shipped guidance; calendar path → `calendar-page-client.tsx`. |
+| Check | Result |
+|-------|--------|
+| No “simple venue” | PASS |
+| Hosts-one-event-at-a-time capacity hint | PASS |
+| Capacity ≠ public inquiries | PASS |
+| Points to confirmed-event control | PASS |
+| Staff limits do not override public preference | PASS |
 
-## Tests
-
-`npx tsx --test` on:
-
-- `lib/availability/venue-controlled-availability-copy.test.ts`
-- `lib/availability/simultaneous-public-availability.test.ts`
-- `lib/leads/lead-date-availability.test.ts`
-- `lib/help-guides/setup-guides.test.ts`
-- `lib/help-guides/final-articles.test.ts`
-
-**Result: 60/60 pass.** Behavior suites (simultaneous public + lead date availability) unchanged green.
-
-## Diff review
-
-Six files only (copy/docs/tests). No occupancy/precheck/SQL/settings-action changes.
-
-## Deploy / verification
-
-- Prior unrelated Deploy Sandbox `38475580540` (`d5e36593` email language) **failed** — diagnose/retry separately before overlapping.
-- This copy commit: _(fill on commit)_
-- Production: untouched
-
-## Final state
-
-Copy implemented and tested. **NOT GREEN for Sandbox UI** until deploy succeeds and Settings/Help surfaces are confirmed on the serving tip.
+Behavior unchanged (prior 60/60 unit suites). Production untouched.

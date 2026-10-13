@@ -1,0 +1,49 @@
+{
+  "url": "https://app.sandbox.hellotocheers.com/messaging/health",
+  "email": "jennifer@hellotocheers.com",
+  "expectedSha": "ffbe34c7f1475f18f9f3fc66b757ec5e8e109ab3",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ffbe34c7f1475f18f9f3fc66b757ec5e8e109ab3",
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ffbe34c7f1475f18f9f3fc66b757ec5e8e109ab3 expected=ffbe34c7f147"
+    },
+    {
+      "name": "Has Test email successful",
+      "pass": true,
+      "detail": "label"
+    },
+    {
+      "name": "Has Test text successful",
+      "pass": true,
+      "detail": "label"
+    },
+    {
+      "name": "No generic Test message successful",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "name": "Opened definition present",
+      "pass": true,
+      "detail": "opened"
+    },
+    {
+      "name": "Clicked definition present",
+      "pass": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "EMAIL engagement note email-only",
+      "pass": true,
+      "detail": "note"
+    },
+    {
+      "name": "Unconfigured SMS test is Not applicable",
+      "pass": true,
+      "detail": "channel split"
+    }
+  ],
+  "pass": true
+}
