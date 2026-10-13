@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "serving": "45839872028c3f39a1d422a6f3a171dc8ad95079",
+  "checks": [
+    {
+      "name": "serving_tip",
+      "pass": true,
+      "detail": "serving=45839872028c3f39a1d422a6f3a171dc8ad95079"
+    },
+    {
+      "name": "guidance_heading",
+      "pass": true,
+      "detail": "heading"
+    },
+    {
+      "name": "available_meaning",
+      "pass": true,
+      "detail": "Available meaning"
+    },
+    {
+      "name": "block_entire_day",
+      "pass": true,
+      "detail": "block day"
+    },
+    {
+      "name": "spaces_same_day",
+      "pass": true,
+      "detail": "spaces"
+    },
+    {
+      "name": "owner_responsibility",
+      "pass": true,
+      "detail": "responsibility"
+    },
+    {
+      "name": "reload_persists_copy",
+      "pass": true,
+      "detail": "reload"
+    }
+  ]
+}
