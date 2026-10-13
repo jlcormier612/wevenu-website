@@ -261,7 +261,6 @@ describe("adjust amount input parsing", () => {
     assert.match(src, /formatAdjustAmountInput/);
     assert.match(src, /previewAdjustRemainingPlan/);
     assert.match(src, /seededOpenSession/);
-    assert.match(src, /onValueChange/);
     assert.doesNotMatch(src, /previewRemainingPaymentPlanAdjustmentAction/);
     assert.doesNotMatch(src, /Number\(e\.target\.value\.replace/);
     assert.match(src, /mode:\s*"equal"/);

@@ -375,7 +375,7 @@ export function AdjustPaymentPlanDialog({
                     <Label className="text-xs">Label</Label>
                     <Input
                       value={line.label}
-                      onValueChange={(v) => updateRow(line.key, { label: v })}
+                      onChange={(e) => updateRow(line.key, { label: e.target.value })}
                       data-testid={`adjust-line-label-${index}`}
                     />
                   </div>
@@ -384,7 +384,7 @@ export function AdjustPaymentPlanDialog({
                     <Input
                       inputMode="decimal"
                       value={amountInputs[line.key] ?? formatAdjustAmountInput(line.amount)}
-                      onValueChange={(v) => onAmountInputChange(line.key, v)}
+                      onChange={(e) => onAmountInputChange(line.key, e.target.value)}
                       data-testid={`adjust-line-amount-${index}`}
                     />
                   </div>
@@ -393,7 +393,7 @@ export function AdjustPaymentPlanDialog({
                     <Input
                       type="date"
                       value={line.dueDate ?? ""}
-                      onValueChange={(v) => updateRow(line.key, { dueDate: v || null })}
+                      onChange={(e) => updateRow(line.key, { dueDate: e.target.value || null })}
                       data-testid={`adjust-line-due-${index}`}
                     />
                   </div>
