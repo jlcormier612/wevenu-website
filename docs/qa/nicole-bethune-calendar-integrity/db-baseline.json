@@ -1,0 +1,77 @@
+{
+  "capturedAt": "2026-10-13T00:47:15.661Z",
+  "note": "Do not mutate — diagnostic baseline before calendar fix",
+  "expectedFixtureNote": "Expected rehearsal end 22:00 but persisted end_time is 21:00 — calendar matching 6-9PM reflects DB",
+  "event": {
+    "id": "e15869c8-736d-42cc-a00a-4b4bbdadc0f1",
+    "name": "Nicole Bethune & Colby Yagnesak",
+    "event_date": "2027-05-08",
+    "event_end_date": "2027-05-09",
+    "start_time": "14:00:00",
+    "end_time": "22:00:00",
+    "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+    "status": "confirmed"
+  },
+  "assignments": [
+    {
+      "use_key": "rehearsal_dinner",
+      "use_label": "Rehearsal Dinner",
+      "scheduled_date": "2027-05-08",
+      "start_time": "18:00:00",
+      "end_time": "21:00:00",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650"
+    },
+    {
+      "use_key": "getting_ready",
+      "use_label": "Getting Ready",
+      "scheduled_date": "2027-05-09",
+      "start_time": "14:00:00",
+      "end_time": "16:00:00",
+      "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221"
+    },
+    {
+      "use_key": "ceremony",
+      "use_label": "Ceremony",
+      "scheduled_date": "2027-05-09",
+      "start_time": "16:00:00",
+      "end_time": "17:00:00",
+      "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38"
+    },
+    {
+      "use_key": "reception",
+      "use_label": "Reception",
+      "scheduled_date": "2027-05-09",
+      "start_time": "18:00:00",
+      "end_time": "22:00:00",
+      "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650"
+    },
+    {
+      "use_key": "cocktail_hour",
+      "use_label": "Cocktail Hour",
+      "scheduled_date": "2027-05-09",
+      "start_time": "17:00:00",
+      "end_time": "18:00:00",
+      "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec"
+    }
+  ],
+  "timelineGenerated": [],
+  "timelineTimedCount": 0,
+  "spaces": [
+    {
+      "id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+      "name": "Meadowbrook Barn"
+    },
+    {
+      "id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+      "name": "Brook Bridge"
+    },
+    {
+      "id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+      "name": "Meadowbrook Villa"
+    },
+    {
+      "id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+      "name": "Meadow Lawn"
+    }
+  ]
+}

@@ -19,6 +19,7 @@ import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType, RecurrenceRule } from "@/lib/availability/types";
 import { durationInDays, expandOccurrenceStarts, occurrenceDates } from "@/lib/calendar/recurrence";
 import { calendarDatesForProtectedEvent } from "@/lib/calendar/event-display";
+import { projectAssignmentWindowsOntoCalendarDates } from "@/lib/calendar/event-assignment-projection";
 import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { toScheduleRelationOption, type ScheduleRelationRow } from "@/lib/calendar/schedule-relation-search";
 import {
@@ -175,14 +176,27 @@ export async function getCalendarData(
   const eventRows = (eventsRes.data ?? []) as any[];
   const eventIds = eventRows.map((e) => e.id as string).filter(Boolean);
   const assignmentSpaceIds = new Map<string, string[]>();
-  const assignmentWindows = new Map<string, Array<{ spaceId: string; useLabel: string | null; startTime: string | null; endTime: string | null }>>();
+  const assignmentWindows = new Map<string, Array<{
+    spaceId: string;
+    useLabel: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    scheduledDate: string | null;
+  }>>();
   if (eventIds.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: assignRows } = await (supabase.from("event_space_assignments") as any)
-      .select("event_id, space_id, use_label, start_time, end_time")
+      .select("event_id, space_id, use_label, start_time, end_time, scheduled_date")
       .eq("venue_id", venue.id)
       .in("event_id", eventIds);
-    for (const row of (assignRows ?? []) as { event_id: string; space_id: string; use_label?: string | null; start_time?: string | null; end_time?: string | null }[]) {
+    for (const row of (assignRows ?? []) as {
+      event_id: string;
+      space_id: string;
+      use_label?: string | null;
+      start_time?: string | null;
+      end_time?: string | null;
+      scheduled_date?: string | null;
+    }[]) {
       if (!row.event_id || !row.space_id) continue;
       const list = assignmentSpaceIds.get(row.event_id) ?? [];
       if (!list.includes(row.space_id)) list.push(row.space_id);
@@ -193,44 +207,48 @@ export async function getCalendarData(
         useLabel: row.use_label ?? null,
         startTime: row.start_time?.slice(0, 5) ?? null,
         endTime: row.end_time?.slice(0, 5) ?? null,
+        scheduledDate: row.scheduled_date ?? null,
       });
       assignmentWindows.set(row.event_id, windows);
     }
   }
 
-  // Events — one item per protected day in the visible range (Calendar is a
-  // view; occupancy still uses event_date through coalesce(event_end_date)).
+  // Events — component assignments land on their scheduled_date; protected
+  // day expansion remains for legacy rows without scheduled_date / untimed.
   for (const e of eventRows) {
     const cn = e.clients ? `${e.clients.first_name} ${e.clients.last_name}` : null;
     const dates = calendarDatesForProtectedEvent(e.event_date, e.event_end_date ?? null, start, end);
     const assigned = assignmentSpaceIds.get(e.id) ?? [];
     const spaceIds = [...new Set([e.space_id, ...assigned].filter(Boolean))] as string[];
     const windows = assignmentWindows.get(e.id) ?? [];
-    const timed = windows.filter((row) => row.startTime && row.endTime);
     const baseSubtitle = [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
       .filter(Boolean)
       .join(" · ") || null;
-    for (const date of dates) {
-      if (timed.length > 0) {
-        timed.forEach((row, index) => {
-          items.push({
-            id: `event-${e.id}-${date}-${row.spaceId}-${index}`,
-            type: "event",
-            date,
-            title: cn ?? e.name,
-            subtitle: [baseSubtitle, row.useLabel].filter(Boolean).join(" · ") || null,
-            time: row.startTime,
-            endTime: row.endTime,
-            link: `/events/${e.id}`,
-            eventId: e.id,
-            clientId: e.client_id ?? null,
-            spaceId: row.spaceId,
-            spaceName: null,
-            spaceIds: [row.spaceId],
-          });
+    const projected = projectAssignmentWindowsOntoCalendarDates({
+      protectedDates: dates,
+      windows,
+    });
+    if (projected !== "untimed") {
+      for (const row of projected) {
+        items.push({
+          id: `event-${e.id}-${row.date}-${row.spaceId}-${row.index}`,
+          type: "event",
+          date: row.date,
+          title: cn ?? e.name,
+          subtitle: [baseSubtitle, row.useLabel].filter(Boolean).join(" · ") || null,
+          time: row.startTime,
+          endTime: row.endTime,
+          link: `/events/${e.id}`,
+          eventId: e.id,
+          clientId: e.client_id ?? null,
+          spaceId: row.spaceId,
+          spaceName: null,
+          spaceIds: [row.spaceId],
         });
-        continue;
       }
+      continue;
+    }
+    for (const date of dates) {
       items.push({
         id: `event-${e.id}-${date}`,
         type: "event",

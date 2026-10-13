@@ -72,7 +72,9 @@ describe("Calendar Slice 1 — venue aggregation boundary", () => {
     assert.match(aggregation, /from\("date_holds"\)/);
     assert.match(aggregation, /from\("calendar_blocks"\)/);
     assert.doesNotMatch(aggregation, /from\("event_tasks"\)/);
-    assert.doesNotMatch(aggregation, /scheduled_date/);
+    // Component placements use event_space_assignments.scheduled_date.
+    assert.match(aggregation, /scheduled_date/);
+    assert.match(aggregation, /projectAssignmentWindowsOntoCalendarDates/);
     assert.doesNotMatch(aggregation, /type: "planning_activity"/);
   });
 });
