@@ -1,37 +1,33 @@
 # Vendor list reflects Approved preference
 
 **Environment:** Sandbox only  
-**Verdict:** IN PROGRESS
+**Verdict:** GREEN
 
-## Root cause (proven)
+## Root cause
 
-Selecting **Approved** on the vendor form persists correctly as `venue_vendor_relationships.preference_level = 'standard'`. It does **not** change claim state.
+Selecting **Approved** persists as `venue_vendor_relationships.preference_level = 'standard'`. It does not change claim state.
 
-Meadowbrook Sandbox (2026-10-13) after the user’s session:
+Meadowbrook after the user’s session:
 
-| Vendor | preference_level | status | is_claimed |
-|---|---|---|---|
-| Baker's Dozen | `standard` (Approved) | active | false |
-| Nail Studio | `standard` (Approved) | active | false |
-| Harah's Hair | `recommended` | active | false |
-| Cuppity Cakes | `preferred` | active | false |
+| Vendor | preference_level | is_claimed |
+|---|---|---|
+| Baker's Dozen | `standard` (Approved) | false |
+| Nail Studio | `standard` (Approved) | false |
+| Harah's Hair | `recommended` | false |
+| Cuppity Cakes | `preferred` | false |
 
-The two Approved vendors were **Baker's Dozen** and **Nail Studio**.
-
-The list Preference column intentionally rendered **no badge** for `standard`, while the Relationship column correctly showed **Not claimed**. The save succeeded; the list failed to reflect the saved Approved preference. Claim status is a separate fact and was never the approval field.
+The Preference column rendered **no badge** for `standard`, so Approved looked unsaved while Relationship correctly showed **Not claimed**.
 
 ## Fix
 
-Show an **Approved** badge for `preference_level === "standard"` in the venue Vendor list Preference column. Keep client-facing chips quiet for standard. Do not alter claim, invite, or relationship status writes.
+Show an **Approved** badge for `preference_level === "standard"` on the venue Vendor list. Keep client-facing chips quiet for standard. Do not alter claim/invite writes.
 
-## Files
+## Evidence
 
-- `lib/vendors/list-presentation.ts`
-- `components/vendors/vendor-list.tsx`
-- `lib/vendors/list-presentation.test.ts`
-- `lib/vendors/vendor-network-preference.test.ts`
-- `lib/vendors/vendor-approval-list.test.ts` (new)
+- Commit: `97efb6658fdd34188dace69de887088cd0d64200`
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/38328933679
+- Serving tip: `97efb6658fdd34188dace69de887088cd0d64200`
+- Unit/regression: 38 pass
+- Browser: `browser-results.json` — **13/13** (DB Approved+unclaimed for Baker’s/Nails; Fancy Cuppity unaffected; list shows Approved ×2 + Not claimed + Preferred/Recommended peers; survives reload)
 
-## Tests
-
-`npx tsx --test lib/vendors/list-presentation.test.ts lib/vendors/vendor-network-preference.test.ts lib/vendors/vendor-approval-list.test.ts lib/vendors/required-vendors.test.ts lib/vendors/resolve-or-create-vendor.test.ts` → **38 pass**
+Production untouched. Unrelated dirty/untracked work preserved.

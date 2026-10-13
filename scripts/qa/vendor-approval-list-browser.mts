@@ -20,7 +20,8 @@ const ssrUtils = require(
 
 const APP = "https://app.sandbox.hellotocheers.com";
 const EXPECTED = "PENDING_SHA"; // replaced at commit time
-const FANCY_EMAIL = "jennifer@hellotocheers.com";
+/** Meadowbrook owner — jennifer@hellotocheers.com is Fancy-only for set_active_venue. */
+const MEAD_EMAIL = "jlcormier612@gmail.com";
 const MEAD = "05f16a15-1752-4855-8a3b-aad5c593d8d9";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT_DIR = "docs/qa/vendor-approval-list-reflect";
@@ -51,7 +52,7 @@ function noteDeployment(linkHeader: string | undefined) {
   return match?.[1] ?? null;
 }
 
-async function cookiesFor(email: string) {
+async function authFor(email: string) {
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
@@ -64,35 +65,51 @@ async function cookiesFor(email: string) {
   if (otpErr || !otpData.session) throw otpErr ?? new Error("no session");
   const cookieName = "sb-wvpsldwwjqdannqasrdf-auth-token";
   const encoded = "base64-" + ssrUtils.stringToBase64URL(JSON.stringify(otpData.session));
-  return [
-    ...ssrUtils.createChunks(cookieName, encoded).map(
-      (c: { name: string; value: string }) => ({
-        name: c.name,
-        value: c.value,
+  return {
+    session: otpData.session,
+    cookies: [
+      ...ssrUtils.createChunks(cookieName, encoded).map(
+        (c: { name: string; value: string }) => ({
+          name: c.name,
+          value: c.value,
+          domain: "app.sandbox.hellotocheers.com",
+          path: "/",
+          httpOnly: false,
+          secure: true,
+          sameSite: "Lax" as const,
+        }),
+      ),
+      {
+        name: "htc_active_venue_id",
+        value: MEAD,
         domain: "app.sandbox.hellotocheers.com",
         path: "/",
         httpOnly: false,
         secure: true,
         sameSite: "Lax" as const,
-      }),
-    ),
-    {
-      name: "htc_active_venue_id",
-      value: MEAD,
-      domain: "app.sandbox.hellotocheers.com",
-      path: "/",
-      httpOnly: false,
-      secure: true,
-      sameSite: "Lax" as const,
-    },
-  ];
+      },
+    ],
+  };
+}
+
+async function setActiveVenue(session: { access_token: string; refresh_token: string }, venueId: string) {
+  const userSb = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { persistSession: false },
+  });
+  await userSb.auth.setSession(session);
+  const { data, error } = await userSb.rpc("set_active_venue", { p_venue_id: venueId });
+  if (error) throw new Error(`set_active_venue: ${error.message}`);
+  const payload = data as { ok?: boolean; error?: string } | null;
+  if (!payload?.ok) throw new Error(`set_active_venue failed: ${payload?.error ?? "unknown"}`);
 }
 
 const EXPECTED_SHA = process.env.EXPECTED_SHA ?? EXPECTED;
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
-await context.addCookies(await cookiesFor(FANCY_EMAIL));
+const auth = await authFor(MEAD_EMAIL);
+await setActiveVenue(auth.session, MEAD);
+await context.addCookies(auth.cookies);
 const page = await context.newPage();
 
 const dbProof: Record<string, unknown> = {};
@@ -150,17 +167,11 @@ try {
     JSON.stringify(fancyCuppity),
   );
 
-  await page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  const dashResp = await page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  noteDeployment(dashResp?.headers()?.link);
   await page.waitForTimeout(800);
   const dash = await page.locator("body").innerText();
-  if (!/Meadowbrook/i.test(dash)) {
-    const switcher = page.getByRole("button", { name: /Switch venue/i });
-    if (await switcher.count()) {
-      await switcher.click();
-      await page.getByRole("menuitem").filter({ hasText: /Meadowbrook/i }).first().click();
-      await page.waitForTimeout(1500);
-    }
-  }
+  record("active_venue_meadowbrook", /Meadowbrook/i.test(dash), dash.includes("Fancy") ? "still Fancy" : "ok");
 
   const resp = await page.goto(`${APP}/vendors`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   noteDeployment(resp?.headers()?.link);
