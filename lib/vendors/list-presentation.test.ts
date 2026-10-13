@@ -14,10 +14,10 @@ import {
 import type { VendorPreferenceLevel } from "@/lib/vendors/types";
 
 describe("vendorPreferenceBadgeKind", () => {
-  it("maps preferred and recommended; blank for standard", () => {
+  it("maps approved, preferred, and recommended for the venue list", () => {
     assert.equal(vendorPreferenceBadgeKind("preferred"), "preferred");
     assert.equal(vendorPreferenceBadgeKind("recommended"), "recommended");
-    assert.equal(vendorPreferenceBadgeKind("standard"), null);
+    assert.equal(vendorPreferenceBadgeKind("standard"), "approved");
   });
 
   it("maps legacy featured to preferred badge", () => {

@@ -33,14 +33,20 @@ export function venueRelationshipEligibleForActiveVenue(
 }
 
 /**
- * Preference badge shown in the Preference column.
- * Approved (standard) stays blank — baseline on the list.
+ * Preference badge shown in the venue Vendor list Preference column.
+ * Approved (standard), Recommended, and Preferred are all explicit venue
+ * selections and must remain visible after save/reload. Claim state is separate
+ * (Relationship column) and must never be inferred from preference.
+ *
+ * Client-facing chips use vendorPreferenceClientLabel — Approved stays quiet
+ * there because every directory vendor is already on the approved list.
  */
 export function vendorPreferenceBadgeKind(
   preferenceLevel: VendorPreferenceLevel | string,
-): "recommended" | "preferred" | null {
+): "approved" | "recommended" | "preferred" | null {
   if (preferenceLevel === "preferred" || preferenceLevel === "featured") return "preferred";
   if (preferenceLevel === "recommended") return "recommended";
+  if (preferenceLevel === "standard") return "approved";
   return null;
 }
 

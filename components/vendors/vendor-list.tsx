@@ -158,6 +158,11 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
+                      {preferenceBadge === "approved" && (
+                        <Badge variant="outline" className="gap-1 text-muted-foreground">
+                          Approved
+                        </Badge>
+                      )}
                       {preferenceBadge === "preferred" && (
                         <Badge variant="outline" className="gap-1 text-[#3D5040] border-[#5D6F5D]/30">
                           Preferred

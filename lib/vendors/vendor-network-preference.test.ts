@@ -12,8 +12,8 @@ import {
 } from "@/lib/vendors/list-presentation";
 
 describe("vendor preference presentation (Approved / Recommended / Preferred)", () => {
-  it("does not badge Approved (standard)", () => {
-    assert.equal(vendorPreferenceBadgeKind("standard"), null);
+  it("badges Approved on the venue list; keeps client chip quiet for standard", () => {
+    assert.equal(vendorPreferenceBadgeKind("standard"), "approved");
     assert.equal(vendorPreferenceClientLabel("standard"), null);
   });
 

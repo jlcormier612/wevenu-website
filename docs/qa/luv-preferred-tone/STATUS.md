@@ -1,7 +1,7 @@
 # Luv preferred tone — verify, fix, prove
 
 **Environment:** Sandbox only  
-**Verdict:** IN PROGRESS (implementation + unit GREEN; Sandbox browser pending)
+**Verdict:** GREEN
 
 ## Root cause
 
@@ -11,41 +11,19 @@
 2. Dashboard `/api/luv/draft` system prompt always said “Write warm, professional content…” before the tone line; user prompts also hardcoded “warm”.
 3. Lead draft panel copy promised a fixed warm style regardless of settings.
 
-## Fix (minimal)
+## Fix
 
-- Strengthened distinct `LUV_TONE_INSTRUCTION` copy for warm / professional / formal.
-- Tone-neutral lead follow-up prompt; required Tone block uses normalized preference; snapshot `preferredTone` in new `luv_drafts.context` only.
-- Shared `lib/luv/dashboard-draft-prompt.ts` for dashboard draft system + user prompts; route wires saved preference through both.
-- Panel copy replaced with tone-neutral wording from the contract.
+- Distinct `LUV_TONE_INSTRUCTION` for warm / professional / formal.
+- Tone-neutral lead follow-up prompt; required Tone notes; snapshot `preferredTone` on new `luv_drafts.context` only.
+- Shared `lib/luv/dashboard-draft-prompt.ts`; route wires saved preference through system + user prompts.
+- Panel copy tone-neutral per contract.
 
-Existing drafts are not rewritten when settings change (`saveLuvSettings` never touches `luv_drafts`).
+## Evidence
 
-## Files
+- Commit: `ba3a95d6c161e5761f86952758db53d0af2f4244`
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/38327637779
+- Serving tip: `ba3a95d6c161e5761f86952758db53d0af2f4244`
+- Unit/regression: 130 pass (`tone`, `preferred-tone`, launch-readiness, privacy/discard/workflow suites)
+- Browser: `docs/qa/luv-preferred-tone/browser-results.json` — **25/25 passed** (settings persist/reload each tone; draft `context.preferredTone`; existing draft unchanged; panel copy; runtime stayed expected)
 
-- `lib/luv/settings.ts`
-- `lib/luv/drafts.ts`
-- `lib/luv/dashboard-draft-prompt.ts` (new)
-- `app/api/luv/draft/route.ts`
-- `components/luv/luv-draft-panel.tsx`
-- `lib/luv/tone.test.ts`
-- `lib/luv/preferred-tone.test.ts` (new)
-- `lib/luv/launch-readiness.test.ts`
-
-## Tests
-
-```bash
-npx tsx --test lib/luv/tone.test.ts lib/luv/preferred-tone.test.ts \
-  lib/luv/launch-readiness.test.ts lib/luv/draft-context-boundary.test.ts \
-  lib/luv/draft-discard-delete.test.ts lib/luv/follow-up-workflow-context.test.ts \
-  lib/luv/draft-proposal-factuality.test.ts lib/luv/customer-facing-inquiry-context.test.ts \
-  lib/luv/draft-send-lifecycle.test.ts lib/luv/owner-draft-capability.test.ts
-```
-
-Result: **130 pass / 0 fail**
-
-## Sandbox proof
-
-- Commit: pending
-- Deploy run: pending
-- Serving commit: pending
-- Browser: save each tone → reload → generate disposable draft → capture tone snapshot + draft text
+Production untouched. Unrelated dirty/untracked work preserved.

@@ -1,0 +1,163 @@
+{
+  "expected": "ba3a95d6c161e5761f86952758db53d0af2f4244",
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "ba3a95d6c161e5761f86952758db53d0af2f4244"
+    },
+    {
+      "name": "health",
+      "pass": true,
+      "detail": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}"
+    },
+    {
+      "name": "settings_persist_warm",
+      "pass": true,
+      "detail": "db=warm"
+    },
+    {
+      "name": "settings_reload_shows_warm",
+      "pass": true,
+      "detail": "label visible after reload"
+    },
+    {
+      "name": "panel_copy_warm",
+      "pass": true,
+      "detail": "tone-neutral"
+    },
+    {
+      "name": "draft_context_tone_warm",
+      "pass": true,
+      "detail": "context.preferredTone=warm"
+    },
+    {
+      "name": "draft_pending_review_warm",
+      "pass": true,
+      "detail": "pending_review"
+    },
+    {
+      "name": "settings_persist_warm",
+      "pass": true,
+      "detail": "db=warm"
+    },
+    {
+      "name": "settings_reload_shows_warm",
+      "pass": true,
+      "detail": "label visible after reload"
+    },
+    {
+      "name": "panel_copy_warm",
+      "pass": true,
+      "detail": "tone-neutral"
+    },
+    {
+      "name": "draft_context_tone_warm",
+      "pass": true,
+      "detail": "context.preferredTone=warm"
+    },
+    {
+      "name": "draft_pending_review_warm",
+      "pass": true,
+      "detail": "pending_review"
+    },
+    {
+      "name": "settings_persist_professional",
+      "pass": true,
+      "detail": "db=professional"
+    },
+    {
+      "name": "settings_reload_shows_professional",
+      "pass": true,
+      "detail": "label visible after reload"
+    },
+    {
+      "name": "panel_copy_professional",
+      "pass": true,
+      "detail": "tone-neutral"
+    },
+    {
+      "name": "draft_context_tone_professional",
+      "pass": true,
+      "detail": "context.preferredTone=professional"
+    },
+    {
+      "name": "draft_pending_review_professional",
+      "pass": true,
+      "detail": "pending_review"
+    },
+    {
+      "name": "settings_persist_formal",
+      "pass": true,
+      "detail": "db=formal"
+    },
+    {
+      "name": "settings_reload_shows_formal",
+      "pass": true,
+      "detail": "label visible after reload"
+    },
+    {
+      "name": "panel_copy_formal",
+      "pass": true,
+      "detail": "tone-neutral"
+    },
+    {
+      "name": "draft_context_tone_formal",
+      "pass": true,
+      "detail": "context.preferredTone=formal"
+    },
+    {
+      "name": "draft_pending_review_formal",
+      "pass": true,
+      "detail": "pending_review"
+    },
+    {
+      "name": "existing_draft_unchanged_after_tone_change",
+      "pass": true,
+      "detail": "id=da89a55e-20bb-43da-a36a-ca4746397021"
+    },
+    {
+      "name": "generated_drafts_not_identical_across_tones",
+      "pass": true,
+      "detail": "uniquePreviews=4 of 4"
+    },
+    {
+      "name": "runtime_stayed_expected",
+      "pass": true,
+      "detail": "ba3a95d6c161e5761f86952758db53d0af2f4244"
+    }
+  ],
+  "draftSnapshots": [
+    {
+      "tone": "warm",
+      "draftId": "da89a55e-20bb-43da-a36a-ca4746397021",
+      "subject": "Saturday dates at Jen’s Fancy Venue",
+      "contentPreview": "Hi Tone,\n\nWe’re glad to hear you loved the outdoor ceremony garden. If you’d like, we’d be happy to schedule a tour so you can explore the space in person and talk through Saturday options.\n\nWhat days and times tend to work best for you?\n\nThe team at Jen’s Fancy Venue",
+      "contextTone": "warm"
+    },
+    {
+      "tone": "warm",
+      "draftId": "ac86bb2c-7f3a-4128-aaaa-1f6c43180c55",
+      "subject": "Saturday options at Jen’s Fancy Venue",
+      "contentPreview": "Hi Tone,\n\nWe’re glad to hear you loved the outdoor ceremony garden. If you’d like, we’d be happy to schedule a tour so you can take another look and talk through the Saturday dates that may be available for your event.\n\nWhat day or time works best for you to visit?\n\nWarmly,  \nThe",
+      "contextTone": "warm"
+    },
+    {
+      "tone": "professional",
+      "draftId": "11c4266d-0529-4c68-9a1a-3b6e4add4737",
+      "subject": "Exploring Saturday Options at Jen’s Fancy Venue",
+      "contentPreview": "Hi Tone,\n\nThank you for considering Jen’s Fancy Venue. We’re glad the outdoor ceremony garden stood out to you, and we’d be happy to explore Saturday availability with you.\n\nWould you like to schedule a tour to see the garden and discuss which Saturday options may work best? Plea",
+      "contextTone": "professional"
+    },
+    {
+      "tone": "formal",
+      "draftId": "741bafd6-5fb6-4b80-9bcd-8b5868047a67",
+      "subject": "Saturday Availability and Venue Tour",
+      "contentPreview": "Dear Tone,\n\nThank you for your interest in Jen’s Fancy Venue. We would be pleased to discuss available Saturday dates and the outdoor ceremony garden in more detail.\n\nAs a next step, please let us know a few dates and times that would be convenient for a tour. We look forward to ",
+      "contextTone": "formal"
+    }
+  ],
+  "deploymentIds": [
+    "ba3a95d6c161e5761f86952758db53d0af2f4244"
+  ]
+}
