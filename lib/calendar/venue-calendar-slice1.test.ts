@@ -169,6 +169,17 @@ describe("Calendar Slice 1 — perspectives retired, copy, filters, help", () =>
     assert.deepEqual(cleaned.manualTypes, ["consultation", "tasting"]);
   });
 
+  it("sanitizeVenueCalendarFilters collapses empty type selection to show-all", () => {
+    const cleaned = sanitizeVenueCalendarFilters({
+      types: [] as CalendarItemType[],
+      manualTypes: [] as never,
+      staffId: null,
+      spaceId: null,
+    });
+    assert.equal(cleaned.types, null);
+    assert.equal(cleaned.manualTypes, null);
+  });
+
   it("venue Calendar legend is locked top-level taxonomy only", () => {
     const off = venueCalendarLegendEntries({ tastingEnabled: false }).map((e) => e.label);
     const on = venueCalendarLegendEntries({ tastingEnabled: true }).map((e) => e.label);

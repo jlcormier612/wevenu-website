@@ -25,6 +25,7 @@ import type { ManualScheduleType } from "@/lib/availability/types";
 import {
   filtersFromTaxonomySelection,
   presentVenueCalendarTaxonomyKeys,
+  nextTaxonomySelectionAfterToggle,
   taxonomySelectionFromFilters,
   venueCalendarTaxonomyLabel,
   type VenueCalendarTaxonomyKey,
@@ -303,9 +304,11 @@ export function FilterBar({
 
   function toggleTaxonomy(key: VenueCalendarTaxonomyKey) {
     const current = activeTaxonomy.length > 0 ? activeTaxonomy : presentTaxonomy;
-    const next = current.includes(key)
-      ? current.filter((k) => k !== key)
-      : [...current, key];
+    const next = nextTaxonomySelectionAfterToggle(current, key, presentTaxonomy);
+    // last remaining chip cannot be cleared — helper returns `current` unchanged
+    if (next.length === current.length && next.every((k, i) => k === current[i])) {
+      if (current.includes(key)) return;
+    }
     const mapped = filtersFromTaxonomySelection(next, presentTaxonomy);
     onChange({ ...filters, types: mapped.types, manualTypes: mapped.manualTypes });
   }

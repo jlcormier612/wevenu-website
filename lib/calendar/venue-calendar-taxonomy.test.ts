@@ -14,6 +14,7 @@ import {
 } from "@/lib/calendar/schedule-item-catalog";
 import {
   filtersFromTaxonomySelection,
+  nextTaxonomySelectionAfterToggle,
   presentVenueCalendarTaxonomyKeys,
   taxonomySelectionFromFilters,
   venueCalendarTaxonomyKey,
@@ -181,5 +182,53 @@ describe("venue Calendar locked taxonomy", () => {
       taxonomySelectionFromFilters({ types: ["event"], manualTypes: null }, present),
       ["event"],
     );
+  });
+
+  it("sole Tour chip cannot deselect the only type and blank the calendar", () => {
+    const present = ["tour"] as const;
+    const current = [...present];
+    const next = nextTaxonomySelectionAfterToggle(current, "tour", [...present]);
+    assert.deepEqual(next, ["tour"]);
+    const mapped = filtersFromTaxonomySelection(next, [...present]);
+    assert.deepEqual(mapped, { types: null, manualTypes: null });
+  });
+
+  it("sole Blocked Time chip cannot deselect the only type and blank the calendar", () => {
+    const present = ["blocked_time"] as const;
+    const next = nextTaxonomySelectionAfterToggle([...present], "blocked_time", [...present]);
+    assert.deepEqual(next, ["blocked_time"]);
+    assert.deepEqual(filtersFromTaxonomySelection(next, [...present]), {
+      types: null,
+      manualTypes: null,
+    });
+  });
+
+  it("multi-type selection and deselection still works normally", () => {
+    const present = ["event", "tour", "blocked_time"] as const;
+    const afterDeselectTour = nextTaxonomySelectionAfterToggle(
+      [...present],
+      "tour",
+      [...present],
+    );
+    assert.deepEqual(afterDeselectTour, ["event", "blocked_time"]);
+    const mapped = filtersFromTaxonomySelection(afterDeselectTour, [...present]);
+    assert.ok(mapped.types?.includes("event"));
+    assert.equal(mapped.types?.includes("tour"), false);
+    assert.ok(mapped.manualTypes?.includes("blocked_time"));
+
+    const reAddTour = nextTaxonomySelectionAfterToggle(
+      afterDeselectTour,
+      "tour",
+      [...present],
+    );
+    assert.deepEqual(reAddTour, ["event", "blocked_time", "tour"]);
+  });
+
+  it("empty taxonomy selection maps to show-all rather than blank calendar", () => {
+    const present = [...VENUE_CALENDAR_TAXONOMY];
+    assert.deepEqual(filtersFromTaxonomySelection([], present), {
+      types: null,
+      manualTypes: null,
+    });
   });
 });

@@ -60,10 +60,10 @@ export function sanitizeVenueCalendarFilters<T extends {
     : null;
   return {
     ...filters,
-    types: types && types.length > 0 ? types : (filters.types ? [] : null),
-    // Empty types array means "match nothing" when the user had only excluded
-    // types saved; null still means "all venue types."
-    manualTypes: manualTypes && manualTypes.length > 0 ? manualTypes : (filters.manualTypes ? [] : null),
+    // Empty arrays blank the calendar. Collapse them to null ("all venue types")
+    // so stale localStorage or a chip dead-end cannot look like missing data.
+    types: types && types.length > 0 ? types : null,
+    manualTypes: manualTypes && manualTypes.length > 0 ? manualTypes : null,
   };
 }
 
@@ -155,6 +155,29 @@ export function presentVenueCalendarTaxonomyKeys(
 }
 
 /**
+ * Next taxonomy chip selection after a toggle.
+ *
+ * Multi-select is preserved when more than one type is present. Deselecting
+ * the last remaining chip is a no-op so the calendar cannot silently blank
+ * (forensic: sole Tour / Blocked Time chip → types: []).
+ */
+export function nextTaxonomySelectionAfterToggle(
+  current: VenueCalendarTaxonomyKey[],
+  toggled: VenueCalendarTaxonomyKey,
+  present: VenueCalendarTaxonomyKey[],
+): VenueCalendarTaxonomyKey[] {
+  const base = current.length > 0 ? current : present;
+  if (!present.includes(toggled) && !base.includes(toggled)) {
+    return base;
+  }
+  const next = base.includes(toggled)
+    ? base.filter((k) => k !== toggled)
+    : [...base, toggled];
+  if (next.length === 0) return base;
+  return next;
+}
+
+/**
  * Map a taxonomy chip selection onto the existing types + manualTypes filter
  * axes. Selecting every present key collapses to null (show all).
  */
@@ -166,7 +189,10 @@ export function filtersFromTaxonomySelection(
     return { types: null, manualTypes: null };
   }
   if (selected.length === 0) {
-    return { types: [], manualTypes: [] };
+    // Empty selection blanks the calendar. Callers should use
+    // nextTaxonomySelectionAfterToggle so this path is unreachable from chips;
+    // treat as "all" if it still arrives (e.g. stale localStorage).
+    return { types: null, manualTypes: null };
   }
 
   const types: CalendarItemType[] = [];

@@ -26,17 +26,40 @@ export function normalizeCalendarSpaceFilterId(spaceId: string | null): string |
   return spaceId;
 }
 
+type SpaceFilterItem = Pick<CalendarItem, "spaceId" | "spaceIds" | "type" | "id">;
+
+/**
+ * Items that apply to the venue as a whole, not to one physical space.
+ *
+ * - Tours (`tour_appointments`) never carry a space assignment.
+ * - Tour availability exceptions project as Blocked Time without a space
+ *   (`tour-exception-…` ids) — venue closures.
+ * - Manual `calendar_blocks` have no space column in the Calendar projection,
+ *   so they are venue schedule items (appointments, blocked time, placeholders).
+ *
+ * Events and date holds CAN be space-assigned. Missing space on those types
+ * means unassigned — not attributed to a named space — not venue-wide.
+ */
+export function isVenueWideCalendarItem(item: SpaceFilterItem): boolean {
+  if (item.type === "tour") return true;
+  if (item.type === "calendar_block") return true;
+  if (typeof item.id === "string" && item.id.startsWith("tour-exception-")) return true;
+  return false;
+}
+
 /**
  * All spaces (null) → every item, including items with no space assignment.
- * A configured space → items associated with that space only.
- * Unassigned items are never attributed to a named space.
+ * A configured space → items associated with that space, plus venue-wide items.
+ * Unassigned events/holds (space-capable types with no space) are never
+ * attributed to a named space.
  */
 export function calendarItemMatchesSpace(
-  item: Pick<CalendarItem, "spaceId" | "spaceIds">,
+  item: SpaceFilterItem,
   selectedSpaceId: string | null,
 ): boolean {
   const selected = normalizeCalendarSpaceFilterId(selectedSpaceId);
   if (!selected) return true;
+  if (isVenueWideCalendarItem(item)) return true;
   const ids = spaceIdsForCalendarItem(item);
   return ids.includes(selected);
 }
