@@ -61,27 +61,44 @@ export default async function CommunicationHealthPage({ searchParams }: Props) {
           <Card><CardContent className="pt-6">
             <StatTile layout="value-top" align="center" value={counts.delivered} label="delivered successfully" valueClassName="text-success" />
           </CardContent></Card>
-          <Card
-            className={
-              attentionHref
-                ? "ring-offset-background transition-colors hover:border-destructive/40 focus-within:ring-2 focus-within:ring-ring"
-                : undefined
-            }
-            data-testid="attention-stat-card"
-          >
-            <CardContent className="pt-6">
-              <StatTile
-                layout="value-top"
-                align="center"
-                value={counts.needsAttention}
-                label={`need${counts.needsAttention === 1 ? "s" : ""} your attention`}
-                valueClassName={counts.needsAttention > 0 ? "text-destructive" : "text-heading"}
-                href={attentionHref ?? undefined}
-                ariaLabel={attentionTileAriaLabel(counts.needsAttention)}
-                active={showAttentionFilter}
-              />
-            </CardContent>
-          </Card>
+          {attentionHref ? (
+            <Link
+              href={attentionHref}
+              className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={attentionTileAriaLabel(counts.needsAttention)}
+              data-testid="attention-stat-card"
+            >
+              <Card
+                className={`h-full transition-colors hover:border-destructive/40 ${
+                  showAttentionFilter ? "border-destructive/40 ring-1 ring-destructive/30" : ""
+                }`}
+              >
+                <CardContent className="pt-6">
+                  <StatTile
+                    layout="value-top"
+                    align="center"
+                    value={counts.needsAttention}
+                    label={`need${counts.needsAttention === 1 ? "s" : ""} your attention`}
+                    valueClassName="text-destructive"
+                    active={showAttentionFilter}
+                  />
+                </CardContent>
+              </Card>
+            </Link>
+          ) : (
+            <Card data-testid="attention-stat-card">
+              <CardContent className="pt-6">
+                <StatTile
+                  layout="value-top"
+                  align="center"
+                  value={counts.needsAttention}
+                  label={`need${counts.needsAttention === 1 ? "s" : ""} your attention`}
+                  valueClassName="text-heading"
+                  ariaLabel={attentionTileAriaLabel(0)}
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">{DASHBOARD_COUNT_NOTE}</p>
       </div>

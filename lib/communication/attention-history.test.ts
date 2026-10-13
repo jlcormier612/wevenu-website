@@ -91,12 +91,14 @@ describe("attention history — page wiring + a11y + delivery failure display", 
     assert.match(src, /getCommunicationDashboardData\(\{\s*attentionOnly/);
     assert.match(src, /isAttentionHistoryFilterActive/);
     assert.match(src, /data-testid="attention-stat-card"/);
-    assert.match(src, /href=\{attentionHref/);
-    assert.match(src, /ariaLabel=\{attentionTileAriaLabel/);
+    assert.match(src, /href=\{attentionHref\}/);
+    assert.match(src, /aria-label=\{attentionTileAriaLabel/);
     assert.match(src, /MessageHistoryList/);
     assert.match(src, /paginate=\{showAttentionFilter\}/);
     assert.match(src, /Messages that need your attention/);
     assert.match(src, /Clear filter/);
+    // Entire card is the link when count > 0 (not a nested StatTile href).
+    assert.match(src, /attentionHref \? \(/);
   });
 
   it("StatTile exposes focus-visible ring and aria-label for keyboard users", () => {
