@@ -38,4 +38,14 @@ SMS send guard unchanged. Focused tests: `test-send.test.ts`, `message-status-de
 
 ## Gate 5
 
-Tests, commit, Sandbox deploy, browser verify of Communications readiness panel — see closeout below after deploy.
+| Item | Value |
+|------|--------|
+| Commit | `d5e36593051f1868b42fa198d36116829db3b65f` |
+| Focused tests | 26/26 pass (`message-status-definitions`, `test-send`, inquire branding, htc-cta, venue-notification-email) |
+| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/38475580540 — **in progress** (queued after prior success; no overlap) |
+| Browser verify | `verify-comms-browser.mts` — **pending** serving of `d5e36593` |
+| Production | untouched |
+| Open/click E2E | **not sent** — approval gate retained |
+
+**Communications language / channel-split:** NOT GREEN until deploy succeeds and browser script passes on serving `d5e36593`.  
+**Inquiry branding (Gate 1):** GREEN on prior serving `5b7d35d1`.
