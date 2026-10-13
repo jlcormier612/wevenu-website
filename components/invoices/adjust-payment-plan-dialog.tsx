@@ -128,6 +128,16 @@ const kindSelectClassName = cn(
   "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
 );
 
+/** Always show cents on the live remaining indicator ($0.00 / $906.25 / -$93.75). */
+function formatRemainingAmount(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function AdjustPaymentPlanDialog({
   open,
   onOpenChange,
@@ -369,7 +379,7 @@ export function AdjustPaymentPlanDialog({
                   )}
                   data-testid="adjust-remaining-amount"
                 >
-                  {formatCurrency(remainingAmount)}
+                  {formatRemainingAmount(remainingAmount)}
                 </p>
               </div>
             </div>
