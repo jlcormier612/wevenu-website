@@ -149,29 +149,28 @@ try {
 
   // —— Create timed appointment March 27 2027 10:00–11:00, no end date typed ——
   await openCalendar(page, "/calendar?year=2027&month=3");
-  await page.getByRole("button", { name: /Add Schedule Item|Schedule item/i }).first().click({ timeout: 15_000 }).catch(async () => {
-    await page.getByRole("button", { name: /^\+$|^Add/i }).first().click({ timeout: 10_000 });
-  });
-  await page.waitForTimeout(800);
-  const titleInput = page.locator('input').filter({ has: page.locator("xpath=..") }).first();
-  // Prefer labeled title field
-  const titleField = page.getByLabel(/Title/i).or(page.locator('input[placeholder*="Title" i]')).first();
-  if (await titleField.count()) await titleField.fill(TITLE);
-  else {
-    await page.locator("input").nth(0).fill(TITLE);
+  await page.getByRole("button", { name: /Add Schedule Item/i }).first().click({ timeout: 20_000 });
+  await page.getByPlaceholder(/Meeting with|Smith Wedding/i).waitFor({ timeout: 15_000 });
+  await page.getByPlaceholder(/Meeting with|Smith Wedding/i).fill(TITLE);
+  // Meadowbrook has "Other" disabled — pick an enabled catalog type.
+  await page.getByRole("combobox").first().click({ timeout: 10_000 }).catch(() => {});
+  const walkthroughOpt = page.getByRole("option", { name: /^Walkthrough$/i });
+  if (await walkthroughOpt.count()) {
+    await walkthroughOpt.click();
+  } else {
+    // Native/select fallbacks used by the schedule type picker
+    await page.locator("select").first().selectOption({ label: "Walkthrough" }).catch(async () => {
+      await page.getByText("Walkthrough", { exact: true }).first().click();
+    });
   }
   await page.locator('input[type="date"]').first().fill("2027-03-27");
-  // Leave end date as auto (same day); do not type a different end date.
-  const allDay = page.getByText("All day", { exact: true });
-  if (await allDay.count()) {
-    // Ensure unchecked
-    const box = page.locator('input[type="checkbox"]').first();
-    if (await box.isChecked()) await box.click();
-  }
+  // Leave end date as the auto same-day value — do not type a different end.
+  const allDayBoxCreate = page.locator('label:has-text("All day") input[type="checkbox"]');
+  if (await allDayBoxCreate.isChecked()) await allDayBoxCreate.uncheck();
   await page.locator("#schedule-start-time").fill("10:00");
   await page.locator("#schedule-end-time").fill("11:00");
-  await page.getByRole("button", { name: /Add Schedule Item/i }).click();
-  await page.waitForTimeout(2500);
+  await page.getByRole("button", { name: /^Add Schedule Item$/i }).last().click();
+  await page.waitForTimeout(3000);
 
   const { data: timedRows } = await admin
     .from("calendar_blocks")
@@ -197,13 +196,15 @@ try {
 
   // Reload + open read-only details
   await openCalendar(page, "/calendar?view=day&date=2027-03-27");
-  const dayText1 = await page.locator("body").innerText();
-  record("day_shows_times", dayText1.includes(TITLE) && textHasTime(dayText1, "10:00") && textHasTime(dayText1, "11:00"), "day view times");
-  record("day_not_all_day_label_for_timed", dayText1.includes(TITLE) && !dayText1.match(new RegExp(`${TITLE}[\\s\\S]{0,80}All day`)), "timed row not labeled All day");
+  const timedRow = page.getByTestId("schedule-item-view").filter({ hasText: TITLE }).first();
+  await timedRow.waitFor({ timeout: 15_000 });
+  const timedRowText = await timedRow.innerText();
+  record("day_shows_times", textHasTime(timedRowText, "10:00") && textHasTime(timedRowText, "11:00"), timedRowText.slice(0, 160));
+  record("day_not_all_day_label_for_timed", !timedRowText.includes("All day") && textHasTime(timedRowText, "10:00"), timedRowText.slice(0, 160));
 
-  const viewBtn = page.getByTestId("schedule-item-view").filter({ hasText: TITLE }).first();
-  await viewBtn.click({ timeout: 15_000 });
+  await timedRow.click({ timeout: 15_000 });
   await page.getByTestId("schedule-item-detail").waitFor({ timeout: 15_000 });
+  await page.getByText("Loading…").waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {});
   const detailText = await page.getByTestId("schedule-item-detail").innerText();
   record("view_opens_readonly", detailText.includes(TITLE) && !detailText.includes("Add Schedule Item"), detailText.slice(0, 200));
   record("detail_shows_times", textHasTime(detailText, "10:00") && textHasTime(detailText, "11:00"), detailText.slice(0, 240));
@@ -211,7 +212,11 @@ try {
 
   // Explicit Edit → notes change → save → reload
   await page.getByTestId("schedule-item-detail-edit").click();
-  await page.waitForTimeout(1200);
+  await page.locator("#schedule-start-time").waitFor({ state: "visible", timeout: 15_000 });
+  await page.waitForFunction(() => {
+    const el = document.querySelector("#schedule-start-time") as HTMLInputElement | null;
+    return !!el && el.value.startsWith("10:00");
+  }, { timeout: 15_000 });
   const notes = page.locator("#schedule-notes");
   await notes.waitFor({ timeout: 15_000 });
   const startVal = await page.locator("#schedule-start-time").inputValue();
@@ -239,13 +244,10 @@ try {
 
   // Cancel path: open edit, change title, cancel — no persist
   await openCalendar(page, "/calendar?view=day&date=2027-03-27");
-  await page.getByTestId("schedule-item-edit").filter({ hasText: TITLE }).first().click({ timeout: 10_000 }).catch(async () => {
-    await page.getByTestId("schedule-item-view").filter({ hasText: TITLE }).first().click();
-    await page.getByTestId("schedule-item-detail-edit").click();
-  });
-  await page.waitForTimeout(1000);
-  const titleOnEdit = page.getByLabel(/Title/i).first();
-  if (await titleOnEdit.count()) await titleOnEdit.fill(`${TITLE} SHOULD NOT SAVE`);
+  await page.getByTestId("schedule-item-view").filter({ hasText: TITLE }).first().click({ timeout: 15_000 });
+  await page.getByTestId("schedule-item-detail-edit").click();
+  await page.getByPlaceholder(/Meeting with|Smith Wedding/i).waitFor({ timeout: 15_000 });
+  await page.getByPlaceholder(/Meeting with|Smith Wedding/i).fill(`${TITLE} SHOULD NOT SAVE`);
   await page.getByRole("button", { name: /^Cancel$/i }).click();
   await page.waitForTimeout(800);
   const { data: afterCancel } = await admin.from("calendar_blocks").select("title").eq("id", timedId!).maybeSingle();
@@ -253,17 +255,17 @@ try {
 
   // All-day item: no invented times
   await openCalendar(page, "/calendar?year=2027&month=3");
-  await page.getByRole("button", { name: /Add Schedule Item|Schedule item/i }).first().click({ timeout: 15_000 }).catch(async () => {
-    await page.getByRole("button", { name: /^\+$|^Add/i }).first().click();
-  });
-  await page.waitForTimeout(800);
-  const title2 = page.getByLabel(/Title/i).first();
-  if (await title2.count()) await title2.fill(ALLDAY_TITLE);
+  await page.getByRole("button", { name: /Add Schedule Item/i }).first().click({ timeout: 20_000 });
+  await page.getByPlaceholder(/Meeting with|Smith Wedding/i).fill(ALLDAY_TITLE);
+  await page.getByRole("combobox").first().click({ timeout: 10_000 }).catch(() => {});
+  const walkthroughOpt2 = page.getByRole("option", { name: /^Walkthrough$/i });
+  if (await walkthroughOpt2.count()) await walkthroughOpt2.click();
+  else await page.getByText("Walkthrough", { exact: true }).first().click().catch(() => {});
   await page.locator('input[type="date"]').first().fill("2027-03-28");
   const allDayBox = page.locator('label:has-text("All day") input[type="checkbox"]');
   if (!(await allDayBox.isChecked())) await allDayBox.check();
-  await page.getByRole("button", { name: /Add Schedule Item/i }).click();
-  await page.waitForTimeout(2500);
+  await page.getByRole("button", { name: /^Add Schedule Item$/i }).last().click();
+  await page.waitForTimeout(3000);
   const { data: alldayRows } = await admin
     .from("calendar_blocks")
     .select("id,title,is_all_day,start_time,end_time,start_date")
@@ -280,14 +282,20 @@ try {
   );
 
   await openCalendar(page, "/calendar?view=day&date=2027-03-28");
-  await page.getByTestId("schedule-item-edit").filter({ hasText: ALLDAY_TITLE }).first().click({ timeout: 10_000 }).catch(async () => {
-    await page.getByTestId("schedule-item-view").filter({ hasText: ALLDAY_TITLE }).first().click();
-    await page.getByTestId("schedule-item-detail-edit").click();
-  });
-  await page.waitForTimeout(1000);
+  await page.getByTestId("schedule-item-view").filter({ hasText: ALLDAY_TITLE }).first().click({ timeout: 15_000 });
+  await page.getByTestId("schedule-item-detail-edit").click();
+  // Wait until async getBlockAction finishes — form starts empty/timed until then.
+  await page.getByText("Loading…").waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(500);
   const allDayChecked = await page.locator('label:has-text("All day") input[type="checkbox"]').isChecked();
   const startVisible = await page.locator("#schedule-start-time").count();
-  record("allday_edit_no_invented_times", allDayChecked && startVisible === 0, `checked=${allDayChecked} timeInputs=${startVisible}`);
+  const startValAllDay = startVisible ? await page.locator("#schedule-start-time").inputValue() : "";
+  record(
+    "allday_edit_no_invented_times",
+    allDayChecked && startVisible === 0 && startValAllDay !== "09:00",
+    `checked=${allDayChecked} timeInputs=${startVisible} startVal=${startValAllDay}`,
+  );
+  await page.getByRole("button", { name: /^Cancel$/i }).click();
 
   // Views consistency + labels
   const monthText = await openCalendar(page, "/calendar?year=2027&month=3");
@@ -344,27 +352,33 @@ try {
   });
   record("server_past_date_rejected", pastOk === false, `rpc=${pastOk}`);
 
-  // Attempt create_public_form_lead with past date if form key exists
-  const { data: formRow } = await admin
-    .from("venue_forms")
-    .select("public_key")
-    .eq("venue_id", VENUE)
-    .limit(1)
-    .maybeSingle()
-    .then(async (r) => {
-      if (r.data) return r;
-      return admin.from("inquiry_form_configs").select("public_key").eq("venue_id", VENUE).limit(1).maybeSingle();
-    })
-    .catch(() => ({ data: null }));
-  // Discover public key via brochure/embed path used by form pages
+  // Public form ingest: Meadowbrook choose_available gates via _is_event_date_available.
+  // Resolve a published form public_key when present; otherwise RPC authority is enough.
   let publicKey: string | null = null;
-  const { data: formCfg } = await admin.rpc("get_public_form_by_key", { p_public_key: EMBED }).catch(() => ({ data: null }));
-  if (formCfg) publicKey = EMBED;
-  const { data: forms } = await admin.from("venues").select("id").eq("id", VENUE);
-  void forms;
-  void formRow;
-  void formCfg;
-  // Direct authority proof already recorded; try ingest when public key known
+  try {
+    const { data: formCfg } = await admin.rpc("get_public_availability_calendar", {
+      p_embed_key: EMBED,
+      p_start: "2020-06-01",
+      p_end: "2020-06-30",
+    });
+    evidence.pastCalendarRpc = formCfg;
+    const pastDates = (formCfg?.dates ?? []).map(String);
+    record("public_calendar_rpc_excludes_past", !pastDates.includes("2020-06-15"), `dates=${pastDates.length}`);
+  } catch (e) {
+    record("public_calendar_rpc_excludes_past", false, e instanceof Error ? e.message : String(e));
+  }
+  try {
+    const { data: keys } = await admin
+      .from("venue_inquiry_forms")
+      .select("public_key,token")
+      .eq("venue_id", VENUE)
+      .limit(3);
+    publicKey = (keys?.[0] as { public_key?: string; token?: string } | undefined)?.public_key
+      ?? (keys?.[0] as { token?: string } | undefined)?.token
+      ?? null;
+  } catch {
+    publicKey = null;
+  }
   if (publicKey) {
     const { data: ingest } = await admin.rpc("create_public_form_lead", {
       p_public_key: publicKey,
@@ -381,7 +395,7 @@ try {
     evidence.pastIngest = ingest;
     record("public_form_past_rejected", ingest?.ok === false, JSON.stringify(ingest));
   } else {
-    record("public_form_past_rejected", pastOk === false, "RPC authority rejects past; form key lookup skipped");
+    record("public_form_past_rejected", pastOk === false, "RPC authority rejects past; no form public_key found");
   }
 
   // Side-effect: blocked-time / settings unchanged (count calendar_blocks of type blocked_time)
@@ -403,33 +417,48 @@ try {
   const { data: spaces } = await admin.from("venue_spaces").select("id,name").in("id", spaceIds);
   const spaceName = new Map((spaces ?? []).map((s) => [s.id, s.name]));
   const barnId = [...spaceName.entries()].find(([, n]) => /barn/i.test(n))?.[0] ?? null;
-  const projected = projectAssignmentWindowsOntoCalendarDates(
-    (assigns ?? []).map((a) => ({
-      id: a.id,
-      useKey: a.use_key,
+  const projectedRaw = projectAssignmentWindowsOntoCalendarDates({
+    protectedDates: ["2027-05-08", "2027-05-09"],
+    windows: (assigns ?? []).map((a) => ({
+      spaceId: a.space_id,
       useLabel: a.use_label,
-      scheduledDate: a.scheduled_date,
       startTime: hhmm(a.start_time),
       endTime: hhmm(a.end_time),
-      spaceId: a.space_id,
-      spaceName: spaceName.get(a.space_id) ?? null,
+      scheduledDate: a.scheduled_date,
     })),
-    "2027-05-08",
-    "2027-05-09",
-  );
+  });
+  record("nicole_projection_timed", projectedRaw !== "untimed", typeof projectedRaw === "string" ? projectedRaw : `n=${projectedRaw.length}`);
+  const projected = projectedRaw === "untimed" ? [] : projectedRaw;
   const sat = projected.filter((p) => p.date === "2027-05-08");
   const sun = projected.filter((p) => p.date === "2027-05-09");
-  record("nicole_sat_rehearsal_only", sat.length === 1 && /rehearsal/i.test(sat[0]?.title ?? ""), JSON.stringify(sat));
-  record("nicole_sun_no_rehearsal", sun.every((p) => !/rehearsal/i.test(p.title)), JSON.stringify(sun.map((p) => p.title)));
+  record(
+    "nicole_sat_rehearsal_only",
+    sat.length === 1 && /rehearsal/i.test(sat[0]?.useLabel ?? ""),
+    JSON.stringify(sat),
+  );
+  record(
+    "nicole_sun_no_rehearsal",
+    sun.length > 0 && sun.every((p) => !/rehearsal/i.test(p.useLabel ?? "")),
+    JSON.stringify(sun.map((p) => p.useLabel)),
+  );
   if (barnId) {
     const barnItems = projected.filter((p) => calendarItemMatchesSpace({
-      id: p.id, type: "event", date: p.date, title: p.title, subtitle: null, time: p.time, endTime: p.endTime,
-      link: "/calendar", spaceId: p.spaceId, spaceIds: p.spaceId ? [p.spaceId] : [],
-    } as any, barnId));
+      id: `p-${p.index}`,
+      type: "event",
+      date: p.date,
+      title: p.useLabel ?? "Event",
+      subtitle: null,
+      time: p.startTime,
+      endTime: p.endTime,
+      link: "/calendar",
+      spaceId: p.spaceId,
+      spaceIds: [p.spaceId],
+    }, barnId));
     record(
       "nicole_barn_filter",
-      barnItems.some((p) => p.date === "2027-05-08") && barnItems.some((p) => p.date === "2027-05-09" && /reception/i.test(p.title)),
-      JSON.stringify(barnItems.map((p) => ({ d: p.date, t: p.title }))),
+      barnItems.some((p) => p.date === "2027-05-08")
+        && barnItems.some((p) => p.date === "2027-05-09" && /reception/i.test(p.useLabel ?? "")),
+      JSON.stringify(barnItems.map((p) => ({ d: p.date, t: p.useLabel }))),
     );
   } else {
     record("nicole_barn_filter", false, "barn space missing");

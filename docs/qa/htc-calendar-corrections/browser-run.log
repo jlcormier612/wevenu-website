@@ -1,0 +1,57 @@
+PASS serving_commit — 5fe3d13ece6d3002452e28c30cda5b47754e8173
+PASS timed_persisted — {"id":"739a80b3-fef2-4c25-92a7-cd10f6407174","title":"HTC Timed Proof 1791856435562","start_date":"2027-03-27","end_date":"2027-03-27","start_time":"10:00:00","end_time":"11:00:00","is_all_day":false,"notes":null,"lead_id":null,"client_id":null}
+PASS day_shows_times — WALKTHROUGH
+
+10:00 AM – 11:00 AM
+
+HTC Timed Proof 1791856435562
+PASS day_not_all_day_label_for_timed — WALKTHROUGH
+
+10:00 AM – 11:00 AM
+
+HTC Timed Proof 1791856435562
+PASS view_opens_readonly — HTC Timed Proof 1791856435562
+
+Walkthrough · Sat, Mar 27, 2027 · 10:00 AM – 11:00 AM
+
+Loading details…
+
+Close
+Edit
+Close
+PASS detail_shows_times — HTC Timed Proof 1791856435562
+
+Walkthrough · Sat, Mar 27, 2027 · 10:00 AM – 11:00 AM
+
+Loading details…
+
+Close
+Edit
+Close
+PASS no_broken_workspace_link — unrelated item has no workspace CTA
+PASS edit_prefilled_times — 10:00-11:00
+PASS times_survive_unrelated_edit — {"id":"739a80b3-fef2-4c25-92a7-cd10f6407174","start_date":"2027-03-27","end_date":"2027-03-27","start_time":"10:00:00","end_time":"11:00:00","is_all_day":false,"notes":"Notes survive edit"}
+PASS cancel_makes_no_changes — HTC Timed Proof 1791856435562
+PASS allday_untimed — {"id":"c317409e-9d8d-48f0-bf77-4cd634c90a2c","title":"HTC All-Day Proof 1791856435562","is_all_day":true,"start_time":null,"end_time":null,"start_date":"2027-03-28"}
+PASS allday_edit_no_invented_times — checked=true timeInputs=0 startVal=
+PASS month_list_label — Month list control present
+PASS day_label — Day aria label
+PASS week_shows_timed — week
+PASS agenda_shows_timed — agenda/month list
+PASS today_navigation — https://app.sandbox.hellotocheers.com/calendar?view=day&date=2026-10-12
+PASS public_past_no_inquire — inquire=0
+PASS public_past_no_available_cells — availableCells=0 legendHits=2
+PASS public_future_still_rules — inquire=30
+PASS server_past_date_rejected — rpc=false
+PASS public_calendar_rpc_excludes_past — dates=0
+PASS public_form_past_rejected — RPC authority rejects past; no form public_key found
+PASS no_blocked_time_side_effect — blocked_time count=0
+PASS nicole_projection_timed — n=5
+PASS nicole_sat_rehearsal_only — [{"date":"2027-05-08","spaceId":"6366187b-e7f5-45d0-b9bd-5534a48f6650","useLabel":"Rehearsal Dinner","startTime":"18:00","endTime":"21:00","index":0}]
+PASS nicole_sun_no_rehearsal — ["Getting Ready","Ceremony","Reception","Cocktail Hour"]
+PASS nicole_barn_filter — [{"d":"2027-05-08","t":"Rehearsal Dinner"},{"d":"2027-05-09","t":"Reception"}]
+PASS nicole_ui_sat — May 8 UI
+PASS nicole_ui_sun — May 9 UI
+PASS nicole_reload_stable — reload May 9
+PASS runtime_stayed_expected — 5fe3d13ece6d3002452e28c30cda5b47754e8173
+GREEN
