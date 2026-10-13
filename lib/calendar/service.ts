@@ -183,6 +183,7 @@ export async function getCalendarData(
     endTime: string | null;
     scheduledDate: string | null;
   }>>();
+  const assignmentSpaceNames = new Map<string, string>();
   if (eventIds.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: assignRows } = await (supabase.from("event_space_assignments") as any)
@@ -211,6 +212,19 @@ export async function getCalendarData(
       });
       assignmentWindows.set(row.event_id, windows);
     }
+    const spaceIdsNeedingNames = [...new Set(
+      [...assignmentSpaceIds.values()].flat().filter(Boolean),
+    )];
+    if (spaceIdsNeedingNames.length > 0) {
+      const { data: spaceRows } = await supabase
+        .from("venue_spaces")
+        .select("id, name")
+        .eq("venue_id", venue.id)
+        .in("id", spaceIdsNeedingNames);
+      for (const row of (spaceRows ?? []) as { id: string; name: string }[]) {
+        assignmentSpaceNames.set(row.id, row.name);
+      }
+    }
   }
 
   // Events — component assignments land on their scheduled_date; protected
@@ -221,7 +235,7 @@ export async function getCalendarData(
     const assigned = assignmentSpaceIds.get(e.id) ?? [];
     const spaceIds = [...new Set([e.space_id, ...assigned].filter(Boolean))] as string[];
     const windows = assignmentWindows.get(e.id) ?? [];
-    const baseSubtitle = [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
+    const typeStatusSubtitle = [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
       .filter(Boolean)
       .join(" · ") || null;
     const projected = projectAssignmentWindowsOntoCalendarDates({
@@ -230,19 +244,22 @@ export async function getCalendarData(
     });
     if (projected !== "untimed") {
       for (const row of projected) {
+        // Component label is the primary title so May 9 is not misread as a
+        // single "Reception" / client-name-only row. Client stays in subtitle.
+        const clientLabel = cn ?? e.name;
         items.push({
           id: `event-${e.id}-${row.date}-${row.spaceId}-${row.index}`,
           type: "event",
           date: row.date,
-          title: cn ?? e.name,
-          subtitle: [baseSubtitle, row.useLabel].filter(Boolean).join(" · ") || null,
+          title: row.useLabel?.trim() || clientLabel,
+          subtitle: [clientLabel, typeStatusSubtitle].filter(Boolean).join(" · ") || null,
           time: row.startTime,
           endTime: row.endTime,
           link: `/events/${e.id}`,
           eventId: e.id,
           clientId: e.client_id ?? null,
           spaceId: row.spaceId,
-          spaceName: null,
+          spaceName: assignmentSpaceNames.get(row.spaceId) ?? null,
           spaceIds: [row.spaceId],
         });
       }
@@ -254,7 +271,7 @@ export async function getCalendarData(
         type: "event",
         date,
         title: cn ?? e.name,
-        subtitle: baseSubtitle,
+        subtitle: typeStatusSubtitle,
         time: e.start_time?.slice(0, 5) ?? null,
         endTime: e.end_time?.slice(0, 5) ?? null,
         link: `/events/${e.id}`,

@@ -116,4 +116,27 @@ describe("getCalendarData wires scheduled_date into projection", () => {
     assert.match(aggregation, /scheduled_date/);
     assert.match(aggregation, /projectAssignmentWindowsOntoCalendarDates/);
   });
+
+  it("labels each component with useLabel and resolves physical space names", () => {
+    const aggregation = serviceSrc.slice(serviceSrc.indexOf("export async function getCalendarData"));
+    assert.match(aggregation, /row\.useLabel/);
+    assert.match(aggregation, /assignmentSpaceNames/);
+    assert.match(aggregation, /venue_spaces/);
+    assert.match(aggregation, /spaceName:\s*assignmentSpaceNames\.get/);
+  });
+});
+
+describe("Calendar page places availability cards below the calendar", () => {
+  it("renders CalendarView before ShareAvailability / ShareTourAvailability", () => {
+    const src = readFileSync(resolve("components/calendar/calendar-page-client.tsx"), "utf8");
+    const cal = src.indexOf("<CalendarView");
+    const avail = src.indexOf("<ShareAvailability");
+    const tour = src.indexOf("<ShareTourAvailability");
+    assert.ok(cal > 0 && avail > 0 && tour > 0);
+    assert.ok(cal < avail, "CalendarView must precede Public Availability card");
+    assert.ok(cal < tour, "CalendarView must precede Tour Availability card");
+    assert.ok(avail < tour || tour < avail);
+    assert.match(src, /Copy availability link|ShareAvailability/);
+    assert.match(src, /ShareTourAvailability/);
+  });
 });

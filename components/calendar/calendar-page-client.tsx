@@ -72,16 +72,6 @@ export function CalendarPageClient({
           </div>
         }
       />
-      <div className="grid items-stretch gap-3 md:grid-cols-2">
-        {availabilityUrl ? <ShareAvailability url={availabilityUrl} /> : null}
-        <ShareTourAvailability url={tourUrl} />
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Availability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date.{" "}
-        <Link href="/help/how-does-date-availability-work" className="font-medium text-foreground underline underline-offset-4">
-          Learn how availability works
-        </Link>
-      </p>
       <CalendarView
         ref={calendarRef}
         view={view}
@@ -97,6 +87,16 @@ export function CalendarPageClient({
         venueSpaces={venueSpaces}
         hideToolbarCreate
       />
+      <p className="text-sm text-muted-foreground">
+        Availability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date.{" "}
+        <Link href="/help/how-does-date-availability-work" className="font-medium text-foreground underline underline-offset-4">
+          Learn how availability works
+        </Link>
+      </p>
+      <div className="grid items-stretch gap-3 md:grid-cols-2">
+        {availabilityUrl ? <ShareAvailability url={availabilityUrl} /> : null}
+        <ShareTourAvailability url={tourUrl} />
+      </div>
     </div>
   );
 }

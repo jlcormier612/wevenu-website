@@ -915,3 +915,73 @@ describe("component scheduledDate occupancy (Fri rehearsal ≠ Sat reception)", 
     assert.equal(sat.ok, false);
   });
 });
+
+describe("Nicole May 8–9 component occupancy matrix", () => {
+  const BARN = "6366187b-e7f5-45d0-b9bd-5534a48f6650";
+  const VILLA = "e11e9e2f-1930-464d-b9e7-d0c61c30b221";
+  const BRIDGE = "696791d8-0e6f-4a6c-b99e-031ee7237d38";
+  const LAWN = "56a70756-5ee3-4e08-8e1b-d1713c5bbbec";
+  const meadowbrook = venue({
+    effectiveMax: 4,
+    activeSpaceIds: [BARN, VILLA, BRIDGE, LAWN],
+    allSpaceIds: [BARN, VILLA, BRIDGE, LAWN],
+    minTurnaroundHours: 0,
+  });
+  const nicole = event({
+    id: "e15869c8-736d-42cc-a00a-4b4bbdadc0f1",
+    status: "confirmed",
+    eventDate: "2027-05-08",
+    eventEndDate: "2027-05-09",
+    spaceId: BARN,
+    spaceIds: [BARN, VILLA, BRIDGE, LAWN],
+    windows: [
+      { spaceId: BARN, startTime: "18:00", endTime: "21:00", scheduledDate: "2027-05-08" },
+      { spaceId: VILLA, startTime: "14:00", endTime: "16:00", scheduledDate: "2027-05-09" },
+      { spaceId: BRIDGE, startTime: "16:00", endTime: "17:00", scheduledDate: "2027-05-09" },
+      { spaceId: LAWN, startTime: "17:00", endTime: "18:00", scheduledDate: "2027-05-09" },
+      { spaceId: BARN, startTime: "18:00", endTime: "22:00", scheduledDate: "2027-05-09" },
+    ],
+  });
+
+  function overlap(spaceId: string, date: string, startTime: string, endTime: string) {
+    return evaluateEventOccupancy(
+      input({
+        eventDate: date,
+        spaceId,
+        startTime,
+        endTime,
+        windows: [{ spaceId, startTime, endTime, scheduledDate: date }],
+      }),
+      meadowbrook,
+      [nicole],
+    );
+  }
+
+  it("rejects overlapping requests on each Nicole component space/time", () => {
+    assert.equal(overlap(BARN, "2027-05-09", "18:30", "20:00").ok, false, "Reception Barn");
+    assert.equal(overlap(VILLA, "2027-05-09", "14:30", "15:30").ok, false, "Getting Ready Villa");
+    assert.equal(overlap(BRIDGE, "2027-05-09", "16:15", "16:45").ok, false, "Ceremony Bridge");
+    assert.equal(overlap(LAWN, "2027-05-09", "17:15", "17:45").ok, false, "Cocktail Lawn");
+    assert.equal(overlap(BARN, "2027-05-08", "18:30", "20:00").ok, false, "Rehearsal Dinner Barn");
+  });
+
+  it("allows a different space during the same period under multi-space capacity", () => {
+    // Villa is busy 14–16; Barn must remain bookable in that window on May 9.
+    const barnMorning = overlap(BARN, "2027-05-09", "14:00", "16:00");
+    assert.equal(barnMorning.ok, true, barnMorning.ok ? "" : barnMorning.message);
+  });
+
+  it("allows the same space outside the occupied interval (not parent date-range alone)", () => {
+    const barnBeforeReception = overlap(BARN, "2027-05-09", "10:00", "12:00");
+    assert.equal(barnBeforeReception.ok, true, barnBeforeReception.ok ? "" : barnBeforeReception.message);
+    // Saturday Barn after rehearsal ends at 21:00
+    const barnAfterRehearsal = overlap(BARN, "2027-05-08", "21:30", "22:30");
+    assert.equal(barnAfterRehearsal.ok, true, barnAfterRehearsal.ok ? "" : barnAfterRehearsal.message);
+  });
+
+  it("repository occupancy load still selects assignment scheduled_date", () => {
+    const src = readFileSync(resolve("lib/availability/repository.ts"), "utf8");
+    assert.match(src, /event_space_assignments/);
+    assert.match(src, /scheduled_date/);
+  });
+});

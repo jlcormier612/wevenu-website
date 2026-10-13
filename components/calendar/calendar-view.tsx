@@ -200,17 +200,25 @@ function CalendarGrid({
                 <div className="mt-1 flex flex-wrap gap-0.5">
                   {cell.items.slice(0, 4).map((item) => {
                     const meta = resolveItemMeta(item);
+                    const tipParts = [
+                      meta.label,
+                      item.title,
+                      item.time
+                        ? (item.endTime ? `${item.time}–${item.endTime}` : item.time)
+                        : null,
+                      item.spaceName,
+                    ].filter(Boolean);
                     return (
                       <span
                         key={item.id}
                         className="block h-1.5 w-1.5 rounded-full"
                         style={{ backgroundColor: meta.dotColor }}
-                        title={`${meta.label}: ${item.title}`}
+                        title={tipParts.join(" · ")}
                       />
                     );
                   })}
                   {cell.items.length > 4 && (
-                    <span className="text-[9px] text-muted-foreground leading-none mt-0.5">
+                    <span className="text-[9px] text-muted-foreground leading-none mt-0.5" title={`${cell.items.length} scheduled items`}>
                       +{cell.items.length - 4}
                     </span>
                   )}
