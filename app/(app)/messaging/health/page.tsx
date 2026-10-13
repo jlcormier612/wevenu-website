@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Mail, Smartphone } from "lucide-react";
+import { Mail, Smartphone } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatTile } from "@/components/dashboard-system/stat-tile";
 import { CommunicationHealthWidget } from "@/components/communication/communication-health-widget";
 import { ReadinessChecklist } from "@/components/communication/readiness-checklist";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
 import { getCommunicationDashboardData } from "@/lib/communication/dashboard";
 import { getCommunicationReadiness } from "@/lib/communication/readiness";
@@ -22,13 +23,7 @@ export default async function CommunicationHealthPage() {
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/messaging"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-        Back to Inbox
-      </Link>
+      <CollectionBackLink href="/messaging" label="Inbox" />
       <div>
         <h1 className="font-heading text-2xl font-medium text-heading">Communication Health</h1>
         <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients.</p>
