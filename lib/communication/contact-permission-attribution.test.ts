@@ -109,6 +109,36 @@ describe("smsPermissionAttributedToLead", () => {
       false,
     );
   });
+
+  it("surfaces not_opted_in so the card can offer a consent request", () => {
+    assert.equal(
+      smsPermissionAttributedToLead(
+        { ...rebeccaForm, status: "not_opted_in", source: "email_sms_consent_request" },
+        betty,
+      ),
+      true,
+    );
+  });
+
+  it("two absent relationships never match each other", () => {
+    assert.equal(
+      smsPermissionAttributedToLead(
+        { ...rebeccaForm, evidenceLeadId: null, relationshipId: null },
+        { leadId: "betty-id", relationshipId: null },
+      ),
+      false,
+    );
+  });
+
+  it("an unrecognised or empty source stays number-level", () => {
+    for (const source of ["", "   ", "probe2", "sms_keyword_start"]) {
+      assert.equal(
+        smsPermissionAttributedToLead({ ...rebeccaForm, source }, betty),
+        true,
+        `source=${JSON.stringify(source)}`,
+      );
+    }
+  });
 });
 
 describe("manual vs inquiry capture", () => {
