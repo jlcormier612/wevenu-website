@@ -1,0 +1,217 @@
+{
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": {
+        "tip": "c7e1fcf4a085c04400c19bb60c6a7a58eca01d5d",
+        "EXPECTED": "c7e1fcf4a085c04400c19bb60c6a7a58eca01d5d"
+      }
+    },
+    {
+      "name": "db_five_components_unchanged",
+      "pass": true,
+      "detail": [
+        {
+          "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+          "use_label": "Rehearsal Dinner",
+          "start_time": "18:00:00",
+          "end_time": "21:00:00",
+          "scheduled_date": "2027-05-08"
+        },
+        {
+          "space_id": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+          "use_label": "Getting Ready",
+          "start_time": "14:00:00",
+          "end_time": "16:00:00",
+          "scheduled_date": "2027-05-09"
+        },
+        {
+          "space_id": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+          "use_label": "Ceremony",
+          "start_time": "16:00:00",
+          "end_time": "17:00:00",
+          "scheduled_date": "2027-05-09"
+        },
+        {
+          "space_id": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+          "use_label": "Reception",
+          "start_time": "18:00:00",
+          "end_time": "22:00:00",
+          "scheduled_date": "2027-05-09"
+        },
+        {
+          "space_id": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+          "use_label": "Cocktail Hour",
+          "start_time": "17:00:00",
+          "end_time": "18:00:00",
+          "scheduled_date": "2027-05-09"
+        }
+      ]
+    },
+    {
+      "name": "projection_may8_may9",
+      "pass": true,
+      "detail": [
+        {
+          "date": "2027-05-08",
+          "spaceId": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+          "useLabel": "Rehearsal Dinner",
+          "startTime": "18:00",
+          "endTime": "21:00",
+          "index": 0
+        },
+        {
+          "date": "2027-05-09",
+          "spaceId": "e11e9e2f-1930-464d-b9e7-d0c61c30b221",
+          "useLabel": "Getting Ready",
+          "startTime": "14:00",
+          "endTime": "16:00",
+          "index": 1
+        },
+        {
+          "date": "2027-05-09",
+          "spaceId": "696791d8-0e6f-4a6c-b99e-031ee7237d38",
+          "useLabel": "Ceremony",
+          "startTime": "16:00",
+          "endTime": "17:00",
+          "index": 2
+        },
+        {
+          "date": "2027-05-09",
+          "spaceId": "6366187b-e7f5-45d0-b9bd-5534a48f6650",
+          "useLabel": "Reception",
+          "startTime": "18:00",
+          "endTime": "22:00",
+          "index": 3
+        },
+        {
+          "date": "2027-05-09",
+          "spaceId": "56a70756-5ee3-4e08-8e1b-d1713c5bbbec",
+          "useLabel": "Cocktail Hour",
+          "startTime": "17:00",
+          "endTime": "18:00",
+          "index": 4
+        }
+      ]
+    },
+    {
+      "name": "occ_barn_reception",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "occ_villa_getting_ready",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "occ_bridge_ceremony",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "occ_lawn_cocktail",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "occ_barn_rehearsal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "occ_barn_during_villa_ok",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "occ_barn_morning_ok",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "browser_dpl",
+      "pass": true,
+      "detail": "c7e1fcf4a085c04400c19bb60c6a7a58eca01d5d"
+    },
+    {
+      "name": "layout_calendar_above_availability",
+      "pass": true,
+      "detail": {
+        "monthY": 210,
+        "availY": 1161.703125,
+        "tourY": 1161.703125,
+        "viewportH": 900
+      }
+    },
+    {
+      "name": "layout_cards_below_fold_or_below_calendar",
+      "pass": true,
+      "detail": {
+        "monthY": 210,
+        "availY": 1161.703125,
+        "tourY": 1161.703125,
+        "viewportH": 900
+      }
+    },
+    {
+      "name": "may8_rehearsal",
+      "pass": true,
+      "detail": "Saturday, May 8\n\nEVENT\n\n6:00 PM – 9:00 PM\n\nRehearsal Dinner\n\nNicole Bethune · Wedding\n\nMeadowbrook Barn\n\nMay at a glance — 5 items\n5 Events\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet"
+    },
+    {
+      "name": "may9_all_four",
+      "pass": true,
+      "detail": "Sunday, May 9\n\nEVENT\n\n2:00 PM – 4:00 PM\n\nGetting Ready\n\nNicole Bethune · Wedding\n\nMeadowbrook Villa\n\nEVENT\n\n4:00 PM – 5:00 PM\n\nCeremony\n\nNicole Bethune · Wedding\n\nBrook Bridge\n\nEVENT\n\n5:00 PM – 6:00 PM\n\nCocktail Hour\n\nNicole Bethune · Wedding\n\nMeadow Lawn\n\nEVENT\n\n6:00 PM – 10:00 PM\n\nReception\n\nNicole Bethune · Wedding\n\nMeadowbrook Barn\n\nMay at a glance — 5 items\n5 Events\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tour link for websites, QR codes, and new prospects. Your current tour availability always applies.\n\nAlready working with someone? Use the personalized scheduling link that resides in their lead record, under 'Tour & follow-up'. That will preserve any preferred date holds and other previously gathered information."
+    },
+    {
+      "name": "may9_spaces_named",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "may9_barn_only_reception",
+      "pass": true,
+      "detail": "Sunday, May 9\n\nEVENT\n\n6:00 PM – 10:00 PM\n\nReception\n\nNicole Bethune · Wedding\n\nMeadowbrook Barn\n\nMay at a glance — 2 items\n2 Events\n\nAvailability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date. Learn how availability works\n\nPUBLIC AVAILABILITY\n\nShare your current available event selection dates with couples.\n\nCopy availability link\nPreview\n\nYour link always reflects your current availability.\n\nTOUR AVAILABILITY\n\nLet new prospects choose an available time to schedule a tour.\n\nCopy tour link\nPreview\n\nThis is a general tou"
+    },
+    {
+      "name": "day_may9_four",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "week_has_components",
+      "pass": true,
+      "detail": "May 9 – May 15, 2027\nToday\nEvent\nAll spaces\nMeadowbrook Barn\nBrook Bridge\nMeadowbro"
+    },
+    {
+      "name": "agenda_has_components",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "copy_availability_present",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "copy_tour_present",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "preview_availability_href",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/availability/cd9e89529e65480ba8cfc6e154193d5a"
+    },
+    {
+      "name": "preview_tour_href",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/book/db94c77bf80067315b20937240f7b110"
+    }
+  ],
+  "tip": "c7e1fcf4a085c04400c19bb60c6a7a58eca01d5d",
+  "EXPECTED": "c7e1fcf4a085c04400c19bb60c6a7a58eca01d5d",
+  "ok": true
+}
