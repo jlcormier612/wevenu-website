@@ -56,6 +56,15 @@ describe("public month grid", () => {
     assert.equal(past?.available, false);
   });
 
+  it("SQL authority rejects past dates before occupancy checks", () => {
+    const mig = readFileSync(
+      resolve("supabase/migrations/20261418400000_public_availability_rejects_past_dates.sql"),
+      "utf8",
+    );
+    assert.match(mig, /p_date < v_today/);
+    assert.match(mig, /timezone\(v_tz, now\(\)\)::date/);
+  });
+
   it("crosses the year boundary without dropping December or January", () => {
     assert.deepEqual(monthBounds(2026, 12), { start: "2026-12-01", end: "2026-12-31" });
     assert.deepEqual(monthBounds(2027, 1), { start: "2027-01-01", end: "2027-01-31" });
