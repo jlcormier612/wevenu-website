@@ -8,7 +8,7 @@
 
 import type { EventWithDetails } from "@/lib/events/types";
 import { formatDate, formatTime } from "@/lib/events/constants";
-import { eventTypeLabel } from "@/lib/leads/constants";
+import { buildDaySheetHeaderSummary } from "@/lib/events/day-sheet-header-summary";
 import { resolvePrintBrandColors } from "@/lib/collateral/print-brand";
 import type { Venue } from "@/lib/venue/types";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
@@ -61,6 +61,7 @@ export function DaySheetDocument({
   questionnaire?: Questionnaire | null;
 }) {
   const brand = resolvePrintBrandColors(venue);
+  // Occupancy / event start — used only to highlight the matching timeline row, not as "ceremony".
   const startTime5 = event.startTime?.slice(0, 5) ?? null;
 
   const dayName = new Date(event.eventDate + "T12:00:00").toLocaleDateString(
@@ -68,11 +69,10 @@ export function DaySheetDocument({
     { weekday: "long" },
   );
 
-  const eventSummary = [
-    event.eventType ? eventTypeLabel(event.eventType) : null,
-    startTime5 ? `${formatTime(startTime5)} ceremony` : null,
-    event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : null,
-  ].filter(Boolean);
+  const eventSummary = buildDaySheetHeaderSummary({
+    eventType: event.eventType,
+    guestCount: event.guestCount,
+  });
 
   // Also show setup → teardown range if available
   const dayRange = [
@@ -118,7 +118,7 @@ export function DaySheetDocument({
         </p>
         {eventSummary.length > 0 && (
           <p className="mt-1.5 text-sm text-gray-500">
-            {eventSummary.join(" · ")}
+            {eventSummary}
           </p>
         )}
         {dayRange.length > 0 && (
