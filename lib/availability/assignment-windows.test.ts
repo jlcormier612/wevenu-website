@@ -80,6 +80,43 @@ describe("per-space booking windows", () => {
 
 describe("booking confirmation contract", () => {
   it("stores each space window and uses the overall span on the event", () => {
+    // Product contract (confirmed-occupancy): every timed component must carry
+    // an explicit scheduledDate — never rely on a phantom eventDate at persist.
+    const occupancy = toConfirmedBookingOccupancy({
+      eventDate: "2028-06-16",
+      eventEndDate: "",
+      startTime: "",
+      endTime: "",
+      spaceId: "",
+      weddingFamily: true,
+      assignments: [
+        {
+          useKey: "ceremony",
+          useLabel: "Ceremony",
+          spaceId: GARDEN,
+          startTime: "16:00",
+          endTime: "17:00",
+          scheduledDate: "2028-06-16",
+        },
+        {
+          useKey: "reception",
+          useLabel: "Reception",
+          spaceId: BARN,
+          startTime: "18:00",
+          endTime: "22:00",
+          scheduledDate: "2028-06-16",
+        },
+      ],
+    });
+    assert.equal(occupancy.startTime, "16:00");
+    assert.equal(occupancy.endTime, "22:00");
+    assert.equal(occupancy.spaceId, BARN);
+    assert.equal(occupancy.assignments[0]?.startTime, "16:00");
+    assert.equal(occupancy.assignments[0]?.scheduledDate, "2028-06-16");
+    assert.equal(bookingConfirmationError(occupancy, 2), null);
+  });
+
+  it("rejects timed components that omit scheduledDate", () => {
     const occupancy = toConfirmedBookingOccupancy({
       eventDate: "2028-06-16",
       eventEndDate: "",
@@ -89,14 +126,10 @@ describe("booking confirmation contract", () => {
       weddingFamily: true,
       assignments: [
         { useKey: "ceremony", useLabel: "Ceremony", spaceId: GARDEN, startTime: "16:00", endTime: "17:00" },
-        { useKey: "reception", useLabel: "Reception", spaceId: BARN, startTime: "18:00", endTime: "22:00" },
       ],
     });
-    assert.equal(occupancy.startTime, "16:00");
-    assert.equal(occupancy.endTime, "22:00");
-    assert.equal(occupancy.spaceId, BARN);
-    assert.equal(occupancy.assignments[0]?.startTime, "16:00");
-    assert.equal(bookingConfirmationError(occupancy, 2), null);
+    assert.equal(occupancy.assignments[0]?.scheduledDate ?? null, null);
+    assert.equal(bookingConfirmationError(occupancy, 2), "Enter a date for each event component.");
   });
 
   it("rejects a space that has only one of the two times", () => {
@@ -108,7 +141,14 @@ describe("booking confirmation contract", () => {
       spaceId: "",
       weddingFamily: true,
       assignments: [
-        { useKey: "ceremony", useLabel: "Ceremony", spaceId: GARDEN, startTime: "16:00", endTime: null },
+        {
+          useKey: "ceremony",
+          useLabel: "Ceremony",
+          spaceId: GARDEN,
+          startTime: "16:00",
+          endTime: null,
+          scheduledDate: "2028-06-16",
+        },
       ],
     });
     assert.match(bookingConfirmationError(occupancy, 2) ?? "", /start and an end time for each assigned space/);
