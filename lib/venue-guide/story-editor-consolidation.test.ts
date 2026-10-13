@@ -58,3 +58,21 @@ describe("Venue Guide builder is the one place Our Story is edited", () => {
     assert.match(GUIDE_EDITOR, /\{value\.trim\(\) \|\| STORY_DESCRIPTION\}/);
   });
 });
+
+describe("Venue Guide intro copy — portal language", () => {
+  it("says clients and vendors read the guide in their portals, not portal chrome", () => {
+    assert.match(GUIDE_EDITOR, /What clients see here/);
+    assert.match(
+      GUIDE_EDITOR,
+      /source of truth clients and vendors read in their portals/,
+    );
+    assert.match(
+      GUIDE_EDITOR,
+      /used in emails and throughout your client and vendor\s+portals live in/,
+    );
+    assert.doesNotMatch(GUIDE_EDITOR, /portal chrome/);
+    assert.doesNotMatch(GUIDE_EDITOR, /read in the portal\./);
+    assert.match(GUIDE_EDITOR, /href="\/settings\/business"/);
+    assert.match(GUIDE_EDITOR, /href="\/settings\/communications"/);
+  });
+});

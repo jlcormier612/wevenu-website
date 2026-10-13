@@ -1064,8 +1064,9 @@ export function VenueGuideEditor({
         <p className="font-medium text-heading">What clients see here</p>
         <p className="text-muted-foreground text-xs leading-relaxed">
           Everything in this guide (parking, policies, FAQs, day-of contacts, and the rest) is edited
-          on this page — this is the source of truth clients and vendors read in the portal. Your
-          venue name, logo, and brand colors used in emails and portal chrome live in{" "}
+          on this page — this is the source of truth clients and vendors read in their portals. Your
+          venue name, logo, and brand colors used in emails and throughout your client and vendor
+          portals live in{" "}
           <a href="/settings/business" className="underline underline-offset-2 text-heading">
             Settings → Business &amp; Brand
           </a>
