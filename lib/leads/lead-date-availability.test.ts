@@ -116,7 +116,7 @@ describe("Lead date availability warning", () => {
     assert.equal(status.conflicts.length, 0);
   });
 
-  it("preferred_date does not require a space on simultaneous venues when a space is free", () => {
+  it("preferred_date: confirmed event closes the date by default even when another space is free", () => {
     const booked: OccupancyEvent = {
       id: "e1",
       name: "Barn wedding",
@@ -139,7 +139,34 @@ describe("Lead date availability warning", () => {
         allSpaceIds: ["space-barn", "space-lawn"],
       },
     );
-    // Lawn still free → preferred date available
+    assert.equal(status.available, false);
+    assert.ok(status.conflicts.some((c) => c.type === "event_capacity_full"));
+  });
+
+  it("preferred_date: opt-in simultaneous public availability keeps a free space date Available", () => {
+    const booked: OccupancyEvent = {
+      id: "e1",
+      name: "Barn wedding",
+      status: "confirmed",
+      eventDate: "2030-10-10",
+      eventEndDate: null,
+      spaceId: "space-barn",
+      setupTime: null,
+      startTime: null,
+      endTime: null,
+      teardownTime: null,
+    };
+    const status = buildAvailabilityConflicts(
+      { date: "2030-10-10", type: "event", purpose: "preferred_date" },
+      {
+        ...emptySnap,
+        allowSimultaneousPublicAvailability: true,
+        rules: { maxSimultaneousEvents: 2, maxSimultaneousTours: 1, minTurnaroundHours: 0 },
+        events: [booked],
+        activeSpaceIds: ["space-barn", "space-lawn"],
+        allSpaceIds: ["space-barn", "space-lawn"],
+      },
+    );
     assert.equal(status.available, true);
     assert.equal(status.conflicts.length, 0);
   });

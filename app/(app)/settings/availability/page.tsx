@@ -9,6 +9,7 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
 import { ToursOfferedControl } from "@/components/settings/tours-offered-control";
 import { HoldAvailabilityControl } from "@/components/settings/hold-availability-control";
+import { SimultaneousPublicAvailabilityControl } from "@/components/settings/simultaneous-public-availability-control";
 import { TourEventOverlapControl } from "@/components/settings/tour-event-overlap-control";
 import {
   Card,
@@ -64,12 +65,12 @@ export default async function AvailabilityCapacitySettingsPage() {
             Use Blocked Dates, a full-day calendar block, or a whole-venue hold when you do not want any new event interest that day — for example private buyouts, venue closures, or days that are fully committed even if a side lawn is technically unused. Leaving a date Available can still let someone inquire when an existing booking already makes their eventual schedule impractical.
           </p>
           <p>
-            <span className="font-medium text-heading">Spaces and same-day events. </span>
-            If you allow more than one simultaneous event and define Event Spaces, space-specific bookings can leave other spaces open on the same date when times and turnaround genuinely permit it. That is intentional. Set simultaneous events to 1 if your venue practice is one event per day venue-wide.
+            <span className="font-medium text-heading">Confirmed events and public availability. </span>
+            By default, a confirmed event closes that date for prospective clients — even when another Event Space is free. If your venue intentionally books more than one event on the same day, enable that preference below. Staff scheduling capacity (simultaneous events) still controls what your team can book internally.
           </p>
           <p>
             <span className="font-medium text-heading">Your responsibility. </span>
-            Choose holds, blocked dates, capacity, and spaces so the public calendar matches how you actually book. HTC enforces the rules you configure; it does not invent a stricter one-event-per-day policy for you.
+            Choose holds, blocked dates, capacity, spaces, and the confirmed-event public preference so the public calendar matches how you actually book.
           </p>
           <p>
             <span className="font-medium text-heading">Holds. </span>
@@ -123,8 +124,11 @@ export default async function AvailabilityCapacitySettingsPage() {
             A hold temporarily protects a date. It is not a booking, and it is separate from tours and appointments.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-8">
           <HoldAvailabilityControl initialBlocks={venue?.holdBlocksAvailability !== false} />
+          <SimultaneousPublicAvailabilityControl
+            initialAllows={venue?.allowSimultaneousPublicAvailability === true}
+          />
           <TourEventOverlapControl initialAllows={venue?.allowToursDuringBookedEvents === true} />
         </CardContent>
       </Card>

@@ -138,6 +138,12 @@ export type Venue = {
   embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}
   /** When true, an active date hold closes that date on the public availability calendar and inquiry form. */
   holdBlocksAvailability: boolean;
+  /**
+   * When true, public inquiry / availability calendar keeps a date Available if
+   * at least one active Event Space can still take a full-day Event.
+   * Default false: a confirmed Event occupying the date closes it venue-wide.
+   */
+  allowSimultaneousPublicAvailability: boolean;
   /** When true, tours may be scheduled during a booked event. Default false. */
   allowToursDuringBookedEvents: boolean;
   leadEmailKey: string;   // Email Intake Engine — leads+{leadEmailKey}@{inbound domain}

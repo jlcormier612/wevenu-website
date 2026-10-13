@@ -26,6 +26,27 @@ export async function updateHoldBlocksAvailabilityAction(
   return { ok: true };
 }
 
+export async function updateAllowSimultaneousPublicAvailabilityAction(
+  allow: boolean,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (typeof allow !== "boolean") {
+    return { ok: false, message: "Choose whether confirmed events close the whole day for public availability." };
+  }
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("venues")
+    .update({ allow_simultaneous_public_availability: allow })
+    .eq("id", venue.id);
+  if (error) return { ok: false, message: "Could not save this availability preference." };
+  revalidatePath("/settings/availability");
+  revalidatePath("/calendar");
+  revalidatePath("/form");
+  return { ok: true };
+}
+
 export async function updateAllowToursDuringBookedEventsAction(
   allow: boolean,
 ): Promise<{ ok: true } | { ok: false; message: string }> {

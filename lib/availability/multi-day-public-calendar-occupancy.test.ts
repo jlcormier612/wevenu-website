@@ -18,7 +18,15 @@ const VILLA = "space-villa";
 const BRIDGE = "space-bridge";
 const LAWN = "space-lawn";
 
-const meadowLike: OccupancyVenue = {
+const meadowLikeOptIn: OccupancyVenue = {
+  effectiveMax: 4,
+  minTurnaroundHours: 2,
+  allowSimultaneousPublicAvailability: true,
+  activeSpaceIds: [BARN, VILLA, BRIDGE, LAWN],
+  allSpaceIds: [BARN, VILLA, BRIDGE, LAWN],
+};
+
+const meadowLikeDefault: OccupancyVenue = {
   effectiveMax: 4,
   minTurnaroundHours: 2,
   activeSpaceIds: [BARN, VILLA, BRIDGE, LAWN],
@@ -48,13 +56,19 @@ function ellie(): OccupancyEvent {
 }
 
 describe("public choose_available vs multi-day multi-space booking", () => {
-  it("keeps the inquiry date Available when one active space can still take a full-day event", () => {
+  it("default policy: confirmed multi-day booking closes both days for inquiry", () => {
     const existing = [ellie()];
-    assert.equal(isInquiryEventDateAvailable("2027-09-03", meadowLike, existing), true);
-    assert.equal(isInquiryEventDateAvailable("2027-09-04", meadowLike, existing), true);
-    // Lawn is never assigned — that is what keeps the date Available.
+    assert.equal(isInquiryEventDateAvailable("2027-09-03", meadowLikeDefault, existing), false);
+    assert.equal(isInquiryEventDateAvailable("2027-09-04", meadowLikeDefault, existing), false);
+  });
+
+  it("opt-in: keeps the inquiry date Available when one active space can still take a full-day event", () => {
+    const existing = [ellie()];
+    assert.equal(isInquiryEventDateAvailable("2027-09-03", meadowLikeOptIn, existing), true);
+    assert.equal(isInquiryEventDateAvailable("2027-09-04", meadowLikeOptIn, existing), true);
+    // Lawn is never assigned — that is what keeps the date Available when opted in.
     assert.equal(
-      evaluateEventOccupancy({ eventDate: "2027-09-03", spaceId: LAWN }, meadowLike, existing).ok,
+      evaluateEventOccupancy({ eventDate: "2027-09-03", spaceId: LAWN }, meadowLikeOptIn, existing).ok,
       true,
     );
   });
@@ -64,7 +78,7 @@ describe("public choose_available vs multi-day multi-space booking", () => {
     assert.equal(
       evaluateEventOccupancy(
         { eventDate: "2027-09-03", spaceId: BARN, startTime: "17:00", endTime: "22:00" },
-        meadowLike,
+        meadowLikeOptIn,
         existing,
       ).ok,
       false,
@@ -72,7 +86,7 @@ describe("public choose_available vs multi-day multi-space booking", () => {
     assert.equal(
       evaluateEventOccupancy(
         { eventDate: "2027-09-04", spaceId: BRIDGE, startTime: "17:00", endTime: "18:00" },
-        meadowLike,
+        meadowLikeOptIn,
         existing,
       ).ok,
       false,
@@ -89,7 +103,7 @@ describe("public choose_available vs multi-day multi-space booking", () => {
         endTime: "18:00",
         windows: [{ spaceId: BRIDGE, startTime: "17:00", endTime: "18:00", scheduledDate: "2027-09-03" }],
       },
-      meadowLike,
+      meadowLikeOptIn,
       existing,
     );
     assert.equal(friBridgeEvening.ok, true, friBridgeEvening.ok ? "" : friBridgeEvening.message);
@@ -102,15 +116,15 @@ describe("public choose_available vs multi-day multi-space booking", () => {
         endTime: "12:00",
         windows: [{ spaceId: BARN, startTime: "10:00", endTime: "12:00", scheduledDate: "2027-09-03" }],
       },
-      meadowLike,
+      meadowLikeOptIn,
       existing,
     );
     assert.equal(friBarnMorning.ok, true);
   });
 
-  it("marks the date unavailable when every active space is blocked for a full day", () => {
+  it("opt-in: marks the date unavailable when every active space is blocked for a full day", () => {
     const allBlocked: OccupancyVenue = {
-      ...meadowLike,
+      ...meadowLikeOptIn,
       activeSpaceIds: [BARN, BRIDGE],
       allSpaceIds: [BARN, BRIDGE],
     };

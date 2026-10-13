@@ -90,6 +90,11 @@ export type AvailabilityCheckSnapshot = {
    * venues.hold_blocks_availability / events_enforce_availability.
    */
   holdBlocksAvailability?: boolean;
+  /**
+   * When true, public inquiry date availability uses space-based simultaneous
+   * rules. Default false — confirmed Event occupancy closes the date venue-wide.
+   */
+  allowSimultaneousPublicAvailability?: boolean;
   /** When true, a tour may overlap a booked event. Default false. */
   allowToursDuringBookedEvents?: boolean;
   rules: { maxSimultaneousEvents?: number | null; maxSimultaneousTours?: number | null; minTurnaroundHours?: number | null } | null;
@@ -166,6 +171,9 @@ export function buildAvailabilityConflicts(
   } else if (coveringTitle) pushBlock(conflicts, coveringTitle);
 
   const effectiveMax = effectiveMaxSimultaneousEvents(snapshot.rules);
+  const allowSimultaneousPublic = snapshot.allowSimultaneousPublicAvailability === true;
+  /** Public inquiry clamps to venue-wide capacity unless the venue opts in. */
+  const inquiryEffectiveMax = allowSimultaneousPublic ? effectiveMax : 1;
   const holdRows = snapshot.holds ?? [];
   const holdConflictCount = holdRows.length > 0
     ? (() => {
@@ -175,7 +183,7 @@ export function buildAvailabilityConflicts(
         return inquiryDateBlockedByHolds(
           holdRows,
           input.date,
-          effectiveMax,
+          inquiryEffectiveMax,
           snapshot.activeSpaceIds,
           snapshot.excludeLeadId,
         ) ? 1 : 0;
@@ -243,13 +251,14 @@ export function buildAvailabilityConflicts(
       minTurnaroundHours: effectiveMinTurnaroundHours(snapshot.rules),
       activeSpaceIds: snapshot.activeSpaceIds,
       allSpaceIds: snapshot.allSpaceIds,
+      allowSimultaneousPublicAvailability: allowSimultaneousPublic,
     };
     const purpose = input.purpose ?? "booking";
     if (purpose === "preferred_date" && !input.spaceId?.trim()) {
       // Lead / inquiry preferred dates are date-level — do not require a space.
-      // Simultaneous venues: available when any active space would accept a full-day Event.
+      // Space-based simultaneous availability applies only when the venue opts in.
       if (!isInquiryEventDateAvailable(input.date, venueOccupancy, snapshot.events)) {
-        const simultaneous = venueOccupancy.effectiveMax >= 2;
+        const simultaneous = allowSimultaneousPublic && venueOccupancy.effectiveMax >= 2;
         conflicts.push({
           type: simultaneous && venueOccupancy.activeSpaceIds.length === 0
             ? "event_occupancy"

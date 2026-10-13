@@ -744,7 +744,8 @@ describe("min_turnaround_hours", () => {
 
 describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", () => {
   const simple = venue({ effectiveMax: 1, activeSpaceIds: [], allSpaceIds: [] });
-  const multi = venue({ effectiveMax: 2 });
+  const multi = venue({ effectiveMax: 2, allowSimultaneousPublicAvailability: true });
+  const multiDefault = venue({ effectiveMax: 2 });
 
   it("simple venue: empty date is available; an occupying Event makes it unavailable", () => {
     assert.equal(isInquiryEventDateAvailable("2027-06-12", simple, []), true);
@@ -763,7 +764,21 @@ describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", (
     );
   });
 
-  it("simultaneous venue: available when at least one active space would accept a full-day Event", () => {
+  it("default: confirmed Event closes the date even when another space is free", () => {
+    const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: BALLROOM, status: "confirmed" })];
+    assert.equal(isInquiryEventDateAvailable("2027-06-12", multiDefault, existing), false);
+    assert.equal(
+      isInquiryEventDateAvailable("2027-06-12", multi, existing),
+      true,
+    );
+  });
+
+  it("default: confirmed Event with missing space assignment still closes the date", () => {
+    const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: null, status: "confirmed" })];
+    assert.equal(isInquiryEventDateAvailable("2027-06-12", multiDefault, existing), false);
+  });
+
+  it("opt-in simultaneous: available when at least one active space would accept a full-day Event", () => {
     const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: BALLROOM })];
     assert.equal(isInquiryEventDateAvailable("2027-06-12", multi, existing), true);
     const both = [
@@ -774,7 +789,7 @@ describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", (
     assert.equal(isInquiryEventDateAvailable("2027-06-12", multi, both), false);
   });
 
-  it("Event Space: same-space all-day occupancy does not hide a free sister space", () => {
+  it("opt-in Event Space: same-space all-day occupancy does not hide a free sister space", () => {
     const existing = [event({ id: "a", eventDate: "2027-06-12", spaceId: BALLROOM })];
     assert.equal(isInquiryEventDateAvailable("2027-06-12", multi, existing), true);
   });
@@ -804,10 +819,16 @@ describe("isInquiryEventDateAvailable (date-level, same occupancy authority)", (
   it("cancelled Events do not close the inquiry date", () => {
     const existing = [event({ id: "a", eventDate: "2027-06-12", status: "cancelled" })];
     assert.equal(isInquiryEventDateAvailable("2027-06-12", simple, existing), true);
+    assert.equal(isInquiryEventDateAvailable("2027-06-12", multiDefault, existing), true);
   });
 
-  it("zero active spaces on a simultaneous venue is unavailable", () => {
-    const none = venue({ effectiveMax: 2, activeSpaceIds: [], allSpaceIds: [] });
+  it("zero active spaces on an opt-in simultaneous venue is unavailable", () => {
+    const none = venue({
+      effectiveMax: 2,
+      allowSimultaneousPublicAvailability: true,
+      activeSpaceIds: [],
+      allSpaceIds: [],
+    });
     assert.equal(isInquiryEventDateAvailable("2027-06-12", none, []), false);
   });
 });

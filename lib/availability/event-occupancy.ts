@@ -154,6 +154,13 @@ export type OccupancyVenue = {
   allSpaceIds: string[];
   /** 0 / missing / negative → no turnaround requirement. */
   minTurnaroundHours?: number;
+  /**
+   * When true, inquiry / choose_available uses space-based simultaneous
+   * availability (any free active space keeps the date Available).
+   * Default false: a confirmed Event occupying the date closes it venue-wide
+   * for public inquiry, matching venues.allow_simultaneous_public_availability.
+   */
+  allowSimultaneousPublicAvailability?: boolean;
 };
 
 const ALL_DAY_START = "00:00";
@@ -637,8 +644,12 @@ export function evaluateEventOccupancy(
  * Date-level inquiry / choose_available check: would a dated Event occupying
  * this calendar day (missing times → 00:00–23:59) be refused by occupancy?
  *
- * Simultaneous venues: available if at least one active Event Space would
- * accept a full-day Event. Zero active spaces → unavailable (`no_spaces`).
+ * Default (allowSimultaneousPublicAvailability !== true): a confirmed Event
+ * occupying the date closes it venue-wide for public inquiry, even when staff
+ * capacity allows more than one simultaneous event and another space is free.
+ *
+ * Opt-in simultaneous public availability: available if at least one active
+ * Event Space would accept a full-day Event. Zero active spaces → unavailable.
  * Does not create an Event. Calendar blocks are a separate check.
  */
 export function isInquiryEventDateAvailable(
@@ -646,12 +657,18 @@ export function isInquiryEventDateAvailable(
   venue: OccupancyVenue,
   existing: OccupancyEvent[],
 ): boolean {
-  const simultaneous = (venue.effectiveMax < 1 ? 1 : Math.trunc(venue.effectiveMax)) >= 2;
+  const max = venue.effectiveMax < 1 ? 1 : Math.trunc(venue.effectiveMax);
+  const simultaneous = venue.allowSimultaneousPublicAvailability === true && max >= 2;
   if (simultaneous) {
     if (venue.activeSpaceIds.length === 0) return false;
     return venue.activeSpaceIds.some((spaceId) =>
       evaluateEventOccupancy({ eventDate: date, spaceId }, venue, existing).ok,
     );
   }
-  return evaluateEventOccupancy({ eventDate: date }, venue, existing).ok;
+  // Venue-wide inquiry occupancy (effective max 1 for this check only).
+  return evaluateEventOccupancy(
+    { eventDate: date },
+    { ...venue, effectiveMax: 1 },
+    existing,
+  ).ok;
 }

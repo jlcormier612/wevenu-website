@@ -568,13 +568,14 @@ export async function checkAvailability(
     : opts.date;
 
   const { data: venueRow } = await client.from("venues")
-    .select("timezone, tour_duration_minutes, allow_tours_during_booked_events, hold_blocks_availability")
+    .select("timezone, tour_duration_minutes, allow_tours_during_booked_events, hold_blocks_availability, allow_simultaneous_public_availability")
     .eq("id", venueId)
     .maybeSingle<{
       timezone: string | null;
       tour_duration_minutes: number | null;
       allow_tours_during_booked_events: boolean | null;
       hold_blocks_availability: boolean | null;
+      allow_simultaneous_public_availability: boolean | null;
     }>();
   const timezone = opts.timezone ?? venueRow?.timezone ?? null;
   await expireElapsedDateHolds(client, venueId);
@@ -815,6 +816,7 @@ export async function checkAvailability(
       holds: holdOccupancyRows,
       excludeLeadId: opts.excludeLeadId,
       holdBlocksAvailability: venueRow?.hold_blocks_availability !== false,
+      allowSimultaneousPublicAvailability: venueRow?.allow_simultaneous_public_availability === true,
       allowToursDuringBookedEvents: venueRow?.allow_tours_during_booked_events === true,
       rules,
       events,
