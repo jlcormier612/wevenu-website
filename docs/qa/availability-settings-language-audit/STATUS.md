@@ -1,7 +1,8 @@
 # Availability settings language — copy corrections
 
-**Status:** Implemented locally — awaiting Sandbox deploy + UI verify  
+**Status:** Copy committed — Sandbox deploy queued; UI verify pending  
 **Date:** 2026-10-13  
+**Commit:** `841b27065cbbfb6500b6f013bc87760e059f325f`  
 **Scope:** Copy/documentation only. No availability logic, defaults, DB, or layout redesign.
 
 ## Locked behavior preserved
