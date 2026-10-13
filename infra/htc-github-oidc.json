@@ -208,6 +208,22 @@
                 ]
               },
               {
+                "Sid": "EcrCiBasesMirror",
+                "Effect": "Allow",
+                "Action": [
+                  "ecr:BatchGetImage",
+                  "ecr:GetDownloadUrlForLayer",
+                  "ecr:BatchCheckLayerAvailability",
+                  "ecr:InitiateLayerUpload",
+                  "ecr:UploadLayerPart",
+                  "ecr:CompleteLayerUpload",
+                  "ecr:PutImage"
+                ],
+                "Resource": {
+                  "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-ci-bases"
+                }
+              },
+              {
                 "Sid": "CloudFormationScoped",
                 "Effect": "Allow",
                 "Action": ["cloudformation:CreateStack", "cloudformation:UpdateStack", "cloudformation:DescribeStackEvents", "cloudformation:CreateChangeSet", "cloudformation:ExecuteChangeSet", "cloudformation:DescribeChangeSet", "cloudformation:GetTemplate", "cloudformation:ListChangeSets"],
