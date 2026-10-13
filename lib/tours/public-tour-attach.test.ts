@@ -91,7 +91,7 @@ describe("public tour attach decision", () => {
     );
   });
 
-  it("with no originating context attaches when exactly one open normalized-email Lead exists", () => {
+  it("with no originating context attaches when exactly one open normalized-email Lead exists and identity agrees", () => {
     assert.deepEqual(
       decidePublicTourAttach({
         venueId: VENUE,
@@ -99,9 +99,41 @@ describe("public tour attach decision", () => {
         signingSecret: SECRET,
         originLead: null,
         email: "Couple@example.com",
-        openEmailMatches: [openLead({ id: "lead-one", email: "couple@example.com" })],
+        openEmailMatches: [
+          openLead({
+            id: "lead-one",
+            email: "couple@example.com",
+            firstName: "Ada",
+            lastName: "Lovelace",
+            phone: "5551234567",
+          }),
+        ],
+        submittedIdentity: { firstName: "Ada", lastName: "Lovelace", phone: "555-123-4567" },
       }),
       { action: "attach", leadId: "lead-one", relationshipId: "rel-1", source: "email" },
+    );
+  });
+
+  it("with no originating context creates when email matches but name or phone conflicts", () => {
+    assert.deepEqual(
+      decidePublicTourAttach({
+        venueId: VENUE,
+        originToken: null,
+        signingSecret: SECRET,
+        originLead: null,
+        email: "couple@example.com",
+        openEmailMatches: [
+          openLead({
+            id: "lead-betty",
+            email: "couple@example.com",
+            firstName: "Betty",
+            lastName: "Boop",
+            phone: "5551112222",
+          }),
+        ],
+        submittedIdentity: { firstName: "Lorelai", lastName: "Gilmore", phone: "5559998888" },
+      }),
+      { action: "create" },
     );
   });
 

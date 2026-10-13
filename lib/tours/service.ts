@@ -188,6 +188,9 @@ function mapLeadAttachRow(row: {
   email: string | null;
   partner_email: string | null;
   relationship_id: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
 }): PublicTourLeadRow {
   return {
     id: row.id,
@@ -196,6 +199,9 @@ function mapLeadAttachRow(row: {
     email: row.email,
     partnerEmail: row.partner_email,
     relationshipId: row.relationship_id,
+    firstName: row.first_name ?? null,
+    lastName: row.last_name ?? null,
+    phone: row.phone ?? null,
   };
 }
 
@@ -211,7 +217,7 @@ async function loadOriginLeadForToken(
   if (!payload) return { originLead: null };
   const { data } = await admin
     .from("leads")
-    .select("id, venue_id, sales_stage, email, partner_email, relationship_id")
+    .select("id, venue_id, sales_stage, email, partner_email, relationship_id, first_name, last_name, phone")
     .eq("id", payload.leadId)
     .maybeSingle<{
       id: string;
@@ -220,6 +226,9 @@ async function loadOriginLeadForToken(
       email: string | null;
       partner_email: string | null;
       relationship_id: string | null;
+      first_name: string | null;
+      last_name: string | null;
+      phone: string | null;
     }>();
   return { originLead: data ? mapLeadAttachRow(data) : null };
 }
@@ -234,7 +243,7 @@ async function loadOpenEmailMatches(
   const escaped = normalized.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
   const { data } = await admin
     .from("leads")
-    .select("id, venue_id, sales_stage, email, partner_email, relationship_id")
+    .select("id, venue_id, sales_stage, email, partner_email, relationship_id, first_name, last_name, phone")
     .eq("venue_id", venueId)
     .or(`email.ilike.${escaped},partner_email.ilike.${escaped}`);
   return ((data ?? []) as Array<{
@@ -244,6 +253,9 @@ async function loadOpenEmailMatches(
     email: string | null;
     partner_email: string | null;
     relationship_id: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
   }>)
     .map(mapLeadAttachRow)
     .filter((row) => isOpenLeadLifecycle(row.salesStage));
@@ -254,6 +266,11 @@ export async function resolvePublicTourAttachDecision(opts: {
   venueId: string;
   originToken?: string | null;
   email?: string | null;
+  submittedIdentity?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+  } | null;
 }): Promise<ReturnType<typeof decidePublicTourAttach>> {
   const { originLead } = await loadOriginLeadForToken(opts.admin, opts.originToken);
   const openEmailMatches = opts.originToken?.trim()
@@ -266,6 +283,7 @@ export async function resolvePublicTourAttachDecision(opts: {
     originLead,
     email: opts.email,
     openEmailMatches,
+    submittedIdentity: opts.submittedIdentity,
   });
 }
 
@@ -329,11 +347,15 @@ async function bookPublicTourOntoExistingLead(opts: {
     notes: string;
   };
 }): Promise<BookingResult> {
+  const submittedName = `${opts.fields.firstName} ${opts.fields.lastName}`.trim();
   const { data, error } = await opts.admin.rpc("book_public_tour_for_lead", {
     p_embed_key: opts.key,
     p_lead_id: opts.leadId,
     p_slot_start: opts.slotStart,
     p_notes: opts.fields.notes ?? null,
+    p_contact_name: submittedName || null,
+    p_contact_email: opts.fields.email?.trim() || null,
+    p_contact_phone: opts.fields.phone?.trim() || null,
   });
   if (error) {
     const fail = tourCapacityFailureFromUnknown(error);
@@ -439,6 +461,11 @@ export async function bookTour(
     venueId: venueRow.id,
     originToken: opts?.originToken,
     email: fields.email,
+    submittedIdentity: {
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      phone: fields.phone,
+    },
   });
   if (attach.action === "reject") {
     return { ok: false, error: attach.error };

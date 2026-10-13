@@ -38,6 +38,16 @@ describe("public tour attach seams", () => {
     assert.match(rpc, /revoke all on function public\.book_public_tour_for_lead/);
   });
 
+  it("submitted contact identity is accepted by the current book_public_tour_for_lead signature", () => {
+    const rpc = read("supabase/migrations/20261418600000_book_public_tour_preserves_submitted_identity.sql");
+    const service = read("lib/tours/service.ts");
+    assert.match(rpc, /p_contact_name/);
+    assert.match(rpc, /p_contact_email/);
+    assert.match(rpc, /p_contact_phone/);
+    assert.match(service, /p_contact_name/);
+    assert.doesNotMatch(rpc, /update\s+public\.leads/i);
+  });
+
   it("origin token is opaque HMAC query o, not an unsigned leadId", () => {
     const origin = read("lib/tours/origin-context.ts");
     assert.match(origin, /createHmac\("sha256"/);
