@@ -12,8 +12,12 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getCommunicationHealth, type CommunicationHealth } from "@/lib/communication/health";
 import { aggregateOutboundStatusCounts } from "@/lib/communication/dashboard-counts";
+import { NEEDS_ATTENTION_STATUSES } from "@/lib/communication/attention-history";
 
 const WINDOW_DAYS = 30;
+/** Safety cap for attention-filtered history (same window as the tile count). */
+const ATTENTION_HISTORY_LIMIT = 500;
+const DEFAULT_HISTORY_LIMIT = 50;
 
 export type CommunicationCounts = {
   windowDays: number;
@@ -50,18 +54,25 @@ const EMPTY: CommunicationDashboardData = {
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-export async function getCommunicationDashboardData(): Promise<CommunicationDashboardData> {
+export async function getCommunicationDashboardData(opts?: {
+  attentionOnly?: boolean;
+}): Promise<CommunicationDashboardData> {
   if (!isSupabaseConfigured) return EMPTY;
   const venue = await getCurrentVenue();
   if (!venue) return EMPTY;
 
   const client = await createClient();
   const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const attentionOnly = opts?.attentionOnly === true;
 
   const [health, counts, history] = await Promise.all([
     getCommunicationHealth(),
     getCounts(client, venue.id, since),
-    getHistory(client, venue.id),
+    getHistory(client, venue.id, {
+      attentionOnly,
+      since: attentionOnly ? since : null,
+      limit: attentionOnly ? ATTENTION_HISTORY_LIMIT : DEFAULT_HISTORY_LIMIT,
+    }),
   ]);
 
   return { health, counts, history };
@@ -90,24 +101,48 @@ async function getCounts(client: DbClient, venueId: string, since: string): Prom
   };
 }
 
-async function getHistory(client: DbClient, venueId: string): Promise<MessageHistoryItem[]> {
+async function getHistory(
+  client: DbClient,
+  venueId: string,
+  opts?: { attentionOnly?: boolean; since?: string | null; limit?: number },
+): Promise<MessageHistoryItem[]> {
+  const attentionOnly = opts?.attentionOnly === true;
+  const since = opts?.since ?? null;
+  const limit = opts?.limit ?? DEFAULT_HISTORY_LIMIT;
+  // Per-source fetch; attention mode pulls enough rows to cover the full tile count.
+  const perSourceLimit = attentionOnly ? limit : Math.min(30, limit);
+
   type LegacyRow = {
     id: string; direction: "outbound" | "inbound"; status: string | null; error_message: string | null;
     body: string; created_at: string; from_name: string | null;
     message_threads: { lead_id: string | null; client_id: string | null; entity_name?: string } | { lead_id: string | null; client_id: string | null }[] | null;
   };
-  const [legacy, conversation] = await Promise.all([
-    client.from("messages")
-      .select("id, direction, status, error_message, body, created_at, from_name, message_threads(lead_id, client_id)")
-      .eq("venue_id", venueId).eq("channel", "email")
-      .order("created_at", { ascending: false })
-      .limit(30),
-    client.from("conversation_messages")
-      .select("id, sender_type, channel, status, failure_reason, body, sent_at, conversation_id")
-      .eq("venue_id", venueId).in("channel", ["email", "sms"])
-      .order("sent_at", { ascending: false })
-      .limit(30),
-  ]);
+
+  let legacyQuery = client.from("messages")
+    .select("id, direction, status, error_message, body, created_at, from_name, message_threads(lead_id, client_id)")
+    .eq("venue_id", venueId).eq("channel", "email")
+    .order("created_at", { ascending: false })
+    .limit(perSourceLimit);
+  let conversationQuery = client.from("conversation_messages")
+    .select("id, sender_type, channel, status, failure_reason, body, sent_at, conversation_id")
+    .eq("venue_id", venueId).in("channel", ["email", "sms"])
+    .order("sent_at", { ascending: false })
+    .limit(perSourceLimit);
+
+  if (attentionOnly) {
+    legacyQuery = legacyQuery
+      .eq("direction", "outbound")
+      .in("status", [...NEEDS_ATTENTION_STATUSES]);
+    conversationQuery = conversationQuery
+      .in("sender_type", ["venue_staff", "system"])
+      .in("status", [...NEEDS_ATTENTION_STATUSES]);
+    if (since) {
+      legacyQuery = legacyQuery.gte("created_at", since);
+      conversationQuery = conversationQuery.gte("sent_at", since);
+    }
+  }
+
+  const [legacy, conversation] = await Promise.all([legacyQuery, conversationQuery]);
 
   const legacyItems: MessageHistoryItem[] = ((legacy.data ?? []) as unknown as LegacyRow[]).map((m) => {
     const thread = Array.isArray(m.message_threads) ? m.message_threads[0] : m.message_threads;
@@ -171,5 +206,5 @@ async function getHistory(client: DbClient, venueId: string): Promise<MessageHis
 
   return [...legacyItems, ...conversationItems]
     .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1))
-    .slice(0, 50);
+    .slice(0, limit);
 }

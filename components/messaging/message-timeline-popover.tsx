@@ -70,8 +70,14 @@ export function MessageTimelinePopover({
   }
 
   return (
-    <span ref={containerRef} className="relative inline-block">
-      <button type="button" onClick={() => void toggle()} className="cursor-pointer">
+    <span ref={containerRef} className="relative inline-block max-w-full">
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        className="max-w-full cursor-pointer text-left"
+        aria-expanded={open}
+        aria-label={status ? `Message status: ${status}. Show timeline.` : "Show message timeline"}
+      >
         <MessageStatusBadge
           status={status}
           failureReason={failureReason}
@@ -80,7 +86,7 @@ export function MessageTimelinePopover({
         />
       </button>
       {open && (
-        <div className="absolute bottom-full left-0 z-20 mb-2 w-56 rounded-xl border border-border bg-popover p-3 text-left shadow-lg">
+        <div className="absolute bottom-full left-0 z-20 mb-2 w-56 max-w-[min(100vw-2rem,14rem)] rounded-xl border border-border bg-popover p-3 text-left shadow-lg">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Message Timeline</p>
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           {!loading && steps && steps.length === 0 && (

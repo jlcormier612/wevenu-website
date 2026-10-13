@@ -2,7 +2,7 @@
  * Aggregation for Communication Health dashboard tiles.
  * Kept pure so tests can prove Sent vs Delivered vs needs-attention filters.
  */
-import { isDeliveryFailureStatus } from "@/lib/communication/status-labels";
+import { countNeedsAttentionStatuses } from "@/lib/communication/attention-history";
 
 /** Delivered-successfully includes later engagement / reply states. */
 export const DELIVERED_LIKE_STATUSES = new Set([
@@ -24,6 +24,6 @@ export function aggregateOutboundStatusCounts(
   return {
     sent: statuses.length,
     delivered: statuses.filter((s) => s != null && DELIVERED_LIKE_STATUSES.has(s)).length,
-    needsAttention: statuses.filter((s) => isDeliveryFailureStatus(s)).length,
+    needsAttention: countNeedsAttentionStatuses(statuses),
   };
 }
