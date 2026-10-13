@@ -306,8 +306,8 @@ export function LuvDraftPanel({
           <div className="space-y-1">
             <p className="text-sm font-medium text-heading">Ask Luv to draft a follow-up</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Luv will write a warm, personalized follow-up email based on what she knows about
-              this inquiry. You review, edit, and send it yourself — Luv never sends anything.
+              Luv will draft a personalized follow-up using your preferred writing tone and the
+              available inquiry details. You review, edit, and send it yourself.
             </p>
           </div>
         </div>

@@ -1,67 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import { isOpenAiConfigured, openAiChatCompletion, OPENAI_MODEL_FAST } from "@/lib/ai/openai";
-import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
-
-const SYSTEM = (venueName: string, toneInstruction: string) =>
-  `You are Luv, the built-in AI assistant for ${venueName}, a wedding venue. Write warm, professional content on behalf of the venue team. ${toneInstruction} Begin your response immediately with the first section header — no preamble, no sign-off. Use [Couple Name], [Coordinator Name], [Their Wedding Date or Season], and [Venue Name] as placeholders where relevant.`;
-
-function buildPrompt(action: string, context: Record<string, unknown>, venueName: string): string {
-  switch (action) {
-
-    case "follow_up_messages": {
-      const count = context.staleLeadCount ?? "several";
-      return `${count} couple${Number(count) !== 1 ? "s" : ""} at ${venueName} haven't been contacted in over a week. Draft a follow-up package they can personalize and send.
-
-Format your response with exactly these section headers, in this order:
-
-## Subject Line
-## Email
-## Text Message
-
-Subject line: punchy and warm, under 10 words.
-Email body: under 120 words, warm and genuine — not pushy. No greeting or sign-off, the coordinator will add those.
-Text message: under 50 words, casual and friendly.`;
-    }
-
-    case "seasonal_promo": {
-      return `Inquiry volume at ${venueName} is running below average this month. Draft a complete promotion package to attract new couples.
-
-Format your response with exactly these section headers, in this order:
-
-## Promotion Concept
-## Email
-## Social Caption
-## Recommended Offer
-
-Promotion concept: 1–2 sentences describing the angle or hook.
-Email: under 100 words. Inviting, not salesy.
-Social caption: under 60 words. Warm, conversational, Instagram-ready.
-Recommended offer: a specific, generous-feeling offer (discount, bonus, perk). One sentence.`;
-    }
-
-    case "availability_plan": {
-      const month = context.nextMonthName ?? "next month";
-      const ratio = context.nextRatio
-        ? `${Math.round((Number(context.nextRatio) - 1) * 100)}% above average`
-        : "significantly above average";
-      return `${month} at ${venueName} is historically ${ratio} for inquiries. Help them prepare.
-
-Format your response with exactly these section headers, in this order:
-
-## Suggested Open Dates
-## Staffing Reminders
-## Package Recommendations
-
-Suggested open dates: specific practical advice on which weekends/dates to prioritize opening, under 80 words.
-Staffing reminders: 2–3 concrete staffing or prep actions to take before peak season, under 80 words.
-Package recommendations: 2–3 specific package or offering suggestions that tend to perform well during high-demand periods, under 80 words.`;
-    }
-
-    default:
-      return `Write a short, warm message on behalf of ${venueName} to help them connect with prospective couples. Under 80 words.`;
-  }
-}
+import {
+  buildDashboardDraftPrompt,
+  buildDashboardDraftSystemPrompt,
+} from "@/lib/luv/dashboard-draft-prompt";
+import { getLuvSettings, isLuvDraftingEnabled, normalizePreferredTone } from "@/lib/luv/settings";
 
 /**
  * Non-streaming generation — same OpenAI path as lib/luv/drafts.ts.
@@ -98,13 +42,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const prompt = buildPrompt(action, context, venueName);
+  const preferredTone = normalizePreferredTone(settings.preferredTone);
+  const prompt = buildDashboardDraftPrompt(action, context, venueName, preferredTone);
 
   try {
     const text = await openAiChatCompletion({
       model: OPENAI_MODEL_FAST,
       messages: [
-        { role: "system", content: SYSTEM(venueName, luvToneInstruction(settings.preferredTone)) },
+        { role: "system", content: buildDashboardDraftSystemPrompt(venueName, preferredTone) },
         { role: "user", content: prompt },
       ],
       maxCompletionTokens: 800,

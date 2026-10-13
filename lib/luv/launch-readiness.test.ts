@@ -19,7 +19,9 @@ describe("/api/luv/draft launch-readiness", () => {
   });
 
   it("puts preferredTone into the system instruction", () => {
-    assert.match(draftRoute, /luvToneInstruction\(settings\.preferredTone\)/);
+    assert.match(draftRoute, /normalizePreferredTone\(settings\.preferredTone\)/);
+    assert.match(draftRoute, /buildDashboardDraftSystemPrompt\(venueName, preferredTone\)/);
+    assert.match(draftRoute, /buildDashboardDraftPrompt\(action, context, venueName, preferredTone\)/);
   });
 
   it("returns a fixed friendly error instead of the SDK message", () => {
@@ -56,8 +58,9 @@ describe("lib/luv/drafts.ts launch-readiness", () => {
   });
 
   it("uses canonical preferredTone in the prompt", () => {
-    assert.match(drafts, /luvToneInstruction\(tone\)/);
+    assert.match(drafts, /luvToneInstruction\(preferredTone\)/);
     assert.match(drafts, /settings\.preferredTone/);
+    assert.match(drafts, /normalizePreferredTone\(tone\)/);
   });
 
   it("times out hung OpenAI fetches", () => {

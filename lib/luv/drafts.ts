@@ -40,7 +40,12 @@ import {
   type FollowUpTourState,
   type FollowUpWorkflowIntent,
 } from "@/lib/luv/follow-up-workflow-context";
-import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
+import {
+  getLuvSettings,
+  isLuvDraftingEnabled,
+  luvToneInstruction,
+  normalizePreferredTone,
+} from "@/lib/luv/settings";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { Lead } from "@/lib/leads/types";
 
@@ -221,13 +226,15 @@ ${inquiryContext.details.map((d) => `- "${d}"`).join("\n")}
 
 **Judgment (use a detail only when it belongs in this email to the customer):**
 - Speak TO the customer, not ABOUT them as staff would.
-- Prefer natural, warm, relevant, useful, restrained personalization.
+- Prefer natural, relevant, useful, restrained personalization that matches the Tone instruction below.
 - Avoid forced personalization, relationship commentary, teasing, speculation, awkward callbacks, unnecessary repetition, and "look how much I remember" language.
 - Do not repeat their message mechanically.
 `
       : "";
 
-  return `You are helping a venue coordinator at ${venueName} write a warm, personal follow-up email to a prospective client.
+  const preferredTone = normalizePreferredTone(tone);
+
+  return `You are helping a venue coordinator at ${venueName} write a personalized follow-up email to a prospective client.
 
 The coordinator signing the email is: ${ownerName ?? "the team at " + venueName}
 
@@ -252,18 +259,19 @@ ${prohibitionLines.length > 0 ? `\n**Workflow constraints:**\n${prohibitionLines
 ${customerMessageBlock}
 ${verifiedBlock}
 
-**Tone:** ${luvToneInstruction(tone)}
+**Tone (required — this is the venue's saved preferred writing tone; follow it for style only, not facts):** ${luvToneInstruction(preferredTone)}
 
 **How to write this email:**
-- Address them by first name(s) — like you know them a little
+- Address them by first name(s)
 - Keep it short: 2–3 paragraphs maximum
 - Acknowledge where they are in the process naturally using workflow context, without inventing completed actions
-- Offer one gentle next step consistent with the application-provided workflow intent and constraints. Do not invent or contradict workflow actions.
-- Do NOT be pushy, salesy, or use corporate/template-sounding language
-- The subject line should be friendly, not promotional
+- Offer one clear next step consistent with the application-provided workflow intent and constraints. Do not invent or contradict workflow actions.
+- Do NOT be pushy, salesy, or use empty template-sounding language
+- The subject line should match the Tone instruction above and must not sound promotional
 - Do not tell the client that the venue has sent, completed, confirmed, received, or otherwise performed an action unless that action appears under Verified facts. Pipeline / sales stage is never authoritative proof that an action occurred. In particular: do not infer tour scheduled or tour confirmed from stage; do not infer contact or a customer response from stage; do not say a proposal was sent merely because the lead is in proposal_sent; do not infer signed/executed contract state from stage; do not infer paid/obligation state from stage; do not infer booked from a later sales stage; do not infer task completion from a stage advance. Use only Verified facts and Workflow facts for those claims.
 - Never invent or allude to venue-internal notes, staff observations, or operational commentary. Those are not in your context.
 - Recorded next-action text is venue workflow context. Do not paste staff instructions to the customer unless independently appropriate as natural customer-facing language.
+- Apply the Tone instruction to wording and style only. Do not invent events, actions, proposal sends, commitments, or other facts to match a tone.
 
 Format your response EXACTLY as:
 Subject: [subject line]
@@ -454,6 +462,7 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
           tourKind: tour.kind,
           workflowIntent,
           communicationPurpose,
+          preferredTone: normalizePreferredTone(settings.preferredTone),
         },
         status: "pending_review",
       })

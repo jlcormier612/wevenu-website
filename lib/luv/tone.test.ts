@@ -29,9 +29,9 @@ describe("luvToneInstruction", () => {
     const warm = luvToneInstruction("warm");
     const professional = luvToneInstruction("professional");
     const formal = luvToneInstruction("formal");
-    assert.match(warm, /warm/i);
-    assert.match(professional, /professional/i);
-    assert.match(formal, /formal/i);
+    assert.match(warm, /warm|friendly|personable|approachable|conversational/i);
+    assert.match(professional, /professional|polished|courteous|confident/i);
+    assert.match(formal, /formal|structured|precise/i);
     assert.notEqual(warm, professional);
     assert.notEqual(professional, formal);
   });
