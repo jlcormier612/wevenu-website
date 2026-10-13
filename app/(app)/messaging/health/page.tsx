@@ -9,6 +9,7 @@ import { ReadinessChecklist } from "@/components/communication/readiness-checkli
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
 import { getCommunicationDashboardData } from "@/lib/communication/dashboard";
 import { getCommunicationReadiness } from "@/lib/communication/readiness";
+import { DASHBOARD_COUNT_NOTE } from "@/lib/communication/message-status-definitions";
 import { MESSAGE_STATUS_META } from "@/lib/communication/status-labels";
 
 export const metadata: Metadata = { title: "Communication Health" };
@@ -45,22 +46,25 @@ export default async function CommunicationHealthPage() {
           wrapper exactly as before (StatTile's "value-top" layout renders
           a plain div, so nesting it inside the pre-existing Card/
           CardContent reproduces the original markup precisely). */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card><CardContent className="pt-6">
-          <StatTile layout="value-top" align="center" value={counts.sent} label={`messages sent (last ${counts.windowDays} days)`} />
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <StatTile layout="value-top" align="center" value={counts.delivered} label="delivered successfully" valueClassName="text-success" />
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <StatTile
-            layout="value-top"
-            align="center"
-            value={counts.needsAttention}
-            label={`need${counts.needsAttention === 1 ? "s" : ""} your attention`}
-            valueClassName={counts.needsAttention > 0 ? "text-destructive" : "text-heading"}
-          />
-        </CardContent></Card>
+      <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-4">
+          <Card><CardContent className="pt-6">
+            <StatTile layout="value-top" align="center" value={counts.sent} label={`messages sent (last ${counts.windowDays} days)`} />
+          </CardContent></Card>
+          <Card><CardContent className="pt-6">
+            <StatTile layout="value-top" align="center" value={counts.delivered} label="delivered successfully" valueClassName="text-success" />
+          </CardContent></Card>
+          <Card><CardContent className="pt-6">
+            <StatTile
+              layout="value-top"
+              align="center"
+              value={counts.needsAttention}
+              label={`need${counts.needsAttention === 1 ? "s" : ""} your attention`}
+              valueClassName={counts.needsAttention > 0 ? "text-destructive" : "text-heading"}
+            />
+          </CardContent></Card>
+        </div>
+        <p className="text-xs text-muted-foreground">{DASHBOARD_COUNT_NOTE}</p>
       </div>
 
       {/* Communication Readiness — "before your first message," not a daily

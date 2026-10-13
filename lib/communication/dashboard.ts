@@ -11,7 +11,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getCommunicationHealth, type CommunicationHealth } from "@/lib/communication/health";
-import { isDeliveryFailureStatus } from "@/lib/communication/status-labels";
+import { aggregateOutboundStatusCounts } from "@/lib/communication/dashboard-counts";
 
 const WINDOW_DAYS = 30;
 
@@ -50,11 +50,6 @@ const EMPTY: CommunicationDashboardData = {
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-// "Delivered successfully" reads, to a venue owner, as "the whole chain
-// worked" — opened/clicked/replied are all a delivered message that then
-// did even better, not a different outcome.
-const DELIVERED_LIKE = new Set(["delivered", "opened", "clicked", "replied"]);
-
 export async function getCommunicationDashboardData(): Promise<CommunicationDashboardData> {
   if (!isSupabaseConfigured) return EMPTY;
   const venue = await getCurrentVenue();
@@ -86,11 +81,12 @@ async function getCounts(client: DbClient, venueId: string, since: string): Prom
       .gte("sent_at", since),
   ]);
   const rows = [...(legacy.data ?? []), ...(conversation.data ?? [])] as { status: string | null }[];
+  const breakdown = aggregateOutboundStatusCounts(rows.map((r) => r.status));
   return {
     windowDays: WINDOW_DAYS,
-    sent: rows.length,
-    delivered: rows.filter((r) => r.status && DELIVERED_LIKE.has(r.status)).length,
-    needsAttention: rows.filter((r) => isDeliveryFailureStatus(r.status)).length,
+    sent: breakdown.sent,
+    delivered: breakdown.delivered,
+    needsAttention: breakdown.needsAttention,
   };
 }
 
