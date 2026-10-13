@@ -105,6 +105,7 @@ describe("deploy-skew recovery wiring", () => {
     assert.match(globalError, /consumeSkewReload/);
     assert.match(globalError, /window\.location\.reload/);
     assert.match(workspaceError, /shouldAutoRecoverFromFatal/);
+    assert.match(workspaceError, /consumeSkewReload/);
     assert.match(workspaceError, /window\.location\.reload/);
   });
 });
