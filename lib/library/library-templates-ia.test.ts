@@ -72,14 +72,14 @@ describe("Library dependency guidance — source + direct links + how used", () 
   });
 
   it("QR Campaigns link Manage Public Forms", () => {
-    const src = readFileSync(resolve("app/(app)/library/qr-campaigns/page.tsx"), "utf8");
+    const src = readFileSync(resolve("components/qr-campaigns/qr-campaigns-page-client.tsx"), "utf8");
     assert.match(src, /href: "\/library\/public-forms"/);
     assert.match(src, /Manage Public Forms/);
     assert.doesNotMatch(src, /All templates/);
   });
 
   it("Public Forms reverse-link QR Campaigns and explain in-form editing", () => {
-    const src = readFileSync(resolve("app/(app)/library/public-forms/page.tsx"), "utf8");
+    const src = readFileSync(resolve("components/public-forms/public-forms-page-client.tsx"), "utf8");
     assert.match(src, /href: "\/library\/qr-campaigns"/);
     assert.match(src, /Open QR Campaigns/);
     assert.match(src, /Questions and fields are edited on the form itself/);
@@ -100,7 +100,7 @@ describe("Library dependency guidance — source + direct links + how used", () 
   });
 
   it("Offerings and Inventory catalogs reverse-link consumers without Use Template", () => {
-    const offerings = readFileSync(resolve("app/(app)/library/offerings/page.tsx"), "utf8");
+    const offerings = readFileSync(resolve("components/offerings/offerings-page-client.tsx"), "utf8");
     assert.match(offerings, /Open Event Order Templates/);
     assert.doesNotMatch(offerings, /Open Choices Templates/);
     assert.doesNotMatch(offerings, /Use Template/);
