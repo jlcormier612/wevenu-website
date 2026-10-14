@@ -1,0 +1,49 @@
+{
+  "expectedSha": "a3c22b30ae03a8b25aa41d84c5474e02754254d7",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a3c22b30ae03a8b25aa41d84c5474e02754254d7",
+  "leadId": "108a546b-f473-4c30-951f-2228a8ec2da6",
+  "allPass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a3c22b30ae03a8b25aa41d84c5474e02754254d7 expected=a3c22b30ae03"
+    },
+    {
+      "name": "A labels font/height match",
+      "pass": true,
+      "detail": "{\"owner\":{\"text\":\"Sales owner\",\"fontSize\":\"12.75px\",\"fontWeight\":\"500\",\"color\":\"oklch(0.466934 0.0321873 145.003 / 0.8)\",\"height\":17,\"top\":300,\"bottom\":317},\"hold\":{\"text\":\"Date hold\",\"fontSize\":\"12.75px\",\"fontWeight\":\"500\",\"color\":\"oklch(0.466934 0.0321873 145.003 / 0.8)\",\"height\":17,\"top\":300,\"bottom\":317}}"
+    },
+    {
+      "name": "B select vs hold chip height",
+      "pass": true,
+      "detail": "{\"ownerTrigger\":{\"height\":47,\"top\":285,\"bottom\":332,\"left\":398,\"bg\":\"rgba(0, 0, 0, 0)\",\"color\":\"rgb(79, 95, 79)\",\"border\":\"rgb(210, 203, 191)\",\"classes\":\"flex min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-3 py-1 text-sm text-foreground transition-colors outline-none data-[placeholder]:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 h-11 w-[9.5rem] max-w-full sm:w-40\"},\"holdChip\":{\"height\":47,\"top\":285,\"bottom\":332,\"left\":741,\"bg\":\"oklab(0.755519 0.00575909 0.0208004 / 0.05)\",\"color\":\"rgb(79, 95, 79)\",\"border\":\"oklab(0.755519 0.00575909 0.0208004 / 0.3)\",\"classes\":\"flex h-11 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5\"}}"
+    },
+    {
+      "name": "B select vs hold chip top align",
+      "pass": true,
+      "detail": "{\"ownerTop\":285,\"holdTop\":285}"
+    },
+    {
+      "name": "C Place CTA matches Edit/Save primary fill",
+      "pass": true,
+      "detail": "{\"place\":{\"height\":47,\"top\":285,\"bottom\":332,\"left\":1065,\"bg\":\"rgb(93, 111, 93)\",\"color\":\"rgb(255, 255, 255)\",\"border\":\"rgba(0, 0, 0, 0)\",\"classes\":\"group/button inline-flex items-center justify-center border border-transparent bg-clip-padding font-medium transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 h-11 shrink-0 whitespace-nowrap\"},\"ownerSave\":{\"height\":47,\"top\":285,\"bottom\":332,\"left\":576,\"bg\":\"rgb(93, 111, 93)\",\"color\":\"rgb(255, 255, 255)\",\"border\":\"rgba(0, 0, 0, 0)\",\"classes\":\"group/button inline-flex items-center justify-center border border-transparent bg-clip-padding font-medium transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 h-11 shrink-0 whitespace-nowrap\"},\"placeText\":\"Place another hold\"}"
+    },
+    {
+      "name": "Place CTA opens hold form",
+      "pass": true,
+      "detail": "submitCount=1"
+    },
+    {
+      "name": "Cancel closes form without submit",
+      "pass": true,
+      "detail": "{\"formClosed\":0,\"placeBack\":1}"
+    },
+    {
+      "name": "Narrow no horizontal overflow",
+      "pass": true,
+      "detail": "{\"overflow\":false,\"bodyOverflow\":false}"
+    }
+  ],
+  "at": "2026-10-14T03:00:22.728Z"
+}
