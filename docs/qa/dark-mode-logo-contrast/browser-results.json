@@ -1,0 +1,83 @@
+{
+  "expectedSha": "14b3deab9f3ccdcbab05bb3f99c6a8ada2c20b7f",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:14b3deab9f3ccdcbab05bb3f99c6a8ada2c20b7f",
+  "allPass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:14b3deab9f3ccdcbab05bb3f99c6a8ada2c20b7f expected=14b3deab9f3c"
+    },
+    {
+      "name": "light: logo found",
+      "pass": true,
+      "detail": "{\"found\":true,\"src\":\"/brand/hello-to-cheers-logo-primary-transparent.png\",\"isPrimary\":true,\"isOnDark\":false,\"opacity\":\"1\",\"filter\":\"none\",\"mixBlend\":\"normal\",\"width\":184,\"height\":67,\"bg\":\"oklch(0.902204 0.00866304 74.5239)\"}"
+    },
+    {
+      "name": "light: uses primary asset",
+      "pass": true,
+      "detail": "src=/brand/hello-to-cheers-logo-primary-transparent.png"
+    },
+    {
+      "name": "light: not on-dark asset",
+      "pass": true,
+      "detail": "src=/brand/hello-to-cheers-logo-primary-transparent.png"
+    },
+    {
+      "name": "light: no opacity wash",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "name": "light: no filter wash",
+      "pass": true,
+      "detail": "filter=none"
+    },
+    {
+      "name": "light: logo sized",
+      "pass": true,
+      "detail": "w=184 h=67"
+    },
+    {
+      "name": "dark: logo found",
+      "pass": true,
+      "detail": "{\"found\":true,\"src\":\"/brand/hello-to-cheers-logo-primary-transparent.png\",\"isPrimary\":true,\"isOnDark\":false,\"opacity\":\"1\",\"filter\":\"none\",\"mixBlend\":\"normal\",\"width\":184,\"height\":67,\"bg\":\"oklch(0.828862 0.015123 74.5239)\"}"
+    },
+    {
+      "name": "dark: uses primary asset",
+      "pass": true,
+      "detail": "src=/brand/hello-to-cheers-logo-primary-transparent.png"
+    },
+    {
+      "name": "dark: not on-dark asset",
+      "pass": true,
+      "detail": "src=/brand/hello-to-cheers-logo-primary-transparent.png"
+    },
+    {
+      "name": "dark: no opacity wash",
+      "pass": true,
+      "detail": "opacity=1"
+    },
+    {
+      "name": "dark: no filter wash",
+      "pass": true,
+      "detail": "filter=none"
+    },
+    {
+      "name": "dark: logo sized",
+      "pass": true,
+      "detail": "w=184 h=67"
+    },
+    {
+      "name": "narrow dark: primary logo present",
+      "pass": true,
+      "detail": "{\"src\":\"https://app.sandbox.hellotocheers.com/brand/hello-to-cheers-logo-primary-transparent.png\",\"w\":0,\"h\":0}"
+    },
+    {
+      "name": "narrow: no page overflow",
+      "pass": true,
+      "detail": "overflow=false"
+    }
+  ],
+  "at": "2026-10-14T02:32:43.549Z"
+}
