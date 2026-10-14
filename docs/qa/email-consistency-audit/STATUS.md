@@ -1,28 +1,34 @@
 # Email consistency + Communications status language
 
-**Workstream: OPEN** — inventory audit complete 2026-10-14; confirmed defects not yet fixed.  
-Do **not** mark this workstream GREEN until authorized fixes + verification land.
+**Workstream: OPEN** — Group A (D1–D3) **GREEN**; Group B (D4/D6) in progress; Groups C–E still open.  
+Do **not** mark the full workstream GREEN until remaining authorized groups land.
 
 Consolidated audit: [`AUDIT-RESULTS-2026-10-14.md`](./AUDIT-RESULTS-2026-10-14.md)  
+Group A: [`GROUP-A-STATUS.md`](./GROUP-A-STATUS.md)  
+Group B: [`GROUP-B-STATUS.md`](./GROUP-B-STATUS.md)  
 Inventory: [`INVENTORY.md`](./INVENTORY.md)
 
-## Serving baseline (audit reconcile)
+## Serving baseline (Group A close)
 
 | Field | Value |
 |-------|--------|
-| Sandbox image | `htc-sandbox-venue-app:c75479e6db337037cb7730116a904b5a2711f2dc` |
-| Audit mode | READ-ONLY — no code, config, DNS, sends, or Production changes |
+| Sandbox image | `htc-sandbox-venue-app:5132aebfbfa0d5c8d904689caf369f9db8707f20` |
+| Group A | GREEN — no sends; Production/DNS/Resend untouched |
 
 ## Gate 1 — Inquiry branding (venue notify)
 
 **GREEN** on `5b7d35d1` (ancestor of current serving). See `docs/qa/inquiry-notification-branding/`.  
 Inquirer thank-you remains out of scope for that gate → defect D1 in audit results.
 
-## Gate 2 — Inventory
+## Gate 2 — Inventory / Group A
 
-**Audit complete / workstream OPEN.** Full dispositions in `AUDIT-RESULTS-2026-10-14.md`.
+**Audit complete.** Full dispositions in `AUDIT-RESULTS-2026-10-14.md`.
 
-Launch-relevant open defects: **D1** (thank-you), **D2** (forms venue), **D3** (Wedding label).
+| Item | Status |
+|------|--------|
+| Group A D1–D3 | **GREEN** on `5132aebf` — see `GROUP-A-STATUS.md` |
+| Group B D4/D6 | Pending Sandbox deploy verify — see `GROUP-B-STATUS.md` |
+| Remaining (C–E) | Still OPEN |
 
 ## Gate 3 — Communications language + channel test split
 

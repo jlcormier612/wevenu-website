@@ -1,0 +1,6 @@
+Weekly sales — Last 7 days
+
+Your saved report "Weekly sales" (Sales) for Last 7 days is ready.
+
+Open in Hello to Cheers
+https://app.sandbox.hellotocheers.com/reporting/sales?range=last_7_days

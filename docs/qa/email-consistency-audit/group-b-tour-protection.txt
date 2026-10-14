@@ -1,0 +1,14 @@
+Tour protection completed — time no longer available
+
+Payment or card-on-file succeeded for a tour at Jen's Fancy Venue, but that time is no longer available.
+
+Requested time: Thursday, October 15 at 4:00 PM
+Contact: Nicole Bethune (nicole@example.com)
+
+No tour appointment was created. Open Tours to resolve this.
+
+View tours
+https://app.sandbox.hellotocheers.com/tours
+
+View this lead
+https://app.sandbox.hellotocheers.com/leads/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb

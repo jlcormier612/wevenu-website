@@ -2,10 +2,64 @@
  * Side effects that run only after a tour appointment actually exists.
  */
 import { sendEmail } from "@/lib/email/send";
+import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 import type { BookingResult } from "@/lib/tours/types";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Paid/unbooked tour protection alert — HTC staff shell with Tours + lead CTAs.
+ * Essential fields match across HTML and plain text (D4).
+ */
+export function buildTourProtectionAlertEmail(opts: {
+  venueName: string;
+  contactName: string;
+  contactEmail: string;
+  slotStart: string;
+  leadId: string;
+  appOrigin: string;
+}): { subject: string; text: string; html: string } {
+  const origin = opts.appOrigin.replace(/\/$/, "");
+  const scheduledDate = new Date(opts.slotStart).toLocaleString("en-US", {
+    weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
+  const subject = "Tour protection completed — time no longer available";
+  const body = [
+    `Payment or card-on-file succeeded for a tour at ${opts.venueName}, but that time is no longer available.`,
+    "",
+    `Requested time: ${scheduledDate}`,
+    `Contact: ${opts.contactName} (${opts.contactEmail})`,
+    "",
+    "No tour appointment was created. Open Tours to resolve this.",
+  ].join("\n");
+
+  const email = buildVenueNotificationEmail({
+    title: subject,
+    body,
+    link: "/tours",
+    appOrigin: origin,
+  });
+
+  const leadHref = `${origin}/leads/${opts.leadId}`;
+  const leadLabel = "View this lead";
+  const secondButton = htcEmailCtaAnchorHtml(escapeHtml(leadHref), escapeHtml(leadLabel));
+  const html = email.html.replace(
+    /(<\/a>)(\s*<\/td>)/,
+    `$1<p style="margin:12px 0 0">${secondButton}</p>$2`,
+  );
+  const text = `${email.text}\n\n${leadLabel}\n${leadHref}`;
+
+  return { subject, text, html };
+}
 
 export async function runTourBookedSideEffects(result: BookingResult): Promise<void> {
   if (!result.ok || !result.appointmentId) return;
@@ -27,22 +81,19 @@ export async function notifyPaidUnbookedTour(opts: {
   const coordinatorEmail = opts.venueEmail ?? process.env.COORDINATOR_NOTIFY_EMAIL;
   if (!coordinatorEmail) return;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const scheduledDate = new Date(opts.slotStart).toLocaleString("en-US", {
-    weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
+  const email = buildTourProtectionAlertEmail({
+    venueName: opts.venueName,
+    contactName: opts.contactName,
+    contactEmail: opts.contactEmail,
+    slotStart: opts.slotStart,
+    leadId: opts.leadId,
+    appOrigin: appUrl,
   });
   await sendEmail({
     to: coordinatorEmail,
-    subject: `Tour protection completed — time no longer available`,
-    text: [
-      `Payment or card-on-file succeeded for a tour at ${opts.venueName}, but that time is no longer available.`,
-      "",
-      `Requested time: ${scheduledDate}`,
-      `Contact: ${opts.contactName} (${opts.contactEmail})`,
-      "",
-      "No tour appointment was created. Open Tours to resolve this.",
-      `${appUrl}/tours`,
-      `${appUrl}/leads/${opts.leadId}`,
-    ].join("\n"),
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
   });
 }
 

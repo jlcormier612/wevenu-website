@@ -35,4 +35,11 @@ describe("HTC email CTA styling", () => {
     assert.match(src, /html:\s*email\.html/);
     assert.match(src, /New tour booked/);
   });
+
+  it("tour protection alert uses the shared CTA helper for both destinations", () => {
+    const src = readFileSync(resolve("lib/tours/booked-side-effects.ts"), "utf8");
+    assert.match(src, /buildTourProtectionAlertEmail/);
+    assert.match(src, /htcEmailCtaAnchorHtml/);
+    assert.match(src, /View this lead/);
+  });
 });

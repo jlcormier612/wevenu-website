@@ -11,12 +11,31 @@ import { createClient } from "@supabase/supabase-js";
 import * as crypto from "crypto";
 
 import { sendEmail } from "@/lib/email/send";
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 import { resolveDateRange } from "@/lib/reporting/date-range";
 import { SAVED_REPORT_PATH_LABEL, type SavedReportPath } from "@/lib/saved-reports/types";
 import type { DateRangePreset } from "@/lib/reporting/date-range";
 import { publicAppOrigin } from "@/lib/env";
 
 const APP_URL = publicAppOrigin();
+
+/** HTC staff shell for scheduled saved-report delivery (D6). */
+export function buildSavedReportReadyEmail(opts: {
+  reportName: string;
+  reportLabel: string;
+  rangeLabel: string;
+  reportPath: string;
+  datePreset: string;
+  appOrigin: string;
+}) {
+  const path = opts.reportPath.startsWith("/") ? opts.reportPath : `/${opts.reportPath}`;
+  return buildVenueNotificationEmail({
+    title: `${opts.reportName} — ${opts.rangeLabel}`,
+    body: `Your saved report "${opts.reportName}" (${opts.reportLabel}) for ${opts.rangeLabel} is ready.`,
+    link: `${path}?range=${opts.datePreset}`,
+    appOrigin: opts.appOrigin,
+  });
+}
 
 type DueRow = {
   schedule_id: string; saved_report_id: string; venue_id: string; recipient_email: string;
@@ -61,16 +80,24 @@ export async function sendDueSavedReports(): Promise<ScheduleResult> {
         row.custom_to ?? undefined,
       );
       const reportLabel = SAVED_REPORT_PATH_LABEL[row.report_path as SavedReportPath] ?? row.report_path;
-      const reportUrl = `${APP_URL}${row.report_path}?range=${row.date_preset}`;
 
       const hash = crypto.createHash("sha256").update(`${row.saved_report_id}:${range.from}:${range.to}`).digest("hex").slice(0, 16);
       if (hash === row.last_sent_hash) { skipped++; continue; }
 
+      const email = buildSavedReportReadyEmail({
+        reportName: row.report_name,
+        reportLabel,
+        rangeLabel: range.label,
+        reportPath: row.report_path,
+        datePreset: row.date_preset,
+        appOrigin: APP_URL,
+      });
+
       await sendEmail({
         to: row.recipient_email,
-        subject: `${row.report_name} — ${range.label}`,
-        text: `Your saved report "${row.report_name}" (${reportLabel}) for ${range.label} is ready.\n\nView it here: ${reportUrl}`,
-        html: `<p>Your saved report "<strong>${row.report_name}</strong>" (${reportLabel}) for ${range.label} is ready.</p><p><a href="${reportUrl}">View it in Hello to Cheers</a></p>`,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
       });
 
       await supabase.rpc("mark_saved_report_schedule_sent", { p_schedule_id: row.schedule_id, p_hash: hash });
