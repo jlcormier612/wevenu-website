@@ -11,6 +11,11 @@ import { getCommunicationDashboardData } from "@/lib/communication/dashboard";
 import { getCommunicationReadiness } from "@/lib/communication/readiness";
 import { DASHBOARD_COUNT_NOTE } from "@/lib/communication/message-status-definitions";
 import {
+  BACK_TO_RECENT_MESSAGES,
+  RECENT_MESSAGES_HEADING,
+  RECENT_MESSAGES_HELPER,
+} from "@/lib/communication/message-history-copy";
+import {
   attentionHistoryHref,
   attentionTileAriaLabel,
   isAttentionHistoryFilterActive,
@@ -108,8 +113,13 @@ export default async function CommunicationHealthPage({ searchParams }: Props) {
       <Card>
         <CardHeader className="pb-3 space-y-2">
           <h2 className="font-heading text-sm font-semibold text-heading">
-            {showAttentionFilter ? "Messages that need your attention" : "Message History"}
+            {showAttentionFilter ? "Messages that need your attention" : RECENT_MESSAGES_HEADING}
           </h2>
+          {!showAttentionFilter && (
+            <p className="text-xs text-muted-foreground" data-testid="recent-messages-helper">
+              {RECENT_MESSAGES_HELPER}
+            </p>
+          )}
           {showAttentionFilter && (
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <p>
@@ -129,7 +139,7 @@ export default async function CommunicationHealthPage({ searchParams }: Props) {
             <p className="text-xs text-muted-foreground">
               No messages currently need attention.{" "}
               <Link href="/messaging/health" className="font-medium text-heading underline underline-offset-2">
-                Back to Message History
+                {BACK_TO_RECENT_MESSAGES}
               </Link>
             </p>
           )}
