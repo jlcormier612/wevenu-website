@@ -83,50 +83,44 @@ describe("attention history — count/filter semantics", () => {
   });
 });
 
-describe("attention history — page wiring + a11y + delivery failure display", () => {
-  it("health page wires the attention StatTile to the filtered view with aria label", () => {
+describe("attention history — deferred aggregate UI + preserved semantics", () => {
+  it("health page defers aggregate tiles/lists and keeps Communication Readiness", () => {
     const src = readFileSync("app/(app)/messaging/health/page.tsx", "utf8");
-    assert.match(src, /attentionHistoryHref/);
-    assert.match(src, /attentionTileAriaLabel/);
-    assert.match(src, /getCommunicationDashboardData\(\{\s*attentionOnly/);
-    assert.match(src, /isAttentionHistoryFilterActive/);
-    assert.match(src, /data-testid="attention-stat-card"/);
-    assert.match(src, /href=\{attentionHref\}/);
-    assert.match(src, /aria-label=\{attentionTileAriaLabel/);
-    assert.match(src, /MessageHistoryList/);
-    assert.match(src, /paginate=\{showAttentionFilter\}/);
-    assert.match(src, /Messages that need your attention/);
-    assert.match(src, /Clear filter/);
-    // Entire card is the link when count > 0 (not a nested StatTile href).
-    assert.match(src, /attentionHref \? \(/);
+    assert.match(src, /ReadinessChecklist/);
+    assert.match(src, /data-testid="communication-readiness"/);
+    assert.doesNotMatch(src, /CommunicationHealthWidget/);
+    assert.doesNotMatch(src, /MessageHistoryList/);
+    assert.doesNotMatch(src, /attention-stat-card/);
+    assert.doesNotMatch(src, /getCommunicationDashboardData/);
+    assert.doesNotMatch(src, /Messages that need your attention/);
   });
 
-  it("StatTile exposes focus-visible ring and aria-label for keyboard users", () => {
-    const src = readFileSync("components/dashboard-system/stat-tile.tsx", "utf8");
-    assert.match(src, /ariaLabel\?:/);
-    assert.match(src, /aria-label=\{ariaLabel\}/);
-    assert.match(src, /focus-visible:ring-2 focus-visible:ring-ring/);
+  it("attention helpers and dashboard filter semantics remain available", () => {
+    assert.equal(attentionHistoryHref(1), "/messaging/health?attention=1");
+    const dashboard = readFileSync("lib/communication/dashboard.ts", "utf8");
+    assert.match(dashboard, /NEEDS_ATTENTION_STATUSES/);
+    assert.match(dashboard, /\.in\("status", \[\.\.\.NEEDS_ATTENTION_STATUSES\]\)/);
+    assert.match(dashboard, /ATTENTION_HISTORY_LIMIT/);
+    assert.match(dashboard, /attentionOnly/);
+
+    const tile = readFileSync("components/dashboard-system/stat-tile.tsx", "utf8");
+    assert.match(tile, /ariaLabel\?:/);
+    assert.match(tile, /focus-visible:ring-2 focus-visible:ring-ring/);
   });
 
-  it("dashboard history filter uses the same attention statuses as the count", () => {
-    const src = readFileSync("lib/communication/dashboard.ts", "utf8");
-    assert.match(src, /NEEDS_ATTENTION_STATUSES/);
-    assert.match(src, /\.in\("status", \[\.\.\.NEEDS_ATTENTION_STATUSES\]\)/);
-    assert.match(src, /ATTENTION_HISTORY_LIMIT/);
-    assert.match(src, /attentionOnly/);
-  });
-
-  it("delivery-failure badge wraps label and reason instead of clipping", () => {
+  it("compact badge keeps wrap-safe label; detail lives in timeline popover", () => {
     const badge = readFileSync("components/messaging/message-status-badge.tsx", "utf8");
     assert.match(badge, /break-words/);
     assert.match(badge, /whitespace-normal/);
     assert.match(badge, /max-w-full/);
     assert.doesNotMatch(badge, /truncate/);
-    assert.doesNotMatch(badge, /whitespace-nowrap/);
+    assert.doesNotMatch(badge, /message-failure-explanation/);
+
+    const popover = readFileSync("components/messaging/message-timeline-popover.tsx", "utf8");
+    assert.match(popover, /message-failure-explanation/);
+    assert.match(popover, /message-failure-next-action/);
 
     const list = readFileSync("components/messaging/message-history-list.tsx", "utf8");
-    assert.match(list, /items-start/);
-    assert.match(list, /max-w-\[min\(100%,11\.5rem\)\]/);
     assert.match(list, /MessageTimelinePopover/);
 
     const longReason =

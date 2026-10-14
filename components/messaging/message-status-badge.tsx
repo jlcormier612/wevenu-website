@@ -1,17 +1,18 @@
 /**
  * MessageStatusBadge — Communication Trust Experience.
- * Human-readable status first; optional technical detail behind disclosure.
+ * Compact venue-facing status label by default. Failure explanation /
+ * next-action live in MessageTimelinePopover (on demand).
  */
 import { isDeliveryFailureStatus } from "@/lib/communication/status-labels";
 import { resolveDeliveryDisplay } from "@/lib/conversations/delivery-display";
 
 export function MessageStatusBadge({
-  status, failureReason, isOutbound, providerDetail, channel,
+  status, failureReason, isOutbound, channel,
 }: {
   status: string | null | undefined;
   failureReason?: string | null;
   isOutbound: boolean;
-  /** Optional technical/provider detail — progressive disclosure only. */
+  /** @deprecated Kept for call-site compatibility; detail is no longer inline. */
   providerDetail?: string | null;
   /** Channel — required to suppress unsupported Read states (e.g. SMS). */
   channel?: string | null;
@@ -25,39 +26,15 @@ export function MessageStatusBadge({
   if (!display) return null;
 
   const failed = isDeliveryFailureStatus(display.status);
-  const detail = providerDetail?.trim() || display.diagnosticSafe;
   return (
     <span
-      className={`inline-flex max-w-full flex-col items-start gap-0.5 ${failed ? "font-semibold" : ""}`}
+      className={`inline-flex max-w-full items-start gap-1 whitespace-normal text-left ${failed ? "font-semibold" : ""}`}
       data-testid="message-status-badge"
+      data-status-label={display.label}
       data-retry-appropriate={failed ? String(display.retryAppropriate) : undefined}
     >
-      <span className="inline-flex max-w-full items-start gap-1 whitespace-normal text-left">
-        <span aria-hidden className="shrink-0">{display.emoji}</span>
-        <span className="min-w-0 break-words">{display.label}</span>
-      </span>
-      {failed && display.reason && (
-        <span
-          className="max-w-full whitespace-normal break-words text-left text-[10px] font-normal leading-snug opacity-90"
-          data-testid="message-failure-explanation"
-        >
-          {display.reason}
-        </span>
-      )}
-      {failed && display.nextAction && (
-        <span
-          className="max-w-full whitespace-normal break-words text-left text-[10px] font-normal leading-snug text-muted-foreground"
-          data-testid="message-failure-next-action"
-        >
-          {display.nextAction}
-        </span>
-      )}
-      {failed && detail && (
-        <details className="max-w-full text-[10px] font-normal opacity-80">
-          <summary className="cursor-pointer">More details</summary>
-          <span className="block max-w-full whitespace-normal break-words pt-0.5 text-left">{detail}</span>
-        </details>
-      )}
+      <span aria-hidden className="shrink-0">{display.emoji}</span>
+      <span className="min-w-0 break-words">{display.label}</span>
     </span>
   );
 }

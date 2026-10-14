@@ -28,8 +28,13 @@ export type EmailFailureGuidance = {
   diagnosticSafe: string | null;
 };
 
+/** Reserved for configuration / quota — not for routine unknown failures. */
 const SUPPORT_NEXT =
   "If this keeps happening, contact Hello to Cheers support and share the message time so we can check delivery logs.";
+
+/** Calm next step when evidence does not justify a support invitation. */
+const UNKNOWN_NEXT =
+  "Confirm the recipient details in the conversation. Try again later if this may have been temporary.";
 
 function redactEmails(text: string): string {
   return text.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[email]");
@@ -40,6 +45,25 @@ function stripSensitive(text: string): string {
     .replace(/Bearer\s+\S+/gi, "[redacted]")
     .replace(/api[_-]?key["']?\s*[:=]\s*["']?[^"'}\s]+/gi, "[redacted]")
     .trim();
+}
+
+/**
+ * Remove sender-reputation scare clauses from provider bounce prose while
+ * keeping the useful delivery fact. Full provider payloads remain in events.
+ */
+export function calmBounceExplanation(text: string): string {
+  let t = stripSensitive(text);
+  t = t.replace(
+    /\s*Sending messages to addresses that produce hard bounces[^.]*\./gi,
+    "",
+  );
+  t = t.replace(
+    /\s*We recommend removing the recipient'?s email address from your mailing list\.?/gi,
+    "",
+  );
+  t = t.replace(/\s*[^.]*negative impact on your reputation[^.]*\./gi, "");
+  t = t.replace(/\s{2,}/g, " ").trim();
+  return t;
 }
 
 function guidance(
@@ -159,8 +183,8 @@ export function classifyResendHttpFailureGuidance(opts: {
   if (invalidTo) {
     return guidance(
       "invalid_recipient",
-      "The email provider rejected this send because the recipient address is not valid for delivery.",
-      "Check and correct the email address on the lead or client record, then send again.",
+      "This message couldn't be sent because the recipient email address isn't valid for delivery.",
+      "Verify the email address on the lead or client record, then send again.",
       false,
       diagnostic,
     );
@@ -192,7 +216,7 @@ export function classifyResendHttpFailureGuidance(opts: {
   return guidance(
     "unknown",
     "The email provider did not accept this send. The exact cause could not be determined from the available error details.",
-    SUPPORT_NEXT,
+    UNKNOWN_NEXT,
     false,
     diagnostic,
   );
@@ -217,9 +241,13 @@ export function classifyResendBounceGuidance(bounce: ResendBounceFields | null |
   const diagnostic = codes ? stripSensitive(String(codes)) : null;
 
   if (type === "Permanent") {
+    const explanation = calmBounceExplanation(
+      providerMessage
+        || "The recipient's email provider permanently rejected this message after it was submitted.",
+    );
     return guidance(
       "permanent_bounce",
-      providerMessage
+      explanation
         || "The recipient's email provider permanently rejected this message after it was submitted.",
       "Verify the recipient email address on their record. If the address looks correct, try another channel or ask the couple for an updated email.",
       false,
@@ -230,8 +258,10 @@ export function classifyResendBounceGuidance(bounce: ResendBounceFields | null |
   if (type === "Transient") {
     return guidance(
       "temporary_bounce",
-      providerMessage
-        || "The recipient's email provider temporarily could not accept this message after it was submitted.",
+      calmBounceExplanation(
+        providerMessage
+          || "The recipient's email provider temporarily could not accept this message after it was submitted.",
+      ),
       "You can try sending again later. If the same address keeps failing, confirm the address with the couple or use another channel.",
       true,
       diagnostic,
@@ -241,8 +271,8 @@ export function classifyResendBounceGuidance(bounce: ResendBounceFields | null |
   if (providerMessage) {
     return guidance(
       "unknown",
-      stripSensitive(providerMessage),
-      SUPPORT_NEXT,
+      calmBounceExplanation(providerMessage),
+      UNKNOWN_NEXT,
       false,
       diagnostic,
     );
@@ -251,7 +281,7 @@ export function classifyResendBounceGuidance(bounce: ResendBounceFields | null |
   return guidance(
     "unknown",
     "This message could not be delivered. The bounce details were not specific enough to determine why.",
-    SUPPORT_NEXT,
+    UNKNOWN_NEXT,
     false,
     diagnostic,
   );
@@ -269,7 +299,7 @@ export function resolveEmailFailureGuidance(
     return guidance(
       "unknown",
       "This message could not be delivered. No further error detail was recorded.",
-      SUPPORT_NEXT,
+      UNKNOWN_NEXT,
       false,
     );
   }
@@ -293,8 +323,12 @@ export function resolveEmailFailureGuidance(
   if (lower.includes("rate limit") || lower.includes("too many messages were submitted too quickly")) {
     return guidance("rate_limit", raw, "Wait a short time, then send again from the conversation if still needed.", true);
   }
-  if (lower.includes("recipient address is not valid") || lower.includes("appears invalid")) {
-    return guidance("invalid_recipient", raw, "Check and correct the email address on the lead or client record, then send again.", false);
+  if (
+    lower.includes("recipient address is not valid")
+    || lower.includes("isn't valid for delivery")
+    || lower.includes("appears invalid")
+  ) {
+    return guidance("invalid_recipient", calmBounceExplanation(raw), "Verify the email address on the lead or client record, then send again.", false);
   }
   if (lower.includes("sender or account setup") || lower.includes("isn't fully set up") || lower.includes("isn't configured") || lower.includes("not configured")) {
     return guidance("configuration", raw, "Contact Hello to Cheers support — this usually cannot be fixed by editing the recipient address.", false);
@@ -309,7 +343,7 @@ export function resolveEmailFailureGuidance(
   ) {
     return guidance(
       "permanent_bounce",
-      raw,
+      calmBounceExplanation(raw),
       "Verify the recipient email address on their record. If it looks correct, try another channel or ask for an updated email.",
       false,
     );
@@ -320,14 +354,19 @@ export function resolveEmailFailureGuidance(
     || lower.includes("general bounce message")
     || lower.includes("might be able to send a message to the same recipient in the future")
   ) {
-    return guidance("temporary_bounce", raw, "You can try sending again later. If the same address keeps failing, confirm the address or use another channel.", true);
+    return guidance(
+      "temporary_bounce",
+      calmBounceExplanation(raw),
+      "You can try sending again later. If the same address keeps failing, confirm the address or use another channel.",
+      true,
+    );
   }
 
   if (lower === "your message couldn't be delivered." || lower === "your message could not be delivered.") {
     return guidance(
       "unknown",
       "This message could not be delivered. The recorded error did not include enough detail to determine why.",
-      SUPPORT_NEXT,
+      UNKNOWN_NEXT,
       false,
     );
   }
@@ -336,20 +375,20 @@ export function resolveEmailFailureGuidance(
     return guidance(
       "unknown",
       "The email provider did not accept this send. The exact cause could not be determined from the available error details.",
-      SUPPORT_NEXT,
+      UNKNOWN_NEXT,
       false,
     );
   }
 
   // Unknown but preserve the original diagnostic sentence when it is already venue-facing prose.
   if (raw.length <= 320 && !raw.includes("{") && !/stack|exception|bearer /i.test(raw)) {
-    return guidance("unknown", stripSensitive(raw), SUPPORT_NEXT, false);
+    return guidance("unknown", calmBounceExplanation(raw), UNKNOWN_NEXT, false);
   }
 
   return guidance(
     "unknown",
     "This message could not be delivered. The exact cause could not be determined from the available error details.",
-    SUPPORT_NEXT,
+    UNKNOWN_NEXT,
     false,
   );
 }

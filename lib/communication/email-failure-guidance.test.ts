@@ -24,8 +24,8 @@ describe("email failure guidance — HTTP mappings", () => {
       }),
     });
     assert.equal(g.category, "invalid_recipient");
-    assert.match(g.explanation, /not valid|rejected/i);
-    assert.match(g.nextAction, /correct the email address/i);
+    assert.match(g.explanation, /isn'?t valid|not valid|rejected/i);
+    assert.match(g.nextAction, /Verify the email address/i);
     assert.equal(g.retryAppropriate, false);
     assert.ok(g.diagnosticSafe);
     assert.doesNotMatch(g.explanation, /Bearer|api[_-]?key/i);
@@ -113,10 +113,11 @@ describe("email failure guidance — persistence and display", () => {
     assert.equal(g.category, "quota");
   });
 
-  it("maps generic provider sentence to unknown with support next step", () => {
+  it("maps generic provider sentence to unknown without a routine support invite", () => {
     const g = resolveEmailFailureGuidance("Email send failed due to a provider error.");
     assert.equal(g.category, "unknown");
-    assert.match(g.nextAction, /support/i);
+    assert.doesNotMatch(g.nextAction, /contact Hello to Cheers support/i);
+    assert.match(g.nextAction, /recipient|try again later/i);
   });
 
   it("maps Resend hard-bounce prose to permanent_bounce", () => {
@@ -149,7 +150,7 @@ describe("email failure guidance — persistence and display", () => {
     }
   });
 
-  it("delivery display shows explanation + next action for email failures", () => {
+  it("delivery display resolves explanation + next action for email failures", () => {
     const d = resolveDeliveryDisplay({
       status: "failed",
       channel: "email",
@@ -160,7 +161,17 @@ describe("email failure guidance — persistence and display", () => {
     assert.equal(d!.label, "Couldn't deliver");
     assert.ok(d!.reason);
     assert.ok(d!.nextAction);
-    assert.match(d!.nextAction!, /support/i);
+    assert.doesNotMatch(d!.nextAction!, /contact Hello to Cheers support/i);
+  });
+
+  it("strips reputation scare language from hard-bounce explanations", () => {
+    const g = resolveEmailFailureGuidance(
+      "The recipient's email provider sent a hard bounce message, but didn't specify the reason for the hard bounce. We recommend removing the recipient's email address from your mailing list. Sending messages to addresses that produce hard bounces can have a negative impact on your reputation as a sender.",
+    );
+    assert.equal(g.category, "permanent_bounce");
+    assert.doesNotMatch(g.explanation, /reputation/i);
+    assert.doesNotMatch(g.explanation, /mailing list/i);
+    assert.match(g.nextAction, /Verify the recipient email/i);
   });
 
   it("preserves delivered / sent / pending semantics", () => {
@@ -210,7 +221,7 @@ describe("email failure guidance — persistence and display", () => {
     assert.doesNotMatch(g.diagnosticSafe!, /alice@example\.com/);
   });
 
-  it("webhook uses bounce translator; badge does not auto-send", () => {
+  it("webhook uses bounce translator; compact badge; detail in timeline popover", () => {
     const reason = translateEmailBounceFailure({
       type: "Transient",
       message: "The recipient's email provider sent a general bounce message.",
@@ -222,8 +233,13 @@ describe("email failure guidance — persistence and display", () => {
     assert.doesNotMatch(webhook, /Bounced at \$\{/);
 
     const badge = readFileSync("components/messaging/message-status-badge.tsx", "utf8");
-    assert.match(badge, /message-failure-next-action/);
+    assert.doesNotMatch(badge, /message-failure-next-action/);
+    assert.doesNotMatch(badge, /message-failure-explanation/);
     assert.doesNotMatch(badge, /sendEmail|sendConversationMessage/);
+
+    const popover = readFileSync("components/messaging/message-timeline-popover.tsx", "utf8");
+    assert.match(popover, /message-failure-next-action/);
+    assert.match(popover, /message-failure-explanation/);
   });
 
   it("classifyResendHttpFailure keeps CloudWatch quota/rate codes", () => {
@@ -242,12 +258,12 @@ describe("email failure guidance — persistence and display", () => {
   });
 
   it("translateEmailFailure still maps unstructured invalid to", () => {
-    assert.match(translateEmailFailure("422 invalid `to` field"), /not valid|rejected/i);
+    assert.match(translateEmailFailure("422 invalid `to` field"), /isn'?t valid|not valid|rejected/i);
   });
 
-  it("missing failure reason is unknown", () => {
+  it("missing failure reason is unknown without routine support invite", () => {
     const g = resolveEmailFailureGuidance(null);
     assert.equal(g.category, "unknown");
-    assert.match(g.nextAction, /support/i);
+    assert.doesNotMatch(g.nextAction, /contact Hello to Cheers support/i);
   });
 });

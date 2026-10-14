@@ -1,5 +1,6 @@
 /**
- * Step A — default recent-messages labeling (no query/count changes).
+ * Recent-messages copy constants remain available; launch Communication Health
+ * defers the aggregate history list that previously consumed them.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -28,28 +29,18 @@ describe("recent messages copy constants", () => {
   });
 });
 
-describe("health page wires recent-messages copy in default mode only", () => {
+describe("health page launch presentation — recent messages list deferred", () => {
   const src = readFileSync("app/(app)/messaging/health/page.tsx", "utf8");
 
-  it("default heading and helper come from copy constants; Message History default heading is gone", () => {
-    assert.match(src, /RECENT_MESSAGES_HEADING/);
-    assert.match(src, /RECENT_MESSAGES_HELPER/);
-    assert.match(src, /BACK_TO_RECENT_MESSAGES/);
+  it("does not wire recent-messages list headings on the health page", () => {
+    assert.doesNotMatch(src, /RECENT_MESSAGES_HEADING/);
+    assert.doesNotMatch(src, /RECENT_MESSAGES_HELPER/);
+    assert.doesNotMatch(src, /MessageHistoryList/);
     assert.doesNotMatch(src, /"Message History"/);
-    assert.doesNotMatch(src, /Back to Message History/);
   });
 
-  it("preserves Attention filter heading and helper (unchanged)", () => {
-    assert.match(src, /Messages that need your attention/);
-    assert.match(src, /Showing delivery failures from the last/);
-    assert.match(src, /Clear filter/);
-    assert.match(src, /paginate=\{showAttentionFilter\}/);
-  });
-
-  it("does not make Sent or Delivered tiles into links", () => {
-    // Only the attention card uses attentionHref / Link wrapping a StatTile value path.
-    assert.match(src, /attentionHref \? \(/);
-    assert.match(src, /label=\{`messages sent \(last \$\{counts\.windowDays\} days\)`\}/);
-    assert.match(src, /label="delivered successfully"/);
+  it("keeps Communication Readiness as the primary health-page surface", () => {
+    assert.match(src, /ReadinessChecklist/);
+    assert.match(src, /data-testid="communication-readiness"/);
   });
 });
