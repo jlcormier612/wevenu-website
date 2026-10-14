@@ -164,7 +164,11 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                         </Badge>
                       )}
                       {preferenceBadge === "preferred" && (
-                        <Badge variant="outline" className="gap-1 text-[#3D5040] border-[#5D6F5D]/30">
+                        <Badge
+                          variant="outline"
+                          className="gap-1 text-[#3D5040] border-[#5D6F5D]/30 dark:text-foreground dark:border-border"
+                          data-testid="vendor-preference-preferred"
+                        >
                           Preferred
                         </Badge>
                       )}
