@@ -183,7 +183,7 @@ export function LeadSpacePreferenceFields({
         </p>
       </div>
       <div
-        className="grid w-full min-w-0 grid-cols-1 items-start gap-x-3 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+        className="flex w-full min-w-0 flex-wrap items-start gap-x-5 gap-y-3"
         data-testid="space-preference-grid"
         data-applicable-count={applicableCount}
       >
@@ -193,7 +193,7 @@ export function LeadSpacePreferenceFields({
           return (
             <div
               key={use.key}
-              className="flex min-w-0 flex-col gap-1.5"
+              className="flex min-w-0 basis-full flex-col gap-1.5 sm:basis-[calc(50%-0.625rem)] lg:basis-[calc(33.333%-0.875rem)] xl:basis-[calc(20%-1rem)] xl:max-w-[12.5rem]"
               data-testid={`space-pref-row-${use.key}`}
               data-applicable={applicable ? "true" : "false"}
             >

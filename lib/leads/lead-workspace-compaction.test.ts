@@ -87,9 +87,8 @@ describe("lead workspace polish", () => {
 
   it("uses a responsive Space Preferences grid without a standalone rehearsal date field", () => {
     assert.match(prefs, /data-testid="lead-space-preferences"/);
-    assert.match(prefs, /xl:grid-cols-5/);
-    assert.match(prefs, /lg:grid-cols-3/);
-    assert.match(prefs, /sm:grid-cols-2/);
+    assert.match(prefs, /flex w-full min-w-0 flex-wrap/);
+    assert.match(prefs, /xl:basis-\[calc\(20%-1rem\)\]/);
     assert.doesNotMatch(prefs, /xl:grid-cols-4/);
     assert.doesNotMatch(prefs, /Rehearsal Dinner Date/);
     assert.doesNotMatch(detail, /Rehearsal Dinner Date/);
