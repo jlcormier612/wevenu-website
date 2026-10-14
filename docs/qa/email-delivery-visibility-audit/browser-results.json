@@ -1,13 +1,13 @@
 {
-  "at": "2026-10-14T19:42:04.419Z",
-  "expectedSha": "3f30db10ab2e3343482e475cd5c46b0f8b2648e4",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3f30db10ab2e3343482e475cd5c46b0f8b2648e4",
+  "at": "2026-10-14T20:03:08.432Z",
+  "expectedSha": "511b757aebb34125b0b1696671c179dd1545977f",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:511b757aebb34125b0b1696671c179dd1545977f",
   "pass": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3f30db10ab2e3343482e475cd5c46b0f8b2648e4 expected=3f30db10ab2e"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:511b757aebb34125b0b1696671c179dd1545977f expected=511b757aebb3"
     },
     {
       "name": "Readiness present",
@@ -28,6 +28,16 @@
       "name": "Health page points owners to Inbox for failures",
       "pass": true,
       "detail": "intro copy"
+    },
+    {
+      "name": "Settings → Text messaging link present",
+      "pass": true,
+      "detail": "href=/settings/communications#texting"
+    },
+    {
+      "name": "How-to-read copy uses complete-setup wording",
+      "pass": true,
+      "detail": "approved copy"
     },
     {
       "name": "Compact Couldn't deliver badge present",

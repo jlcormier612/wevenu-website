@@ -1,19 +1,25 @@
 # Communication Readiness copy cleanup
 
-**Status: IMPLEMENTATION — Sandbox deploy/verify pending**
+**Status: GREEN / CLOSED**
 
 | Field | Value |
 |-------|--------|
-| Page | `/messaging/health` (Communication Health / Readiness) |
+| Page | `/messaging/health` |
 | Source | `app/(app)/messaging/health/page.tsx` |
-| Scope | Copy only — no layout/behavior/provider changes |
-| Production | Untouched |
+| Commit | `511b757aebb34125b0b1696671c179dd1545977f` |
+| Serving SHA | `511b757aebb34125b0b1696671c179dd1545977f` (exact image tag) |
+| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/38627285603 (**success**) |
+| Focused tests | **21 pass / 0 fail** |
+| Browser | **PASS** — `health-1280.png`, `health-390.png`, `browser-results.json` |
+| Production / Resend / DNS | Untouched · **0** emails |
 
-## Exact copy changes
+## Exact copy (verified on Sandbox)
 
-**How to read this page** → complete-setup wording + Settings → Text messaging link inside the box; Inbox next-steps sentence updated.  
-**Beneath the box** → “Email is configured…” (removed redundant per-venue texting sentence; link moved into the box).
+**How to read this page**
+- Use the checklist below to complete setup. To enable texting for your venue, go to **Settings → Text messaging**. If texting isn’t enabled yet, that’s a setup step—not an HTC outage.
+- If a specific message couldn’t be delivered, open the conversation in Inbox to view its status and any available next steps.
 
-## Tests
+**Beneath the box**
+- Email is configured for Hello to Cheers as a platform. Your venue contact email and phone are used for test messages and for how couples reach you.
 
-`npx tsx --test lib/communication/health-back-nav.test.ts` (+ related health presentation tests): **21 pass / 0 fail**.
+Link destination confirmed: `/settings/communications#texting`. Checklist present. No layout/behavior changes.
