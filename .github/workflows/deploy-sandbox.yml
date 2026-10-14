@@ -158,7 +158,11 @@ jobs:
           pull_base() {
             local private_tag="$1"
             local public_image="$2"
-            local local_tag="$3"
+            # local_tag MUST match Dockerfile FROM exactly. BuildKit resolves
+            # by that reference; a short tag like node:22-alpine does not
+            # satisfy FROM public.ecr.aws/docker/library/node:22-alpine and
+            # the build still hits Public ECR (429) even after a private hit.
+            local local_tag="$public_image"
             if docker pull "${REGISTRY}/htc-ci-bases:${private_tag}"; then
               docker tag "${REGISTRY}/htc-ci-bases:${private_tag}" "$local_tag"
               echo "Using private ECR base ${private_tag} -> ${local_tag}"
@@ -174,8 +178,8 @@ jobs:
             echo "::error::Failed to pull ${local_tag} from private and Public ECR"
             return 1
           }
-          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine node:22-alpine
-          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20 alpine:3.20
+          pull_base node-22-alpine public.ecr.aws/docker/library/node:22-alpine
+          pull_base alpine-3.20 public.ecr.aws/docker/library/alpine:3.20
 
       - name: Build
         env:
