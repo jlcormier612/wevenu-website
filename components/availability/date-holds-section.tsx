@@ -291,9 +291,9 @@ export function DateHoldsSection({
                   className="flex h-8 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
                   data-testid="date-hold-active"
                 >
-                  <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground" />
+                  <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground dark:text-foreground" />
                   <div className="flex min-w-0 flex-nowrap items-center gap-x-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground">
                       Held
                     </p>
                     <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
@@ -395,9 +395,9 @@ export function DateHoldsSection({
               className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"
               data-testid="date-hold-active"
             >
-              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground dark:text-foreground" />
               <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground">
                   Held
                 </p>
                 <p className="text-sm font-medium text-foreground" data-testid="date-hold-range-label">
