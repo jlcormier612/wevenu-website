@@ -1,11 +1,13 @@
 # Email consistency + Communications status language
 
-**Workstream: OPEN** — Group A (D1–D3) **GREEN**; Group B (D4/D6) in progress; Groups C–E still open.  
+**Workstream: OPEN** — A/B/D closed or pending serve; Group C dual-tour **BLOCKED — DECISION**; Group E external.  
 Do **not** mark the full workstream GREEN until remaining authorized groups land.
 
 Consolidated audit: [`AUDIT-RESULTS-2026-10-14.md`](./AUDIT-RESULTS-2026-10-14.md)  
 Group A: [`GROUP-A-STATUS.md`](./GROUP-A-STATUS.md)  
 Group B: [`GROUP-B-STATUS.md`](./GROUP-B-STATUS.md)  
+Group C: [`GROUP-C-STATUS.md`](./GROUP-C-STATUS.md)  
+Group D: [`GROUP-D-STATUS.md`](./GROUP-D-STATUS.md)  
 Inventory: [`INVENTORY.md`](./INVENTORY.md)
 
 ## Serving baseline (Group A close)
@@ -28,7 +30,10 @@ Inquirer thank-you remains out of scope for that gate → defect D1 in audit res
 |------|--------|
 | Group A D1–D3 | **GREEN** on `5132aebf` — see `GROUP-A-STATUS.md` |
 | Group B D4/D6 | Pending Sandbox deploy verify — see `GROUP-B-STATUS.md` |
-| Remaining (C–E) | Still OPEN |
+| Group C D5 | **GREEN** (code + tests; Sandbox serve pending) — see `GROUP-C-STATUS.md` |
+| Group C dual-tour | **BLOCKED — SPECIFIC DECISION** — see `GROUP-C-STATUS.md` |
+| Group D `$500` | **GREEN / CLOSED** (test-only) — see `GROUP-D-STATUS.md` |
+| Group E open/click | Still OPEN / external |
 
 ## Gate 3 — Communications language + channel test split
 

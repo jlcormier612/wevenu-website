@@ -79,6 +79,10 @@ describe("email branding/signature path audit", () => {
       mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
     },
     {
+      file: "lib/portal/participant-invite-email.ts",
+      mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/, /brandButtonHtml/],
+    },
+    {
       file: "lib/contacts/service.ts",
       mustInclude: [/renderBrandedEmailHtml/, /emailBrandFromVenue/],
     },

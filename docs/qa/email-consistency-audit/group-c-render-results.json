@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-14T23:38:08.498Z",
+  "checks": {
+    "subject": true,
+    "venueShell": true,
+    "cta": true,
+    "textParity": true,
+    "noHtcLogo": true,
+    "noInternal": true
+  },
+  "allPass": true
+}

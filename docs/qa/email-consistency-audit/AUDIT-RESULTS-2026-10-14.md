@@ -135,14 +135,14 @@ Classification key: **PASS — VERIFIED** · **OPEN — DEFECT** · **OPEN — V
 | Smallest fix | `buildVenueNotificationEmail` with View tours / View this lead CTAs |
 | Tests | Unit render; rare path — runtime optional |
 
-### D5 — Portal participant invite shell (#28) — **non-blocking / polish**
+### D5 — Portal participant invite shell (#28) — **GREEN / CLOSED**
 
 | Field | Value |
 |-------|--------|
 | Expected | Venue-branded shell (logo + wrapper) consistent with portal invites |
-| Actual | Minimal HTML with colored CTA only |
-| Smallest fix | `emailBrandFromVenue` + `renderBrandedEmailHtml` |
+| Actual (fixed) | `buildPortalParticipantInviteEmail` → `renderBrandedEmailHtml` + `brandButtonHtml` |
 | Must not change | Token accept URL / terms copy |
+| Evidence | `GROUP-C-STATUS.md`, `lib/portal/participant-invite-email.test.ts` |
 
 ### D6 — Saved report schedule shell (#30) — **non-blocking staff**
 
@@ -151,10 +151,11 @@ Classification key: **PASS — VERIFIED** · **OPEN — DEFECT** · **OPEN — V
 | Expected | Consistent HTC staff HTML shell (optional) |
 | Actual | Bare `<p>` HTML |
 | Smallest fix | Wrap with `buildVenueNotificationEmail` or HTC logo header helper |
+| Note | Addressed in Group B — see `GROUP-B-STATUS.md` |
 
-### Residual risk (not a template defect) — dual tour emails
+### Residual risk (not a template defect) — dual tour emails — **BLOCKED — SPECIFIC DECISION**
 
-Side-effect `#5` + preference-gated `tour_scheduled` may produce **two** coordinator emails for one booking (`tour-booking-email-branding/AUDIT.md`). Product decision required (suppress one path). Track as **OPEN — VERIFICATION / product** under Fix group C.
+Side-effect `#5` (`New tour booked — {date}`) + preference-gated `tour_scheduled` (`New tour scheduled — {name}`) may produce **two** coordinator emails for one booking. Contract documented in `lib/tours/tour-coordinator-dual-notify.test.ts` and `GROUP-C-STATUS.md`. No send-path change without an explicit product choice.
 
 ---
 

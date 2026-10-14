@@ -160,7 +160,9 @@ describe("customer-facing email branding closeout", () => {
     });
     assert.equal(out.subject, "Your Wedding invoice payment request — Jen's Fancy Venue");
     assert.match(out.text, /requesting payment for your Wedding invoice/);
-    assert.match(out.html, /Pay \$500\.00/);
+    // Whole dollars omit ".00" via canonical formatMoneyDisplay (see lib/money/format.ts).
+    assert.match(out.html, /Pay \$500(?:\.00)?/);
+    assert.match(out.html, /Deposit: \$500(?:\.00)?/);
     assertVenueShell(out.html, { logo: true, venueName: "Jen's Fancy Venue", color: "#8B4513" });
   });
 
@@ -240,6 +242,11 @@ describe("customer-facing email branding closeout", () => {
     assert.match(clientInvite, /html: renderBrandedEmailHtml\(brand/);
     assert.match(clientInvite, /Create Your Account/);
     assert.match(clientInvite, /Hello to Cheers is where you'll keep/);
+
+    const participantInvite = readFileSync(resolve("lib/portal/participant-invite-email.ts"), "utf8");
+    assert.match(participantInvite, /renderBrandedEmailHtml/);
+    assert.match(participantInvite, /Create Your Account/);
+    assert.match(participantInvite, /invited you to help plan their celebration/);
 
     const contact = readFileSync(resolve("lib/contacts/service.ts"), "utf8");
     assert.match(contact, /html: renderBrandedEmailHtml\(brand/);

@@ -50,7 +50,7 @@ Venue-authored Inbox bodies stay author content inside the venue-branded wrapper
 | 25 | Platform templates (welcome, payment receipt, trial, etc.) | Account holder | `shared/email/send.ts` + registry | `renderEmailTemplate` | HTC platform | Yes | Verified (unit) | Some registry-only |
 | 26 | Enrollment activate | New venue | `app/api/internal/enrollment/activate/route.ts` | Platform templates | HTC | — | Not runtime-verified this pass | |
 | 27 | Admin onboarding email | Arbitrary | `app/admin/onboarding/actions.ts` | `html: body.replace(…)` | **Ad-hoc** | Thin HTML | Intentionally different / weak | Internal admin tool |
-| 28 | Portal participant notify | Participant | `app/api/portal/participants/route.ts` | Inspect per send | — | — | Not verified | Confirm shell on next pass |
+| 28 | Portal participant notify | Participant | `lib/portal/participant-invite-email.ts` via `app/api/portal/participants/route.ts` | Venue brand (`renderBrandedEmailHtml`) | Venue | Yes | Verified (unit + render) | D5 GREEN |
 | 29 | Daily digest | Venue staff | `lib/notifications/digest-engine.ts` + `daily-digest.ts` | Digest builder | — | — | Not fully verified | Staff-facing |
 | 30 | Saved report schedule | Venue | `lib/saved-reports/schedule-engine.ts` | Report body | — | — | Not verified | |
 | 31 | Communication readiness test email | Venue email | `sendTestEmail` in readiness.ts | Plain text | **Intentional** (ops self-test) | Text | Intentional | Does **not** create conversation_message / provider_id for open-tracking E2E |
@@ -65,10 +65,10 @@ Venue-authored Inbox bodies stay author content inside the venue-branded wrapper
 2. **Custom form → venue** plain text + `/leads` list CTA (not lead id) + incomplete fields (#3) — **OPEN — DEFECT** (D2).
 3. **Event type label** shows canonical value `wedding` instead of `Wedding` in venue inquiry HTML — **OPEN — DEFECT** (D3); proven in `inquiry-notification-branding/captured-email.html`.
 4. **Tour protection** coordinator alert — plain text + raw URLs (#6) — **OPEN — DEFECT** (D4, non-blocking).
-5. **Portal participant** thin HTML shell (#28) — **OPEN — DEFECT** (D5, polish).
-6. **Saved report** schedule minimal HTML (#30) — **OPEN — DEFECT** (D6, staff).
+5. **Portal participant** thin HTML shell (#28) — **GREEN** (D5) — see `GROUP-C-STATUS.md`.
+6. **Saved report** schedule minimal HTML (#30) — Group B (D6); see `GROUP-B-STATUS.md`.
 7. **Daily digest** — source PASS (HTC logo); runtime not re-proven.
-8. **Tour dual-send risk** — side-effect + `tour_scheduled` queue may email twice (product decision).
+8. **Tour dual-send risk** — side-effect + `tour_scheduled` queue may email twice — **BLOCKED — SPECIFIC DECISION** (`GROUP-C-STATUS.md`).
 9. Open/click **E2E** — **BLOCKED — EXTERNAL** / **DEFERRED — PRE-LAUNCH** (DNS).
 10. Automations (#12) / enrollment (#26) — **OPEN — VERIFICATION** (no dedicated runtime matrix).
 
