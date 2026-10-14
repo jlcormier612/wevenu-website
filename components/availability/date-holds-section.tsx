@@ -288,7 +288,7 @@ export function DateHoldsSection({
               {activeHolds.map((hold) => (
                 <div
                   key={hold.id}
-                  className="flex h-11 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
+                  className="flex h-8 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
                   data-testid="date-hold-active"
                 >
                   <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground" />
@@ -373,7 +373,7 @@ export function DateHoldsSection({
             <Button
               type="button"
               size="sm"
-              className="h-11 shrink-0 whitespace-nowrap"
+              className="h-8 shrink-0 whitespace-nowrap"
               onClick={openForm}
               data-testid="date-hold-place"
             >
@@ -470,7 +470,9 @@ export function DateHoldsSection({
         <div
           className={
             compact
-              ? "basis-full w-full max-w-xl space-y-3 rounded-lg border border-border bg-muted/30 p-4"
+              // Full row width under Sales owner + Date hold (no short max-width
+              // island that left an empty band beside the form).
+              ? "min-w-0 w-full max-w-full basis-full space-y-3 rounded-lg border border-border bg-muted/30 p-4"
               : "space-y-3 rounded-lg border border-border bg-muted/30 p-4"
           }
           data-testid="date-hold-form"

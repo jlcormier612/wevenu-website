@@ -29,18 +29,25 @@ describe("Sales & availability polish 2A", () => {
     assert.match(ownerHold, /items-center/);
   });
 
-  it("compact owner select/save and hold chip share h-11; Place stays on the band at sm+", () => {
-    assert.match(staff, /compact \? "h-11 w-\[9\.5rem\]/);
-    assert.match(staff, /compact \? "h-11 shrink-0 whitespace-nowrap"/);
-    assert.match(holds, /flex h-11 w-fit/);
+  it("compact owner select/save and Place hold match platform h-8; Place stays on the band at sm+", () => {
+    // Matches Schedule Tour / relationship Edit (size=sm + h-8 ≈ 34px), not oversized h-11.
+    assert.match(staff, /compact \? "h-8 w-\[9\.5rem\]/);
+    assert.match(staff, /compact \? "h-8 shrink-0 whitespace-nowrap"/);
+    assert.match(holds, /flex h-8 w-fit/);
     assert.match(holds, /sm:flex-nowrap/);
-    assert.match(holds, /className="h-11 shrink-0 whitespace-nowrap"/);
+    assert.match(holds, /className="h-8 shrink-0 whitespace-nowrap"/);
   });
 
   it("expanded hold form spans the Sales & availability row via contents + basis-full", () => {
     assert.match(holds, /className=\{compact \? "contents" : "space-y-3"\}/);
     assert.match(holds, /data-testid="date-hold-form"/);
-    assert.match(holds, /basis-full w-full max-w-xl/);
+    assert.match(holds, /min-w-0 w-full max-w-full basis-full/);
+    const formClass = holds.slice(
+      holds.lastIndexOf("?", holds.indexOf('data-testid="date-hold-form"')),
+      holds.indexOf('data-testid="date-hold-form"'),
+    );
+    assert.match(formClass, /max-w-full/);
+    assert.doesNotMatch(formClass, /max-w-xl/);
     const ownerHold = detail.slice(
       detail.indexOf('data-testid="lead-owner-hold-row"'),
       detail.indexOf('data-testid="lead-owner-hold-row"') + 1200,
@@ -55,7 +62,7 @@ describe("Sales & availability polish 2A", () => {
     const placeBlock = holds.slice(placeStart - 220, placeStart + 80);
     assert.match(placeBlock, /data-testid="date-hold-place"/);
     assert.doesNotMatch(placeBlock, /variant="outline"/);
-    assert.match(placeBlock, /h-11 shrink-0 whitespace-nowrap/);
+    assert.match(placeBlock, /h-8 shrink-0 whitespace-nowrap/);
     // Default Button = primary fill (same as StaffAssignmentField save).
     assert.match(staff, /data-testid=\{`\$\{testId\}-save`\}/);
     assert.doesNotMatch(

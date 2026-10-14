@@ -22,8 +22,13 @@ const EXPECTED = process.env.EXPECTED_SHA ?? "";
 const FANCY_EMAIL = "jennifer@hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const OUT = "docs/qa/date-hold-expansion-layout";
+/** Follow-up artifact prefix — preserves earlier screenshots/results. */
+const ARTIFACT = process.env.ARTIFACT_PREFIX ?? "followup-align-heights";
 /** Lead with preferred date for Place hold CTA — Quinn Zeller */
 const LEAD_ID = "e0172773-b908-4970-979a-b53029a40ca9";
+/** Platform reference: Schedule Tour / tour Edit use size=sm + h-8 ≈ 34px. */
+const TARGET_CONTROL_H = 34;
+const CONTROL_H_TOLERANCE = 4;
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 if (!url.includes("wvpsldwwjqdannqasrdf")) throw new Error("refusing non-sandbox supabase");
@@ -97,8 +102,9 @@ async function cookiesFor() {
 }
 
 async function measure(page: import("playwright").Page) {
-  return page.evaluate(() => {
-    const box = (el: Element | null) => {
+  // String IIFE — avoids Playwright/tsx __name helper injection failures.
+  return page.evaluate(`(() => {
+    const box = (el) => {
       if (!el) return null;
       const r = el.getBoundingClientRect();
       return {
@@ -113,22 +119,30 @@ async function measure(page: import("playwright").Page) {
     const card = document.querySelector('[data-testid="lead-sales-availability"]');
     const row = document.querySelector('[data-testid="lead-owner-hold-row"]');
     const owner = document.querySelector('[data-testid="lead-staff-assignment"]');
+    const ownerTrigger = owner
+      ? owner.querySelector('[data-slot="select-trigger"], [role="combobox"], button')
+      : null;
+    const ownerSave = document.querySelector('[data-testid="lead-staff-assignment-save"]');
     const place = document.querySelector('[data-testid="date-hold-place"]');
+    const scheduleTour = document.querySelector('[data-testid="schedule-tour-action"]');
     const form = document.querySelector('[data-testid="date-hold-form"]');
-    const holdTitle = form?.querySelector("input");
+    const holdTitle = form ? form.querySelector("input") : null;
     return {
       card: box(card),
       row: box(row),
       owner: box(owner),
+      ownerTrigger: box(ownerTrigger),
+      ownerSave: box(ownerSave),
       place: box(place),
+      scheduleTour: box(scheduleTour),
       form: box(form),
       formLeftAligned:
-        form && card
-          ? Math.abs(form.getBoundingClientRect().left - card.getBoundingClientRect().left) < 48
+        form && row
+          ? Math.abs(form.getBoundingClientRect().left - row.getBoundingClientRect().left) <= 8
           : null,
       hasHoldTitle: Boolean(holdTitle),
     };
-  });
+  })()`);
 }
 
 async function inspect(page: import("playwright").Page, width: number, suffix: string) {
@@ -139,17 +153,30 @@ async function inspect(page: import("playwright").Page, width: number, suffix: s
 
   const collapsed = await measure(page);
   await page.locator('[data-testid="lead-sales-availability"]').screenshot({
-    path: `${OUT}/collapsed-${suffix}.png`,
+    path: `${OUT}/${ARTIFACT}-collapsed-${suffix}.png`,
   });
 
   const place = page.locator('[data-testid="date-hold-place"]');
   record(`place_visible_${suffix}`, await place.isVisible(), "Place hold CTA");
+
+  const nearTarget = (h: number | undefined | null) =>
+    h != null && Math.abs(h - TARGET_CONTROL_H) <= CONTROL_H_TOLERANCE;
+  record(
+    `control_heights_match_platform_${suffix}`,
+    Boolean(
+      nearTarget(collapsed.ownerTrigger?.height) &&
+        nearTarget(collapsed.ownerSave?.height) &&
+        nearTarget(collapsed.place?.height),
+    ),
+    `trigger=${collapsed.ownerTrigger?.height} save=${collapsed.ownerSave?.height} place=${collapsed.place?.height} refScheduleTour=${collapsed.scheduleTour?.height} target≈${TARGET_CONTROL_H}`,
+  );
+
   await place.click();
   await page.waitForSelector('[data-testid="date-hold-form"]', { timeout: 10000 });
 
   const expanded = await measure(page);
   await page.locator('[data-testid="lead-sales-availability"]').screenshot({
-    path: `${OUT}/expanded-${suffix}.png`,
+    path: `${OUT}/${ARTIFACT}-expanded-${suffix}.png`,
   });
 
   record(
@@ -173,15 +200,29 @@ async function inspect(page: import("playwright").Page, width: number, suffix: s
     ),
     `ownerRight=${expanded.owner?.right} formLeft=${expanded.form?.left}`,
   );
+  const rowLeft = expanded.row?.left ?? null;
+  const formLeft = expanded.form?.left ?? null;
+  const leftDelta =
+    rowLeft != null && formLeft != null ? Math.abs(formLeft - rowLeft) : null;
   record(
     `form_left_aligned_${suffix}`,
-    expanded.formLeftAligned === true,
-    `formLeftAligned=${expanded.formLeftAligned} formW=${expanded.form?.width}`,
+    leftDelta != null && leftDelta <= 8,
+    `formLeft=${formLeft} rowLeft=${rowLeft} delta=${leftDelta}`,
   );
+  // Form should use nearly the full control-row width (not a max-w-xl island).
+  const widthRatio =
+    expanded.form && expanded.row && expanded.row.width > 0
+      ? expanded.form.width / expanded.row.width
+      : 0;
   record(
-    `form_sensible_width_${suffix}`,
-    Boolean(expanded.form && expanded.form.width >= 280 && expanded.form.width <= 600),
-    `width=${expanded.form?.width}`,
+    `form_spans_row_width_${suffix}`,
+    Boolean(
+      expanded.form &&
+        expanded.row &&
+        expanded.form.width >= 280 &&
+        widthRatio >= 0.9,
+    ),
+    `width=${expanded.form?.width} rowW=${expanded.row?.width} ratio=${widthRatio.toFixed(3)}`,
   );
 
   // Cancel without placing
@@ -214,9 +255,18 @@ async function main() {
   await browser.close();
   const pass = checks.every((c) => c.pass);
   writeFileSync(
-    `${OUT}/browser-results.json`,
+    `${OUT}/${ARTIFACT}-browser-results.json`,
     JSON.stringify(
-      { at: new Date().toISOString(), expectedSha: EXPECTED, servingImage: image, pass, checks, desktop, mobile },
+      {
+        at: new Date().toISOString(),
+        expectedSha: EXPECTED,
+        servingImage: image,
+        artifactPrefix: ARTIFACT,
+        pass,
+        checks,
+        desktop,
+        mobile,
+      },
       null,
       2,
     ),

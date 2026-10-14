@@ -122,7 +122,7 @@ export function StaffAssignmentField({
           ]}
         >
           <SelectTrigger
-            className={compact ? "h-11 w-[9.5rem] max-w-full sm:w-40" : "h-9 w-56"}
+            className={compact ? "h-8 w-[9.5rem] max-w-full sm:w-40" : "h-9 w-56"}
             aria-label={label}
           >
             <SelectValue placeholder="Unassigned" />
@@ -137,7 +137,7 @@ export function StaffAssignmentField({
         <Button
           type="button"
           size="sm"
-          className={compact ? "h-11 shrink-0 whitespace-nowrap" : "shrink-0 whitespace-nowrap"}
+          className={compact ? "h-8 shrink-0 whitespace-nowrap" : "shrink-0 whitespace-nowrap"}
           disabled={pending}
           onClick={save}
           data-testid={`${testId}-save`}
