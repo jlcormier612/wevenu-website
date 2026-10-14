@@ -839,18 +839,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
             />
           </div>
-          <div className="min-w-0 flex-1 basis-full sm:basis-0">
-            <DateHoldsSection
-              density="compact"
-              leadId={lead.id}
-              leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-              desiredEventDate={lead.eventDate}
-              initialHolds={holds}
-              spaces={spaces}
-              spacePreferences={spacePreferences}
-              venueTimezone={venueTimezone}
-            />
-          </div>
+          <DateHoldsSection
+            density="compact"
+            leadId={lead.id}
+            leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+            desiredEventDate={lead.eventDate}
+            initialHolds={holds}
+            spaces={spaces}
+            spacePreferences={spacePreferences}
+            venueTimezone={venueTimezone}
+          />
         </div>
       </div>
 

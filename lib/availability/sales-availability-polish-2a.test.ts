@@ -34,7 +34,19 @@ describe("Sales & availability polish 2A", () => {
     assert.match(staff, /compact \? "h-11 shrink-0 whitespace-nowrap"/);
     assert.match(holds, /flex h-11 w-fit/);
     assert.match(holds, /sm:flex-nowrap/);
-    assert.match(holds, /compact \? "h-11 shrink-0 whitespace-nowrap"/);
+    assert.match(holds, /className="h-11 shrink-0 whitespace-nowrap"/);
+  });
+
+  it("expanded hold form spans the Sales & availability row via contents + basis-full", () => {
+    assert.match(holds, /className=\{compact \? "contents" : "space-y-3"\}/);
+    assert.match(holds, /data-testid="date-hold-form"/);
+    assert.match(holds, /basis-full w-full max-w-xl/);
+    const ownerHold = detail.slice(
+      detail.indexOf('data-testid="lead-owner-hold-row"'),
+      detail.indexOf('data-testid="lead-owner-hold-row"') + 1200,
+    );
+    assert.match(ownerHold, /<DateHoldsSection/);
+    assert.doesNotMatch(ownerHold, /flex-1 basis-full sm:basis-0/);
   });
 
   it("Place another hold uses filled primary Button (not outline)", () => {

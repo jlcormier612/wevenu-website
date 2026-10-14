@@ -270,65 +270,132 @@ export function DateHoldsSection({
 
   const compact = density === "compact";
 
+  // Compact: `contents` so the hold form can `basis-full` under the whole
+  // Sales & availability control row (Sales owner + Date hold), not a right column.
   return (
     <div
-      className={
-        compact
-          ? "flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap"
-          : "space-y-3"
-      }
+      className={compact ? "contents" : "space-y-3"}
       data-testid={compact ? "date-hold-compact" : undefined}
     >
-      {compact ? <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span> : null}
-      {/* Active holds — authoritative date_holds.status === "active". Multiple per lead/date are valid. */}
-      {activeHolds.length > 0 && (
-        <div
-          className={
-            compact
-              ? "flex w-fit min-w-0 flex-nowrap items-center gap-x-2 gap-y-2"
-              : "space-y-2"
-          }
-          data-testid="date-hold-active-list"
-        >
-          {compact ? null : (
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Active holds
-            </p>
-          )}
+      {compact ? (
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap">
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span>
+          {activeHolds.length > 0 ? (
+            <div
+              className="flex w-fit min-w-0 flex-nowrap items-center gap-x-2 gap-y-2"
+              data-testid="date-hold-active-list"
+            >
+              {activeHolds.map((hold) => (
+                <div
+                  key={hold.id}
+                  className="flex h-11 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
+                  data-testid="date-hold-active"
+                >
+                  <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground" />
+                  <div className="flex min-w-0 flex-nowrap items-center gap-x-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
+                      Held
+                    </p>
+                    <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
+                      {holdDateRangeLabel(hold)}
+                    </p>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                      aria-expanded={expandedHoldIds.has(hold.id)}
+                      aria-controls={`date-hold-details-${hold.id}`}
+                      onClick={() => toggleHoldDetails(hold.id)}
+                      data-testid="date-hold-details-toggle"
+                    >
+                      {expandedHoldIds.has(hold.id) ? (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      )}
+                      Details
+                    </button>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      disabled={addPending || releasingId === hold.id}
+                      onClick={() => openEdit(hold)}
+                      data-testid="date-hold-edit"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      disabled={releasingId === hold.id}
+                      onClick={() => handleRelease(hold.id)}
+                      data-testid="date-hold-release"
+                    >
+                      {releasingId === hold.id ? (
+                        <>
+                          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          Releasing…
+                        </>
+                      ) : (
+                        "Release hold"
+                      )}
+                    </Button>
+                  </div>
+                  {expandedHoldIds.has(hold.id) ? (
+                    <div
+                      id={`date-hold-details-${hold.id}`}
+                      className="basis-full flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground"
+                      data-testid="date-hold-details"
+                    >
+                      <span data-testid="date-hold-details-spaces">{holdResourcesLabel(hold)}</span>
+                      {holdWindowLabel(hold) ? <span>{holdWindowLabel(hold)}</span> : <span>All day</span>}
+                      {hold.expiresAt ? (
+                        <span data-testid="date-hold-details-expires">
+                          Expires{" "}
+                          {new Date(hold.expiresAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!showForm && showPlaceHold ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-11 shrink-0 whitespace-nowrap"
+              onClick={openForm}
+              data-testid="date-hold-place"
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              {placeCtaLabel}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {/* Regular (non-compact) active holds */}
+      {!compact && activeHolds.length > 0 && (
+        <div className="space-y-2" data-testid="date-hold-active-list">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Active holds
+          </p>
           {activeHolds.map((hold) => (
             <div
               key={hold.id}
-              className={compact
-                ? "flex h-11 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
-                : "flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"}
+              className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"
               data-testid="date-hold-active"
             >
-              <Calendar className={compact ? "h-3.5 w-3.5 shrink-0 text-warning-foreground" : "mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"} />
-              {compact ? (
-                <div className="flex min-w-0 flex-nowrap items-center gap-x-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
-                    Held
-                  </p>
-                  <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
-                    {holdDateRangeLabel(hold)}
-                  </p>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-                    aria-expanded={expandedHoldIds.has(hold.id)}
-                    aria-controls={`date-hold-details-${hold.id}`}
-                    onClick={() => toggleHoldDetails(hold.id)}
-                    data-testid="date-hold-details-toggle"
-                  >
-                    {expandedHoldIds.has(hold.id) ? (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    )}
-                    Details
-                  </button>
-                </div>
-              ) : (
+              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
                   Held
@@ -350,13 +417,11 @@ export function DateHoldsSection({
                   ) : null}
                 </div>
               </div>
-              )}
               <div className="flex shrink-0 items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={compact ? "h-8" : undefined}
                   disabled={addPending || releasingId === hold.id}
                   onClick={() => openEdit(hold)}
                   data-testid="date-hold-edit"
@@ -367,7 +432,6 @@ export function DateHoldsSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={compact ? "h-8" : undefined}
                   disabled={releasingId === hold.id}
                   onClick={() => handleRelease(hold.id)}
                   data-testid="date-hold-release"
@@ -382,25 +446,6 @@ export function DateHoldsSection({
                   )}
                 </Button>
               </div>
-              {compact && expandedHoldIds.has(hold.id) ? (
-                <div
-                  id={`date-hold-details-${hold.id}`}
-                  className="basis-full flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground"
-                  data-testid="date-hold-details"
-                >
-                  <span data-testid="date-hold-details-spaces">{holdResourcesLabel(hold)}</span>
-                  {holdWindowLabel(hold) ? <span>{holdWindowLabel(hold)}</span> : <span>All day</span>}
-                  {hold.expiresAt ? (
-                    <span data-testid="date-hold-details-expires">
-                      Expires{" "}
-                      {new Date(hold.expiresAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
           ))}
         </div>
@@ -422,7 +467,14 @@ export function DateHoldsSection({
 
       {/* Place hold / Place another hold — never gated by an existing active hold. */}
       {showForm ? (
-        <div className={compact ? "basis-full w-full space-y-3 rounded-lg border border-border bg-muted/30 p-4" : "space-y-3 rounded-lg border border-border bg-muted/30 p-4"}>
+        <div
+          className={
+            compact
+              ? "basis-full w-full max-w-xl space-y-3 rounded-lg border border-border bg-muted/30 p-4"
+              : "space-y-3 rounded-lg border border-border bg-muted/30 p-4"
+          }
+          data-testid="date-hold-form"
+        >
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Hold title</Label>
@@ -612,11 +664,10 @@ export function DateHoldsSection({
             </Button>
           </div>
         </div>
-      ) : showPlaceHold ? (
+      ) : !compact && showPlaceHold ? (
         <Button
           type="button"
           size="sm"
-          className={compact ? "h-11 shrink-0 whitespace-nowrap" : undefined}
           onClick={openForm}
           data-testid="date-hold-place"
         >
