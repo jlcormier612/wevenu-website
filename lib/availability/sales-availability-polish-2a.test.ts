@@ -29,11 +29,12 @@ describe("Sales & availability polish 2A", () => {
     assert.match(ownerHold, /items-center/);
   });
 
-  it("compact owner select/save and hold chip/actions share h-11 control height", () => {
+  it("compact owner select/save and hold chip share h-11; Place stays on the band at sm+", () => {
     assert.match(staff, /compact \? "h-11 w-\[9\.5rem\]/);
     assert.match(staff, /compact \? "h-11 shrink-0 whitespace-nowrap"/);
-    assert.match(holds, /min-h-11/);
-    assert.match(holds, /compact \? "h-11"/);
+    assert.match(holds, /flex h-11 w-fit/);
+    assert.match(holds, /sm:flex-nowrap/);
+    assert.match(holds, /compact \? "h-11 shrink-0 whitespace-nowrap"/);
   });
 
   it("Place another hold uses filled primary Button (not outline)", () => {

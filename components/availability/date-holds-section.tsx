@@ -274,7 +274,7 @@ export function DateHoldsSection({
     <div
       className={
         compact
-          ? "flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2"
+          ? "flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap"
           : "space-y-3"
       }
       data-testid={compact ? "date-hold-compact" : undefined}
@@ -285,7 +285,7 @@ export function DateHoldsSection({
         <div
           className={
             compact
-              ? "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2"
+              ? "flex w-fit min-w-0 flex-nowrap items-center gap-x-2 gap-y-2"
               : "space-y-2"
           }
           data-testid="date-hold-active-list"
@@ -299,13 +299,13 @@ export function DateHoldsSection({
             <div
               key={hold.id}
               className={compact
-                ? "flex w-fit min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1.5 min-h-11"
+                ? "flex h-11 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
                 : "flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"}
               data-testid="date-hold-active"
             >
               <Calendar className={compact ? "h-3.5 w-3.5 shrink-0 text-warning-foreground" : "mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"} />
               {compact ? (
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                <div className="flex min-w-0 flex-nowrap items-center gap-x-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground">
                     Held
                   </p>
@@ -356,7 +356,7 @@ export function DateHoldsSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={compact ? "h-11" : undefined}
+                  className={compact ? "h-8" : undefined}
                   disabled={addPending || releasingId === hold.id}
                   onClick={() => openEdit(hold)}
                   data-testid="date-hold-edit"
@@ -367,7 +367,7 @@ export function DateHoldsSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={compact ? "h-11" : undefined}
+                  className={compact ? "h-8" : undefined}
                   disabled={releasingId === hold.id}
                   onClick={() => handleRelease(hold.id)}
                   data-testid="date-hold-release"
