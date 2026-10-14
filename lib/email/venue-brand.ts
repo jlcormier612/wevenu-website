@@ -29,7 +29,7 @@ export type EmailFooterContactPrefs = {
   showPhone: boolean;
 };
 
-type VenueBrandSource = {
+export type VenueBrandSource = {
   name?: string | null;
   logoUrl?: string | null;
   logo_url?: string | null;
