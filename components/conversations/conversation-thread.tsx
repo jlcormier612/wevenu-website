@@ -35,6 +35,7 @@ import {
   latestMeaningfulFromMessages,
 } from "@/lib/conversations/inbox-attention";
 import { conversationHeaderOrientation } from "@/lib/conversations/inbox-header";
+import { scrollWorkspaceMainToElement } from "@/lib/conversations/page-flow-scroll";
 import { linkifyMessageBody } from "@/lib/conversations/message-body-links";
 import {
   conversationMessageChannelLabel,
@@ -579,16 +580,20 @@ export function ConversationThread({
   }, [conversationId]);
 
   const scrollMessagesToNewest = React.useCallback((behavior: ScrollBehavior) => {
-    const el = flow === "contained" ? scrollRef.current : null;
-    if (!el) {
-      topRef.current?.scrollIntoView({ behavior, block: "start" });
+    if (flow === "contained") {
+      const el = scrollRef.current;
+      if (!el) return;
+      if (behavior === "smooth") {
+        el.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        el.scrollTop = 0;
+      }
       return;
     }
-    if (behavior === "smooth") {
-      el.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      el.scrollTop = 0;
-    }
+    // Page flow (Inbox): scroll only `[data-workspace-main]`. Never
+    // `scrollIntoView` — that pulls main under the sticky workspace header
+    // and leaves a header-sized white gap at the bottom of the viewport.
+    scrollWorkspaceMainToElement(topRef.current, behavior);
   }, [flow]);
 
   function handleMessagesScroll() {
