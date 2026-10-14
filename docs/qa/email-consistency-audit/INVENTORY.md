@@ -1,8 +1,10 @@
 # Email-purpose inventory and consistency audit
 
 **Generated:** 2026-10-13  
+**Reconciled:** 2026-10-14 — see `AUDIT-RESULTS-2026-10-14.md` for full dispositions (read-only pass; no code changes).  
 **Mode:** Source inventory + existing QA evidence. Runtime branding verified only where noted.  
-**Production:** untouched.
+**Production:** untouched.  
+**Serving at reconcile:** `c75479e6db337037cb7730116a904b5a2711f2dc`
 
 ## Shared shells (intentional variation)
 
@@ -57,13 +59,18 @@ Venue-authored Inbox bodies stay author content inside the venue-branded wrapper
 
 ---
 
-## Outstanding gaps (factual)
+## Outstanding gaps (factual) — refreshed 2026-10-14
 
-1. **Inquirer thank-you** on inquire + forms/submit — plain text, no venue/HTC shell (#2, #4).
-2. **Custom form → venue** still plain text (#3) — same defect class as fixed website inquire venue path.
-3. **Tour protection** coordinator alert — plain text + raw URLs (#6).
-4. Portal participant / digest / saved-report — shell not fully classified this pass.
-5. Open/click **E2E** still unverified (see Gate 4 / PHASE-2-PREFLIGHT).
+1. **Inquirer thank-you** on inquire + forms/submit — plain text, no venue/HTC shell (#2, #4) — **OPEN — DEFECT** (D1).
+2. **Custom form → venue** plain text + `/leads` list CTA (not lead id) + incomplete fields (#3) — **OPEN — DEFECT** (D2).
+3. **Event type label** shows canonical value `wedding` instead of `Wedding` in venue inquiry HTML — **OPEN — DEFECT** (D3); proven in `inquiry-notification-branding/captured-email.html`.
+4. **Tour protection** coordinator alert — plain text + raw URLs (#6) — **OPEN — DEFECT** (D4, non-blocking).
+5. **Portal participant** thin HTML shell (#28) — **OPEN — DEFECT** (D5, polish).
+6. **Saved report** schedule minimal HTML (#30) — **OPEN — DEFECT** (D6, staff).
+7. **Daily digest** — source PASS (HTC logo); runtime not re-proven.
+8. **Tour dual-send risk** — side-effect + `tour_scheduled` queue may email twice (product decision).
+9. Open/click **E2E** — **BLOCKED — EXTERNAL** / **DEFERRED — PRE-LAUNCH** (DNS).
+10. Automations (#12) / enrollment (#26) — **OPEN — VERIFICATION** (no dedicated runtime matrix).
 
 ## Intentionally different (not defects)
 

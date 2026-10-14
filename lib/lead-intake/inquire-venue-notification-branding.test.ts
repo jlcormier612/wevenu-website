@@ -36,7 +36,7 @@ describe("public inquire venue notification branding", () => {
         "Name: Alice GateBOne",
         "Email: alice@example.com",
         "Phone: 5551001001",
-        "Event type: wedding",
+        "Event type: Wedding",
         "Preferred event date: 2027-11-11",
       ].join("\n"),
       link: "/leads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -47,6 +47,8 @@ describe("public inquire venue notification branding", () => {
     assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
     assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
     assert.match(email.html, /New inquiry received via Meadowbrook Valley Venue/);
+    assert.match(email.html, /Event type: Wedding/);
+    assert.doesNotMatch(email.html, /Event type: wedding\b/);
     assert.match(email.html, /Preferred event date: 2027-11-11/);
     assert.doesNotMatch(visible(email.html), /https?:\/\//);
     assert.match(

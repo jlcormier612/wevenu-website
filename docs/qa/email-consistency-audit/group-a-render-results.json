@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-14T22:22:33.692Z",
+  "noSends": true,
+  "checks": [
+    {
+      "name": "D1 inquiry thank-you HTML branded",
+      "pass": true,
+      "detail": "We received your inquiry — Jen's Fancy Venue"
+    },
+    {
+      "name": "D1 form thank-you HTML branded",
+      "pass": true,
+      "detail": "We received your message — Jen's Fancy Venue"
+    },
+    {
+      "name": "D3 Wedding label on inquire venue body",
+      "pass": true,
+      "detail": "Wedding not wedding"
+    },
+    {
+      "name": "D2 form venue lead CTA",
+      "pass": true,
+      "detail": "formCta=View this lead href=https://app.sandbox.hellotocheers.com/leads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    },
+    {
+      "name": "D2 no generic /leads list link in form venue text",
+      "pass": true,
+      "detail": "lead-specific only"
+    },
+    {
+      "name": "No internal-notes leakage",
+      "pass": true,
+      "detail": "clean"
+    }
+  ],
+  "pass": true
+}

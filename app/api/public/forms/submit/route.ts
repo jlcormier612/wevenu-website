@@ -12,7 +12,12 @@ import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+import {
+  buildPublicIntakeThankYouEmail,
+  buildPublicIntakeVenueDetailBody,
+} from "@/lib/lead-intake/public-intake-emails";
 import { parsePublicLeadRpcSuccess } from "@/lib/lead-intake/public-lead-rpc";
+import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 import { PUBLIC_FORM_API_ERRORS } from "@/lib/public-forms/constants";
 
 function clientIp(request: NextRequest): string | null {
@@ -53,7 +58,16 @@ export async function POST(request: NextRequest) {
 
   // Resolve venue for notifications + intake venueId without exposing private config.
   const { data: formPayload } = await admin.rpc("get_public_form", { p_public_key: String(publicKey) });
-  const formOk = formPayload as { ok?: boolean; venue?: { id: string; name: string; email: string | null } } | null;
+  const formOk = formPayload as {
+    ok?: boolean;
+    venue?: {
+      id: string;
+      name: string;
+      email: string | null;
+      logoUrl?: string | null;
+      primaryColor?: string | null;
+    };
+  } | null;
   if (!formOk?.ok || !formOk.venue?.id) {
     return NextResponse.json(
       { ok: false, error: "form_unavailable", message: PUBLIC_FORM_API_ERRORS.form_unavailable },
@@ -134,16 +148,21 @@ export async function POST(request: NextRequest) {
   const fromEmail = process.env.FROM_EMAIL ?? null;
 
   if (fromEmail) {
+    const thankYou = buildPublicIntakeThankYouEmail({
+      kind: "submission",
+      venueName: venue.name,
+      firstName: firstName ? String(firstName) : null,
+      brandSource: {
+        name: venue.name,
+        logoUrl: venue.logoUrl ?? null,
+        primaryColor: venue.primaryColor ?? null,
+      },
+    });
     sendEmail({
       to: inquirerEmail,
-      subject: `We received your message — ${venue.name}`,
-      text: [
-        firstName ? `Thank you, ${firstName}!` : "Thank you!",
-        "",
-        `We've received your submission for ${venue.name}.`,
-        "",
-        "We'll be in touch soon.",
-      ].join("\n"),
+      subject: thankYou.subject,
+      text: thankYou.text,
+      html: thankYou.html,
       replyTo: fromEmail,
     }).then(
       (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
@@ -154,23 +173,27 @@ export async function POST(request: NextRequest) {
   }
 
   if (fromEmail && venue.email) {
+    const appOrigin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const detailLines = buildPublicIntakeVenueDetailBody({
+      intro: `New lead received via a custom public form for ${venue.name}.`,
+      inquirerName,
+      inquirerEmail,
+      phone: phone ? String(phone) : null,
+      eventType: eventType ? String(eventType) : null,
+      eventDate: eventDate ? String(eventDate) : null,
+      guestCount: guestCount != null ? Number(guestCount) : null,
+    });
+    const venueEmail = buildVenueNotificationEmail({
+      title: `New public form lead: ${inquirerName}`,
+      body: detailLines,
+      link: `/leads/${outcome.leadId}`,
+      appOrigin,
+    });
     sendEmail({
       to: venue.email,
-      subject: `New public form lead: ${inquirerName}`,
-      text: [
-        `New lead received via a custom public form for ${venue.name}.`,
-        "",
-        `Name: ${inquirerName}`,
-        `Email: ${inquirerEmail}`,
-        phone ? `Phone: ${phone}` : null,
-        eventType ? `Event type: ${String(eventType)}` : null,
-        eventDate ? `Preferred event date: ${eventDate}` : null,
-        guestCount ? `Guests: ${guestCount}` : null,
-        "",
-        `View in Hello to Cheers: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/leads`,
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      subject: venueEmail.subject,
+      text: venueEmail.text,
+      html: venueEmail.html,
     }).then(
       (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
       () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),

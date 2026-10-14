@@ -1,0 +1,17 @@
+New inquiry from Alice Gate
+
+New inquiry received via Jen's Fancy Venue's website form.
+Name: Alice Gate
+Email: alice@example.com
+Phone: 5551001001
+Partner: Sam Gate
+Event type: Wedding
+Preferred event date: 2027-11-11
+Guests: 120
+Budget: $25,000
+
+Message:
+Looking for a fall weekend.
+
+View Alice's lead
+https://app.sandbox.hellotocheers.com/leads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa

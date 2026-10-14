@@ -1,0 +1,12 @@
+New public form lead: Blake Reed
+
+New lead received via a custom public form for Jen's Fancy Venue.
+Name: Blake Reed
+Email: blake@example.com
+Phone: 5552002002
+Event type: Wedding
+Preferred event date: 2028-06-01
+Guests: 80
+
+View this lead
+https://app.sandbox.hellotocheers.com/leads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
