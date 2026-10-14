@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-14T23:12:02.476Z",
+  "expectedSha": "d137d039a53d4fdc61751d7f9516cc697c718d92",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d137d039a53d4fdc61751d7f9516cc697c718d92",
+  "pass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d137d039a53d4fdc61751d7f9516cc697c718d92 expected=d137d039a53d"
+    },
+    {
+      "name": "No all-delivered celebration copy",
+      "pass": true,
+      "detail": "celebration absent"
+    },
+    {
+      "name": "No quantified last-day failure Luv copy",
+      "pass": true,
+      "detail": "failure aggregate absent"
+    },
+    {
+      "name": "Dashboard core intact without delivery Luv card",
+      "pass": true,
+      "detail": "greeting/focus retained; Luv entry may be absent when no other L1 candidate"
+    },
+    {
+      "name": "Communication Health remains Readiness",
+      "pass": true,
+      "detail": "no history rows"
+    },
+    {
+      "name": "Narrow: no delivery celebration",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "No critical console errors",
+      "pass": true,
+      "detail": "errors=0"
+    }
+  ],
+  "consoleErrors": []
+}

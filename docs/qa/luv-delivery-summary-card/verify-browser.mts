@@ -128,14 +128,9 @@ record(
   "failure aggregate absent",
 );
 record(
-  "Luv identity still present on Dashboard",
-  /Luv|With Luv/i.test(body),
-  "Luv chrome retained",
-);
-record(
-  "Health still readiness-only (no delivery list restored)",
-  true,
-  "checked separately via navigation",
+  "Dashboard core intact without delivery Luv card",
+  /Today'?s Focus|Good (morning|afternoon|evening)/i.test(body),
+  "greeting/focus retained; Luv entry may be absent when no other L1 candidate",
 );
 
 await page.goto(`${APP}/messaging/health`, { waitUntil: "networkidle", timeout: 90_000 });
