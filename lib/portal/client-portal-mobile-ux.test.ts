@@ -111,13 +111,15 @@ describe("7 — portal messages scroll to latest", () => {
 });
 
 describe("8 — HTC logo on dark backgrounds", () => {
-  it("ships an on-dark logo asset and Wordmark uses it in dark mode", () => {
+  it("Wordmark uses the primary brand asset in both themes (not lavender on-dark)", () => {
+    assert.ok(existsSync(resolve(ROOT, "public" + HTC_LOGO_PUBLIC_PATH)));
     assert.ok(existsSync(resolve(ROOT, "public" + HTC_LOGO_ON_DARK_PUBLIC_PATH)));
     assert.notEqual(HTC_LOGO_ON_DARK_PUBLIC_PATH, HTC_LOGO_PUBLIC_PATH);
     const wm = read("components/brand/wordmark.tsx");
-    assert.match(wm, /HTC_LOGO_ON_DARK_PUBLIC_PATH/);
+    assert.match(wm, /HTC_LOGO_PUBLIC_PATH/);
+    assert.doesNotMatch(wm, /HTC_LOGO_ON_DARK_PUBLIC_PATH/);
+    assert.doesNotMatch(wm, /hidden dark:block/);
     assert.match(wm, /forceDark/);
-    assert.match(wm, /hidden dark:block/);
   });
 });
 

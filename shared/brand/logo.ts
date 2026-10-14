@@ -7,7 +7,10 @@
  */
 
 export const HTC_LOGO_PUBLIC_PATH = "/brand/hello-to-cheers-logo-primary-transparent.png";
-/** Light-ink platform mark for dark / deep-green surfaces. */
+/**
+ * Legacy light-ink raster. Lettering samples lavender-gray and must not be used
+ * by Wordmark / the staff sidebar — prefer {@link HTC_LOGO_PUBLIC_PATH}.
+ */
 export const HTC_LOGO_ON_DARK_PUBLIC_PATH =
   "/brand/hello-to-cheers-logo-on-dark-transparent.png";
 export const HTC_LOGO_ALT = "Hello to Cheers";

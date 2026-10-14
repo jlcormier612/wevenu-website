@@ -1,21 +1,15 @@
 import { cn } from "@/lib/utils";
-import {
-  HTC_LOGO_ON_DARK_PUBLIC_PATH,
-  HTC_LOGO_PUBLIC_PATH,
-} from "@/shared/brand/logo";
-
-const PLATFORM_LOGO_LIGHT = HTC_LOGO_PUBLIC_PATH;
-const PLATFORM_LOGO_DARK = HTC_LOGO_ON_DARK_PUBLIC_PATH;
+import { HTC_LOGO_PUBLIC_PATH } from "@/shared/brand/logo";
 
 /**
  * Renders the Hello to Cheers platform logo everywhere platform branding appears.
+ * Always uses the approved primary brand asset (olive/sage lettering + dusty-rose
+ * accents). Do not swap to the lavender-gray on-dark raster — it washes out brand
+ * color on the dark-mode sidebar (lightened taupe) and other themed surfaces.
+ *
  * Pass logoUrl only when displaying a venue's own uploaded logo instead.
- * Pass forceLight on a page whose surface is a fixed light background
- * regardless of the app's dark-mode setting (e.g. login) — otherwise the
- * `dark:` variant follows the html-level theme class even when the page
- * around it isn't actually dark, and the dark-mode (light/white) logo
- * disappears against a light background.
- * Pass forceDark on a fixed dark / deep-green surface (e.g. invitation chrome).
+ * Pass forceLight / forceDark when a fixed-surface page must ignore the html
+ * theme class for layout reasons; both still render the primary brand mark.
  */
 export function Wordmark({
   className,
@@ -37,6 +31,10 @@ export function Wordmark({
 }) {
   const alt = logoUrl ? (venueName ?? "Venue") : "Hello to Cheers";
   const sizeClass = sizeClassName ?? (showText ? "h-11 w-auto" : "h-8 w-auto");
+  // forceLight / forceDark remain accepted for call-site compatibility; the
+  // primary asset is correct on both light and dark HTC surfaces.
+  void forceLight;
+  void forceDark;
 
   if (logoUrl) {
     return (
@@ -47,32 +45,10 @@ export function Wordmark({
     );
   }
 
-  if (forceDark) {
-    return (
-      <span className={cn("inline-flex shrink-0 items-center", className)}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={PLATFORM_LOGO_DARK} alt={alt} className={sizeClass} />
-      </span>
-    );
-  }
-
-  if (forceLight) {
-    return (
-      <span className={cn("inline-flex shrink-0 items-center", className)}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={PLATFORM_LOGO_LIGHT} alt={alt} className={sizeClass} />
-      </span>
-    );
-  }
-
   return (
     <span className={cn("inline-flex shrink-0 items-center", className)}>
-      {/* Light mode logo */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={PLATFORM_LOGO_LIGHT} alt={alt} className={`${sizeClass} block dark:hidden`} />
-      {/* Dark mode logo — light ink for dark backgrounds */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={PLATFORM_LOGO_DARK} alt={alt} className={`${sizeClass} hidden dark:block`} />
+      <img src={HTC_LOGO_PUBLIC_PATH} alt={alt} className={sizeClass} />
     </span>
   );
 }
