@@ -1,6 +1,6 @@
 # Lead visibility — new / unreviewed indicator
 
-**Status: IMPLEMENTATION DEPLOYED — awaiting Sandbox browser verification**  
+**Status: SANDBOX GREEN**  
 **Date:** 2026-10-14
 
 ---
@@ -17,15 +17,16 @@ The Leads sidebar badge already counted venue-unseen open leads (`venue_seen_at 
 | UI | Pink `bg-destructive` dot + **New** label beside lead name (`LeadUnseenIndicator`) |
 | Clear | Unchanged: lead detail calls `markLeadVenueSeen` (venue-shared) |
 | Badge / stages | Unchanged routes, counts, and stage-chip semantics |
-| Unseen filter | Now calls `isUnseenLeadAttention` explicitly (same rules as badge; equivalent to prior open+null gate when only `salesStage` is available) |
+| Unseen filter | Calls `isUnseenLeadAttention` explicitly (same rules as badge) |
 
 ## Files changed
 
 - `components/leads/lead-unseen-indicator.tsx` (new)
 - `components/leads/lead-list.tsx`
 - `lib/leads/lead-unseen-indicator.test.ts` (new)
-- `lib/navigation/leads-all-population.test.ts` (expect `isUnseenLeadAttention`)
-- This STATUS
+- `lib/navigation/leads-all-population.test.ts`
+- `docs/qa/lead-new-unreviewed-indicator-audit/verify-browser.mts`
+- This STATUS + browser evidence
 
 ## Tests
 
@@ -40,21 +41,27 @@ npx tsx --test \
 
 ## Deploy / serving
 
-*(filled after commit + Sandbox deploy)*
-
 | Item | Value |
 |------|-------|
-| Commit | TBD |
-| Deploy run | TBD |
-| Serving commit | TBD |
+| Commit | `bf541623241f4b6c61be9250163c0d6de29d6845` |
+| Deploy run | https://github.com/jlcormier612/wevenu-website/actions/runs/38497835204 (**success**) |
+| Serving commit | `bf541623241f4b6c61be9250163c0d6de29d6845` (ECS image tag match) |
 | Production | Untouched |
 
-## Browser evidence required before GREEN
+## Browser evidence (Sandbox GREEN)
 
-1. Unseen open lead shows pink dot + **New** without opening the lead.
-2. After opening lead detail, indicator clears and sidebar unseen count drops (after refresh/revalidation).
-3. Seen New Inquiry lead does **not** show indicator.
-4. Stage chips and badge routes unchanged.
+Command: `EXPECTED_SHA=bf541623… npx tsx docs/qa/lead-new-unreviewed-indicator-audit/verify-browser.mts`  
+**ALL PASS** — see `browser-results.json`, screenshots `leads-all-1280.png`, `leads-after-seen-1280.png`, `leads-all-390.png`.
+
+| Check | Result |
+|-------|--------|
+| Serving expected SHA | PASS |
+| Unseen open lead shows pink dot + NEW | PASS (`Manual T1077` / `87bee850-…`) |
+| Seen open lead has no indicator | PASS |
+| Sidebar unseen aria present | PASS |
+| Open detail sets `venue_seen_at` | PASS (`2026-10-14T01:59:00.766Z`) |
+| Indicator cleared after mark-seen | PASS |
+| Narrow 390 no page overflow | PASS |
 
 ## Explicit non-changes
 

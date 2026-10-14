@@ -1,0 +1,65 @@
+{
+  "expectedSha": "bf541623241f4b6c61be9250163c0d6de29d6845",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:bf541623241f4b6c61be9250163c0d6de29d6845",
+  "unseenLeadId": "87bee850-83b1-44ed-a8e1-58698f7f98bd",
+  "seenLeadId": "1b80f0d3-4464-4b8e-a1f9-697653a05f17",
+  "allPass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:bf541623241f4b6c61be9250163c0d6de29d6845 expected=bf541623241f"
+    },
+    {
+      "name": "Found unseen open lead",
+      "pass": true,
+      "detail": "Manual T1077 stage=new_inquiry id=87bee850-83b1-44ed-a8e1-58698f7f98bd"
+    },
+    {
+      "name": "Found seen open lead",
+      "pass": true,
+      "detail": "Tour AsSched1534 stage=tour_scheduled id=1b80f0d3-4464-4b8e-a1f9-697653a05f17"
+    },
+    {
+      "name": "Unseen lead shows New indicator",
+      "pass": true,
+      "detail": "count=1 text=\"NEW\""
+    },
+    {
+      "name": "Unseen lead shows pink dot",
+      "pass": true,
+      "detail": "dotCount=1"
+    },
+    {
+      "name": "Seen lead has no New indicator",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "Sidebar unseen aria label present when expected",
+      "pass": true,
+      "detail": "ariaBadgeCount=3"
+    },
+    {
+      "name": "Unseen lead venue_seen_at null before open",
+      "pass": true,
+      "detail": "venue_seen_at=null"
+    },
+    {
+      "name": "Opening detail sets venue_seen_at",
+      "pass": true,
+      "detail": "venue_seen_at=2026-10-14T01:59:00.766+00:00"
+    },
+    {
+      "name": "Indicator cleared after mark-seen",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "Narrow leads list no page overflow",
+      "pass": true,
+      "detail": "overflow=false"
+    }
+  ],
+  "at": "2026-10-14T01:59:10.416Z"
+}
