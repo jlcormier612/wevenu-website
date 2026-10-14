@@ -1,0 +1,220 @@
+{
+  "at": "2026-10-14T04:10:03.339Z",
+  "light": {
+    "htmlDark": false,
+    "hasCompletion": true,
+    "completionText": "Guide Completion",
+    "cardHeights": {
+      "h": 180,
+      "w": 814
+    },
+    "pills": [
+      {
+        "text": "❓ FAQs⭐⭐⭐",
+        "tag": "span",
+        "w": 110,
+        "h": 23,
+        "color": "rgb(61, 80, 64)",
+        "bg": "rgba(93, 111, 93, 0.094)",
+        "border": "rgba(93, 111, 93, 0.19)",
+        "radius": "3.35544e+07px",
+        "padding": "2.125px 8.5px",
+        "className": "inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
+      }
+    ],
+    "equalHeightRows": [],
+    "cardCount": 10,
+    "sampleCards": [
+      {
+        "i": 0,
+        "top": 367,
+        "left": 306,
+        "w": 816,
+        "h": 216,
+        "text": "Guide Completion100%🚗 Parking & Transportation⭐⭐⭐🏨 Accommo"
+      },
+      {
+        "i": 1,
+        "top": 601,
+        "left": 306,
+        "w": 816,
+        "h": 365,
+        "text": "📖Our Story✓ CompleteA short welcome, in your own words. It'"
+      },
+      {
+        "i": 2,
+        "top": 983,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🚗Parking & Transportation✓ CompleteParking instructions for"
+      },
+      {
+        "i": 3,
+        "top": 1115,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🏨Accommodations✓ CompleteNearby hotels and hotel blocks for"
+      },
+      {
+        "i": 4,
+        "top": 1248,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🌧️Weather & Rain Plan✓ CompleteYour indoor backup option an"
+      },
+      {
+        "i": 5,
+        "top": 1380,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "📋Policies & Rules✓ CompleteWhat's allowed and what isn't — "
+      },
+      {
+        "i": 6,
+        "top": 1512,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "⛪Ceremony & Arrival✓ CompleteGuest arrival instructions, cer"
+      },
+      {
+        "i": 7,
+        "top": 1644,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🍽️Things To Know✓ CompleteAnything else clients should know"
+      },
+      {
+        "i": 8,
+        "top": 1776,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "❓FAQs✓ CompleteThe questions you get asked most often — answ"
+      },
+      {
+        "i": 9,
+        "top": 1908,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "📞Important Contacts✓ CompleteDay-of contacts for clients — "
+      }
+    ],
+    "bodySnippet": "((a,b,c,d,e,f,g,h)=>{let i=document.documentElement,j=[\"light\",\"dark\"];function "
+  },
+  "dark": {
+    "htmlDark": true,
+    "hasCompletion": true,
+    "completionText": "Guide Completion",
+    "cardHeights": {
+      "h": 180,
+      "w": 814
+    },
+    "pills": [
+      {
+        "text": "❓ FAQs⭐⭐⭐",
+        "tag": "span",
+        "w": 110,
+        "h": 23,
+        "color": "rgb(61, 80, 64)",
+        "bg": "rgba(93, 111, 93, 0.094)",
+        "border": "rgba(93, 111, 93, 0.19)",
+        "radius": "3.35544e+07px",
+        "padding": "2.125px 8.5px",
+        "className": "inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
+      }
+    ],
+    "equalHeightRows": [],
+    "cardCount": 10,
+    "sampleCards": [
+      {
+        "i": 0,
+        "top": 367,
+        "left": 306,
+        "w": 816,
+        "h": 216,
+        "text": "Guide Completion100%🚗 Parking & Transportation⭐⭐⭐🏨 Accommo"
+      },
+      {
+        "i": 1,
+        "top": 601,
+        "left": 306,
+        "w": 816,
+        "h": 365,
+        "text": "📖Our Story✓ CompleteA short welcome, in your own words. It'"
+      },
+      {
+        "i": 2,
+        "top": 983,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🚗Parking & Transportation✓ CompleteParking instructions for"
+      },
+      {
+        "i": 3,
+        "top": 1115,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🏨Accommodations✓ CompleteNearby hotels and hotel blocks for"
+      },
+      {
+        "i": 4,
+        "top": 1248,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🌧️Weather & Rain Plan✓ CompleteYour indoor backup option an"
+      },
+      {
+        "i": 5,
+        "top": 1380,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "📋Policies & Rules✓ CompleteWhat's allowed and what isn't — "
+      },
+      {
+        "i": 6,
+        "top": 1512,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "⛪Ceremony & Arrival✓ CompleteGuest arrival instructions, cer"
+      },
+      {
+        "i": 7,
+        "top": 1644,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "🍽️Things To Know✓ CompleteAnything else clients should know"
+      },
+      {
+        "i": 8,
+        "top": 1776,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "❓FAQs✓ CompleteThe questions you get asked most often — answ"
+      },
+      {
+        "i": 9,
+        "top": 1908,
+        "left": 306,
+        "w": 816,
+        "h": 115,
+        "text": "📞Important Contacts✓ CompleteDay-of contacts for clients — "
+      }
+    ],
+    "bodySnippet": "((a,b,c,d,e,f,g,h)=>{let i=document.documentElement,j=[\"light\",\"dark\"];function "
+  },
+  "helpUrl": "https://app.sandbox.hellotocheers.com/help"
+}

@@ -38,6 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 // ── Section definitions ──────────────────────────────────────────────────────
 
@@ -171,20 +172,25 @@ function CompletionMeter({ data }: { data: VenueGuideData }) {
           />
         </div>
 
-        {/* Section pills with weight stars */}
-        <div className="flex flex-wrap gap-1.5">
+        {/* Section pills with weight stars — theme tokens so outlines stay visible in dark mode. */}
+        <div className="flex flex-wrap gap-1.5" data-testid="guide-completion-pills">
           {SECTIONS.map(s => {
             const done = s.isFilled(data);
             return (
-              <span key={s.key}
-                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
-                style={done
-                  ? { background: "#5D6F5D18", color: "#3D5040", border: "1px solid #5D6F5D30" }
-                  : { background: "#F3F0EC",   color: "#8A837D",  border: "1px solid #E0D8D0" }
-                }>
-                {done ? <Check className="h-2.5 w-2.5" /> : <span className="h-2 w-2 rounded-full bg-current opacity-40 inline-block" />}
+              <span
+                key={s.key}
+                data-testid={`guide-completion-pill-${s.key}`}
+                data-filled={done ? "true" : "false"}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                  done
+                    ? "border-primary/35 bg-primary/15 text-foreground"
+                    : "border-border bg-muted text-muted-foreground",
+                )}
+              >
+                {done ? <Check className="h-2.5 w-2.5" /> : <span className="inline-block h-2 w-2 rounded-full bg-current opacity-40" />}
                 {s.emoji} {s.title}
-                <span className="opacity-60 text-[9px]">{WEIGHT_STARS[s.weight]}</span>
+                <span className="text-[9px] opacity-60">{WEIGHT_STARS[s.weight]}</span>
               </span>
             );
           })}
