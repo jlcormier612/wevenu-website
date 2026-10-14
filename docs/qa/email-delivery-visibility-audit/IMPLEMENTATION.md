@@ -1,6 +1,6 @@
 # Email delivery visibility simplification — implementation
 
-**Status:** Sandbox verification in progress (see STATUS.md)  
+**Status:** GREEN — Sandbox verified on serving SHA `3f30db10…`  
 **Mode:** Presentation-layer only · Sandbox deploy authorized · Production untouched
 
 ---

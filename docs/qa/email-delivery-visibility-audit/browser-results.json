@@ -1,0 +1,69 @@
+{
+  "at": "2026-10-14T19:42:04.419Z",
+  "expectedSha": "3f30db10ab2e3343482e475cd5c46b0f8b2648e4",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3f30db10ab2e3343482e475cd5c46b0f8b2648e4",
+  "pass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3f30db10ab2e3343482e475cd5c46b0f8b2648e4 expected=3f30db10ab2e"
+    },
+    {
+      "name": "Readiness present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Aggregate attention tile absent",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "Aggregate failure list / Excellent scoring absent",
+      "pass": true,
+      "detail": "history=0 issues=0"
+    },
+    {
+      "name": "Health page points owners to Inbox for failures",
+      "pass": true,
+      "detail": "intro copy"
+    },
+    {
+      "name": "Compact Couldn't deliver badge present",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Badge has no inline reputation / mailing-list prose",
+      "pass": true,
+      "detail": "text=❌ Couldn't deliver"
+    },
+    {
+      "name": "Failure explanation not inline before open",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "Detail popover shows explanation",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Detail popover shows next action",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "Popover explanation omits reputation scare",
+      "pass": true,
+      "detail": "The recipient's email provider sent a hard bounce message, but didn't specify the reason for the hard bounce."
+    },
+    {
+      "name": "No critical console errors",
+      "pass": true,
+      "detail": "errors=0"
+    }
+  ],
+  "consoleErrors": []
+}
