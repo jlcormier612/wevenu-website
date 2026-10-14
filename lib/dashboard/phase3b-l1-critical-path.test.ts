@@ -191,43 +191,13 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
     );
   });
 
-  it("5. communication L1 candidates can produce L1 when their live fact is true", () => {
-    const delivered = observation({
-      id: "comm-all-delivered",
-      message: "Everything sent in the last day reached its destination — 2 messages, no failures.",
-      link: "/messaging/health",
-      recommendation: { label: "View", link: "/messaging/health", type: "navigate" },
-    });
-    const failures = observation({
-      id: "comm-recent-failures",
-      message: "2 messages couldn't be delivered in the last day.",
-      link: "/messaging/health",
-      recommendation: { label: "Review what happened", link: "/messaging/health", type: "navigate" },
-    });
+  it("5. communication stale-unopened can produce L1 when its live fact is true", () => {
     const venueWideStale = observation({
       id: "comm-stale-unopened-m1",
       message: "One lead hasn't opened your message in 6 days.",
-      link: "/messaging/health",
+      link: "/messaging",
     });
-    assert.equal(isDashboardLevel1Observation(delivered), true);
-    assert.equal(isDashboardLevel1Observation(failures), true);
     assert.equal(isDashboardLevel1Observation(venueWideStale), true);
-    assert.equal(
-      selectLuvDashboardEntry({
-        focusItems: [],
-        observations: [delivered],
-        recommendations: [],
-      })?.dismissObservationId,
-      "comm-all-delivered",
-    );
-    assert.equal(
-      selectLuvDashboardEntry({
-        focusItems: [],
-        observations: [failures],
-        recommendations: [],
-      })?.dismissObservationId,
-      "comm-recent-failures",
-    );
     assert.equal(
       selectLuvDashboardEntry({
         focusItems: [],

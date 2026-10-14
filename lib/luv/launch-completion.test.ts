@@ -34,7 +34,7 @@ describe("Luv action destinations stay trustworthy", () => {
       const path = link.split("?")[0].split("#")[0];
       assert.match(
         path,
-        /^\/(leads|events|clients|contracts|tasks|tours|messaging\/health|payments|setup-hub|reporting|documents|vendors)(\/|$)/,
+        /^\/(leads|events|clients|contracts|tasks|tours|messaging(\/health)?|payments|setup-hub|reporting|documents|vendors)(\/|$)/,
         `unexpected Luv link: ${link}`,
       );
     }

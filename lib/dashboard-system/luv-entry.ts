@@ -171,7 +171,8 @@ export function isDashboardLevel1Observation(obs: LuvObservation): boolean {
   if (obs.id.startsWith("insight_")) return false;
   if (obs.id.startsWith("setup-gap-")) return true;
   if (obs.id.startsWith("venue-readiness-")) return true;
-  if (obs.id === "comm-all-delivered" || obs.id === "comm-recent-failures") return true;
+  // Aggregate delivery summaries (comm-all-delivered / comm-recent-failures)
+  // are no longer emitted — see lib/luv/communication-observations.ts.
 
   const primaryHref = obs.recommendation?.link ?? obs.link;
   if (isRecordScopedHref(primaryHref) || isRecordScopedHref(obs.link)) return false;

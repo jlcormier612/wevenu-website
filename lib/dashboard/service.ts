@@ -529,9 +529,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     ]),
   );
 
+  // Aggregate delivery celebration / failure-count cards removed from
+  // getCommunicationObservations (Health no longer exposes those lists).
   const communicationObservations = communicationObservationsRaw.filter((obs) =>
-    obs.id === "comm-all-delivered" ||
-    obs.id === "comm-recent-failures" ||
     obs.id.startsWith("comm-stale-unopened-"),
   );
   forensicCount("communication_observations", communicationObservations.length);
