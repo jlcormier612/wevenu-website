@@ -1,0 +1,34 @@
+{
+  "expectedSha": "ab36284fdfa79d0ac3e8f229b82f7e5306510410",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ab36284fdfa79d0ac3e8f229b82f7e5306510410",
+  "leadId": "108a546b-f473-4c30-951f-2228a8ec2da6",
+  "allPass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ab36284fdfa79d0ac3e8f229b82f7e5306510410 expected=ab36284fdfa7"
+    },
+    {
+      "name": "Space preferences desktop single row",
+      "pass": true,
+      "detail": "{\"n\":4,\"tops\":[422],\"boxes\":[{\"top\":422,\"left\":306,\"label\":\"Ceremony\"},{\"top\":422,\"left\":497,\"label\":\"Reception\"},{\"top\":422,\"left\":687,\"label\":\"Cocktail Hour\"},{\"top\":422,\"left\":878,\"label\":\"Rehearsal Dinner\"}]}"
+    },
+    {
+      "name": "Place another hold shares hold control band",
+      "pass": true,
+      "detail": "{\"place\":{\"top\":291,\"left\":1064,\"bottom\":325,\"right\":1219},\"owner\":{\"top\":285,\"left\":324,\"bottom\":345,\"right\":596},\"hold\":{\"top\":285,\"left\":682,\"bottom\":330,\"right\":1055},\"row\":{\"top\":285,\"left\":324,\"bottom\":345,\"right\":1220},\"rowOverflow\":false}"
+    },
+    {
+      "name": "Owner/hold row no horizontal overflow",
+      "pass": true,
+      "detail": "{\"rowOverflow\":false}"
+    },
+    {
+      "name": "Narrow viewport no horizontal overflow",
+      "pass": true,
+      "detail": "{\"rowOverflow\":false,\"prefsOverflow\":false,\"bodyOverflow\":false}"
+    }
+  ],
+  "at": "2026-10-14T01:35:06.993Z"
+}

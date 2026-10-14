@@ -69,25 +69,24 @@ async function main() {
   );
 
   // Prefer a Fancy wedding lead with multi space prefs + active hold when available.
-  const { data: leads } = await admin
-    .from("leads")
-    .select("id, first_name, last_name, event_type")
+  // Prefer a lead that still has an active hold (shows Place another hold).
+  const { data: activeHolds } = await admin
+    .from("date_holds")
+    .select("lead_id")
     .eq("venue_id", FANCY)
-    .is("archived_at", null)
-    .order("updated_at", { ascending: false })
-    .limit(40);
-  let leadId = leads?.[0]?.id as string | undefined;
-  for (const l of leads ?? []) {
-    const { count } = await admin
-      .from("date_holds")
-      .select("id", { count: "exact", head: true })
+    .eq("status", "active")
+    .not("lead_id", "is", null)
+    .limit(20);
+  let leadId = (activeHolds?.[0]?.lead_id as string | undefined) ?? undefined;
+  if (!leadId) {
+    const { data: leads, error: leadErr } = await admin
+      .from("leads")
+      .select("id, first_name, last_name, event_type")
       .eq("venue_id", FANCY)
-      .eq("lead_id", l.id)
-      .eq("status", "active");
-    if ((count ?? 0) > 0) {
-      leadId = l.id;
-      break;
-    }
+      .order("updated_at", { ascending: false })
+      .limit(20);
+    if (leadErr) throw leadErr;
+    leadId = leads?.[0]?.id;
   }
   if (!leadId) throw new Error("No Fancy lead found for layout verify");
 
@@ -146,10 +145,14 @@ async function main() {
     if (prefCount > 0) {
       const rows = page.locator('[data-testid^="space-pref-row-"]');
       const n = await rows.count();
-      const boxes = await rows.evaluateAll((els: Element[]) =>
+      const boxes = await rows.evaluateAll((els) =>
         els.map((el) => {
           const r = el.getBoundingClientRect();
-          return { top: Math.round(r.top), left: Math.round(r.left), label: (el.textContent || "").trim().slice(0, 40) };
+          return {
+            top: Math.round(r.top),
+            left: Math.round(r.left),
+            label: (el.textContent || "").trim().slice(0, 40),
+          };
         }),
       );
       const tops = new Set(boxes.map((b) => b.top));
@@ -168,20 +171,21 @@ async function main() {
     const place = page.locator('[data-testid="date-hold-place"]');
     const holdCompact = page.locator('[data-testid="date-hold-compact"]');
     if ((await place.count()) && (await holdCompact.count())) {
-      const geometry = await page.evaluate(() => {
-        const placeEl = document.querySelector('[data-testid="date-hold-place"]') as HTMLElement | null;
-        const owner = document.querySelector('[data-testid="lead-staff-assignment"]') as HTMLElement | null;
-        const hold = document.querySelector('[data-testid="date-hold-active"]') as HTMLElement | null;
-        const row = document.querySelector('[data-testid="lead-owner-hold-row"]') as HTMLElement | null;
-        const box = (el: HTMLElement | null) =>
-          el
-            ? {
-                top: Math.round(el.getBoundingClientRect().top),
-                left: Math.round(el.getBoundingClientRect().left),
-                bottom: Math.round(el.getBoundingClientRect().bottom),
-                right: Math.round(el.getBoundingClientRect().right),
-              }
-            : null;
+      const geometry = await page.evaluate(`(() => {
+        function box(el) {
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return {
+            top: Math.round(r.top),
+            left: Math.round(r.left),
+            bottom: Math.round(r.bottom),
+            right: Math.round(r.right),
+          };
+        }
+        const placeEl = document.querySelector('[data-testid="date-hold-place"]');
+        const owner = document.querySelector('[data-testid="lead-staff-assignment"]');
+        const hold = document.querySelector('[data-testid="date-hold-active"]');
+        const row = document.querySelector('[data-testid="lead-owner-hold-row"]');
         return {
           place: box(placeEl),
           owner: box(owner),
@@ -189,7 +193,7 @@ async function main() {
           row: box(row),
           rowOverflow: row ? row.scrollWidth > row.clientWidth + 1 : null,
         };
-      });
+      })()`);
       const sameBand =
         geometry.place
         && geometry.hold
@@ -217,17 +221,15 @@ async function main() {
     await page.waitForTimeout(600);
     await sales.scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${OUT}/sales-availability-390.png`, fullPage: false });
-    const narrow = await page.evaluate(() => {
-      const row = document.querySelector('[data-testid="lead-owner-hold-row"]') as HTMLElement | null;
-      const prefs = document.querySelector('[data-testid="space-preference-grid"]') as HTMLElement | null;
-      const overflow = (el: HTMLElement | null) =>
-        el ? el.scrollWidth > el.clientWidth + 1 : null;
+    const narrow = await page.evaluate(`(() => {
+      const row = document.querySelector('[data-testid="lead-owner-hold-row"]');
+      const prefs = document.querySelector('[data-testid="space-preference-grid"]');
       return {
-        rowOverflow: overflow(row),
-        prefsOverflow: overflow(prefs),
+        rowOverflow: row ? row.scrollWidth > row.clientWidth + 1 : null,
+        prefsOverflow: prefs ? prefs.scrollWidth > prefs.clientWidth + 1 : null,
         bodyOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
       };
-    });
+    })()`);
     record(
       "Narrow viewport no horizontal overflow",
       narrow.rowOverflow === false
