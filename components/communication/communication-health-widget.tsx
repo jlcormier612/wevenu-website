@@ -3,18 +3,13 @@ import Link from "next/link";
 import { StatusCard } from "@/components/dashboard-system/status-card";
 import type { StatusCardTier } from "@/components/dashboard-system/status-card";
 import type { CommunicationHealth } from "@/lib/communication/health";
+import { messageDestinationHref } from "@/lib/communication/message-destination";
 
 const LEVEL_TIER: Record<CommunicationHealth["level"], StatusCardTier> = {
   excellent:       "healthy",
   attention:       "warning",
   action_required: "critical",
 };
-
-function issueLink(issue: CommunicationHealth["issues"][number]): string | null {
-  if (issue.clientId) return `/clients/${issue.clientId}`;
-  if (issue.leadId) return `/leads/${issue.leadId}`;
-  return null;
-}
 
 /**
  * Communication Trust Experience, Phase 2 — the one question a venue owner
@@ -34,7 +29,11 @@ export function CommunicationHealthWidget({ health }: { health: CommunicationHea
       detail={health.detail}
       issues={health.issues.map((issue) => ({
         id: issue.id,
-        href: issueLink(issue),
+        href: messageDestinationHref({
+          clientId: issue.clientId,
+          leadId: issue.leadId,
+          conversationId: issue.conversationId,
+        }),
         label: (
           <span className="flex items-center gap-1.5">
             <span aria-hidden>{issue.channel === "sms" ? "📱" : "✉️"}</span>

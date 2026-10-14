@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Mail, Smartphone } from "lucide-react";
 
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
+import { messageDestinationHref } from "@/lib/communication/message-destination";
 import { MESSAGE_STATUS_META } from "@/lib/communication/status-labels";
 import type { MessageHistoryItem } from "@/lib/communication/dashboard";
 
@@ -47,11 +48,11 @@ export function MessageHistoryList({
     <div className="space-y-3">
       <ul className="divide-y divide-border">
         {visible.map((m) => {
-          const href = m.clientId
-            ? `/clients/${m.clientId}`
-            : m.leadId
-              ? `/leads/${m.leadId}`
-              : null;
+          const href = messageDestinationHref({
+            clientId: m.clientId,
+            leadId: m.leadId,
+            conversationId: m.conversationId,
+          });
           const Icon = m.channel === "sms" ? Smartphone : Mail;
           const nameBlock = (
             <div className="min-w-0 flex-1">

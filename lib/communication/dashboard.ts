@@ -38,6 +38,8 @@ export type MessageHistoryItem = {
   occurredAt: string;
   leadId: string | null;
   clientId: string | null;
+  /** Conversation-backed rows only — Inbox deep-link when lead/client missing. */
+  conversationId: string | null;
 };
 
 export type CommunicationDashboardData = {
@@ -150,6 +152,7 @@ async function getHistory(
       id: m.id, source: "legacy", channel: "email", direction: m.direction === "inbound" ? "inbound" : "outbound",
       status: m.status, failureReason: m.error_message, recipientName: null, preview: m.body.slice(0, 80),
       occurredAt: m.created_at, leadId: thread?.lead_id ?? null, clientId: thread?.client_id ?? null,
+      conversationId: null,
     };
   });
 
@@ -164,13 +167,26 @@ async function getHistory(
   const leadByConversation = new Map<string, string>();
   const clientByConversation = new Map<string, string>();
   if (conversationIds.length > 0) {
+    type ConvMeta = {
+      id: string;
+      relationship_id: string | null;
+      inbox_owner_lead_id: string | null;
+      inbox_owner_client_id: string | null;
+    };
     const { data: conversations } = await client.from("conversations")
-      .select("id, relationship_id").in("id", conversationIds);
+      .select("id, relationship_id, inbox_owner_lead_id, inbox_owner_client_id")
+      .in("id", conversationIds);
+    const convMeta = (conversations ?? []) as ConvMeta[];
     const relationshipByConversation = new Map(
-      ((conversations ?? []) as { id: string; relationship_id: string | null }[])
+      convMeta
         .filter((c) => c.relationship_id)
         .map((c) => [c.id, c.relationship_id!]),
     );
+    // Prefer explicit inbox owner ids when set (may outrank a stale relationship join).
+    for (const c of convMeta) {
+      if (c.inbox_owner_client_id) clientByConversation.set(c.id, c.inbox_owner_client_id);
+      if (c.inbox_owner_lead_id) leadByConversation.set(c.id, c.inbox_owner_lead_id);
+    }
     const relationshipIds = [...new Set(relationshipByConversation.values())];
     if (relationshipIds.length > 0) {
       const [{ data: relationships }, { data: leads }, { data: clients }] = await Promise.all([
@@ -187,10 +203,14 @@ async function getHistory(
       for (const [convId, relId] of relationshipByConversation) {
         const name = nameByRelationship.get(relId);
         if (name) nameByConversation.set(convId, name);
-        const leadId = leadByRelationship.get(relId);
-        if (leadId) leadByConversation.set(convId, leadId);
-        const clientId = clientByRelationship.get(relId);
-        if (clientId) clientByConversation.set(convId, clientId);
+        if (!leadByConversation.has(convId)) {
+          const leadId = leadByRelationship.get(relId);
+          if (leadId) leadByConversation.set(convId, leadId);
+        }
+        if (!clientByConversation.has(convId)) {
+          const clientId = clientByRelationship.get(relId);
+          if (clientId) clientByConversation.set(convId, clientId);
+        }
       }
     }
   }
@@ -202,6 +222,7 @@ async function getHistory(
     preview: m.body.slice(0, 80), occurredAt: m.sent_at,
     leadId: leadByConversation.get(m.conversation_id) ?? null,
     clientId: clientByConversation.get(m.conversation_id) ?? null,
+    conversationId: m.conversation_id,
   }));
 
   return [...legacyItems, ...conversationItems]
