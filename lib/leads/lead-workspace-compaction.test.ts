@@ -78,11 +78,30 @@ describe("lead workspace polish", () => {
   });
 
   it("orders tour content above follow-up fields in the card", () => {
+    const schedulingBlock = followUp.indexOf('data-testid="tour-followup-scheduling-block"');
     const tourBlock = followUp.indexOf('data-testid="tour-followup-tour-block"');
     const followBlock = followUp.indexOf('data-testid="tour-followup-followup-block"');
-    assert.ok(tourBlock > 0 && followBlock > tourBlock);
+    assert.ok(schedulingBlock > 0 && tourBlock > schedulingBlock && followBlock > tourBlock);
     assert.match(followUp, /Last contacted/);
     assert.match(followUp, /Actually occurred/);
+  });
+
+  it("keeps scheduling link out of the card header and Edit off the scheduling cluster", () => {
+    const headerEnd = followUp.indexOf("</CardHeader>");
+    const header = followUp.slice(0, headerEnd);
+    assert.doesNotMatch(header, /\{tourActions\}/);
+    assert.match(followUp, /data-testid="tour-followup-scheduling-block"/);
+    assert.match(followUp, /data-testid="tour-followup-edit"/);
+    assert.match(tours, /data-testid=\{`tour-appointment-edit-\$\{appt\.id\}`\}/);
+    assert.match(tours, /data-testid=\{`tour-appointment-actions-\$\{appt\.id\}`\}/);
+    const rowStart = tours.indexOf("function AppointmentRow");
+    const row = tours.slice(rowStart, tours.indexOf("type TourScheduleContextValue"));
+    const editIdx = row.indexOf("tour-appointment-edit-");
+    const actionsIdx = row.indexOf("tour-appointment-actions-");
+    assert.ok(editIdx > 0 && actionsIdx > editIdx);
+    assert.match(row, />\s*Reschedule\s*</);
+    assert.match(row, /Send Confirmation Request/);
+    assert.match(row, /Mark as Confirmed/);
   });
 
   it("uses a responsive Space Preferences grid without a standalone rehearsal date field", () => {

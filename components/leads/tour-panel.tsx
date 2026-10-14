@@ -340,63 +340,77 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
   }
 
   return (
-    <div className="py-3 flex items-center justify-between gap-3 flex-wrap">
-      <div>
-        <p className="text-sm font-medium text-heading">
-          {appt.status === "completed" && appt.actualOccurredAt ? "Actually occurred" : "Scheduled"} · {dateLabel}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {timeLabel} · {appt.durationMinutes} min
-        </p>
-        {showScheduledAside && scheduledDisplay ? (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}
+    <div className="py-3 space-y-2" data-testid={`tour-appointment-row-${appt.id}`}>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-heading">
+            {appt.status === "completed" && appt.actualOccurredAt ? "Actually occurred" : "Scheduled"} · {dateLabel}
           </p>
-        ) : null}
-        {appt.status === "completed" && appt.completedAt ? (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Marked completed{" "}
-            {new Date(appt.completedAt).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
+          <p className="text-xs text-muted-foreground">
+            {timeLabel} · {appt.durationMinutes} min
           </p>
-        ) : null}
-        {appt.status === "cancelled" && appt.cancellationReason && (
-          <p className="text-xs text-muted-foreground mt-0.5">Reason: {appt.cancellationReason}</p>
-        )}
-        {appt.status === "scheduled" && appt.confirmationRequestedAt && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Confirmation requested {new Date(appt.confirmationRequestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — awaiting reply
-          </p>
-        )}
+          {showScheduledAside && scheduledDisplay ? (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}
+            </p>
+          ) : null}
+          {appt.status === "completed" && appt.completedAt ? (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Marked completed{" "}
+              {new Date(appt.completedAt).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </p>
+          ) : null}
+          {appt.status === "cancelled" && appt.cancellationReason && (
+            <p className="text-xs text-muted-foreground mt-0.5">Reason: {appt.cancellationReason}</p>
+          )}
+          {appt.status === "scheduled" && appt.confirmationRequestedAt && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Confirmation requested {new Date(appt.confirmationRequestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — awaiting reply
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${meta.className}`}>{meta.label}</span>
+          {isActive ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              disabled={pending}
+              onClick={() => onReschedule(appt.id)}
+              data-testid={`tour-appointment-edit-${appt.id}`}
+            >
+              Edit
+            </Button>
+          ) : null}
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${meta.className}`}>{meta.label}</span>
-        {isActive && (
-          <>
-            <Button variant="ghost" size="sm" disabled={pending} onClick={() => onReschedule(appt.id)}>Reschedule</Button>
-            {appt.status === "scheduled" && (
-              <>
-                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void reviewConfirmationRequest()}>Send Confirmation Request</Button>
-                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("confirmed")}>Mark as Confirmed</Button>
-              </>
-            )}
-            {(isPast || Boolean(appt.scheduledAt)) && (
-              <>
-                <Button variant="ghost" size="sm" disabled={pending} onClick={openComplete}>Completed</Button>
-                {isPast ? (
-                  <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("no_show")}>No-show</Button>
-                ) : null}
-              </>
-            )}
-            <Button variant="ghost" size="sm" disabled={pending} className="text-destructive" onClick={() => setCancelOpen(true)}>Cancel</Button>
-          </>
-        )}
-      </div>
+      {isActive ? (
+        <div className="flex flex-wrap items-center gap-1.5" data-testid={`tour-appointment-actions-${appt.id}`}>
+          <Button variant="ghost" size="sm" disabled={pending} onClick={() => onReschedule(appt.id)} data-testid={`tour-appointment-reschedule-${appt.id}`}>Reschedule</Button>
+          {appt.status === "scheduled" && (
+            <>
+              <Button variant="ghost" size="sm" disabled={pending} onClick={() => void reviewConfirmationRequest()}>Send Confirmation Request</Button>
+              <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("confirmed")}>Mark as Confirmed</Button>
+            </>
+          )}
+          {(isPast || Boolean(appt.scheduledAt)) && (
+            <>
+              <Button variant="ghost" size="sm" disabled={pending} onClick={openComplete}>Completed</Button>
+              {isPast ? (
+                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("no_show")}>No-show</Button>
+              ) : null}
+            </>
+          )}
+          <Button variant="ghost" size="sm" disabled={pending} className="text-destructive" onClick={() => setCancelOpen(true)}>Cancel</Button>
+        </div>
+      ) : null}
       <CancelDialog open={cancelOpen} onOpenChange={setCancelOpen} onConfirm={(reason) => void setStatus("cancelled", reason)} />
       {completeOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCompleteOpen(false)}>
