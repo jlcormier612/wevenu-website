@@ -1,32 +1,72 @@
 /**
- * Communication Trust Experience — Phase 3.
+ * Communication Trust Experience — Phase 3 (+ email failure guidance).
  *
- * Provider error strings (Resend's JSON error bodies, Twilio's error
- * messages/codes) are never shown to a venue owner directly — "422
- * validation_error: Invalid `to` field" doesn't answer "did my message go?"
- * for anyone who isn't an email administrator. Each raw message is matched
- * against the failure shapes we actually know how to explain; anything
- * unrecognized falls back to an honest, generic line rather than a
- * confusing technical one. The raw text is never discarded — callers
- * should still store it (e.g. `message_events.payload`) for the
- * diagnostics view (Phase 7); this only governs what the coordinator sees.
+ * Provider error strings are never shown raw when we can classify them.
+ * Unrecognized input falls back to an honest unknown line — never a fabricated
+ * bounce/reject/temporary claim. Callers may still store richer diagnostics
+ * in message_events for support.
  */
 
+import {
+  classifyResendBounceGuidance,
+  classifyResendHttpFailureGuidance,
+  emailFailureReasonForStorage,
+  parseResendErrorBody,
+  resolveEmailFailureGuidance,
+  type ResendBounceFields,
+} from "@/lib/communication/email-failure-guidance";
+
 export function translateEmailFailure(raw: string): string {
-  const s = raw.toLowerCase();
-  if (s.includes("invalid") && (s.includes("to") || s.includes("recipient") || s.includes("email"))) {
-    return "This email address appears invalid.";
+  const s = (raw || "").trim();
+  if (!s) {
+    return resolveEmailFailureGuidance(null).explanation;
   }
-  if (s.includes("domain") && (s.includes("not verified") || s.includes("not found") || s.includes("dns"))) {
-    return "Your venue's email isn't fully set up yet — contact support.";
+
+  // Structured bounce marker produced by the webhook path.
+  if (s.startsWith("BOUNCE_JSON:")) {
+    try {
+      const bounce = JSON.parse(s.slice("BOUNCE_JSON:".length)) as ResendBounceFields;
+      return emailFailureReasonForStorage(classifyResendBounceGuidance(bounce));
+    } catch {
+      return resolveEmailFailureGuidance(null).explanation;
+    }
   }
-  if (s.includes("rate limit") || s.includes("429")) {
-    return "Too many messages were sent at once — this one will be retried shortly.";
+
+  // Resend HTTP JSON (or legacy "Email send failed: {...}").
+  const parsed = parseResendErrorBody(s);
+  if (parsed.statusCode || parsed.name || /email send failed:\s*\{/i.test(s)) {
+    const status = parsed.statusCode ?? 400;
+    const body = s.includes("{") ? (s.match(/\{[\s\S]*\}/)?.[0] ?? s) : s;
+    return emailFailureReasonForStorage(
+      classifyResendHttpFailureGuidance({ status, bodyText: body }),
+    );
   }
-  if (s.includes("isn't configured") || s.includes("not configured")) {
-    return "Email isn't set up for this venue yet.";
+
+  // Unstructured provider fragments (tests + older logs).
+  const lower = s.toLowerCase();
+  if (lower.includes("invalid") && (lower.includes("to") || lower.includes("recipient") || lower.includes("email"))) {
+    return emailFailureReasonForStorage(
+      classifyResendHttpFailureGuidance({
+        status: 422,
+        bodyText: JSON.stringify({ name: "validation_error", message: s }),
+      }),
+    );
   }
-  return "Your message couldn't be delivered.";
+  if (lower.includes("domain") && (lower.includes("not verified") || lower.includes("not found") || lower.includes("dns"))) {
+    return emailFailureReasonForStorage(
+      classifyResendHttpFailureGuidance({
+        status: 403,
+        bodyText: JSON.stringify({ message: s }),
+      }),
+    );
+  }
+
+  return resolveEmailFailureGuidance(s).explanation;
+}
+
+/** Build a persistable bounce reason from structured Resend bounce fields. */
+export function translateEmailBounceFailure(bounce: ResendBounceFields | null | undefined): string {
+  return emailFailureReasonForStorage(classifyResendBounceGuidance(bounce));
 }
 
 export function translateSmsFailure(raw: string): string {

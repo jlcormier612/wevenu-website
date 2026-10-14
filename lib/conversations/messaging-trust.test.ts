@@ -100,13 +100,24 @@ describe("delivery recovery actions", () => {
   });
 
   it("shows Use text for email failure with client", () => {
-    const actions = deliveryRecoveryActions({
+    // Unknown / missing email diagnostics must not invent a Retry suggestion.
+    const unknown = deliveryRecoveryActions({
       channel: "email",
       status: "undelivered",
       leadId: null,
       clientId: "client-1",
     }).map((a) => a.id);
-    assert.deepEqual(actions, ["retry", "use_sms", "open_client"]);
+    assert.deepEqual(unknown, ["use_sms", "open_client"]);
+
+    const temporary = deliveryRecoveryActions({
+      channel: "email",
+      status: "failed",
+      leadId: null,
+      clientId: "client-1",
+      failureReason:
+        "The recipient's email provider temporarily could not accept this message after it was submitted.",
+    }).map((a) => a.id);
+    assert.deepEqual(temporary, ["retry", "use_sms", "open_client"]);
   });
 
   it("hides recovery when delivery succeeded", () => {

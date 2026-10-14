@@ -16,7 +16,14 @@ export const SENDING_DISABLED_MESSAGE =
 export function acceptOutboundEmail(
   result: SendResult,
 ): { ok: true; providerId: string } | { ok: false; message: string } {
-  if (!result.ok) return { ok: false, message: translateEmailFailure(result.message) };
+  if (!result.ok) {
+    // sendEmail already returns venue-safe classified copy when `code` is set.
+    // Do not re-run translateEmailFailure — that wiped quota/rate-limit detail.
+    if (result.code) {
+      return { ok: false, message: result.message };
+    }
+    return { ok: false, message: translateEmailFailure(result.message) };
+  }
   if (result.method === "resend") {
     return { ok: true, providerId: result.providerId ?? "" };
   }

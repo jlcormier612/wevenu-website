@@ -25,21 +25,37 @@ export function MessageStatusBadge({
   if (!display) return null;
 
   const failed = isDeliveryFailureStatus(display.status);
+  const detail = providerDetail?.trim() || display.diagnosticSafe;
   return (
-    <span className={`inline-flex max-w-full flex-col items-start gap-0.5 ${failed ? "font-semibold" : ""}`}>
+    <span
+      className={`inline-flex max-w-full flex-col items-start gap-0.5 ${failed ? "font-semibold" : ""}`}
+      data-testid="message-status-badge"
+      data-retry-appropriate={failed ? String(display.retryAppropriate) : undefined}
+    >
       <span className="inline-flex max-w-full items-start gap-1 whitespace-normal text-left">
         <span aria-hidden className="shrink-0">{display.emoji}</span>
         <span className="min-w-0 break-words">{display.label}</span>
       </span>
       {failed && display.reason && (
-        <span className="max-w-full whitespace-normal break-words text-left text-[10px] font-normal leading-snug opacity-90">
+        <span
+          className="max-w-full whitespace-normal break-words text-left text-[10px] font-normal leading-snug opacity-90"
+          data-testid="message-failure-explanation"
+        >
           {display.reason}
         </span>
       )}
-      {failed && providerDetail && (
+      {failed && display.nextAction && (
+        <span
+          className="max-w-full whitespace-normal break-words text-left text-[10px] font-normal leading-snug text-muted-foreground"
+          data-testid="message-failure-next-action"
+        >
+          {display.nextAction}
+        </span>
+      )}
+      {failed && detail && (
         <details className="max-w-full text-[10px] font-normal opacity-80">
           <summary className="cursor-pointer">More details</summary>
-          <span className="block max-w-full whitespace-normal break-words pt-0.5 text-left">{providerDetail}</span>
+          <span className="block max-w-full whitespace-normal break-words pt-0.5 text-left">{detail}</span>
         </details>
       )}
     </span>

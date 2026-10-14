@@ -1,6 +1,7 @@
 /**
  * Recovery actions for outbound delivery failures — only what the product can do.
  */
+import { resolveEmailFailureGuidance } from "@/lib/communication/email-failure-guidance";
 import { isDeliveryFailureStatus } from "@/lib/communication/status-labels";
 
 export type DeliveryRecoveryActionId =
@@ -20,12 +21,19 @@ export function deliveryRecoveryActions(input: {
   status: string | null | undefined;
   leadId: string | null;
   clientId: string | null;
+  /** When present for email, gates Retry on evidence-based guidance. */
+  failureReason?: string | null;
 }): DeliveryRecoveryAction[] {
   if (!isDeliveryFailureStatus(input.status)) return [];
 
-  const actions: DeliveryRecoveryAction[] = [
-    { id: "retry", label: "Retry" },
-  ];
+  const actions: DeliveryRecoveryAction[] = [];
+
+  const allowRetry = input.channel === "email"
+    ? resolveEmailFailureGuidance(input.failureReason).retryAppropriate
+    : true;
+  if (allowRetry) {
+    actions.push({ id: "retry", label: "Retry" });
+  }
 
   if (input.channel === "sms") {
     actions.push({ id: "use_email", label: "Use email" });

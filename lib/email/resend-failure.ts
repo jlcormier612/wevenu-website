@@ -1,13 +1,25 @@
 /**
  * Classify Resend HTTP failures so quota / rate-limit exhaustion is
- * distinguishable from transient provider errors — and so CloudWatch can
+ * distinguishable from other provider errors — and so CloudWatch can
  * early-warn before operators only notice silent customer miss.
  *
  * Log marker `ResendProviderLimitSignal` is scraped by the Sandbox metric
  * filter on `/ecs/htc-sandbox/venue-app` → HTC/Sandbox ResendProviderLimitSignalCount.
  */
 
-export type ResendFailureCode = "quota" | "rate_limit" | "provider";
+import {
+  classifyResendHttpFailureGuidance,
+  type EmailFailureCategory,
+} from "@/lib/communication/email-failure-guidance";
+
+/** Legacy / CloudWatch-facing codes (keep stable for metric filters). */
+export type ResendFailureCode =
+  | "quota"
+  | "rate_limit"
+  | "invalid_recipient"
+  | "configuration"
+  | "temporary"
+  | "provider";
 
 export type ClassifiedResendFailure = {
   code: ResendFailureCode;
@@ -15,50 +27,44 @@ export type ClassifiedResendFailure = {
   message: string;
   /** True when retrying soon is likely to amplify load without delivering. */
   retryUnsafe: boolean;
+  category: EmailFailureCategory;
 };
+
+function toResendCode(category: EmailFailureCategory): ResendFailureCode {
+  switch (category) {
+    case "quota":
+      return "quota";
+    case "rate_limit":
+      return "rate_limit";
+    case "invalid_recipient":
+      return "invalid_recipient";
+    case "configuration":
+      return "configuration";
+    case "temporary_provider":
+      return "temporary";
+    default:
+      return "provider";
+  }
+}
 
 export function classifyResendHttpFailure(opts: {
   status: number;
   bodyText: string;
 }): ClassifiedResendFailure {
-  const body = (opts.bodyText || "").toLowerCase();
-  const status = opts.status;
-
-  const quotaHint =
-    body.includes("quota") ||
-    body.includes("monthly limit") ||
-    body.includes("daily limit") ||
-    body.includes("usage limit") ||
-    (body.includes("exceeded") && body.includes("limit"));
-
-  if (status === 429 || body.includes("rate_limit") || body.includes("too many requests")) {
-    // Resend sometimes returns 429 for both rate and quota; prefer quota when named.
-    if (quotaHint && !body.includes("rate")) {
-      return {
-        code: "quota",
-        message: "Email provider daily/monthly sending limit reached. Message was not delivered.",
-        retryUnsafe: true,
-      };
-    }
-    return {
-      code: "rate_limit",
-      message: "Email provider rate limit reached. Message was not delivered.",
-      retryUnsafe: true,
-    };
-  }
-
-  if (status === 402 || quotaHint) {
-    return {
-      code: "quota",
-      message: "Email provider sending quota exhausted. Message was not delivered.",
-      retryUnsafe: true,
-    };
-  }
-
+  const g = classifyResendHttpFailureGuidance(opts);
+  // Immediate/automatic retry is unsafe for limits; temporary 5xx may be retried later.
+  const retryUnsafe =
+    g.category === "quota"
+    || g.category === "rate_limit"
+    || g.category === "invalid_recipient"
+    || g.category === "configuration"
+    || g.category === "unknown"
+    || (g.category === "temporary_provider" ? false : !g.retryAppropriate);
   return {
-    code: "provider",
-    message: "Email send failed due to a provider error.",
-    retryUnsafe: status >= 500,
+    code: toResendCode(g.category),
+    message: g.explanation,
+    retryUnsafe,
+    category: g.category,
   };
 }
 

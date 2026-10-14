@@ -2,6 +2,7 @@
  * Pure helpers for rendering outbound delivery state in Inbox.
  * Used by UI and tests — no provider jargon, no invented Read for SMS.
  */
+import { resolveEmailFailureGuidance } from "@/lib/communication/email-failure-guidance";
 import {
   MESSAGE_STATUS_META,
   channelSupportsReadState,
@@ -15,6 +16,12 @@ export type DeliveryDisplay = {
   isFailure: boolean;
   /** Human-readable reason when available — never raw provider codes by default. */
   reason: string | null;
+  /** Evidence-based next step for failures (email). */
+  nextAction: string | null;
+  /** Optional venue-safe diagnostic fragment. */
+  diagnosticSafe: string | null;
+  /** Whether a manual retry is appropriate for this failure. */
+  retryAppropriate: boolean;
   /** Whether opened/clicked/read may be shown for this channel+status. */
   showAsReadLike: boolean;
 };
@@ -42,12 +49,21 @@ export function resolveDeliveryDisplay(input: {
   }
 
   const isFailure = isDeliveryFailureStatus(input.status);
+  const emailFailure = isFailure && input.channel === "email"
+    ? resolveEmailFailureGuidance(input.failureReason)
+    : null;
+
   return {
     status: input.status,
     label: meta.label,
     emoji: meta.emoji,
     isFailure,
-    reason: isFailure ? (input.failureReason?.trim() || null) : null,
+    reason: isFailure
+      ? (emailFailure?.explanation ?? (input.failureReason?.trim() || null))
+      : null,
+    nextAction: emailFailure?.nextAction ?? null,
+    diagnosticSafe: emailFailure?.diagnosticSafe ?? null,
+    retryAppropriate: emailFailure?.retryAppropriate ?? false,
     showAsReadLike:
       channelSupportsReadState(input.channel)
       && (input.status === "opened" || input.status === "clicked"),

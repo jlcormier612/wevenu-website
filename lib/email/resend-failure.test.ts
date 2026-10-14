@@ -37,13 +37,25 @@ describe("Resend failure classification", () => {
     assert.equal(r.code, "quota");
   });
 
-  it("marks other 4xx as provider without pretending success", () => {
+  it("marks 422 invalid to as invalid_recipient (retry-unsafe)", () => {
     const r = classifyResendHttpFailure({
       status: 422,
-      bodyText: JSON.stringify({ message: "Invalid `to` field" }),
+      bodyText: JSON.stringify({
+        name: "validation_error",
+        message: "Invalid `to` field",
+      }),
+    });
+    assert.equal(r.code, "invalid_recipient");
+    assert.equal(r.retryUnsafe, true);
+  });
+
+  it("marks unclassified 4xx as provider without pretending success", () => {
+    const r = classifyResendHttpFailure({
+      status: 418,
+      bodyText: JSON.stringify({ message: "Teapot" }),
     });
     assert.equal(r.code, "provider");
-    assert.equal(r.retryUnsafe, false);
+    assert.equal(r.retryUnsafe, true);
   });
 
   it("keeps a stable CloudWatch log marker", () => {

@@ -29,7 +29,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { logSignalEvent } from "@/lib/leads/signals";
 import { shouldAdvanceStatus } from "@/lib/communication/status";
-import { translateEmailFailure } from "@/lib/communication/failure-messages";
+import { translateEmailBounceFailure } from "@/lib/communication/failure-messages";
 import { verifyResendWebhookSecrets } from "@/lib/resend/inbound-webhook";
 
 type ResendWebhookPayload = {
@@ -42,6 +42,12 @@ type ResendWebhookPayload = {
     subject?: string;
     bounced_at?: string;
     created_at?: string;
+    bounce?: {
+      type?: string;
+      subType?: string;
+      message?: string;
+      diagnosticCode?: string[] | string;
+    };
   };
 };
 
@@ -124,8 +130,10 @@ export async function POST(request: NextRequest) {
     if (newStatus && shouldAdvanceStatus(currentStatus, newStatus)) {
       const patch: Record<string, unknown> = { status: newStatus };
       if (payload.type === "email.bounced") {
-        const raw = `Bounced at ${payload.data.bounced_at ?? payload.created_at}`;
-        patch[legacyMessage ? "error_message" : "failure_reason"] = translateEmailFailure(raw);
+        // Use structured bounce fields — timestamp-only strings discarded type/message.
+        patch[legacyMessage ? "error_message" : "failure_reason"] = translateEmailBounceFailure(
+          payload.data.bounce ?? null,
+        );
       }
       if (legacyMessage) {
         if (payload.type === "email.delivered") patch.delivered_at = new Date().toISOString();

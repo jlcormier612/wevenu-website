@@ -118,6 +118,7 @@ function RecoveryActions({
     status: msg.status,
     leadId,
     clientId,
+    failureReason: msg.failureReason,
   });
   if (actions.length === 0) return null;
 
