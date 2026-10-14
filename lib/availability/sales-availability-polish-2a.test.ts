@@ -1,0 +1,53 @@
+/**
+ * Queue Item 2A — Sales owner / Date hold presentation polish.
+ */
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, it } from "node:test";
+
+const holds = readFileSync(
+  resolve("components/availability/date-holds-section.tsx"),
+  "utf8",
+);
+const staff = readFileSync(
+  resolve("components/team/staff-assignment-field.tsx"),
+  "utf8",
+);
+const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
+
+describe("Sales & availability polish 2A", () => {
+  it("Sales owner and Date hold labels share compact muted text treatment", () => {
+    assert.match(staff, /text-xs font-medium text-muted-foreground/);
+    assert.match(holds, /text-xs font-medium text-muted-foreground">Date hold</);
+    const ownerHold = detail.slice(
+      detail.indexOf('data-testid="lead-owner-hold-row"'),
+      detail.indexOf('data-testid="lead-owner-hold-row"') + 900,
+    );
+    assert.match(ownerHold, /label="Sales owner"/);
+    assert.match(ownerHold, /density="compact"/);
+    assert.match(ownerHold, /items-center/);
+  });
+
+  it("compact owner select/save and hold chip/actions share h-11 control height", () => {
+    assert.match(staff, /compact \? "h-11 w-\[9\.5rem\]/);
+    assert.match(staff, /compact \? "h-11 shrink-0 whitespace-nowrap"/);
+    assert.match(holds, /min-h-11/);
+    assert.match(holds, /compact \? "h-11"/);
+  });
+
+  it("Place another hold uses filled primary Button (not outline)", () => {
+    const placeStart = holds.indexOf('data-testid="date-hold-place"');
+    assert.ok(placeStart > 0);
+    const placeBlock = holds.slice(placeStart - 220, placeStart + 80);
+    assert.match(placeBlock, /data-testid="date-hold-place"/);
+    assert.doesNotMatch(placeBlock, /variant="outline"/);
+    assert.match(placeBlock, /h-11 shrink-0 whitespace-nowrap/);
+    // Default Button = primary fill (same as StaffAssignmentField save).
+    assert.match(staff, /data-testid=\{`\$\{testId\}-save`\}/);
+    assert.doesNotMatch(
+      staff.slice(staff.indexOf("<Button"), staff.indexOf("data-testid={`${testId}-save`}")),
+      /variant="outline"/,
+    );
+  });
+});

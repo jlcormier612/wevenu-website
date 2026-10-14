@@ -827,9 +827,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </p>
         <div
           data-testid="lead-owner-hold-row"
-          className="flex min-w-0 flex-wrap items-start gap-x-6 gap-y-3"
+          className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3"
         >
-          <div className="min-w-0 shrink-0 basis-full sm:basis-auto sm:max-w-[16rem]">
+          <div className="min-w-0 shrink-0 basis-full sm:basis-auto sm:max-w-[22rem]">
             <StaffAssignmentField
               compact
               label="Sales owner"

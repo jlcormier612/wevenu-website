@@ -96,7 +96,7 @@ describe("lead workspace polish", () => {
 
   it("keeps Sales owner left and Place another hold on the owner/hold row", () => {
     assert.match(detail, /data-testid="lead-owner-hold-row"/);
-    assert.match(detail, /flex min-w-0 flex-wrap items-start gap-x-6/);
+    assert.match(detail, /flex min-w-0 flex-wrap items-center gap-x-6/);
     assert.match(detail, /StaffAssignmentField/);
     assert.match(detail, /DateHoldsSection/);
     assert.match(holds, /date-hold-place/);

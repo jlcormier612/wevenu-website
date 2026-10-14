@@ -299,7 +299,7 @@ export function DateHoldsSection({
             <div
               key={hold.id}
               className={compact
-                ? "flex w-fit min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1"
+                ? "flex w-fit min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1.5 min-h-11"
                 : "flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"}
               data-testid="date-hold-active"
             >
@@ -356,7 +356,7 @@ export function DateHoldsSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={compact ? "h-8" : undefined}
+                  className={compact ? "h-11" : undefined}
                   disabled={addPending || releasingId === hold.id}
                   onClick={() => openEdit(hold)}
                   data-testid="date-hold-edit"
@@ -367,7 +367,7 @@ export function DateHoldsSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={compact ? "h-8" : undefined}
+                  className={compact ? "h-11" : undefined}
                   disabled={releasingId === hold.id}
                   onClick={() => handleRelease(hold.id)}
                   data-testid="date-hold-release"
@@ -615,9 +615,8 @@ export function DateHoldsSection({
       ) : showPlaceHold ? (
         <Button
           type="button"
-          variant="outline"
           size="sm"
-          className={compact ? "h-8 shrink-0 whitespace-nowrap" : undefined}
+          className={compact ? "h-11 shrink-0 whitespace-nowrap" : undefined}
           onClick={openForm}
           data-testid="date-hold-place"
         >

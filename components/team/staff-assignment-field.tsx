@@ -87,7 +87,10 @@ export function StaffAssignmentField({
     : assignmentActionLabel(persistedId, { compact: narrow });
 
   return (
-    <div className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "space-y-2"} data-testid={testId}>
+    <div
+      className={compact ? "flex min-w-0 flex-nowrap items-center gap-2" : "space-y-2"}
+      data-testid={testId}
+    >
       {compact ? (
         <span className="shrink-0 text-xs font-medium text-muted-foreground">{label}</span>
       ) : (
@@ -118,7 +121,10 @@ export function StaffAssignmentField({
             ...staff.map((member) => ({ value: member.id, label: member.name })),
           ]}
         >
-          <SelectTrigger className={compact ? "h-8 w-[9.5rem] max-w-full sm:w-40" : "h-9 w-56"} aria-label={label}>
+          <SelectTrigger
+            className={compact ? "h-11 w-[9.5rem] max-w-full sm:w-40" : "h-9 w-56"}
+            aria-label={label}
+          >
             <SelectValue placeholder="Unassigned" />
           </SelectTrigger>
           <SelectContent>
@@ -131,7 +137,7 @@ export function StaffAssignmentField({
         <Button
           type="button"
           size="sm"
-          className={compact ? "h-8 shrink-0 whitespace-nowrap" : "shrink-0 whitespace-nowrap"}
+          className={compact ? "h-11 shrink-0 whitespace-nowrap" : "shrink-0 whitespace-nowrap"}
           disabled={pending}
           onClick={save}
           data-testid={`${testId}-save`}
