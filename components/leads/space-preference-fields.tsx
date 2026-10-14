@@ -183,7 +183,7 @@ export function LeadSpacePreferenceFields({
         </p>
       </div>
       <div
-        className="grid w-full min-w-0 grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        className="grid w-full min-w-0 grid-cols-1 items-start gap-x-3 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
         data-testid="space-preference-grid"
         data-applicable-count={applicableCount}
       >

@@ -827,26 +827,30 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         </p>
         <div
           data-testid="lead-owner-hold-row"
-          className="grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2"
+          className="flex min-w-0 flex-wrap items-start gap-x-6 gap-y-3"
         >
-          <StaffAssignmentField
-            compact
-            label="Sales owner"
-            staff={staffOptions}
-            value={lead.assignedStaffId ?? null}
-            testId="lead-staff-assignment"
-            onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
-          />
-          <DateHoldsSection
-            density="compact"
-            leadId={lead.id}
-            leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-            desiredEventDate={lead.eventDate}
-            initialHolds={holds}
-            spaces={spaces}
-            spacePreferences={spacePreferences}
-            venueTimezone={venueTimezone}
-          />
+          <div className="min-w-0 shrink-0 basis-full sm:basis-auto sm:max-w-[16rem]">
+            <StaffAssignmentField
+              compact
+              label="Sales owner"
+              staff={staffOptions}
+              value={lead.assignedStaffId ?? null}
+              testId="lead-staff-assignment"
+              onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
+            />
+          </div>
+          <div className="min-w-0 flex-1 basis-full sm:basis-0">
+            <DateHoldsSection
+              density="compact"
+              leadId={lead.id}
+              leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+              desiredEventDate={lead.eventDate}
+              initialHolds={holds}
+              spaces={spaces}
+              spacePreferences={spacePreferences}
+              venueTimezone={venueTimezone}
+            />
+          </div>
         </div>
       </div>
 

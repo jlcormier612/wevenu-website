@@ -10,6 +10,7 @@ const detail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8")
 const followUp = readFileSync(resolve("components/leads/relationship-card.tsx"), "utf8");
 const tours = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
 const prefs = readFileSync(resolve("components/leads/space-preference-fields.tsx"), "utf8");
+const holds = readFileSync(resolve("components/availability/date-holds-section.tsx"), "utf8");
 const staff = readFileSync(resolve("components/team/staff-assignment-field.tsx"), "utf8");
 const actionLabel = readFileSync(resolve("lib/team/assignment-action-label.ts"), "utf8");
 
@@ -86,11 +87,22 @@ describe("lead workspace polish", () => {
 
   it("uses a responsive Space Preferences grid without a standalone rehearsal date field", () => {
     assert.match(prefs, /data-testid="lead-space-preferences"/);
-    assert.match(prefs, /xl:grid-cols-4/);
+    assert.match(prefs, /xl:grid-cols-5/);
     assert.match(prefs, /lg:grid-cols-3/);
     assert.match(prefs, /sm:grid-cols-2/);
+    assert.doesNotMatch(prefs, /xl:grid-cols-4/);
     assert.doesNotMatch(prefs, /Rehearsal Dinner Date/);
     assert.doesNotMatch(detail, /Rehearsal Dinner Date/);
+  });
+
+  it("keeps Sales owner left and Place another hold on the owner/hold row", () => {
+    assert.match(detail, /data-testid="lead-owner-hold-row"/);
+    assert.match(detail, /flex min-w-0 flex-wrap items-start gap-x-6/);
+    assert.match(detail, /StaffAssignmentField/);
+    assert.match(detail, /DateHoldsSection/);
+    assert.match(holds, /date-hold-place/);
+    assert.match(holds, /shrink-0 whitespace-nowrap/);
+    assert.match(holds, /w-fit min-w-0 max-w-full/);
   });
 
   it("keeps inquiry message in Internal notes", () => {

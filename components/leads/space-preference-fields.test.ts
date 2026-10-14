@@ -46,10 +46,12 @@ describe("space preference applicability UI", () => {
   it("lays out candidates as compact horizontal columns on desktop", () => {
     assert.match(fields, /data-testid="space-preference-grid"/);
     assert.match(fields, /data-applicable-count=/);
-    assert.match(fields, /xl:grid-cols-4/);
+    // Five wedding uses (Ceremony…Rehearsal Dinner) share one desktop row.
+    assert.match(fields, /xl:grid-cols-5/);
     assert.match(fields, /lg:grid-cols-3/);
     assert.match(fields, /sm:grid-cols-2/);
     assert.match(fields, /grid-cols-1/);
+    assert.doesNotMatch(fields, /xl:grid-cols-4/);
     assert.doesNotMatch(fields, /max-w-xl/);
     assert.doesNotMatch(fields, /max-w-xs/);
   });

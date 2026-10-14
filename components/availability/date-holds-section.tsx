@@ -271,11 +271,25 @@ export function DateHoldsSection({
   const compact = density === "compact";
 
   return (
-    <div className={compact ? "flex min-w-0 max-w-full flex-wrap items-center gap-2" : "space-y-3"} data-testid={compact ? "date-hold-compact" : undefined}>
+    <div
+      className={
+        compact
+          ? "flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2"
+          : "space-y-3"
+      }
+      data-testid={compact ? "date-hold-compact" : undefined}
+    >
       {compact ? <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span> : null}
       {/* Active holds — authoritative date_holds.status === "active". Multiple per lead/date are valid. */}
       {activeHolds.length > 0 && (
-        <div className={compact ? "flex min-w-0 flex-wrap items-center gap-2" : "space-y-2"} data-testid="date-hold-active-list">
+        <div
+          className={
+            compact
+              ? "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2"
+              : "space-y-2"
+          }
+          data-testid="date-hold-active-list"
+        >
           {compact ? null : (
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Active holds
@@ -285,7 +299,7 @@ export function DateHoldsSection({
             <div
               key={hold.id}
               className={compact
-                ? "flex min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1"
+                ? "flex w-fit min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1"
                 : "flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5"}
               data-testid="date-hold-active"
             >
@@ -603,7 +617,7 @@ export function DateHoldsSection({
           type="button"
           variant="outline"
           size="sm"
-          className={compact ? "h-8" : undefined}
+          className={compact ? "h-8 shrink-0 whitespace-nowrap" : undefined}
           onClick={openForm}
           data-testid="date-hold-place"
         >
