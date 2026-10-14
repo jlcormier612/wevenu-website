@@ -39,7 +39,7 @@ describe("Leads All vs unseen attention", () => {
     assert.match(page, /attention === "unseen"/);
     assert.match(list, /attentionFilter === "unseen"/);
     assert.match(list, /attentionFilter === "unseen"/);
-    assert.match(list, /if \(l\.venueSeenAt\) return false/);
+    assert.match(list, /isUnseenLeadAttention/);
   });
 
   it("All and Show all active leads clear unseen attention and strip the URL", () => {
@@ -80,7 +80,7 @@ describe("Leads All vs unseen attention", () => {
     assert.doesNotMatch(service.slice(service.indexOf("export async function markLeadVenueSeen"), service.indexOf("export async function markVenueToursSeen")), /sales_stage/);
     const list = read("components/leads/lead-list.tsx");
     assert.match(list, /if \(attentionFilter === "unseen"\)/);
-    assert.match(list, /if \(l\.venueSeenAt\) return false/);
+    assert.match(list, /isUnseenLeadAttention/);
     const allFilteredStart = list.indexOf("const filtered");
     const unseenGate = list.indexOf('if (attentionFilter === "unseen")');
     assert.ok(unseenGate > allFilteredStart);

@@ -43,6 +43,8 @@ import type { Lead, LeadStatus } from "@/lib/leads/types";
 import { normalizeEventType } from "@/lib/event-types/canonical";
 import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
+import { LeadUnseenIndicator } from "@/components/leads/lead-unseen-indicator";
+import { isUnseenLeadAttention } from "@/lib/navigation/attention";
 import {
   IDLE_CHIP,
   IDLE_CHIP_COUNT,
@@ -184,9 +186,13 @@ export function LeadList({
         if (!leadIsOpenOpportunity(l)) return false;
       }
       if (attentionFilter === "unseen") {
-        // Same population as Leads nav attention badge (open + venue_seen_at null).
-        if (l.venueSeenAt) return false;
-        if (!leadIsOpenOpportunity(l)) return false;
+        // Same population as Leads nav attention badge + row New indicator.
+        if (!isUnseenLeadAttention({
+          venueSeenAt: l.venueSeenAt,
+          salesStage: l.salesStage ?? l.status,
+        })) {
+          return false;
+        }
       }
       if (!q) return true;
       return [
@@ -469,9 +475,15 @@ export function LeadList({
                 return (
                 <TableRow key={lead.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/leads/${lead.id}`} className="hover:text-primary">
-                      {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-                    </Link>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <LeadUnseenIndicator
+                        venueSeenAt={lead.venueSeenAt}
+                        salesStage={lead.salesStage ?? lead.status}
+                      />
+                      <Link href={`/leads/${lead.id}`} className="hover:text-primary truncate">
+                        {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+                      </Link>
+                    </div>
                     {lead.email && (
                       <p className="text-xs text-muted-foreground">{lead.email}</p>
                     )}
