@@ -185,6 +185,7 @@ jobs:
         env:
           BUILD_ARGS: ${{ matrix.build_args }}
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ matrix.repo_var }}:${{ github.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
         run: |
           set -euo pipefail
           ARGS=()
@@ -204,13 +205,26 @@ jobs:
               --build-arg "NEXT_DEPLOYMENT_ID=${{ github.sha }}"
             )
           fi
-          # Prefer local base images from the prefetch step; still retry the
-          # build itself for non-Hub transient builder failures.
+          # Rewrite Public ECR library FROM -> private htc-ci-bases so BuildKit
+          # never loads metadata from public.ecr.aws (HTTP 429). Committed
+          # Dockerfiles are left unchanged; only the temp build file is used.
+          REWRITTEN="$(mktemp)"
+          ./scripts/ci/rewrite-sandbox-dockerfile-bases.sh \
+            "${{ matrix.dockerfile }}" \
+            "$REWRITTEN" \
+            "$ECR_REGISTRY"
+          if grep -E '^FROM[[:space:]]+public\.ecr\.aws/docker/library/' "$REWRITTEN"; then
+            echo "::error::rewritten Dockerfile still references public.ecr.aws/docker/library"
+            exit 1
+          fi
+          # Prefer prefetched private bases; still retry the build itself for
+          # non-Hub transient builder failures.
           attempt=1
           delay=10
           while [ "$attempt" -le 3 ]; do
-            echo "Build attempt $attempt/3 for ${{ matrix.name }}"
-            if docker build --pull=false -f "${{ matrix.dockerfile }}" -t "$IMAGE_URI" "${ARGS[@]}" .; then
+            echo "Build attempt $attempt/3 for ${{ matrix.name }} (private base FROM)"
+            if docker build --pull=false -f "$REWRITTEN" -t "$IMAGE_URI" "${ARGS[@]}" .; then
+              rm -f "$REWRITTEN"
               exit 0
             fi
             echo "Build failed; sleeping ${delay}s before retry"
@@ -218,6 +232,7 @@ jobs:
             attempt=$((attempt + 1))
             delay=$((delay * 2))
           done
+          rm -f "$REWRITTEN"
           echo "::error::docker build failed for ${{ matrix.name }} after 3 attempts"
           exit 1
 

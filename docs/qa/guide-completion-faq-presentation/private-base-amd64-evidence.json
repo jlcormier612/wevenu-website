@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-14T04:40:26.196213+00:00",
+  "registry": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-ci-bases",
+  "alpine-3.20": {
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "arch_annotation": "amd64",
+    "config_digest": "sha256:bf8527eb54c3680e728d5b4b383a8ba730d72dae7236fbc8dff97ed6b224a731",
+    "source_note": "Seeded from Public ECR linux/amd64 platform manifest (official library)"
+  },
+  "node-22-alpine": {
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "arch_annotation": "amd64",
+    "config_digest": "sha256:7c3b093add7c43400ee83b815ab2cda98794a10045bcf76ce9bb2f89b97cbc5c",
+    "source_note": "Seeded from Public ECR linux/amd64 platform manifest (official library)"
+  },
+  "expected_amd64_digests": {
+    "alpine-3.20": "sha256:c64c687cbea9300178b30c95835354e34c4e4febc4badfe27102879de0483b5e",
+    "node-22-alpine": "sha256:2c752226d477b4a886378baa95b9af252be59301b725fdb0b7e15208131505a8"
+  }
+}
