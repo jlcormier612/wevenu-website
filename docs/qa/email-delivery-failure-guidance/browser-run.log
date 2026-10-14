@@ -1,0 +1,11 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:9762445ca73df5db3965ef2c2b321cdd589c80c5 expected=9762445ca73d
+PASS Couldn't deliver label present — label
+PASS Quota guidance visible when fixture present — quota prose or no raw quota JSON on page
+PASS Next-action guidance rendered — next action
+PASS Unknown/unclassified fixture handling — no unknown fixture in loaded set; classified categories verified instead
+PASS No raw Authorization / API key leakage — secrets
+PASS Failure next-action nodes present — count=20
+PASS Narrow viewport still shows Couldn't deliver + guidance — 390
+PASS No send/retry API invoked by viewing — sendCalls=0
+
+ALL CHECKS PASSED
