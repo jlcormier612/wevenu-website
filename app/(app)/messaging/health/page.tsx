@@ -29,20 +29,23 @@ export default async function CommunicationHealthPage() {
         <div className="mt-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground space-y-1.5">
           <p className="font-medium text-heading">How to read this page</p>
           <p>
-            Use the checklist below to finish setup. If <span className="text-heading">texting</span>{" "}
-            isn’t ready, enable it in Settings — that isn’t an HTC outage.
+            Use the checklist below to complete setup. To enable texting for your venue, go to{" "}
+            <Link
+              href="/settings/communications#texting"
+              className="font-medium text-heading underline underline-offset-2"
+            >
+              Settings → Text messaging
+            </Link>
+            . If texting isn’t enabled yet, that’s a setup step—not an HTC outage.
           </p>
           <p>
-            When a specific message couldn’t be delivered, open that conversation in Inbox to see
-            the status and any recovery options.
+            If a specific message couldn’t be delivered, open the conversation in Inbox to view its
+            status and any available next steps.
           </p>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Email is set up for Hello to Cheers as a platform. Texting is enabled per venue in{" "}
-          <Link href="/settings/communications#texting" className="underline underline-offset-2 text-heading">
-            Settings → Text messaging
-          </Link>
-          . Your venue contact email and phone are used for test messages and for how couples reach you.
+          Email is configured for Hello to Cheers as a platform. Your venue contact email and phone
+          are used for test messages and for how couples reach you.
         </p>
       </div>
 

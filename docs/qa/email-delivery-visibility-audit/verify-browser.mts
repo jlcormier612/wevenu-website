@@ -139,8 +139,26 @@ async function main() {
       );
       record(
         "Health page points owners to Inbox for failures",
-        /open that conversation in Inbox/i.test(bodyText),
+        /open the conversation in Inbox/i.test(bodyText),
         "intro copy",
+      );
+      const textingHref = await page
+        .locator('a[href="/settings/communications#texting"]')
+        .first()
+        .getAttribute("href");
+      record(
+        "Settings → Text messaging link present",
+        /Settings → Text messaging/i.test(bodyText)
+          && textingHref === "/settings/communications#texting",
+        `href=${textingHref ?? "missing"}`,
+      );
+      record(
+        "How-to-read copy uses complete-setup wording",
+        /Use the checklist below to complete setup/i.test(bodyText)
+          && /setup step—not an HTC outage/i.test(bodyText)
+          && /Email is configured for Hello to Cheers as a platform/i.test(bodyText)
+          && !/Email is set up for Hello to Cheers as a platform\. Texting is enabled per venue/i.test(bodyText),
+        "approved copy",
       );
     }
 

@@ -19,4 +19,23 @@ describe("Communication Health Inbox navigation", () => {
     assert.doesNotMatch(src, /← Back to Inbox/);
     assert.equal((src.match(/label="Inbox"/g) ?? []).length, 1);
   });
+
+  it("keeps approved readiness copy and Settings → Text messaging destination", () => {
+    const src = readFileSync("app/(app)/messaging/health/page.tsx", "utf8");
+    assert.match(src, /Use the checklist below to complete setup/);
+    assert.match(src, /setup step—not an HTC outage/);
+    assert.match(
+      src,
+      /open the conversation in Inbox to view its[\s\S]*status and any available next steps/,
+    );
+    assert.match(
+      src,
+      /Email is configured for Hello to Cheers as a platform\. Your venue contact email and phone/,
+    );
+    assert.match(
+      src,
+      /href="\/settings\/communications#texting"[\s\S]*Settings → Text messaging/,
+    );
+    assert.doesNotMatch(src, /Email is set up for Hello to Cheers as a platform\. Texting is enabled per venue/);
+  });
 });
