@@ -1,0 +1,12 @@
+{
+  "pass": true,
+  "probe": {
+    "text": "❌ Couldn't deliver Email send failed: {\"statusCode\":422,\"name\":\"validation_error\",\"message\":\"Invalid `to` field. Please use our testing email address instead of domains like `example.com`. See our documentation for more information.\"}",
+    "overflowX": false,
+    "clientWidth": 238,
+    "scrollWidth": 238,
+    "clientHeight": 96,
+    "scrollHeight": 96
+  },
+  "at": "2026-10-14T00:06:48.758Z"
+}

@@ -1,0 +1,68 @@
+{
+  "expectedSha": "8d9eb28bdef67382657666edae04e26b3f3b86ab",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8d9eb28bdef67382657666edae04e26b3f3b86ab",
+  "allPass": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8d9eb28bdef67382657666edae04e26b3f3b86ab expected=8d9eb28bdef6"
+    },
+    {
+      "name": "Attention count readable",
+      "pass": true,
+      "detail": "count=50 text=50 need your attention"
+    },
+    {
+      "name": "Attention card is a link to filtered history",
+      "pass": true,
+      "detail": "tag=A href=/messaging/health?attention=1"
+    },
+    {
+      "name": "Attention card has accessible label",
+      "pass": true,
+      "detail": "aria=50 messages need your attention. View delivery failures."
+    },
+    {
+      "name": "Keyboard focus reaches attention control",
+      "pass": true,
+      "detail": "{\"tag\":\"A\",\"outline\":\"none rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(93, 111, 93) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px\",\"aria\":\"50 messages need your attention. View delivery failures.\",\"testId\":\"attention-stat-card\"}"
+    },
+    {
+      "name": "Click opens attention filter",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/messaging/health?attention=1"
+    },
+    {
+      "name": "Filtered heading present",
+      "pass": true,
+      "detail": "heading"
+    },
+    {
+      "name": "Filtered list has rows",
+      "pass": true,
+      "detail": "rows=20"
+    },
+    {
+      "name": "Filtered rows are failure statuses only",
+      "pass": true,
+      "detail": "statuses=[\"failed\",\"failed\",\"failed\",\"failed\",\"failed\",\"failed\",\"failed\",\"failed\",\"failed\",\"failed\",\"failed\",\"failed\"]"
+    },
+    {
+      "name": "Load more reveals additional rows",
+      "pass": true,
+      "detail": "before=20 after=40"
+    },
+    {
+      "name": "Couldn't deliver text not horizontally clipped",
+      "pass": true,
+      "detail": "{\"sampleCount\":8,\"couldnt\":[{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"overflowY\":false,\"labelOverflow\":false}],\"anyClip\":false}"
+    },
+    {
+      "name": "Narrow viewport failure text not clipped",
+      "pass": true,
+      "detail": "[{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"clientWidth\":150,\"scrollWidth\":150},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"clientWidth\":150,\"scrollWidth\":150},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"clientWidth\":150,\"scrollWidth\":150},{\"text\":\"❌ Couldn't deliver Your message couldn't be delivered.\",\"overflowX\":false,\"clientWidth\":150,\"scrollWidth\":150}]"
+    }
+  ],
+  "at": "2026-10-14T00:05:55.899Z"
+}
