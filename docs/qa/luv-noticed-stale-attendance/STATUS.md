@@ -1,6 +1,6 @@
 # Luv Noticed stale attendance insight — STATUS
 
-**STATUS:** ATTENDANCE PROVEN on serving `149b7f5f` — writing-quality follow-on committed; awaiting its Sandbox deploy + exact-SHA re-proof for full GREEN  
+**STATUS:** NOT GREEN / BLOCKED — attendance proven on `149b7f5f`; writing-quality commit `5ad70d80` deploy in progress  
 **Date:** 2026-10-15  
 
 ## Attendance fix
