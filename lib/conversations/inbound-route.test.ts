@@ -46,6 +46,18 @@ describe("proposal couple emails also carry thread context for inbound reply mat
   });
 });
 
+describe("contract invite emails also carry thread context for inbound reply matching", () => {
+  const source = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
+  it("sendContractInviteEmails resolves venue_couple conversation and passes threadId", () => {
+    const invite = source.slice(
+      source.indexOf("async function sendContractInviteEmails"),
+      source.indexOf("export async function venueSignContract"),
+    );
+    assert.match(invite, /findOrCreateVenueCoupleConversation/);
+    assert.match(invite, /threadId: conversationId \?\? undefined/);
+  });
+});
+
 describe("venue conversation messages are newest-first", () => {
   it("migration orders get_conversation messages by sent_at desc", () => {
     const migration = readFileSync(

@@ -75,6 +75,7 @@ import {
   buildContractInviteText,
 } from "@/lib/email/contract-invite";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
 import { cancelRemindersForContract, createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
 import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
 import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
@@ -988,6 +989,25 @@ async function sendContractInviteEmails(
   const supabase = await createClient();
   const outcomes: ResendDeliveryOutcome[] = [];
 
+  // Same venue↔couple conversation the outbound recorder uses — pass as
+  // threadId so sendEmail sets Reply-To to thread+{id}@inbound when configured.
+  const admin = createAdminClient();
+  let conversationId: string | null = null;
+  if (contract.clientId) {
+    const { data: clientRow } = await admin
+      .from("clients")
+      .select("relationship_id")
+      .eq("id", contract.clientId)
+      .maybeSingle<{ relationship_id: string | null }>();
+    if (clientRow?.relationship_id) {
+      conversationId = await findOrCreateVenueCoupleConversation(
+        admin,
+        venue.id,
+        clientRow.relationship_id,
+      );
+    }
+  }
+
   let clientSigners = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
   if (onlySignerIds) {
     const allow = new Set(onlySignerIds);
@@ -1022,6 +1042,7 @@ async function sendContractInviteEmails(
         text,
         html: buildContractInviteHtml(ctx),
         replyTo: venue.email ?? undefined,
+        threadId: conversationId ?? undefined,
       });
       if (result.ok) {
         if (contract.clientId) {
@@ -1090,6 +1111,7 @@ async function sendContractInviteEmails(
     text,
     html: buildContractInviteHtml(ctx),
     replyTo: venue.email ?? undefined,
+    threadId: conversationId ?? undefined,
   });
   if (result.ok) {
     await recordExternalClientOutbound(supabase, {

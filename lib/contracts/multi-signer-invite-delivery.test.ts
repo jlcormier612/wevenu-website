@@ -62,4 +62,25 @@ describe("multi-signer contract invite delivery", () => {
     const sendEmailCalls = loopBody.match(/await sendEmail\(/g) ?? [];
     assert.equal(sendEmailCalls.length, 1, "exactly one sendEmail call site inside the per-signer loop");
   });
+
+  it("resolves venue↔couple conversation and passes threadId on invite sends", () => {
+    assert.match(invite, /findOrCreateVenueCoupleConversation/);
+    assert.match(invite, /threadId: conversationId \?\? undefined/);
+    assert.match(invite, /replyTo: venue\.email \?\? undefined/);
+    // Both per-signer and legacy send sites carry thread context.
+    const sendSites = invite.match(/await sendEmail\(\{[\s\S]*?\}\);/g) ?? [];
+    assert.equal(sendSites.length, 2, "per-signer + legacy sendEmail sites");
+    for (const site of sendSites) {
+      assert.match(site, /threadId: conversationId \?\? undefined/);
+      assert.match(site, /replyTo: venue\.email \?\? undefined/);
+    }
+  });
+});
+
+describe("contract invite reply-to uses shared sendEmail reply resolution", () => {
+  it("proposal couple path still passes threadId (protected baseline)", () => {
+    const proposal = readFileSync(resolve("lib/commercial-proposals/couple-email.ts"), "utf8");
+    assert.match(proposal, /findOrCreateVenueCoupleConversation/);
+    assert.match(proposal, /threadId: conversationId \?\? undefined/);
+  });
 });
