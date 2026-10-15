@@ -116,12 +116,17 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
         : `This is a reminder that your payment of ${amountLabel} for ${item.label} is due ${dueLabel}.`;
 
       const html = wrapConversationMessageHtml(brand, text);
+      const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+      const threadId = await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
+        clientId: schedule.client_id,
+      });
       const sendResult = await sendEmail({
         to: client.email,
         subject,
         text: appendEmailSignatureText(text, brand),
         html,
         replyTo: venue?.email ?? undefined,
+        threadId: threadId ?? undefined,
       });
       if (!sendResult.ok) throw new Error(sendResult.message);
 
@@ -215,12 +220,17 @@ async function processContractReminders(supabase: any, now: string, result: Proc
       const text = `${venueName} is waiting on your signature for "${contract.title}". You can review and sign here: ${signUrl}`;
 
       const html = wrapConversationMessageHtml(brand, text);
+      const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+      const threadId = await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
+        clientId: contract.client_id,
+      });
       const sendResult = await sendEmail({
         to: client.email,
         subject,
         text: appendEmailSignatureText(text, brand),
         html,
         replyTo: venue?.email ?? undefined,
+        threadId: threadId ?? undefined,
       });
       if (!sendResult.ok) throw new Error(sendResult.message);
 

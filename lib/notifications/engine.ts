@@ -197,25 +197,57 @@ export async function processReminders(): Promise<ProcessResult> {
         bodyPreview = emailContent.html.replace(/<[^>]+>/g, "").slice(0, 500);
         outboundBody = emailContent.text;
 
-        // Send via Resend REST API
-        const apiKey = process.env.RESEND_API_KEY;
-        const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
-        if (apiKey) {
-          const resendResponse = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ from: fromEmail, to: recipientEmail, subject: emailContent.subject, html: emailContent.html, text: emailContent.text }),
+        if (role === "couple") {
+          // Couple-facing: established sendEmail + threadId (same as proposal/contract).
+          const { sendEmail } = await import("@/lib/email/send");
+          const { resolveVenueCoupleThreadId } = await import(
+            "@/lib/conversations/resolve-couple-thread"
+          );
+          const threadId = await resolveVenueCoupleThreadId(supabase, reminder.venue_id, {
+            clientId: event?.client_id ?? null,
+            leadId: tourAppt?.lead_id ?? null,
           });
-          if (!resendResponse.ok) {
-            const err = await resendResponse.json().catch(() => ({})) as { message?: string };
-            throw new Error(err.message ?? `Resend HTTP ${resendResponse.status}`);
-          }
-          const resendData = await resendResponse.json() as { id?: string };
-          providerMessageId = resendData.id ?? null;
+          const venueEmail =
+            (venueRow as { email?: string | null } | null)?.email ?? undefined;
+          const sendResult = await sendEmail({
+            to: recipientEmail,
+            subject: emailContent.subject,
+            text: emailContent.text,
+            html: emailContent.html,
+            replyTo: venueEmail,
+            threadId: threadId ?? undefined,
+          });
+          if (!sendResult.ok) throw new Error(sendResult.message);
+          providerMessageId =
+            sendResult.method === "resend" ? sendResult.providerId ?? null : null;
           sent = true;
         } else {
-          console.log(`[notifications] DEV send to ${recipientEmail}: ${subject}`);
-          sent = true;
+          // Coordinator/staff: preserve existing raw Resend path and branding.
+          const apiKey = process.env.RESEND_API_KEY;
+          const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
+          if (apiKey) {
+            const resendResponse = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                from: fromEmail,
+                to: recipientEmail,
+                subject: emailContent.subject,
+                html: emailContent.html,
+                text: emailContent.text,
+              }),
+            });
+            if (!resendResponse.ok) {
+              const err = await resendResponse.json().catch(() => ({})) as { message?: string };
+              throw new Error(err.message ?? `Resend HTTP ${resendResponse.status}`);
+            }
+            const resendData = await resendResponse.json() as { id?: string };
+            providerMessageId = resendData.id ?? null;
+            sent = true;
+          } else {
+            console.log(`[notifications] DEV send to ${recipientEmail}: ${subject}`);
+            sent = true;
+          }
         }
       } else {
         // SMS / in_app / push — not yet implemented, skip gracefully

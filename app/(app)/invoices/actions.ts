@@ -248,12 +248,17 @@ export async function sendInvoiceAndPaymentPlanAction(
     });
     if (!loaded.ok) return loaded;
     const email = emailFromContext(loaded.ctx, emailBrandFromVenue(venue));
+    const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+    const threadId = await resolveVenueCoupleThreadId(admin, loaded.ctx.venueId, {
+      clientId: loaded.ctx.clientId,
+    });
     const result = await sendEmail({
       to: email.to,
       subject: email.subject,
       text: email.text,
       html: email.html,
       replyTo: email.replyTo,
+      threadId: threadId ?? undefined,
     });
     if (result.ok && result.method === "resend") {
       const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
@@ -330,16 +335,21 @@ export async function sendRevisedInvoiceAndPaymentPlanAction(
     const revisedSubject = email.subject.startsWith("Updated:")
       ? email.subject
       : `Updated: ${email.subject}`;
+    const { createAdminClient } = await import("@/integrations/supabase/admin");
+    const admin = createAdminClient();
+    const { resolveVenueCoupleThreadId } = await import("@/lib/conversations/resolve-couple-thread");
+    const threadId = await resolveVenueCoupleThreadId(admin, loaded.ctx.venueId, {
+      clientId: loaded.ctx.clientId,
+    });
     const result = await sendEmail({
       to: email.to,
       subject: revisedSubject,
       text: email.text,
       html: email.html,
       replyTo: email.replyTo,
+      threadId: threadId ?? undefined,
     });
     if (result.ok && result.method === "resend") {
-      const { createAdminClient } = await import("@/integrations/supabase/admin");
-      const admin = createAdminClient();
       const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
       const recorded = await recordExternalClientOutbound(admin, {
         venueId: loaded.ctx.venueId,

@@ -47,10 +47,20 @@ export function venueNotificationCta(title: string, link: string | null): { labe
   if (!path.startsWith("/")) return null;
   if (path.startsWith("/leads/")) {
     const first = personFirstName(title);
+    // message_received deep links use #messages — label the conversation, not a generic lead page.
+    if (path.includes("#messages")) {
+      return { label: first ? `View ${first}'s messages` : "View messages", hrefPath: path };
+    }
     return { label: first ? `View ${first}'s lead` : "View this lead", hrefPath: path };
   }
   if (path === "/tours" || path.startsWith("/tours/") || path.startsWith("/tours?")) {
     return { label: "View tours", hrefPath: path };
+  }
+  if (path.startsWith("/contracts/")) {
+    return { label: "View contract", hrefPath: path };
+  }
+  if (path === "/payments" || path.startsWith("/payments/") || path.startsWith("/invoices/")) {
+    return { label: "View payments", hrefPath: path };
   }
   return { label: "Open in Hello to Cheers", hrefPath: path };
 }

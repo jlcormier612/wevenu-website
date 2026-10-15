@@ -65,6 +65,23 @@ describe("venue staff notification emails", () => {
     assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
   });
 
+  it("message_received deep links use the established HTC CTA and messages label", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New message from Ivy Quinn",
+      body: "Need a reply tonight",
+      link: "/leads/44444444-4444-4444-4444-444444444444#messages",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.ctaLabel, "View Ivy's messages");
+    assert.equal(
+      email.href,
+      `${ORIGIN}/leads/44444444-4444-4444-4444-444444444444#messages`,
+    );
+    assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
+    assert.match(email.html, /#messages/);
+  });
+
   it("the dispatcher sends that HTML instead of a bare URL body", () => {
     const src = readFileSync(resolve("lib/notifications/obligation-engine.ts"), "utf8");
     const fn = src.slice(src.indexOf("export async function processVenueNotificationEmails"));
