@@ -9,6 +9,7 @@ import {
   moveQuestionInList,
   orderCustomQuestionsBySort,
 } from "@/lib/inquiry-form/question-order";
+import { mapInquiryFormQuestion } from "@/lib/inquiry-form/map-question";
 import { applyInquiryFormDraftToPublicConfig } from "@/lib/inquiry-form/preview-config";
 import { validateCustomAnswers } from "@/lib/inquiry-form/validation";
 import type { InquiryFormQuestion, PublicInquiryFormConfig } from "@/lib/inquiry-form/types";
@@ -83,6 +84,32 @@ describe("inquiry form custom question ordering", () => {
       ordered.map((x) => x.questionText),
       ["A", "B", "C"],
     );
+  });
+
+  it("maps public RPC camelCase custom questions (not only DB snake_case)", () => {
+    const fromRpc = mapInquiryFormQuestion({
+      id: "q-rpc",
+      questionText: "Dietary needs?",
+      questionType: "long_answer",
+      required: true,
+      options: [],
+      sortOrder: 2,
+    });
+    assert.equal(fromRpc.questionText, "Dietary needs?");
+    assert.equal(fromRpc.questionType, "long_answer");
+    assert.equal(fromRpc.required, true);
+    assert.equal(fromRpc.sortOrder, 2);
+
+    const fromDb = mapInquiryFormQuestion({
+      id: "q-db",
+      question_text: "Heard about us?",
+      question_type: "short_answer",
+      required: false,
+      options: null,
+      sort_order: 0,
+    });
+    assert.equal(fromDb.questionText, "Heard about us?");
+    assert.equal(fromDb.sortOrder, 0);
   });
 
   it("preview draft preserves configured question order", () => {

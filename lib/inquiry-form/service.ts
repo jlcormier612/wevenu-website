@@ -22,6 +22,7 @@ import {
   type InquiryCommunicationSettings,
 } from "@/lib/communication/sms-consent";
 import { isSmsConfigured, isSmsConsentOfferAvailable } from "@/lib/sms/send";
+import { mapInquiryFormQuestion } from "@/lib/inquiry-form/map-question";
 import { buildInquiryFormQuestionInsertRows } from "@/lib/inquiry-form/question-order";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
@@ -38,15 +39,8 @@ type DbQuestionRow = {
   sort_order: number;
 };
 
-function mapQuestion(row: DbQuestionRow): InquiryFormQuestion {
-  return {
-    id: row.id,
-    questionText: row.question_text,
-    questionType: row.question_type,
-    required: row.required,
-    options: Array.isArray(row.options) ? row.options : [],
-    sortOrder: row.sort_order,
-  };
+function mapQuestion(row: Parameters<typeof mapInquiryFormQuestion>[0]): InquiryFormQuestion {
+  return mapInquiryFormQuestion(row);
 }
 
 function parseFieldsConfig(raw: unknown): InquiryFormFieldsConfig {
