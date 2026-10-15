@@ -80,6 +80,21 @@ const occurrence = tourOccurrenceIso({
   actual_occurred_at: tour?.actual_occurred_at,
   completed_at: tour?.completed_at,
 });
+
+// Disposable QA inserts from other Sandbox proofs must not mask Rory's
+// attendance-ask evaluation. Production customer messages are kept.
+function isDisposableQaBody(body: string | null | undefined): boolean {
+  return /\[QA[\s-]|QA-inbound-att/i.test(body ?? "");
+}
+
+const liveMessages = (msgs ?? []).map((m) => ({
+  sentAt: m.sent_at as string,
+  senderType: m.sender_type as string,
+  channel: m.channel as string | null,
+  body: m.body as string | null,
+}));
+const roryMessages = liveMessages.filter((m) => !isDisposableQaBody(m.body));
+
 const decision = evaluateCompletedTour({
   tourId: TOUR,
   leadId: LEAD,
@@ -87,23 +102,19 @@ const decision = evaluateCompletedTour({
   occurredAt: occurrence!,
   followUpSentAt: tour?.follow_up_sent_at,
   proposalSent: false,
-  messages: (msgs ?? []).map((m) => ({
-    sentAt: m.sent_at,
-    senderType: m.sender_type,
-    channel: m.channel,
-    body: m.body,
-  })),
+  messages: roryMessages,
 });
 
-const staleCopy = /don't see an answer recorded|still unanswered|come in tonight/i;
+const staleCopy = /don't see an answer recorded|still unanswered|Draft a reply to their question/i;
+const attendanceLeak = /come in tonight/i;
 record(
   "Completed-tour decision is silence (not stale unanswered ACTION)",
   decision.mode === "silence",
-  `mode=${decision.mode}`,
+  `mode=${decision.mode} roryMsgCount=${roryMessages.length} liveMsgCount=${liveMessages.length}`,
 );
 record(
   "No stale unanswered assertion in decision payload",
-  !staleCopy.test(JSON.stringify(decision)),
+  !staleCopy.test(JSON.stringify(decision)) && !attendanceLeak.test(JSON.stringify(decision)),
   decision.mode,
 );
 
@@ -115,12 +126,7 @@ const withSetup = evaluateCompletedTour({
   occurredAt: occurrence!,
   proposalSent: false,
   messages: [
-    ...(msgs ?? []).map((m) => ({
-      sentAt: m.sent_at,
-      senderType: m.sender_type,
-      channel: m.channel,
-      body: m.body,
-    })),
+    ...roryMessages,
     {
       sentAt: "2026-10-15T05:00:00.000Z",
       senderType: "lead_or_client",
@@ -133,14 +139,26 @@ record(
   "Genuine post-tour question still actionable",
   withSetup.mode === "actionable"
     && withSetup.purpose === "unresolved_question"
-    && /Saturday setup/i.test(withSetup.observation.message),
-  withSetup.mode,
+    && /Saturday setup/i.test(withSetup.observation.message)
+    && /Check the conversation/i.test(withSetup.observation.message)
+    && !/don't see an answer recorded|still unanswered/i.test(
+      `${withSetup.observation.message} ${withSetup.observation.detail ?? ""}`,
+    ),
+  withSetup.mode === "actionable" ? withSetup.observation.message : withSetup.mode,
 );
 
+// Snapshot before/after proving the pure evaluator does not mutate conversation state.
+const unreadBefore = conv?.venue_unread;
+const needsBefore = conv?.needs_response;
+const { data: convAfter } = await admin
+  .from("conversations")
+  .select("venue_unread, needs_response")
+  .eq("id", CONV)
+  .single();
 record(
   "Conversation unread/needs_response untouched by evaluator (read-only check)",
-  conv?.venue_unread === 0 && conv?.needs_response === true,
-  JSON.stringify(conv),
+  convAfter?.venue_unread === unreadBefore && convAfter?.needs_response === needsBefore,
+  JSON.stringify({ before: conv, after: convAfter }),
 );
 
 const early = (msgs ?? []).find((m) => (m.body ?? "").includes("come in tonight"));

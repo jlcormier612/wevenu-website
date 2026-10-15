@@ -735,17 +735,18 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **PRODUCTION / Resend / DNS / real customer payments:** untouched
 - **REMAINING WORK:** None for this gate. Human acceptance walkthrough not started.
 
-### Luv Noticed — stale early-arrival / tour-outcome reconciliation (2026-10-14) — OPEN
+### Luv Noticed — stale early-arrival / tour-outcome reconciliation (2026-10-14)
 
-- **STATUS:** **OPEN** — fix implemented; awaiting exact Sandbox runtime proof after deploy
-- **AUDIT:** `docs/qa/luv-noticed-stale-attendance/` (`FORENSIC.md`, `STATUS.md`)
-- **EXACT REPRO:** Meadowbrook Rory · tour `4b57743b-…` completed · inbound early-arrival `07df6ca5-…` · Luv asserted unanswered after tour
-- **ROOT CAUSE:** `evaluateCompletedTour` used `actual_occurred_at` so the ask fell in the post-occurrence window; missing `venue_staff` reply was treated as unanswered — ignored that **completed tour resolves attendance/timing requests**
-- **FIX:** `looksLikeTourAttendanceRequest` → silence on completed-tour evaluation (no unread/needs_response mutation)
-- **FILES:** `lib/luv/completed-tour-intelligence.ts`, `lib/luv/completed-tour-intelligence.test.ts`
-- **TESTS:** attendance reconciliation suite PASS locally
+- **STATUS:** **ATTENDANCE GREEN on serving `149b7f5f` / `:756`** — writing-quality follow-on pending its own exact-SHA deploy proof for full stream GREEN
+- **AUDIT:** `docs/qa/luv-noticed-stale-attendance/` (`FORENSIC.md`, `STATUS.md`, `WRITING-QUALITY-AUDIT.md`, `runtime-results.json`, `browser-results.json`)
+- **EXACT REPRO:** Meadowbrook Rory · tour `4b57743b-…` completed · inbound early-arrival `07df6ca5-…`
+- **ROOT CAUSE:** post-`actual_occurred_at` ask + missing typed reply treated as unanswered; ignored completed-tour resolution of attendance/timing
+- **ATTENDANCE FIX:** `792e2a74` — `looksLikeTourAttendanceRequest` → silence; deploy `38673294231` SUCCESS; contained in sole RUNNING `149b7f5f` / `:756` (via later inbound deploy `38674625261`)
+- **ATTENDANCE PROOF:** `verify-runtime.mts` + `verify-browser.mts` allPass on EXPECTED `149b7f5f`; no stale unanswered UI copy; messages/tour notes intact; `needs_response` unchanged by evaluator
+- **WRITING QUALITY:** confirmed template defects corrected in follow-on commit (compact topic phrasing; invite review; drop “still unanswered” / awkward stitching) — see audit; exact serving re-proof after that deploy
+- **TESTS:** 95/95 PASS (completed-tour + privacy/factuality/discard + inbox)
 - **PRODUCTION / Resend / DNS:** untouched
-- **REMAINING WORK:** Deploy + `verify-runtime.mts` on exact SHA; browser Noticed check; then GREEN
+- **REMAINING WORK:** Deploy writing-quality commit; re-run browser/runtime on that SHA; then full GREEN
 
 ### Inbound reply attention / email notification (2026-10-14) — NOT GREEN / BLOCKED
 

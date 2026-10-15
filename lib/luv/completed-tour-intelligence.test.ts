@@ -79,9 +79,11 @@ describe("completed tour — different contexts, different outcomes", () => {
     if (a.mode !== "actionable") return;
     assert.equal(a.purpose, "unresolved_question");
     assert.match(a.observation.message, /Saturday setup/);
-    assert.match(a.observation.recommendation?.label ?? "", /question/i);
+    assert.match(a.observation.message, /Check the conversation/);
+    assert.match(a.observation.recommendation?.label ?? "", /Draft a reply/i);
     assert.doesNotMatch(a.observation.message, /follow up while it's fresh/);
-    assert.doesNotMatch(a.observation.detail ?? "", /keep momentum/);
+    assert.doesNotMatch(a.observation.message, /don't see an answer recorded|still unanswered/i);
+    assert.doesNotMatch(a.observation.detail ?? "", /keep momentum|still unanswered/i);
     assert.equal(completedTourDraftAllowed(a), true);
   });
 
@@ -399,7 +401,9 @@ describe("completed tour — early-arrival / attendance request reconciliation",
     }));
     assert.equal(otherLead.mode, "actionable");
     if (otherLead.mode !== "actionable") return;
-    assert.match(otherLead.observation.message, /vendors arrive|Saturday/i);
+    assert.equal(otherLead.purpose, "unresolved_question");
+    assert.match(otherLead.observation.message, /Check the conversation|asked a question/i);
+    assert.doesNotMatch(otherLead.observation.message, /come in tonight/i);
   });
 
   it("6. attendance silence does not invent venue outbound or mutate message bodies", () => {
@@ -433,5 +437,65 @@ describe("completed tour — early-arrival / attendance request reconciliation",
     }));
     assert.equal(decision.mode, "silence");
     assert.doesNotMatch(JSON.stringify(decision), /INTERNAL/);
+  });
+});
+
+describe("completed tour — Noticed writing quality", () => {
+  it("does not awkwardly stitch a raw question clause into asked-about copy", () => {
+    const decision = evaluateCompletedTour(base({
+      messages: [
+        msg({
+          sentAt: "2026-10-02T16:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "What time can vendors arrive on Saturday?",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "actionable");
+    if (decision.mode !== "actionable") return;
+    assert.doesNotMatch(decision.observation.message, /asked about What time/i);
+    assert.doesNotMatch(decision.observation.message, /asked about Can /i);
+    assert.match(decision.observation.message, /Check the conversation/);
+    assert.doesNotMatch(
+      `${decision.observation.message} ${decision.observation.detail ?? ""}`,
+      /don't see an answer recorded|still unanswered|not a generic thank-you/i,
+    );
+  });
+
+  it("compact known topics stay specific without accusatory repetition", () => {
+    const decision = evaluateCompletedTour(base({
+      messages: [
+        msg({
+          sentAt: "2026-10-02T16:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "Can you do Saturday setup for the ceremony?",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "actionable");
+    if (decision.mode !== "actionable") return;
+    assert.match(decision.observation.message, /asked about Saturday setup/);
+    assert.equal(
+      (decision.observation.message.match(/Saturday setup/g) ?? []).length,
+      1,
+    );
+    assert.match(decision.observation.detail ?? "", /confirm in the conversation/i);
+  });
+
+  it("missing written reply alone does not claim neglect or force a reply instruction", () => {
+    const decision = evaluateCompletedTour(base({
+      messages: [
+        msg({
+          sentAt: "2026-10-02T16:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "Is the rehearsal dinner space available the night before?",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "actionable");
+    if (decision.mode !== "actionable") return;
+    assert.doesNotMatch(decision.observation.message, /neglected|failed to|you should have/i);
+    assert.match(decision.observation.message, /may still need|Check the conversation/i);
+    assert.match(decision.observation.recommendation?.label ?? "", /^Draft a reply$/);
   });
 });

@@ -139,6 +139,44 @@ function topicFromExcerpt(excerpt: string): string {
   return clause.length > 60 ? `${clause.slice(0, 57)}…` : clause;
 }
 
+/** Compact noun-phrase topics are safe in “asked about {topic}.” Raw question clauses are not. */
+export function isCompactInsightTopic(topic: string): boolean {
+  const t = topic.trim();
+  if (!t) return false;
+  if (
+    t === "Saturday setup"
+    || t === "pricing or package details"
+    || t === "talking with their family"
+  ) {
+    return true;
+  }
+  if (t.includes("?") || t.length > 40) return false;
+  if (/^(can|could|would|will|what|when|where|who|why|how|do |does |is |are |i |we )\b/i.test(t)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Natural, non-accusatory unresolved-question copy for completed-tour Noticed.
+ * Does not claim neglect from a missing written reply alone; invites review.
+ */
+export function unresolvedQuestionInsightCopy(topic: string): {
+  message: string;
+  detail: string;
+  ctaLabel: string;
+} {
+  const message = isCompactInsightTopic(topic)
+    ? `After the tour, they asked about ${topic}. Check the conversation to see whether anything still needs a response.`
+    : "After the tour, they asked a question that may still need attention. Check the conversation to see whether a reply is still useful.";
+  return {
+    message,
+    detail:
+      "A written reply is not on the thread yet — confirm in the conversation before deciding next steps.",
+    ctaLabel: "Draft a reply",
+  };
+}
+
 function inboundAfter(messages: ThreadMessage[], occurredAt: string): ThreadMessage[] {
   return messages
     .filter(customerFacing)
@@ -215,6 +253,7 @@ export function evaluateCompletedTour(input: CompletedTourEvalInput): CompletedT
       return { mode: "silence", purpose: "none" };
     }
     const topic = topicFromExcerpt(excerpt);
+    const copy = unresolvedQuestionInsightCopy(topic);
     return {
       mode: "actionable",
       purpose: "unresolved_question",
@@ -223,9 +262,9 @@ export function evaluateCompletedTour(input: CompletedTourEvalInput): CompletedT
         tourId: input.tourId,
         leadId: input.leadId,
         coordinatorFirstName: input.coordinatorFirstName,
-        message: `They asked about ${topic} after the tour, and I don't see an answer recorded yet.`,
-        detail: "This is still unanswered in the customer conversation — not a generic thank-you.",
-        ctaLabel: "Draft a reply to their question",
+        message: copy.message,
+        detail: copy.detail,
+        ctaLabel: copy.ctaLabel,
       }),
     };
   }

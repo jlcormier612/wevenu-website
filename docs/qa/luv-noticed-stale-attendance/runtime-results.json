@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-15T03:17:58.799Z",
+  "expectedSha": "149b7f5fda1857b696de5fa1e91350bb5521cc0b",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:149b7f5fda1857b696de5fa1e91350bb5521cc0b",
+  "occurrence": "2026-10-14T22:00:00+00:00",
+  "decisionMode": "silence",
+  "conv": {
+    "venue_unread": 1,
+    "needs_response": true
+  },
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:149b7f5fda1857b696de5fa1e91350bb5521cc0b"
+    },
+    {
+      "name": "Tour completed",
+      "pass": true,
+      "detail": "{\"status\":\"completed\",\"actual\":\"2026-10-14T22:00:00+00:00\",\"completed\":\"2026-10-15T02:23:41.067+00:00\"}"
+    },
+    {
+      "name": "Completed-tour decision is silence (not stale unanswered ACTION)",
+      "pass": true,
+      "detail": "mode=silence roryMsgCount=4 liveMsgCount=5"
+    },
+    {
+      "name": "No stale unanswered assertion in decision payload",
+      "pass": true,
+      "detail": "silence"
+    },
+    {
+      "name": "Genuine post-tour question still actionable",
+      "pass": true,
+      "detail": "After the tour, they asked about Saturday setup. Check the conversation to see whether anything still needs a response."
+    },
+    {
+      "name": "Conversation unread/needs_response untouched by evaluator (read-only check)",
+      "pass": true,
+      "detail": "{\"before\":{\"venue_unread\":1,\"needs_response\":true},\"after\":{\"venue_unread\":1,\"needs_response\":true}}"
+    },
+    {
+      "name": "Original early-arrival message still persisted",
+      "pass": true,
+      "detail": "2026-10-15T02:01:29.53846+00:00"
+    },
+    {
+      "name": "Tour outcome notes still persisted",
+      "pass": true,
+      "detail": "They loved the venue - want to book the whole space for the weekend."
+    }
+  ],
+  "allPass": true,
+  "productionUntouched": true,
+  "noCustomerSends": true
+}

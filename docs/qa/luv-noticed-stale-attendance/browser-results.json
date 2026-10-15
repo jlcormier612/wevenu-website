@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-15T03:19:02.325Z",
+  "expectedSha": "149b7f5fda1857b696de5fa1e91350bb5521cc0b",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:149b7f5fda1857b696de5fa1e91350bb5521cc0b",
+  "convBefore": {
+    "venue_unread": 1,
+    "needs_response": true
+  },
+  "convAfter": {
+    "venue_unread": 1,
+    "needs_response": true
+  },
+  "staleHits": [],
+  "consoleErrors": [],
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:149b7f5fda1857b696de5fa1e91350bb5521cc0b"
+    },
+    {
+      "name": "Browser: no stale early-arrival unanswered Noticed copy",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "Browser: early-arrival message not presented as unanswered ACTION",
+      "pass": true,
+      "detail": "scanned lead page body"
+    },
+    {
+      "name": "Browser visit did not clear needs_response (open lead ≠ clear needs_response)",
+      "pass": true,
+      "detail": "{\"before\":{\"venue_unread\":1,\"needs_response\":true},\"after\":{\"venue_unread\":1,\"needs_response\":true}}"
+    },
+    {
+      "name": "No critical console errors",
+      "pass": true,
+      "detail": "none"
+    }
+  ],
+  "allPass": true,
+  "productionUntouched": true,
+  "noCustomerSends": true
+}
