@@ -3,9 +3,12 @@ import { describe, it } from "node:test";
 
 import {
   formatComponentTimeRange,
+  formatDayOfBookingWindow,
   groupBookingSummaryByDate,
   type BookingSummaryComponent,
 } from "@/lib/events/booking-summary";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 function component(
   overrides: Partial<BookingSummaryComponent> & Pick<BookingSummaryComponent, "useKey" | "useLabel">,
@@ -138,5 +141,60 @@ describe("booking summary multi-day components", () => {
     assert.equal(groups[0].date, "2027-09-04");
     assert.equal(groups[1].date, null);
     assert.equal(groups[1].label, "Date not set");
+  });
+});
+
+describe("Day-of booking window metadata", () => {
+  it("returns null when no overall times are saved", () => {
+    assert.equal(formatDayOfBookingWindow({}), null);
+    assert.equal(
+      formatDayOfBookingWindow({
+        startTime: null,
+        endTime: null,
+        setupTime: "",
+        teardownTime: null,
+      }),
+      null,
+    );
+  });
+
+  it("formats setup, start/end, and teardown without inventing missing parts", () => {
+    assert.equal(
+      formatDayOfBookingWindow({
+        setupTime: "12:00",
+        startTime: "14:00",
+        endTime: "23:00",
+        teardownTime: "00:00",
+      }),
+      "Setup 12:00 PM · 2:00 PM – 11:00 PM · Teardown 12:00 AM",
+    );
+    assert.equal(
+      formatDayOfBookingWindow({ startTime: "16:00", multiDay: true }),
+      "Overall 4:00 PM",
+    );
+  });
+
+  it("keeps Day-of window visible alongside component schedule in Overview and Timeline", () => {
+    const detail = readFileSync(
+      resolve("components/events/event-detail.tsx"),
+      "utf8",
+    );
+    assert.match(detail, /formatDayOfBookingWindow/);
+    assert.match(detail, /data-testid="event-day-of-booking-window"/);
+    assert.match(detail, /dayOfSetupTime=\{event\.setupTime\}/);
+    assert.match(detail, /dayOfEndTime=\{event\.endTime\}/);
+    assert.match(detail, /dayOfTeardownTime=\{event\.teardownTime\}/);
+
+    const timeline = readFileSync(
+      resolve("components/events/timeline/timeline-view.tsx"),
+      "utf8",
+    );
+    assert.match(timeline, /formatDayOfBookingWindow/);
+    assert.match(timeline, /data-testid="timeline-day-of-booking-window"/);
+    // Must not stamp overall start onto every activity.
+    assert.doesNotMatch(
+      timeline,
+      /entry_time:\s*eventStartTime|entryTime:\s*eventStartTime/,
+    );
   });
 });

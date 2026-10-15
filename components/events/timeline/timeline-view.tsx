@@ -58,6 +58,7 @@ import {
   computeVenueTimelineClientShareStatus,
   venueItemVisibleToClient,
 } from "@/lib/timeline/audience-ownership";
+import { formatDayOfBookingWindow } from "@/lib/events/booking-summary";
 import { formatTime, formatTimelineDayHeader, getDueStatus, isMultiDayEvent, maxDayOffset } from "@/lib/timeline/constants";
 import type { Document } from "@/lib/documents/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
@@ -512,6 +513,9 @@ export function TimelineView({
   planningClientId = null,
   venueId,
   eventStartTime,
+  dayOfEndTime = null,
+  dayOfSetupTime = null,
+  dayOfTeardownTime = null,
   eventDate = null,
   eventEndDate = null,
   initialEntries,
@@ -533,6 +537,10 @@ export function TimelineView({
   planningClientId?: string | null;
   venueId: string;
   eventStartTime: string | null;
+  /** Overall Day-of Schedule bounds (events.*) — metadata context only. */
+  dayOfEndTime?: string | null;
+  dayOfSetupTime?: string | null;
+  dayOfTeardownTime?: string | null;
   eventDate?: string | null;
   eventEndDate?: string | null;
   initialEntries: TimelineEntry[];
@@ -620,6 +628,29 @@ export function TimelineView({
   // sensible fallback (see getTimelineEntries), this is the display order.
   // Multi-day keys are `${dayOffset}::${sectionId}`; single-day keeps plain section ids.
   const multiDay = isMultiDayEvent(eventDate, eventEndDate);
+  const dayOfWindow = formatDayOfBookingWindow({
+    startTime: eventStartTime,
+    endTime: dayOfEndTime,
+    setupTime: dayOfSetupTime,
+    teardownTime: dayOfTeardownTime,
+    multiDay,
+  });
+  const dayOfWindowStrip = dayOfWindow ? (
+    <div
+      className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm"
+      data-testid="timeline-day-of-booking-window"
+      title={
+        multiDay
+          ? "Overall booking window — not stamped onto individual timeline activities"
+          : "Day-of schedule bounds — not stamped onto individual timeline activities"
+      }
+    >
+      <p className="text-xs text-muted-foreground">
+        {multiDay ? "Overall booking window" : "Day-of schedule"}
+      </p>
+      <p className="mt-0.5 leading-snug text-foreground">{dayOfWindow}</p>
+    </div>
+  ) : null;
   const dayOffsets = React.useMemo(() => {
     if (!multiDay) return [null] as (number | null)[];
     const max = maxDayOffset(eventDate, eventEndDate);
@@ -914,6 +945,7 @@ export function TimelineView({
     return (
       <div className="space-y-4">
         <TimelineSummaryBar itemCount={0} lastUpdated={lastUpdatedIso} clientShareStatus={clientShareStatus} />
+        {dayOfWindowStrip}
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Clock className="h-5 w-5" />
@@ -945,6 +977,7 @@ export function TimelineView({
   return (
     <div className="space-y-4">
       <TimelineSummaryBar itemCount={totalCount} lastUpdated={lastUpdatedIso} clientShareStatus={clientShareStatus} />
+      {dayOfWindowStrip}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2">

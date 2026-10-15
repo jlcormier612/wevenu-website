@@ -86,11 +86,11 @@ import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import {
   daysUntil,
   formatEventDateRange,
-  formatTime,
 } from "@/lib/events/constants";
 import {
   componentDisplayLabel,
   formatComponentTimeRange,
+  formatDayOfBookingWindow,
   groupBookingSummaryByDate,
   type BookingSummaryComponent,
 } from "@/lib/events/booking-summary";
@@ -194,9 +194,14 @@ function EventHeroCard({
     && event.bookedAt,
   );
 
-  const timeLabel = event.startTime
-    ? `${event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}${formatTime(event.startTime)}${event.endTime ? ` – ${formatTime(event.endTime)}` : ""}${event.teardownTime ? ` · Teardown ${formatTime(event.teardownTime)}` : ""}`
-    : "All day";
+  const dayOfWindow = formatDayOfBookingWindow({
+    startTime: event.startTime,
+    endTime: event.endTime,
+    setupTime: event.setupTime,
+    teardownTime: event.teardownTime,
+    multiDay,
+  });
+  const timeLabel = dayOfWindow ?? "All day";
 
   return (
     <Card
@@ -252,6 +257,23 @@ function EventHeroCard({
 
         {useComponentSchedule ? (
           <div className="mt-3 space-y-3" data-testid="event-booking-component-schedule">
+            {dayOfWindow ? (
+              <div className="min-w-0" data-testid="event-day-of-booking-window">
+                <p className="text-xs text-muted-foreground">
+                  {multiDay ? "Overall booking window" : "Day-of schedule"}
+                </p>
+                <p
+                  className="mt-0.5 text-sm leading-snug text-foreground"
+                  title={
+                    multiDay
+                      ? "Overall booking window — not the hour-by-hour schedule for each day"
+                      : undefined
+                  }
+                >
+                  {dayOfWindow}
+                </p>
+              </div>
+            ) : null}
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">Guests</p>
               <p className="mt-0.5 text-sm leading-snug text-foreground">
@@ -286,8 +308,10 @@ function EventHeroCard({
           </div>
         ) : (
           <dl className="mt-2.5 grid flex-1 grid-cols-1 content-start gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            <div className="min-w-0">
-              <dt className="text-xs text-muted-foreground">Time</dt>
+            <div className="min-w-0" data-testid="event-day-of-booking-window">
+              <dt className="text-xs text-muted-foreground">
+                {multiDay ? "Overall booking window" : "Time"}
+              </dt>
               <dd className="mt-0.5 leading-snug text-foreground">{timeLabel}</dd>
             </div>
             <div className="min-w-0">
@@ -944,6 +968,9 @@ export function EventDetail({
                 eventId={event.id}
                 venueId={event.venueId}
                 eventStartTime={event.startTime}
+                dayOfEndTime={event.endTime}
+                dayOfSetupTime={event.setupTime}
+                dayOfTeardownTime={event.teardownTime}
                 eventDate={event.eventDate}
                 eventEndDate={event.eventEndDate}
                 initialEntries={event.timeline ?? []}

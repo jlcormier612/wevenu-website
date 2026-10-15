@@ -76,3 +76,37 @@ export function groupBookingSummaryByDate(
 export function componentDisplayLabel(c: BookingSummaryComponent): string {
   return labelForUseKey(c.useKey, c.useLabel);
 }
+
+/**
+ * Overall Day-of Schedule bounds from events.* (setup / start / end / teardown).
+ * These are booking-window metadata — not per-activity times and not stamped onto
+ * timeline template rows. Empty when no times are saved.
+ */
+export function formatDayOfBookingWindow(input: {
+  startTime?: string | null;
+  endTime?: string | null;
+  setupTime?: string | null;
+  teardownTime?: string | null;
+  multiDay?: boolean;
+}): string | null {
+  const start = input.startTime?.trim() || "";
+  const end = input.endTime?.trim() || "";
+  const setup = input.setupTime?.trim() || "";
+  const teardown = input.teardownTime?.trim() || "";
+  if (!start && !end && !setup && !teardown) return null;
+
+  const parts: string[] = [];
+  if (setup) parts.push(`Setup ${formatTime(setup)}`);
+  if (start) {
+    const prefix = input.multiDay ? "Overall " : "";
+    parts.push(
+      end
+        ? `${prefix}${formatTime(start)} – ${formatTime(end)}`
+        : `${prefix}${formatTime(start)}`,
+    );
+  } else if (end) {
+    parts.push(`Until ${formatTime(end)}`);
+  }
+  if (teardown) parts.push(`Teardown ${formatTime(teardown)}`);
+  return parts.join(" · ");
+}
