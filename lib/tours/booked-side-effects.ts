@@ -1,10 +1,13 @@
 /**
  * Side effects that run only after a tour appointment actually exists.
+ *
+ * Coordinator email for a successful booking is owned solely by the
+ * preference-gated `tour_scheduled` venue_notifications queue (DB trigger →
+ * processVenueNotificationEmails). Do not send a parallel immediate email here.
  */
 import { sendEmail } from "@/lib/email/send";
 import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
 import type { BookingResult } from "@/lib/tours/types";
 
@@ -64,7 +67,6 @@ export function buildTourProtectionAlertEmail(opts: {
 export async function runTourBookedSideEffects(result: BookingResult): Promise<void> {
   if (!result.ok || !result.appointmentId) return;
   await Promise.all([
-    sendCoordinatorNotification(result).catch(() => {}),
     scheduleTourReminders(result).catch(() => {}),
     trackTourBooked(result).catch(() => {}),
   ]);
@@ -95,44 +97,6 @@ export async function notifyPaidUnbookedTour(opts: {
     text: email.text,
     html: email.html,
   });
-}
-
-async function sendCoordinatorNotification(result: BookingResult): Promise<void> {
-  const coordinatorEmail = result.venueEmail ?? process.env.COORDINATOR_NOTIFY_EMAIL;
-  if (!coordinatorEmail || !result.scheduledAt) return;
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const scheduledDate = new Date(result.scheduledAt).toLocaleString("en-US", {
-    weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
-  });
-
-  const detailParts = [
-    `A new tour has been scheduled at ${result.venueName ?? "your venue"}.`,
-    `Date: ${scheduledDate}`,
-    `Duration: ${result.duration ?? 60} minutes`,
-    result.contactName ? `Contact: ${result.contactName}` : null,
-    result.attachedExistingLead
-      ? "A tour was scheduled on an existing lead in Hello to Cheers."
-      : "A new lead has been created in Hello to Cheers.",
-  ].filter(Boolean);
-
-  const email = buildVenueNotificationEmail({
-    // Preserve the established date-based subject for this side-effect path.
-    title: `New tour booked — ${scheduledDate}`,
-    body: detailParts.join("\n"),
-    link: result.leadId ? `/leads/${result.leadId}` : "/tours",
-    appOrigin: appUrl,
-  });
-
-  const emailResult = await sendEmail({
-    to: coordinatorEmail,
-    subject: email.subject,
-    text: email.text,
-    html: email.html,
-  });
-  if (result.intakeAttemptId) {
-    await recordNotificationStatus(createAdminClient(), result.intakeAttemptId, emailResult.ok ? "sent" : "failed");
-  }
 }
 
 async function scheduleTourReminders(result: BookingResult): Promise<void> {

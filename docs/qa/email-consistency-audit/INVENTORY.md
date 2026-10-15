@@ -27,7 +27,7 @@ Venue-authored Inbox bodies stay author content inside the venue-branded wrapper
 | 2 | Website inquiry → **inquirer** | Lead email | Same route | Plain `text` only | **Bypass** | Text only | **Defect found** | Unbranded thank-you; raw-style plain body |
 | 3 | Custom public form → venue | Venue email | `POST /api/public/forms/submit` | Plain `text` | **Bypass** | Text only | **Defect found** | Same class as pre-fix inquire venue path |
 | 4 | Custom public form → inquirer | Lead email | Same | Plain `text` | **Bypass** | Text only | **Defect found** | Same as #2 |
-| 5 | Tour booked → coordinator | Venue/coordinator | `lib/tours/booked-side-effects.ts` | `buildVenueNotificationEmail` | HTC staff | Yes | Verified (source + prior QA) | |
+| 5 | Tour booked → coordinator | Venue/coordinator | Queue only: DB `tour_scheduled` → `processVenueNotificationEmails` | `buildVenueNotificationEmail` | HTC staff | Yes | Single-email contract (pref-gated) | Immediate side-effect removed |
 | 6 | Tour protection failure | Coordinator | Same file | Plain `text` + raw URLs | **Bypass** | Text only | Defect found | Ops alert; raw `/tours` URLs |
 | 7 | Tour scheduled / confirm / confirmed | Couple | `lib/tours/communication.ts` | Venue brand + CTA | Venue | Yes | Verified (closeout unit) | Signature-path audit |
 | 8 | Tour reminder (couple) | Couple | `lib/notifications/tour-reminder-email.ts` + engine | Venue brand | Venue | Yes | Verified (closeout unit) | |
@@ -68,7 +68,7 @@ Venue-authored Inbox bodies stay author content inside the venue-branded wrapper
 5. **Portal participant** thin HTML shell (#28) — **GREEN** (D5) — see `GROUP-C-STATUS.md`.
 6. **Saved report** schedule minimal HTML (#30) — Group B (D6); see `GROUP-B-STATUS.md`.
 7. **Daily digest** — source PASS (HTC logo); runtime not re-proven.
-8. **Tour dual-send risk** — side-effect + `tour_scheduled` queue may email twice — **BLOCKED — SPECIFIC DECISION** (`GROUP-C-STATUS.md`).
+8. **Tour dual-send** — **FIXED** to queue-only single coordinator email (`GROUP-C-STATUS.md`); Sandbox verify of fix pending if not yet served.
 9. Open/click **E2E** — **BLOCKED — EXTERNAL** / **DEFERRED — PRE-LAUNCH** (DNS).
 10. Automations (#12) / enrollment (#26) — **OPEN — VERIFICATION** (no dedicated runtime matrix).
 

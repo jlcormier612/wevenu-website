@@ -181,11 +181,12 @@ const reportOk = !page.url().includes("/login");
 record("CTA destination /reporting/sales loads", reportOk, `url=${page.url()}`);
 await page.screenshot({ path: `${OUT}/group-b-reporting-1280.png`, fullPage: false });
 
+// Match Group A lead lookup — do not require deleted_at IS NULL (column/filter
+// can exclude every Fancy row even when leads exist for CTA destination checks).
 const { data: lead } = await admin
   .from("leads")
   .select("id")
   .eq("venue_id", FANCY)
-  .is("deleted_at", null)
   .order("created_at", { ascending: false })
   .limit(1)
   .maybeSingle();

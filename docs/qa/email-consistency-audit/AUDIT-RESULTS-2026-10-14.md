@@ -153,9 +153,10 @@ Classification key: **PASS — VERIFIED** · **OPEN — DEFECT** · **OPEN — V
 | Smallest fix | Wrap with `buildVenueNotificationEmail` or HTC logo header helper |
 | Note | Addressed in Group B — see `GROUP-B-STATUS.md` |
 
-### Residual risk (not a template defect) — dual tour emails — **BLOCKED — SPECIFIC DECISION**
+### Residual risk (not a template defect) — dual tour emails — **FIXED (product decision)**
 
-Side-effect `#5` (`New tour booked — {date}`) + preference-gated `tour_scheduled` (`New tour scheduled — {name}`) may produce **two** coordinator emails for one booking. Contract documented in `lib/tours/tour-coordinator-dual-notify.test.ts` and `GROUP-C-STATUS.md`. No send-path change without an explicit product choice.
+**Decision:** one booking → one coordinator email via preference-gated `tour_scheduled` queue only.  
+Immediate `sendCoordinatorNotification` (`New tour booked — {date}`) removed from `runTourBookedSideEffects`. In-app + email remain on `_trigger_tour_scheduled_notification` → `create_venue_notification` → `processVenueNotificationEmails`. See `GROUP-C-STATUS.md`.
 
 ---
 

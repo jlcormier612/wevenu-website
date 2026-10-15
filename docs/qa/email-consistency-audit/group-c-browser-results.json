@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-15T00:07:50.148Z",
+  "expectedSha": "3fe94472f245480cdc3135e6120be009d1887ec2",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3fe94472f245480cdc3135e6120be009d1887ec2",
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3fe94472f245480cdc3135e6120be009d1887ec2 expected=3fe94472f245"
+    },
+    {
+      "name": "D5 venue shell + CTA",
+      "pass": true,
+      "detail": "Alex & Jordan invited you to their planning workspace"
+    },
+    {
+      "name": "Accept-participant destination reachable",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/client/accept-participant?token=verify_only_not_a_real_invite"
+    }
+  ],
+  "allPass": true,
+  "noSends": true
+}

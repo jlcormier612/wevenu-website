@@ -29,17 +29,14 @@ describe("HTC email CTA styling", () => {
     }
   });
 
-  it("tour booked coordinator side-effect sends branded HTML", () => {
-    const src = readFileSync(resolve("lib/tours/booked-side-effects.ts"), "utf8");
-    assert.match(src, /buildVenueNotificationEmail/);
-    assert.match(src, /html:\s*email\.html/);
-    assert.match(src, /New tour booked/);
-  });
-
   it("tour protection alert uses the shared CTA helper for both destinations", () => {
     const src = readFileSync(resolve("lib/tours/booked-side-effects.ts"), "utf8");
     assert.match(src, /buildTourProtectionAlertEmail/);
     assert.match(src, /htcEmailCtaAnchorHtml/);
     assert.match(src, /View this lead/);
+    assert.match(src, /buildVenueNotificationEmail/);
+    assert.match(src, /html:\s*email\.html/);
+    // Booking-success coordinator mail is queue-only (not this side-effect file).
+    assert.doesNotMatch(src, /New tour booked/);
   });
 });

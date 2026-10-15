@@ -83,8 +83,10 @@ describe("public tour attach seams", () => {
     );
     assert.doesNotMatch(onto, /lead_created/);
     const sides = read("lib/tours/booked-side-effects.ts");
-    assert.match(sides, /attachedExistingLead/);
-    assert.match(sides, /A new lead has been created in Hello to Cheers/);
+    // Coordinator booking email is queue-only; side effects keep reminders + signal only.
+    assert.match(sides, /scheduleTourReminders/);
+    assert.match(sides, /trackTourBooked/);
+    assert.doesNotMatch(sides, /sendCoordinatorNotification/);
   });
 
   it("calendar/settings/QR/setup public widgets stay venue-wide without originating context", () => {
