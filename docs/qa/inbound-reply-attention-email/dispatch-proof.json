@@ -1,0 +1,58 @@
+{
+  "marker": "QA-inbound-att-149b7f5f-1792033841025",
+  "messageId": "bdd0b33b-0e25-4aff-a06c-4527d2aa3c7c",
+  "insertedAt": "2026-10-15T03:10:41.025Z",
+  "elapsedMs": 1991,
+  "dispatch": {
+    "processed": 1,
+    "sent": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": []
+  },
+  "notification": {
+    "id": "e5c7720e-be8b-4b0f-89b9-4ce1a243d3a9",
+    "type": "message_received",
+    "title": "New message from Rory Gilmore",
+    "body": "[QA-inbound-att-149b7f5f-1792033841025] Controlled Sandbox inbound — need reply tonight.",
+    "needs_email": true,
+    "emailed_at": "2026-10-15T03:10:42.963+00:00",
+    "created_at": "2026-10-15T03:10:41.306679+00:00",
+    "link": "/leads/09d26751-f184-461f-9cdb-8891b676cd61#messages"
+  },
+  "logs": [
+    {
+      "id": "3d848f25-520f-4d65-8ad0-b876f933fdb9",
+      "recipient_email": "jlcormier612@gmail.com",
+      "recipient_role": "team",
+      "status": "sent",
+      "provider_message_id": null,
+      "sent_at": "2026-10-15T03:10:42.742+00:00",
+      "delivered_at": null
+    },
+    {
+      "id": "4f099f9f-20c9-4797-b1a3-dcd98e956547",
+      "recipient_email": "jyagnesak@yahoo.com",
+      "recipient_role": "coordinator",
+      "status": "sent",
+      "provider_message_id": null,
+      "sent_at": "2026-10-15T03:10:42.919+00:00",
+      "delivered_at": null
+    }
+  ],
+  "logCountAfterRedispatch": 2,
+  "logCountFirst": 2,
+  "convo": {
+    "venue_unread": 1,
+    "needs_response": true
+  },
+  "venueSeenAt": "2026-10-14T03:20:28.526+00:00",
+  "attention": {
+    "09d26751-f184-461f-9cdb-8891b676cd61": {
+      "conversationId": "dcba7cbc-77d7-4707-ac0d-e615016c186f",
+      "href": "/leads/09d26751-f184-461f-9cdb-8891b676cd61?conversation=dcba7cbc-77d7-4707-ac0d-e615016c186f#messages"
+    }
+  },
+  "communicationMode": null,
+  "sandboxEmail": null
+}

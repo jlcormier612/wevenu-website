@@ -747,21 +747,18 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **PRODUCTION / Resend / DNS:** untouched
 - **REMAINING WORK:** Deploy + `verify-runtime.mts` on exact SHA; browser Noticed check; then GREEN
 
-### Inbound reply attention / email notification (2026-10-14) — OPEN
+### Inbound reply attention / email notification (2026-10-14) — NOT GREEN / BLOCKED
 
-- **STATUS:** **OPEN** — Phase 4 forensic complete; **no application code change**; not GREEN
-- **AUDIT:** `docs/qa/inbound-reply-attention-email/` (`FORENSIC.md`, `STATUS.md`, `db-evidence.json`)
-- **EXACT REPRO:** Meadowbrook Rory Gilmore `09d26751-…` · conv `dcba7cbc-…` · inbound `07df6ca5-…` at `2026-10-15T02:01:29Z` (“Can I come in tonight instead…”) reply to tour confirmation · opened `02:01:41Z` (~12s)
-- **FINDINGS:**
-  - Inbox nav unread absent after open while **Needs response** remains → **matches locked unread≠needs_response** (prior unread audit **not** broadly reopened)
-  - In-app `message_received` notif `101cc67d-…` present (`read_at` null)
-  - Lead `venue_seen_at` already set — **no** inbound-message lead attention (decision needed)
-  - Email: pref ON → `needs_email` → cron ~28.6m → `notification_log` **sent** to `venues.email=jlcormier612@gmail.com` Resend `01a13d65-…` · `delivered_at=null` (delivery unconfirmed)
-  - Recipient path = **`venues.email` only** (not Fancy Jennifer; not Yahoo Meadowbrook coordinator)
-- **PRODUCT DECISIONS REQUIRED:** (1) lead inbound attention on already-seen leads; (2) immediate vs 30-min cron for `message_received`; (3) email recipients beyond `venues.email`
-- **RUNNING (diagnosis):** sole RUNNING `d4e85aaf` / `:754`
+- **STATUS:** **NOT GREEN / BLOCKED** — Decisions A/B/C implemented + Sandbox DB dispatch proof; **exact serving SHA browser proof pending deploy**
+- **AUDIT:** `docs/qa/inbound-reply-attention-email/` (`FORENSIC.md`, `STATUS.md`, `dispatch-proof.json`, `recipient-resolution-proof.json`)
+- **IMPLEMENTATION COMMIT:** `149b7f5fda1857b696de5fa1e91350bb5521cc0b`
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/38674625261 (queued/in progress at ledger update; do not overlap)
+- **ROOT CAUSES:** (A) email to `venues.email` only; (B) cron `*/30` latency ~28.6m; (C) no lead cue for `needs_response` when `venue_seen_at` set
+- **FIX:** owner auth + lead assignee recipients; prompt `dispatchPendingMessageReceivedEmails` on inbound email/SMS; `LeadMessageAttentionIndicator` from `needs_response`
+- **AUTOMATED:** 71/71 PASS (recipient + attention + related inbox/unseen/pref suites)
+- **SANDBOX DB PROOF (dispatcher on commit code):** msg `bdd0b33b-…` → notif `e5c7720e-…` → logs owner `jlcormier612@gmail.com` + assignee Ellie `jyagnesak@yahoo.com` in **~1991 ms**; redispatch idempotent; `delivered_at=null`; attention map with `venue_seen_at` already set
 - **PRODUCTION / Resend / DNS:** untouched
-- **REMAINING WORK:** Decisions + any scoped fix + Sandbox proof. Human acceptance walkthrough not started while OPEN.
+- **REMAINING WORK:** Confirm sole RUNNING image `149b7f5f…`; browser Message indicator + unread≠needs_response on that SHA via `scripts/qa/inbound-reply-attention-verify.mts`
 
 ### Luv privacy & factuality closure audit (2026-10-14)
 
@@ -832,7 +829,7 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **Communication Readiness interaction (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change.
 - **Payment recording UX Overview deposit (2026-10-14):** GREEN — fix `12d0e637` proven on sole RUNNING `d4e85aaf` / `:754` (lineage); open/cancel/confirm + DB.
 - **Luv privacy & factuality closure (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change; Stream 6 re-confirmed.
-- **Inbound reply attention / email (2026-10-14):** **OPEN** on Meadowbrook Rory exact repro — see section above; decisions required; not GREEN.
+- **Inbound reply attention / email (2026-10-14):** **NOT GREEN / BLOCKED** — fix `149b7f5f` + DB dispatch proof; exact serving browser proof pending deploy `38674625261`.
 - Date Hold multiple holds: GREEN/CLOSED (exact browser+DB on `cfeff8ca` lineage; ancestor of final runtime).
 - Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB HH:mm unchanged).
 - Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on `ed87d485`; re-confirmed on final `14d6f73b` (no Luv code drift).
