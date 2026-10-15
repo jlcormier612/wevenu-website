@@ -236,6 +236,17 @@ describe("offline recording semantics (A–N)", () => {
     assert.doesNotMatch(invoiceUi, /recordInvoiceInstallmentReceivedAction/);
   });
 
+  it("Overview deposit CTA uses the same offline dialog, not silent markLineItemPaid", () => {
+    const panel = readFileSync(resolve("components/booking-journey/booking-journey-panel.tsx"), "utf8");
+    const depositAction = readFileSync(resolve("app/(app)/booking-journey/payments-actions.ts"), "utf8");
+    assert.match(panel, /RecordOfflinePaymentDialog/);
+    assert.match(panel, /setRecordDepositOpen\(true\)/);
+    assert.doesNotMatch(panel, /recordDepositReceivedAction\(\s*\{/);
+    const refuse = depositAction.slice(depositAction.indexOf("recordDepositReceivedAction"));
+    assert.match(refuse, /Choose the installment, amount, method, and date/);
+    assert.doesNotMatch(refuse, /markLineItemPaid/);
+  });
+
   it("record methods follow venue preferences and do not invent card or Venmo", () => {
     const configured = offlineRecordMethodOptions(["check", "ach"]).map((m) => m.value);
     assert.deepEqual(configured, ["check", "bank_transfer"]);

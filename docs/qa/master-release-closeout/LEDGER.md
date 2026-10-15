@@ -714,11 +714,50 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **PRODUCTION:** untouched
 - **REMAINING WORK:** None for this blocker. Path A limitation: activation-equivalent handoff (not live Stripe) — same as 2026-10-06 closeout. Yahoo correct-accept of Juniper invite not re-consumed this pass.
 
+### Payment recording UX — Overview “Record deposit received” (2026-10-14)
+
+- **STATUS:** OPEN — fix implemented; awaiting Sandbox deploy + browser/DB on exact SHA
+- **ROOT CAUSE:** Overview `handleRecordDeposit` → `recordDepositReceivedAction` one-click `markLineItemPaid` (amount = deposit line; method hardcoded `External / check`) — bypassed shared entry form
+- **FIX:** Open `RecordOfflinePaymentDialog`; refuse silent `recordDepositReceivedAction`
+- **FILES:** `booking-journey-panel.tsx`, `payments-actions.ts`, `record-deposit-opens-form.test.ts`, `offline-recording.test.ts`
+- **TESTS:** 18/18 PASS focused (deposit form + offline recording)
+- **INVENTORY:** Invoice dialog + schedule inline form already deliberate; Overview was the inconsistent path
+- **PRODUCTION:** untouched
+- **REMAINING:** Deploy → verify Overview open/cancel/confirm + invoice/schedule entry points on serving SHA; DB balances; update to GREEN
+
+### Contract setup copy — Smart Fields (not “tokens”) (2026-10-14)
+
+- **STATUS:** IMPLEMENTED locally — **awaiting commit + Sandbox deploy** for runtime proof (copy-only; behavior untouched)
+- **FILE:** `app/(app)/contracts/new/page.tsx` — `CardDescription` under “Contract setup”
+- **FROM:** `Select a template and client, then edit with Smart Fields. Preview is display-only. Tokens resolve when you send.`
+- **TO:** `Select a template and client, then personalize your contract with Smart Fields. Preview your contract before sending. Smart Fields fill in automatically when you send.`
+- **SCOPE:** Copy only. No token resolution, preview, send, persistence, API, or DB rename.
+- **TEST:** `lib/contracts/contract-setup-copy.test.ts` — **1/1 PASS**
+- **DIFF:** single customer-facing string + focused regression test only
+- **SANDBOX RUNTIME:** Not yet on serving image `2bfe4cde…` / `:752` (no commit/deploy this pass). Local source verified; browser proof deferred until deploy is authorized.
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** Commit + Deploy Sandbox + confirm CardDescription on exact new serving SHA when authorized.
+
+### Inbox unread indicators / read-state audit (2026-10-14)
+
+- **STATUS:** GREEN / CLOSED — audit-only; **no product code change**
+- **AUDIT:** `docs/qa/inbox-unread-read-state-audit/` (`FORENSIC.md`, `STATUS.md`, `browser-results.json`, `db-orphan-exclusion.json`)
+- **SOURCE OF TRUTH:** `conversations.venue_unread` + `conversation_messages.venue_read_at`; nav/header via `get_conversation_unread_count` / `total_unread` filtered by `inbox_conversation_in_working_population`. `needs_response` independent. Open thread → `get_conversation` zeroes unread only. Not `venue_seen_at`; not delivery-failure Attention.
+- **RUNNING IMAGE/TAG:** sole RUNNING `2bfe4cde2224d24169f906f5a2bc777488722795` / `htc-sandbox-venue-app:752` (same serving as LB2 re-proof; unread logic is ancestor of this image)
+- **AUTOMATED:** 56/56 PASS (`inbox-needs-response`, `inbox-population`, `attention`)
+- **DB:** Fancy 14 raw `venue_unread>0` and 13 `needs_response` all `in_working=false`; working unread sum / API = 0 (orphan exclusion intentional)
+- **BROWSER (exact SHA):** header `No unread messages · None need response`; API `{count:0}` matches; Attention filters All / Unread / Needs response distinct; no numeric nav badge at 0; no “need attention” aria; 1280 + 390; open → return → reload coherent
+- **PRESERVED CLOSED:** Inbox scroll/viewport; Attention message navigation; Luv → Inbox Attention UX — not reopened
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** None for this audit. Communication Readiness human walkthrough is a separate later item — not started here.
+- **PRODUCT DECISION:** none missing (unread vs needs-response already locked)
+
 ## OVERALL HTC RELEASE
 
 - **STATUS:** GREEN / CLOSED
 - **FINAL RUNTIME:** sole RUNNING `14d6f73b26bf7a77ac35a41681e519b17bd2956f` / `htc-sandbox-venue-app:546` / task `e348d4a678654e2281894642dd81ca02` / digest `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21` / 1/1/0 / health 200
 - **Launch Blocker #2 re-proof (2026-10-14):** GREEN on later sole RUNNING `2bfe4cde` / `:752` — see section above; does not reopen other streams.
+- **Inbox unread / read-state audit (2026-10-14):** GREEN on sole RUNNING `2bfe4cde` / `:752` — no defect; no code change; closed workstreams above preserved.
 - Date Hold multiple holds: GREEN/CLOSED (exact browser+DB on `cfeff8ca` lineage; ancestor of final runtime).
 - Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB HH:mm unchanged).
 - Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on `ed87d485`; re-confirmed on final `14d6f73b` (no Luv code drift).

@@ -20,6 +20,7 @@ import { CreateProposalSheet } from "@/components/booking-journey/create-proposa
 import { SelectPackageSheet } from "@/components/booking-journey/select-package-sheet";
 import { SelectionFinancialTermsSheet } from "@/components/booking-journey/selection-financial-terms-sheet";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
+import { RecordOfflinePaymentDialog } from "@/components/invoices/record-offline-payment-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -76,11 +77,13 @@ export function BookingJourneyPanel({
   const [offerOpen, setOfferOpen] = React.useState(false);
   const [offerReviewOpen, setOfferReviewOpen] = React.useState(false);
   const [paymentsOpen, setPaymentsOpen] = React.useState(false);
+  const [recordDepositOpen, setRecordDepositOpen] = React.useState(false);
   const [offerMessage, setOfferMessage] = React.useState("");
   const [acceptUrl, setAcceptUrl] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
   const selection = journey.selection;
   const businessToday = today ?? venueToday(venueTimezone);
+  const depositInvoiceId = selection?.invoiceId ?? null;
 
   React.useEffect(() => {
     if (!openSetupPayments || !selection) return;
@@ -139,22 +142,12 @@ export function BookingJourneyPanel({
       toast.error("Create the client before recording a deposit.");
       return;
     }
-    startTransition(async () => {
-      try {
-        const { recordDepositReceivedAction } = await import(
-          "@/app/(app)/booking-journey/payments-actions"
-        );
-        const result = await recordDepositReceivedAction({ clientId, leadId });
-        if (!result.ok) {
-          toast.error(result.message);
-          return;
-        }
-        toast.success("Deposit recorded.");
-        router.refresh();
-      } catch {
-        toast.error("Could not record deposit. Reload and try again.");
-      }
-    });
+    if (!depositInvoiceId) {
+      toast.error("Set up payments before recording a deposit.");
+      return;
+    }
+    // Open the shared offline payment-entry dialog — never one-click record.
+    setRecordDepositOpen(true);
   }
 
   function handleMarkAccepted() {
@@ -264,6 +257,16 @@ export function BookingJourneyPanel({
         onRecordDeposit={handleRecordDeposit}
         invoiceReturnTo={workspaceReturnTo}
       />
+
+      {depositInvoiceId ? (
+        <RecordOfflinePaymentDialog
+          invoiceId={depositInvoiceId}
+          open={recordDepositOpen}
+          onOpenChange={setRecordDepositOpen}
+          onRecorded={() => router.refresh()}
+          acceptedMethods={journey.prefs.acceptedPaymentMethods}
+        />
+      ) : null}
 
       <CreateProposalSheet
         open={proposalOpen}
