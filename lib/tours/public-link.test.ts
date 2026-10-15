@@ -19,9 +19,9 @@ describe("public tour scheduling link", () => {
     const book = readFileSync(resolve("app/book/[key]/page.tsx"), "utf8");
     assert.match(calendar, /publicTourSchedulingPath\(tourSettings\.tourEmbedKey\)/);
     assert.match(calendar, /tourSettings\?\.tourSchedulingEnabled/);
-    assert.match(card, /Tour availability/);
+    assert.match(card, /Inquiry\/Tour Availability/);
     assert.match(card, /Let new prospects choose an available time to schedule a tour\./);
-    assert.match(card, /Copy tour link/);
+    assert.match(card, /Copy Inquiry\/Tour Link/);
     assert.match(card, /Preview tour scheduling/);
     assert.match(card, /general tour link/);
     assert.match(card, /Copy scheduling link/);

@@ -511,7 +511,7 @@ export function TourScheduleRoot({
       const url = `${window.location.origin}${path}`;
       await navigator.clipboard.writeText(url);
       toast.success(
-        "Personal scheduling link copied. Send this when they already inquired — it keeps their preferred date and hold. The Calendar “Copy tour link” is for general promotion only.",
+        "Personal scheduling link copied. Send this when they already inquired — it keeps their preferred date and hold. The Calendar “Copy Inquiry/Tour Link” is for general promotion only.",
       );
     } finally {
       setCopyingLink(false);
@@ -571,7 +571,7 @@ export function TourScheduleActions({
       {includeCopyLink ? (
         <p className="text-[11px] text-muted-foreground max-w-md" data-testid="lead-scheduling-link-guidance">
           Use this personalized scheduling link for this lead. The Calendar page&apos;s{" "}
-          <span className="font-medium text-foreground">Copy tour link</span> is a general link for new
+          <span className="font-medium text-foreground">Copy Inquiry/Tour Link</span> is a general link for new
           prospects only.
         </p>
       ) : null}

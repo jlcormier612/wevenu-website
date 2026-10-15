@@ -91,7 +91,7 @@ describe("existing-lead tour preferred event date", () => {
     assert.match(panel, /lead-scheduling-link-guidance/);
     assert.match(
       panel,
-      /Use this personalized scheduling link for this lead\. The Calendar page&apos;s\{\" \"\}\s*<span className="font-medium text-foreground">Copy tour link<\/span> is a general link for new\s+prospects only\./,
+      /Use this personalized scheduling link for this lead\. The Calendar page&apos;s\{\" \"\}\s*<span className="font-medium text-foreground">Copy Inquiry\/Tour Link<\/span> is a general link for new\s+prospects only\./,
     );
   });
 

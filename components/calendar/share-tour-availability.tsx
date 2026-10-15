@@ -21,7 +21,7 @@ export function ShareTourAvailability({ url }: { url: string | null }) {
   return (
     <div className="h-full rounded-lg border border-border bg-card px-4 py-3" data-testid="calendar-share-tour-link">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Tour availability
+        Inquiry/Tour Availability
       </p>
       {url ? (
         <>
@@ -30,7 +30,7 @@ export function ShareTourAvailability({ url }: { url: string | null }) {
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button type="button" size="lg" onClick={copy} data-testid="calendar-copy-tour-link">
-              Copy tour link
+              Copy Inquiry/Tour Link
             </Button>
             <Button
               type="button"
