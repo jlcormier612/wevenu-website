@@ -93,6 +93,7 @@ import { TourAppointmentList, TourScheduleActions, TourScheduleRoot } from "@/co
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
 import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
 import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
+import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -101,6 +102,7 @@ import {
   leadDisplayName,
   sourceLabel,
 } from "@/lib/leads/constants";
+import type { LeadMessageAttention } from "@/lib/leads/message-attention";
 import { type SalesStage } from "@/lib/leads/sales-stages";
 import type { DuplicateReview } from "@/lib/leads/duplicate-review";
 import type { LeadWithDetails } from "@/lib/leads/types";
@@ -195,7 +197,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, messageAttention = null, now, bookingJourney, packages = [], smsPermission = null, textingConfigured = false, duplicateReview = null, venueStages = null, staffOptions = [], currentStaffId = null, photoUrl = null, venueTimezone = null, contextualObservations = [], spaceOperatingMode = "single", holdBlocksAvailability = true, spacePreferences = [], spaceAssignments = [], relationshipArchived = false, openSetupPayments = false, followUpDraftCapable = true, followUpDraftEligible = true, followUpDraftIneligibleReason = null, followUpProactiveRecommended = true, conversationInternalNotes = [], internalNoteItems }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; messageAttention?: LeadMessageAttention | null; now: string; bookingJourney: BookingJourneyModel; packages?: PackageWithItems[]; smsPermission?: SmsPermissionEvidenceView | null; textingConfigured?: boolean; duplicateReview?: DuplicateReview | null; venueStages?: PipelineStage[] | null; staffOptions?: { id: string; name: string }[]; currentStaffId?: string | null; photoUrl?: string | null; venueTimezone?: string | null; contextualObservations?: import("@/lib/luv/types").LuvObservation[]; spaceOperatingMode?: import("@/lib/venue-spaces/uses").SpaceOperatingMode; holdBlocksAvailability?: boolean; spacePreferences?: import("@/lib/leads/space-preferences").LeadEventSpacePreference[]; spaceAssignments?: import("@/components/leads/space-preference-fields").LeadSpaceAssignmentDisplay[]; relationshipArchived?: boolean; openSetupPayments?: boolean; followUpDraftCapable?: boolean; followUpDraftEligible?: boolean; followUpDraftIneligibleReason?: string | null; followUpProactiveRecommended?: boolean; conversationInternalNotes?: Array<{ id: string; body: string; sentAt: string }>; internalNoteItems?: InternalNoteRollupItem[] }) {
   const draftCapable = followUpDraftCapable && followUpDraftEligible;
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
@@ -595,9 +597,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           <div className="flex min-w-0 items-start gap-3">
             <RelationshipPhotoAvatar photoUrl={photoUrl} name={displayName} />
             <div className="min-w-0 space-y-1">
-              <h1 className="font-heading text-2xl font-medium leading-tight text-heading sm:text-3xl">
-                {displayName}
-              </h1>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1 className="font-heading text-2xl font-medium leading-tight text-heading sm:text-3xl">
+                  {displayName}
+                </h1>
+                <LeadMessageAttentionIndicator attention={messageAttention} />
+              </div>
               <div
                 data-testid="lead-summary-facts"
                 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"

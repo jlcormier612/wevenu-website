@@ -277,5 +277,12 @@ export async function POST(request: NextRequest) {
   void exitActiveEnrollmentsForRelationship(supabase, match.venue_id, match.relationship_id, "exited_reply")
     .catch((e) => console.error("Series exit-on-reply failed:", e));
 
+  // Decision B — prompt New Message email (shared dispatcher; cron is catch-up).
+  void import("@/lib/notifications/obligation-engine")
+    .then(({ dispatchPendingMessageReceivedEmails }) =>
+      dispatchPendingMessageReceivedEmails(match.venue_id),
+    )
+    .catch((e) => console.error("Prompt message_received email dispatch failed:", e));
+
   return NextResponse.json({ ok: true });
 }

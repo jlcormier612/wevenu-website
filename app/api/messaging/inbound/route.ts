@@ -254,5 +254,13 @@ export async function POST(request: NextRequest) {
       .catch((e) => console.error("Series exit-on-reply failed:", e));
   }
 
+  // Decision B — prompt New Message email (same processVenueNotificationEmails path;
+  // cron remains catch-up). Fire-and-forget so webhook latency stays low.
+  void import("@/lib/notifications/obligation-engine")
+    .then(({ dispatchPendingMessageReceivedEmails }) =>
+      dispatchPendingMessageReceivedEmails(match.venueId),
+    )
+    .catch((e) => console.error("Prompt message_received email dispatch failed:", e));
+
   return NextResponse.json({ ok: true });
 }

@@ -17,6 +17,7 @@ import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
+import { resolveMessageReceivedRecipients } from "@/lib/notifications/message-received-recipients";
 import type { ProcessResult } from "@/lib/notifications/types";
 import { cadenceIntervalDays, type CadenceLabel } from "@/lib/notifications/obligations";
 import { getVenueTimezone } from "@/lib/venue/timezone";
@@ -360,23 +361,119 @@ export async function processObligationTransitions(): Promise<ProcessResult> {
 
 // ── Venue-facing: dispatch real emails for preference-enabled notifications ──
 
-export async function processVenueNotificationEmails(): Promise<ProcessResult> {
+type VenueNotificationEmailRow = {
+  id: string;
+  venue_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+};
+
+async function alreadyLoggedRecipient(
+  supabase: ReturnType<typeof getServiceClient>,
+  notificationId: string,
+  recipientEmail: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("notification_log")
+    .select("id")
+    .eq("source_type", "system")
+    .eq("source_id", notificationId)
+    .eq("recipient_email", recipientEmail)
+    .eq("channel", "email")
+    .eq("status", "sent")
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data?.id);
+}
+
+async function dispatchMessageReceivedEmail(
+  supabase: ReturnType<typeof getServiceClient>,
+  row: VenueNotificationEmailRow,
+  result: ProcessResult,
+): Promise<void> {
+  const recipients = await resolveMessageReceivedRecipients(supabase as never, row);
+  if (recipients.length === 0) {
+    // No inventable owner/assignee email — mark done (same safe skip as missing venues.email).
+    await supabase.from("venue_notifications").update({ emailed_at: new Date().toISOString() }).eq("id", row.id);
+    result.skipped++;
+    return;
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const email = buildVenueNotificationEmail({
+    title: row.title,
+    body: row.body,
+    link: row.link,
+    appOrigin: baseUrl,
+  });
+  const text = email.text;
+
+  for (const recipient of recipients) {
+    if (await alreadyLoggedRecipient(supabase, row.id, recipient.email)) {
+      continue;
+    }
+    const sendResult = await sendEmail({
+      to: recipient.email,
+      subject: email.subject,
+      text,
+      html: email.html,
+    });
+    if (!sendResult.ok) throw new Error(sendResult.message);
+
+    await supabase.from("notification_log").insert({
+      venue_id: row.venue_id,
+      source_type: "system",
+      source_id: row.id,
+      // notification_log.recipient_role check: coordinator | couple | vendor | team
+      recipient_role: recipient.role === "owner" ? "team" : "coordinator",
+      recipient_email: recipient.email,
+      channel: "email",
+      status: "sent",
+      subject: row.title,
+      body_preview: text.slice(0, 500),
+      provider_message_id: sendResult.method === "resend" ? sendResult.providerId ?? null : null,
+      sent_at: new Date().toISOString(),
+    });
+  }
+
+  await supabase.from("venue_notifications").update({ emailed_at: new Date().toISOString() }).eq("id", row.id);
+  result.sent++;
+}
+
+export async function processVenueNotificationEmails(options?: {
+  /** When set, only process this venue (prompt inbound dispatch). */
+  venueId?: string;
+  /** When set, only these notification types (e.g. message_received). */
+  types?: string[];
+}): Promise<ProcessResult> {
   const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
   const supabase = getServiceClient();
 
-  const { data: rows, error } = await supabase
+  let query = supabase
     .from("venue_notifications")
     .select("id, venue_id, type, title, body, link")
     .eq("needs_email", true)
     .is("emailed_at", null)
     .limit(BATCH_SIZE);
 
+  if (options?.venueId) query = query.eq("venue_id", options.venueId);
+  if (options?.types?.length) query = query.in("type", options.types);
+
+  const { data: rows, error } = await query;
+
   if (error) { result.errors.push(`Venue notification fetch error: ${error.message}`); return result; }
   if (!rows?.length) return result;
 
-  for (const row of rows as { id: string; venue_id: string; type: string; title: string; body: string | null; link: string | null }[]) {
+  for (const row of rows as VenueNotificationEmailRow[]) {
     result.processed++;
     try {
+      if (row.type === "message_received") {
+        await dispatchMessageReceivedEmail(supabase, row, result);
+        continue;
+      }
+
       const { data: venue } = await supabase.from("venues").select("email, name").eq("id", row.venue_id).maybeSingle();
       if (!venue?.email) {
         // Nothing to email — mark done so this row doesn't get retried forever.
@@ -421,4 +518,13 @@ export async function processVenueNotificationEmails(): Promise<ProcessResult> {
   }
 
   return result;
+}
+
+/**
+ * Decision B — prompt processing for inbound New Message emails.
+ * Same dispatcher as the cron path; scoped to one venue's pending
+ * message_received rows so the 30-minute cron is catch-up only.
+ */
+export async function dispatchPendingMessageReceivedEmails(venueId: string): Promise<ProcessResult> {
+  return processVenueNotificationEmails({ venueId, types: ["message_received"] });
 }

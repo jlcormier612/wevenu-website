@@ -44,6 +44,8 @@ import { normalizeEventType } from "@/lib/event-types/canonical";
 import { isStaleWithoutContact } from "@/lib/leads/stale-contact";
 import { salesStageLabel } from "@/lib/leads/sales-stages";
 import { LeadUnseenIndicator } from "@/components/leads/lead-unseen-indicator";
+import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-attention-indicator";
+import type { LeadMessageAttention } from "@/lib/leads/message-attention";
 import { isUnseenLeadAttention } from "@/lib/navigation/attention";
 import {
   IDLE_CHIP,
@@ -93,6 +95,7 @@ export function LeadList({
   initialOutcome = "active",
   unattendedInquiryLeadIds = [],
   currentBookedCount = 0,
+  messageAttentionByLeadId = {},
 }: {
   leads: Lead[];
   /** Dashboard/Luv deep-link: same 7-day stale-contact condition as generate_venue_recommendations. */
@@ -103,6 +106,8 @@ export function LeadList({
   unattendedInquiryLeadIds?: readonly string[];
   /** Current Booked membership — same population as Clients → All Bookings. */
   currentBookedCount?: number;
+  /** Decision C — needs_response message attention, distinct from venue_seen_at. */
+  messageAttentionByLeadId?: Record<string, LeadMessageAttention>;
 }) {
   const router = useRouter();
   const unattendedIdSet = React.useMemo(
@@ -479,6 +484,9 @@ export function LeadList({
                       <LeadUnseenIndicator
                         venueSeenAt={lead.venueSeenAt}
                         salesStage={lead.salesStage ?? lead.status}
+                      />
+                      <LeadMessageAttentionIndicator
+                        attention={messageAttentionByLeadId[lead.id] ?? null}
                       />
                       <Link href={`/leads/${lead.id}`} className="hover:text-primary truncate">
                         {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}

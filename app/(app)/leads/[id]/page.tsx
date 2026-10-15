@@ -22,7 +22,9 @@ import { getPackagesWithItems } from "@/lib/packages/service";
 import { getCurrentStaffMember, getTeamMembers } from "@/lib/team/service";
 import { getTourAppointmentsForLead } from "@/lib/tours/service";
 import { getConversationIdForRelationship } from "@/lib/conversations/service";
+import { leadMessageAttentionHref, type LeadMessageAttention } from "@/lib/leads/message-attention";
 import { loadConversationInternalNotes } from "@/lib/notes/load-conversation-internal-notes";
+import { createClient } from "@/integrations/supabase/server";
 import { getSmsPermissionEvidenceForContact } from "@/lib/communication/contact-permission-view";
 import { getDuplicateReviewForLead } from "@/lib/leads/duplicate-review";
 import { markLeadVenueSeen } from "@/lib/navigation/attention-service";
@@ -170,7 +172,25 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
   if (!page) notFound();
 
   // Acknowledge unseen lead for the Leads nav attention badge (idempotent).
+  // Does not clear conversations.needs_response (Decision C / Inbox contract).
   void markLeadVenueSeen(page.lead.id);
+
+  // Decision C — message attention from needs_response (read-only; do not open via get_conversation).
+  let messageAttention: LeadMessageAttention | null = null;
+  if (page.conversationId) {
+    const supabase = await createClient();
+    const { data: convo } = await supabase
+      .from("conversations")
+      .select("id, needs_response")
+      .eq("id", page.conversationId)
+      .maybeSingle<{ id: string; needs_response: boolean }>();
+    if (convo?.needs_response) {
+      messageAttention = {
+        conversationId: convo.id,
+        href: leadMessageAttentionHref(page.lead.id, convo.id),
+      };
+    }
+  }
 
   const photo =
     page.lead.relationshipId != null
@@ -203,6 +223,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       autoLuvDraft={autoLuvDraft}
       tourAppointments={page.tourAppointments}
       conversationId={page.conversationId}
+      messageAttention={messageAttention}
       conversationInternalNotes={page.conversationInternalNotes}
       bookingJourney={page.bookingJourney}
       packages={page.packages}

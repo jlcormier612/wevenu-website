@@ -11,8 +11,11 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { loadBookedMembershipSets } from "@/lib/booking-journey/booked-membership";
 import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
+import { loadLeadMessageAttentionMap } from "@/lib/leads/message-attention";
 import { getUnattendedInquiryLeadIdsForCurrentVenue } from "@/lib/luv/unattended-inquiry-population";
 import { UNATTENDED_INQUIRY_ATTENTION } from "@/lib/luv/unattended-inquiry";
+import { createClient } from "@/integrations/supabase/server";
+import { isSupabaseConfigured } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Leads" };
 
@@ -37,6 +40,17 @@ export default async function LeadsPage({ searchParams }: Props) {
   const unattendedInquiryLeadIds = initialAttention === "unattended_inquiry"
     ? await getUnattendedInquiryLeadIdsForCurrentVenue()
     : [];
+  const messageAttentionByLeadId: Record<string, { conversationId: string; href: string }> = {};
+  if (isSupabaseConfigured && leads.length > 0) {
+    const supabase = await createClient();
+    const map = await loadLeadMessageAttentionMap(
+      supabase,
+      leads.map((l) => ({ id: l.id, relationshipId: l.relationshipId })),
+    );
+    for (const [id, attention] of map) {
+      messageAttentionByLeadId[id] = attention;
+    }
+  }
   return (
     <div className="space-y-6">
       <PageHeader
@@ -60,6 +74,7 @@ export default async function LeadsPage({ searchParams }: Props) {
         initialOutcome={initialOutcome}
         unattendedInquiryLeadIds={unattendedInquiryLeadIds}
         currentBookedCount={bookedMembership.currentClientIds.size}
+        messageAttentionByLeadId={messageAttentionByLeadId}
       />
     </div>
   );
