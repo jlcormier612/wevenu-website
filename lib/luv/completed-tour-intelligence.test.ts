@@ -12,6 +12,7 @@ import {
   looksLikeCustomerQuestion,
   looksLikeExplicitRequest,
   looksLikeThanksOnly,
+  looksLikeTourAttendanceRequest,
   type CompletedTourEvalInput,
   type ThreadMessage,
 } from "@/lib/luv/completed-tour-intelligence";
@@ -308,5 +309,129 @@ describe("source lock — canned tour follow-up retired", () => {
     assert.equal(looksLikeExplicitRequest("Please send a package quote"), true);
     assert.equal(looksLikeThanksOnly("Thanks"), true);
     assert.equal(looksLikeThanksOnly("Can you send a quote?"), false);
+  });
+});
+
+describe("completed tour — early-arrival / attendance request reconciliation", () => {
+  const RORY_ASK =
+    "Can I come in tonight instead - we are right down the road?\n\nOn Wed, Oct 14, 2026 at 10:00 PM Hello to Cheers...";
+
+  it("1. early-arrival ask is actionable only while still an open post-occurrence question without tour completion context — attendance helper matches", () => {
+    assert.equal(looksLikeTourAttendanceRequest(RORY_ASK), true);
+    assert.equal(looksLikeTourAttendanceRequest("Can you do Saturday setup for the ceremony?"), false);
+    assert.equal(looksLikeTourAttendanceRequest("Can we come back for another look next week?"), false);
+    assert.equal(looksLikeTourAttendanceRequest("We're on our way — traffic is light."), true);
+    assert.equal(looksLikeTourAttendanceRequest("Running late by 10 minutes"), true);
+  });
+
+  it("2. Rory timeline: ask after actual_occurred_at but tour completed → silence (not unanswered)", () => {
+    // actual_occurred_at earlier than the ask (visit clock), completed later —
+    // prior bug treated the ask as unanswered after the tour.
+    const decision = evaluateCompletedTour(base({
+      tourId: "4b57743b-d27f-4c5e-9d60-1c34c8870ab3",
+      leadId: "09d26751-f184-461f-9cdb-8891b676cd61",
+      occurredAt: "2026-10-14T22:00:00.000Z",
+      messages: [
+        msg({
+          sentAt: "2026-10-15T02:01:29.538Z",
+          senderType: "lead_or_client",
+          body: RORY_ASK,
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "silence");
+    assert.equal(completedTourDraftAllowed(decision), false);
+    assert.doesNotMatch(
+      JSON.stringify(decision),
+      /don't see an answer recorded|still unanswered/i,
+    );
+  });
+
+  it("3. early-arrival ask before occurrence with no later inbound → silence (not in post-tour window)", () => {
+    const decision = evaluateCompletedTour(base({
+      occurredAt: "2026-10-15T03:00:00.000Z",
+      messages: [
+        msg({
+          sentAt: "2026-10-15T02:01:29.538Z",
+          senderType: "lead_or_client",
+          body: RORY_ASK,
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "silence");
+  });
+
+  it("4. genuine post-tour question remains actionable after completion", () => {
+    const decision = evaluateCompletedTour(base({
+      occurredAt: "2026-10-14T22:00:00.000Z",
+      messages: [
+        msg({
+          sentAt: "2026-10-15T02:01:29.538Z",
+          senderType: "lead_or_client",
+          body: RORY_ASK,
+        }),
+        msg({
+          sentAt: "2026-10-15T04:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "Can you do Saturday setup for the ceremony?",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "actionable");
+    if (decision.mode !== "actionable") return;
+    assert.equal(decision.purpose, "unresolved_question");
+    assert.match(decision.observation.message, /Saturday setup/);
+    assert.doesNotMatch(decision.observation.message, /come in tonight/i);
+  });
+
+  it("5. unrelated completed tour does not silence a different lead's post-tour question", () => {
+    const otherLead = evaluateCompletedTour(base({
+      tourId: "other-tour",
+      leadId: "other-lead",
+      occurredAt: "2026-10-14T22:00:00.000Z",
+      messages: [
+        msg({
+          sentAt: "2026-10-15T04:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "What time can vendors arrive on Saturday?",
+        }),
+      ],
+    }));
+    assert.equal(otherLead.mode, "actionable");
+    if (otherLead.mode !== "actionable") return;
+    assert.match(otherLead.observation.message, /vendors arrive|Saturday/i);
+  });
+
+  it("6. attendance silence does not invent venue outbound or mutate message bodies", () => {
+    const body = RORY_ASK;
+    const decision = evaluateCompletedTour(base({
+      occurredAt: "2026-10-14T22:00:00.000Z",
+      messages: [
+        msg({ sentAt: "2026-10-15T02:01:29.538Z", senderType: "lead_or_client", body }),
+      ],
+    }));
+    assert.equal(decision.mode, "silence");
+    assert.equal(body.includes("Can I come in tonight"), true);
+  });
+
+  it("7. privacy: internal notes still never drive attendance or unanswered classification", () => {
+    const decision = evaluateCompletedTour(base({
+      occurredAt: "2026-10-14T22:00:00.000Z",
+      messages: [
+        msg({
+          sentAt: "2026-10-15T02:01:29.538Z",
+          senderType: "venue_staff",
+          channel: "internal_note",
+          body: "INTERNAL: they asked to come early — told them yes in person.",
+        }),
+        msg({
+          sentAt: "2026-10-15T02:05:00.000Z",
+          senderType: "lead_or_client",
+          body: RORY_ASK,
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "silence");
+    assert.doesNotMatch(JSON.stringify(decision), /INTERNAL/);
   });
 });

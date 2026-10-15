@@ -231,13 +231,13 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 
 ### STREAM 6 — Luv launch-boundary
 
-- **STATUS:** GREEN/CLOSED on exact sole RUNNING `eeee6049` / TD `:527` / task `1659e4a4…`
+- **STATUS:** GREEN/CLOSED on exact sole RUNNING `eeee6049` / TD `:527` / task `1659e4a4…` — **re-confirmed 2026-10-14** on sole RUNNING `d4e85aaf` / `:754` (privacy/factuality/discard closure audit; no Luv code change)
 - **IMPLEMENTATION COMMIT(S):** existing Luv ancestry (`lib/luv/drafts.ts` Discard=DELETE; `isAuthoritativeProposalSent`; Gate1/Gate2 boundary)
-- **RUNNING IMAGE/TAG:** `eeee60494716581fa0be2b3b4059ac845ce1ddf7`
+- **RUNNING IMAGE/TAG:** `eeee60494716581fa0be2b3b4059ac845ce1ddf7` (original); re-proof image `d4e85aaf8987b50b1f030c6855b264d6d3a52216`
 - **DIGEST:** `sha256:b1cd685c46901aac21713c3890eeb0bdb9c905482df12986737c6b66119ac3a3`
-- **TASK DEFINITION:** `htc-sandbox-venue-app:527`
-- **TASK ID:** `1659e4a4c5ce40feb0ac81a97a882372`
-- **AUTOMATED TEST EVIDENCE:** `draft-discard-delete` + `draft-context-boundary` + `draft-status` 39/39 PASS; `draft-proposal-factuality` + `follow-up-workflow-context` 24/24 PASS
+- **TASK DEFINITION:** `htc-sandbox-venue-app:527` (original); re-proof `:754`
+- **TASK ID:** `1659e4a4c5ce40feb0ac81a97a882372` (original); re-proof `0746de003b754c7d90b4ec6f9bb00ae0`
+- **AUTOMATED TEST EVIDENCE:** `draft-discard-delete` + `draft-context-boundary` + `draft-status` 39/39 PASS; `draft-proposal-factuality` + `follow-up-workflow-context` 24/24 PASS; **2026-10-14 re-proof 105/105 PASS** (see `docs/qa/luv-privacy-factuality-closure/`)
 - **BROWSER EVIDENCE (exact `eeee6049`):**
   - **Internal notes labeling:** FUCloseout `4bcbfa58-…` Internal notes tab shows “Private to your venue team — never visible to the client.”
   - **Internal note exclusion:** seeded note `ea805008-…` with `STREAM6_INTERNAL_SECRET_TOKEN_NEVER_IN_LUV_9f3a`; drafted follow-up `563b546b-…` subject/body contain **no** secret / budget concern
@@ -245,7 +245,8 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
   - **Customer-originated labeling:** Grace Van Pelt Notes show “This text is not verified as customer-authored.”
   - **Proposal Sent factuality:** Grace `sales_stage=proposal_sent` but `commercial_proposals` authoritative=false → draft “Checking in…” claims **no** proposal sent; disposable FUCloseout `37e052d1-…` with `status=sent`+`offered_at` shows UI “Proposal sent…” / “Proposal Sent”; Luv draft may mention “the proposal” (verified fact available)
   - **Discard=DELETE:** draft `7104245d-…` Discard via UI → pending panel cleared; DB row **deleted** (not archived); no Draft History entry
-- **DB/PERSISTENCE EVIDENCE:** discard DELETE proven; auth proposal `6f7050c4-…` on disposable; Grace props empty (stage-only); Grace pending draft cleaned after proof
+- **BROWSER EVIDENCE (re-proof exact `d4e85aaf` / `:754`):** Wendy venue-origin + `INTERNAL_ROLLUP_PROOF_001` excluded from prompt; Discard `9a976181-…` DELETE + UI clear + no history; Grace stage-only no proposal-sent claim — `docs/qa/luv-privacy-factuality-closure/browser-results.json`
+- **DB/PERSISTENCE EVIDENCE:** discard DELETE proven; auth proposal `6f7050c4-…` on disposable; Grace props empty (stage-only); Grace pending draft cleaned after proof; re-proof `db-proof.json`
 - **REGRESSION EVIDENCE:** no source leakage of internal secret into `luv_drafts.content`
 - **REMAINING WORK:** None
 
@@ -716,27 +717,96 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 
 ### Payment recording UX — Overview “Record deposit received” (2026-10-14)
 
-- **STATUS:** OPEN — fix implemented; awaiting Sandbox deploy + browser/DB on exact SHA
+- **STATUS:** GREEN / CLOSED — exact-runtime browser + DB on sole RUNNING `d4e85aaf` / `:754` (contains fix `12d0e637`)
 - **ROOT CAUSE:** Overview `handleRecordDeposit` → `recordDepositReceivedAction` one-click `markLineItemPaid` (amount = deposit line; method hardcoded `External / check`) — bypassed shared entry form
 - **FIX:** Open `RecordOfflinePaymentDialog`; refuse silent `recordDepositReceivedAction`
 - **FILES:** `booking-journey-panel.tsx`, `payments-actions.ts`, `record-deposit-opens-form.test.ts`, `offline-recording.test.ts`
-- **TESTS:** 18/18 PASS focused (deposit form + offline recording)
+- **FIX COMMIT:** `12d0e6371aad07e1d5087fd5970bd460d8f0826d`
+- **FIX DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/38664698366 SUCCESS (headSha `12d0e637`)
+- **PROOF RUNTIME:** sole RUNNING image `405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d4e85aaf8987b50b1f030c6855b264d6d3a52216` · TD `htc-sandbox-venue-app:754` · 1/1/0 · health 200 · `git merge-base --is-ancestor 12d0e637 d4e85aaf` YES. Task 1 copy `d4e85aaf` not reverted.
+- **TESTS:** **18/18 PASS** (`record-deposit-opens-form` + `offline-recording`) on closeout; commercial-matrix `$0`/`$0.00` and timing-booked-at remain pre-existing unrelated
+- **BROWSER + DB (Joy Bannister closeout):** `docs/qa/payment-recording-ux-consistency/browser-results.json` allPass; `db-proof.json`; screenshots `overview-dialog-open-1280.png`, `overview-dialog-confirm-ready-1280.png`
+  - Open: shared dialog; amount `4375`; **no payment**
+  - Cancel: deposit `a773274d…` stayed `overdue`; invoice balance unchanged at cancel
+  - Confirm: explicit **Initial Payment** · `$4375` · `check` · ref `HTC-DEP-UX-mv8w3h5w` → deposit `paid`; invoice `13125`→`8750`; Overview CTA gone; invoice path still opens dialog
+- **PRIOR CINDE PROOF (retained):** `653fc6ef…` `paid`/`6250`/`check`/`HTC-DEP-UX-mv8vx5yo`
 - **INVENTORY:** Invoice dialog + schedule inline form already deliberate; Overview was the inconsistent path
+- **RESIDUAL (non-blocking):** dialog default installment may not be deposit when another open line shares the amount — verify script selects Initial Payment; optional Overview prefer-deposit follow-up out of this gate
+- **PRODUCTION / Resend / DNS / real customer payments:** untouched
+- **REMAINING WORK:** None for this gate. Human acceptance walkthrough not started.
+
+### Luv Noticed — stale early-arrival / tour-outcome reconciliation (2026-10-14) — OPEN
+
+- **STATUS:** **OPEN** — fix implemented; awaiting exact Sandbox runtime proof after deploy
+- **AUDIT:** `docs/qa/luv-noticed-stale-attendance/` (`FORENSIC.md`, `STATUS.md`)
+- **EXACT REPRO:** Meadowbrook Rory · tour `4b57743b-…` completed · inbound early-arrival `07df6ca5-…` · Luv asserted unanswered after tour
+- **ROOT CAUSE:** `evaluateCompletedTour` used `actual_occurred_at` so the ask fell in the post-occurrence window; missing `venue_staff` reply was treated as unanswered — ignored that **completed tour resolves attendance/timing requests**
+- **FIX:** `looksLikeTourAttendanceRequest` → silence on completed-tour evaluation (no unread/needs_response mutation)
+- **FILES:** `lib/luv/completed-tour-intelligence.ts`, `lib/luv/completed-tour-intelligence.test.ts`
+- **TESTS:** attendance reconciliation suite PASS locally
+- **PRODUCTION / Resend / DNS:** untouched
+- **REMAINING WORK:** Deploy + `verify-runtime.mts` on exact SHA; browser Noticed check; then GREEN
+
+### Inbound reply attention / email notification (2026-10-14) — OPEN
+
+- **STATUS:** **OPEN** — Phase 4 forensic complete; **no application code change**; not GREEN
+- **AUDIT:** `docs/qa/inbound-reply-attention-email/` (`FORENSIC.md`, `STATUS.md`, `db-evidence.json`)
+- **EXACT REPRO:** Meadowbrook Rory Gilmore `09d26751-…` · conv `dcba7cbc-…` · inbound `07df6ca5-…` at `2026-10-15T02:01:29Z` (“Can I come in tonight instead…”) reply to tour confirmation · opened `02:01:41Z` (~12s)
+- **FINDINGS:**
+  - Inbox nav unread absent after open while **Needs response** remains → **matches locked unread≠needs_response** (prior unread audit **not** broadly reopened)
+  - In-app `message_received` notif `101cc67d-…` present (`read_at` null)
+  - Lead `venue_seen_at` already set — **no** inbound-message lead attention (decision needed)
+  - Email: pref ON → `needs_email` → cron ~28.6m → `notification_log` **sent** to `venues.email=jlcormier612@gmail.com` Resend `01a13d65-…` · `delivered_at=null` (delivery unconfirmed)
+  - Recipient path = **`venues.email` only** (not Fancy Jennifer; not Yahoo Meadowbrook coordinator)
+- **PRODUCT DECISIONS REQUIRED:** (1) lead inbound attention on already-seen leads; (2) immediate vs 30-min cron for `message_received`; (3) email recipients beyond `venues.email`
+- **RUNNING (diagnosis):** sole RUNNING `d4e85aaf` / `:754`
+- **PRODUCTION / Resend / DNS:** untouched
+- **REMAINING WORK:** Decisions + any scoped fix + Sandbox proof. Human acceptance walkthrough not started while OPEN.
+
+### Luv privacy & factuality closure audit (2026-10-14)
+
+- **STATUS:** GREEN / CLOSED — audit-only; **no product code change**
+- **AUDIT:** `docs/qa/luv-privacy-factuality-closure/` (`FORENSIC.md`, `STATUS.md`, `browser-results.json`, `db-proof.json`)
+- **LOCKED REQUIREMENTS:** (1) venue-origin / internal notes never in customer-facing drafting context; (2–4) Discard = DELETE `luv_drafts` + immediate UI remove + no Draft History; (5–6) proposal-sent / completed-action claims require authoritative persisted evidence
+- **RUNNING:** sole RUNNING `d4e85aaf8987b50b1f030c6855b264d6d3a52216` / TD `htc-sandbox-venue-app:754` / task `0746de003b754c7d90b4ec6f9bb00ae0` / 1/1/0 / health 200
+- **ENTRY POINTS AUDITED:** `generateFollowUpDraft` / `buildFollowUpPrompt` (Gate1+Gate2); `deleteDraftAction` → `deleteDraft`; dashboard `POST /api/luv/draft` (no lead notes); venue-facing Thoughts not wired into customer drafts
+- **AUTOMATED:** **105/105 PASS** (`draft-discard-delete`, `draft-context-boundary`, `draft-status`, `draft-proposal-factuality`, `customer-facing-inquiry-context`, `follow-up-workflow-context`, `venue-facing-tour-thoughts`, `pipeline-stage-evidence`)
+- **BROWSER + DB (exact SHA):** `browser-results.json` allPass
+  - Wendy `8f72266c-…` venue-origin + note `INTERNAL_ROLLUP_PROOF_001` → prompt excludes inquiry/canary; no leaking `luv_drafts`
+  - Discard disposable `9a976181-…` / `DISCARD-PROOF-mv8wxiry` on Joy → UI gone; row **deleted**; no history
+  - Grace `ab37d13c-…` stage=`proposal_sent`, zero proposals → draft/UI do not claim proposal sent
+- **DEFECTS:** none — existing ancestry (`isAuthoritativeProposalSent`, `customerFacingInquiryContext`, Discard DELETE) retained
+- **PRESERVED CLOSED:** Luv delivery-summary, Inbox Attention nav, Inbox unread, Communication Readiness, Payment recording UX — not reopened
+- **PRODUCTION / Resend / DNS / real customer communications:** untouched
+- **REMAINING WORK:** None for this workstream. Final human acceptance walkthrough not started.
+
+### Communication Readiness interaction audit (2026-10-14)
+
+- **STATUS:** GREEN / CLOSED — audit-only; **no product code change**
+- **AUDIT:** `docs/qa/communication-readiness-interaction/` (`FORENSIC.md`, `STATUS.md`, `browser-results.json`)
+- **INTENT:** Health page defers delivery tiles; ReadinessChecklist is always visible (no accordion). Interactive = test email/text + Settings links only.
+- **RUNNING:** sole RUNNING `d4e85aaf8987b50b1f030c6855b264d6d3a52216` / `:754`
+- **AUTOMATED:** 24/24 PASS (`test-send`, `message-status-definitions`, `attention-history`)
+- **BROWSER:** allPass on exact SHA — 1280 + 390; Settings link `/settings/communications#texting`; controls do not collapse checklist; refresh retains readiness
+- **DEFECTS:** none
 - **PRODUCTION:** untouched
-- **REMAINING:** Deploy → verify Overview open/cancel/confirm + invoice/schedule entry points on serving SHA; DB balances; update to GREEN
+- **PRESERVED:** Readiness copy + repair, Inbox unread, Attention nav, Luv delivery-summary — closed
+- **REMAINING WORK:** None for this interaction audit. Final human acceptance walkthrough not started.
 
 ### Contract setup copy — Smart Fields (not “tokens”) (2026-10-14)
 
-- **STATUS:** IMPLEMENTED locally — **awaiting commit + Sandbox deploy** for runtime proof (copy-only; behavior untouched)
+- **STATUS:** GREEN / CLOSED on exact sole RUNNING `d4e85aaf8987b50b1f030c6855b264d6d3a52216` / `htc-sandbox-venue-app:754`
 - **FILE:** `app/(app)/contracts/new/page.tsx` — `CardDescription` under “Contract setup”
 - **FROM:** `Select a template and client, then edit with Smart Fields. Preview is display-only. Tokens resolve when you send.`
 - **TO:** `Select a template and client, then personalize your contract with Smart Fields. Preview your contract before sending. Smart Fields fill in automatically when you send.`
-- **SCOPE:** Copy only. No token resolution, preview, send, persistence, API, or DB rename.
+- **SCOPE:** Copy only. No token resolution, preview, send, persistence, API, or DB rename. Builder “Preview is display-only” copy left unchanged (out of scope).
+- **COMMIT:** `d4e85aaf8987b50b1f030c6855b264d6d3a52216`
 - **TEST:** `lib/contracts/contract-setup-copy.test.ts` — **1/1 PASS**
-- **DIFF:** single customer-facing string + focused regression test only
-- **SANDBOX RUNTIME:** Not yet on serving image `2bfe4cde…` / `:752` (no commit/deploy this pass). Local source verified; browser proof deferred until deploy is authorized.
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/38665469781 SUCCESS (after prior payment deploy `12d0e637` completed — sequential, no overlap)
+- **SERVING:** image `…:d4e85aaf…` · TD `:754` · 1/1/0 · health 200
+- **BROWSER:** `docs/qa/contract-setup-smart-fields-copy/browser-results.json` allPass; screenshots 1280 + 390
 - **PRODUCTION:** untouched
-- **REMAINING WORK:** Commit + Deploy Sandbox + confirm CardDescription on exact new serving SHA when authorized.
+- **REMAINING WORK:** None
 
 ### Inbox unread indicators / read-state audit (2026-10-14)
 
@@ -758,6 +828,11 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **FINAL RUNTIME:** sole RUNNING `14d6f73b26bf7a77ac35a41681e519b17bd2956f` / `htc-sandbox-venue-app:546` / task `e348d4a678654e2281894642dd81ca02` / digest `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21` / 1/1/0 / health 200
 - **Launch Blocker #2 re-proof (2026-10-14):** GREEN on later sole RUNNING `2bfe4cde` / `:752` — see section above; does not reopen other streams.
 - **Inbox unread / read-state audit (2026-10-14):** GREEN on sole RUNNING `2bfe4cde` / `:752` — no defect; no code change; closed workstreams above preserved.
+- **Contract setup Smart Fields copy (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754`.
+- **Communication Readiness interaction (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change.
+- **Payment recording UX Overview deposit (2026-10-14):** GREEN — fix `12d0e637` proven on sole RUNNING `d4e85aaf` / `:754` (lineage); open/cancel/confirm + DB.
+- **Luv privacy & factuality closure (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change; Stream 6 re-confirmed.
+- **Inbound reply attention / email (2026-10-14):** **OPEN** on Meadowbrook Rory exact repro — see section above; decisions required; not GREEN.
 - Date Hold multiple holds: GREEN/CLOSED (exact browser+DB on `cfeff8ca` lineage; ancestor of final runtime).
 - Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB HH:mm unchanged).
 - Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on `ed87d485`; re-confirmed on final `14d6f73b` (no Luv code drift).

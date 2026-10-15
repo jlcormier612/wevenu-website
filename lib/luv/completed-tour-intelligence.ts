@@ -101,6 +101,26 @@ export function looksLikeWaitingOnOthers(text: string): boolean {
   return FAMILY_PAUSE.test(text) && /\b(talk|speak|ask|check|need to)\b/i.test(text);
 }
 
+/**
+ * Early-arrival / same-day timing / en-route requests about attending the tour.
+ * Once the tour is recorded completed, missing venue reply is not proof the
+ * request is still open — the visit itself is the resolution evidence.
+ * Do not match open-ended "can we come back" style questions after the tour.
+ */
+export function looksLikeTourAttendanceRequest(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (/\bcome (?:back|again)\b/i.test(t)) return false;
+  return (
+    /\bcome in\b[\s\S]{0,40}\b(tonight|today|now|early|earlier|sooner)\b/i.test(t)
+    || /\b(tonight|today|now)\b[\s\S]{0,40}\b(instead|come in|stop by)\b/i.test(t)
+    || /\bcome (early|sooner|now)\b/i.test(t)
+    || /\bstop by\b[\s\S]{0,40}\b(tonight|today|now|early)\b/i.test(t)
+    || /\bon (our|my) way\b/i.test(t)
+    || /\brunning late\b/i.test(t)
+  );
+}
+
 /** Shareable customer text for coordinator copy — Gate 2, never internal notes. */
 export function shareableCustomerExcerpt(text: string | null | undefined): string | null {
   const ctx = customerFacingInquiryContext(text, "customer");
@@ -187,6 +207,13 @@ export function evaluateCompletedTour(input: CompletedTourEvalInput): CompletedT
   const excerpt = shareableCustomerExcerpt(openText);
 
   if (open && excerpt && looksLikeCustomerQuestion(openText)) {
+    // Completed-tour evaluation only runs after status=completed. An
+    // early-arrival / same-day attendance ask is resolved by that visit —
+    // do not assert "still unanswered" merely because no venue_staff reply
+    // was typed into the thread (records may lag real-world action).
+    if (looksLikeTourAttendanceRequest(openText)) {
+      return { mode: "silence", purpose: "none" };
+    }
     const topic = topicFromExcerpt(excerpt);
     return {
       mode: "actionable",
