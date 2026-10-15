@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-15T03:17:58.799Z",
-  "expectedSha": "149b7f5fda1857b696de5fa1e91350bb5521cc0b",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:149b7f5fda1857b696de5fa1e91350bb5521cc0b",
+  "at": "2026-10-15T03:26:37.413Z",
+  "expectedSha": "5ad70d80962ea5a3cbfb51728f7ceecc58e6d685",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5ad70d80962ea5a3cbfb51728f7ceecc58e6d685",
   "occurrence": "2026-10-14T22:00:00+00:00",
   "decisionMode": "silence",
   "conv": {
@@ -12,7 +12,7 @@
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:149b7f5fda1857b696de5fa1e91350bb5521cc0b"
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5ad70d80962ea5a3cbfb51728f7ceecc58e6d685"
     },
     {
       "name": "Tour completed",

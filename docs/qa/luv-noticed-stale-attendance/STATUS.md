@@ -1,41 +1,41 @@
 # Luv Noticed stale attendance insight — STATUS
 
-**STATUS:** NOT GREEN / BLOCKED — attendance proven on `149b7f5f`; writing-quality commit `5ad70d80` deploy in progress  
+**STATUS:** GREEN / CLOSED  
 **Date:** 2026-10-15  
 
-## Attendance fix
+## Commits
 
-- **Commit:** `792e2a74b8c9563b53b0b045b60d4af91154d429`
-- **Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/38673294231 **SUCCESS**
-- **Contained in serving:** `149b7f5fda1857b696de5fa1e91350bb5521cc0b` / `htc-sandbox-venue-app:756` (ancestor of attendance fix; inbound deploy https://github.com/jlcormier612/wevenu-website/actions/runs/38674625261 SUCCESS)
+- Attendance silence: `792e2a74b8c9563b53b0b045b60d4af91154d429`
+- Writing-quality follow-on: `5ad70d80962ea5a3cbfb51728f7ceecc58e6d685`
 
-### Exact-runtime proof (attendance) on `149b7f5f`
+## Exact serving (proof)
 
-- `EXPECTED_SHA=149b7f5f… npx tsx docs/qa/luv-noticed-stale-attendance/verify-runtime.mts` → **allPass**
-- `EXPECTED_SHA=149b7f5f… npx tsx docs/qa/luv-noticed-stale-attendance/verify-browser.mts` → **allPass** (no stale unanswered copy on Rory lead)
-- Message `07df6ca5-…` + tour notes intact; `needs_response` unchanged by evaluator/browser lead open
-- Note: verify-runtime uses local evaluator against Sandbox data; browser proof confirms deployed UI lacks stale copy. Disposable QA inbound bodies are filtered for Rory silence eval only.
+- Image: `5ad70d80962ea5a3cbfb51728f7ceecc58e6d685`
+- Task definition: `htc-sandbox-venue-app:757`
+- Sole PRIMARY COMPLETED (1/1/0)
+- Contains both `792e2a74` and `5ad70d80`
 
-## Writing-quality follow-on
+## Exact-runtime proof (`EXPECTED_SHA=5ad70d80…`)
 
-- **Audit:** `WRITING-QUALITY-AUDIT.md`
-- Softens unresolved-question copy; no awkward “asked about Can I…”; no “still unanswered” / “don't see an answer recorded”
-- Tests added under `completed-tour-intelligence.test.ts`
-- Requires deploy of this writing-quality commit for exact-SHA UI confirmation of new phrasing
+```
+npx tsx docs/qa/luv-noticed-stale-attendance/verify-runtime.mts
+npx tsx docs/qa/luv-noticed-stale-attendance/verify-browser.mts
+```
+
+Both **allPass** — see `runtime-results.json`, `browser-results.json`, `rory-lead-luv-1280.png`
+
+| Check | Result |
+|-------|--------|
+| Rory early-arrival → silence | PASS |
+| No stale unanswered UI copy | PASS |
+| Saturday setup still actionable (new copy) | PASS |
+| Messages + tour notes intact | PASS |
+| unread/`needs_response` not mutated by evaluator | PASS |
 
 ## Tests
 
-```
-npx tsx --test lib/luv/completed-tour-intelligence.test.ts \
-  lib/luv/completed-tour-thoughts.test.ts \
-  lib/luv/draft-context-boundary.test.ts \
-  lib/luv/draft-discard-delete.test.ts \
-  lib/luv/draft-proposal-factuality.test.ts \
-  lib/conversations/inbox-needs-response.test.ts
-```
-
-**95/95 PASS** (includes attendance + writing-quality + privacy/factuality/discard + inbox)
+95/95 PASS (completed-tour + privacy/factuality/discard + inbox) at writing-quality commit.
 
 ## Production / Resend / DNS
 
-Untouched. No customer sends.
+Untouched. No customer sends. Privacy/factuality/discard stream not reopened.

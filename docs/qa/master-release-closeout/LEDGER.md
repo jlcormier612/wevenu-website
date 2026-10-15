@@ -735,31 +735,29 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **PRODUCTION / Resend / DNS / real customer payments:** untouched
 - **REMAINING WORK:** None for this gate. Human acceptance walkthrough not started.
 
-### Luv Noticed — stale early-arrival / tour-outcome reconciliation (2026-10-14)
+### Luv Noticed — stale early-arrival / tour-outcome reconciliation (2026-10-14) — GREEN / CLOSED
 
-- **STATUS:** **ATTENDANCE GREEN on serving `149b7f5f` / `:756`** — writing-quality follow-on pending its own exact-SHA deploy proof for full stream GREEN
+- **STATUS:** **GREEN / CLOSED** on sole RUNNING `5ad70d80962ea5a3cbfb51728f7ceecc58e6d685` / `htc-sandbox-venue-app:757`
 - **AUDIT:** `docs/qa/luv-noticed-stale-attendance/` (`FORENSIC.md`, `STATUS.md`, `WRITING-QUALITY-AUDIT.md`, `runtime-results.json`, `browser-results.json`)
 - **EXACT REPRO:** Meadowbrook Rory · tour `4b57743b-…` completed · inbound early-arrival `07df6ca5-…`
 - **ROOT CAUSE:** post-`actual_occurred_at` ask + missing typed reply treated as unanswered; ignored completed-tour resolution of attendance/timing
-- **ATTENDANCE FIX:** `792e2a74` — `looksLikeTourAttendanceRequest` → silence; deploy `38673294231` SUCCESS; contained in sole RUNNING `149b7f5f` / `:756` (via later inbound deploy `38674625261`)
-- **ATTENDANCE PROOF:** `verify-runtime.mts` + `verify-browser.mts` allPass on EXPECTED `149b7f5f`; no stale unanswered UI copy; messages/tour notes intact; `needs_response` unchanged by evaluator
-- **WRITING QUALITY:** confirmed template defects corrected in follow-on commit (compact topic phrasing; invite review; drop “still unanswered” / awkward stitching) — see audit; exact serving re-proof after that deploy
+- **FIX:** `792e2a74` silence for attendance asks; `5ad70d80` writing-quality (invite review; no awkward stitching / “still unanswered”)
+- **PROOF:** `EXPECTED_SHA=5ad70d80…` `verify-runtime.mts` + `verify-browser.mts` **allPass**; Saturday setup actionable with new copy; messages/tour notes intact; unread/`needs_response` unchanged by evaluator
 - **TESTS:** 95/95 PASS (completed-tour + privacy/factuality/discard + inbox)
 - **PRODUCTION / Resend / DNS:** untouched
-- **REMAINING WORK:** Deploy writing-quality commit; re-run browser/runtime on that SHA; then full GREEN
+- **REMAINING WORK:** None
 
-### Inbound reply attention / email notification (2026-10-14) — NOT GREEN / BLOCKED
+### Inbound reply attention / email notification (2026-10-14) — GREEN / CLOSED
 
-- **STATUS:** **NOT GREEN / BLOCKED** — Decisions A/B/C implemented + Sandbox DB dispatch proof; **exact serving SHA browser proof pending deploy**
-- **AUDIT:** `docs/qa/inbound-reply-attention-email/` (`FORENSIC.md`, `STATUS.md`, `dispatch-proof.json`, `recipient-resolution-proof.json`)
+- **STATUS:** **GREEN / CLOSED** on sole RUNNING `5ad70d80962ea5a3cbfb51728f7ceecc58e6d685` / `htc-sandbox-venue-app:757` (contains fix `149b7f5f`)
+- **AUDIT:** `docs/qa/inbound-reply-attention-email/` (`FORENSIC.md`, `STATUS.md`, `runtime-verify-results.json`)
 - **IMPLEMENTATION COMMIT:** `149b7f5fda1857b696de5fa1e91350bb5521cc0b`
-- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/38674625261 (queued/in progress at ledger update; do not overlap)
 - **ROOT CAUSES:** (A) email to `venues.email` only; (B) cron `*/30` latency ~28.6m; (C) no lead cue for `needs_response` when `venue_seen_at` set
 - **FIX:** owner auth + lead assignee recipients; prompt `dispatchPendingMessageReceivedEmails` on inbound email/SMS; `LeadMessageAttentionIndicator` from `needs_response`
 - **AUTOMATED:** 71/71 PASS (recipient + attention + related inbox/unseen/pref suites)
-- **SANDBOX DB PROOF (dispatcher on commit code):** msg `bdd0b33b-…` → notif `e5c7720e-…` → logs owner `jlcormier612@gmail.com` + assignee Ellie `jyagnesak@yahoo.com` in **~1991 ms**; redispatch idempotent; `delivered_at=null`; attention map with `venue_seen_at` already set
+- **EXACT-RUNTIME PROOF:** `EXPECTED_SHA=5ad70d80… npx tsx scripts/qa/inbound-reply-attention-verify.mts` → **24/24 PASS** — owner+Ellie recipients; ~662 ms dispatch; Message indicator detail+list; open clears unread keeps `needs_response`; `delivered_at=null`
 - **PRODUCTION / Resend / DNS:** untouched
-- **REMAINING WORK:** Confirm sole RUNNING image `149b7f5f…`; browser Message indicator + unread≠needs_response on that SHA via `scripts/qa/inbound-reply-attention-verify.mts`
+- **REMAINING WORK:** None
 
 ### Luv privacy & factuality closure audit (2026-10-14)
 
@@ -830,7 +828,8 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **Communication Readiness interaction (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change.
 - **Payment recording UX Overview deposit (2026-10-14):** GREEN — fix `12d0e637` proven on sole RUNNING `d4e85aaf` / `:754` (lineage); open/cancel/confirm + DB.
 - **Luv privacy & factuality closure (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change; Stream 6 re-confirmed.
-- **Inbound reply attention / email (2026-10-14):** **NOT GREEN / BLOCKED** — fix `149b7f5f` + DB dispatch proof; exact serving browser proof pending deploy `38674625261`.
+- **Inbound reply attention / email (2026-10-14):** GREEN / CLOSED on sole RUNNING `5ad70d80` / `:757` — 24/24 exact-runtime verify.
+- **Luv Noticed stale attendance + writing quality (2026-10-14):** GREEN / CLOSED on sole RUNNING `5ad70d80` / `:757` — runtime + browser allPass.
 - Date Hold multiple holds: GREEN/CLOSED (exact browser+DB on `cfeff8ca` lineage; ancestor of final runtime).
 - Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB HH:mm unchanged).
 - Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on `ed87d485`; re-confirmed on final `14d6f73b` (no Luv code drift).
