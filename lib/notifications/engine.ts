@@ -20,7 +20,10 @@ import { createClient } from "@supabase/supabase-js";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { appendEmailSignatureText, emailBrandFromVenue, escapeHtml } from "@/lib/email/venue-brand";
 import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
-import { buildTourReminderCoupleEmail } from "@/lib/notifications/tour-reminder-email";
+import {
+  buildTourReminderCoordinatorEmail,
+  buildTourReminderCoupleEmail,
+} from "@/lib/notifications/tour-reminder-email";
 import { buildReminderEmail } from "@/lib/notifications/templates";
 import { determineChannel, type NotificationRole, type ProcessResult } from "@/lib/notifications/types";
 import { getVenueTimezone } from "@/lib/venue/timezone";
@@ -150,9 +153,16 @@ export async function processReminders(): Promise<ProcessResult> {
             emailContent = buildTourReminderCoupleEmail({ brand, dateLabel, timeLabel });
             coupleHtmlAlreadyBranded = true;
           } else {
-            const subj = `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateLabel} at ${timeLabel}`;
-            const body = `You have a venue tour tomorrow at ${timeLabel} with ${tourAppt.contact_name ?? "a prospective client"}. Duration: ${tourAppt.duration_minutes} minutes.`;
-            emailContent = { subject: subj, html: `<p>${escapeHtml(body)}</p><p>— ${escapeHtml(venueName)}</p>`, text: body };
+            // Staff: shared HTC venue-notification shell + Sage CTA (unchanged subject).
+            emailContent = buildTourReminderCoordinatorEmail({
+              contactName: tourAppt.contact_name ?? null,
+              dateLabel,
+              timeLabel,
+              durationMinutes: tourAppt.duration_minutes,
+              venueName,
+              leadId: tourAppt.lead_id ?? null,
+              appOrigin: getBaseUrl(),
+            });
           }
         } else {
           // Task reminder email
