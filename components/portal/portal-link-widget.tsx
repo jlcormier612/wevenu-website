@@ -6,12 +6,15 @@ import { Loader2, Mail, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  getClientInvitationAction, inviteClientAction, resendClientInvitationAction,
+  getClientInvitationAction, inviteClientAction, previewClientInviteAction,
+  previewResendClientInviteAction, resendClientInvitationAction,
   revokeClientInvitationAction, revokeClientAccessAction,
   getSupportAccessGrantsAction, openSupportAccessAction,
 } from "@/app/(app)/clients/[id]/portal-actions";
+import { ClientInvitePreviewOverlay } from "@/components/portal/client-invite-preview-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { ClientInviteEmailContent } from "@/lib/client-auth/client-invite-email";
 import { initialPortalInviteEmail } from "@/lib/client-auth/initial-portal-invite-email";
 import type { ClientInvitation, SupportAccessGrant } from "@/lib/client-auth/types";
 
@@ -23,6 +26,9 @@ const ROSE = "#D8A7AA";
  * workspace directly. The one exception is a client-granted, time-boxed
  * "temporary support access" window (see the gated section below), which is
  * logged every time it's used.
+ *
+ * Invite Client opens prepare/preview/confirm — it must not send until the
+ * venue explicitly confirms Send invitation.
  */
 export function PortalLinkWidget({
   clientId,
@@ -45,6 +51,10 @@ export function PortalLinkWidget({
   const [resending, setResending] = React.useState(false);
   const [revoking, setRevoking] = React.useState(false);
   const [opening, setOpening] = React.useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [previewMode, setPreviewMode] = React.useState<"invite" | "resend">("invite");
+  const [preview, setPreview] = React.useState<ClientInviteEmailContent | null>(null);
+  const [previewLoading, setPreviewLoading] = React.useState(false);
 
   const refresh = React.useCallback(() => {
     Promise.all([
@@ -55,22 +65,70 @@ export function PortalLinkWidget({
 
   React.useEffect(() => { refresh(); }, [refresh]);
 
-  async function handleInvite() {
-    if (!email.trim()) { toast.error("An email address is required to invite the client."); return; }
-    setInviting(true);
-    const result = await inviteClientAction(clientId, email.trim(), coupleName);
-    setInviting(false);
-    if (result.ok) { toast.success(`Invitation sent to ${email.trim()}.`); setEmail(""); refresh(); }
-    else toast.error(result.error);
+  function closePreview() {
+    if (inviting || resending) return;
+    setPreviewOpen(false);
+    setPreview(null);
   }
 
-  async function handleResend() {
+  async function openInvitePreview() {
+    if (!email.trim()) { toast.error("An email address is required to invite the client."); return; }
+    if (previewLoading || inviting) return;
+    setPreviewLoading(true);
+    setPreviewMode("invite");
+    setPreview(null);
+    setPreviewOpen(true);
+    const result = await previewClientInviteAction(email.trim(), coupleName);
+    setPreviewLoading(false);
+    if (!result.ok) {
+      setPreviewOpen(false);
+      toast.error(result.error);
+      return;
+    }
+    setPreview(result.preview);
+  }
+
+  async function openResendPreview() {
+    if (!invitation || previewLoading || resending) return;
+    setPreviewLoading(true);
+    setPreviewMode("resend");
+    setPreview(null);
+    setPreviewOpen(true);
+    const result = await previewResendClientInviteAction(invitation.id);
+    setPreviewLoading(false);
+    if (!result.ok) {
+      setPreviewOpen(false);
+      toast.error(result.error);
+      return;
+    }
+    setPreview(result.preview);
+  }
+
+  async function confirmSend() {
+    if (!preview || inviting || resending) return;
+    if (previewMode === "invite") {
+      setInviting(true);
+      const result = await inviteClientAction(clientId, email.trim(), coupleName);
+      setInviting(false);
+      if (result.ok) {
+        toast.success(`Invitation sent to ${email.trim()}.`);
+        setEmail("");
+        setPreviewOpen(false);
+        setPreview(null);
+        refresh();
+      } else toast.error(result.error);
+      return;
+    }
     if (!invitation) return;
     setResending(true);
     const result = await resendClientInvitationAction(clientId, invitation.id);
     setResending(false);
-    if (result.ok) { toast.success(`Invitation resent to ${invitation.email}.`); refresh(); }
-    else toast.error(result.error);
+    if (result.ok) {
+      toast.success(`Invitation resent to ${invitation.email}.`);
+      setPreviewOpen(false);
+      setPreview(null);
+      refresh();
+    } else toast.error(result.error);
   }
 
   async function handleRevokeInvitation() {
@@ -115,14 +173,21 @@ export function PortalLinkWidget({
             <p className="text-sm font-medium text-heading">Not invited</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Invite {coupleName} to create or access their account and open the planning tools
-              and materials made available for this event.
+              and materials made available for this event. You will preview the invitation before it sends.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Input type="email" value={email}
-              onChange={(e) => setEmail(e.target.value)} className="h-9 min-w-[12rem] flex-1" />
-            <Button type="button" size="sm" onClick={handleInvite} disabled={inviting}>
-              {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : inviteLabel}
+              onChange={(e) => setEmail(e.target.value)} className="h-9 min-w-[12rem] flex-1"
+              data-testid="client-invite-email" />
+            <Button
+              type="button"
+              size="sm"
+              onClick={openInvitePreview}
+              disabled={previewLoading || inviting}
+              data-testid="open-client-invite-preview"
+            >
+              {previewLoading && previewMode === "invite" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : inviteLabel}
             </Button>
           </div>
         </div>
@@ -150,9 +215,10 @@ export function PortalLinkWidget({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {invitation.status === "pending" && (
-              <button type="button" onClick={handleResend} disabled={resending}
-                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50">
-                {resending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />} Resend invite
+              <button type="button" onClick={openResendPreview} disabled={previewLoading || resending}
+                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50"
+                data-testid="open-client-invite-resend-preview">
+                {previewLoading && previewMode === "resend" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />} Resend invite
               </button>
             )}
             {invitation.status === "pending" && (
@@ -194,6 +260,15 @@ export function PortalLinkWidget({
           </p>
         )}
       </div>
+
+      <ClientInvitePreviewOverlay
+        open={previewOpen}
+        preview={preview}
+        mode={previewMode}
+        sending={inviting || resending}
+        onBack={closePreview}
+        onConfirmSend={confirmSend}
+      />
     </div>
   );
 }

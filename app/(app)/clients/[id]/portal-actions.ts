@@ -3,13 +3,30 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  getClientInvitation, inviteClient, resendClientInvitation, revokeClientInvitation,
+  getClientInvitation, inviteClient, previewClientInviteEmail, previewResendClientInviteEmail,
+  resendClientInvitation, revokeClientInvitation,
   revokeClientAccess, getSupportAccessGrants, openSupportAccess,
 } from "@/lib/client-auth/service";
+import type { ClientInviteEmailContent } from "@/lib/client-auth/client-invite-email";
 import type { ClientAuthResult, ClientInvitation, SupportAccessGrant } from "@/lib/client-auth/types";
 
 export async function getClientInvitationAction(clientId: string): Promise<ClientInvitation | null> {
   return getClientInvitation(clientId);
+}
+
+/** Preview only — does not insert an invitation or send email. */
+export async function previewClientInviteAction(
+  email: string,
+  coupleName: string,
+): Promise<{ ok: true; preview: ClientInviteEmailContent } | { ok: false; error: string }> {
+  return previewClientInviteEmail(email, coupleName);
+}
+
+/** Preview a resend — does not send. */
+export async function previewResendClientInviteAction(
+  invitationId: string,
+): Promise<{ ok: true; preview: ClientInviteEmailContent } | { ok: false; error: string }> {
+  return previewResendClientInviteEmail(invitationId);
 }
 
 export async function inviteClientAction(

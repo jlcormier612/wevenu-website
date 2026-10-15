@@ -41,13 +41,14 @@ describe("Client Portal invitation field binding", () => {
     assert.match(widget, /initialPortalInviteEmail\(primaryEmail\)/);
     assert.match(widget, /onChange=\{\(e\) => setEmail\(e\.target\.value\)\}/);
     assert.doesNotMatch(widget, /couple@example\.com/);
-    assert.match(panel, /primaryEmail=\{props\.clientEmail\}/);
+    assert.match(panel, /primaryEmail=\{clientEmail\}/);
     assert.match(detail, /clientEmail=\{coupleEmail\}/);
     const page = source("app/(app)/clients/[id]/page.tsx");
     assert.match(page, /const coupleEmail = client\.email \?\? null/);
   });
 
   it("sends the edited field value and does not write the client record", () => {
+    assert.match(widget, /previewClientInviteAction\(email\.trim\(\), coupleName\)/);
     assert.match(widget, /inviteClientAction\(clientId, email\.trim\(\), coupleName\)/);
     assert.doesNotMatch(widget, /inviteClientAction\(clientId, primaryEmail/);
     assert.match(widget, /if \(!email\.trim\(\)\) \{ toast\.error\("An email address is required to invite the client\."\); return; \}/);
@@ -62,8 +63,9 @@ describe("Client Portal invitation field binding", () => {
     assert.match(widget, /\{invitation\.email\}/);
     assert.match(widget, /invitation\.status === "accepted"/);
     assert.match(widget, /Invitation sent · awaiting account creation/);
-    assert.match(widget, /Account created/);
+    assert.match(widget, /Accepted/);
     assert.match(widget, /Resend invite/);
+    assert.match(widget, /openResendPreview/);
     assert.doesNotMatch(widget, /setEmail\(invitation/);
     assert.doesNotMatch(widget, /setEmail\(primaryEmail/);
   });

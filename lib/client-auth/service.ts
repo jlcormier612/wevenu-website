@@ -15,11 +15,12 @@ import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
 import {
-  brandButtonHtml,
-  emailBrandFromVenue,
-  escapeHtml,
-  renderBrandedEmailHtml,
-} from "@/lib/email/venue-brand";
+  buildClientInviteEmail,
+  clientInviteAcceptUrl,
+  clientInvitePreviewAcceptUrl,
+  type ClientInviteEmailContent,
+} from "@/lib/client-auth/client-invite-email";
+import { beginClientInviteSend, endClientInviteSend } from "@/lib/client-auth/invite-send-lock";
 import { resolveInvitationAccountEmail } from "@/lib/client-auth/resolve-invitation-email";
 import type {
   ClientInvitation, ClientAuthResult, AcceptClientInvitationResult,
@@ -47,7 +48,7 @@ function rowToGrant(r: Record<string, unknown>): SupportAccessGrant {
 
 function portalAcceptUrl(kind: "client" | "participant", token: string): string {
   const base = publicAppOrigin();
-  return kind === "client" ? `${base}/client/accept?token=${token}` : `${base}/client/accept-participant?token=${token}`;
+  return kind === "client" ? clientInviteAcceptUrl(token) : `${base}/client/accept-participant?token=${token}`;
 }
 
 // ── Venue-side: invite / resend / revoke the primary client ───────────────
@@ -63,40 +64,72 @@ export async function getClientInvitation(clientId: string): Promise<ClientInvit
   return data ? rowToInvitation(data) : null;
 }
 
+/**
+ * Build the invitation email the venue will review. Does not insert or send.
+ * Uses a stand-in accept URL so preview never creates an invitation row.
+ */
+export async function previewClientInviteEmail(
+  email: string,
+  coupleName: string,
+): Promise<{ ok: true; preview: ClientInviteEmailContent } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "No venue found." };
+  const trimmed = email.trim();
+  if (!trimmed) return { ok: false, error: "An email address is required to invite the client." };
+  const preview = buildClientInviteEmail({
+    to: trimmed,
+    coupleName,
+    venue,
+    acceptUrl: clientInvitePreviewAcceptUrl(),
+  });
+  return { ok: true, preview };
+}
+
+/**
+ * Preview a resend using the existing pending invitation's real accept token.
+ * Does not send.
+ */
+export async function previewResendClientInviteEmail(
+  invitationId: string,
+): Promise<{ ok: true; preview: ClientInviteEmailContent } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "No venue found." };
+  const supabase = await createClient();
+  const { data: inv } = await supabase.from("client_invitations").select("*, clients(first_name, partner_first_name)")
+    .eq("id", invitationId).eq("venue_id", venue.id).maybeSingle();
+  if (!inv) return { ok: false, error: "Invitation not found." };
+  if (inv.status !== "pending") return { ok: false, error: "This invitation is no longer pending." };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = (inv as any).clients as { first_name: string; partner_first_name: string | null } | null;
+  const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ") || "there";
+  const preview = buildClientInviteEmail({
+    to: inv.email,
+    coupleName,
+    venue,
+    acceptUrl: clientInviteAcceptUrl(inv.token),
+  });
+  return { ok: true, preview };
+}
+
 async function sendClientInviteEmail(
-  email: string, coupleName: string, venue: { name: string | null; primaryColor: string; logoUrl?: string | null; emailSignature?: string | null; email?: string | null; phone?: string | null }, token: string,
+  email: string,
+  coupleName: string,
+  venue: Parameters<typeof buildClientInviteEmail>[0]["venue"],
+  token: string,
 ): Promise<void> {
-  const venueName = venue.name ?? "Your venue";
-  const brand = emailBrandFromVenue(venue);
-  const acceptUrl = portalAcceptUrl("client", token);
-  await sendEmail({
+  const content = buildClientInviteEmail({
     to: email,
-    subject: `You're invited to your ${venueName} planning workspace`,
-    text: [
-      `Hi ${coupleName},`,
-      "",
-      `${venueName} invited you to join your private planning space on Hello to Cheers.`,
-      "",
-      "Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.",
-      "",
-      "Create your account to get started:",
-      acceptUrl,
-      "",
-      "By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.",
-      "",
-      "This link is personal to you — please don't share it.",
-      "",
-      venueName,
-    ].join("\n"),
-    html: renderBrandedEmailHtml(brand, [
-      `<p>Hi ${escapeHtml(coupleName)},</p>`,
-      `<p><strong>${escapeHtml(venueName)}</strong> invited you to join your private planning space on Hello to Cheers.</p>`,
-      `<p>Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.</p>`,
-      `<p>Create your account to get started.</p>`,
-      `<p>${brandButtonHtml(brand, acceptUrl, "Create Your Account")}</p>`,
-      `<p style="color:#888;font-size:12px;">By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.</p>`,
-      `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
-    ].join("")),
+    coupleName,
+    venue,
+    acceptUrl: clientInviteAcceptUrl(token),
+  });
+  await sendEmail({
+    to: content.to,
+    subject: content.subject,
+    text: content.text,
+    html: content.html,
   });
 }
 
@@ -118,44 +151,60 @@ export async function inviteClient(
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, error: "No venue found." };
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Session expired." };
+  const lockKey = `invite:${clientId}`;
+  if (!beginClientInviteSend(lockKey)) {
+    return { ok: false, error: "This invitation is already sending." };
+  }
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Session expired." };
 
-  const existing = await getClientInvitation(clientId);
-  if (!shouldSendClientInvitation(existing)) return { ok: true };
+    const existing = await getClientInvitation(clientId);
+    if (!shouldSendClientInvitation(existing)) return { ok: true };
 
-  const { data, error } = await supabase.from("client_invitations").insert({
-    venue_id: venue.id, client_id: clientId,
-    email: email.trim().toLowerCase(), invited_by: user.id,
-  }).select("token").single<{ token: string }>();
-  if (error) return { ok: false, error: error.message };
+    const { data, error } = await supabase.from("client_invitations").insert({
+      venue_id: venue.id, client_id: clientId,
+      email: email.trim().toLowerCase(), invited_by: user.id,
+    }).select("token").single<{ token: string }>();
+    if (error) return { ok: false, error: error.message };
 
-  await sendClientInviteEmail(email.trim(), coupleName, venue, data.token);
-  return { ok: true };
+    await sendClientInviteEmail(email.trim(), coupleName, venue, data.token);
+    return { ok: true };
+  } finally {
+    endClientInviteSend(lockKey);
+  }
 }
 
 export async function resendClientInvitation(invitationId: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, error: "No venue found." };
-  const supabase = await createClient();
+  const lockKey = `resend:${invitationId}`;
+  if (!beginClientInviteSend(lockKey)) {
+    return { ok: false, error: "This invitation is already sending." };
+  }
+  try {
+    const supabase = await createClient();
 
-  const { data: inv } = await supabase.from("client_invitations").select("*, clients(first_name, partner_first_name)")
-    .eq("id", invitationId).eq("venue_id", venue.id).maybeSingle();
-  if (!inv) return { ok: false, error: "Invitation not found." };
-  if (inv.status !== "pending") return { ok: false, error: "This invitation is no longer pending." };
+    const { data: inv } = await supabase.from("client_invitations").select("*, clients(first_name, partner_first_name)")
+      .eq("id", invitationId).eq("venue_id", venue.id).maybeSingle();
+    if (!inv) return { ok: false, error: "Invitation not found." };
+    if (inv.status !== "pending") return { ok: false, error: "This invitation is no longer pending." };
 
-  const { error } = await supabase.from("client_invitations")
-    .update({ expires_at: new Date(Date.now() + 14 * 86_400_000).toISOString() })
-    .eq("id", invitationId);
-  if (error) return { ok: false, error: error.message };
+    const { error } = await supabase.from("client_invitations")
+      .update({ expires_at: new Date(Date.now() + 14 * 86_400_000).toISOString() })
+      .eq("id", invitationId);
+    if (error) return { ok: false, error: error.message };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const client = (inv as any).clients as { first_name: string; partner_first_name: string | null } | null;
-  const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ") || "there";
-  await sendClientInviteEmail(inv.email, coupleName, venue, inv.token);
-  return { ok: true };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = (inv as any).clients as { first_name: string; partner_first_name: string | null } | null;
+    const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ") || "there";
+    await sendClientInviteEmail(inv.email, coupleName, venue, inv.token);
+    return { ok: true };
+  } finally {
+    endClientInviteSend(lockKey);
+  }
 }
 
 export async function revokeClientInvitation(invitationId: string): Promise<ClientAuthResult> {

@@ -177,12 +177,15 @@ describe("buildCommunicationsReview", () => {
     assert.equal(accepted.invite.canInvite, false);
     const panel = readFileSync(resolve("components/clients/communications-review-panel.tsx"), "utf8");
     assert.match(panel, /Invite client/);
+    assert.match(panel, /previewClientInviteAction/);
+    assert.match(panel, /ClientInvitePreviewOverlay/);
     assert.match(panel, /inviteClientAction/);
     assert.match(panel, /invitePending/);
     assert.match(panel, /setSentNow\(true\)/);
     assert.doesNotMatch(panel, /router\.refresh\(\)/);
-    const effect = panel.slice(panel.indexOf("React.useEffect"), panel.indexOf("function onInviteClient"));
+    const effect = panel.slice(panel.indexOf("React.useEffect"), panel.indexOf("async function openInvitePreview"));
     assert.doesNotMatch(effect, /inviteClientAction/);
+    assert.doesNotMatch(effect, /previewClientInviteAction/);
   });
 });
 
@@ -197,8 +200,10 @@ describe("Phase 5 communications review seams", () => {
     const panel = readFileSync(resolve("components/clients/communications-review-panel.tsx"), "utf8");
     assert.doesNotMatch(panel, /fetch\(/);
     assert.match(panel, /inviteClientAction/);
-    const effect = panel.slice(panel.indexOf("React.useEffect"), panel.indexOf("function onInviteClient"));
+    assert.match(panel, /previewClientInviteAction/);
+    const effect = panel.slice(panel.indexOf("React.useEffect"), panel.indexOf("async function openInvitePreview"));
     assert.doesNotMatch(effect, /inviteClientAction/);
+    assert.doesNotMatch(effect, /previewClientInviteAction/);
     const helper = readFileSync(resolve("lib/clients/communications-review.ts"), "utf8");
     assert.doesNotMatch(helper, /inviteClientAction\(/);
     assert.doesNotMatch(helper, /insertEnrollment/);

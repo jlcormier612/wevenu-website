@@ -4,8 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
-import { inviteClientAction } from "@/app/(app)/clients/[id]/portal-actions";
+import {
+  inviteClientAction,
+  previewClientInviteAction,
+} from "@/app/(app)/clients/[id]/portal-actions";
+import { ClientInvitePreviewOverlay } from "@/components/portal/client-invite-preview-overlay";
 import { Button } from "@/components/ui/button";
+import type { ClientInviteEmailContent } from "@/lib/client-auth/client-invite-email";
 import { isBookingWorkspaceHref } from "@/lib/clients/booking-handoff";
 import type { CommunicationsReviewModel } from "@/lib/clients/communications-review";
 
@@ -18,20 +23,49 @@ export function CommunicationsReviewPanel({
   const inviteOnFile = communications.rows.some((row) => row.key === "invitation" && row.onFile);
   const [sentNow, setSentNow] = React.useState(inviteOnFile);
   const invite = communications.invite;
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [preview, setPreview] = React.useState<ClientInviteEmailContent | null>(null);
+  const [previewLoading, setPreviewLoading] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
 
   React.useEffect(() => {
     if (inviteOnFile) setSentNow(true);
   }, [inviteOnFile]);
 
-  function onInviteClient() {
-    if (!invite.canInvite || !invite.email || invitePending || sentNow) return;
+  async function openInvitePreview() {
+    if (!invite.canInvite || !invite.email || invitePending || sentNow || previewLoading || sending) return;
+    setPreviewLoading(true);
+    setPreview(null);
+    setPreviewOpen(true);
+    const result = await previewClientInviteAction(invite.email, invite.coupleName);
+    setPreviewLoading(false);
+    if (!result.ok) {
+      setPreviewOpen(false);
+      toast.error(result.error ?? "Could not prepare the invitation preview.");
+      return;
+    }
+    setPreview(result.preview);
+  }
+
+  function closePreview() {
+    if (sending) return;
+    setPreviewOpen(false);
+    setPreview(null);
+  }
+
+  function confirmSend() {
+    if (!invite.canInvite || !invite.email || sending || invitePending || sentNow || !preview) return;
+    setSending(true);
     startInvite(async () => {
       const result = await inviteClientAction(invite.clientId, invite.email!, invite.coupleName);
+      setSending(false);
       if (!result.ok) {
         toast.error(result.error ?? "Could not send the invitation.");
         return;
       }
       setSentNow(true);
+      setPreviewOpen(false);
+      setPreview(null);
       toast.success("Invitation sent.");
     });
   }
@@ -80,11 +114,12 @@ export function CommunicationsReviewPanel({
                 type="button"
                 size="sm"
                 variant="secondary"
-                disabled={invitePending}
-                onClick={onInviteClient}
+                disabled={previewLoading || invitePending || sending}
+                onClick={openInvitePreview}
                 className="shrink-0"
+                data-testid="open-client-invite-preview"
               >
-                {invitePending ? "Sending…" : "Invite client"}
+                {previewLoading ? "Preparing…" : "Invite client"}
               </Button>
             ) : isBookingWorkspaceHref(row.href) ? null : (
               <Link
@@ -98,6 +133,15 @@ export function CommunicationsReviewPanel({
           </li>
         ))}
       </ul>
+
+      <ClientInvitePreviewOverlay
+        open={previewOpen}
+        preview={preview}
+        mode="invite"
+        sending={sending || invitePending}
+        onBack={closePreview}
+        onConfirmSend={confirmSend}
+      />
     </div>
   );
 }
