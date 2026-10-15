@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_ACCEPTED_EVENT_TYPES, EVENT_TYPES } from "@/lib/event-types/canonical";
 import { STANDARD_FIELD_LABELS } from "@/lib/inquiry-form/constants";
+import { moveQuestionInList } from "@/lib/inquiry-form/question-order";
 import type { InquiryFormBuilderDraft } from "@/lib/inquiry-form/preview-config";
 import type {
   FieldVisibility,
@@ -178,7 +179,16 @@ export function InquiryFormConfigSection({
 
   function addQuestion() {
     if (!canEdit) return;
-    setQuestions((prev) => [...prev, { questionText: "", questionType: "short_answer", required: false, options: "" }]);
+    setQuestions((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        questionText: "",
+        questionType: "short_answer",
+        required: false,
+        options: "",
+      },
+    ]);
   }
 
   function updateQuestion(i: number, patch: Partial<DraftQuestion>) {
@@ -189,6 +199,11 @@ export function InquiryFormConfigSection({
   function removeQuestion(i: number) {
     if (!canEdit) return;
     setQuestions((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function moveQuestion(i: number, direction: -1 | 1) {
+    if (!canEdit) return;
+    setQuestions((prev) => moveQuestionInList(prev, i, direction));
   }
 
   function handleSave() {
@@ -353,7 +368,7 @@ export function InquiryFormConfigSection({
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="inquiry-form-standard-fields">
         <p className="text-sm font-medium text-heading">Standard fields</p>
         <p className="text-xs text-muted-foreground">First name, last name, email, and event type are always shown and required.</p>
         <div className="space-y-2">
@@ -375,7 +390,109 @@ export function InquiryFormConfigSection({
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="inquiry-form-custom-questions">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-heading">Custom questions</p>
+          {canEdit && (
+            <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
+              <Plus className="mr-1 h-3.5 w-3.5" />Add question
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Questions appear on your public inquiry form in this order. Use Move up / Move down to rearrange. Changes apply after you save.
+        </p>
+        {questions.length === 0 && (
+          <p className="text-xs text-muted-foreground">No custom questions yet.</p>
+        )}
+        <div className="space-y-3">
+          {questions.map((q, i) => (
+            <div
+              key={q.id ?? `draft-${i}`}
+              className="rounded-lg border border-border p-3 space-y-2"
+              data-testid="inquiry-form-custom-question"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <input
+                  value={q.questionText}
+                  onChange={(e) => updateQuestion(i, { questionText: e.target.value })}
+                  placeholder="Question text"
+                  disabled={!canEdit}
+                  className="flex-1 rounded-md border border-border px-2 py-1.5 text-sm"
+                />
+                {canEdit && (
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={i === 0}
+                      onClick={() => moveQuestion(i, -1)}
+                      aria-label="Move up"
+                      data-testid="inquiry-form-question-move-up"
+                    >
+                      <ArrowUp className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={i === questions.length - 1}
+                      onClick={() => moveQuestion(i, 1)}
+                      aria-label="Move down"
+                      data-testid="inquiry-form-question-move-down"
+                    >
+                      <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeQuestion(i)}
+                      aria-label="Delete question"
+                      data-testid="inquiry-form-question-delete"
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <select
+                  value={q.questionType}
+                  onChange={(e) => updateQuestion(i, { questionType: e.target.value as InquiryQuestionType })}
+                  disabled={!canEdit}
+                  className="rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+                >
+                  {QUESTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={q.required}
+                    disabled={!canEdit}
+                    onChange={(e) => updateQuestion(i, { required: e.target.checked })}
+                    data-testid="inquiry-form-question-required"
+                  />
+                  Required
+                </label>
+              </div>
+              {(q.questionType === "single_select" || q.questionType === "multiple_select") && (
+                <textarea
+                  value={q.options}
+                  onChange={(e) => updateQuestion(i, { options: e.target.value })}
+                  placeholder="One option per line"
+                  rows={3}
+                  disabled={!canEdit}
+                  className="w-full rounded-md border border-border px-2 py-1.5 text-xs"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3" data-testid="inquiry-form-communication-preferences">
         <p className="text-sm font-medium text-heading">Communication preferences</p>
         <p className="text-xs text-muted-foreground">
           Ask how visitors prefer to hear from you. Preferences are separate from texting permission.
@@ -458,64 +575,6 @@ export function InquiryFormConfigSection({
             </span>
           </span>
         </label>
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-heading">Custom questions</p>
-          {canEdit && (
-            <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
-              <Plus className="mr-1 h-3.5 w-3.5" />Add question
-            </Button>
-          )}
-        </div>
-        {questions.length === 0 && (
-          <p className="text-xs text-muted-foreground">No custom questions yet.</p>
-        )}
-        <div className="space-y-3">
-          {questions.map((q, i) => (
-            <div key={q.id ?? i} className="rounded-lg border border-border p-3 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <input
-                  value={q.questionText}
-                  onChange={(e) => updateQuestion(i, { questionText: e.target.value })}
-                  placeholder="Question text"
-                  disabled={!canEdit}
-                  className="flex-1 rounded-md border border-border px-2 py-1.5 text-sm"
-                />
-                {canEdit && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeQuestion(i)}>
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                )}
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <select
-                  value={q.questionType}
-                  onChange={(e) => updateQuestion(i, { questionType: e.target.value as InquiryQuestionType })}
-                  disabled={!canEdit}
-                  className="rounded-md border border-border bg-background px-2 py-1.5 text-xs"
-                >
-                  {QUESTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input type="checkbox" checked={q.required} disabled={!canEdit} onChange={(e) => updateQuestion(i, { required: e.target.checked })} />
-                  Required
-                </label>
-              </div>
-              {(q.questionType === "single_select" || q.questionType === "multiple_select") && (
-                <textarea
-                  value={q.options}
-                  onChange={(e) => updateQuestion(i, { options: e.target.value })}
-                  placeholder="One option per line"
-                  rows={3}
-                  disabled={!canEdit}
-                  className="w-full rounded-md border border-border px-2 py-1.5 text-xs"
-                />
-              )}
-            </div>
-          ))}
-        </div>
       </div>
 
       {canEdit && (

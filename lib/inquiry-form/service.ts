@@ -22,6 +22,7 @@ import {
   type InquiryCommunicationSettings,
 } from "@/lib/communication/sms-consent";
 import { isSmsConfigured, isSmsConsentOfferAvailable } from "@/lib/sms/send";
+import { buildInquiryFormQuestionInsertRows } from "@/lib/inquiry-form/question-order";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 function canManageInquiryFormSettings(role: string | null): boolean {
@@ -232,17 +233,12 @@ export async function replaceInquiryFormQuestions(
     return { ok: false, error: "forbidden" };
   }
   const admin = createAdminClient();
+  // Delete only active-form rows. Historical answers live on lead.source_data
+  // snapshots (questionText + answer) — no FK cascade into submissions.
   const { error: delError } = await admin.from("inquiry_form_questions").delete().eq("venue_id", venue.id);
   if (delError) return { ok: false, error: delError.message };
   if (questions.length === 0) return { ok: true };
-  const rows = questions.map((q, i) => ({
-    venue_id: venue.id,
-    question_text: q.questionText.trim(),
-    question_type: q.questionType,
-    required: q.required,
-    options: q.options.length ? q.options : null,
-    sort_order: i,
-  }));
+  const rows = buildInquiryFormQuestionInsertRows(venue.id, questions);
   const { error } = await admin.from("inquiry_form_questions").insert(rows);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
