@@ -61,7 +61,7 @@ export default async function LeadsPage({ searchParams }: Props) {
             <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
               <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
             </Button>
-            <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board view</Button>
+            <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board View</Button>
             <Button variant="outline" render={<Link href="/settings/import?type=leads" />}>Import Leads</Button>
             <Button render={<Link href="/leads/new" />}>+ New Lead</Button>
           </div>

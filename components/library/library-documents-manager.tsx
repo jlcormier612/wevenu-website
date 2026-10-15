@@ -191,7 +191,7 @@ export function LibraryDocumentsManager({
         <Button type="button" disabled={uploading} onClick={() => fileInput.current?.click()}>
           {uploading
             ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Uploading…</>
-            : <><Upload className="mr-1.5 h-4 w-4" />Add document</>}
+            : <><Upload className="mr-1.5 h-4 w-4" />Add Document</>}
         </Button>
       </div>
 

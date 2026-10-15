@@ -58,6 +58,6 @@ describe("Documents primary navigation", () => {
     assert.match(page, /getVenueDocuments/);
     assert.match(manager, /Search documents by name/);
     assert.match(manager, /Preview/);
-    assert.match(manager, /Add document/);
+    assert.match(manager, /Add Document/);
   });
 });

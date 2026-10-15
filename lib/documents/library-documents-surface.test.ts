@@ -19,7 +19,7 @@ describe("Library Documents surface", () => {
   });
 
   it("offers the V1 actions", () => {
-    assert.match(manager, /Add document/);
+    assert.match(manager, /Add Document/);
     assert.match(manager, /Preview/);
     assert.match(manager, /Download/);
     assert.match(manager, /Rename/);

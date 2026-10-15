@@ -23,7 +23,7 @@ export default async function PipelinePage() {
             <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
               <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
             </Button>
-            <Button variant="outline" size="sm" render={<Link href="/leads" />}>List view</Button>
+            <Button variant="outline" size="sm" render={<Link href="/leads" />}>List View</Button>
           </div>
         }
       />

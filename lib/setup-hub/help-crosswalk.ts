@@ -132,7 +132,7 @@ export const SETUP_HELP_CROSSWALK: readonly SetupHelpCrosswalkRow[] = [
   },
   {
     stage: "financials",
-    title: "Online payments",
+    title: "Online Payments",
     destinationHref: "/settings/integrations",
     destinationLabel: "Open Financials & Integrations",
     destinationPathLabel: "Your Venue → Settings → Financials & Integrations",

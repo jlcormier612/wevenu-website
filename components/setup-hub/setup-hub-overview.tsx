@@ -233,7 +233,7 @@ export function SetupHubOverview({
     },
     {
       key: "financials",
-      title: "Online payments",
+      title: "Online Payments",
       href: STAGE_COPY.financials.destinationHref,
       hrefLabel: STAGE_COPY.financials.destinationLabel,
       status: financialsDone ? "complete" : null,
