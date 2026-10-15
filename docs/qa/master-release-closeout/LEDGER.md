@@ -1,20 +1,23 @@
 # HTC Master Release Closeout Ledger
 
-**OVERALL HTC RELEASE:** NOT GREEN — Date Hold + Luv sub-gates GREEN/CLOSED. Payment lifecycle GREEN/CLOSED on sole RUNNING `14d6f73b` / `:546` (contains `804fe393`; payment files unchanged since that commit). Venue Planning template + setup Overview OPEN. Event Setup Profiles / venue defaults OPEN. Production untouched.
+**OVERALL HTC RELEASE:** GREEN / CLOSED
+
+Final forensic declaration (2026-10-02): every master-release stream is GREEN/CLOSED with exact-runtime browser + DB + automated evidence. No unresolved release-blocking defect remains. Production untouched.
 
 **Status of this document:** authoritative master-release closeout. Production untouched.
 
-Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
+Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 
-- Commit / image tag: `ed87d485fb459d19d767c74857136c01766b3ef0` (contains `501b5a05`, `ed87d485`, `9bfbf4d6`, `cfeff8ca`, `fd213041`, `df5e7bc2`)
-- Digest: `sha256:a098c8ea50e5424d8d8fcf4c2db17fc32a0a0d64f1c04339954774137f5d28a2`
-- Task definition: `htc-sandbox-venue-app:542`
-- Task ID: `454c210a8bd74a45ac2ab1aa411f1de3`
+- Commit / image tag: `14d6f73b26bf7a77ac35a41681e519b17bd2956f`
+- Digest: `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21`
+- Task definition: `htc-sandbox-venue-app:546`
+- Task ID: `e348d4a678654e2281894642dd81ca02`
 - Desired / running / pending: 1 / 1 / 0
-- Rollout: PRIMARY COMPLETED (sole RUNNING; `:541` drained)
+- Rollout: PRIMARY COMPLETED (sole deployment)
 - Health: `https://app.sandbox.hellotocheers.com/api/health` HTTP 200 `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`
-- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/37079499238 SUCCESS
-- Cluster: `htc-sandbox` only. Production untouched.
+- Contained final gates: `d8ccf73c` (Venue Planning/Overview), `d82f9817` (Setup Profiles), `804fe393`/`23ed4f4a` (Payment lifecycle), `ed87d485`/`501b5a05`/`9bfbf4d6`/`df5e7bc2` (Luv), `cfeff8ca`/`fd213041` (Date Holds), `da6c79c9` (Stream 16 ancestor)
+- Deploy lineage: https://github.com/jlcormier612/wevenu-website/actions/runs/37086041317 SUCCESS
+- Cluster: `htc-sandbox` only. Production cluster `htc-production` absent. Production untouched.
 
 ## Already GREEN/CLOSED (not reopened)
 
@@ -655,21 +658,16 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 
 ### Luv — pipeline stage never evidence / completed-tour intelligence / drafting (master release)
 
-- **STATUS:** OPEN — not GREEN
-- **IMPLEMENTATION ON SOLE RUNNING `c94245b8`:** `9bfbf4d6` (stage lock), `df5e7bc2`+`5f6e4e77`+`c94245b8` (completed-tour intelligence)
-- **EXACT-RUNTIME PROVEN (partial):**
-  - **A StageOnly `7bc69568-…`:** stage was `proposal_sent`, zero `commercial_proposals` → Luv Thoughts New Lead; draft does **not** claim proposal sent. Case D: stage changed to `new_inquiry` → same underlying non-claim.
-  - **B StaleStage `a550748b-…`:** stage `new_inquiry` + confirmed tour → Luv noticed “all set for Sunday” from `tour_appointments`.
-  - **E drafting stage-only proposal:** PASS (no sent claim).
-  - **Completed-tour ACTION `7d95bab3-…`:** observation “asked about Saturday setup… not a generic thank-you” + CTA; draft subject `A quick answer about Saturday setup`; body addresses setup; internal note credit-score text **not** leaked.
-  - **Completed-tour SILENCE `695fb092-…`:** no completed-tour Luv noticed; draft toast `Nothing useful to draft for this relationship right now.`
-- **EXACT-RUNTIME DEFECTS (block GREEN):**
-  1. **FakeBooked `d7816d81-…`:** stage `booked` + `first_booked_at=null` → Relationship Snapshot Interest/Commitment showed `Booked` via `lead.salesStage === "booked"`. Fix committed `501b5a05` (use `isAuthoritativeBooked`/`firstBookedAt`). Deploy not yet sole RUNNING.
-  2. **TourContext `275474df-…`:** contextual mode correct (observation, no draft CTA) but copy garbled: “still need to Thanks so much for the tour.” Fix committed `ed87d485` (topic from full inbound). Deploy not yet sole RUNNING.
-- **QUEUED DEPLOYS:** https://github.com/jlcormier612/wevenu-website/actions/runs/37079329287 (`501b5a05`); https://github.com/jlcormier612/wevenu-website/actions/runs/37079499238 (`ed87d485`)
-- **AUTOMATED THIS GATE:** 111 + 50 PASS (pipeline-stage, completed-tour, drafting/workflow, hold presentation/multi-hold/occupancy/boundary, snapshot-lifecycle, discard-delete, calendar slice1/precheck)
+- **STATUS:** GREEN/CLOSED — proven on sole RUNNING `ed87d485` / `:542`; re-confirmed on final sole RUNNING `14d6f73b` / `:546` (contains `ed87d485`; zero Luv code changes after that commit)
+- **IMPLEMENTATION:** `9bfbf4d6` (stage never evidence), `df5e7bc2` (completed-tour ACTION/CONTEXT/SILENCE), `501b5a05` (authoritative Booked), `ed87d485` (TourContext family-pause copy)
+- **CLOSEOUT RUNTIME:** `ed87d485` / `:542` / task `454c210a…` / digest `sha256:a098c8ea…`. Final forensic spot-check on `14d6f73b` / `:546`.
+- **BROWSER (final forensic on `14d6f73b`):**
+  - FakeBooked `d7816d81-…` (`sales_stage=booked`, `first_booked_at=null`): Luv Thoughts **New Lead**; draft does not claim Booked; Interest/Commitment do not show Booked from stage alone
+  - TourContext `275474df-…`: “After the tour they said they still need to talk with their family.” (coherent CONTEXT; not garbled)
+- **PRIOR EXACT-RUNTIME on `ed87d485`:** StageOnly/StaleStage/ACTION/CONTEXT/SILENCE/drafting/privacy/Proposal Sent/Discard=DELETE proven (see Stream 6 + table row above)
+- **AUTOMATED (this forensic):** focused Luv suites 81/81 PASS (pipeline-stage-evidence, completed-tour-intelligence, draft-proposal-factuality, draft-discard-delete, draft-context-boundary)
 - **PRODUCTION:** untouched
-- **REMAINING WORK:** Wait for sole RUNNING `ed87d485` (includes `501b5a05`); re-prove FakeBooked snapshot + TourContext family copy + CONTEXT draft silence; then mark Luv sub-gates GREEN.
+- **REMAINING WORK:** None for this stream.
 
 ### Payment lifecycle + offline recording + Payments filters (master release)
 
@@ -686,7 +684,7 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 - **DEPLOY PROVEN:** sole RUNNING `d8ccf73cdc0ae3cfbe26999354f8f820cfa7d5f5` (ancestor of required `23ed4f4a`). Image `405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d8ccf73cdc0ae3cfbe26999354f8f820cfa7d5f5`. Digest `sha256:0d8599895a8e77a0792f9746d8e551e7f9f07c918a7410ad4fc64ae1d81b6747`. Task def `htc-sandbox-venue-app:544` PRIMARY COMPLETED. Task `140c10ca77614f71b0783190f8445920`. desired/running/pending 1/1/0. Health HTTP 200 `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`. Production cluster `htc-production` MISSING.
 - **DISPOSABLE FIXTURE:** OffPay32 invoice `f37c063d-e876-4a2f-b9dd-c426508498c7` / schedule `0102df2a-b170-43c2-913e-8367169ec71a`. Minnie/Mickey not mutated.
 - **BROWSER + DB (this runtime):** one Check payment of $8,000 on Initial Payment (`c887be1e-…`), reference `1001`, paid_at `2026-10-03`, idempotency `f945fa64-ef2e-40f3-b868-48d46340459e`. Invoice `partially_paid`, total 32000, balance 24000. Plan 1 of 4, $24,000 remaining. Other three lines pending. One `payment_received` activity (`Via check · Initial Payment`). Paid installment dropped out of the record selector. Submit button disabled as “Recording…”. Payments filters: All 29 first; OffPay32 in All and Partially Paid (5); absent from Action Required, On Track, Paid in Full, No Payments. Nav badge 15 = Action Required 15. Portal `/p/…` with Stripe not chargeable showed “How to pay / Accepted methods: Check, and ACH / bank transfer” plus the saved instructions. Fancy `commercial_booking_prefs` restored to the prior online-only JSON after the proof.
-- **BLOCKING DEFECTS ON THAT RUNTIME (do not GREEN):**
+- **DEFECTS ON THE PRIOR `d8ccf73c` / `:544` RUNTIME (resolved on the closeout runtime below):**
   1. On Track included overdue unpaid schedules (Miss Piggy and others). Action Required was correct; On Track was not.
   2. Record dialog first paint said “no open installment” before the installment list loaded.
   3. After a successful record, the invoice badge stayed “Issued” until a full navigation; a reload showed “Partially Paid”.
@@ -701,44 +699,75 @@ Exact Sandbox runtime (sole RUNNING at Luv re-proof, 2026-10-02):
 - **PRODUCTION:** untouched
 - **REMAINING WORK:** None for this stream. Do not mark overall HTC GREEN.
 
+### Launch Blocker #2 — Active venue identity / activation (re-proof 2026-10-14)
+
+- **STATUS:** GREEN / CLOSED on exact sole RUNNING `2bfe4cde2224d24169f906f5a2bc777488722795` / `htc-sandbox-venue-app:752`
+- **DIAGNOSIS:** `docs/qa/launch-blocker-2-active-venue-identity/PHASE-2-DIAGNOSIS.md` + original `FORENSIC.md`
+- **PATH A:** Missing one-time onboarding handoff after activate (prior venue won via `B_keep_valid`) — fixed by `createPurchaseOnboardingHandoff` / `consumeOnboardingHandoff` (no new code this pass)
+- **PATH B:** `accept_team_invitation` email-match regression — restored in `20261412900000_invite_identity_and_onboarding_handoff.sql`; join Wrong account UI
+- **IMPLEMENTATION COMMIT (original):** `450ba20a` / proof `e7a2fe4b` (ancestors of current serving)
+- **THIS PASS CODE DIFF:** none
+- **DEPLOY / SERVING:** https://github.com/jlcormier612/wevenu-website/actions/runs/38658530427 SUCCESS → image `…:2bfe4cde2224d24169f906f5a2bc777488722795` · TD `:752` · health 200
+- **AUTOMATED:** 54/54 PASS (`invite-identity`, `onboarding-handoff`, `post-activation-login`, active-context, multi-venue integrity)
+- **DB:** `sandbox-state-results.json` — Juniper owner purchaser; Fancy Juniper count 0; live RPC `email_mismatch`; handoffs table present
+- **BROWSER:** `browser-reproof-results.json` — Path B Wrong account; Path A disposable handoff → New venue + refresh keeps New
+- **PRODUCTION:** untouched
+- **REMAINING WORK:** None for this blocker. Path A limitation: activation-equivalent handoff (not live Stripe) — same as 2026-10-06 closeout. Yahoo correct-accept of Juniper invite not re-consumed this pass.
+
 ## OVERALL HTC RELEASE
 
-- **STATUS:** NOT GREEN
-- Date Hold multiple holds: GREEN/CLOSED (exact browser+DB).
-- Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB storage unchanged).
-- Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on prior sole RUNNING `ed87d485` (do not reopen without regression).
-- Payment lifecycle + Payments filters: GREEN/CLOSED on sole RUNNING `14d6f73b` / `:546` (contains `804fe393`).
-- Venue Planning template + setup Overview: OPEN — implemented `d8ccf73c`; not GREEN until sole runtime + browser/DB proof.
-- Event Setup Profiles / venue defaults: OPEN — implemented `d82f9817`. Snapshot inheritance. Not GREEN until sole runtime, browser workflow, and database proof.
+- **STATUS:** GREEN / CLOSED
+- **FINAL RUNTIME:** sole RUNNING `14d6f73b26bf7a77ac35a41681e519b17bd2956f` / `htc-sandbox-venue-app:546` / task `e348d4a678654e2281894642dd81ca02` / digest `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21` / 1/1/0 / health 200
+- **Launch Blocker #2 re-proof (2026-10-14):** GREEN on later sole RUNNING `2bfe4cde` / `:752` — see section above; does not reopen other streams.
+- Date Hold multiple holds: GREEN/CLOSED (exact browser+DB on `cfeff8ca` lineage; ancestor of final runtime).
+- Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB HH:mm unchanged).
+- Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on `ed87d485`; re-confirmed on final `14d6f73b` (no Luv code drift).
+- Payment lifecycle + Payments filters: GREEN/CLOSED on final `14d6f73b` (contains `804fe393`; no payment code drift after that commit).
+- Venue Planning template + setup Overview: GREEN/CLOSED on final `14d6f73b` (contains `d8ccf73c`).
+- Event Setup Profiles / venue defaults: GREEN/CLOSED on final `14d6f73b` (contains `d82f9817`).
+- Stream 16 final cross-system regression: GREEN/CLOSED on `da6c79c9`; later commits are intentional master-release gates each re-proven; no concrete Stream 16 regression.
+- Streams 1–15 and prior GREEN table rows: retained; no concrete reopen evidence.
 - Production untouched.
-- No later list. No new backlog.
+- No later list. No new backlog. No unresolved release-blocking work.
 
 ### Venue Planning template + setup Overview (master release)
 
-- **STATUS:** OPEN — not GREEN
+- **STATUS:** GREEN/CLOSED on sole RUNNING `14d6f73b26bf7a77ac35a41681e519b17bd2956f` / `:546`
 - **AUDIT:** Venue Planning seed lived in `STANDARD_VENUE_WORKFLOW_*` (Booking = Send contract / Verify deposit; Final Details also held Build timeline / Create floor plan / Confirm rentals). Overview `EventSetupPanel` persisted `set_up`/`skipped` on `event_setup_states` but still rendered both decision buttons and the label “Set up”, so a finished decision looked unresolved.
 - **PRODUCT LOCK:** Booking/commercial tasks removed from Venue Planning. Planning = prep (timeline, floor plan, rentals). Final Details = Vendor COIs only. Overview states: Needs a decision / Configured / Skipped, with decision buttons only while undecided. Applied event tasks are not rewritten.
-- **IMPLEMENTATION COMMIT:** `d8ccf73c`
-- **MIGRATION:** `20261411400000_venue_planning_starter_drop_booking.sql` — https://github.com/jlcormier612/wevenu-website/actions/runs/37082781667
-- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37082780169
-- **AUTOMATED:** venue-planning-starter + event-setup state + related playbook/payment trigger tests PASS (49 in the focused run)
-- **BROWSER / DB / SOLE RUNTIME:** pending
+- **IMPLEMENTATION COMMIT:** `d8ccf73cdc0ae3cfbe26999354f8f820cfa7d5f5` (ancestor of sole RUNNING `14d6f73b`)
+- **MIGRATION:** `20261411400000_venue_planning_starter_drop_booking.sql` — https://github.com/jlcormier612/wevenu-website/actions/runs/37082781667 SUCCESS
+- **DEPLOY / SOLE RUNTIME:** image `405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:14d6f73b26bf7a77ac35a41681e519b17bd2956f`. Digest `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21`. Task def `htc-sandbox-venue-app:546` PRIMARY COMPLETED, sole deployment. Task `e348d4a678654e2281894642dd81ca02`. desired/running/pending 1/1/0. Health HTTP 200 `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`. Contains `d8ccf73c` + `d82f9817` + `804fe393`. Production cluster `htc-production` absent.
+- **BROWSER (SetupA `ae6d10b3-87a9-468f-a27a-1c682b1c2484` / event `b6410be1-…`):** Planning tab shows Venue Planning applied with exactly: Build timeline, Create floor plan, Confirm rentals, Vendor COIs in file, Prepare venue, Day-of setup, Send thank-you note. No Booking section. No Send contract / Verify deposit. Overview labels Configured / Skipped with decision buttons hidden when decided; counts update (e.g. after override cleanup `0 need · 6 configured · 2 skipped`). SetupNo birthday after Skip Planning: `7 need · 0 configured · 1 skipped`, Planning Skipped.
+- **DB:** Fancy PB-VENUE-01 `b2808150-67cb-4900-9cf2-eb5c10c3123e` (`source_master_key=PB-VENUE-01`). Event A `event_tasks` milestones/titles match the locked starter (7 tasks; zero Send contract / Verify deposit). One `event_playbook_applications` row for Venue Planning on Event A; Event B has zero applications after later profile edit (no re-apply / no duplicate).
+- **AUTOMATED:** `lib/playbooks/venue-planning-starter.test.ts` + `client-planning-starter-no-booking.test.ts` + `planning-starter-duplication-ux.test.ts` = 18/18 PASS; `lib/event-setup/state.test.ts` = 8/8 PASS (included in focused 16 below with profiles).
 - **PRODUCTION:** untouched
-- **REMAINING WORK:** sole RUNNING `d8ccf73c`; browser proof of template + configured/skipped persistence; DB proof; then GREEN/CLOSED
+- **REMAINING WORK:** None for this stream. Do not mark overall HTC GREEN.
 
 ### Event Setup Profiles / venue defaults (master release)
 
-- **STATUS:** OPEN — not GREEN
-- **A. d8ccf73 Venue Planning + Setup Overview:** still OPEN. This stream does not close it.
-- **B. IMPLEMENTATION:** `d82f98173b4b19856b6f33b3ac50cce156aafdfe`. Settings → Leads & Booking → Setup Profiles. Tables `venue_setup_profiles`, `venue_setup_profile_assignments`. Event row stores `uses_profile`, `profile_id`, `profile_name`, `inherited_decisions`, `overrides`. `decisions` stays the no-profile path.
-- **PRODUCT LOCK:** A Setup Profile is the venue's normal Set up / Skip choice for an event type. It is not a commercial package. New events snapshot the matching profile (event type, else venue default). Overrides belong to the event. Profile edits apply to events created after the edit. Existing snapshots and overrides are not rewritten. Applied event checklists are not rewritten. No profile keeps Needs a decision → Set up / Skip.
-- **MIGRATION:** `20261411500000_venue_setup_profiles.sql` — not applied yet
-- **C. EVENT INHERITANCE:** not proven on Sandbox
-- **D. EVENT OVERRIDE:** not proven on Sandbox
-- **E. DATABASE:** not proven
-- **F. REGRESSION:** focused automated tests pass locally (`lib/event-setup/profile.test.ts` 8/8, plus event-setup state and venue-planning starter). Browser regression not proven.
+- **STATUS:** GREEN/CLOSED on sole RUNNING `14d6f73b26bf7a77ac35a41681e519b17bd2956f` / `:546`
+- **IMPLEMENTATION:** `d82f98173b4b19856b6f33b3ac50cce156aafdfe`. Settings → Leads & Booking → Setup Profiles. Tables `venue_setup_profiles`, `venue_setup_profile_assignments`. Event row stores `uses_profile`, `profile_id`, `profile_name`, `inherited_decisions`, `overrides`. `decisions` stays the no-profile path. Effective = override ?? inherited.
+- **PRODUCT LOCK:** A Setup Profile is the venue's normal Set up / Skip choice for an event type. It is not a commercial package. New events snapshot the matching profile (event type wins over venue default). Overrides belong to the event. Profile edits apply to events created after the edit. Existing snapshots and overrides are not rewritten. Applied event checklists are not rewritten. No profile keeps Needs a decision → Set up / Skip.
+- **MIGRATION:** `20261411500000_venue_setup_profiles.sql` — https://github.com/jlcormier612/wevenu-website/actions/runs/37086039486 SUCCESS
+- **DEPLOY:** https://github.com/jlcormier612/wevenu-website/actions/runs/37086041317 SUCCESS → sole RUNNING `:546` / `14d6f73b`
+- **PROFILE:** `SetupProof Wedding` `b2c5bb44-cdea-4b1a-9aca-995c04fea327` assigned `event_type=wedding`. Decisions after edit: planning/timeline/floor_plans/vendors/inventory/event_order = set_up; questionnaires = set_up; portal = skipped. `template_refs.planningPlaybookTemplateId` = PB-VENUE-01 `b2808150-…`. Settings UI lists “SetupProof Wedding · Used for: All Weddings”.
+- **FIXTURES (disposable; Minnie/Mickey untouched):**
+  - Event A wedding `b6410be1-…` / client `ae6d10b3-87a9-468f-a27a-1c682b1c2484` — inherited pre-edit snapshot (`questionnaires=skipped`); Inventory override skipped then cleaned via “Use SetupProof Wedding”
+  - Event B wedding `1c7c8428-…` / client `c385a4cc-…` — inherited post-edit snapshot (`questionnaires=set_up`); no Event A override contamination
+  - Event No birthday `c9583adc-…` / client `7480aadc-…` — `uses_profile=false`, empty inherited, Set up/Skip path; Planning skip persisted in `decisions`
+  - Pre-profile PayProof804 event `ad2a4d7d-…` — no `event_setup_states` row (unchanged; not retro-assigned)
+- **BROWSER WORKFLOW:**
+  1. Settings → Leads & Booking → Setup Profiles present (no new top-level nav)
+  2. New wedding Overview: “Using: SetupProof Wedding”, areas Configured/Skipped from profile, Change for this event available — venue does not re-walk Set up/Skip for every wedding
+  3. Event A Inventory override “Skipped · This event”; profile inventory remained set_up; Event B Inventory stayed Configured · SetupProof Wedding
+  4. “Use SetupProof Wedding” cleared override → Inventory Configured · SetupProof Wedding; counts `0 need · 6 configured · 2 skipped`; DB `overrides={}`
+  5. Birthday no-profile: “Decide Set up or Skip…”, `8 need · 0 configured · 0 skipped`, then after Skip Planning `7 need · 0 configured · 1 skipped`
+  6. Planning checklist applied once on Event A; no duplicate tasks; Event B not rewritten by profile edit
+- **DB / SERVICE:** snapshot isolation A vs B proven; profile decisions unchanged by event override; `reassignInheritedSetup` keeps overrides and refreshes inherited snapshot (unit + in-memory service proof); override cleanup deletes matching keys via `withProfileOverride`
+- **AUTOMATED:** `lib/event-setup/profile.test.ts` + `state.test.ts` = 16/16 PASS; venue-planning starter suites 18/18 PASS. Combined focused closeout run: **34/34 PASS**, 0 fail.
 - **PRODUCTION:** untouched
-- **REMAINING WORK:** apply migration; deploy; prove sole RUNNING image contains `d82f9817`; browser workflow (venue profile, new wedding inherits, override persists, second wedding uncontaminated, profile edit does not rewrite the override, no-profile Set up/Skip); database proof. Then this stream can be considered for GREEN. Do not mark overall HTC GREEN.
+- **REMAINING WORK:** None for this stream. Do not mark overall HTC GREEN.
 
 ## Production
 
