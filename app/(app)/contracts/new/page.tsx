@@ -95,7 +95,7 @@ export default async function NewContractPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle>Contract setup</CardTitle>
           <CardDescription>
-            Select a template and client, then edit with Smart Fields. Preview is display-only. Tokens resolve when you send.
+            Select a template and client, then personalize your contract with Smart Fields. Preview your contract before sending. Smart Fields fill in automatically when you send.
           </CardDescription>
         </CardHeader>
         <CardContent>
