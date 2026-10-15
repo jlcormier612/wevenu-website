@@ -48,6 +48,23 @@ export function isEmailConfigured(): boolean {
   return !!process.env.RESEND_API_KEY;
 }
 
+/**
+ * Reply-To selection for outbound email.
+ * When both threadId and RESEND_INBOUND_ADDRESS are set, replies route through
+ * `thread+{conversationId}@…` for inbound matching. Otherwise venue replyTo.
+ */
+export function resolveSendEmailReplyTo(opts: {
+  threadId?: string;
+  replyTo?: string | null;
+  inboundAddress?: string | null;
+}): string | null {
+  const inbound = opts.inboundAddress?.trim() || null;
+  if (opts.threadId && inbound) {
+    return `thread+${opts.threadId}@${inbound.replace(/^.*@/, "")}`;
+  }
+  return opts.replyTo ?? null;
+}
+
 export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
   const mode = getCommunicationMode();
   if (mode === "disabled") {
@@ -86,10 +103,11 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
     };
     if (payload.html) body.html = payload.html;
     // Reply-To: route through inbound address if configured, otherwise venue email
-    const inboundAddress = process.env.RESEND_INBOUND_ADDRESS;
-    const replyTo = payload.threadId && inboundAddress
-      ? `thread+${payload.threadId}@${inboundAddress.replace(/^.*@/, "")}` // subaddressing for thread matching
-      : (payload.replyTo ?? null);
+    const replyTo = resolveSendEmailReplyTo({
+      threadId: payload.threadId,
+      replyTo: payload.replyTo,
+      inboundAddress: process.env.RESEND_INBOUND_ADDRESS,
+    });
     if (replyTo) body.reply_to = replyTo;
     if (payload.attachments && payload.attachments.length > 0) {
       body.attachments = payload.attachments.map((a) => {

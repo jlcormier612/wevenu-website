@@ -38,6 +38,14 @@ describe("tour emails also carry thread context for inbound reply matching", () 
   });
 });
 
+describe("proposal couple emails also carry thread context for inbound reply matching", () => {
+  const source = readFileSync(resolve("lib/commercial-proposals/couple-email.ts"), "utf8");
+  it("resolves venue_couple conversation and passes threadId like tour/conversation sends", () => {
+    assert.match(source, /findOrCreateVenueCoupleConversation/);
+    assert.match(source, /threadId: conversationId \?\? undefined/);
+  });
+});
+
 describe("venue conversation messages are newest-first", () => {
   it("migration orders get_conversation messages by sent_at desc", () => {
     const migration = readFileSync(

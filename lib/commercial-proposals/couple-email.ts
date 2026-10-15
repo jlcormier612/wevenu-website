@@ -10,6 +10,7 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { findOrCreateVenueCoupleConversation } from "@/lib/conversations/venue-couple-conversation";
 import { sendEmail } from "@/lib/email/send";
 import {
   brandButtonHtml,
@@ -198,13 +199,25 @@ export async function submitProposalCoupleEmail(input: {
     brand,
   });
 
+  // Same venue↔couple conversation the outbound recorder uses — pass as
+  // threadId so sendEmail sets Reply-To to thread+{id}@inbound when configured.
+  const admin = createAdminClient();
+  let conversationId: string | null = null;
+  if (recipient.relationshipId) {
+    conversationId = await findOrCreateVenueCoupleConversation(
+      admin,
+      input.venueId,
+      recipient.relationshipId,
+    );
+  }
+
   const emailResult = await sendEmail({
     to: email,
     subject: content.subject,
     text: content.text,
     html: content.html,
     replyTo: (venue?.email as string | null) ?? undefined,
-    threadId: undefined,
+    threadId: conversationId ?? undefined,
   });
 
   const submitted = emailResult.ok && emailResult.method === "resend";
@@ -216,7 +229,6 @@ export async function submitProposalCoupleEmail(input: {
         ? "Sending is turned off in this environment."
         : null;
 
-  const admin = createAdminClient();
   await recordExternalClientOutbound(admin, {
     venueId: input.venueId,
     leadId: recipient.leadId,

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import { buildProposalCoupleEmail } from "@/lib/commercial-proposals/couple-email";
+import { resolveSendEmailReplyTo } from "@/lib/email/send";
 import { brandButtonHtml, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { customerFacingVenueName } from "@/lib/venue/identity";
 
@@ -150,6 +151,48 @@ describe("proposal couple email", () => {
     assert.match(
       service,
       /Resend the couple email for an already-sent proposal\. Does not change status or token/,
+    );
+  });
+
+  it("resolves the venue↔couple conversation and passes it as threadId", () => {
+    assert.match(coupleEmailSrc, /findOrCreateVenueCoupleConversation/);
+    assert.match(coupleEmailSrc, /threadId: conversationId \?\? undefined/);
+    assert.match(
+      coupleEmailSrc,
+      /if \(recipient\.relationshipId\)[\s\S]*findOrCreateVenueCoupleConversation/,
+    );
+    assert.doesNotMatch(coupleEmailSrc, /threadId:\s*undefined/);
+  });
+
+  it("keeps venue replyTo as fallback when inbound address or conversation is missing", () => {
+    assert.match(coupleEmailSrc, /replyTo: \(venue\?\.email as string \| null\) \?\? undefined/);
+    const conversationId = "dcba7cbc-1111-2222-3333-444444444444";
+    const venueEmail = "venue@example.com";
+    assert.equal(
+      resolveSendEmailReplyTo({
+        threadId: conversationId,
+        replyTo: venueEmail,
+        inboundAddress: "inbox@replies.hellotocheers.com",
+      }),
+      `thread+${conversationId}@replies.hellotocheers.com`,
+    );
+    assert.equal(
+      resolveSendEmailReplyTo({
+        threadId: conversationId,
+        replyTo: venueEmail,
+        inboundAddress: null,
+      }),
+      venueEmail,
+      "without inbound address, venue Reply-To is preserved",
+    );
+    assert.equal(
+      resolveSendEmailReplyTo({
+        threadId: undefined,
+        replyTo: venueEmail,
+        inboundAddress: "inbox@replies.hellotocheers.com",
+      }),
+      venueEmail,
+      "without conversation threadId, venue Reply-To is preserved",
     );
   });
 });
