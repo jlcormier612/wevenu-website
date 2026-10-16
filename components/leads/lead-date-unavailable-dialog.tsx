@@ -12,7 +12,7 @@ import {
 import type { ConflictItem } from "@/lib/availability/types";
 
 /**
- * Soft gate on New Lead when the preferred event date is unavailable under
+ * Soft gate on New Lead save when the preferred event date is unavailable under
  * the canonical availability engine. Create is never hard-blocked — a Lead
  * date does not reserve or book the date.
  */
@@ -39,8 +39,8 @@ export function LeadDateUnavailableDialog({
         <DialogHeader>
           <DialogTitle>This date isn&apos;t currently available</DialogTitle>
           <DialogDescription>
-            The event date you entered conflicts with your venue&apos;s current availability.
-            You can change the date, or save this lead anyway.
+            The preferred event date you entered conflicts with your venue&apos;s current availability.
+            You can choose another date, or keep this preferred date and save the lead.
           </DialogDescription>
         </DialogHeader>
         {lines.length > 0 ? (
@@ -55,11 +55,22 @@ export function LeadDateUnavailableDialog({
           protected when you place a Hold or move a relationship to Booked.
         </p>
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={onGoBack} disabled={pending}>
-            Go back
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onGoBack}
+            disabled={pending}
+            data-testid="preferred-date-dialog-choose-another"
+          >
+            Choose another date
           </Button>
-          <Button type="button" disabled={pending} onClick={onSaveAnyway}>
-            Save lead anyway
+          <Button
+            type="button"
+            disabled={pending}
+            onClick={onSaveAnyway}
+            data-testid="preferred-date-dialog-keep"
+          >
+            Keep this preferred date
           </Button>
         </DialogFooter>
       </DialogContent>

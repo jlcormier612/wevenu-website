@@ -32,10 +32,12 @@ describe("Lead date availability warning", () => {
     assert.match(form, /purpose:\s*"preferred_date"/);
     assert.match(form, /LeadDateUnavailableDialog/);
     assert.match(form, /onSaveAnyway/);
+    assert.match(form, /PreferredDateConflictPanel/);
+    assert.match(form, /PREFERRED_EVENT_DATE_LABEL/);
     assert.match(dialog, /This date isn&apos;t currently available/);
     assert.match(dialog, /Saving this lead does not reserve or book the date/);
-    assert.match(dialog, /Go back/);
-    assert.match(dialog, /Save lead anyway/);
+    assert.match(dialog, /Choose another date/);
+    assert.match(dialog, /Keep this preferred date/);
     // Never hard-block createLead
     assert.doesNotMatch(form, /disabled=\{pending \|\| date/);
   });

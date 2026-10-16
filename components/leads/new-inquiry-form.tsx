@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { createLeadAction, previewPossibleDuplicateLeadAction } from "@/app/(app)/leads/actions";
 import { checkAvailabilityAction, markScheduleItemConvertedAction } from "@/app/(app)/availability/actions";
 import { LeadDateUnavailableDialog } from "@/components/leads/lead-date-unavailable-dialog";
+import { PreferredDateConflictPanel } from "@/components/leads/preferred-date-conflict-panel";
 import { PossibleMatchCreateDialog } from "@/components/leads/possible-match-create-dialog";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,13 @@ import {
   parseMoneyInput,
 } from "@/lib/leads/constants";
 import type { DuplicateCandidate } from "@/lib/leads/duplicate-detection";
+import {
+  PREFERRED_EVENT_DATE_HINT,
+  PREFERRED_EVENT_DATE_LABEL,
+  blockingPreferredDateConflicts,
+  isStalePreferredDateResult,
+  saveMaySkipPreferredDateDialog,
+} from "@/lib/leads/preferred-date-check";
 import type { LeadErrors, LeadInput } from "@/lib/leads/types";
 import type { IdentityDecision } from "@/lib/identity/decision";
 import {
@@ -103,6 +111,13 @@ function SelectField({
   );
 }
 
+type PreferredDateCheckState = {
+  date: string;
+  checking: boolean;
+  checkFailed: boolean;
+  conflicts: ConflictItem[];
+};
+
 export function NewInquiryForm({
   initial, fromBlockId, eventTypeOptions, venueTimezone,
 }: {
@@ -127,11 +142,74 @@ export function NewInquiryForm({
   const [dateWarnOpen, setDateWarnOpen] = React.useState(false);
   const [dateReasons, setDateReasons] = React.useState<ConflictItem[]>([]);
   const pendingDecisionRef = React.useRef<IdentityDecision | undefined>(undefined);
+  const dateInputRef = React.useRef<HTMLInputElement | null>(null);
+  const preferredCheckGen = React.useRef(0);
+  const eventDateRef = React.useRef(input.eventDate);
+  const [acknowledgedPreferredDate, setAcknowledgedPreferredDate] = React.useState<string | null>(null);
+  const [preferredCheck, setPreferredCheck] = React.useState<PreferredDateCheckState>({
+    date: "",
+    checking: false,
+    checkFailed: false,
+    conflicts: [],
+  });
+
+  eventDateRef.current = input.eventDate;
 
   const set = <K extends keyof LeadInput>(key: K, value: LeadInput[K]) => {
     setInput((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
   };
+
+  const runPreferredDateCheck = React.useCallback(async (date: string) => {
+    const trimmed = date.trim();
+    if (!trimmed) {
+      preferredCheckGen.current += 1;
+      setPreferredCheck({ date: "", checking: false, checkFailed: false, conflicts: [] });
+      return;
+    }
+    const requestId = ++preferredCheckGen.current;
+    setPreferredCheck({ date: trimmed, checking: true, checkFailed: false, conflicts: [] });
+    try {
+      const status = await checkAvailabilityAction({
+        date: trimmed,
+        type: "event",
+        purpose: "preferred_date",
+      });
+      if (isStalePreferredDateResult(requestId, preferredCheckGen.current, trimmed, eventDateRef.current.trim())) {
+        return;
+      }
+      setPreferredCheck({
+        date: trimmed,
+        checking: false,
+        checkFailed: false,
+        conflicts: blockingPreferredDateConflicts(status),
+      });
+    } catch {
+      if (isStalePreferredDateResult(requestId, preferredCheckGen.current, trimmed, eventDateRef.current.trim())) {
+        return;
+      }
+      setPreferredCheck({
+        date: trimmed,
+        checking: false,
+        checkFailed: true,
+        conflicts: [],
+      });
+    }
+  }, []);
+
+  function setPreferredEventDate(value: string) {
+    set("eventDate", value);
+    setAcknowledgedPreferredDate(null);
+    setDateWarnOpen(false);
+    void runPreferredDateCheck(value);
+  }
+
+  React.useEffect(() => {
+    const initialDate = input.eventDate?.trim();
+    if (initialDate) void runPreferredDateCheck(initialDate);
+    // Prefill from Calendar convert-to-lead only — intentional mount once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function saveLead(decision?: IdentityDecision) {
     const result = await createLeadAction({ ...input, identityDecision: decision });
@@ -149,26 +227,42 @@ export function NewInquiryForm({
     toast.error(result.message ?? "Please fix the highlighted fields.");
   }
 
-  /** Soft availability gate — never hard-blocks Lead create. */
+  /** Soft availability gate — never hard-blocks Lead create. Always rechecks on save. */
   async function checkPreferredDateThenSave(decision?: IdentityDecision) {
     const date = input.eventDate?.trim();
     if (!date) {
       await saveLead(decision);
       return;
     }
-    const status = await checkAvailabilityAction({
-      date,
-      type: "event",
-      purpose: "preferred_date",
-    });
-    const blocking = status.conflicts.filter((c) => c.severity === "error");
-    if (blocking.length > 0) {
-      pendingDecisionRef.current = decision;
-      setDateReasons(blocking);
-      setDateWarnOpen(true);
+    let status;
+    try {
+      status = await checkAvailabilityAction({
+        date,
+        type: "event",
+        purpose: "preferred_date",
+      });
+    } catch {
+      toast.error("Could not recheck availability. Try again.");
       return;
     }
-    await saveLead(decision);
+    const blocking = blockingPreferredDateConflicts(status);
+    setPreferredCheck({
+      date,
+      checking: false,
+      checkFailed: false,
+      conflicts: blocking,
+    });
+    if (saveMaySkipPreferredDateDialog({
+      date,
+      acknowledgedDate: acknowledgedPreferredDate,
+      blocking,
+    })) {
+      await saveLead(decision);
+      return;
+    }
+    pendingDecisionRef.current = decision;
+    setDateReasons(blocking);
+    setDateWarnOpen(true);
   }
 
   function handleSubmit() {
@@ -191,6 +285,11 @@ export function NewInquiryForm({
     });
   }
 
+  const showPreferredPanel = !!input.eventDate?.trim()
+    && (preferredCheck.checking
+      || preferredCheck.checkFailed
+      || preferredCheck.conflicts.length > 0);
+
   return (
     <div className="space-y-6">
       <PossibleMatchCreateDialog
@@ -212,8 +311,11 @@ export function NewInquiryForm({
         onGoBack={() => {
           setDateWarnOpen(false);
           pendingDecisionRef.current = undefined;
+          requestAnimationFrame(() => dateInputRef.current?.focus());
         }}
         onSaveAnyway={() => {
+          const date = input.eventDate?.trim() || null;
+          setAcknowledgedPreferredDate(date);
           setDateWarnOpen(false);
           const decision = pendingDecisionRef.current;
           pendingDecisionRef.current = undefined;
@@ -269,9 +371,41 @@ export function NewInquiryForm({
           <SelectField id="eventType" label="Event type" value={input.eventType}
             onValueChange={(v) => set("eventType", v)} options={eventTypeOptions}
             placeholder="Select a type" error={errors.eventType} />
-          <TextField id="eventDate" label="Event date" type="date" value={input.eventDate}
-            onChange={(v) => set("eventDate", v)} error={errors.eventDate} />
+          <Field
+            label={PREFERRED_EVENT_DATE_LABEL}
+            htmlFor="eventDate"
+            error={errors.eventDate}
+            hint={PREFERRED_EVENT_DATE_HINT}
+          >
+            <Input
+              id="eventDate"
+              ref={dateInputRef}
+              type="date"
+              value={input.eventDate}
+              data-testid="preferred-event-date"
+              aria-invalid={errors.eventDate ? true : undefined}
+              onChange={(e) => setPreferredEventDate(e.target.value)}
+            />
+          </Field>
         </div>
+        {showPreferredPanel ? (
+          <PreferredDateConflictPanel
+            checking={preferredCheck.checking}
+            checkFailed={preferredCheck.checkFailed}
+            conflicts={preferredCheck.conflicts}
+            acknowledged={acknowledgedPreferredDate === input.eventDate?.trim()}
+            onChooseAnother={() => {
+              requestAnimationFrame(() => {
+                dateInputRef.current?.focus();
+                dateInputRef.current?.showPicker?.();
+              });
+            }}
+            onKeepPreferred={() => {
+              const date = input.eventDate?.trim() || null;
+              setAcknowledgedPreferredDate(date);
+            }}
+          />
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField id="guestCount" label="Estimated guests" type="number"
             inputMode="numeric" value={input.guestCount} error={errors.guestCount}
