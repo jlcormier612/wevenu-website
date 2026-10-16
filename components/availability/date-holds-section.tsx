@@ -27,6 +27,13 @@ import {
   placeHoldCtaLabel,
   shouldShowPlaceHoldCta,
 } from "@/lib/availability/hold-presentation";
+import {
+  clearWholeVenue,
+  holdSpaceIdsForSubmit,
+  selectWholeVenue,
+  toggleIndividualSpace,
+  type HoldSpaceSelection,
+} from "@/lib/availability/hold-space-selection";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { DateHold, DateHoldInput, DateHoldUpdateInput, VenueSpace } from "@/lib/availability/types";
 
@@ -145,17 +152,22 @@ export function DateHoldsSection({
     setFormMode("edit");
   }
 
+  function applySpaceSelection(next: HoldSpaceSelection) {
+    setWholeVenue(next.wholeVenue);
+    setSelectedSpaceIds(next.selectedSpaceIds);
+  }
+
   function toggleSpace(spaceId: string) {
-    setWholeVenue(false);
-    setSelectedSpaceIds((prev) =>
-      prev.includes(spaceId) ? prev.filter((id) => id !== spaceId) : [...prev, spaceId],
-    );
+    applySpaceSelection(toggleIndividualSpace(
+      { wholeVenue, selectedSpaceIds },
+      spaceId,
+    ));
   }
 
   function handleAdd() {
     if (!holdDate || !holdTitle.trim()) return;
     const resolvedEnd = endDate && endDate >= holdDate ? endDate : holdDate;
-    const spaceIds = wholeVenue ? [] : selectedSpaceIds;
+    const spaceIds = holdSpaceIdsForSubmit({ wholeVenue, selectedSpaceIds });
     startAdd(async () => {
       const input: DateHoldInput = {
         leadId,
@@ -206,7 +218,7 @@ export function DateHoldsSection({
   function handleSave() {
     if (!editingHoldId || !holdDate || !holdTitle.trim()) return;
     const resolvedEnd = endDate && endDate >= holdDate ? endDate : holdDate;
-    const spaceIds = wholeVenue ? [] : selectedSpaceIds;
+    const spaceIds = holdSpaceIdsForSubmit({ wholeVenue, selectedSpaceIds });
     startAdd(async () => {
       const input: DateHoldUpdateInput = {
         leadId,
@@ -574,8 +586,9 @@ export function DateHoldsSection({
                     type="checkbox"
                     checked={wholeVenue}
                     onChange={(e) => {
-                      setWholeVenue(e.target.checked);
-                      if (e.target.checked) setSelectedSpaceIds([]);
+                      applySpaceSelection(
+                        e.target.checked ? selectWholeVenue() : clearWholeVenue(),
+                      );
                     }}
                     data-testid="date-hold-whole-venue"
                   />
@@ -596,7 +609,6 @@ export function DateHoldsSection({
                         <input
                           type="checkbox"
                           checked={!wholeVenue && selectedSpaceIds.includes(s.id)}
-                          disabled={wholeVenue}
                           onChange={() => toggleSpace(s.id)}
                           data-testid={`date-hold-space-${s.id}`}
                         />
