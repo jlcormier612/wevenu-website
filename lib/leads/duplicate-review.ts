@@ -118,7 +118,7 @@ export async function maybeCreateDuplicateReviewForNewLead(opts: {
   const stageText = best.salesStage ? statusLabel(best.salesStage) : null;
   const bodyParts = [
     `Possible match: ${best.displayName}`,
-    best.email ? best.email : null,
+    best.email ? `Email: ${best.email}` : null,
     stageText ? `Status: ${stageText}` : null,
     `Matched by: ${signalText}`,
   ].filter(Boolean);
@@ -128,7 +128,8 @@ export async function maybeCreateDuplicateReviewForNewLead(opts: {
     p_event_id: null,
     p_type: "possible_duplicate_inquiry",
     p_title: "Possible duplicate inquiry",
-    p_body: bodyParts.join(" · "),
+    // Newlines — venue notification email preserves them as <br> rows.
+    p_body: bodyParts.join("\n"),
     p_link: `/leads/${opts.leadId}`,
     p_emoji: "⚠️",
   });

@@ -59,6 +59,12 @@ describe("Possible duplicate inquiry seams", () => {
     assert.match(bell, /Review possible duplicate/);
   });
 
+  it("duplicate notification body uses newline field rows, not middle-dot concatenation", () => {
+    assert.match(review, /bodyParts\.join\("\\n"\)/);
+    assert.doesNotMatch(review, /bodyParts\.join\(" · "\)/);
+    assert.match(review, /Email: \$\{best\.email\}/);
+  });
+
   it("rejects fuzzy matching language in the detector", () => {
     assert.doesNotMatch(detection, /levenshtein|soundex|string.?similarity/i);
     assert.match(detection, /never fuzzy names/);

@@ -149,6 +149,38 @@ describe("buildPublicIntakeVenueDetailBody + forms venue notify (D2/D3)", () => 
     assert.doesNotMatch(email.text, /\/leads$/);
     assert.match(email.text, /\/leads\/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/);
   });
+
+  it("inquire venue HTML keeps field rows separated (regression for collapsed paragraph)", () => {
+    const body = buildPublicIntakeVenueDetailBody({
+      intro: "New inquiry received via Jen's Fancy Venue's website form.",
+      inquirerName: "Alice Gate",
+      inquirerEmail: "alice@example.com",
+      phone: "5551001001",
+      partnerLine: "Partner: Sam Gate",
+      eventType: "wedding",
+      eventDate: "2027-11-11",
+      guestCount: 120,
+      estimatedBudget: 25000,
+      inquiryMessage: "Looking for a fall weekend.",
+    });
+    const email = buildVenueNotificationEmail({
+      title: "New inquiry from Alice Gate",
+      body,
+      link: "/leads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Name: Alice Gate<br>/);
+    assert.match(email.html, /Email: alice@example\.com<br>/);
+    assert.match(email.html, /Phone: 5551001001<br>/);
+    assert.match(email.html, /Partner: Sam Gate<br>/);
+    assert.match(email.html, /Event type: Wedding<br>/);
+    assert.match(email.html, /Preferred event date: 2027-11-11<br>/);
+    assert.match(email.html, /Guests: 120<br>/);
+    assert.match(email.html, /Budget: \$25,000/);
+    assert.match(email.html, /Message:<br>Looking for a fall weekend\./);
+    assert.doesNotMatch(email.html, /Name: Alice Gate Email:/);
+    assert.doesNotMatch(email.html, /Event type: wedding\b/);
+  });
 });
 
 describe("public intake routes wire Group A helpers", () => {

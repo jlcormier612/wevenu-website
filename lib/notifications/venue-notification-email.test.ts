@@ -34,7 +34,7 @@ describe("venue staff notification emails", () => {
     assert.match(email.html, new RegExp(`href="${ORIGIN}/leads/11111111-1111-1111-1111-111111111111"`));
   });
 
-  it("new inquiry keeps the inquiry line and uses the same lead CTA", () => {
+  it("new inquiry summary capitalizes Wedding and uses the same lead CTA", () => {
     const email = buildVenueNotificationEmail({
       title: "New inquiry from Nicole Bethune",
       body: "wedding · May 09, 2027",
@@ -42,13 +42,64 @@ describe("venue staff notification emails", () => {
       appOrigin: ORIGIN,
     });
     assert.equal(email.subject, "New inquiry from Nicole Bethune");
-    assert.match(email.text, /wedding · May 09, 2027/);
+    assert.match(email.text, /Wedding · May 09, 2027/);
+    assert.doesNotMatch(email.text, /\bwedding ·/);
     assert.equal(email.ctaLabel, "View Nicole's lead");
-    assert.match(email.html, /wedding · May 09, 2027/);
+    assert.match(email.html, /Wedding · May 09, 2027/);
+    assert.doesNotMatch(email.html, /\bwedding ·/);
     assert.doesNotMatch(visible(email.html), /https?:\/\//);
     assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
     assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
     assert.doesNotMatch(email.html, /background:#1a1a1a/);
+  });
+
+  it("multiline inquiry fields become separate HTML lines (not one collapsed paragraph)", () => {
+    const body = [
+      "New inquiry received via Jen's Fancy Venue's website form.",
+      "",
+      "Name: Alice Gate",
+      "Email: alice@example.com",
+      "Phone: 5551001001",
+      "Partner: Sam Gate",
+      "Event type: Wedding",
+      "Preferred event date: 2027-11-11",
+      "Guests: 120",
+      "Budget: $25,000",
+      "",
+      "Message:",
+      "Looking for a fall weekend.",
+    ].join("\n");
+    const email = buildVenueNotificationEmail({
+      title: "New inquiry from Alice Gate",
+      body,
+      link: "/leads/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Name: Alice Gate<br>/);
+    assert.match(email.html, /Email: alice@example\.com<br>/);
+    assert.match(email.html, /Event type: Wedding<br>/);
+    assert.match(email.html, /Message:<br>Looking for a fall weekend\./);
+    assert.doesNotMatch(email.html, /Name: Alice Gate Email:/);
+    assert.match(email.text, /Name: Alice Gate\nEmail:/);
+  });
+
+  it("duplicate-match details render as separate HTML lines", () => {
+    const email = buildVenueNotificationEmail({
+      title: "Possible duplicate inquiry",
+      body: [
+        "Possible match: Alice Gate",
+        "Email: alice@example.com",
+        "Status: New Inquiry",
+        "Matched by: email",
+      ].join("\n"),
+      link: "/leads/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Possible match: Alice Gate<br>/);
+    assert.match(email.html, /Email: alice@example\.com<br>/);
+    assert.match(email.html, /Status: New Inquiry<br>/);
+    assert.match(email.html, /Matched by: email/);
+    assert.doesNotMatch(email.html, /Possible match: Alice Gate ·/);
   });
 
   it("date-based new-tour-booked subjects do not invent a weekday CTA name", () => {

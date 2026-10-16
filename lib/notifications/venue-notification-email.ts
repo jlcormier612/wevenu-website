@@ -4,6 +4,7 @@
  * Hello to Cheers owns this mail; the venue name is the subject of the alert.
  */
 import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
+import { eventTypeLabel } from "@/lib/event-types/canonical";
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
 
 export type VenueNotificationEmailInput = {
@@ -27,6 +28,30 @@ function escapeHtml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/**
+ * Presentation for staff notification detail bodies before HTML/text emit.
+ * - New-lead summaries historically stored raw keys (`wedding · May 09, 2027`);
+ *   capitalize the leading canonical event type for display.
+ * - Does not rewrite multiline field layouts from public intake.
+ */
+export function presentVenueNotificationDetailBody(body: string): string {
+  const trimmed = body.trim();
+  if (!trimmed) return trimmed;
+  const leading = trimmed.match(/^([a-z][a-z0-9_]*)( · .+)$/i);
+  if (leading) {
+    const label = eventTypeLabel(leading[1]!);
+    if (label && label !== leading[1]) {
+      return `${label}${leading[2]}`;
+    }
+  }
+  return trimmed;
+}
+
+/** Escape + preserve intentional line breaks as <br> (HTML collapses bare \\n). */
+export function venueNotificationDetailHtml(detail: string): string {
+  return escapeHtml(detail).replace(/\r\n|\r|\n/g, "<br>");
 }
 
 const DATE_SUBJECT_TOKEN =
@@ -69,14 +94,16 @@ export function buildVenueNotificationEmail(input: VenueNotificationEmailInput):
   const origin = input.appOrigin.replace(/\/$/, "");
   const cta = venueNotificationCta(input.title, input.link);
   const href = cta ? `${origin}${cta.hrefPath}` : null;
-  const detail = input.body?.trim() ?? "";
+  const detail = input.body?.trim()
+    ? presentVenueNotificationDetailBody(input.body)
+    : "";
   const textParts = [input.title];
   if (detail) textParts.push("", detail);
   if (cta && href) textParts.push("", cta.label, href);
   const text = textParts.join("\n");
 
   const detailHtml = detail
-    ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">${escapeHtml(detail)}</p>`
+    ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">${venueNotificationDetailHtml(detail)}</p>`
     : "";
   const buttonHtml = cta && href
     ? htcEmailCtaAnchorHtml(escapeHtml(href), escapeHtml(cta.label))

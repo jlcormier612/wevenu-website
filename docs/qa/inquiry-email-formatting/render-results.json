@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "inquiry_1280_field_rows",
+      "pass": true,
+      "detail": "lines=11"
+    },
+    {
+      "name": "inquiry_390_field_rows",
+      "pass": true,
+      "detail": "lines=11"
+    },
+    {
+      "name": "summary_1280_wedding_cap",
+      "pass": true,
+      "detail": "Wedding · May 09, 2027"
+    },
+    {
+      "name": "summary_390_wedding_cap",
+      "pass": true,
+      "detail": "Wedding · May 09, 2027"
+    },
+    {
+      "name": "duplicate_1280_field_rows",
+      "pass": true,
+      "detail": "lines=4"
+    },
+    {
+      "name": "duplicate_390_field_rows",
+      "pass": true,
+      "detail": "lines=4"
+    }
+  ]
+}
