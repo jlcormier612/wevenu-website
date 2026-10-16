@@ -195,7 +195,10 @@ export async function applyLeadTourWrite(
   },
 ): Promise<LeadTourApplyResult> {
   const existing = await loadExistingLeadTour(client, venueId, leadId);
-  const decision = resolveLeadTourWrite({ ...input, existing });
+  // First pass without timezone handles reject / clear / complete / walk-in.
+  // future_schedule is re-resolved with venueTimezone so an unchanged slot
+  // becomes noop (preserves confirmed) instead of rewriting status.
+  let decision = resolveLeadTourWrite({ ...input, existing });
 
   if (decision.action === "reject") {
     return { ok: false, kind: "reject", message: decision.message };
@@ -211,6 +214,15 @@ export async function applyLeadTourWrite(
   }
 
   const { timezone, durationMinutes } = await venueTourDurationMinutes(client, venueId);
+
+  if (decision.action === "future_schedule") {
+    decision = resolveLeadTourWrite({ ...input, existing, venueTimezone: timezone });
+    if (decision.action === "noop") return { ok: true };
+    if (decision.action !== "future_schedule") {
+      // Same-slot path only flips to noop; other actions are unexpected here.
+      return { ok: true };
+    }
+  }
 
   if (decision.action === "future_schedule") {
     const scheduledAt = venueLocalToUtcIso(decision.tourDate, decision.tourTime, timezone);
@@ -1008,6 +1020,8 @@ export async function updateRelationshipFields(
   input: RelationshipInput,
 ): Promise<{ tourConflict?: { message: string } }> {
   // Date-only is a tour rejection — refuse before any write (locked E5).
+  // Preview omits venueTimezone: reject/clear detection does not need it.
+  // Same-slot → noop is enforced inside the tour apply that follows the lead UPDATE.
   const previewExisting = await loadExistingLeadTour(client, venueId, leadId);
   const preview = resolveLeadTourWrite({
     tourDate: input.tourDate,

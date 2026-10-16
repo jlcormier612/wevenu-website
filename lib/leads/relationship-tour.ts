@@ -9,7 +9,13 @@
  *
  * Date-only is always a tour rejection (never invents noon). Clearing the date
  * cancels an occupying scheduled/confirmed appointment only.
+ *
+ * Same-slot follow-up saves: when venueTimezone is provided and the submitted
+ * date/time matches the occupying appointment's scheduled_at, return noop so
+ * confirmed status and confirmation metadata are never demoted.
  */
+
+import { venueLocalToUtcIso } from "@/lib/venue/timezone";
 
 export const TOUR_TIME_REQUIRED = "A tour time is required to schedule a venue tour.";
 
@@ -86,9 +92,25 @@ function isOccupyingStatus(status: string): boolean {
   return status === "scheduled" || status === "confirmed";
 }
 
+/** True when the submitted venue-local clock matches the occupying row's scheduled_at. */
+export function sameLeadTourSlot(
+  existingScheduledAt: string | null | undefined,
+  tourDate: string,
+  tourTime: string,
+  venueTimezone: string | null | undefined,
+): boolean {
+  if (!existingScheduledAt || !tourDate.trim() || !tourTime.trim()) return false;
+  const nextIso = venueLocalToUtcIso(tourDate.trim(), tourTime.trim().slice(0, 5), venueTimezone ?? null);
+  return new Date(existingScheduledAt).getTime() === new Date(nextIso).getTime();
+}
+
 /**
  * Decide which tour write intent the Relationship card is requesting.
  * Follow-up / next-action fields are handled separately by the caller.
+ *
+ * Pass `venueTimezone` whenever a future_schedule decision must distinguish an
+ * unchanged slot (noop) from a genuine reschedule. Without it, same-slot
+ * detection is skipped (legacy callers / pure decision tests).
  */
 export function resolveLeadTourWrite(input: {
   tourDate: string;
@@ -98,6 +120,8 @@ export function resolveLeadTourWrite(input: {
   tourActualDate?: string;
   tourActualTime?: string;
   existing: ExistingLeadTour | null;
+  /** When set, unchanged occupying slots resolve to noop instead of future_schedule. */
+  venueTimezone?: string | null;
 }): LeadTourWriteDecision {
   const tourDate = input.tourDate.trim();
   const tourTime = input.tourTime.trim().slice(0, 5);
@@ -189,6 +213,18 @@ export function resolveLeadTourWrite(input: {
 
   if (!tourTime) {
     return { action: "reject", message: TOUR_TIME_REQUIRED };
+  }
+
+  // Unchanged occupying slot (follow-up-only / repeated save): never rewrite
+  // status. Preserves confirmed + confirmation metadata. Genuine date/time
+  // changes still fall through to future_schedule (existing reschedule path).
+  if (
+    existing &&
+    isOccupyingStatus(existing.status) &&
+    input.venueTimezone !== undefined &&
+    sameLeadTourSlot(existing.scheduledAt, tourDate, tourTime, input.venueTimezone)
+  ) {
+    return { action: "noop" };
   }
 
   return { action: "future_schedule", tourDate, tourTime, notes };

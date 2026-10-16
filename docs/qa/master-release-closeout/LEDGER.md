@@ -759,13 +759,49 @@ Latest independently reported Sandbox runtime (verified 2026-10-15 — not assum
 - **PRODUCTION / Resend / DNS:** untouched
 - **REMAINING WORK:** None
 
+### Calendar month/year jump selectors (2026-10-16) — GREEN
+
+- **STATUS:** **GREEN** — commit `23313815…`; deploy `38841427534` **success**; serving tip `23313815…` / TD `:772` / digest `sha256:a63d215e…`; health ok; browser **13/13 PASS** (distant year 2030, June select, Dec 25 2027 still disabled, chevrons retained; 390+1280).
+- **CHANGE:** Shared `MonthYearPicker` on public inquiry + staff tour availability calendars; year range current→2040 (≥4y); chevrons retained; availability rules unchanged.
+- **AUDIT:** `docs/qa/calendar-month-year-jump/`
+- **PRODUCTION:** untouched
+- **REMAINING:** None
+
+### Tour unconfirmed after follow-up save — Bindi (2026-10-16) — FIX IN PROGRESS
+
+- **FORENSIC:** Case A proven — follow-up save demoted `confirmed` → `scheduled` via `future_schedule` (hybrid metadata left). Evidence: `docs/qa/tour-unconfirmed-after-followup/db-snapshot.json`.
+- **FIX:** same-slot → `noop` in `resolveLeadTourWrite` / `applyLeadTourWrite`; relationship-card pins tour fields when appointments own UI. Regression tests in `relationship-tour.test.ts`.
+- **BINDI REPAIR:** **Skipped** — live row already `confirmed` again (prospect_link at 03:13:51Z) with slot moved to 3:00 PM ET; did not match forensic hybrid. See `bindi-reassess.json`.
+- **PRODUCTION / customer sends / Mark as Confirmed:** untouched
+- **REMAINING:** Sandbox deploy + browser follow-up save proof + hybrid scan
+
+### Hold form Whole venue ↔ space mutual exclusion (2026-10-16) — GREEN
+
+- **STATUS:** **GREEN** — commit `a6365436…`; deploy `38842041555` **success**; serving tip `a6365436…` / TD `:773` / digest `sha256:d0dd7efe…`; health ok; browser **9/9 PASS** (Cancel only; no Hold created).
+- **ROOT CAUSE:** Space checkboxes `disabled={wholeVenue}` blocked clearing Whole venue by picking a space.
+- **FIX:** `lib/availability/hold-space-selection.ts` + Hold form; spaces stay clickable; empty last-space stays empty.
+- **TESTS:** **63/63** local (hold selection + occupancy/edit).
+- **AUDIT:** `docs/qa/hold-space-selection/`
+- **PRODUCTION:** untouched; no Holds created in QA.
+- **REMAINING:** None
+
+### New Lead preferred-date live availability (2026-10-16) — GREEN
+
+- **STATUS:** **GREEN** — commit `a45dcb09e916c39cbfae085b0f8db095e77ac9f9`; deploy `38840106245` **success**; serving tip/image `a45dcb09…` / TD `:771` / digest `sha256:7114bff2…`; health ok; PRIMARY COMPLETED 1/1/0.
+- **CHANGE:** New Lead label **Preferred event date** + helper; live `preferred_date` check; inline soft conflict panel (Choose another / Keep); save recheck + override invalidation on date change; no Hold/Booked on create.
+- **TESTS:** preferred-date + lead-date-availability **16/16**; related availability **10/10**.
+- **RUNTIME:** Browser **12/12 PASS** (`browser-results.json`) — available `2027-03-15` clear; Christmas `2027-12-25` inline conflict; date change clears; Keep + save; DB holds=0 / events=0; disposable lead cleaned up.
+- **AUDIT:** `docs/qa/new-lead-preferred-date-availability/`
+- **PRODUCTION / customer sends:** untouched
+- **REMAINING:** None
+
 ### Venue notification prefs — email-only gate (2026-10-16) — GREEN (Sandbox DB)
 
-- **STATUS:** **GREEN on Sandbox DB** — commit `b011a13e`; mig `202614190` via `38837830165` **success**; runtime verify PASS (`pref-contract-runtime-verify.json`). ECS deploy `38837832058` for tip image was still rolling at close (gate lives in Supabase).
+- **STATUS:** **GREEN** — commit `b011a13e`; mig `202614190` via `38837830165`; deploy `38837832058` **success**; serving `b011a13e` / TD `:770` / digest `sha256:273aec70…`; health ok.
 - **ROOT CAUSE:** `create_venue_notification` early-returned when pref OFF → no in-app row (contradicts Communications “optional extras” copy). Shared across all preference-gated types.
 - **FIX:** Always insert in-app; preference sets `needs_email` only.
 - **TESTS:** **48/48 PASS** focused suites.
-- **RUNTIME:** Meadowbrook pref OFF → in-app + `needs_email=false`; Fancy pref ON → in-app + `needs_email=true`; no `processVenueNotificationEmails` call (no real staff send); Gina tour untouched.
+- **RUNTIME:** Post-deploy Meadowbrook pref still OFF → disposable confirm creates in-app `Tour confirmed — …` with `needs_email=false` (`postdeploy-meadow-off-verify.json`); prefs `updated_at` unchanged; Gina untouched.
 - **AUDIT:** `docs/qa/tour-confirmed-venue-notification/`
 - **PRODUCTION / DNS / Resend / Gina / Meadowbrook prefs values:** untouched
 

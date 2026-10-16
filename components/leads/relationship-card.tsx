@@ -136,7 +136,11 @@ export function RelationshipCard({
     (input.tourActualDate.trim() && !input.tourActualTime.trim())
     || (!input.tourActualDate.trim() && input.tourActualTime.trim()),
   );
-  const tourFormBlocked = input.tourCompleted ? tourActualDateOnly : tourDateOnly;
+  const tourFormBlocked = hideManualTourSummary
+    ? false
+    : input.tourCompleted
+      ? tourActualDateOnly
+      : tourDateOnly;
   const scheduledStillAhead = React.useMemo(() => {
     if (!input.tourDate || !input.tourTime) return false;
     const iso = venueLocalToUtcIso(input.tourDate, input.tourTime, venueTimezone);
@@ -245,32 +249,52 @@ export function RelationshipCard({
   function handleSave() {
     const input = inputRef.current;
     const differentTime = differentTimeRef.current;
-    if (input.tourCompleted && differentTime) {
-      if (!input.tourActualDate.trim() || !input.tourActualTime.trim()) {
-        toast.error("Enter the date and time the tour actually occurred.");
+    // Appointments are owned by Tour panel when hideManualTourSummary.
+    // Pin prior tour fields so follow-up-only saves cannot resubmit a demoting schedule write.
+    const appointmentsOwnTour = hideManualTourSummary;
+    if (!appointmentsOwnTour) {
+      if (input.tourCompleted && differentTime) {
+        if (!input.tourActualDate.trim() || !input.tourActualTime.trim()) {
+          toast.error("Enter the date and time the tour actually occurred.");
+          return;
+        }
+      } else if (input.tourCompleted) {
+        if (!input.tourDate.trim() || !input.tourTime.trim()) {
+          toast.error(TOUR_ACTUAL_REQUIRED_MESSAGE);
+          return;
+        }
+        if (scheduledStillAhead) {
+          toast.error(FUTURE_ACTUAL_OCCURRENCE_MESSAGE);
+          return;
+        }
+      } else if (input.tourDate.trim() && !input.tourTime.trim()) {
+        toast.error("A tour time is required to schedule a venue tour.");
         return;
       }
-    } else if (input.tourCompleted) {
-      if (!input.tourDate.trim() || !input.tourTime.trim()) {
-        toast.error(TOUR_ACTUAL_REQUIRED_MESSAGE);
-        return;
-      }
-      if (scheduledStillAhead) {
-        toast.error(FUTURE_ACTUAL_OCCURRENCE_MESSAGE);
-        return;
-      }
-    } else if (input.tourDate.trim() && !input.tourTime.trim()) {
-      toast.error("A tour time is required to schedule a venue tour.");
-      return;
     }
-    const saved: RelationshipInput = {
-      ...input,
-      tourActualDate: input.tourCompleted && differentTime ? input.tourActualDate : "",
-      tourActualTime: input.tourCompleted && differentTime ? input.tourActualTime : "",
-    };
+    const saved: RelationshipInput = appointmentsOwnTour
+      ? {
+          ...input,
+          tourDate: prev.current.tourDate,
+          tourTime: prev.current.tourTime,
+          tourCompleted: prev.current.tourCompleted,
+          tourNotes: prev.current.tourNotes,
+          tourActualDate: "",
+          tourActualTime: "",
+        }
+      : {
+          ...input,
+          tourActualDate: input.tourCompleted && differentTime ? input.tourActualDate : "",
+          tourActualTime: input.tourCompleted && differentTime ? input.tourActualTime : "",
+        };
     startTransition(async () => {
       const hints = {
-        tourScheduled: saved.tourDate !== prev.current.tourDate && !!saved.tourDate && !!saved.tourTime.trim() && !saved.tourCompleted,
+        tourScheduled:
+          !appointmentsOwnTour &&
+          saved.tourDate !== prev.current.tourDate &&
+          !!saved.tourDate &&
+          !!saved.tourTime.trim() &&
+          !saved.tourCompleted,
         followUpSet: saved.followUpDate !== prev.current.followUpDate && !!saved.followUpDate,
         contactedSet: saved.lastContactedAt !== prev.current.lastContactedAt && !!saved.lastContactedAt,
       };
@@ -610,83 +634,85 @@ export function RelationshipCard({
               </EditRow>
             </div>
 
-            <div className="rounded-lg border border-border p-3 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Venue tour</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <EditRow label={input.tourCompleted && (lead.tourScheduledDate || input.tourDate) ? "Scheduled date" : "Tour date"}>
-                  <Input
-                    type="date"
-                    value={input.tourDate}
-                    onChange={(e) => set("tourDate", e.target.value)}
-                    disabled={input.tourCompleted && Boolean(lead.tourScheduledDate || lead.tourDate)}
-                  />
-                </EditRow>
-                <EditRow label={input.tourDate ? (input.tourCompleted ? "Scheduled time" : "Tour time *") : "Tour time"}>
-                  <Input
-                    type="time"
-                    value={input.tourTime}
-                    onChange={(e) => set("tourTime", e.target.value)}
-                    disabled={input.tourCompleted && Boolean(lead.tourScheduledDate || lead.tourDate)}
-                  />
-                </EditRow>
-              </div>
-              {tourDateOnly && !input.tourCompleted ? (
-                <p className="text-xs text-destructive">A tour time is required to schedule a venue tour. Clear the date to remove a scheduled tour.</p>
-              ) : null}
-              {tourConflictMessage ? (
-                <p className="text-xs text-destructive" role="alert">{tourConflictMessage}</p>
-              ) : null}
-              {input.tourDate && input.tourTime && !input.tourCompleted && (
-                <ConflictWarning date={input.tourDate} startTime={input.tourTime} type="tour" excludeId={lead.id} excludeLeadId={lead.id} onStatusChange={setTourDateBlocked} />
-              )}
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={input.tourCompleted}
-                  onCheckedChange={(c) => set("tourCompleted", c)}
-                />
-                <Label>Tour completed</Label>
-              </div>
-              {input.tourCompleted ? (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">{TOUR_AS_SCHEDULED_HELP}</p>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="tour-different-time"
-                      checked={differentTime}
-                      onCheckedChange={(v) => setHappenedAtDifferentTime(v === true)}
+            {hideManualTourSummary ? null : (
+              <div className="rounded-lg border border-border p-3 space-y-3" data-testid="tour-followup-manual-tour-edit">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Venue tour</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <EditRow label={input.tourCompleted && (lead.tourScheduledDate || input.tourDate) ? "Scheduled date" : "Tour date"}>
+                    <Input
+                      type="date"
+                      value={input.tourDate}
+                      onChange={(e) => set("tourDate", e.target.value)}
+                      disabled={input.tourCompleted && Boolean(lead.tourScheduledDate || lead.tourDate)}
                     />
-                    <Label htmlFor="tour-different-time">The tour happened at a different date or time</Label>
-                  </div>
-                  {differentTime ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <EditRow label="Actually occurred (date) *">
-                        <Input
-                          type="date"
-                          value={input.tourActualDate}
-                          onChange={(e) => set("tourActualDate", e.target.value)}
-                        />
-                      </EditRow>
-                      <EditRow label="Actually occurred (time) *">
-                        <Input
-                          type="time"
-                          value={input.tourActualTime}
-                          onChange={(e) => set("tourActualTime", e.target.value)}
-                        />
-                      </EditRow>
-                    </div>
-                  ) : null}
+                  </EditRow>
+                  <EditRow label={input.tourDate ? (input.tourCompleted ? "Scheduled time" : "Tour time *") : "Tour time"}>
+                    <Input
+                      type="time"
+                      value={input.tourTime}
+                      onChange={(e) => set("tourTime", e.target.value)}
+                      disabled={input.tourCompleted && Boolean(lead.tourScheduledDate || lead.tourDate)}
+                    />
+                  </EditRow>
                 </div>
-              ) : null}
-              <EditRow label={internalNotesLabel("tour")}>
-                <p className="mb-1.5 text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
-                <Textarea
-                  value={input.tourNotes}
-                  onChange={(e) => set("tourNotes", e.target.value)}
-                  placeholder="Any notes from the tour…"
-                  rows={2}
-                />
-              </EditRow>
-            </div>
+                {tourDateOnly && !input.tourCompleted ? (
+                  <p className="text-xs text-destructive">A tour time is required to schedule a venue tour. Clear the date to remove a scheduled tour.</p>
+                ) : null}
+                {tourConflictMessage ? (
+                  <p className="text-xs text-destructive" role="alert">{tourConflictMessage}</p>
+                ) : null}
+                {input.tourDate && input.tourTime && !input.tourCompleted && (
+                  <ConflictWarning date={input.tourDate} startTime={input.tourTime} type="tour" excludeId={lead.id} excludeLeadId={lead.id} onStatusChange={setTourDateBlocked} />
+                )}
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={input.tourCompleted}
+                    onCheckedChange={(c) => set("tourCompleted", c)}
+                  />
+                  <Label>Tour completed</Label>
+                </div>
+                {input.tourCompleted ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">{TOUR_AS_SCHEDULED_HELP}</p>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="tour-different-time"
+                        checked={differentTime}
+                        onCheckedChange={(v) => setHappenedAtDifferentTime(v === true)}
+                      />
+                      <Label htmlFor="tour-different-time">The tour happened at a different date or time</Label>
+                    </div>
+                    {differentTime ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <EditRow label="Actually occurred (date) *">
+                          <Input
+                            type="date"
+                            value={input.tourActualDate}
+                            onChange={(e) => set("tourActualDate", e.target.value)}
+                          />
+                        </EditRow>
+                        <EditRow label="Actually occurred (time) *">
+                          <Input
+                            type="time"
+                            value={input.tourActualTime}
+                            onChange={(e) => set("tourActualTime", e.target.value)}
+                          />
+                        </EditRow>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                <EditRow label={internalNotesLabel("tour")}>
+                  <p className="mb-1.5 text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
+                  <Textarea
+                    value={input.tourNotes}
+                    onChange={(e) => set("tourNotes", e.target.value)}
+                    placeholder="Any notes from the tour…"
+                    rows={2}
+                  />
+                </EditRow>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

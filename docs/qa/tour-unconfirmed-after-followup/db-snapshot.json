@@ -1,0 +1,89 @@
+{
+  "observedAt": "2026-10-16T03:08:52.605Z",
+  "tour": {
+    "id": "555060cd-a188-4e2a-ae42-f0da64396e50",
+    "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "lead_id": "5d33fcbe-e6c7-4163-9b5e-29db3389efca",
+    "scheduled_at": "2026-10-18T16:00:00+00:00",
+    "duration_minutes": 60,
+    "status": "scheduled",
+    "contact_name": "Bindi Lulu",
+    "contact_email": "bindilulu@yahoo.com",
+    "contact_phone": "7658973782",
+    "event_type": "wedding",
+    "event_date": "2027-10-24",
+    "guest_count": 50,
+    "notes": null,
+    "created_at": "2026-10-16T02:54:34.842433+00:00",
+    "updated_at": "2026-10-16T03:02:52.480652+00:00",
+    "assigned_to": null,
+    "confirmed_at": "2026-10-16T03:00:12.633152+00:00",
+    "completed_at": null,
+    "follow_up_sent_at": null,
+    "outcome": null,
+    "cancellation_reason": null,
+    "confirmation_requested_at": "2026-10-16T02:59:47.642+00:00",
+    "confirmation_source": "prospect_link",
+    "confirm_token": "2ad44335-d2b6-4142-817c-d2647b002377",
+    "protection_request_id": null,
+    "venue_seen_at": "2026-10-16T02:55:16.132+00:00",
+    "is_archived": false,
+    "actual_occurred_at": null,
+    "origin": "scheduled"
+  },
+  "lead": {
+    "id": "5d33fcbe-e6c7-4163-9b5e-29db3389efca",
+    "first_name": "Bindi",
+    "last_name": "Lulu",
+    "email": "bindilulu@yahoo.com",
+    "sales_stage": "tour_scheduled",
+    "follow_up_date": "2026-10-19",
+    "next_action_text": "Follow up after tour",
+    "updated_at": "2026-10-16T03:07:23.534948+00:00",
+    "relationship_id": "a5e44652-15d3-47a4-ac94-11b05676f538",
+    "venue_id": "05f16a15-1752-4855-8a3b-aad5c593d8d9"
+  },
+  "activities": [
+    {
+      "type": "lead_created",
+      "title": "Inquiry received",
+      "description": "Source: Website",
+      "created_at": "2026-10-16T02:51:44.772215+00:00"
+    },
+    {
+      "type": "sales_stage_changed",
+      "title": "Stage changed to Tour Scheduled",
+      "description": "Previous stage: New Inquiry",
+      "created_at": "2026-10-16T02:54:34.842433+00:00"
+    },
+    {
+      "type": "tour_confirmation_requested",
+      "title": "Confirmation request sent",
+      "description": "Sent a tour confirmation request to Bindi Lulu.",
+      "created_at": "2026-10-16T02:59:47.730533+00:00"
+    },
+    {
+      "type": "tour_confirmed",
+      "title": "Tour confirmed",
+      "description": "Bindi Lulu confirmed their tour online.",
+      "created_at": "2026-10-16T03:00:12.633152+00:00"
+    },
+    {
+      "type": "follow_up_set",
+      "title": "Follow-up set for Oct 19, 2026",
+      "description": null,
+      "created_at": "2026-10-16T03:02:52.532842+00:00"
+    }
+  ],
+  "tourConfirmedNotifications": [
+    {
+      "id": "b7da0ffb-9528-47ba-99ef-46823e4d0fd8",
+      "type": "tour_confirmed",
+      "title": "Tour confirmed — Bindi Lulu",
+      "body": "Oct 18, 2026 at 12:00 PM · Confirmed by the guest",
+      "created_at": "2026-10-16T03:00:12.633152+00:00",
+      "needs_email": false,
+      "emailed_at": null
+    }
+  ]
+}
