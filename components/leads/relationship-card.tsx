@@ -341,7 +341,7 @@ export function RelationshipCard({
       onClick={() => setEditing(true)}
       data-testid="tour-followup-edit"
     >
-      {isEmpty ? "Add follow-up details" : "Edit"}
+      {isEmpty ? "Add tour/follow-up details" : "Edit"}
     </Button>
   ) : null;
 
@@ -573,7 +573,7 @@ export function RelationshipCard({
               </div>
             ) : (
               <p className="py-1 text-sm text-muted-foreground" data-testid="tour-followup-empty">
-                No tour or follow-up details yet. Use Add follow-up details for next steps and dates, or Schedule Tour.
+                No tour or follow-up details yet. Use Add tour/follow-up details for next steps and dates, or Schedule Tour.
               </p>
             )}
           </div>

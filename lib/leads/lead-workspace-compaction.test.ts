@@ -70,7 +70,8 @@ describe("lead workspace polish", () => {
     assert.match(followUp, /data-testid="lead-tour-followup-card"/);
     assert.match(followUp, /data-testid="tour-followup-tour-block"/);
     assert.match(followUp, /data-testid="tour-followup-followup-block"/);
-    assert.match(followUp, /Add follow-up details/);
+    assert.match(followUp, /Add tour\/follow-up details/);
+    assert.doesNotMatch(followUp, /Add follow-up details/);
     assert.match(detail, /TourAppointmentList/);
     assert.doesNotMatch(detail, /<TourPanel/);
     assert.match(tours, /Schedule Tour/);
