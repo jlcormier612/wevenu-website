@@ -767,13 +767,14 @@ Latest independently reported Sandbox runtime (verified 2026-10-15 — not assum
 - **PRODUCTION:** untouched
 - **REMAINING:** None
 
-### Tour unconfirmed after follow-up save — Bindi (2026-10-16) — FIX IN PROGRESS
+### Tour unconfirmed after follow-up save — Bindi (2026-10-16) — GREEN
 
-- **FORENSIC:** Case A proven — follow-up save demoted `confirmed` → `scheduled` via `future_schedule` (hybrid metadata left). Evidence: `docs/qa/tour-unconfirmed-after-followup/db-snapshot.json`.
-- **FIX:** same-slot → `noop` in `resolveLeadTourWrite` / `applyLeadTourWrite`; relationship-card pins tour fields when appointments own UI. Regression tests in `relationship-tour.test.ts`.
-- **BINDI REPAIR:** **Skipped** — live row already `confirmed` again (prospect_link at 03:13:51Z) with slot moved to 3:00 PM ET; did not match forensic hybrid. See `bindi-reassess.json`.
+- **FORENSIC:** Case A — follow-up save demoted `confirmed` → `scheduled` via `future_schedule`. `docs/qa/tour-unconfirmed-after-followup/db-snapshot.json`.
+- **FIX:** `7e7a9359` — same-slot → `noop`; relationship-card pins tour fields when appointments own UI.
+- **DEPLOY:** [38844883770](https://github.com/jlcormier612/wevenu-website/actions/runs/38844883770) success; image `htc-sandbox-venue-app:7e7a9359…`; TD `:774`.
+- **BINDI REPAIR:** Skipped (already re-confirmed at 03:13:51Z / 3:00 PM ET). No forced UPDATE.
+- **VERIFY:** Browser follow-up save keeps Confirmed; DB metadata preserved; hybrid scan 0. `browser-results.json`.
 - **PRODUCTION / customer sends / Mark as Confirmed:** untouched
-- **REMAINING:** Sandbox deploy + browser follow-up save proof + hybrid scan
 
 ### Hold form Whole venue ↔ space mutual exclusion (2026-10-16) — GREEN
 
