@@ -1,39 +1,65 @@
 # Start booking file workflow revamp
 
-**Status:** CODE COMPLETE — tests green — **NOT runtime-GREEN** (no Sandbox deploy this pass)  
+**Status: GREEN** on Sandbox tip `f25c047b`  
+**Environment:** Sandbox only  
 **Production:** untouched  
-**Gina records:** read-only; not mutated
+**Gina:** not mutated (verification used Fancy disposable lead)
 
-## Root cause (entry point)
+## Deploy / serving
 
-After `startBookingFileAction`, `lead.linkedClientId` is set. Lead detail only showed **Start booking file** when `!previouslyConverted`, and **"Open booking file →"** had been intentionally removed (`lead-booked-terminology`). The pre-booking workspace at `/clients/{id}` remained valid; the lead CTA to resume it did not.
-
-Gina Palo / Rich Dude: lead `26bd6fba-…` (`tour_scheduled`), client `132c1553-…` (`status=booking`). See `gina-readonly.json`, `AUDIT.md`.
-
-## Changes
-
-| Area | Change |
+| Item | Value |
 |---|---|
-| Resume CTA | **Continue setup** → `/clients/{linkedClientId}` when linked client exists, not Booked, not Lost (`data-testid="continue-booking-setup-action"`) |
-| Floor plans | Apply Template multi-select → one independent plan per template (same domain model) |
-| Vendors | Multi-select assign in one submit; skip already assigned; no portal invite |
-| Booked | Unchanged — still explicit Mark as Booked / `bookClient` |
+| Commit | `f25c047b82fcd5401e6b4d89b0a4201f2b904d34` |
+| Deploy | [38846604143](https://github.com/jlcormier612/wevenu-website/actions/runs/38846604143) **success** |
+| Serving image | `htc-sandbox-venue-app:f25c047b82fcd5401e6b4d89b0a4201f2b904d34` |
+| Task definition | `htc-sandbox-venue-app:775` |
+| Health | `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}` |
+| `dpl` header | `f25c047b82fcd5401e6b4d89b0a4201f2b904d34` |
 
-**Files:** `components/leads/lead-detail.tsx`, `components/events/floor-plan-workspace.tsx`, `components/events/vendors/event-vendors-section.tsx`, `lib/booking-journey/start-booking-file-resume.test.ts`, `lib/leads/booking-lifecycle.test.ts`
+## Root cause (preserved)
+
+After Start booking file, `linkedClientId` hid the Start CTA and no Continue/Resume existed. Workspace remained at `/clients/{id}`. See `AUDIT.md`, `gina-readonly.json`.
+
+## Browser + DB verification (Fancy disposable)
+
+Harness: `verify-browser.mts` → `browser-results.json` — **ALL PASS**
+
+### A. Start → leave → Continue setup
+- Disposable lead → Start booking file → client workspace
+- Lead shows Continue setup; Start hidden
+- Resume reopens **same** client ID; second resume → still 1 client
+- Client `status=booking`; lead stays `new_inquiry`; no date holds
+
+### B. Multi floor-plan templates
+- Selected 2 templates in one Apply → 2 independent plans named from templates
+- Blank + Duplicate still work (4 plans after blanks/dups)
+- Persisted after reload
+
+### C. Multi vendors
+- Assigned 2 vendors in one submit with arrival/setup/load-in/internal notes
+- Relist excludes already-assigned; no duplicate assignment rows
+- `vendor_invitations` created during window: **0**
+
+### D. Lifecycle
+- Questionnaires copy: unavailable until Booked
+- Still not Booked after all setup
+- No holds created
+
+Screenshots: `a-*`, `b-*`, `c-*`, `d-*` in this directory.
 
 ## Tests
 
-`npx tsx --test` focused suites: **54/54 pass**  
-(`start-booking-file-resume`, `booking-lifecycle`, `booking-started-semantics`, `spine-remediation`, `lead-workspace-compaction`)
+```text
+npx tsx --test lib/booking-journey/start-booking-file-resume.test.ts \
+  lib/leads/booking-lifecycle.test.ts \
+  lib/booking-journey/booking-started-semantics.test.ts \
+  lib/booking-journey/spine-remediation.test.ts \
+  lib/leads/lead-workspace-compaction.test.ts
+```
 
-## Remaining / limitations
+**54/54 pass**
 
-- No Sandbox deploy or browser proof this pass (per authorization: no deploy).
-- Multi floor-plan apply uses sequential actions (not a new batch RPC); failure mid-loop keeps already-created plans and surfaces an error.
-- Shared arrival/notes on multi-vendor assign apply to all selected; per-vendor edit remains after assign.
-- Hybrid “setup progress” field not added — `linkedClientId` + client `status=booking` is the existing source of truth.
+## Limitations
 
-## Final status
-
-**Implementation + unit/source tests: GREEN.**  
-**Runtime/browser verification: NOT RUN** — do not call overall product GREEN until Continue setup is exercised on Sandbox for a lead like Gina.
+- Multi-template apply is sequential actions (not a single RPC); partial failure would leave earlier plans (not observed).
+- Disposable fixture cleaned up after proof; Gina left untouched.

@@ -1,0 +1,316 @@
+{
+  "expectedSha": "f25c047b82fcd5401e6b4d89b0a4201f2b904d34",
+  "marker": "QA-BF-1792122832578",
+  "observedAt": "2026-10-16T03:53:52.581Z",
+  "servingFromLink": "f25c047b82fcd5401e6b4d89b0a4201f2b904d34",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:f25c047b82fcd5401e6b4d89b0a4201f2b904d34",
+  "availableTemplates": [
+    {
+      "id": "026fb633-2dce-4c73-87c8-144bb29a0318",
+      "name": "Standard Wedding — Reception Only",
+      "space_id": null,
+      "is_archived": false
+    },
+    {
+      "id": "3d4e11ef-7de7-495b-8fc7-b2eaf59584c3",
+      "name": "Barn-master-floorplan",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "is_archived": false
+    },
+    {
+      "id": "c680cc72-872d-4dab-9bc0-815fefb35251",
+      "name": "Standard Wedding — Ceremony + Reception",
+      "space_id": null,
+      "is_archived": false
+    }
+  ],
+  "availableVendors": [
+    {
+      "id": "e5ed92aa-82a4-46c7-b6c2-36a90db714e1",
+      "business_name": "Flora's Flowers"
+    },
+    {
+      "id": "42a8d273-f738-4f3c-bdcd-f2a5a237e1b3",
+      "business_name": "Harah's Hair"
+    },
+    {
+      "id": "891899a8-8521-4be0-9dfa-3bcba3077c54",
+      "business_name": "Cuppity Cakes"
+    },
+    {
+      "id": "a35f82fa-f63d-41e3-aad5-73c3eb90e971",
+      "business_name": "Baker's Dozen"
+    },
+    {
+      "id": "ec1d6f35-ebf7-4d3d-bda5-d011522d6e9d",
+      "business_name": "Sweet Dreams Desserts"
+    }
+  ],
+  "leadBefore": {
+    "id": "25716eec-5260-46c9-8408-f7a39207248a",
+    "first_name": "Booking",
+    "last_name": "QA38185",
+    "sales_stage": "new_inquiry",
+    "event_date": "2028-06-15"
+  },
+  "clientUrlAfterStart": "https://app.sandbox.hellotocheers.com/clients/0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+  "clientAfterStart": {
+    "id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+    "status": "booking",
+    "lead_id": "25716eec-5260-46c9-8408-f7a39207248a",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+  },
+  "leadAfterStart": {
+    "id": "25716eec-5260-46c9-8408-f7a39207248a",
+    "sales_stage": "new_inquiry",
+    "event_date": "2028-06-15"
+  },
+  "clientAfterResume": {
+    "id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+    "status": "booking",
+    "lead_id": "25716eec-5260-46c9-8408-f7a39207248a",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+  },
+  "floorPlans": [
+    {
+      "id": "2a5630dd-ba31-4f11-bebb-c71e047b88eb",
+      "name": "Standard Wedding — Reception Only",
+      "space_id": null,
+      "source_template_id": "026fb633-2dce-4c73-87c8-144bb29a0318",
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "created_at": "2026-10-16T03:54:25.73901+00:00"
+    },
+    {
+      "id": "640fec4a-1757-42ca-9c2f-b9673ff8f5df",
+      "name": "Barn-master-floorplan",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "source_template_id": "3d4e11ef-7de7-495b-8fc7-b2eaf59584c3",
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "created_at": "2026-10-16T03:54:26.660054+00:00"
+    }
+  ],
+  "floorPlansFinal": [
+    {
+      "id": "2a5630dd-ba31-4f11-bebb-c71e047b88eb",
+      "name": "Standard Wedding — Reception Only",
+      "space_id": null,
+      "source_template_id": "026fb633-2dce-4c73-87c8-144bb29a0318",
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "created_at": "2026-10-16T03:54:25.73901+00:00"
+    },
+    {
+      "id": "640fec4a-1757-42ca-9c2f-b9673ff8f5df",
+      "name": "Barn-master-floorplan",
+      "space_id": "3b36ec69-b17d-4351-8186-68d96dd6dfe7",
+      "source_template_id": "3d4e11ef-7de7-495b-8fc7-b2eaf59584c3",
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "created_at": "2026-10-16T03:54:26.660054+00:00"
+    },
+    {
+      "id": "fc0237c3-1d2a-4eff-9ef7-ff1be2316b6d",
+      "name": "QA-BF-1792122832578-Blank",
+      "space_id": null,
+      "source_template_id": null,
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "created_at": "2026-10-16T03:54:33.962881+00:00"
+    },
+    {
+      "id": "b5cb14dd-1193-447e-a6d1-d0e231f84230",
+      "name": "QA-BF-1792122832578-Dup",
+      "space_id": null,
+      "source_template_id": null,
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "created_at": "2026-10-16T03:54:40.395247+00:00"
+    }
+  ],
+  "vendorAssignments": [
+    {
+      "id": "a93d8de4-d95b-4912-959c-94bda7e98dd9",
+      "vendor_id": "e5ed92aa-82a4-46c7-b6c2-36a90db714e1",
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "arrival_time": "10:30:00",
+      "setup_location": "QA-BF-1792122832578-Garden",
+      "load_in_notes": "QA-BF-1792122832578-use north door",
+      "notes": "QA-BF-1792122832578-private-note",
+      "created_at": "2026-10-16T03:54:47.188412+00:00"
+    },
+    {
+      "id": "3a843f92-def6-4087-8ec8-abe3547ff126",
+      "vendor_id": "42a8d273-f738-4f3c-bdcd-f2a5a237e1b3",
+      "client_id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+      "event_id": null,
+      "arrival_time": "10:30:00",
+      "setup_location": "QA-BF-1792122832578-Garden",
+      "load_in_notes": "QA-BF-1792122832578-use north door",
+      "notes": "QA-BF-1792122832578-private-note",
+      "created_at": "2026-10-16T03:54:47.965689+00:00"
+    }
+  ],
+  "vendorInvitesAfterAssign": [],
+  "clientFinal": {
+    "id": "0eead690-fa00-4ad8-b0d8-c0226cb18aeb",
+    "status": "booking",
+    "lead_id": "25716eec-5260-46c9-8408-f7a39207248a",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+  },
+  "leadFinal": {
+    "id": "25716eec-5260-46c9-8408-f7a39207248a",
+    "sales_stage": "new_inquiry",
+    "event_date": "2028-06-15"
+  },
+  "checks": [
+    {
+      "name": "serving_commit",
+      "pass": true,
+      "detail": "link=f25c047b82fcd5401e6b4d89b0a4201f2b904d34 image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:f25c047b82fcd5401e6b4d89b0a4201f2b904d34"
+    },
+    {
+      "name": "fixtures_templates",
+      "pass": true,
+      "detail": "count=3"
+    },
+    {
+      "name": "fixtures_vendors",
+      "pass": true,
+      "detail": "count=5"
+    },
+    {
+      "name": "disposable_lead_created",
+      "pass": true,
+      "detail": "25716eec-5260-46c9-8408-f7a39207248a"
+    },
+    {
+      "name": "start_cta_visible",
+      "pass": true,
+      "detail": "start-booking-action"
+    },
+    {
+      "name": "continue_hidden_before_start",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "landed_client_workspace",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/0eead690-fa00-4ad8-b0d8-c0226cb18aeb"
+    },
+    {
+      "name": "same_client_id_as_url",
+      "pass": true,
+      "detail": "url=0eead690-fa00-4ad8-b0d8-c0226cb18aeb db=0eead690-fa00-4ad8-b0d8-c0226cb18aeb"
+    },
+    {
+      "name": "client_status_booking_not_booked",
+      "pass": true,
+      "detail": "{\"id\":\"0eead690-fa00-4ad8-b0d8-c0226cb18aeb\",\"status\":\"booking\",\"lead_id\":\"25716eec-5260-46c9-8408-f7a39207248a\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}"
+    },
+    {
+      "name": "lead_not_booked_after_start",
+      "pass": true,
+      "detail": "new_inquiry"
+    },
+    {
+      "name": "no_hold_after_start",
+      "pass": true,
+      "detail": "holds=0"
+    },
+    {
+      "name": "start_hidden_after_convert",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "continue_visible",
+      "pass": true,
+      "detail": "continue-booking-setup-action"
+    },
+    {
+      "name": "resume_same_client",
+      "pass": true,
+      "detail": "before=0eead690-fa00-4ad8-b0d8-c0226cb18aeb after=0eead690-fa00-4ad8-b0d8-c0226cb18aeb"
+    },
+    {
+      "name": "no_duplicate_client",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "multi_plans_created",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "name": "plans_named_from_templates",
+      "pass": true,
+      "detail": "[\"Standard Wedding — Reception Only\",\"Barn-master-floorplan\"]"
+    },
+    {
+      "name": "plans_independent_ids",
+      "pass": true,
+      "detail": "ids=2a5630dd-ba31-4f11-bebb-c71e047b88eb,640fec4a-1757-42ca-9c2f-b9673ff8f5df"
+    },
+    {
+      "name": "blank_plan_created",
+      "pass": true,
+      "detail": "count=3"
+    },
+    {
+      "name": "duplicate_plan_created",
+      "pass": true,
+      "detail": "count=4"
+    },
+    {
+      "name": "multi_vendors_assigned",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "name": "vendor_details_saved",
+      "pass": true,
+      "detail": "[{\"setup\":\"QA-BF-1792122832578-Garden\",\"notes\":\"QA-BF-1792122832578-private-note\"},{\"setup\":\"QA-BF-1792122832578-Garden\",\"notes\":\"QA-BF-1792122832578-private-note\"}]"
+    },
+    {
+      "name": "assigned_vendors_not_relisted",
+      "pass": true,
+      "detail": "v0=0 v1=0"
+    },
+    {
+      "name": "no_duplicate_assignments",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "name": "no_vendor_invites_created",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "questionnaires_unavailable_copy",
+      "pass": true,
+      "detail": "copy present"
+    },
+    {
+      "name": "still_not_booked",
+      "pass": true,
+      "detail": "{\"client\":\"booking\",\"lead\":\"new_inquiry\"}"
+    },
+    {
+      "name": "still_no_hold",
+      "pass": true,
+      "detail": "holds=0"
+    },
+    {
+      "name": "cleanup_done",
+      "pass": true,
+      "detail": "lead=25716eec-5260-46c9-8408-f7a39207248a client=0eead690-fa00-4ad8-b0d8-c0226cb18aeb"
+    }
+  ],
+  "finishedAt": "2026-10-16T03:54:56.217Z"
+}
