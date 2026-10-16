@@ -177,6 +177,8 @@ export async function previewDeleteLead(leadId: string): Promise<DeletePreview> 
  * Client workspace / contracts / payments are not deleted.
  *
  * Active-visibility side effects (successful delete only):
+ * - Cancel occupying scheduled/confirmed tours so capacity is released and
+ *   confirm links cannot succeed on an orphaned row after lead_id SET NULL.
  * - Soft-archive tours for this lead so SET NULL contact_name cannot keep them
  *   in active Tours lists.
  * - Clear lead-scoped Luv drafts so stale intelligence cannot resurface.
@@ -212,6 +214,38 @@ export async function applyLeadRecordDeletion(
     .maybeSingle<{ id: string }>();
 
   await removeLifecycleEventsFor(supabase, venueId, { leadId });
+
+  // Occupying tours must leave capacity before lead_id SET NULL. Soft-archive
+  // alone keeps status scheduled/confirmed, so availability stays blocked and
+  // confirm_token can still "succeed" on an orphaned row. Cancel first (no
+  // customer email — this is hard-delete reconciliation, not a venue cancel
+  // action), then archive for list hygiene. Idempotent if already cancelled.
+  const { data: occupyingTours, error: occupyingError } = await supabase
+    .from("tour_appointments")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .in("status", ["scheduled", "confirmed"]);
+  if (occupyingError) {
+    return { ok: false, message: formatLeadDeleteFailureMessage(occupyingError) };
+  }
+  const occupyingIds = ((occupyingTours ?? []) as { id: string }[]).map((t) => t.id);
+  if (occupyingIds.length > 0) {
+    const { error: cancelError } = await supabase
+      .from("tour_appointments")
+      .update({ status: "cancelled" })
+      .eq("venue_id", venueId)
+      .in("id", occupyingIds)
+      .in("status", ["scheduled", "confirmed"]);
+    if (cancelError) {
+      return { ok: false, message: formatLeadDeleteFailureMessage(cancelError) };
+    }
+    await supabase
+      .from("task_reminders")
+      .update({ status: "cancelled" })
+      .in("tour_appointment_id", occupyingIds)
+      .eq("status", "pending");
+  }
 
   // Soft-archive before SET NULL so active Tours do not keep presenting this person.
   const { error: archiveError } = await supabase

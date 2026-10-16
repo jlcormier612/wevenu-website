@@ -73,6 +73,16 @@ describe("Global deleted-record visibility — deletion contract", () => {
     assert.match(svc, /count: "exact"/);
   });
 
+  it("cancels occupying scheduled/confirmed tours before archive so capacity is released", () => {
+    const apply = svc.slice(svc.indexOf("export async function applyLeadRecordDeletion"));
+    assert.match(apply, /\.in\("status", \["scheduled", "confirmed"\]\)/);
+    assert.match(apply, /status: "cancelled"/);
+    assert.match(apply, /task_reminders/);
+    const cancelIdx = apply.indexOf('status: "cancelled"');
+    const archiveIdx = apply.indexOf("is_archived: true");
+    assert.ok(cancelIdx > 0 && archiveIdx > cancelIdx, "cancel occupying tours before soft-archive");
+  });
+
   it("lead preview does not swallow RESTRICT so the confirm dialog can open", () => {
     const previewFn = svc.slice(
       svc.indexOf("export async function previewDeleteLead"),
