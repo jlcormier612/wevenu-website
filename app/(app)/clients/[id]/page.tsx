@@ -14,6 +14,7 @@ import { getClientTimelineEntries, getClientSections } from "@/lib/timeline/serv
 import { getFloorPlansForClient } from "@/lib/floor-plans/service";
 import { getEventOrderForClient } from "@/lib/event-orders/service";
 import { getClientVendorAssignments } from "@/lib/vendors/service";
+import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
 import { EventDetail } from "@/components/events/event-detail";
 import { buildInternalNotesRollup } from "@/lib/notes/internal-notes-rollup";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
@@ -121,6 +122,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       timelineEntries, timelineSections, timelineTemplates, venue, spaces,
       floorPlans, floorPlanTemplates, vendors, vendorAssignments, eventOrder, eventOrderTemplates,
       offerings, inventoryItems, staffRole, dateHolds,
+      workspaceDocuments, pinnedDocumentKeys,
     ] = await Promise.all([
       client.relationshipId
         ? getRelationshipPhotoForVenue(client.relationshipId)
@@ -150,6 +152,8 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       getInventoryItems(),
       getCurrentUserRole(),
       client.leadId ? getHolds({ leadId: client.leadId }) : Promise.resolve([]),
+      getVenueWorkspaceDocuments({ clientId: client.id }),
+      getPinnedDocumentKeys(),
     ]);
     const activeTimelineTemplates = timelineTemplates.filter((t) => !t.isArchived);
     const activePlaybookTemplates = templates.filter((t) => !t.isArchived);
@@ -182,6 +186,16 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
           venueTimezone={venue?.timezone ?? null}
           workspaceReturnTo={`/clients/${client.id}`}
         />
+        <section id="documents" className="space-y-3">
+          <DocumentWorkspace
+            title="Documents"
+            description="Files for this client while you prepare the workspace. Booking does not move them onto a different event."
+            documents={workspaceDocuments}
+            initialPinnedKeys={[...pinnedDocumentKeys]}
+            uploadTarget={{ entityType: "client", entityId: client.id, venueId: client.venueId }}
+            returnTo={`/clients/${client.id}`}
+          />
+        </section>
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-heading">Checklists</h2>
           <EventTaskList
