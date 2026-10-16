@@ -5,10 +5,13 @@ import { describe, it } from "node:test";
 
 /**
  * Customer-action notification prefs — wiring + idempotency contract.
- * Source of truth: 20261407100000_customer_action_notification_preferences.sql
+ * Triggers/columns: 202614071…; email-vs-in-app gate: 202614190….
  */
 const MIGRATION = resolve(
   "supabase/migrations/20261407100000_customer_action_notification_preferences.sql",
+);
+const GATE_MIGRATION = resolve(
+  "supabase/migrations/20261419000000_venue_notification_prefs_email_only.sql",
 );
 const UI = resolve("components/settings/notification-preferences-section.tsx");
 const PREFS = resolve("lib/notifications/preferences.ts");
@@ -18,6 +21,7 @@ const TOUR_SERVICE = resolve("lib/tours/service.ts");
 
 describe("customer-action notification preferences", () => {
   const sql = readFileSync(MIGRATION, "utf8");
+  const gate = readFileSync(GATE_MIGRATION, "utf8");
   const ui = readFileSync(UI, "utf8");
   const prefs = readFileSync(PREFS, "utf8");
   const api = readFileSync(API, "utf8");
@@ -98,5 +102,13 @@ describe("customer-action notification preferences", () => {
   it("does not invent a second notification framework", () => {
     assert.match(sql, /create_venue_notification/);
     assert.doesNotMatch(sql, /create table.*notification/i);
+  });
+
+  it("email prefs no longer suppress in-app insert (202614190 gate)", () => {
+    const createFn = gate.slice(gate.indexOf("create or replace function public.create_venue_notification"));
+    assert.doesNotMatch(createFn, /if not v_email_enabled then return/);
+    assert.doesNotMatch(createFn, /if not v_enabled then return/);
+    assert.match(createFn, /when 'tour_confirmed'\s+then pref_tour_confirmed/);
+    assert.match(createFn, /needs_email\)\s*values[\s\S]*v_email_enabled/);
   });
 });

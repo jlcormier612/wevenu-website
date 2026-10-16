@@ -25,12 +25,18 @@ describe("tour coordinator single-email contract", () => {
   });
 
   it("queue path creates in-app tour_scheduled and emails only when pref allows", () => {
-    const sql = readFileSync(
+    const triggerSql = readFileSync(
       resolve("supabase/migrations/20261407100000_customer_action_notification_preferences.sql"),
       "utf8",
     );
-    const createFn = sql.slice(sql.indexOf("create or replace function public.create_venue_notification"));
-    const triggerFn = sql.slice(sql.indexOf("create or replace function public._trigger_tour_scheduled_notification"));
+    const gateSql = readFileSync(
+      resolve("supabase/migrations/20261419000000_venue_notification_prefs_email_only.sql"),
+      "utf8",
+    );
+    const createFn = gateSql.slice(gateSql.indexOf("create or replace function public.create_venue_notification"));
+    const triggerFn = triggerSql.slice(
+      triggerSql.indexOf("create or replace function public._trigger_tour_scheduled_notification"),
+    );
 
     assert.match(triggerFn, /after insert on public\.tour_appointments/);
     assert.match(triggerFn, /'tour_scheduled'/);
@@ -38,8 +44,10 @@ describe("tour coordinator single-email contract", () => {
     assert.match(triggerFn, /create_venue_notification/);
 
     assert.match(createFn, /when 'tour_scheduled'\s+then pref_tour_scheduled/);
-    assert.match(createFn, /if not v_enabled then return/);
-    assert.match(createFn, /needs_email/);
+    // Pref OFF suppresses email only — still inserts the in-app row.
+    assert.doesNotMatch(createFn, /if not v_email_enabled then return/);
+    assert.doesNotMatch(createFn, /if not v_enabled then return/);
+    assert.match(createFn, /needs_email\)\s*values[\s\S]*v_email_enabled/);
   });
 
   it("processVenueNotificationEmails is idempotent after emailed_at is set", () => {

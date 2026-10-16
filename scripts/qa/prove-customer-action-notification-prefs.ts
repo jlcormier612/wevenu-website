@@ -134,7 +134,12 @@ async function main() {
     .single();
   if (ae2 || !appt2) throw new Error(`appt2: ${ae2?.message}`);
   const scheduledOff = await countNotifs(sb, FANCY, "tour_scheduled", sinceOff);
-  results.tour_scheduled_off = { ok: scheduledOff.length === 0, count: scheduledOff.length };
+  // Pref OFF: in-app row still created; optional email suppressed via needs_email=false.
+  results.tour_scheduled_off = {
+    ok: scheduledOff.length === 1 && scheduledOff[0]?.needs_email === false,
+    count: scheduledOff.length,
+    needs_email: scheduledOff[0]?.needs_email ?? null,
+  };
 
   // ── Tour confirmed ON ────────────────────────────────────────────────────
   await setPrefs(sb, FANCY, { pref_tour_confirmed: true });
@@ -214,7 +219,13 @@ async function main() {
     .single();
   await sb.rpc("confirm_tour_by_token", { p_token: appt4!.confirm_token });
   const confirmedOff = await countNotifs(sb, FANCY, "tour_confirmed", sinceConfirmOff);
-  results.tour_confirmed_off = { ok: confirmedOff.length === 0, count: confirmedOff.length };
+  // Pref OFF: in-app Tour confirmed still created; needs_email false suppresses staff email.
+  results.tour_confirmed_off = {
+    ok: confirmedOff.length === 1 && confirmedOff[0]?.needs_email === false,
+    count: confirmedOff.length,
+    needs_email: confirmedOff[0]?.needs_email ?? null,
+    row: confirmedOff[0] ?? null,
+  };
 
   // ── Proposal accepted ON (legacy selection path) ─────────────────────────
   await setPrefs(sb, FANCY, { pref_proposal_accepted: true });
@@ -276,7 +287,11 @@ async function main() {
   const sinceAcceptOff = new Date().toISOString();
   await sb.rpc("accept_commercial_selection", { p_token: tokenOff });
   const acceptedOff = await countNotifs(sb, FANCY, "proposal_accepted", sinceAcceptOff);
-  results.proposal_accepted_off = { ok: acceptedOff.length === 0, count: acceptedOff.length };
+  results.proposal_accepted_off = {
+    ok: acceptedOff.length === 1 && acceptedOff[0]?.needs_email === false,
+    count: acceptedOff.length,
+    needs_email: acceptedOff[0]?.needs_email ?? null,
+  };
 
   // Restore prefs ON for venue (product default)
   await setPrefs(sb, FANCY, {

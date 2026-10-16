@@ -5,10 +5,10 @@ import { describe, it } from "node:test";
 
 /**
  * Preference → notification type matrix (venue staff optional email).
- * Source of truth: should_email_venue_notification() in
- * supabase/migrations/20261298000000_reminder_cadence_and_venue_email.sql
- * (and later preference migrations). This test locks the customer-facing
- * mapping — it does not prove live email delivery.
+ * Live gate: create_venue_notification in
+ * 20261419000000_venue_notification_prefs_email_only.sql (prefs set needs_email
+ * only; in-app rows always insert). This test locks the type↔pref mapping —
+ * it does not prove live email delivery.
  */
 const PREFERENCE_MATRIX: {
   prefKey: string;
@@ -34,9 +34,9 @@ const PREFERENCE_MATRIX: {
 ];
 
 describe("notification preference matrix", () => {
-  // Latest create_venue_notification (202614071) is the live gate for every type.
+  // Latest create_venue_notification (202614190) is the live email/in-app gate.
   const sql = readFileSync(
-    resolve("supabase/migrations/20261407100000_customer_action_notification_preferences.sql"),
+    resolve("supabase/migrations/20261419000000_venue_notification_prefs_email_only.sql"),
     "utf8",
   );
   const ui = readFileSync(
