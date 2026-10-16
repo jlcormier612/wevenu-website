@@ -84,6 +84,8 @@ describe("Sales → Booking lifecycle product rules", () => {
     assert.match(detail, /prefillBookingConfirmation/);
     assert.doesNotMatch(detail, /Return to Booked/);
     assert.doesNotMatch(detail, /Open booking file →/);
+    assert.match(detail, /Continue setup/);
+    assert.match(detail, /data-testid="continue-booking-setup-action"/);
     assert.match(actions, /returnLeadToBookedAction/);
     assert.match(actions, /moveLeadBackToSalesPipelineAction/);
     assert.match(detail, /window\.location\.assign\(`\/clients\/\$\{result\.clientId\}\/booked/);

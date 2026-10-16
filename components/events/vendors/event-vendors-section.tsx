@@ -20,9 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { Document } from "@/lib/documents/types";
@@ -130,7 +127,7 @@ export function EventVendorsSection({
   // See lib/hooks/use-synced-state.ts.
   const [assignments, setAssignments] = useSyncedState(initialAssignments);
   const [showForm, setShowForm]       = React.useState(false);
-  const [vendorId, setVendorId]       = React.useState("");
+  const [vendorIds, setVendorIds]     = React.useState<string[]>([]);
   const [arrivalTime, setArrivalTime] = React.useState("");
   const [setupLocation, setSetupLocation] = React.useState("");
   const [loadInNotes, setLoadInNotes] = React.useState("");
@@ -153,24 +150,43 @@ export function EventVendorsSection({
   const unassigned   = availableVendors.filter(v => !assignedIds.has(v.id));
 
   function resetForm() {
-    setVendorId(""); setArrivalTime(""); setSetupLocation("");
+    setVendorIds([]); setArrivalTime(""); setSetupLocation("");
     setLoadInNotes(""); setNotes(""); setShowForm(false);
   }
 
+  function toggleVendor(id: string) {
+    setVendorIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
   function handleAdd() {
-    if (!vendorId) return;
+    const toAssign = vendorIds.filter((id) => !assignedIds.has(id));
+    if (toAssign.length === 0) return;
     startAdd(async () => {
-      const input = { vendorId, arrivalTime, setupLocation, loadInNotes, notes };
-      const result = planningClientId && !eventId
-        ? await assignVendorToClientAction(planningClientId, input)
-        : await assignVendorAction(eventId, input);
-      if (result.ok && "assignment" in result) {
-        setAssignments(prev => [...prev, result.assignment]);
-        resetForm();
-        router.refresh();
-      } else if (!result.ok) {
-        toast.error(result.message ?? "Could not assign vendor.");
+      const added: EventVendorAssignment[] = [];
+      for (const vendorId of toAssign) {
+        const input = { vendorId, arrivalTime, setupLocation, loadInNotes, notes };
+        const result = planningClientId && !eventId
+          ? await assignVendorToClientAction(planningClientId, input)
+          : await assignVendorAction(eventId, input);
+        if (result.ok && "assignment" in result) {
+          added.push(result.assignment);
+        } else if (!result.ok) {
+          toast.error(result.message ?? "Could not assign vendor.");
+          if (added.length > 0) {
+            setAssignments((prev) => [...prev, ...added]);
+            router.refresh();
+          }
+          return;
+        }
       }
+      setAssignments((prev) => [...prev, ...added]);
+      resetForm();
+      toast.success(
+        added.length === 1
+          ? "Vendor assigned."
+          : `${added.length} vendors assigned.`,
+      );
+      router.refresh();
     });
   }
 
@@ -374,49 +390,70 @@ export function EventVendorsSection({
       {showForm ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-xs text-muted-foreground">
-            An internal note that this vendor is working this event — it doesn&apos;t give them portal access. Use Send Invite on the vendor&apos;s own page for that.
+            An internal note that these vendors are working this event — it doesn&apos;t give them portal access. Use Send Invite on each vendor&apos;s own page for that.
           </p>
-          {/* Vendor select */}
-          <div className="space-y-1.5">
-            <Label htmlFor="ev-vendor" className="text-xs">Vendor *</Label>
-            <Select
-              value={vendorId}
-              onValueChange={setVendorId}
-              items={[...preferred, ...others]
-                .filter(v => !assignedIds.has(v.id))
-                .map(v => ({ value: v.id, label: `${v.businessName}${v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}` }))}
-            >
-              <SelectTrigger id="ev-vendor">
-                <SelectValue placeholder="Select a vendor…" />
-              </SelectTrigger>
-              <SelectContent>
-                {preferred.filter(v => !assignedIds.has(v.id)).length > 0 && (
-                  <>
-                    <SelectItem value="__pref__" disabled>⭐ Preferred Vendors</SelectItem>
-                    {preferred.filter(v => !assignedIds.has(v.id)).map(v => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.businessName}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
-                      </SelectItem>
-                    ))}
-                  </>
+          {/* Multi-select vendors */}
+          <div className="space-y-1.5" data-testid="event-vendor-multi-assign">
+            <Label className="text-xs">Vendors *</Label>
+            {unassigned.length === 0 ? (
+              <p className="text-xs text-muted-foreground">All directory vendors are already assigned.</p>
+            ) : (
+              <ul className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-border bg-background p-2">
+                {preferred.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                  <li className="px-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Preferred
+                  </li>
                 )}
-                {others.filter(v => !assignedIds.has(v.id)).length > 0 && (
-                  <>
-                    {preferred.filter(v => !assignedIds.has(v.id)).length > 0 && (
-                      <SelectItem value="__other__" disabled>Other Vendors</SelectItem>
-                    )}
-                    {others.filter(v => !assignedIds.has(v.id)).map(v => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.businessName}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
-                      </SelectItem>
-                    ))}
-                  </>
+                {preferred.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                  <li key={v.id}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={vendorIds.includes(v.id)}
+                        onChange={() => toggleVendor(v.id)}
+                        data-testid={`assign-vendor-${v.id}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium text-foreground">{v.businessName}</span>
+                        {v.category ? (
+                          <span className="text-muted-foreground"> · {vendorCategoryLabel(v.category)}</span>
+                        ) : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+                {others.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                  <li className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {preferred.filter((v) => !assignedIds.has(v.id)).length > 0 ? "Other" : "Directory"}
+                  </li>
                 )}
-                {unassigned.length === 0 && (
-                  <SelectItem value="__none__" disabled>All vendors assigned</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+                {others.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                  <li key={v.id}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={vendorIds.includes(v.id)}
+                        onChange={() => toggleVendor(v.id)}
+                        data-testid={`assign-vendor-${v.id}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium text-foreground">{v.businessName}</span>
+                        {v.category ? (
+                          <span className="text-muted-foreground"> · {vendorCategoryLabel(v.category)}</span>
+                        ) : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {vendorIds.length > 1 ? (
+              <p className="text-[11px] text-muted-foreground">
+                Shared arrival, setup, load-in, and notes apply to all selected vendors. Edit individually afterward if needed.
+              </p>
+            ) : null}
           </div>
 
           {/* Arrival time + setup location */}
@@ -455,8 +492,18 @@ export function EventVendorsSection({
 
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!vendorId || addPending} onClick={handleAdd}>
-              {addPending ? "Assigning…" : "Assign Vendor"}
+            <Button
+              type="button"
+              size="sm"
+              disabled={vendorIds.filter((id) => !assignedIds.has(id)).length === 0 || addPending}
+              onClick={handleAdd}
+              data-testid="event-vendor-assign-submit"
+            >
+              {addPending
+                ? "Assigning…"
+                : vendorIds.length > 1
+                  ? `Assign ${vendorIds.length} vendors`
+                  : "Assign Vendor"}
             </Button>
           </div>
         </div>

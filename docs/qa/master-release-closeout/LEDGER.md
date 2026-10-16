@@ -767,6 +767,16 @@ Latest independently reported Sandbox runtime (verified 2026-10-15 — not assum
 - **PRODUCTION:** untouched
 - **REMAINING:** None
 
+### Start booking file workflow revamp (2026-10-16) — CODE COMPLETE
+
+- **ROOT CAUSE:** After Start booking file, `linkedClientId` hides Start CTA; Open booking file was removed; no Continue/Resume → unfinished workspace looked gone (still at `/clients/{id}`).
+- **FIX:** Continue setup CTA; multi template apply on FloorPlanWorkspace; multi vendor assign on EventVendorsSection. Shared components for pre-booking + booked.
+- **TESTS:** 54/54 focused pass (`start-booking-file-resume` + lifecycle/semantics suites).
+- **GINA:** Read-only — client `132c1553-…` status `booking`; not mutated.
+- **DEPLOY / Production:** none this pass.
+- **EVIDENCE:** `docs/qa/start-booking-file-workflow/`
+- **REMAINING:** Sandbox browser proof of Continue setup + multi apply/assign before product GREEN
+
 ### Tour unconfirmed after follow-up save — Bindi (2026-10-16) — GREEN
 
 - **FORENSIC:** Case A — follow-up save demoted `confirmed` → `scheduled` via `future_schedule`. `docs/qa/tour-unconfirmed-after-followup/db-snapshot.json`.

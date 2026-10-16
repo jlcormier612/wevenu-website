@@ -805,6 +805,20 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               </Button>
             )}
             <TourScheduleActions includeCopyLink={false} includeSchedule />
+            {previouslyConverted && !isBookingStarted && currentStage !== "lost" && lead.linkedClientId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                render={
+                  <Link
+                    href={`/clients/${lead.linkedClientId}${lead.linkedEventId ? `?eventId=${lead.linkedEventId}` : ""}`}
+                  />
+                }
+                data-testid="continue-booking-setup-action"
+              >
+                Continue setup
+              </Button>
+            ) : null}
             {!previouslyConverted && currentStage !== "lost" ? (
               <Button
                 size="sm"

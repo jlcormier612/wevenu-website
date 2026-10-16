@@ -446,13 +446,29 @@ export function FloorPlanWorkspace({
   const [method, setMethod] = React.useState<Method>("blank");
   const [name, setName] = React.useState("");
   const [spaceId, setSpaceId] = React.useState(eventSpaceId ?? NO_SPACE);
-  const [templateId, setTemplateId] = React.useState("");
+  const [templateIds, setTemplateIds] = React.useState<string[]>([]);
   const [sourcePlanId, setSourcePlanId] = React.useState("");
   const [pending, startTransition] = React.useTransition();
   const [busyPlanId, setBusyPlanId] = React.useState<string | null>(null);
 
   function reset() {
-    setMethod("blank"); setName(""); setSpaceId(eventSpaceId ?? NO_SPACE); setTemplateId(""); setSourcePlanId("");
+    setMethod("blank"); setName(""); setSpaceId(eventSpaceId ?? NO_SPACE); setTemplateIds([]); setSourcePlanId("");
+  }
+
+  function toggleTemplate(id: string) {
+    setTemplateIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      if (next.length === 1) {
+        const t = templates.find((x) => x.id === next[0]);
+        if (t) {
+          if (!name.trim()) setName(t.name);
+          setSpaceId(t.spaceId ?? eventSpaceId ?? NO_SPACE);
+        }
+      } else if (next.length > 1) {
+        setName("");
+      }
+      return next;
+    });
   }
 
   function handleRenamePlan(plan: FloorPlan) {
@@ -478,15 +494,6 @@ export function FloorPlanWorkspace({
     });
   }
 
-  function handleTemplateChange(id: string) {
-    setTemplateId(id);
-    const t = templates.find((x) => x.id === id);
-    if (t) {
-      if (!name.trim()) setName(t.name);
-      setSpaceId(t.spaceId ?? eventSpaceId ?? NO_SPACE);
-    }
-  }
-
   function handleSourceChange(id: string) {
     setSourcePlanId(id);
     const p = floorPlans.find((x) => x.id === id);
@@ -497,24 +504,56 @@ export function FloorPlanWorkspace({
   }
 
   function handleSubmit() {
-    if (!name.trim()) return;
-    if (method === "apply" && !templateId) return;
+    if (method === "apply" && templateIds.length === 0) return;
+    if (method === "apply" && templateIds.length === 1 && !name.trim()) return;
+    if (method !== "apply" && !name.trim()) return;
     if (method === "duplicate" && !sourcePlanId) return;
     const resolvedSpaceId = spaceId === NO_SPACE ? null : spaceId;
 
     startTransition(async () => {
       const preBooking = Boolean(planningClientId) && !eventId;
-      const result = method === "apply"
+
+      if (method === "apply") {
+        const createdIds: string[] = [];
+        for (const tid of templateIds) {
+          const t = templates.find((x) => x.id === tid);
+          const planName =
+            templateIds.length === 1
+              ? name.trim()
+              : (t?.name?.trim() || "Floor Plan");
+          const planSpace = templateIds.length === 1
+            ? resolvedSpaceId
+            : (t?.spaceId ?? resolvedSpaceId);
+          const result = preBooking
+            ? await applyClientFloorPlanTemplateAction(planningClientId!, tid, planName, planSpace)
+            : await applyTemplateAction(eventId, tid, planName, planSpace);
+          if (!result.ok) {
+            toast.error(result.message ?? "Could not apply template.");
+            if (createdIds.length > 0) router.refresh();
+            return;
+          }
+          createdIds.push(result.floorPlanId);
+        }
+        setOpen(false);
+        reset();
+        if (createdIds.length === 1) {
+          router.push(preBooking
+            ? `/clients/${planningClientId}/floor-plans/${createdIds[0]}`
+            : `/events/${eventId}/floor-plans/${createdIds[0]}`);
+        } else {
+          toast.success(`Applied ${createdIds.length} floor-plan templates.`);
+          router.refresh();
+        }
+        return;
+      }
+
+      const result = method === "duplicate"
         ? (preBooking
-          ? await applyClientFloorPlanTemplateAction(planningClientId!, templateId, name.trim(), resolvedSpaceId)
-          : await applyTemplateAction(eventId, templateId, name.trim(), resolvedSpaceId))
-        : method === "duplicate"
-          ? (preBooking
-            ? await duplicateClientFloorPlanAction(planningClientId!, sourcePlanId, name.trim(), resolvedSpaceId)
-            : await duplicateFloorPlanAction(eventId, sourcePlanId, name.trim(), resolvedSpaceId))
-          : (preBooking
-            ? await createClientFloorPlanAction(planningClientId!, name.trim(), resolvedSpaceId)
-            : await createFloorPlanAction(eventId, name.trim(), resolvedSpaceId));
+          ? await duplicateClientFloorPlanAction(planningClientId!, sourcePlanId, name.trim(), resolvedSpaceId)
+          : await duplicateFloorPlanAction(eventId, sourcePlanId, name.trim(), resolvedSpaceId))
+        : (preBooking
+          ? await createClientFloorPlanAction(planningClientId!, name.trim(), resolvedSpaceId)
+          : await createFloorPlanAction(eventId, name.trim(), resolvedSpaceId));
 
       if (result.ok) {
         setOpen(false);
@@ -528,8 +567,16 @@ export function FloorPlanWorkspace({
     });
   }
 
-  const canSubmit = !!name.trim() && (method !== "apply" || !!templateId) && (method !== "duplicate" || !!sourcePlanId);
-  const submitLabel = method === "apply" ? "Apply" : method === "duplicate" ? "Duplicate" : "Create Floor Plan";
+  const canSubmit =
+    method === "apply"
+      ? templateIds.length > 0 && (templateIds.length > 1 || !!name.trim())
+      : !!name.trim() && (method !== "duplicate" || !!sourcePlanId);
+  const submitLabel =
+    method === "apply"
+      ? (templateIds.length > 1 ? `Apply ${templateIds.length} templates` : "Apply")
+      : method === "duplicate"
+        ? "Duplicate"
+        : "Create Floor Plan";
   const preBooking = Boolean(planningClientId) && !eventId;
 
   // Each shared plan is independently seatable (keyed by floor_plan_id).
@@ -650,14 +697,38 @@ export function FloorPlanWorkspace({
             </RadioGroup>
 
             {method === "apply" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Template</Label>
-                <Select value={templateId} onValueChange={handleTemplateChange} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose a template" /></SelectTrigger>
-                  <SelectContent>
-                    {templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2" data-testid="floor-plan-apply-templates">
+                <Label className="text-xs">Templates</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Select one or more. Each template becomes its own independent floor plan on this booking.
+                </p>
+                {templates.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No templates in your library yet.</p>
+                ) : (
+                  <ul className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-border p-2">
+                    {templates.map((t) => (
+                      <li key={t.id}>
+                        <label className="flex cursor-pointer items-start gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={templateIds.includes(t.id)}
+                            onChange={() => toggleTemplate(t.id)}
+                            data-testid={`floor-plan-template-${t.id}`}
+                          />
+                          <span className="min-w-0">
+                            <span className="font-medium text-foreground">{t.name}</span>
+                            {t.spaceId ? (
+                              <span className="block text-[11px] text-muted-foreground">
+                                {spaceName(spaces, t.spaceId) ?? "Linked space"}
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 
@@ -673,21 +744,30 @@ export function FloorPlanWorkspace({
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Floor Plan Name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Reception" className="h-9 text-sm" />
-            </div>
+            {(method !== "apply" || templateIds.length <= 1) && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Floor Plan Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Reception" className="h-9 text-sm" />
+              </div>
+            )}
+            {method === "apply" && templateIds.length > 1 ? (
+              <p className="text-[11px] text-muted-foreground">
+                Each plan is named after its template. You can rename plans afterward.
+              </p>
+            ) : null}
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Venue Space (optional if inherited)</Label>
-              <Select value={spaceId} onValueChange={setSpaceId} items={[{ value: NO_SPACE, label: "No specific space" }, ...spaces.map((s) => ({ value: s.id, label: s.name }))]}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_SPACE}>No specific space</SelectItem>
-                  {spaces.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {(method !== "apply" || templateIds.length <= 1) && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Venue Space (optional if inherited)</Label>
+                <Select value={spaceId} onValueChange={setSpaceId} items={[{ value: NO_SPACE, label: "No specific space" }, ...spaces.map((s) => ({ value: s.id, label: s.name }))]}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_SPACE}>No specific space</SelectItem>
+                    {spaces.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-2">
