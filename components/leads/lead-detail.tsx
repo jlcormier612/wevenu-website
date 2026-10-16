@@ -107,6 +107,7 @@ import { type SalesStage } from "@/lib/leads/sales-stages";
 import type { DuplicateReview } from "@/lib/leads/duplicate-review";
 import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
+import { workspaceDateText } from "@/lib/availability/workspace-date-language";
 import type { Document } from "@/lib/documents/types";
 import type { LuvDraft } from "@/lib/luv/drafts";
 import type { PipelineStage } from "@/lib/pipeline-templates/types";
@@ -616,9 +617,14 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 {lead.eventDate && (
                   <>
                     {lead.eventType ? <span className="text-border" aria-hidden>·</span> : null}
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1" data-testid="lead-date-state">
                       <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      {formatDate(lead.eventDate)}
+                      {workspaceDateText({
+                        eventDate: lead.eventDate,
+                        booked: Boolean(lead.linkedEventId),
+                        holds,
+                        leadId: lead.id,
+                      })}
                     </span>
                   </>
                 )}

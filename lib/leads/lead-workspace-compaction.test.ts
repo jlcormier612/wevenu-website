@@ -20,7 +20,7 @@ describe("lead workspace polish", () => {
     assert.match(detail, /font-heading text-2xl/);
     assert.match(detail, /data-testid="lead-summary-facts"/);
     assert.match(detail, /eventTypeLabel\(lead\.eventType\)/);
-    assert.match(detail, /formatDate\(lead\.eventDate\)/);
+    assert.match(detail, /workspaceDateText\(\{[\s\S]*eventDate: lead\.eventDate/);
     assert.match(detail, /lead\.guestCount\.toLocaleString\(\)/);
     assert.match(detail, /formatCurrency\(lead\.estimatedBudget\)/);
     const facts = detail.slice(

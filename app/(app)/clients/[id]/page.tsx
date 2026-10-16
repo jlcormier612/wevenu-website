@@ -17,7 +17,8 @@ import { EventDetail } from "@/components/events/event-detail";
 import { buildInternalNotesRollup } from "@/lib/notes/internal-notes-rollup";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { getSpaces } from "@/lib/availability/service";
+import { getHolds, getSpaces } from "@/lib/availability/service";
+import { workspaceDateText } from "@/lib/availability/workspace-date-language";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getConversation, getConversationIdForRelationship } from "@/lib/conversations/service";
@@ -118,7 +119,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       photo, journey, packagesWithItems, packageList, templates, applications, tasks,
       timelineEntries, timelineSections, timelineTemplates, venue, spaces,
       floorPlans, floorPlanTemplates, vendors, vendorAssignments, eventOrder, eventOrderTemplates,
-      offerings, inventoryItems, staffRole,
+      offerings, inventoryItems, staffRole, dateHolds,
     ] = await Promise.all([
       client.relationshipId
         ? getRelationshipPhotoForVenue(client.relationshipId)
@@ -147,6 +148,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       listActiveOfferings(),
       getInventoryItems(),
       getCurrentUserRole(),
+      client.leadId ? getHolds({ leadId: client.leadId }) : Promise.resolve([]),
     ]);
     const activeTimelineTemplates = timelineTemplates.filter((t) => !t.isArchived);
     const activePlaybookTemplates = templates.filter((t) => !t.isArchived);
@@ -162,10 +164,13 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
           </div>
           <DeleteClientRecordButton clientId={client.id} fallbackName={displayName} />
         </div>
-        <p className="text-sm text-muted-foreground">
-          {client.eventDate
-            ? `Preferred date: ${client.eventDate}. This is a preference, not a reservation.`
-            : "No preferred date yet. A preferred date does not reserve a date."}
+        <p className="text-sm text-muted-foreground" data-testid="client-date-state">
+          {workspaceDateText({
+            eventDate: client.eventDate,
+            booked: false,
+            holds: dateHolds,
+            leadId: client.leadId,
+          })}
         </p>
         <BookingJourneyPanel
           journey={journey}
