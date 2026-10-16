@@ -43,6 +43,7 @@ import type { TimelineEntry } from "@/lib/timeline/types";
 import { paymentsAttentionHref } from "@/lib/luv/briefing-attention-links";
 import {
   applyContextualSupersession,
+  buildLegacyNoFollowUpObservation,
   buildS1EventContractObservation,
   buildS2EventPaymentObservation,
   buildS3UnattendedInquiryObservation,
@@ -297,11 +298,13 @@ export async function getLuvObservations(
       .order("expires_at"),
 
     // 6: "New" leads older than 48 h with no follow-up date
+    // Contact / tour / inbound evidence loaded after this query — last_contacted_at
+    // alone is not enough (Betty-class active tour + venue_staff exchange).
     wantLead
       ? onlyBusinessReporting(
         (() => {
           let q = supabase.from("leads")
-            .select("id, first_name, last_name, partner_first_name, created_at, last_contacted_at")
+            .select("id, first_name, last_name, partner_first_name, created_at, last_contacted_at, relationship_id")
             .eq("venue_id", venueId)
             .is("first_booked_at", null)
             .is("lost_at", null)
@@ -529,20 +532,41 @@ export async function getLuvObservations(
   }
 
   // ── 6: New leads with no follow-up set ───────────────────────────────────
-
-  for (const lead of (newNoFollowUpRes.data ?? []) as { id: string; first_name: string; last_name: string; created_at: string; last_contacted_at: string | null }[]) {
-    if (lead.last_contacted_at) continue;
-    const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
-    const days = daysAgo(lead.created_at);
-    observations.push({
-      id: `followup-${lead.id}`,
-      kind: "risk",
-      priority: "low",
-      message: `${name} reached out ${days} day${days !== 1 ? "s" : ""} ago — they might appreciate hearing from you.`,
-      link: `/leads/${lead.id}`,
-      actionLabel: "View Lead →",
-      recommendation: { label: "Ask Luv to draft a follow-up", link: `/leads/${lead.id}?luv=follow_up_email`, type: "draft" },
-    });
+  // Same first-response evidence as S3 (venue_staff outbound + tour contact).
+  // Recency uses latest prospect inbound when newer than created_at.
+  {
+    const legacyRows = (newNoFollowUpRes.data ?? []) as {
+      id: string;
+      first_name: string;
+      last_name: string;
+      created_at: string;
+      last_contacted_at: string | null;
+      relationship_id: string | null;
+    }[];
+    const legacyContact = await loadUnattendedInquiryContactEvidence(
+      supabase,
+      venueId,
+      legacyRows,
+    );
+    for (const lead of legacyRows) {
+      const obs = buildLegacyNoFollowUpObservation(
+        {
+          id: lead.id,
+          venueId,
+          firstName: lead.first_name,
+          lastName: lead.last_name,
+          createdAt: lead.created_at,
+          lastContactedAt: lead.last_contacted_at,
+          hasVenueStaffOutbound: legacyContact.contactedLeadIds.has(lead.id),
+          tourStatus: legacyContact.tourStatusByLeadId.get(lead.id) ?? null,
+          tourOrigin: legacyContact.tourOriginByLeadId.get(lead.id) ?? null,
+          latestProspectActivityAt:
+            legacyContact.latestProspectActivityAtByLeadId.get(lead.id) ?? null,
+        },
+        { venueId },
+      );
+      if (obs) observations.push(obs);
+    }
   }
 
   // ── 7: Questionnaire sent but not submitted ───────────────────────────────

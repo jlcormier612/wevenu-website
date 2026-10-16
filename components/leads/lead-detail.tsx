@@ -239,6 +239,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     setCompletedLuvDraftId(id);
   }
   const router = useRouter();
+  /** After any authoritative send: refresh Luv Noticed (eligibility + recency). */
+  async function handleAuthoritativeConversationSendSuccess() {
+    await handleLuvDraftSendSuccess();
+    router.refresh();
+  }
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
   const [lifecyclePending, startLifecycle] = React.useTransition();
@@ -1029,7 +1034,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             clientId={lead.linkedClientId}
             initialBody={messagePrefill?.body}
             initialSubject={messagePrefill?.subject}
-            onAuthoritativeSendSuccess={handleLuvDraftSendSuccess}
+            onAuthoritativeSendSuccess={handleAuthoritativeConversationSendSuccess}
           />
         </TabsContent>
 

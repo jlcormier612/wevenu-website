@@ -1,0 +1,19 @@
+{
+  "leadId": "14eedef3-1673-4313-b31a-85c0690ff12a",
+  "name": "Betty Boop",
+  "created_at": "2026-10-13T19:34:22.545558+00:00",
+  "last_contacted_at": null,
+  "evidence": {
+    "hasVenueStaffOutbound": true,
+    "tourStatus": "confirmed",
+    "tourOrigin": "scheduled",
+    "latestProspectActivityAt": "2026-10-16T00:45:27.629497+00:00"
+  },
+  "legacyBefore": {
+    "wouldShowPreFix": true,
+    "ageFromCreatedAtDays": 2
+  },
+  "legacyAfter": null,
+  "s3After": null,
+  "pass": true
+}

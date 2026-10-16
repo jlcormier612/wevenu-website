@@ -7,9 +7,15 @@
  * P-A1 first response ≠ Inbox needs_response:
  *   venue_staff outbound counts; system outbound does not; inbound does not;
  *   internal_note does not; completed/cancelled/no_show/walk-in tours count.
+ *
+ * Prospect activity (inbound lead_or_client / contact) is tracked separately
+ * for recency display — it never counts as venue first response.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isVenueStaffFirstResponseMessage } from "@/lib/luv/observation-quality";
+import {
+  isCustomerFacingContactChannel,
+  isVenueStaffFirstResponseMessage,
+} from "@/lib/luv/observation-quality";
 import {
   isAuthoritativeTourContactForUnattendedInquiry,
   UNATTENDED_INQUIRY_TOUR_CONTACT_STATUSES,
@@ -33,7 +39,22 @@ export type UnattendedInquiryContactEvidence = {
   contactedLeadIds: Set<string>;
   tourStatusByLeadId: Map<string, string>;
   tourOriginByLeadId: Map<string, string | null>;
+  /**
+   * Latest inbound prospect message (lead_or_client / contact on a
+   * customer-facing channel). Used for “reached out X days ago” recency —
+   * never as venue first-response proof.
+   */
+  latestProspectActivityAtByLeadId: Map<string, string>;
 };
+
+/** Prospect inbound that advances “reached out” recency — not venue response. */
+export function isProspectInboundActivityMessage(msg: {
+  channel?: string | null;
+  senderType?: string | null;
+}): boolean {
+  if (!isCustomerFacingContactChannel(msg.channel)) return false;
+  return msg.senderType === "lead_or_client" || msg.senderType === "contact";
+}
 
 export async function loadUnattendedInquiryContactEvidence(
   supabase: SupabaseClient,
@@ -43,12 +64,25 @@ export async function loadUnattendedInquiryContactEvidence(
   const contactedLeadIds = new Set<string>();
   const tourStatusByLeadId = new Map<string, string>();
   const tourOriginByLeadId = new Map<string, string | null>();
+  const latestProspectActivityAtByLeadId = new Map<string, string>();
   if (rows.length === 0) {
-    return { contactedLeadIds, tourStatusByLeadId, tourOriginByLeadId };
+    return {
+      contactedLeadIds,
+      tourStatusByLeadId,
+      tourOriginByLeadId,
+      latestProspectActivityAtByLeadId,
+    };
   }
 
   const leadIds = rows.map((r) => r.id);
   const relIds = [...new Set(rows.map((r) => r.relationship_id).filter(Boolean))] as string[];
+  const leadIdsByRel = new Map<string, string[]>();
+  for (const row of rows) {
+    if (!row.relationship_id) continue;
+    const list = leadIdsByRel.get(row.relationship_id) ?? [];
+    list.push(row.id);
+    leadIdsByRel.set(row.relationship_id, list);
+  }
 
   if (leadIds.length > 0) {
     const statusList = UNATTENDED_INQUIRY_TOUR_CONTACT_STATUSES.join(",");
@@ -90,30 +124,52 @@ export async function loadUnattendedInquiryContactEvidence(
     if (convIds.length > 0) {
       const { data: msgs } = await supabase
         .from("conversation_messages")
-        .select("conversation_id, sender_type, channel")
+        .select("conversation_id, sender_type, channel, sent_at")
         .eq("venue_id", venueId)
         .in("conversation_id", convIds);
       const relsWithStaffOutbound = new Set<string>();
+      const latestInboundByRel = new Map<string, string>();
       for (const m of (msgs ?? []) as {
         conversation_id: string;
         sender_type: string;
         channel: string;
+        sent_at: string | null;
       }[]) {
-        if (!isVenueStaffFirstResponseMessage({ senderType: m.sender_type, channel: m.channel })) {
-          continue;
-        }
         const rel = relByConv.get(m.conversation_id);
-        if (rel) relsWithStaffOutbound.add(rel);
+        if (!rel) continue;
+        if (isVenueStaffFirstResponseMessage({ senderType: m.sender_type, channel: m.channel })) {
+          relsWithStaffOutbound.add(rel);
+        }
+        if (
+          m.sent_at
+          && isProspectInboundActivityMessage({ senderType: m.sender_type, channel: m.channel })
+        ) {
+          const prev = latestInboundByRel.get(rel);
+          if (!prev || m.sent_at > prev) latestInboundByRel.set(rel, m.sent_at);
+        }
       }
       for (const row of rows) {
         if (row.relationship_id && relsWithStaffOutbound.has(row.relationship_id)) {
           contactedLeadIds.add(row.id);
         }
       }
+      for (const [rel, sentAt] of latestInboundByRel) {
+        for (const leadId of leadIdsByRel.get(rel) ?? []) {
+          const prev = latestProspectActivityAtByLeadId.get(leadId);
+          if (!prev || sentAt > prev) {
+            latestProspectActivityAtByLeadId.set(leadId, sentAt);
+          }
+        }
+      }
     }
   }
 
-  return { contactedLeadIds, tourStatusByLeadId, tourOriginByLeadId };
+  return {
+    contactedLeadIds,
+    tourStatusByLeadId,
+    tourOriginByLeadId,
+    latestProspectActivityAtByLeadId,
+  };
 }
 
 export type UnattendedInquiryCandidateRow = {

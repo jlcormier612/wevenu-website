@@ -7,6 +7,7 @@
 
 import type { LuvObservation } from "@/lib/luv/types";
 import {
+  hasVenueFirstResponseEvidence,
   isQualifyingUnattendedInquiry,
   type UnattendedInquiryEvidence,
 } from "@/lib/luv/unattended-inquiry";
@@ -249,6 +250,78 @@ export function buildS3UnattendedInquiryObservation(
     actionLabel: "Open Lead →",
     recommendation: {
       label: "Reach out to this inquiry",
+      link: `/leads/${lead.id}?luv=follow_up_email`,
+      type: "draft",
+    },
+  };
+}
+
+export type LegacyNoFollowUpLead = {
+  id: string;
+  venueId: string;
+  firstName: string;
+  lastName: string;
+  createdAt: string;
+  lastContactedAt: string | null;
+  hasVenueStaffOutbound?: boolean;
+  tourStatus?: string | null;
+  tourOrigin?: string | null;
+  /** Latest prospect inbound (lead_or_client / contact). */
+  latestProspectActivityAt?: string | null;
+};
+
+/**
+ * Legacy “reached out N days ago — they might appreciate hearing from you”
+ * (followup-*). Shares P-A1 first-response evidence with S3 so an active
+ * tour / venue_staff exchange cannot look like an unattended inquiry.
+ *
+ * Recency uses the latest prospect activity (inquiry created_at or inbound
+ * message) — never venue outbound as “they reached out.”
+ */
+export function buildLegacyNoFollowUpObservation(
+  lead: LegacyNoFollowUpLead,
+  opts: ContextualEvalOpts = { venueId: lead.venueId },
+): LuvObservation | null {
+  if (opts.venueId && lead.venueId !== opts.venueId) return null;
+  if (
+    hasVenueFirstResponseEvidence({
+      lastContactedAt: lead.lastContactedAt,
+      hasVenueStaffOutbound: lead.hasVenueStaffOutbound ?? false,
+      tourStatus: lead.tourStatus,
+      tourOrigin: lead.tourOrigin,
+    })
+  ) {
+    return null;
+  }
+
+  const nowMs = opts.nowMs ?? Date.now();
+  const createdMs = Date.parse(lead.createdAt);
+  if (Number.isNaN(createdMs)) return null;
+  // Same 48h floor as the legacy SQL filter (created_at < twoDaysAgo).
+  if (nowMs - createdMs < UNATTENDED_INQUIRY_HOURS * 3_600_000) return null;
+
+  const inboundMs = lead.latestProspectActivityAt
+    ? Date.parse(lead.latestProspectActivityAt)
+    : NaN;
+  const activityMs = !Number.isNaN(inboundMs) && inboundMs > createdMs
+    ? inboundMs
+    : createdMs;
+  const days = Math.max(0, Math.floor((nowMs - activityMs) / 86_400_000));
+  const name = [lead.firstName, lead.lastName].filter(Boolean).join(" ") || "This inquiry";
+  const agePhrase =
+    days === 0
+      ? "earlier today"
+      : `${days} day${days !== 1 ? "s" : ""} ago`;
+
+  return {
+    id: `followup-${lead.id}`,
+    kind: "risk",
+    priority: "low",
+    message: `${name} reached out ${agePhrase} — they might appreciate hearing from you.`,
+    link: `/leads/${lead.id}`,
+    actionLabel: "View Lead →",
+    recommendation: {
+      label: "Ask Luv to draft a follow-up",
       link: `/leads/${lead.id}?luv=follow_up_email`,
       type: "draft",
     },
