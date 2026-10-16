@@ -14,7 +14,10 @@ import {
 } from "@/components/form/inquiry-confirmations";
 import { VenueFormAnalyticsConsent } from "@/components/form/venue-form-analytics-consent";
 import { HtcPlatformMark } from "@/components/brand/htc-platform-mark";
+import { MonthYearPicker } from "@/components/shared/month-year-picker";
 import { TurnstileWidget } from "@/components/shared/turnstile-widget";
+import { CALENDAR_MAX_YEAR } from "@/lib/calendar/types";
+import { clampMonthYear } from "@/lib/calendar/month-year-range";
 import {
   captureFirstTouchAttribution,
   getOrCreateOpaqueAnonId,
@@ -64,7 +67,6 @@ function formatPreferredEventDateLabel(iso: string): string {
   });
 }
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type FormState = "idle" | "submitting" | "success_info" | "success_tour" | "error";
@@ -142,6 +144,7 @@ function AvailabilityCalendar({
   availableDates: Set<string>;
   selectedDate: string | null;
   onSelect: (d: string) => void;
+  /** 0–11 */
   month: number;
   year: number;
   onMonthChange: (m: number, y: number) => void;
@@ -151,29 +154,48 @@ function AvailabilityCalendar({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const atPastFloor = year < today.getFullYear() || (year === today.getFullYear() && month <= today.getMonth());
+  const minYear = today.getFullYear();
+  const maxYear = CALENDAR_MAX_YEAR;
+  const atPastFloor = year < minYear || (year === minYear && month <= today.getMonth());
+  const atFutureCeiling = year > maxYear || (year === maxYear && month >= 11);
   const cells: (number | null)[] = Array(firstDay).fill(null);
   for (let i = 1; i <= daysInMonth; i++) cells.push(i);
   while (cells.length % 7 !== 0) cells.push(null);
 
+  function jumpTo(month0: number, nextYear: number) {
+    const clamped = clampMonthYear(month0, nextYear, minYear, maxYear);
+    if (clamped.year === minYear && clamped.month < today.getMonth()) {
+      onMonthChange(today.getMonth(), minYear);
+      return;
+    }
+    onMonthChange(clamped.month, clamped.year);
+  }
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="space-y-3" data-testid="availability-calendar">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           disabled={atPastFloor}
-          onClick={() => (month === 0 ? onMonthChange(11, year - 1) : onMonthChange(month - 1, year))}
+          onClick={() => jumpTo(month - 1, year)}
           aria-label="Previous month"
-          className="rounded-lg p-2 text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-transparent"
+          className="rounded-lg p-2 text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <p className="font-semibold text-heading">{MONTHS[month]} {year}</p>
+        <MonthYearPicker
+          year={year}
+          month={month + 1}
+          minYear={minYear}
+          maxYear={maxYear}
+          onChange={(y, m1) => jumpTo(m1 - 1, y)}
+        />
         <button
           type="button"
-          onClick={() => (month === 11 ? onMonthChange(0, year + 1) : onMonthChange(month + 1, year))}
+          disabled={atFutureCeiling}
+          onClick={() => jumpTo(month + 1, year)}
           aria-label="Next month"
-          className="rounded-lg p-2 text-foreground hover:bg-muted"
+          className="rounded-lg p-2 text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronRight className="h-4 w-4" />
         </button>

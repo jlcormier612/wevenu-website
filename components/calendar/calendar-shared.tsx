@@ -15,11 +15,7 @@ import {
   MoreHorizontal, Pencil, Phone, Trash2, User, Users, Utensils,
 } from "lucide-react";
 
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
-import { CALENDAR_MAX_YEAR, CALENDAR_MIN_YEAR } from "@/lib/calendar/types";
 import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
 import {
@@ -32,6 +28,8 @@ import {
   VENUE_CALENDAR_TAXONOMY,
 } from "@/lib/calendar/venue-calendar-scope";
 import { cn } from "@/lib/utils";
+
+export { MonthYearPicker } from "@/components/shared/month-year-picker";
 
 type ItemMeta = {
   label: string;
@@ -377,62 +375,6 @@ export function FilterBar({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-const YEAR_OPTIONS = Array.from(
-  { length: CALENDAR_MAX_YEAR - CALENDAR_MIN_YEAR + 1 },
-  (_, i) => CALENDAR_MIN_YEAR + i,
-);
-
-/**
- * Jump straight to a distant month/year instead of walking there one
- * chevron-click at a time. The year range is the same constant the server
- * param validator uses, so every year offered here is one the resolver honours.
- */
-export function MonthYearPicker({
-  year, month, onChange,
-}: {
-  year: number;
-  month: number;
-  onChange: (year: number, month: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <Select
-        value={String(month)}
-        onValueChange={(v) => onChange(year, Number(v))}
-        items={Object.fromEntries(MONTH_NAMES.map((m, i) => [String(i + 1), m]))}
-      >
-        <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Month">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {MONTH_NAMES.map((m, i) => (
-            <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={String(year)}
-        onValueChange={(v) => onChange(Number(v), month)}
-        items={Object.fromEntries(YEAR_OPTIONS.map((y) => [String(y), String(y)]))}
-      >
-        <SelectTrigger className="h-9 w-[6rem]" aria-label="Year">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {YEAR_OPTIONS.map((y) => (
-            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
     </div>
   );
 }

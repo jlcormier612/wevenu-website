@@ -19,18 +19,20 @@ import {
   getCoordinatorTourSlotsAction, getLeadPublicTourSchedulingUrlAction, previewRescheduleTourEmailAction, previewScheduleTourEmailAction, previewTourConfirmationRequestAction, requestTourConfirmationAction, rescheduleTourAction, scheduleTourAction, updateTourStatusAction,
 } from "@/app/(app)/leads/[id]/actions";
 import { TourSendPreview } from "@/components/leads/tour-send-preview";
+import { MonthYearPicker } from "@/components/shared/month-year-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CALENDAR_MAX_YEAR } from "@/lib/calendar/types";
+import { clampMonthYear } from "@/lib/calendar/month-year-range";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
 import { tourDisplayClockIso } from "@/lib/tours/list-order";
 import { prefillActualFromScheduled, tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 const STATUS_META: Record<TourAppointment["status"], { label: string; className: string }> = {
@@ -52,19 +54,51 @@ function CalendarGrid({ availableDates, selectedDate, onSelect, month, year, onM
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date(); today.setHours(0, 0, 0, 0);
+  const minYear = today.getFullYear();
+  const maxYear = CALENDAR_MAX_YEAR;
+  const atPastFloor = year < minYear || (year === minYear && month <= today.getMonth());
+  const atFutureCeiling = year > maxYear || (year === maxYear && month >= 11);
   const cells: (number | null)[] = Array(firstDay).fill(null);
   for (let i = 1; i <= daysInMonth; i++) cells.push(i);
   while (cells.length % 7 !== 0) cells.push(null);
 
-  function prevMonth() { if (month === 0) onMonthChange(11, year - 1); else onMonthChange(month - 1, year); }
-  function nextMonth() { if (month === 11) onMonthChange(0, year + 1); else onMonthChange(month + 1, year); }
+  function jumpTo(month0: number, nextYear: number) {
+    const clamped = clampMonthYear(month0, nextYear, minYear, maxYear);
+    if (clamped.year === minYear && clamped.month < today.getMonth()) {
+      onMonthChange(today.getMonth(), minYear);
+      return;
+    }
+    onMonthChange(clamped.month, clamped.year);
+  }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <button type="button" onClick={prevMonth} aria-label="Previous month" className="p-2 rounded-lg hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4" /></button>
-        <p className="text-sm font-semibold text-heading">{MONTHS[month]} {year}</p>
-        <button type="button" onClick={nextMonth} aria-label="Next month" className="p-2 rounded-lg hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4" /></button>
+    <div className="space-y-3" data-testid="tour-availability-calendar">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          disabled={atPastFloor}
+          onClick={() => jumpTo(month - 1, year)}
+          aria-label="Previous month"
+          className="p-2 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <MonthYearPicker
+          year={year}
+          month={month + 1}
+          minYear={minYear}
+          maxYear={maxYear}
+          onChange={(y, m1) => jumpTo(m1 - 1, y)}
+        />
+        <button
+          type="button"
+          disabled={atFutureCeiling}
+          onClick={() => jumpTo(month + 1, year)}
+          aria-label="Next month"
+          className="p-2 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
       <div className="grid grid-cols-7 gap-0.5">
         {DAYS.map((d) => <p key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</p>)}
