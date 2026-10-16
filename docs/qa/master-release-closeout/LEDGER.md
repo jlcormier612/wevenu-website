@@ -767,6 +767,18 @@ Latest independently reported Sandbox runtime (verified 2026-10-15 — not assum
 - **PRODUCTION:** untouched
 - **REMAINING:** None
 
+### Event Order apply footer (2026-10-16) — OPEN
+
+- **STATUS:** **OPEN** — deploy `38934152259` success; image `bc6e8fb36ac90c8e69de56ac894aab6ffd045c25`; TD `:777`. Browser did not open the apply sheet (template select stayed closed).
+- **EVIDENCE:** `docs/qa/event-order-apply-footer/STATUS.md`
+- **PRODUCTION:** untouched
+
+### Vendor directory vs assignment (2026-10-16) — OPEN
+
+- **STATUS:** **OPEN** — pre-booking directory list implemented locally; not Sandbox-verified.
+- **AUDIT:** `docs/qa/vendor-directory-vs-assignment/AUDIT.md`
+- **PRODUCTION:** untouched
+
 ### Start booking file workflow revamp (2026-10-16) — GREEN
 
 - **ROOT CAUSE:** After Start booking file, `linkedClientId` hides Start CTA; Open booking file was removed; no Continue/Resume → unfinished workspace looked gone (still at `/clients/{id}`).

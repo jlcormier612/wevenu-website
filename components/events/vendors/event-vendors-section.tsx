@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { Document } from "@/lib/documents/types";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
+import { vendorPreferenceClientLabel } from "@/lib/vendors/list-presentation";
 import {
   INTERNAL_NOTES_PRIVACY_HINT,
   internalNotesLabel,
@@ -145,7 +146,8 @@ export function EventVendorsSection({
   }, [assignments]);
 
   const preferred    = availableVendors.filter(v => v.isPreferred);
-  const others       = availableVendors.filter(v => !v.isPreferred);
+  const recommended  = availableVendors.filter(v => !v.isPreferred && v.preferenceLevel === "recommended");
+  const others       = availableVendors.filter(v => !v.isPreferred && v.preferenceLevel !== "recommended");
   const assignedIds  = new Set(assignments.map(a => a.vendorId));
   const unassigned   = availableVendors.filter(v => !assignedIds.has(v.id));
 
@@ -390,7 +392,9 @@ export function EventVendorsSection({
       {showForm ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-xs text-muted-foreground">
-            An internal note that these vendors are working this event — it doesn&apos;t give them portal access. Use Send Invite on each vendor&apos;s own page for that.
+            {planningClientId && !eventId
+              ? "Assigning records these vendors on this event. It does not email them, create an invitation, or reserve the date. Use Send Invite on a vendor’s own page for portal access."
+              : "Assigning notifies the vendor that they are on this event. An unclaimed vendor also receives a claim link. Listing or recommending a vendor does not assign them."}
           </p>
           {/* Multi-select vendors */}
           <div className="space-y-1.5" data-testid="event-vendor-multi-assign">
@@ -419,13 +423,42 @@ export function EventVendorsSection({
                         {v.category ? (
                           <span className="text-muted-foreground"> · {vendorCategoryLabel(v.category)}</span>
                         ) : null}
+                        {vendorPreferenceClientLabel(v.preferenceLevel) ? (
+                          <span className="text-muted-foreground"> · {vendorPreferenceClientLabel(v.preferenceLevel)}</span>
+                        ) : null}
+                        {v.isRequired ? <span className="text-muted-foreground"> · Required</span> : null}
+                        {v.isInHouse ? <span className="text-muted-foreground"> · In-house</span> : null}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+                {recommended.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                  <li className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Recommended
+                  </li>
+                )}
+                {recommended.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                  <li key={v.id}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={vendorIds.includes(v.id)}
+                        onChange={() => toggleVendor(v.id)}
+                        data-testid={`assign-vendor-${v.id}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium text-foreground">{v.businessName}</span>
+                        <span className="text-muted-foreground"> · Recommended</span>
+                        {v.isRequired ? <span className="text-muted-foreground"> · Required</span> : null}
+                        {v.isInHouse ? <span className="text-muted-foreground"> · In-house</span> : null}
                       </span>
                     </label>
                   </li>
                 ))}
                 {others.filter((v) => !assignedIds.has(v.id)).length > 0 && (
                   <li className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {preferred.filter((v) => !assignedIds.has(v.id)).length > 0 ? "Other" : "Directory"}
+                    Directory
                   </li>
                 )}
                 {others.filter((v) => !assignedIds.has(v.id)).map((v) => (
@@ -443,6 +476,8 @@ export function EventVendorsSection({
                         {v.category ? (
                           <span className="text-muted-foreground"> · {vendorCategoryLabel(v.category)}</span>
                         ) : null}
+                        {v.isRequired ? <span className="text-muted-foreground"> · Required</span> : null}
+                        {v.isInHouse ? <span className="text-muted-foreground"> · In-house</span> : null}
                       </span>
                     </label>
                   </li>

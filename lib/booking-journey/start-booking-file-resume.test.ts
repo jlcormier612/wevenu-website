@@ -46,6 +46,9 @@ describe("Continue setup resume CTA", () => {
     assert.match(clientPage, /planningClientId=\{client\.id\}/);
     assert.match(clientPage, /FloorPlanWorkspace/);
     assert.match(clientPage, /EventVendorsSection/);
+    assert.match(clientPage, /VenueVendorDirectorySummary/);
+    assert.match(clientPage, /Vendor directory/);
+    assert.match(clientPage, /Assigned to this event/);
     assert.match(clientPage, /Questionnaires stay unavailable until this relationship is Booked/);
   });
 });
@@ -77,7 +80,8 @@ describe("Multi vendor assign", () => {
     assert.match(vendors, /data-testid="event-vendor-multi-assign"/);
     assert.match(vendors, /vendorIds/);
     assert.match(vendors, /for \(const vendorId of toAssign\)/);
-    assert.match(vendors, /doesn&apos;t give them portal access/);
+    assert.match(vendors, /does not email them, create an invitation/);
+    assert.match(vendors, /Assigning notifies the vendor/);
     assert.match(vendors, /Assign \$\{vendorIds\.length\} vendors/);
   });
 

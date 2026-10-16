@@ -8,6 +8,7 @@ import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
 import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
+import { VenueVendorDirectorySummary } from "@/components/events/vendors/venue-vendor-directory-summary";
 import { getClientTasks } from "@/lib/playbooks/service";
 import { getClientTimelineEntries, getClientSections } from "@/lib/timeline/service";
 import { getFloorPlansForClient } from "@/lib/floor-plans/service";
@@ -258,15 +259,22 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
         </section>
         <section id="vendors" className="space-y-3">
           <h2 className="text-base font-semibold text-heading">Vendors</h2>
-          <p className="text-sm text-muted-foreground">
-            Note who you expect to work this event. Assigning a vendor now does not reserve the date or tell them the event is booked.
-          </p>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-heading">Vendor directory</h3>
+            <VenueVendorDirectorySummary vendors={vendors} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-heading">Assigned to this event</h3>
+            <p className="text-sm text-muted-foreground">
+              Who you expect to work this event. Separate from the directory above. Assigning a vendor now does not reserve the date or tell them the event is booked.
+            </p>
           <EventVendorsSection
             eventId=""
             planningClientId={client.id}
             initialAssignments={vendorAssignments}
             availableVendors={vendors}
           />
+          </div>
         </section>
         <p className="text-sm text-muted-foreground">
           Questionnaires stay unavailable until this relationship is Booked. They describe the booked occasion, not the preparation.

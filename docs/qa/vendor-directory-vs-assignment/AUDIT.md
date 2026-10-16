@@ -1,6 +1,6 @@
 # Vendor directory vs event assignment — read-only audit
 
-**Status:** AUDIT ONLY — not implemented, not GREEN  
+**Status:** Directory vs assignment shown on the pre-booking workspace. Not GREEN until Sandbox browser proof.  
 **Date:** 2026-10-16  
 **Production:** untouched
 
@@ -60,6 +60,20 @@ Keep `venue_vendor_relationships` and `event_vendor_assignments`. Do not add a s
 - `is_required` still assigns only inside `book_relationship`.
 - Internal vendor notes stay off the couple portal.
 - Browser: Start booking file Vendors shows directory vs assign as separate actions; assigning two vendors still does not duplicate or invite.
+
+## Comparison (booked client vs Start booking file)
+
+| Behavior | Booked event workspace | Start booking file before this change | Reused | Gap |
+|---|---|---|---|---|
+| Directory | `/vendors` list with Approved / Recommended / Preferred / Required / In-house | Not shown. Only Assign Vendor. | `Vendor` rows already loaded on the client page | Pre-booking did not show them |
+| Recommend to this client | `EventVendorRecommendationsSection` on the event Vendors tab. Writes `event_vendor_recommendations` (requires `event_id`) | Absent, because there is no event yet | Same table cannot be written without an event | Do not add a client-scoped recommendation table without approval |
+| Assignment | `EventVendorsSection` → `assignVendor` (emails; claim link if unclaimed) | Same component → `assignVendorToClient` (no email, no invitation) | Same UI and `event_vendor_assignments` | Copy said assignment never grants portal access, which is true only before booking |
+| Required | Assigned inside `book_relationship` when the relationship becomes Booked | Not auto-assigned | Unchanged | None |
+| Couple Submit | Portal submit assigns and calls `notifyVendorOfEventAssignment` | Same, once the couple has portal access | Left unchanged | Submit is still an assignment plus email, not a private intention |
+
+## What was implemented
+
+Pre-booking Vendors now shows the existing directory (badges only, no write) above **Assigned to this event**. Multi-assign stays an explicit action. Booked assignment copy now says it notifies. Couple Submit and `book_relationship` were not changed.
 
 ## Decisions needed before implementation
 
