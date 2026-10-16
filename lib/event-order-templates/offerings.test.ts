@@ -315,6 +315,23 @@ describe("Catalog, isolation, and preview labels", () => {
     assert.match(preview, /not itself a client commitment/);
     assert.match(apply, /w-full/);
     assert.match(apply, /not an invoice, contract, or payment/);
+    assert.match(apply, /data-testid="event-order-apply-list"/);
+    assert.match(apply, /data-testid="event-order-apply-footer"/);
+    assert.match(apply, /overflow-hidden/);
+    assert.doesNotMatch(apply, /SheetContent[^>]*overflow-y-auto/);
+  });
+
+  it("apply sheet scrolls the offering list and keeps Cancel/Apply in a bottom footer", () => {
+    const apply = readFileSync(join(root, "components/event-order-templates/apply-event-order-template-sheet.tsx"), "utf8");
+    assert.match(apply, /h-dvh max-h-dvh/);
+    assert.match(apply, /min-h-0 flex-1 overflow-y-auto/);
+    assert.match(apply, /shrink-0/);
+    const listAt = apply.indexOf('data-testid="event-order-apply-list"');
+    const footerAt = apply.indexOf('data-testid="event-order-apply-footer"');
+    assert.ok(listAt > 0 && footerAt > listAt);
+    const footer = apply.slice(footerAt, footerAt + 500);
+    assert.match(footer, /Cancel/);
+    assert.match(footer, /Apply to event/);
   });
 
   it("starters demonstrate structured offerings without overwriting existing venue copies", () => {

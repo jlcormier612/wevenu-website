@@ -127,17 +127,20 @@ export function ApplyEventOrderTemplateSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col overflow-y-auto sm:max-w-lg">
-        <SheetHeader className="mb-4">
+      <SheetContent side="right" className="flex h-dvh max-h-dvh w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <SheetHeader className="mb-0 shrink-0 px-4 pt-4 pr-12">
           <SheetTitle>Apply {template.name}</SheetTitle>
         </SheetHeader>
-        <p className="mb-4 text-sm text-muted-foreground">
+        <p className="shrink-0 px-4 pt-3 text-sm text-muted-foreground">
           Choose what this event should receive. Applying creates event-specific structure — not an invoice, contract, or payment.
         </p>
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4" data-testid="event-order-apply-list">
           <TemplateApplyChooser template={template} selections={selections} onChange={setSelections} />
         </div>
-        <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+        <div
+          className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-popover px-4 py-4"
+          data-testid="event-order-apply-footer"
+        >
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
             Cancel
           </Button>
