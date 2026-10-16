@@ -1,7 +1,7 @@
 # Tour confirmed venue notification — prefs gate email only
 
 **Date:** 2026-10-16  
-**Status:** IMPLEMENTING → verify after Sandbox migration `202614190` + deploy
+**Status:** **GREEN (Sandbox DB contract verified)** — migration applied; runtime OFF/ON probes PASS. App deploy `38837832058` for tip `b011a13e` was still in progress at close (SQL gate is live in Supabase independent of the ECS image).
 
 ## Product contract (locked)
 
@@ -11,32 +11,48 @@ Settings copy (`app/(app)/settings/communications/page.tsx`):
 
 **Intended:** Notification preferences control optional **email** (`needs_email` → `processVenueNotificationEmails`). They must **not** suppress in-app `venue_notifications` rows.
 
-## Forensic root cause (prior audit)
+## Forensic root cause
 
-`create_venue_notification` early-returned when the per-type preference was OFF, so no in-app row was inserted. Meadowbrook `pref_tour_confirmed=false` therefore hid Tour confirmed from the bell while customer confirm email still worked.
+`create_venue_notification` early-returned when the per-type preference was OFF → no in-app row. Meadowbrook `pref_tour_confirmed=false` hid Tour confirmed from the bell while the customer confirm email still worked.
 
-Evidence: `runtime-probe.json`, `prefs-and-history.json`, `rpc-confirm-probe.json`, `trigger-probe.json`.
+Prior evidence: `runtime-probe.json`, `prefs-and-history.json`, `rpc-confirm-probe.json`, `trigger-probe.json`.
 
 ## Shared defect scope
 
-Affects **every** preference-gated type in `create_venue_notification` (not only `tour_confirmed`): new_lead, message_received, tour_scheduled, tour_confirmed, proposal_accepted, payments, contracts, etc. RSVP / task-completed remain gated the same way (no Settings UI rows, but same function).
+**All** preference-gated types in `create_venue_notification` (not only `tour_confirmed`): new_lead, message_received, tour_scheduled, tour_confirmed, proposal_accepted, payments, contracts, vendor check-in, feedback, referral, etc.
 
 ## Fix
 
 | Change | Purpose |
 |---|---|
-| `supabase/migrations/20261419000000_venue_notification_prefs_email_only.sql` | Always insert in-app row; set `needs_email` from preference CASE |
-| Focused tests | `lib/notifications/venue-notification-email-pref-contract.test.ts` + matrix / customer-action / tour-coordinator updates |
-| Prove script | OFF cases expect in-app + `needs_email=false` |
+| `supabase/migrations/20261419000000_venue_notification_prefs_email_only.sql` | Always insert in-app; `needs_email` from preference CASE |
+| Focused tests | `venue-notification-email-pref-contract.test.ts` + matrix / customer-action / tour-coordinator updates |
+| Prove script | OFF → in-app + `needs_email=false` |
 
-No Settings copy change. No new controls. Gina prefs/tour/lead untouched by the fix.
+Commit: **`b011a13ee0f02ff46e52bead039c8aa32f4cf3d9`**
 
-## Verification checklist
+## Runs
 
-- [ ] Focused unit tests PASS
-- [ ] Migration `202614190` applied on Sandbox
-- [ ] Serving commit includes migration + tests
-- [ ] Runtime: Meadowbrook pref OFF → in-app `tour_confirmed` with `needs_email=false`
-- [ ] Runtime: Fancy pref ON → in-app with `needs_email=true` (no real staff email send)
-- [ ] Gina records unchanged
-- [ ] Ledger updated
+| Run | URL | Result |
+|---|---|---|
+| Apply Sandbox Migration | https://github.com/jlcormier612/wevenu-website/actions/runs/38837830165 | **success** — `202614190…` applied |
+| Deploy Sandbox | https://github.com/jlcormier612/wevenu-website/actions/runs/38837832058 | in progress at report time (image tip; DB already fixed) |
+
+## Tests
+
+**48/48 PASS** — `venue-notification-email-pref-contract`, preference-matrix, customer-action-prefs, tour-coordinator-dual-notify, lead-delete-tour-reconcile.
+
+## Runtime verify (disposable fixtures; cleaned; Gina untouched)
+
+`pref-contract-runtime-verify.json`:
+
+| Probe | Result |
+|---|---|
+| Meadowbrook `pref_tour_confirmed=false` + `confirm_tour_by_token` | **1** in-app `tour_confirmed`, **`needs_email=false`**, `emailed_at=null` |
+| Fancy `pref_tour_confirmed=true` + same RPC | **1** in-app, **`needs_email=true`**, `emailed_at=null` |
+| Staff email send | **Not attempted** (`processVenueNotificationEmails` skipped to avoid real venue email) |
+| Gina tour `81c85d1b…` | Unchanged |
+
+## Untouched
+
+Production, DNS, Resend config, Meadowbrook preference values (left `pref_tour_confirmed=false`), Gina tour/lead/history, real customer communications.

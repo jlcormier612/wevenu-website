@@ -1,23 +1,23 @@
 # HTC Master Release Closeout Ledger
 
-**OVERALL HTC RELEASE:** GREEN / CLOSED
+**Sandbox finite product workstreams: GREEN/CLOSED, based on their recorded evidence. Final human acceptance and the separately authorized Production cutover remain outstanding.**
 
-Final forensic declaration (2026-10-02): every master-release stream is GREEN/CLOSED with exact-runtime browser + DB + automated evidence. No unresolved release-blocking defect remains. Production untouched.
+This ledger does **not** certify the production application or CRM as deployed or launch-ready. Production remains untouched.
 
-**Status of this document:** authoritative master-release closeout. Production untouched.
+**Status of this document:** authoritative Sandbox master-release closeout ledger (reconciled 2026-10-15). Historical “OVERALL GREEN / CLOSED” headers and older final-runtime blocks below (including the 2026-10-02 `14d6f73b` / `:546` closeout) are retained as evidence of prior audits and are **superseded** by this dated reconciliation. `docs/qa/master-release-reconciliation/LEDGER.md` remains **SUPERSEDED** (established designation; not current readiness).
 
-Exact Sandbox runtime (sole RUNNING at final forensic closeout):
+Latest independently reported Sandbox runtime (verified 2026-10-15 — not assumed current forever; no fresh runtime check performed in this documentation-only correction):
 
-- Commit / image tag: `14d6f73b26bf7a77ac35a41681e519b17bd2956f`
-- Digest: `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21`
-- Task definition: `htc-sandbox-venue-app:546`
-- Task ID: `e348d4a678654e2281894642dd81ca02`
+- Image SHA / commit tag: `5ad70d80962ea5a3cbfb51728f7ceecc58e6d685`
+- Task definition: `htc-sandbox-venue-app:757`
+- Task ID: `c2e9e9a9257e438d93ef3eb668c0c2e6`
+- Image digest: `sha256:c261c3faede0c1c1e10586023b280cbb368edb72e5f0e501058bc4ee5ceefcca`
+- Deployment run: https://github.com/jlcormier612/wevenu-website/actions/runs/38675746150
 - Desired / running / pending: 1 / 1 / 0
-- Rollout: PRIMARY COMPLETED (sole deployment)
-- Health: `https://app.sandbox.hellotocheers.com/api/health` HTTP 200 `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}`
-- Contained final gates: `d8ccf73c` (Venue Planning/Overview), `d82f9817` (Setup Profiles), `804fe393`/`23ed4f4a` (Payment lifecycle), `ed87d485`/`501b5a05`/`9bfbf4d6`/`df5e7bc2` (Luv), `cfeff8ca`/`fd213041` (Date Holds), `da6c79c9` (Stream 16 ancestor)
-- Deploy lineage: https://github.com/jlcormier612/wevenu-website/actions/runs/37086041317 SUCCESS
+- Rollout: PRIMARY COMPLETED
+- Health: `https://app.sandbox.hellotocheers.com/api/health` returned `ok: true`
 - Cluster: `htc-sandbox` only. Production cluster `htc-production` absent. Production untouched.
+- Closed on this serving image (existing evidence retained below): inbound-reply attention / email notifications; Luv Noticed completed-tour attendance reconciliation and writing-quality corrections.
 
 ## Already GREEN/CLOSED (not reopened)
 
@@ -759,6 +759,66 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **PRODUCTION / Resend / DNS:** untouched
 - **REMAINING WORK:** None
 
+### Venue notification prefs — email-only gate (2026-10-16) — GREEN (Sandbox DB)
+
+- **STATUS:** **GREEN on Sandbox DB** — commit `b011a13e`; mig `202614190` via `38837830165` **success**; runtime verify PASS (`pref-contract-runtime-verify.json`). ECS deploy `38837832058` for tip image was still rolling at close (gate lives in Supabase).
+- **ROOT CAUSE:** `create_venue_notification` early-returned when pref OFF → no in-app row (contradicts Communications “optional extras” copy). Shared across all preference-gated types.
+- **FIX:** Always insert in-app; preference sets `needs_email` only.
+- **TESTS:** **48/48 PASS** focused suites.
+- **RUNTIME:** Meadowbrook pref OFF → in-app + `needs_email=false`; Fancy pref ON → in-app + `needs_email=true`; no `processVenueNotificationEmails` call (no real staff send); Gina tour untouched.
+- **AUDIT:** `docs/qa/tour-confirmed-venue-notification/`
+- **PRODUCTION / DNS / Resend / Gina / Meadowbrook prefs values:** untouched
+
+### Orphaned tour on lead delete + Gina incident (2026-10-16) — TECHNICAL GREEN / R2+R5 OPEN
+
+- **TECHNICAL STATUS:** **GREEN / CLOSED on Sandbox** — deploy `38832947847`; serving `3293635b…` / TD `:769` / digest `sha256:7c68f71c…` (`6a9c81d7`); mig `202614189` via `38834402172`; E2E **15/15**; phantoms 0. **Not reopened.**
+- **R2 RED / OPEN:** Draft customer notice in `GINA-RECONCILIATION-PLAN.md` — **DRAFT NOT SENT**; Oct 18 10:30 occupying=0; venue approval required before outreach/reschedule.
+- **R5 UNVERIFIED / OPEN:** Forensic `gina-r5-ack-forensic.json` — **UNRESOLVED** (cannot distinguish never-queued vs send-without-retention vs fail-without-insert). Schedule msg survived delete; Betty ack worked same venue. Fire-and-forget confirm-ack defect **proposed only**, not implemented. No Resend API in probe.
+- **AUDIT:** `docs/qa/duplicate-lead-tour-orphan/` (+ delete-archive audit)
+- **RISK:** R1 GREEN/CLOSED; R3 CLOSED; R2 RED; R5 open/unresolved; R4/R6 later.
+- **PRODUCTION / DNS / Resend / sending:** untouched
+- **REMAINING WORK:** Venue-authorized R2 send/reschedule decision; R5 needs provider-side proof or authorized general fix.
+
+### Delete/Archive platform audit (2026-10-16) — READ-ONLY (superseded ops status above)
+
+- **STATUS:** READ-ONLY COMPLETE for inventory. Immediate tour ops closed under orphaned-tour entry above. Platform-wide Delete/Archive redesign **not** implemented.
+- **AUDIT:** `docs/qa/delete-archive-platform-audit/`
+- **PRODUCTION / DNS / Resend / sending:** untouched
+
+### Luv Noticed stale follow-up — Betty Boop (2026-10-15) — GREEN / CLOSED
+
+- **STATUS:** GREEN / CLOSED on sole RUNNING `3293635b…` / TD `:769` / digest `sha256:7c68f71c…`. Deploy `38832947847` success. Betty browser: stale “appreciate hearing from you” / legacy `followup-*` **absent**; S3 silent (tour + venue_staff); confirmed tour intact; no messages sent.
+- **AUDIT:** `docs/qa/luv-noticed-stale-followup/` (`STATUS.md`, `betty-evidence.json`, `betty-browser-results.json`, `betty-dom-noticed.json`, after-deploy PNGs)
+- **ROOT CAUSE:** Legacy §6 Noticed gated only on `created_at`/`last_contacted_at`; S3 silence left legacy visible during active coordination
+- **FIX:** `buildLegacyNoFollowUpObservation` + shared first-response evidence + prospect-inbound recency + refresh after send
+- **AUTOMATED:** **85/85 PASS**
+- **NOTE:** Separate interest/momentum Noticed row (if present) is out of scope for this closure
+- **PRODUCTION / DNS / Resend:** untouched
+- **REMAINING WORK:** None for this defect
+
+### Inquiry email formatting regression (2026-10-15) — GREEN (serving verified)
+
+- **STATUS:** Original three defects **GREEN** on sole RUNNING Sandbox tip `8f097f19…` / TD `:768` / digest `sha256:acf5e910…`. Deploy `38830511793` success; migration `38830513994` applied `202614188…`; live `event_type_display_label('wedding')` → `Wedding`.
+- **AUDIT:** `docs/qa/inquiry-email-formatting/` (`STATUS.md`, `deployed-render-results.json`, after-*.html/png)
+- **ROOT CAUSES:** (1) `buildVenueNotificationEmail` collapsed `\n` inside a single `<p>`; (2) `_trigger_new_lead_notification` stored raw `wedding`; (3) duplicate body joined with ` · `
+- **DEPLOYED PROOF:** Inquiry field rows via `<br>`; summary `Wedding ·`; duplicate match/email/status/reason on separate lines; HTML escape retained; shell/CTA intact at 1280+390
+- **SHARED-SHELL AUDIT:** All `buildVenueNotificationEmail` callers inventoried — multiline callers (inquire/forms/duplicate/tour reminder/protection) CORRECT after shared fix; single-line summaries preserved. No additional HTML-collapse regressions confirmed → **no second deploy**. Remaining non-blocking label gap: `tour_scheduled` trailing raw event-type key (`… · wedding`) not rewritten by leading-token present().
+- **AUTOMATED:** 42/42 focused PASS; render harness 6/6 PASS
+- **PRODUCTION / DNS / Resend / sending:** untouched; dirty tree preserved
+- **REMAINING WORK:** None for the three original defects. Optional follow-up: display-label for trailing event type on `tour_scheduled` bodies only if product wants it.
+
+### Couple email threading — ECS reminder processors (2026-10-15) — PARTIAL CLOSE
+
+- **STATUS:** Reminder processor paths + ECS schedule/route **GREEN** on sole RUNNING `6e143b616cf9bacad43995df9e7bac82e3bc2ba1` / `:767`. Real mobile email-app handoff + expired-session return **UNVERIFIED** (no device/device-farm).
+- **AUDIT:** `docs/qa/couple-email-threading-gaps/` (`STATUS.md`, `FEASIBILITY-ECS-AND-HANDOFF.md`, `reminder-processor-results.json`, `ecs-route-payment-results.json`)
+- **CODE (uncommitted local; cron path unchanged):** optional `reminderIds`/`venueId` scope on `processReminders` / `processObligationReminders` for Sandbox QA isolation
+- **PROCESSOR EVIDENCE:** payment/contract/tour via real engines — Reply-To `thread+…@replies.hellotocheers.com`, controlled inbound one-row, unread/`needs_response`, payment idempotent re-run
+- **ECS EVIDENCE:** scheduler CloudWatch `*/30` `notifications-process` HTTP 200 + `job succeeded`; live `GET /api/notifications/process` payment fixture send on serving tip
+- **PENDING REMINDERS:** Fancy vendor `7353c325…` and Sweet Daisy `60a733b1…`/`e04f480c…` left `pending` (not rewritten)
+- **AUTOMATED:** reminder-process-scope + tour/obligation/queue suites **46/46 PASS**
+- **PRODUCTION / DNS / Resend:** untouched; no deploy this pass
+- **REMAINING WORK:** physical device or device-farm for genuine email-app handoff + expired-session return
+
 ### Luv privacy & factuality closure audit (2026-10-14)
 
 - **STATUS:** GREEN / CLOSED — audit-only; **no product code change**
@@ -818,28 +878,45 @@ Exact Sandbox runtime (sole RUNNING at final forensic closeout):
 - **REMAINING WORK:** None for this audit. Communication Readiness human walkthrough is a separate later item — not started here.
 - **PRODUCT DECISION:** none missing (unread vs needs-response already locked)
 
-## OVERALL HTC RELEASE
+## OVERALL STATUS (reconciled 2026-10-15)
 
-- **STATUS:** GREEN / CLOSED
-- **FINAL RUNTIME:** sole RUNNING `14d6f73b26bf7a77ac35a41681e519b17bd2956f` / `htc-sandbox-venue-app:546` / task `e348d4a678654e2281894642dd81ca02` / digest `sha256:c74b5c5b4b5c7ea1e078ab667463cae52d505fb9dae8a161138dbfecd3c15b21` / 1/1/0 / health 200
+- **STATUS:** Sandbox finite product workstreams GREEN/CLOSED on recorded evidence. **Not** an unqualified overall-release GREEN. Final human acceptance and separately authorized Production cutover remain outstanding. Does not certify production application or CRM as deployed or launch-ready.
+- **LATEST VERIFIED SANDBOX RUNTIME (2026-10-15 evidence; not assumed forever current):** sole RUNNING `5ad70d80962ea5a3cbfb51728f7ceecc58e6d685` / `htc-sandbox-venue-app:757` / task `c2e9e9a9257e438d93ef3eb668c0c2e6` / digest `sha256:c261c3faede0c1c1e10586023b280cbb368edb72e5f0e501058bc4ee5ceefcca` / deploy run `38675746150` / desired·running·pending 1/1/0 / PRIMARY COMPLETED / health `ok: true`. This documentation-only correction did not re-check runtime live.
+- **Historical note:** Prior overall “GREEN / CLOSED” and final-runtime claims pinned to `14d6f73b` / `:546` (2026-10-02) and other older sole-RUNNING pins are **historical and superseded** by the 2026-10-15 reconciliation above. Those audits remain valid evidence for the streams they closed; they are not current overall readiness.
+- **Inbound reply attention / email (2026-10-14):** GREEN / CLOSED on sole RUNNING `5ad70d80` / `:757` — 24/24 exact-runtime verify (`docs/qa/inbound-reply-attention-email/`).
+- **Luv Noticed stale attendance + writing quality (2026-10-14):** GREEN / CLOSED on sole RUNNING `5ad70d80` / `:757` — runtime + browser allPass (`docs/qa/luv-noticed-stale-attendance/`).
 - **Launch Blocker #2 re-proof (2026-10-14):** GREEN on later sole RUNNING `2bfe4cde` / `:752` — see section above; does not reopen other streams.
 - **Inbox unread / read-state audit (2026-10-14):** GREEN on sole RUNNING `2bfe4cde` / `:752` — no defect; no code change; closed workstreams above preserved.
 - **Contract setup Smart Fields copy (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754`.
 - **Communication Readiness interaction (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change.
 - **Payment recording UX Overview deposit (2026-10-14):** GREEN — fix `12d0e637` proven on sole RUNNING `d4e85aaf` / `:754` (lineage); open/cancel/confirm + DB.
 - **Luv privacy & factuality closure (2026-10-14):** GREEN on sole RUNNING `d4e85aaf` / `:754` — no defect; no code change; Stream 6 re-confirmed.
-- **Inbound reply attention / email (2026-10-14):** GREEN / CLOSED on sole RUNNING `5ad70d80` / `:757` — 24/24 exact-runtime verify.
-- **Luv Noticed stale attendance + writing quality (2026-10-14):** GREEN / CLOSED on sole RUNNING `5ad70d80` / `:757` — runtime + browser allPass.
-- Date Hold multiple holds: GREEN/CLOSED (exact browser+DB on `cfeff8ca` lineage; ancestor of final runtime).
+- Date Hold multiple holds: GREEN/CLOSED (exact browser+DB on `cfeff8ca` lineage).
 - Date Hold 12-hour display: GREEN/CLOSED (exact browser; DB HH:mm unchanged).
-- Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on `ed87d485`; re-confirmed on final `14d6f73b` (no Luv code drift).
-- Payment lifecycle + Payments filters: GREEN/CLOSED on final `14d6f73b` (contains `804fe393`; no payment code drift after that commit).
-- Venue Planning template + setup Overview: GREEN/CLOSED on final `14d6f73b` (contains `d8ccf73c`).
-- Event Setup Profiles / venue defaults: GREEN/CLOSED on final `14d6f73b` (contains `d82f9817`).
+- Luv pipeline-stage / completed-tour / drafting: GREEN/CLOSED on `ed87d485` (and later re-confirmations on their recorded runtimes).
+- Payment lifecycle + Payments filters: GREEN/CLOSED on recorded payment-gate runtimes (contains `804fe393` lineage).
+- Venue Planning template + setup Overview: GREEN/CLOSED on recorded `d8ccf73c` lineage.
+- Event Setup Profiles / venue defaults: GREEN/CLOSED on recorded `d82f9817` lineage.
 - Stream 16 final cross-system regression: GREEN/CLOSED on `da6c79c9`; later commits are intentional master-release gates each re-proven; no concrete Stream 16 regression.
-- Streams 1–15 and prior GREEN table rows: retained; no concrete reopen evidence.
-- Production untouched.
-- No later list. No new backlog. No unresolved release-blocking work.
+- Streams 1–15 and prior GREEN table rows: retained; not reopened.
+- Production untouched. No new backlog invented by this reconciliation.
+
+### DEFERRED — EXTERNAL PREREQUISITE
+
+These are **not** new product-code projects. Product-side workstreams already closed remain closed. External authorization, real-world delivery, or Production readiness is **not** implied without evidence.
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Facebook Lead Ads | **DEFERRED — EXTERNAL PREREQUISITE** | Target-venue OAuth authorization remains pending. |
+| QuickBooks | **DEFERRED — EXTERNAL PREREQUISITE** | Target-venue connection/authorization remains pending where not connected; previously verified Sandbox sync behavior remains closed. |
+| Stripe Connect | **DEFERRED — EXTERNAL PREREQUISITE** | Live venue connection and charge enablement remain outstanding; no live transactions authorized. |
+| Twilio / A2P | **DEFERRED — EXTERNAL PREREQUISITE** | Target-venue/carrier approval remains outstanding; existing product-side texting work remains closed (Stream 7 evidence retained). |
+| Email open/click tracking | **DEFERRED — EXTERNAL PREREQUISITE** | Deferred pending explicit DNS/Resend approval. DNS prerequisites are missing; no DNS/Resend changes are authorized. |
+
+### FINAL ACCEPTANCE GATE
+
+- Comprehensive human acceptance walkthrough across venue, client, vendor, and CRM experiences, **after** this ledger reconciliation — **not started in this documentation-only task**.
+- Separate, **explicitly authorized** Production deployment/cutover and migration review — **not started**; Production remains untouched.
 
 ### Venue Planning template + setup Overview (master release)
 

@@ -1,0 +1,38 @@
+{
+  "allPass": true,
+  "meadowOff": {
+    "venueId": "05f16a15-1752-4855-8a3b-aad5c593d8d9",
+    "label": "meadow-off",
+    "prefs": {
+      "pref_tour_confirmed": false,
+      "pref_tour_scheduled": true
+    },
+    "rpc": {
+      "ok": true,
+      "alreadyConfirmed": false
+    },
+    "notifCount": 1,
+    "needs_email": false,
+    "title": "Tour confirmed — PrefVerify pref-verify-meadow-off-1792115851520",
+    "emailed_at": null,
+    "pass": true
+  },
+  "fancyOn": {
+    "venueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
+    "label": "fancy-on",
+    "prefs": {
+      "pref_tour_confirmed": true,
+      "pref_tour_scheduled": true
+    },
+    "rpc": {
+      "ok": true,
+      "alreadyConfirmed": false
+    },
+    "notifCount": 1,
+    "needs_email": true,
+    "title": "Tour confirmed — PrefVerify pref-verify-fancy-on-1792115852174",
+    "emailed_at": null,
+    "pass": true
+  },
+  "ginaUntouched": true
+}
