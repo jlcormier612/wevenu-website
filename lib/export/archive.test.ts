@@ -144,3 +144,37 @@ test("vendor directory export is limited to this venue's relationships", () => {
   assert.match(sql, /claim_token/);
   assert.match(sql, /luv_intro_seen_at/);
 });
+
+test("export columns are an explicit allowlist that omits secret fields", () => {
+  const sql = readFileSync(
+    new URL("../../supabase/migrations/20261419400000_venue_export_column_allowlist.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /venue_export_project\(p_row jsonb, p_columns text\[\]\)/);
+  assert.equal(sql.includes("jsonb_agg(to_jsonb("), false);
+  assert.match(sql, /A column added to a table later is omitted/);
+  const lists = [
+    ...sql.matchAll(/\('([a-z0-9_]+)', '(?:venue_id|id)', '([^']+)'\)/g),
+    ...sql.matchAll(/string_to_array\('([^']+)'/g),
+  ].map((match) => (match[2] ?? match[1]).split(","));
+  const columns = new Set(lists.flat());
+  for (const secret of [
+    "embed_key",
+    "tour_embed_key",
+    "stripe_account_id",
+    "saas_stripe_customer_id",
+    "stripe_customer_id",
+    "sign_token",
+    "claim_token",
+    "access_token",
+    "refresh_token",
+    "invite_token",
+    "token",
+    "luv_draft_id",
+    "luv_intro_seen_at",
+  ]) {
+    assert.equal(columns.has(secret), false, secret);
+  }
+  assert.equal(lists.some((list) => list.includes("storage_path")), true);
+  assert.match(sql, /'message_events', 'venue_id', 'event_type,id,message_id,occurred_at,venue_id'/);
+});
