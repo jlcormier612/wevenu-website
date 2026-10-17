@@ -95,33 +95,57 @@ export async function getBookedClientPortalActivationRows(
   lastAccessedAt: string | null;
   invitationStatus: "pending" | "accepted" | "revoked" | null;
   invitationId: string | null;
+  deliveryStatus: string | null;
+  providerMessageId: string | null;
 }>> {
   const out = new Map<string, {
     lastAccessedAt: string | null;
     invitationStatus: "pending" | "accepted" | "revoked" | null;
     invitationId: string | null;
+    deliveryStatus: string | null;
+    providerMessageId: string | null;
   }>();
   if (!isSupabaseConfigured || bookedClientIds.size === 0) return out;
 
   const ids = [...bookedClientIds];
   for (const id of ids) {
-    out.set(id, { lastAccessedAt: null, invitationStatus: null, invitationId: null });
+    out.set(id, {
+      lastAccessedAt: null,
+      invitationStatus: null,
+      invitationId: null,
+      deliveryStatus: null,
+      providerMessageId: null,
+    });
   }
 
   const supabase = await createClient();
-  const [{ data: sessions }, { data: invites }] = await Promise.all([
-    supabase
-      .from("client_portal_sessions")
-      .select("client_id, last_accessed_at")
-      .eq("venue_id", venueId)
-      .in("client_id", ids),
-    supabase
+  const sessionsQuery = supabase
+    .from("client_portal_sessions")
+    .select("client_id, last_accessed_at")
+    .eq("venue_id", venueId)
+    .in("client_id", ids);
+  const inviteQuery = () => supabase
+    .from("client_invitations")
+    .select("id, client_id, status, created_at, delivery_status, provider_message_id")
+    .eq("venue_id", venueId)
+    .in("client_id", ids)
+    .order("created_at", { ascending: false });
+  const [{ data: sessions }, inviteResult] = await Promise.all([
+    sessionsQuery,
+    inviteQuery(),
+  ]);
+  const deliveryColumnsMissing = Boolean(
+    inviteResult.error
+    && /delivery_status|provider_message_id|schema cache/i.test(inviteResult.error.message),
+  );
+  const invites = deliveryColumnsMissing
+    ? (await supabase
       .from("client_invitations")
       .select("id, client_id, status, created_at")
       .eq("venue_id", venueId)
       .in("client_id", ids)
-      .order("created_at", { ascending: false }),
-  ]);
+      .order("created_at", { ascending: false })).data
+    : inviteResult.data;
 
   for (const row of (sessions ?? []) as { client_id: string; last_accessed_at: string | null }[]) {
     const cur = out.get(row.client_id);
@@ -135,11 +159,15 @@ export async function getBookedClientPortalActivationRows(
     id: string;
     client_id: string;
     status: "pending" | "accepted" | "revoked";
+    delivery_status?: string | null;
+    provider_message_id?: string | null;
   }[]) {
     const cur = out.get(row.client_id);
     if (!cur || cur.invitationStatus) continue; // newest first from order
     cur.invitationStatus = row.status;
     cur.invitationId = row.id;
+    cur.deliveryStatus = row.delivery_status ?? null;
+    cur.providerMessageId = row.provider_message_id ?? null;
   }
 
   return out;

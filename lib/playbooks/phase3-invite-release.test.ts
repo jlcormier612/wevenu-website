@@ -116,7 +116,10 @@ describe("Phase 3 invite-at-release seams", () => {
       email: "c1@example.test",
       automations: [],
     });
-    assert.equal(sent.rows.find((i) => i.key === "invitation")?.detail, "Invitation sent");
+    assert.equal(
+      sent.rows.find((i) => i.key === "invitation")?.detail,
+      "Invitation is pending. Delivery was not recorded.",
+    );
     assert.equal(sent.invite.canInvite, false);
 
     const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");

@@ -10,6 +10,9 @@ export type ClientInvitation = {
   createdAt: string;
   expiresAt: string;
   acceptedAt: string | null;
+  /** Email provider lifecycle. Null means delivery was not recorded. */
+  deliveryStatus?: "sending" | "accepted" | "delivered" | "opened" | "clicked" | "failed" | null;
+  providerMessageId?: string | null;
 };
 
 export type ClientAuthResult =

@@ -66,6 +66,22 @@ export function portalActivationStateLabel(state: PortalActivationState): string
   }
 }
 
+/** Portal column copy for a pending invitation, grounded in delivery evidence. */
+export function portalPendingDeliveryLabel(
+  deliveryStatus: string | null | undefined,
+  providerMessageId?: string | null,
+): string {
+  if (providerMessageId && (deliveryStatus === "delivered")) return "Delivered — portal not opened";
+  if (providerMessageId && deliveryStatus === "opened") return "Email opened — portal not opened";
+  if (providerMessageId && deliveryStatus === "clicked") return "Link clicked — portal not opened";
+  if (providerMessageId && deliveryStatus !== "failed" && deliveryStatus !== "sending") {
+    return "Provider accepted — portal not opened";
+  }
+  if (deliveryStatus === "failed") return "Email provider did not accept";
+  if (deliveryStatus === "sending") return "Send not confirmed";
+  return "Pending — delivery was not recorded";
+}
+
 /** Overlay checklist so Luv/Getting Started use the locked portal-open definition. */
 export function applyPortalOpenMilestoneToChecklist(
   checklist: readonly ActivationChecklistItem[],

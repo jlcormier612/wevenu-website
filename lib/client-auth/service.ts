@@ -20,6 +20,11 @@ import {
   clientInvitePreviewAcceptUrl,
   type ClientInviteEmailContent,
 } from "@/lib/client-auth/client-invite-email";
+import {
+  invitationDeliveryFromRow,
+  transmitClientInvitation,
+  type InvitationDeliveryStore,
+} from "@/lib/client-auth/invite-delivery";
 import { beginClientInviteSend, endClientInviteSend } from "@/lib/client-auth/invite-send-lock";
 import { resolveInvitationAccountEmail } from "@/lib/client-auth/resolve-invitation-email";
 import type {
@@ -28,12 +33,36 @@ import type {
 } from "./types";
 
 function rowToInvitation(r: Record<string, unknown>): ClientInvitation {
+  const delivery = invitationDeliveryFromRow(r);
   return {
     id: r.id as string, venueId: r.venue_id as string, clientId: r.client_id as string,
     email: r.email as string, token: r.token as string,
     status: r.status as ClientInvitation["status"],
     createdAt: r.created_at as string, expiresAt: r.expires_at as string,
     acceptedAt: (r.accepted_at ?? null) as string | null,
+    deliveryStatus: delivery.deliveryStatus,
+    providerMessageId: delivery.providerMessageId,
+  };
+}
+
+function invitationDeliveryStore(supabase: Awaited<ReturnType<typeof createClient>>): InvitationDeliveryStore {
+  return {
+    async markSending(id) {
+      const { error } = await supabase.from("client_invitations")
+        .update({ delivery_status: "sending" })
+        .eq("id", id);
+      return error ? { error: error.message } : {};
+    },
+    async saveOutcome(id, patch) {
+      const { error } = await supabase.from("client_invitations")
+        .update({
+          delivery_status: patch.deliveryStatus,
+          provider_message_id: patch.providerMessageId,
+          delivery_error: patch.deliveryError,
+        })
+        .eq("id", id);
+      return error ? { error: error.message } : {};
+    },
   };
 }
 
@@ -125,7 +154,7 @@ async function sendClientInviteEmail(
     venue,
     acceptUrl: clientInviteAcceptUrl(token),
   });
-  await sendEmail({
+  return sendEmail({
     to: content.to,
     subject: content.subject,
     text: content.text,
@@ -161,16 +190,45 @@ export async function inviteClient(
     if (!user) return { ok: false, error: "Session expired." };
 
     const existing = await getClientInvitation(clientId);
-    if (!shouldSendClientInvitation(existing)) return { ok: true };
+    const store = invitationDeliveryStore(supabase);
+    if (!shouldSendClientInvitation(existing)) {
+      if (!existing) return { ok: true };
+      return transmitClientInvitation({
+        row: {
+          id: existing.id,
+          status: existing.status,
+          email: existing.email,
+          token: existing.token,
+          deliveryStatus: existing.deliveryStatus ?? null,
+          providerMessageId: existing.providerMessageId ?? null,
+        },
+        mode: "invite",
+        store,
+        send: () => sendClientInviteEmail(existing.email, coupleName, venue, existing.token),
+      });
+    }
 
     const { data, error } = await supabase.from("client_invitations").insert({
       venue_id: venue.id, client_id: clientId,
       email: email.trim().toLowerCase(), invited_by: user.id,
-    }).select("token").single<{ token: string }>();
-    if (error) return { ok: false, error: error.message };
+      delivery_status: "sending",
+    }).select("id, token").single<{ id: string; token: string }>();
+    if (error || !data) return { ok: false, error: error?.message ?? "The invitation could not be saved." };
 
-    await sendClientInviteEmail(email.trim(), coupleName, venue, data.token);
-    return { ok: true };
+    return transmitClientInvitation({
+      row: {
+        id: data.id,
+        status: "pending",
+        email: email.trim().toLowerCase(),
+        token: data.token,
+        deliveryStatus: "sending",
+        providerMessageId: null,
+      },
+      mode: "invite",
+      sendUnrecorded: true,
+      store,
+      send: () => sendClientInviteEmail(email.trim(), coupleName, venue, data.token),
+    });
   } finally {
     endClientInviteSend(lockKey);
   }
@@ -191,6 +249,10 @@ export async function resendClientInvitation(invitationId: string): Promise<Clie
       .eq("id", invitationId).eq("venue_id", venue.id).maybeSingle();
     if (!inv) return { ok: false, error: "Invitation not found." };
     if (inv.status !== "pending") return { ok: false, error: "This invitation is no longer pending." };
+    const delivery = invitationDeliveryFromRow(inv as Record<string, unknown>);
+    if (delivery.deliveryStatus === "sending") {
+      return { ok: false, error: "The previous invitation send did not finish. It was not sent again." };
+    }
 
     const { error } = await supabase.from("client_invitations")
       .update({ expires_at: new Date(Date.now() + 14 * 86_400_000).toISOString() })
@@ -200,8 +262,19 @@ export async function resendClientInvitation(invitationId: string): Promise<Clie
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = (inv as any).clients as { first_name: string; partner_first_name: string | null } | null;
     const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ") || "there";
-    await sendClientInviteEmail(inv.email, coupleName, venue, inv.token);
-    return { ok: true };
+    return transmitClientInvitation({
+      row: {
+        id: inv.id as string,
+        status: "pending",
+        email: inv.email as string,
+        token: inv.token as string,
+        deliveryStatus: delivery.deliveryStatus,
+        providerMessageId: delivery.providerMessageId,
+      },
+      mode: "resend",
+      store: invitationDeliveryStore(supabase),
+      send: () => sendClientInviteEmail(inv.email as string, coupleName, venue, inv.token as string),
+    });
   } finally {
     endClientInviteSend(lockKey);
   }

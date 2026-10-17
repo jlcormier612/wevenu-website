@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PortalActivationState } from "@/lib/activation/portal-open-milestone";
-import { portalActivationStateLabel } from "@/lib/activation/portal-open-milestone";
+import { portalActivationStateLabel, portalPendingDeliveryLabel } from "@/lib/activation/portal-open-milestone";
 import {
   clientDisplayName,
   eventTypeLabel,
@@ -91,6 +91,8 @@ export function ClientList({
     state: PortalActivationState;
     invitationId: string | null;
     invitationStatus: "pending" | "accepted" | "revoked" | null;
+    deliveryStatus?: string | null;
+    providerMessageId?: string | null;
   }>;
   portalActivationProgress?: { opened: number; target: number };
 }) {
@@ -277,7 +279,9 @@ export function ClientList({
                     </TableCell>
                     {portalMode ? (
                       <TableCell className="text-sm" data-testid={`portal-state-${client.id}`}>
-                        {portalActivationStateLabel(portalState)}
+                        {portalState === "invited_not_opened" && portal?.invitationStatus === "pending"
+                          ? portalPendingDeliveryLabel(portal.deliveryStatus, portal.providerMessageId)
+                          : portalActivationStateLabel(portalState)}
                       </TableCell>
                     ) : (
                       <TableCell><ClientStatusBadge status={client.status} /></TableCell>

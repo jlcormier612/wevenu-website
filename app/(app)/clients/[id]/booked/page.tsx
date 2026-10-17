@@ -91,7 +91,13 @@ export default async function BookedPage({ params, searchParams }: Props) {
   });
   const communications = buildCommunicationsReview({
     clientId: client.id,
-    invitation: invitation ? { status: invitation.status } : null,
+    invitation: invitation
+      ? {
+          status: invitation.status,
+          deliveryStatus: invitation.deliveryStatus ?? null,
+          providerMessageId: invitation.providerMessageId ?? null,
+        }
+      : null,
     clientHasEmail: Boolean(client.email?.trim()),
     email: client.email,
     coupleName: clientDisplayName(

@@ -53,7 +53,10 @@ describe("buildCommunicationsReview", () => {
       clientHasEmail: true,
       email: "couple@example.test",
     });
-    assert.equal(model.rows.find((r) => r.key === "invitation")?.detail, "Invitation sent");
+    assert.equal(
+      model.rows.find((r) => r.key === "invitation")?.detail,
+      "Invitation is pending. Delivery was not recorded.",
+    );
     assert.equal(model.rows.find((r) => r.key === "invitation")?.onFile, true);
     assert.equal(model.invite.canInvite, false);
   });

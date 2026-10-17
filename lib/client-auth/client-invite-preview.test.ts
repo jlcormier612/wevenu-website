@@ -160,4 +160,25 @@ describe("Client invite prepare/preview/confirm seams", () => {
     assert.match(actions, /previewClientInviteAction/);
     assert.match(actions, /previewResendClientInviteAction/);
   });
+
+  it("send inserts an invitation before email and the clients list does not provision questionnaires", () => {
+    const service = source("lib/client-auth/service.ts");
+    const inviteFn = service.slice(
+      service.indexOf("export async function inviteClient"),
+      service.indexOf("export async function resendClientInvitation"),
+    );
+    const insertAt = inviteFn.indexOf('from("client_invitations")');
+    const sendAt = inviteFn.lastIndexOf("sendClientInviteEmail(");
+    assert.ok(insertAt >= 0 && sendAt > insertAt);
+    assert.match(inviteFn, /shouldSendClientInvitation\(existing\)/);
+    assert.doesNotMatch(
+      inviteFn.slice(0, sendAt),
+      /sendEmail/,
+    );
+
+    const list = source("app/(app)/clients/page.tsx");
+    assert.doesNotMatch(list, /ensureQuestionnaireFamilyForCurrentVenue/);
+    const detail = source("app/(app)/clients/[id]/page.tsx");
+    assert.match(detail, /ensureQuestionnaireFamilyForCurrentVenue/);
+  });
 });

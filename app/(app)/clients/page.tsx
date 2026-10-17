@@ -34,6 +34,8 @@ export default async function ClientsPage() {
     state: ReturnType<typeof portalActivationState>;
     invitationId: string | null;
     invitationStatus: "pending" | "accepted" | "revoked" | null;
+    deliveryStatus: string | null;
+    providerMessageId: string | null;
   }> = {};
   for (const [clientId, row] of portalRows) {
     const state = portalActivationState({
@@ -45,6 +47,8 @@ export default async function ClientsPage() {
       state,
       invitationId: row.invitationId,
       invitationStatus: row.invitationStatus,
+      deliveryStatus: row.deliveryStatus,
+      providerMessageId: row.providerMessageId,
     };
   }
 

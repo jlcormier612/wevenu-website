@@ -27,57 +27,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { logSignalEvent } from "@/lib/leads/signals";
-import { shouldAdvanceStatus } from "@/lib/communication/status";
-import { translateEmailBounceFailure } from "@/lib/communication/failure-messages";
+import { applyResendDeliveryEvent, type ResendDeliveryPayload } from "@/lib/messaging/apply-resend-delivery";
 import { verifyResendWebhookSecrets } from "@/lib/resend/inbound-webhook";
-
-type ResendWebhookPayload = {
-  type: string;
-  created_at: string;
-  data: {
-    email_id: string;
-    from: string;
-    to: string[];
-    subject?: string;
-    bounced_at?: string;
-    created_at?: string;
-    bounce?: {
-      type?: string;
-      subType?: string;
-      message?: string;
-      diagnosticCode?: string[] | string;
-    };
-  };
-};
-
-const EVENT_TO_STATUS: Record<string, string> = {
-  "email.sent":      "accepted",
-  "email.delivered": "delivered",
-  "email.opened":    "opened",
-  "email.clicked":   "clicked",
-  "email.bounced":   "failed",
-};
-
-type AdminClient = ReturnType<typeof createAdminClient>;
-
-async function findLeadIdForLegacyMessage(supabase: AdminClient, messageId: string): Promise<string | null> {
-  const { data: threadLink } = await supabase.from("messages")
-    .select("thread_id").eq("id", messageId).maybeSingle<{ thread_id: string }>();
-  if (!threadLink?.thread_id) return null;
-  const { data: thread } = await supabase.from("message_threads")
-    .select("lead_id").eq("id", threadLink.thread_id).maybeSingle<{ lead_id: string | null }>();
-  return thread?.lead_id ?? null;
-}
-
-async function findLeadIdForConversationMessage(supabase: AdminClient, conversationId: string): Promise<string | null> {
-  const { data: conversation } = await supabase.from("conversations")
-    .select("relationship_id").eq("id", conversationId).maybeSingle<{ relationship_id: string | null }>();
-  if (!conversation?.relationship_id) return null;
-  const { data: lead } = await supabase.from("leads")
-    .select("id").eq("relationship_id", conversation.relationship_id).maybeSingle<{ id: string }>();
-  return lead?.id ?? null;
-}
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -93,128 +44,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
   }
 
-  let payload: ResendWebhookPayload;
+  let payload: ResendDeliveryPayload;
   try {
     payload = JSON.parse(body);
   } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
 
-  const emailId = payload.data?.email_id;
-  if (!emailId) return NextResponse.json({ ok: true }); // Ignore events without email_id
+  if (!payload.data?.email_id) return NextResponse.json({ ok: true });
 
   try {
     // TR-M7: webhook call, no Supabase session — the anon/cookie client's
     // reads and writes were silently rejected by RLS here.
     const supabase = createAdminClient();
-
-    const { data: legacyMessage } = await supabase.from("messages")
-      .select("id, venue_id, status")
-      .eq("provider_id", emailId)
-      .maybeSingle<{ id: string; venue_id: string; status: string }>();
-
-    const { data: conversationMessage } = legacyMessage ? { data: null } : await supabase.from("conversation_messages")
-      .select("id, venue_id, conversation_id, status")
-      .eq("provider_id", emailId)
-      .maybeSingle<{ id: string; venue_id: string; conversation_id: string; status: string | null }>();
-
-    if (!legacyMessage && !conversationMessage) {
-      // Unknown message — could be from before this system; ignore gracefully
-      return NextResponse.json({ ok: true });
-    }
-
-    const newStatus = EVENT_TO_STATUS[payload.type];
-    const venueId = legacyMessage?.venue_id ?? conversationMessage!.venue_id;
-    const currentStatus = legacyMessage?.status ?? conversationMessage?.status ?? null;
-
-    if (newStatus && shouldAdvanceStatus(currentStatus, newStatus)) {
-      const patch: Record<string, unknown> = { status: newStatus };
-      if (payload.type === "email.bounced") {
-        // Use structured bounce fields — timestamp-only strings discarded type/message.
-        patch[legacyMessage ? "error_message" : "failure_reason"] = translateEmailBounceFailure(
-          payload.data.bounce ?? null,
-        );
-      }
-      if (legacyMessage) {
-        if (payload.type === "email.delivered") patch.delivered_at = new Date().toISOString();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: statusError } = await (supabase.from("messages") as any).update(patch).eq("id", legacyMessage.id);
-        if (statusError) console.error("Message status update failed:", statusError.message);
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: statusError } = await (supabase.from("conversation_messages") as any).update(patch).eq("id", conversationMessage!.id);
-        if (statusError) console.error("Conversation message status update failed:", statusError.message);
-      }
-    }
-
-    // Always log the event for audit trail (Phase 7 diagnostics)
-    if (legacyMessage) {
-      const { error: eventError } = await supabase.from("message_events").insert({
-        venue_id: venueId,
-        message_id: legacyMessage.id,
-        event_type: payload.type,
-        occurred_at: payload.created_at ?? new Date().toISOString(),
-        payload: payload as unknown as Record<string, unknown>,
-      });
-      if (eventError) console.error("message_events insert failed:", eventError.message);
-    } else {
-      const { error: eventError } = await supabase.from("conversation_message_events").insert({
-        message_id: conversationMessage!.id,
-        event_type: payload.type,
-        occurred_at: payload.created_at ?? new Date().toISOString(),
-        payload: payload as unknown as Record<string, unknown>,
-      });
-      if (eventError) console.error("conversation_message_events insert failed:", eventError.message);
-    }
-
-    // Bounce / complaint → suppress future sends to this address (server-side).
-    if (payload.type === "email.bounced" || payload.type === "email.complained") {
-      const recipients = payload.data?.to ?? [];
-      const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
-      for (const addr of recipients) {
-        await upsertCommunicationPermission(supabase, {
-          venueId,
-          channel: "email",
-          rawAddress: addr,
-          status: payload.type === "email.complained" ? "opted_out" : "provider_blocked",
-          source: payload.type === "email.complained" ? "resend_complaint" : "resend_bounce",
-          evidence: { emailId, type: payload.type },
-        });
-      }
-    }
-
-    // Resend may emit email.unsubscribed — treat as hard opt-out when present.
-    if (payload.type === "email.unsubscribed") {
-      const recipients = payload.data?.to ?? [];
-      const { upsertCommunicationPermission } = await import("@/lib/communication/permissions");
-      for (const addr of recipients) {
-        await upsertCommunicationPermission(supabase, {
-          venueId,
-          channel: "email",
-          rawAddress: addr,
-          status: "opted_out",
-          source: "resend_unsubscribed",
-          evidence: { emailId },
-        });
-      }
-    }
-
-    // For email opens and clicks, find the lead and log an engagement signal
-    if (payload.type === "email.opened" || payload.type === "email.clicked") {
-      const signalType = payload.type === "email.opened" ? "email_opened" : "email_clicked";
-      const leadId = legacyMessage
-        ? await findLeadIdForLegacyMessage(supabase, legacyMessage.id)
-        : await findLeadIdForConversationMessage(supabase, conversationMessage!.conversation_id);
-      if (leadId) {
-        await logSignalEvent(supabase, venueId, leadId, signalType, {
-          message_id: (legacyMessage ?? conversationMessage)!.id, email_id: emailId,
-        }).catch(() => {}); // non-blocking
-        // Immediately refresh interest score — email engagement is a real-time signal
-        const { computeAndSaveLeadScores } = await import("@/lib/leads/scores");
-        void computeAndSaveLeadScores(supabase, venueId, leadId).catch(() => {});
-      }
-    }
-
+    await applyResendDeliveryEvent(supabase as never, payload);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Messaging webhook error:", err);

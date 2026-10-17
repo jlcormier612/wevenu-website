@@ -21,6 +21,8 @@ function canSendInvitation(
 
 export type CommunicationsReviewInvitation = {
   status: ClientInvitationStatus;
+  deliveryStatus?: "sending" | "accepted" | "delivered" | "opened" | "clicked" | "failed" | null;
+  providerMessageId?: string | null;
 };
 
 export type CommunicationsReviewAutomation = {
@@ -85,7 +87,13 @@ export function invitationDetail(
       ? "Invitation revoked — you can send a new invitation."
       : "Invitation revoked — no client email on file";
   }
-  return "Invitation sent";
+  if (invitation.providerMessageId && invitation.deliveryStatus === "delivered") return "Delivered";
+  if (invitation.providerMessageId && invitation.deliveryStatus !== "failed" && invitation.deliveryStatus !== "sending") {
+    return "The email provider accepted the invitation";
+  }
+  if (invitation.deliveryStatus === "failed") return "The email provider did not accept the invitation";
+  if (invitation.deliveryStatus === "sending") return "Send not confirmed";
+  return "Invitation is pending. Delivery was not recorded.";
 }
 
 export function invitationInviteControl(input: {
