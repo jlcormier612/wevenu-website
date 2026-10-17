@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
+    "assert:build-root": "node scripts/assert-marketing-build-root.mjs",
     "start": "next start --port 3001",
     "lint": "eslint",
     "export:pdfs": "node scripts/export-preview-pdfs.mjs",
