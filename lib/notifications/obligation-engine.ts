@@ -16,6 +16,7 @@ import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notificat
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { appendEmailSignatureText, emailBrandFromVenue } from "@/lib/email/venue-brand";
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
+import { applyReminderScope } from "@/lib/notifications/reminder-scope";
 import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
 import { resolveMessageReceivedRecipients } from "@/lib/notifications/message-received-recipients";
 import type { ProcessResult } from "@/lib/notifications/types";
@@ -47,20 +48,37 @@ type ContractReminderRow = {
   contracts: { id: string; title: string; status: string; expires_at: string | null; client_id: string | null; sign_token: string } | null;
 };
 
-export async function processObligationReminders(): Promise<ProcessResult> {
+/**
+ * Same scope as task reminders. Cron calls with no args. When both
+ * reminderIds and venueId are set, a row must match both. An empty
+ * reminderIds array does not filter by id.
+ */
+export type ObligationReminderScope = {
+  reminderIds?: string[];
+  venueId?: string;
+};
+
+export async function processObligationReminders(
+  scope?: ObligationReminderScope,
+): Promise<ProcessResult> {
   const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
   const supabase = getServiceClient();
   const now = new Date().toISOString();
 
-  await processPaymentReminders(supabase, now, result);
-  await processContractReminders(supabase, now, result);
+  await processPaymentReminders(supabase, now, result, scope);
+  await processContractReminders(supabase, now, result, scope);
 
   return result;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function processPaymentReminders(supabase: any, now: string, result: ProcessResult): Promise<void> {
-  const { data: reminders, error } = await supabase
+async function processPaymentReminders(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  now: string,
+  result: ProcessResult,
+  scope?: ObligationReminderScope,
+): Promise<void> {
+  let query = supabase
     .from("task_reminders")
     .select(`
       id, venue_id, payment_line_item_id, reminder_type, scheduled_for, after_due_recur_interval_days,
@@ -71,6 +89,10 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
     .lte("scheduled_for", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
+
+  query = applyReminderScope(query, scope);
+
+  const { data: reminders, error } = await query;
 
   if (error) { result.errors.push(`Payment reminder fetch error: ${error.message}`); return; }
   if (!reminders?.length) return;
@@ -175,9 +197,14 @@ async function processPaymentReminders(supabase: any, now: string, result: Proce
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function processContractReminders(supabase: any, now: string, result: ProcessResult): Promise<void> {
-  const { data: reminders, error } = await supabase
+async function processContractReminders(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  now: string,
+  result: ProcessResult,
+  scope?: ObligationReminderScope,
+): Promise<void> {
+  let query = supabase
     .from("task_reminders")
     .select(`
       id, venue_id, contract_id, reminder_type, scheduled_for, after_due_recur_interval_days,
@@ -188,6 +215,10 @@ async function processContractReminders(supabase: any, now: string, result: Proc
     .lte("scheduled_for", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
+
+  query = applyReminderScope(query, scope);
+
+  const { data: reminders, error } = await query;
 
   if (error) { result.errors.push(`Contract reminder fetch error: ${error.message}`); return; }
   if (!reminders?.length) return;

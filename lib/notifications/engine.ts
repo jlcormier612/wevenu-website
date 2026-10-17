@@ -19,6 +19,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { recordExternalClientOutbound } from "@/lib/conversations/record-external-outbound";
 import { appendEmailSignatureText, emailBrandFromVenue, escapeHtml } from "@/lib/email/venue-brand";
+import { applyReminderScope } from "@/lib/notifications/reminder-scope";
 import { nextRecurringReminderAt } from "@/lib/notifications/schedule-times";
 import {
   buildTourReminderCoordinatorEmail,
@@ -45,13 +46,24 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-export async function processReminders(): Promise<ProcessResult> {
+/**
+ * Optional scope for Sandbox/QA isolation. Cron and Settings call with no
+ * args — selection stays global. A non-empty reminderIds list and venueId
+ * each narrow the query. When both are set, a reminder must match both.
+ * An empty reminderIds array does not filter by id.
+ */
+export type ReminderProcessScope = {
+  reminderIds?: string[];
+  venueId?: string;
+};
+
+export async function processReminders(scope?: ReminderProcessScope): Promise<ProcessResult> {
   const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
   const supabase = getServiceClient();
   const now = new Date().toISOString();
 
   // Fetch batch of due reminders (both task and tour reminders)
-  const { data: reminders, error } = await supabase
+  let query = supabase
     .from("task_reminders")
     .select(`
       id, venue_id, event_task_id, tour_appointment_id, reminder_type, notify_role, scheduled_for, after_due_recur_interval_days,
@@ -69,6 +81,10 @@ export async function processReminders(): Promise<ProcessResult> {
     .lte("scheduled_for", now)
     .order("scheduled_for")
     .limit(BATCH_SIZE);
+
+  query = applyReminderScope(query, scope);
+
+  const { data: reminders, error } = await query;
 
   if (error) { result.errors.push(`Fetch error: ${error.message}`); return result; }
   if (!reminders?.length) return result;
