@@ -13,7 +13,7 @@ import { createClient, createClientPortalAuthClient } from "@/integrations/supab
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { sendEmail } from "@/lib/email/send";
+import { sendEmail, type SendResult } from "@/lib/email/send";
 import {
   buildClientInviteEmail,
   clientInviteAcceptUrl,
@@ -147,7 +147,7 @@ async function sendClientInviteEmail(
   coupleName: string,
   venue: Parameters<typeof buildClientInviteEmail>[0]["venue"],
   token: string,
-): Promise<void> {
+): Promise<SendResult> {
   const content = buildClientInviteEmail({
     to: email,
     coupleName,
