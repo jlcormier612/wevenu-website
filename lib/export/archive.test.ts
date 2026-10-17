@@ -131,3 +131,16 @@ test("migration does not query excluded domains and enforces export access", () 
   assert.match(sql, /'leads'/);
   assert.match(sql, /'messages'/);
 });
+
+test("vendor directory export is limited to this venue's relationships", () => {
+  const sql = readFileSync(
+    new URL("../../supabase/migrations/20261419300000_venue_export_vendor_scope.sql", import.meta.url),
+    "utf8",
+  );
+  assert.equal(sql.includes("('vendors', 'venue_id')"), false);
+  assert.match(sql, /from public\.vendors v/);
+  assert.match(sql, /from public\.venue_vendor_relationships r/);
+  assert.match(sql, /where r\.venue_id = \$1/);
+  assert.match(sql, /claim_token/);
+  assert.match(sql, /luv_intro_seen_at/);
+});

@@ -17,7 +17,9 @@ export const EXPORT_REDACT_KEYS = [
   "password_hash",
   "secret_key",
   "token",
+  "claim_token",
   "luv_draft_id",
+  "luv_intro_seen_at",
 ] as const;
 
 const REDACT = new Set<string>(EXPORT_REDACT_KEYS);
