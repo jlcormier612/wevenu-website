@@ -9,18 +9,23 @@ export type ReminderScope = {
   venueId?: string;
 };
 
-type ScopeQuery<Q> = Q & {
-  in(column: string, values: string[]): Q;
-  eq(column: string, value: string): Q;
-};
-
-export function applyReminderScope<Q>(query: ScopeQuery<Q>, scope?: ReminderScope): Q {
-  let next: Q = query;
+/**
+ * The Supabase filter builder's own generics recurse if this helper is
+ * generic over that builder. Keep the parameter wide so `next build`
+ * can typecheck the call.
+ */
+export function applyReminderScope(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  scope?: ReminderScope,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any {
+  let next = query;
   if (scope?.reminderIds?.length) {
     next = query.in("id", scope.reminderIds);
   }
   if (scope?.venueId) {
-    next = (next as ScopeQuery<Q>).eq("venue_id", scope.venueId);
+    next = next.eq("venue_id", scope.venueId);
   }
   return next;
 }
