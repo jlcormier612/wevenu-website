@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getTeamMembers } from "@/lib/team/service";
 import { hasCapability } from "@/lib/authorization";
+import { canExportVenueData } from "@/lib/authorization/export-access";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { DataExportSection } from "@/components/settings/data-export-section";
@@ -37,6 +38,7 @@ export default async function TeamDataSettingsPage() {
     actorIsOwner || (membership ? hasCapability(membership, "team.change_access") : false);
   const canRemove =
     actorIsOwner || (membership ? hasCapability(membership, "team.remove") : false);
+  const canExport = membership ? canExportVenueData(membership) : false;
 
   return (
     <div className="space-y-6">
@@ -103,18 +105,20 @@ export default async function TeamDataSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Your Data</CardTitle>
-          <CardDescription>
-            Your data belongs to you. Download a complete copy of your clients, events, contracts,
-            invoices, and payment records at any time — no need to ask, no waiting.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DataExportSection />
-        </CardContent>
-      </Card>
+      {canExport ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Your Data</CardTitle>
+            <CardDescription>
+              Download a zip of this venue&apos;s business records and uploaded files.
+              Wedding websites, couple planning answers, Luv working data, and credentials are not included.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataExportSection />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
