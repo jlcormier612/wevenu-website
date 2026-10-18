@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
     source: "email_parsed_generic",
     trustTier: "email_parsed",
     rawPayload,
+    externalRef: email_id,
     input: extraction.input,
     create: async (normalized) => {
       const { data, error } = await admin.rpc("ingest_lead", {

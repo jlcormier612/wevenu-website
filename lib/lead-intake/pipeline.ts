@@ -100,9 +100,11 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
   // right now, so enrolling the relationship in a live message sequence
   // today would mean texting/emailing a real couple as though they'd just
   // inquired. Held unconditionally, regardless of trust tier or confidence.
+  const confidenceEstablished =
+    normalized.confidenceScore != null && normalized.confidenceScore >= LOW_CONFIDENCE_THRESHOLD;
   const shouldAutomate =
     !opts.historicalImport &&
-    (opts.trustTier !== "email_parsed" || (normalized.confidenceScore ?? 100) >= LOW_CONFIDENCE_THRESHOLD);
+    (opts.trustTier !== "email_parsed" || confidenceEstablished);
 
   if (shouldAutomate) {
     try {
