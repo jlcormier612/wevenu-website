@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import {
   buildVenueExportZip,
   collectExportFiles,
+  venueExportBaseName,
   type ExportFileBucket,
   type ExportFileRef,
   venueOwnsStoragePath,
@@ -112,12 +113,12 @@ export async function buildVenueExportArchive(): Promise<ExportArchiveResult> {
   const bytes = buildVenueExportZip({
     venueId: venue.id,
     exportedAt,
+    venueName: venue.name,
     collections,
     fileBytes,
   });
   if (bytes.byteLength > MAX_BYTES) {
     return { ok: false, status: 413, message: "This export is too large to download in one archive." };
   }
-  const date = exportedAt.slice(0, 10);
-  return { ok: true, bytes, filename: `hello-to-cheers-venue-export-${date}.zip` };
+  return { ok: true, bytes, filename: `${venueExportBaseName(venue.name, exportedAt)}.zip` };
 }

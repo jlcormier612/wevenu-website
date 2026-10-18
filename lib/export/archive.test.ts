@@ -6,9 +6,12 @@ import test from "node:test";
 import {
   buildVenueExportZip,
   collectExportFiles,
+  csvCell,
   documentExportBucket,
+  recordsToCsv,
   redactExportValue,
   shapeExportCollections,
+  venueExportBaseName,
   venueOwnsStoragePath,
 } from "@/lib/export/archive";
 
@@ -89,27 +92,45 @@ test("zip contains collections, manifest omissions, and only owned files", () =>
     },
     fileBytes: [
       {
-        file: { bucket: "documents", path: `${VENUE}/a.pdf`, fileName: "a.pdf" },
+        file: {
+          bucket: "documents",
+          path: `${VENUE}/a.pdf`,
+          fileName: "a.pdf",
+          recordId: "doc-1",
+          proposedName: "Other/a.pdf",
+        },
         bytes: new Uint8Array([1, 2, 3]),
       },
       {
-        file: { bucket: "documents", path: `${OTHER}/b.pdf`, fileName: "b.pdf" },
+        file: {
+          bucket: "documents",
+          path: `${OTHER}/b.pdf`,
+          fileName: "b.pdf",
+          recordId: "doc-2",
+          proposedName: "Other/b.pdf",
+        },
         bytes: new Uint8Array([9]),
       },
     ],
   });
   const entries = unzipSync(zip);
-  const clients = JSON.parse(new TextDecoder().decode(entries["data/clients.json"]));
+  const clientsPath = Object.keys(entries).find((name) => name.endsWith("/Technical-Backup/clients.json"));
+  const contractsPath = Object.keys(entries).find((name) => name.endsWith("/Technical-Backup/contracts.json"));
+  const manifestPath = Object.keys(entries).find((name) => name.endsWith("/manifest.json"));
+  assert.ok(clientsPath);
+  assert.ok(contractsPath);
+  assert.ok(manifestPath);
+  const clients = JSON.parse(new TextDecoder().decode(entries[clientsPath]));
   assert.equal(clients[0].name, "Ada");
-  const contracts = JSON.parse(new TextDecoder().decode(entries["data/contracts.json"]));
+  const contracts = JSON.parse(new TextDecoder().decode(entries[contractsPath]));
   assert.equal("sign_token" in contracts[0], false);
-  const manifest = JSON.parse(new TextDecoder().decode(entries["manifest.json"]));
+  const manifest = JSON.parse(new TextDecoder().decode(entries[manifestPath]));
   assert.equal(manifest.venueId, VENUE);
   assert.equal(manifest.counts.clients, 1);
   assert.equal(manifest.files.length, 1);
   assert.equal(manifest.files[0].path, `${VENUE}/a.pdf`);
-  assert.equal(entries[`files/documents/${OTHER}/b.pdf`], undefined);
-  assert.ok(entries[`files/documents/${VENUE}/a.pdf`]);
+  assert.equal(Object.keys(entries).some((name) => name.includes(OTHER)), false);
+  assert.ok(Object.keys(entries).some((name) => name.endsWith("/Documents-and-Uploads/Other/a.pdf")));
   const omitted = manifest.omitted.map((item: { name: string }) => item.name);
   assert.ok(omitted.includes("Wedding websites"));
   assert.ok(omitted.includes("Luv"));
@@ -277,6 +298,124 @@ test("conversation inquiry context exports only the product fields", () => {
   );
   assert.match(sql, /'inquiry_context', array\['eventId','eventDate','eventType','venueName','coupleName'\]/);
   assert.match(sql, /alter function public\.get_venue_export\(uuid\) set statement_timeout = '30s'/);
+});
+
+test("csv keeps commas, quotes, newlines, unicode, and neutralizes formula cells", () => {
+  const csv = recordsToCsv([{
+    id: "lead-1",
+    name: "Ada, \"Bee\"",
+    notes: "line one\nline two",
+    city: "São Paulo",
+    formula: "=1+1",
+    plus: "+cmd",
+    minus: "-1",
+    at: "@sum",
+    empty: null,
+  }], ["id", "name", "notes", "city", "formula", "plus", "minus", "at", "empty"]);
+  assert.match(csv, /"Ada, ""Bee"""/);
+  assert.match(csv, /"line one\nline two"/);
+  assert.match(csv, /São Paulo/);
+  assert.match(csv, /'=1\+1/);
+  assert.equal(csvCell("+cmd"), "'+cmd");
+  assert.equal(csvCell("-1"), "'-1");
+  assert.equal(csvCell("@sum"), "'@sum");
+  assert.equal(csvCell(null), "");
+});
+
+test("spreadsheet views keep the complete json backup and contract text", () => {
+  const zip = buildVenueExportZip({
+    venueId: VENUE,
+    exportedAt: "2026-10-18T15:00:00.000Z",
+    collections: {
+      venues: { id: VENUE, name: "Sweet Daisy Barn & Farm", email: "venue@example.com", stripe_account_id: "acct" },
+      leads: [{
+        id: "lead-1",
+        first_name: "Ada",
+        notes: "Bring, the \"cake\"\nplease",
+        source_data: { platform: "ig" },
+        sign_token: "tok-should-not-appear",
+      }],
+      contracts: [{
+        id: "contract-1",
+        title: "Agreement",
+        status: "signed",
+        client_id: "client-1",
+        content: { clauses: ["The couple keeps the full agreement text."] },
+        branding_snapshot: { name: "Hall", primaryColor: "#111111", embed_key: "nope" },
+      }],
+    },
+  });
+  const entries = unzipSync(zip);
+  const root = "Hello-to-Cheers-Export-Sweet-Daisy-Barn-Farm-2026-10-18";
+  const leadJson = JSON.parse(new TextDecoder().decode(entries[`${root}/Technical-Backup/leads.json`]));
+  const leadCsv = new TextDecoder().decode(entries[`${root}/Leads-and-Clients/leads.csv`]);
+  assert.equal(leadJson[0].notes, "Bring, the \"cake\"\nplease");
+  assert.deepEqual(leadJson[0].source_data, { platform: "ig" });
+  assert.equal("sign_token" in leadJson[0], false);
+  assert.match(leadCsv, /Bring, the ""cake""/);
+  assert.equal(leadCsv.includes("tok-should-not-appear"), false);
+  const contractJson = JSON.parse(new TextDecoder().decode(entries[`${root}/Technical-Backup/contracts.json`]));
+  const contractCsv = new TextDecoder().decode(entries[`${root}/Contracts-and-Finances/contracts.csv`]);
+  assert.deepEqual(contractJson[0].content, { clauses: ["The couple keeps the full agreement text."] });
+  assert.equal(contractJson[0].branding_snapshot.name, "Hall");
+  assert.equal("embed_key" in contractJson[0].branding_snapshot, false);
+  assert.equal(contractCsv.includes("full agreement text"), false);
+  assert.match(contractCsv, /Agreement/);
+  const readme = new TextDecoder().decode(entries[`${root}/START-HERE.txt`]);
+  assert.match(readme, /Leads-and-Clients\/leads.csv/);
+  assert.match(readme, /Contracts-and-Finances\/contracts.csv/);
+  assert.equal(readme.includes("tok-should-not-appear"), false);
+  assert.equal(readme.includes("Luv recommendations"), true);
+  const manifest = JSON.parse(new TextDecoder().decode(entries[`${root}/manifest.json`]));
+  assert.equal(manifest.venueId, VENUE);
+  assert.equal(manifest.counts.leads, 1);
+  assert.equal(manifest.counts.contracts, 1);
+  assert.ok(manifest.entries.some((entry: { path: string }) => entry.path === "Technical-Backup/contracts.json"));
+  assert.equal(JSON.stringify(manifest).includes("tok-should-not-appear"), false);
+  assert.equal(venueExportBaseName("Sweet Daisy Barn & Farm", "2026-10-18T15:00:00.000Z"), root);
+});
+
+test("duplicate upload names and conversation files stay venue-scoped", () => {
+  const files = collectExportFiles({
+    documents: [
+      { id: "11111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa", storage_path: `conversations/${VENUE}/thread/note.png`, file_name: "note.png", category: "other" },
+    ],
+    message_attachments: [
+      { id: "22222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb", storage_path: `${VENUE}/mail/note.png`, name: "note.png" },
+      { id: "33333333-cccc-cccc-cccc-cccccccccccc", storage_path: `${VENUE}/mail/note-2.png`, name: "note.png" },
+      { id: "44444444-dddd-dddd-dddd-dddddddddddd", storage_path: `${OTHER}/mail/note.png`, name: "note.png" },
+    ],
+  }, VENUE);
+  assert.equal(files[0]?.bucket, "couple-messages");
+  const zip = buildVenueExportZip({
+    venueId: VENUE,
+    exportedAt: "2026-10-18T00:00:00.000Z",
+    venueName: "Fancy",
+    collections: { venues: { name: "Fancy" } },
+    fileBytes: files.map((file) => ({ file, bytes: new Uint8Array([1]) })),
+  });
+  const names = Object.keys(unzipSync(zip)).filter((name) => name.includes("Documents-and-Uploads"));
+  assert.equal(names.length, 3);
+  assert.equal(new Set(names).size, 3);
+  assert.ok(names.some((name) => name.endsWith("/Documents-and-Uploads/Message-attachments/note.png")));
+  assert.ok(names.some((name) => name.includes("cccccccc")));
+  assert.equal(names.some((name) => name.includes(OTHER)), false);
+});
+
+test("unreadable files and export limits still fail closed", () => {
+  const service = readFileSync(new URL("./service.ts", import.meta.url), "utf8");
+  assert.match(service, /Could not read venue file/);
+  assert.match(service, /status: 500, message: "A venue file could not be read. The export was not completed."/);
+  assert.match(service, /const MAX_FILES = 400/);
+  assert.match(service, /const MAX_BYTES = 60 \* 1024 \* 1024/);
+  assert.match(service, /if \(files.length > MAX_FILES\)/);
+  assert.match(service, /if \(total > MAX_BYTES\)/);
+  assert.match(service, /if \(bytes.byteLength > MAX_BYTES\)/);
+  assert.match(service, /canExportVenueData/);
+  const download = service.slice(service.indexOf("async function downloadOwned"), service.indexOf("export async function buildVenueExportArchive"));
+  assert.match(download, /throw new Error/);
+  const archive = service.slice(service.indexOf("const bytes = buildVenueExportZip"));
+  assert.ok(archive.indexOf("buildVenueExportZip") < archive.indexOf("return { ok: true"));
 });
 
 test("overlapping export timeout is raised only for the export function", () => {
