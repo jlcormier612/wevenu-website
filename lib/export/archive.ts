@@ -54,6 +54,14 @@ const CHANNEL_METADATA_KEYS = new Set([
 
 const EVENT_ORDER_SHARE_KEYS = new Set(["sections", "lines", "total"]);
 
+const INQUIRY_CONTEXT_KEYS = new Set([
+  "eventId",
+  "eventDate",
+  "eventType",
+  "venueName",
+  "coupleName",
+]);
+
 function exportKeyBlocked(key: string): boolean {
   return REDACT.has(key.toLowerCase().replace(/[^a-z0-9]/g, ""));
 }
@@ -89,6 +97,7 @@ export function shapeExportCollections(collections: Record<string, unknown>): Re
     invoices: mapRows(collections.invoices, "branding_snapshot", BRANDING_KEYS),
     conversation_messages: mapRows(collections.conversation_messages, "channel_metadata", CHANNEL_METADATA_KEYS),
     event_order_share_snapshots: mapRows(collections.event_order_share_snapshots, "payload", EVENT_ORDER_SHARE_KEYS),
+    conversations: mapRows(collections.conversations, "inquiry_context", INQUIRY_CONTEXT_KEYS),
   };
 }
 

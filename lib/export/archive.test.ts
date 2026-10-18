@@ -213,6 +213,9 @@ test("known json shapes keep business fields and drop extra keys", () => {
     event_order_share_snapshots: [{
       payload: { sections: [{ name: "Dinner" }], lines: [], total: 10, sign_token: "nope" },
     }],
+    conversations: [{
+      inquiry_context: { eventType: "Wedding", coupleName: "Ada", access_token: "nope" },
+    }],
     venue_operational_info: [{ faqs: [{ question: "Parking?", answer: "Lot B" }] }],
   });
   const contract = (shaped.contracts as Array<{ branding_snapshot: Record<string, unknown> }>)[0];
@@ -230,6 +233,10 @@ test("known json shapes keep business fields and drop extra keys", () => {
   assert.deepEqual(snapshot.payload.sections, [{ name: "Dinner" }]);
   assert.equal(snapshot.payload.total, 10);
   assert.equal("sign_token" in snapshot.payload, false);
+  const conversation = (shaped.conversations as Array<{ inquiry_context: Record<string, unknown> }>)[0];
+  assert.equal(conversation.inquiry_context.eventType, "Wedding");
+  assert.equal(conversation.inquiry_context.coupleName, "Ada");
+  assert.equal("access_token" in conversation.inquiry_context, false);
   const info = (shaped.venue_operational_info as Array<{ faqs: unknown }>)[0];
   assert.deepEqual(info.faqs, [{ question: "Parking?", answer: "Lot B" }]);
 });
@@ -248,6 +255,15 @@ test("venue export omits the lead email routing key without changing intake", ()
   assert.equal(sql.includes("out := out || jsonb_build_object"), false);
   const intake = readFileSync(new URL("../../lib/venue/repository.ts", import.meta.url), "utf8");
   assert.match(intake, /lead_email_key/);
+});
+
+test("conversation inquiry context exports only the product fields", () => {
+  const sql = readFileSync(
+    new URL("../../supabase/migrations/20261419700000_venue_export_inquiry_context.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /'inquiry_context', array\['eventId','eventDate','eventType','venueName','coupleName'\]/);
+  assert.match(sql, /alter function public\.get_venue_export\(uuid\) set statement_timeout = '30s'/);
 });
 
 test("overlapping export timeout is raised only for the export function", () => {
