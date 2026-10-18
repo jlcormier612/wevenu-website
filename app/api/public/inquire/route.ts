@@ -197,11 +197,11 @@ export async function POST(request: NextRequest) {
       html: thankYou.html,
       replyTo: fromEmail,
     }).then(
-      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(admin, outcome.attemptId, "failed"),
+      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed", "inquirer"),
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed", "inquirer"),
     );
   } else {
-    void recordNotificationStatus(admin, outcome.attemptId, "skipped");
+    void recordNotificationStatus(admin, outcome.attemptId, "skipped", "inquirer");
   }
 
   if (fromEmail && venue.email) {
@@ -232,8 +232,8 @@ export async function POST(request: NextRequest) {
       text: venueEmail.text,
       html: venueEmail.html,
     }).then(
-      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(admin, outcome.attemptId, "failed"),
+      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed", "venue"),
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed", "venue"),
     );
   }
 

@@ -23,6 +23,9 @@ describe("public intake audit client", () => {
     assert.match(source, /ingestLead\(\{[\s\S]*?supabase:\s*admin/);
     assert.match(source, /supabase\.rpc\("create_public_lead"/);
     assert.doesNotMatch(source, /recordNotificationStatus\(supabase/);
+    assert.match(source, /recordNotificationStatus\(admin, outcome\.attemptId, result\.ok \? "sent" : "failed", "inquirer"\)/);
+    assert.match(source, /recordNotificationStatus\(admin, outcome\.attemptId, result\.ok \? "sent" : "failed", "venue"\)/);
+    assert.doesNotMatch(source, /recordNotificationStatus\(admin, outcome\.attemptId, result\.ok \? "sent" : "failed"\)/);
   });
 
   it("logs public library forms with the admin client and still creates through the public-key RPC", () => {
@@ -30,5 +33,7 @@ describe("public intake audit client", () => {
     assert.match(source, /ingestLead\(\{[\s\S]*?supabase:\s*admin/);
     assert.match(source, /supabase\.rpc\("create_public_form_lead"/);
     assert.doesNotMatch(source, /recordNotificationStatus\(supabase/);
+    assert.match(source, /recordNotificationStatus\(admin, outcome\.attemptId, result\.ok \? "sent" : "failed", "inquirer"\)/);
+    assert.match(source, /recordNotificationStatus\(admin, outcome\.attemptId, result\.ok \? "sent" : "failed", "venue"\)/);
   });
 });

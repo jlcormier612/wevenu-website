@@ -103,16 +103,34 @@ export async function markIntakeAttempt(
   if (error) console.error("markIntakeAttempt failed:", error);
 }
 
-/** Records a notification send's outcome without otherwise touching the attempt's status. */
+export type IntakeNotificationStatus = "sent" | "failed" | "skipped";
+
+/**
+ * Which send this outcome belongs to.
+ * - inquirer: couple thank-you / confirmation. Never writes the venue column.
+ * - venue: venue notice. Also mirrors onto notification_status, which remains
+ *   the historical "did the venue find out" field and must not be raced by the thank-you.
+ * - single: one notification for the attempt (tour booking). Writes notification_status only.
+ */
+export type IntakeNotificationTarget = "inquirer" | "venue" | "single";
+
+/** Records one notification send without overwriting a different send's result. */
 export async function recordNotificationStatus(
   supabase: AnyDbClient,
   attemptId: string | null,
-  status: "sent" | "failed" | "skipped",
+  status: IntakeNotificationStatus,
+  target: IntakeNotificationTarget = "single",
 ): Promise<void> {
   if (!attemptId) return;
+  const update: Record<string, IntakeNotificationStatus> =
+    target === "inquirer"
+      ? { inquirer_notification_status: status }
+      : target === "venue"
+        ? { venue_notification_status: status, notification_status: status }
+        : { notification_status: status };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("lead_intake_attempts") as any)
-    .update({ notification_status: status })
+    .update(update)
     .eq("id", attemptId);
   if (error) console.error("recordNotificationStatus failed:", error);
 }
