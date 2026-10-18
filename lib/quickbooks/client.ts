@@ -18,6 +18,7 @@ import {
   QUICKBOOKS_REQUEST_TIMEOUT_MS,
 } from "@/lib/quickbooks/request-timeout";
 import * as repo from "@/lib/quickbooks/repository";
+import { QuickBooksTokenDecryptError } from "@/lib/quickbooks/token-crypto";
 
 const REFRESH_BUFFER_MS = 2 * 60 * 1000; // refresh if within 2 minutes of expiry
 
@@ -29,7 +30,7 @@ function basicAuthHeader(): string {
 
 type TokenResult =
   | { ok: true; accessToken: string; realmId: string }
-  | { ok: false; error: string; refreshTokenDead: boolean };
+  | { ok: false; error: string; refreshTokenDead: boolean; credentialUnreadable?: boolean };
 
 /**
  * Refreshes the venue's access token if it's expired or about to be,
@@ -40,7 +41,15 @@ type TokenResult =
  */
 export async function getValidAccessToken(venueId: string): Promise<TokenResult> {
   const admin = createAdminClient();
-  const connection = await repo.getConnectionWithTokens(admin, venueId);
+  let connection: Awaited<ReturnType<typeof repo.getConnectionWithTokens>>;
+  try {
+    connection = await repo.getConnectionWithTokens(admin, venueId);
+  } catch (err) {
+    if (err instanceof QuickBooksTokenDecryptError) {
+      return { ok: false, error: err.message, refreshTokenDead: false, credentialUnreadable: true };
+    }
+    throw err;
+  }
   if (!connection || connection.status !== "connected") {
     return { ok: false, error: "Not connected to QuickBooks.", refreshTokenDead: false };
   }
@@ -115,7 +124,13 @@ export type QuickBooksFetchResult =
  */
 export async function quickBooksFetch(venueId: string, path: string, init?: RequestInit): Promise<QuickBooksFetchResult> {
   const token = await getValidAccessToken(venueId);
-  if (!token.ok) return { ok: false, error: token.error, retryable: !token.refreshTokenDead };
+  if (!token.ok) {
+    return {
+      ok: false,
+      error: token.error,
+      retryable: token.credentialUnreadable ? false : !token.refreshTokenDead,
+    };
+  }
 
   const url = `${quickBooksApiBaseUrl()}/v3/company/${token.realmId}${path}`;
   const mutating = isMutatingRequest(init);

@@ -14,12 +14,23 @@ import * as repo from "@/lib/quickbooks/repository";
 import { quickBooksApiBaseUrl, quickBooksEnvironment, QUICKBOOKS_REVOKE_URL } from "@/lib/quickbooks/config";
 import { processQuickBooksSyncQueue } from "@/lib/quickbooks/processor";
 import { listIncomeAccounts, type SelectableIncomeAccount } from "@/lib/quickbooks/income-accounts";
+import { QuickBooksTokenDecryptError } from "@/lib/quickbooks/token-crypto";
 import type { QuickBooksActionResult, QuickBooksConnection, QuickBooksEntityType } from "@/lib/quickbooks/types";
 
 function basicAuthHeader(): string {
   const id = process.env.QUICKBOOKS_CLIENT_ID ?? "";
   const secret = process.env.QUICKBOOKS_CLIENT_SECRET ?? "";
   return `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`;
+}
+
+const INTEGRATIONS_DENIED = "You do not have permission to manage integrations.";
+
+/** Connection management matches Stripe: settings.integrations, session venue only. */
+async function denyWithoutIntegrationsAccess(): Promise<QuickBooksActionResult | null> {
+  const { requireCapability } = await import("@/lib/authorization/membership");
+  const gate = await requireCapability("settings.integrations", INTEGRATIONS_DENIED);
+  if (!gate.ok) return { ok: false, message: gate.error };
+  return null;
 }
 
 export async function getQuickBooksConnection(): Promise<QuickBooksConnection | null> {
@@ -63,6 +74,8 @@ export async function listQuickBooksIncomeAccounts(): Promise<
  */
 export async function selectQuickBooksIncomeAccount(accountId: string): Promise<QuickBooksActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const denied = await denyWithoutIntegrationsAccess();
+  if (denied) return denied;
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
   if (!accountId.trim()) return { ok: false, message: "Choose an income account first." };
@@ -117,6 +130,8 @@ export async function connectQuickBooksAccount(input: {
   refreshTokenExpiresIn: number;
 }): Promise<QuickBooksActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const denied = await denyWithoutIntegrationsAccess();
+  if (denied) return denied;
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
 
@@ -163,11 +178,21 @@ export async function connectQuickBooksAccount(input: {
  */
 export async function disconnectQuickBooksAccount(): Promise<QuickBooksActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const denied = await denyWithoutIntegrationsAccess();
+  if (denied) return denied;
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
 
   const supabase = await createClient();
-  const connection = await repo.getConnectionWithTokens(supabase, venue.id);
+  let connection: Awaited<ReturnType<typeof repo.getConnectionWithTokens>>;
+  try {
+    connection = await repo.getConnectionWithTokens(supabase, venue.id);
+  } catch (err) {
+    if (err instanceof QuickBooksTokenDecryptError) {
+      return { ok: false, message: err.message };
+    }
+    throw err;
+  }
 
   if (connection) {
     try {
@@ -201,6 +226,8 @@ export async function disconnectQuickBooksAccount(): Promise<QuickBooksActionRes
  */
 export async function retryQuickBooksSync(entityType: QuickBooksEntityType, entityId: string): Promise<QuickBooksActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const denied = await denyWithoutIntegrationsAccess();
+  if (denied) return denied;
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
 

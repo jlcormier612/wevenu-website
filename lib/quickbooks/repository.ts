@@ -8,6 +8,7 @@
  * Never let the token-bearing shape leave lib/quickbooks/.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { openQuickBooksToken, sealQuickBooksToken } from "@/lib/quickbooks/token-crypto";
 import type { QuickBooksConnection, QuickBooksConnectionStatus } from "@/lib/quickbooks/types";
 import { classifyClaim } from "@/lib/quickbooks/queue-recovery";
 
@@ -56,8 +57,10 @@ function mapConnection(r: ConnectionRow): QuickBooksConnection {
 function mapConnectionWithTokens(r: ConnectionRow): ConnectionWithTokens {
   return {
     venueId: r.venue_id, realmId: r.realm_id,
-    accessToken: r.access_token, accessTokenExpiresAt: r.access_token_expires_at,
-    refreshToken: r.refresh_token, refreshTokenExpiresAt: r.refresh_token_expires_at,
+    accessToken: openQuickBooksToken(r.access_token),
+    accessTokenExpiresAt: r.access_token_expires_at,
+    refreshToken: openQuickBooksToken(r.refresh_token),
+    refreshTokenExpiresAt: r.refresh_token_expires_at,
     status: r.status, defaultItemQuickBooksId: r.default_item_quickbooks_id,
     defaultIncomeAccountQuickBooksId: r.default_income_account_quickbooks_id,
   };
@@ -87,9 +90,9 @@ export async function upsertConnection(
     {
       venue_id: venueId,
       realm_id: input.realmId,
-      access_token: input.accessToken,
+      access_token: sealQuickBooksToken(input.accessToken),
       access_token_expires_at: input.accessTokenExpiresAt,
-      refresh_token: input.refreshToken,
+      refresh_token: sealQuickBooksToken(input.refreshToken),
       refresh_token_expires_at: input.refreshTokenExpiresAt,
       environment: input.environment,
       company_name: input.companyName ?? null,
@@ -105,9 +108,9 @@ export async function upsertConnection(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateTokens(client: any, venueId: string, input: { accessToken: string; accessTokenExpiresAt: string; refreshToken: string; refreshTokenExpiresAt: string }): Promise<void> {
   const { error } = await client.from("quickbooks_connections").update({
-    access_token: input.accessToken,
+    access_token: sealQuickBooksToken(input.accessToken),
     access_token_expires_at: input.accessTokenExpiresAt,
-    refresh_token: input.refreshToken,
+    refresh_token: sealQuickBooksToken(input.refreshToken),
     refresh_token_expires_at: input.refreshTokenExpiresAt,
     status: "connected",
   }).eq("venue_id", venueId);
