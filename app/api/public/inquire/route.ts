@@ -51,6 +51,10 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createClient();
+  // The visitor session cannot insert lead_intake_attempts (RLS 42501).
+  // Tour booking and email intake already log with the admin client.
+  // Lead creation stays on the public RPC below, which is keyed by embed key.
+  const admin = createAdminClient();
   const ipAddress = clientIp(request);
 
   const { data: venueRows } = await supabase.rpc("get_venue_by_embed_key", { p_key: String(embedKey) });
@@ -72,7 +76,7 @@ export async function POST(request: NextRequest) {
   };
 
   const outcome = await ingestLead({
-    supabase,
+    supabase: admin,
     venueId: venue.id,
     source: "website",
     trustTier: "direct",
@@ -126,7 +130,6 @@ export async function POST(request: NextRequest) {
       }
       const leadId = String((data as { lead_id?: string }).lead_id ?? "").trim();
       if (!leadId) return { ok: false, error: "Lead created without a relationship." };
-      const admin = createAdminClient();
       const { data: leadRow } = await admin.from("leads").select("relationship_id")
         .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
       if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
@@ -194,11 +197,11 @@ export async function POST(request: NextRequest) {
       html: thankYou.html,
       replyTo: fromEmail,
     }).then(
-      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed"),
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed"),
     );
   } else {
-    void recordNotificationStatus(supabase, outcome.attemptId, "skipped");
+    void recordNotificationStatus(admin, outcome.attemptId, "skipped");
   }
 
   if (fromEmail && venue.email) {
@@ -229,8 +232,8 @@ export async function POST(request: NextRequest) {
       text: venueEmail.text,
       html: venueEmail.html,
     }).then(
-      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed"),
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed"),
     );
   }
 

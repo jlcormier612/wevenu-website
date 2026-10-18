@@ -80,8 +80,10 @@ export async function POST(request: NextRequest) {
     ...(typeof sourceData === "object" && sourceData ? sourceData : {}),
   };
 
+  // Same RLS boundary as the website inquiry route: the visitor session
+  // cannot write lead_intake_attempts. Creation stays on create_public_form_lead.
   const outcome = await ingestLead({
-    supabase,
+    supabase: admin,
     venueId: venue.id,
     source: "website",
     trustTier: "direct",
@@ -165,11 +167,11 @@ export async function POST(request: NextRequest) {
       html: thankYou.html,
       replyTo: fromEmail,
     }).then(
-      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed"),
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed"),
     );
   } else {
-    void recordNotificationStatus(supabase, outcome.attemptId, "skipped");
+    void recordNotificationStatus(admin, outcome.attemptId, "skipped");
   }
 
   if (fromEmail && venue.email) {
@@ -195,8 +197,8 @@ export async function POST(request: NextRequest) {
       text: venueEmail.text,
       html: venueEmail.html,
     }).then(
-      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
-      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed"),
+      () => recordNotificationStatus(admin, outcome.attemptId, "failed"),
     );
   }
 
