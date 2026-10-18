@@ -197,7 +197,10 @@ export async function POST(request: NextRequest) {
       html: thankYou.html,
       replyTo: fromEmail,
     }).then(
-      (result) => recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed", "inquirer"),
+      (result) => {
+        if (!result.ok) console.error("[public/inquire] thank-you not accepted", result.code ?? "failed");
+        return recordNotificationStatus(admin, outcome.attemptId, result.ok ? "sent" : "failed", "inquirer");
+      },
       () => recordNotificationStatus(admin, outcome.attemptId, "failed", "inquirer"),
     );
   } else {
