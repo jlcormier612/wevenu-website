@@ -110,8 +110,7 @@ export default async function TeamDataSettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Your Data</CardTitle>
             <CardDescription>
-              Download a zip of this venue&apos;s business records and uploaded files.
-              Wedding websites, couple planning answers, Luv working data, and credentials are not included.
+              Download a ZIP file containing this venue&apos;s business records and uploaded files, including leads, clients, events, contracts, invoices, payments, messages, and uploaded documents.
             </CardDescription>
           </CardHeader>
           <CardContent>
