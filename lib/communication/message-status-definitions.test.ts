@@ -28,8 +28,10 @@ describe("message status definitions vs real mapping", () => {
     assert.equal(MESSAGE_STATUS_META.accepted.label, "Sent");
     assert.equal(MESSAGE_STATUS_META.delivered.label, "Delivered");
     const webhook = readFileSync("app/api/messaging/webhook/route.ts", "utf8");
-    assert.match(webhook, /"email\.sent":\s*"accepted"/);
-    assert.match(webhook, /"email\.delivered":\s*"delivered"/);
+    assert.match(webhook, /applyResendDeliveryEvent/);
+    const delivery = readFileSync("lib/messaging/apply-resend-delivery.ts", "utf8");
+    assert.match(delivery, /"email\.sent":\s*"accepted"/);
+    assert.match(delivery, /"email\.delivered":\s*"delivered"/);
     const sentDef = MESSAGE_STATUS_DEFINITIONS.find((d) => d.key === "sent")!;
     assert.match(sentDef.definition, /does not necessarily mean/i);
     const deliveredDef = MESSAGE_STATUS_DEFINITIONS.find((d) => d.key === "delivered")!;
