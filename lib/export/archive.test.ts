@@ -249,3 +249,12 @@ test("venue export omits the lead email routing key without changing intake", ()
   const intake = readFileSync(new URL("../../lib/venue/repository.ts", import.meta.url), "utf8");
   assert.match(intake, /lead_email_key/);
 });
+
+test("overlapping export timeout is raised only for the export function", () => {
+  const sql = readFileSync(
+    new URL("../../supabase/migrations/20261419600000_venue_export_statement_timeout.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /alter function public\.get_venue_export\(uuid\) set statement_timeout = '30s'/);
+  assert.equal(sql.includes("alter role"), false);
+});
