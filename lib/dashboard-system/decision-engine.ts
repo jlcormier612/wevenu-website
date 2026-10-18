@@ -27,6 +27,7 @@ import { comingUpHorizonEnd } from "@/lib/clients/list-filters";
 import { isOverdue, formatDate as formatLeadDate, leadDisplayName } from "@/lib/leads/constants";
 import { formatDate as formatEventDate } from "@/lib/events/constants";
 import { formatDate as formatPaymentDate, formatMoney } from "@/lib/payments/constants";
+import { leadCountsOnTodaySchedule } from "@/lib/dashboard/focus-lead-membership";
 import type { DashboardData } from "@/lib/dashboard/types";
 import { formatVenueLocalClock } from "@/lib/venue/timezone";
 import {
@@ -177,7 +178,8 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
 
   // ── Tours scheduled today — Tours surface owns the appointment list ──
   for (const lead of data.upcomingTours) {
-    if (lead.tourDate !== today) continue;
+    // Completed tours are not remaining work, even when the booked slot is today.
+    if (!leadCountsOnTodaySchedule(lead, today)) continue;
     items.push({
       id: `tour-${lead.id}`,
       priority: "needs_attention_today",
@@ -238,7 +240,7 @@ function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
     // Today's tours are already published as actionable work by
     // classifyDashboardItems, under a different id — excluded here so a tour
     // happening today cannot arrive in the same section twice.
-    if (lead.tourDate === today) continue;
+    if (lead.tourCompleted || lead.tourDate === today) continue;
     items.push({
       id: `up-tour-${lead.id}`,
       priority: "upcoming",

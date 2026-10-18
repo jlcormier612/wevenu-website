@@ -167,7 +167,15 @@ export type CoordinatorTourResult =
     }
   | { ok: false; error: string };
 
-export type SimpleTourResult = { ok: true } | { ok: false; error: string };
+export type SimpleTourResult =
+  | {
+      ok: true;
+      status?: string;
+      scheduledAt?: string | null;
+      actualOccurredAt?: string | null;
+      completedAt?: string | null;
+    }
+  | { ok: false; error: string };
 
 /** Customer-facing preview of a tour email. `body` and `html` come from the send builder. */
 export type TourCustomerSendPreview = {

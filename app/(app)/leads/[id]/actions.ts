@@ -56,6 +56,8 @@ function revalidateLead(leadId: string) {
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/leads");
   revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  revalidatePath("/tours");
 }
 
 export async function updateLeadStatusAction(

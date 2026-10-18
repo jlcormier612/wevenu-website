@@ -237,7 +237,7 @@ export async function loadFocusPopulationLeads(
       .from("tour_appointments")
       .select("lead_id")
       .eq("venue_id", venueId)
-      .neq("status", "cancelled")
+      .in("status", ["scheduled", "confirmed"])
       .not("lead_id", "is", null)
       .gte("scheduled_at", tourWindowStart)
       .lt("scheduled_at", tourWindowEnd),

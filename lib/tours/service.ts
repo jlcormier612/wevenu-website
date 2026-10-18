@@ -1324,10 +1324,18 @@ export async function updateTourStatus(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from("tour_appointments") as any).update(patch).eq("id", appointmentId).eq("venue_id", venue.id);
+  const { data: saved, error } = await (supabase.from("tour_appointments") as any)
+    .update(patch)
+    .eq("id", appointmentId)
+    .eq("venue_id", venue.id)
+    .select("id, status, scheduled_at, actual_occurred_at, completed_at")
+    .maybeSingle();
   if (error) {
     const fail = tourCapacityFailureFromUnknown(error);
     return { ok: false, error: fail ? TOUR_RPC_ERRORS.slot_taken : error.message };
+  }
+  if (!saved || saved.status !== status) {
+    return { ok: false, error: "This tour could not be updated." };
   }
 
   if (becameConfirmed) {
@@ -1400,7 +1408,13 @@ export async function updateTourStatus(
     }
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    status: saved.status,
+    scheduledAt: saved.scheduled_at ?? null,
+    actualOccurredAt: saved.actual_occurred_at ?? null,
+    completedAt: saved.completed_at ?? null,
+  };
 }
 
 /**

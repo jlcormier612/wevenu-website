@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { updateTourStatus } from "@/lib/tours/service";
 
@@ -23,7 +24,16 @@ export async function PATCH(request: Request) {
       { actualDate, actualTime },
     );
     if (!result.ok) return NextResponse.json(result, { status: result.error === "Session expired." ? 401 : 422 });
-    return NextResponse.json({ ok: true });
+    revalidatePath("/dashboard");
+    revalidatePath("/tours");
+    revalidatePath("/leads");
+    return NextResponse.json({
+      ok: true,
+      status: result.status,
+      scheduledAt: result.scheduledAt ?? null,
+      actualOccurredAt: result.actualOccurredAt ?? null,
+      completedAt: result.completedAt ?? null,
+    });
   } catch {
     return NextResponse.json({ ok: false, error: "Internal error." }, { status: 500 });
   }

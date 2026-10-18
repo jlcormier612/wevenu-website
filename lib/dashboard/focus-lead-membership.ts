@@ -37,6 +37,14 @@ export function leadMatchesFocusFollowUpRules(
   return false;
 }
 
+/**
+ * Explicit completion (status completed) is the only reason a tour leaves
+ * upcoming work. A scheduled time that has already passed does not.
+ */
+export function tourIsExplicitlyCompleted(tour: { tourCompleted?: boolean | null }): boolean {
+  return tour.tourCompleted === true;
+}
+
 export function leadMatchesFocusTourRules(
   tour: { tourDate: string | null; tourCompleted: boolean },
   today: string,
@@ -46,8 +54,16 @@ export function leadMatchesFocusTourRules(
     tour.tourDate &&
       tour.tourDate >= today &&
       tour.tourDate <= twoWeeksOut &&
-      !tour.tourCompleted,
+      !tourIsExplicitlyCompleted(tour),
   );
+}
+
+/** Today's schedule / Luv calendar count. Completed tours are not remaining work. */
+export function leadCountsOnTodaySchedule(
+  tour: { tourDate: string | null; tourCompleted?: boolean | null },
+  today: string,
+): boolean {
+  return Boolean(tour.tourDate === today && !tourIsExplicitlyCompleted(tour));
 }
 
 /** Whether a lead belongs in the Focus-authoritative load set. */

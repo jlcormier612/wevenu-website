@@ -64,7 +64,11 @@ function TourRow({
 }: {
   appt: TourAppointment;
   venueTimezone: string | null;
-  onStatusChange: (id: string, status: TourAppointment["status"]) => void;
+  onStatusChange: (
+    id: string,
+    status: TourAppointment["status"],
+    clocks?: { scheduledAt?: string | null; actualOccurredAt?: string | null; completedAt?: string | null },
+  ) => void;
   archivedView?: boolean;
 }) {
   const router = useRouter();
@@ -140,9 +144,20 @@ function TourRow({
           actualTime: extras?.actualTime,
         }),
       });
-      const data = await res.json() as { ok: boolean; error?: string };
+      const data = await res.json() as {
+        ok: boolean;
+        error?: string;
+        status?: TourAppointment["status"];
+        scheduledAt?: string | null;
+        actualOccurredAt?: string | null;
+        completedAt?: string | null;
+      };
       if (data.ok) {
-        onStatusChange(appt.id, newStatus as TourAppointment["status"]);
+        onStatusChange(appt.id, (data.status ?? newStatus) as TourAppointment["status"], {
+          scheduledAt: data.scheduledAt,
+          actualOccurredAt: data.actualOccurredAt,
+          completedAt: data.completedAt,
+        });
         toast.success(newStatus === "confirmed" ? "Tour marked confirmed." : "Status updated.");
         setCompleteOpen(false);
       } else toast.error(data.error ?? "Could not update status.");
@@ -443,8 +458,18 @@ export function TourList({
   const [appts, setAppts] = React.useState(appointments);
   React.useEffect(() => { setAppts(appointments); }, [appointments]);
 
-  function handleStatusChange(id: string, status: TourAppointment["status"]) {
-    setAppts((p) => p.map((a) => a.id === id ? { ...a, status } : a));
+  function handleStatusChange(
+    id: string,
+    status: TourAppointment["status"],
+    clocks?: { scheduledAt?: string | null; actualOccurredAt?: string | null; completedAt?: string | null },
+  ) {
+    setAppts((p) => p.map((a) => a.id === id ? {
+      ...a,
+      status,
+      scheduledAt: clocks?.scheduledAt === undefined ? a.scheduledAt : clocks.scheduledAt,
+      actualOccurredAt: clocks?.actualOccurredAt === undefined ? a.actualOccurredAt : clocks.actualOccurredAt,
+      completedAt: clocks?.completedAt === undefined ? a.completedAt : clocks.completedAt,
+    } : a));
     router.refresh();
   }
 
