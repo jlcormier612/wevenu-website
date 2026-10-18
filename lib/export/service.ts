@@ -40,13 +40,15 @@ async function downloadOwned(
   }
   const admin = createAdminClient();
   const buckets = file.bucket ? [file.bucket] : REPRESENTATION_BUCKETS;
+  let reason = "not found";
   for (const bucket of buckets) {
     const { data, error } = await admin.storage.from(bucket).download(file.path);
     if (!error && data) {
       return { bucket, bytes: new Uint8Array(await data.arrayBuffer()) };
     }
+    if (error?.message) reason = error.message;
   }
-  throw new Error(`Could not read ${file.fileName}.`);
+  throw new Error(`Could not read venue file from ${buckets.join(", ")} (${reason}).`);
 }
 
 export async function buildVenueExportArchive(): Promise<ExportArchiveResult> {

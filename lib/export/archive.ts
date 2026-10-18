@@ -103,6 +103,7 @@ export function shapeExportCollections(collections: Record<string, unknown>): Re
 
 export const EXPORT_FILE_BUCKETS = [
   "documents",
+  "couple-messages",
   "contract-representations",
   "event-order-representations",
   "floor-plans",
@@ -135,6 +136,14 @@ export function redactExportValue(value: unknown): unknown {
     out[key] = redactExportValue(child);
   }
   return out;
+}
+
+/**
+ * Documents rows for conversation uploads keep the couple-messages object path
+ * (`conversations/{venueId}/…`). Workspace files stay in the documents bucket.
+ */
+export function documentExportBucket(storagePath: string): ExportFileBucket {
+  return storagePath.startsWith("conversations/") ? "couple-messages" : "documents";
 }
 
 export function venueOwnsStoragePath(venueId: string, storagePath: string): boolean {
@@ -181,13 +190,16 @@ export function collectExportFiles(collections: Record<string, unknown>, venueId
   const files: ExportFileRef[] = [];
   const seen = new Set<string>();
   for (const row of rows(collections.documents)) {
-    pushFile(files, seen, venueId, "documents", stringField(row.storage_path), stringField(row.file_name) || "document");
+    const path = stringField(row.storage_path);
+    pushFile(files, seen, venueId, documentExportBucket(path), path, stringField(row.file_name) || "document");
   }
   for (const row of rows(collections.document_file_versions)) {
-    pushFile(files, seen, venueId, "documents", stringField(row.storage_path), stringField(row.file_name) || "document-version");
+    const path = stringField(row.storage_path);
+    pushFile(files, seen, venueId, documentExportBucket(path), path, stringField(row.file_name) || "document-version");
   }
   for (const row of rows(collections.message_attachments)) {
-    pushFile(files, seen, venueId, "documents", stringField(row.storage_path), stringField(row.name) || "attachment");
+    const path = stringField(row.storage_path);
+    pushFile(files, seen, venueId, documentExportBucket(path), path, stringField(row.name) || "attachment");
   }
   for (const row of rows(collections.floor_plans)) {
     const url = stringField(row.background_image_url);

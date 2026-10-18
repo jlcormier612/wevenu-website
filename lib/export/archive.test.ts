@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   buildVenueExportZip,
   collectExportFiles,
+  documentExportBucket,
   redactExportValue,
   shapeExportCollections,
   venueOwnsStoragePath,
@@ -47,6 +48,14 @@ test("file collection keeps this venue's paths and drops other venues", () => {
     documents: [
       { storage_path: `${VENUE}/clients/a.pdf`, file_name: "a.pdf" },
       { storage_path: `${OTHER}/clients/b.pdf`, file_name: "b.pdf" },
+      {
+        storage_path: `conversations/${VENUE}/thread/note.png`,
+        file_name: "note.png",
+      },
+      {
+        storage_path: `conversations/${OTHER}/thread/other.png`,
+        file_name: "other.png",
+      },
     ],
     canonical_document_representations: [
       { storage_path: `${VENUE}/contract/final.pdf`, representation_type: "pdf" },
@@ -59,10 +68,14 @@ test("file collection keeps this venue's paths and drops other venues", () => {
 
   assert.deepEqual(files.map((file) => `${file.bucket ?? "resolve"}:${file.path}`), [
     `documents:${VENUE}/clients/a.pdf`,
+    `couple-messages:conversations/${VENUE}/thread/note.png`,
     `floor-plans:${VENUE}/floor_plan/bg.png`,
     `resolve:${VENUE}/contract/final.pdf`,
   ]);
   assert.equal(venueOwnsStoragePath(VENUE, `${OTHER}/file`), false);
+  assert.equal(documentExportBucket(`${VENUE}/clients/a.pdf`), "documents");
+  assert.equal(documentExportBucket(`conversations/${VENUE}/thread/note.png`), "couple-messages");
+  assert.equal(files.some((file) => file.path.includes(OTHER)), false);
 });
 
 test("zip contains collections, manifest omissions, and only owned files", () => {
