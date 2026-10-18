@@ -22,7 +22,75 @@ export const EXPORT_REDACT_KEYS = [
   "luv_intro_seen_at",
 ] as const;
 
-const REDACT = new Set<string>(EXPORT_REDACT_KEYS);
+const REDACT = new Set(
+  EXPORT_REDACT_KEYS.map((key) => key.toLowerCase().replace(/[^a-z0-9]/g, "")),
+);
+
+const BRANDING_KEYS = new Set([
+  "name",
+  "businessName",
+  "logoUrl",
+  "primaryColor",
+  "secondaryColor",
+  "accentColor",
+  "neutralColor",
+  "email",
+  "phone",
+  "website",
+  "addressLine1",
+  "addressLine2",
+  "city",
+  "stateRegion",
+  "postalCode",
+  "country",
+]);
+
+const CHANNEL_METADATA_KEYS = new Set([
+  "sequenceEnrollmentId",
+  "sourceType",
+  "sourceId",
+  "automated",
+]);
+
+const EVENT_ORDER_SHARE_KEYS = new Set(["sections", "lines", "total"]);
+
+function exportKeyBlocked(key: string): boolean {
+  return REDACT.has(key.toLowerCase().replace(/[^a-z0-9]/g, ""));
+}
+
+function projectObject(value: unknown, keys: Set<string>): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (keys.has(key)) out[key] = child;
+  }
+  return out;
+}
+
+function mapRows(
+  value: unknown,
+  column: string,
+  keys: Set<string>,
+): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((row) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return row;
+    const record = row as Record<string, unknown>;
+    if (!(column in record)) return row;
+    return { ...record, [column]: projectObject(record[column], keys) };
+  });
+}
+
+/** Keep known business shapes. Other venue-authored JSON stays intact for redaction. */
+export function shapeExportCollections(collections: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...collections,
+    contracts: mapRows(collections.contracts, "branding_snapshot", BRANDING_KEYS),
+    invoices: mapRows(collections.invoices, "branding_snapshot", BRANDING_KEYS),
+    conversation_messages: mapRows(collections.conversation_messages, "channel_metadata", CHANNEL_METADATA_KEYS),
+    event_order_share_snapshots: mapRows(collections.event_order_share_snapshots, "payload", EVENT_ORDER_SHARE_KEYS),
+  };
+}
 
 export const EXPORT_FILE_BUCKETS = [
   "documents",
@@ -54,7 +122,7 @@ export function redactExportValue(value: unknown): unknown {
   if (!value || typeof value !== "object") return value;
   const out: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (REDACT.has(key)) continue;
+    if (exportKeyBlocked(key)) continue;
     out[key] = redactExportValue(child);
   }
   return out;
@@ -141,7 +209,7 @@ export function buildVenueExportZip(input: {
   collections: Record<string, unknown>;
   fileBytes?: Array<{ file: ExportFileRef; bytes: Uint8Array }>;
 }): Uint8Array {
-  const collections = redactExportValue(input.collections) as Record<string, unknown>;
+  const collections = redactExportValue(shapeExportCollections(input.collections)) as Record<string, unknown>;
   const counts: Record<string, number> = {};
   const entries: Record<string, Uint8Array> = {};
   for (const [name, value] of Object.entries(collections)) {

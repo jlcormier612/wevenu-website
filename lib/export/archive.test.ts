@@ -7,6 +7,7 @@ import {
   buildVenueExportZip,
   collectExportFiles,
   redactExportValue,
+  shapeExportCollections,
   venueOwnsStoragePath,
 } from "@/lib/export/archive";
 
@@ -177,4 +178,74 @@ test("export columns are an explicit allowlist that omits secret fields", () => 
   }
   assert.equal(lists.some((list) => list.includes("storage_path")), true);
   assert.match(sql, /'message_events', 'venue_id', 'event_type,id,message_id,occurred_at,venue_id'/);
+});
+
+test("nested export values keep business fields and drop secret-key variants", () => {
+  const cleaned = redactExportValue({
+    notes: [{ body: "Bring the linen order", nested: [{ Sign_Token: "nope", label: "Linen" }] }],
+    settings: { primaryColor: "#112233", accessToken: "nope", "embed-key": "nope" },
+  }) as {
+    notes: Array<{ body: string; nested: Array<Record<string, unknown>> }>;
+    settings: Record<string, unknown>;
+  };
+  assert.equal(cleaned.notes[0].body, "Bring the linen order");
+  assert.equal(cleaned.notes[0].nested[0].label, "Linen");
+  assert.equal("Sign_Token" in cleaned.notes[0].nested[0], false);
+  assert.equal(cleaned.settings.primaryColor, "#112233");
+  assert.equal("accessToken" in cleaned.settings, false);
+  assert.equal("embed-key" in cleaned.settings, false);
+});
+
+test("known json shapes keep business fields and drop extra keys", () => {
+  const shaped = shapeExportCollections({
+    contracts: [{
+      title: "Agreement",
+      branding_snapshot: { name: "Hall", primaryColor: "#111111", embed_key: "nope" },
+    }],
+    invoices: [{
+      invoice_number: "100",
+      branding_snapshot: { businessName: "Hall", city: "Portland", refresh_token: "nope" },
+    }],
+    conversation_messages: [{
+      body: "Hello",
+      channel_metadata: { sequenceEnrollmentId: "enr", sourceType: "sequence", access_token: "nope" },
+    }],
+    event_order_share_snapshots: [{
+      payload: { sections: [{ name: "Dinner" }], lines: [], total: 10, sign_token: "nope" },
+    }],
+    venue_operational_info: [{ faqs: [{ question: "Parking?", answer: "Lot B" }] }],
+  });
+  const contract = (shaped.contracts as Array<{ branding_snapshot: Record<string, unknown> }>)[0];
+  assert.equal(contract.branding_snapshot.name, "Hall");
+  assert.equal(contract.branding_snapshot.primaryColor, "#111111");
+  assert.equal("embed_key" in contract.branding_snapshot, false);
+  const invoice = (shaped.invoices as Array<{ branding_snapshot: Record<string, unknown> }>)[0];
+  assert.equal(invoice.branding_snapshot.city, "Portland");
+  assert.equal("refresh_token" in invoice.branding_snapshot, false);
+  const message = (shaped.conversation_messages as Array<{ body: string; channel_metadata: Record<string, unknown> }>)[0];
+  assert.equal(message.body, "Hello");
+  assert.equal(message.channel_metadata.sequenceEnrollmentId, "enr");
+  assert.equal("access_token" in message.channel_metadata, false);
+  const snapshot = (shaped.event_order_share_snapshots as Array<{ payload: Record<string, unknown> }>)[0];
+  assert.deepEqual(snapshot.payload.sections, [{ name: "Dinner" }]);
+  assert.equal(snapshot.payload.total, 10);
+  assert.equal("sign_token" in snapshot.payload, false);
+  const info = (shaped.venue_operational_info as Array<{ faqs: unknown }>)[0];
+  assert.deepEqual(info.faqs, [{ question: "Parking?", answer: "Lot B" }]);
+});
+
+test("venue export omits the lead email routing key without changing intake", () => {
+  const sql = readFileSync(
+    new URL("../../supabase/migrations/20261419500000_venue_export_hardening.sql", import.meta.url),
+    "utf8",
+  );
+  const venues = sql.match(/\('venues', 'id', '([^']+)'\)/);
+  assert.ok(venues);
+  assert.equal(venues[1].split(",").includes("lead_email_key"), false);
+  assert.equal(venues[1].split(",").includes("email"), true);
+  assert.match(sql, /language sql/);
+  assert.match(sql, /jsonb_object_agg/);
+  assert.equal(sql.includes("out := out || jsonb_build_object"), false);
+  const intake = readFileSync(new URL("../../lib/venue/repository.ts", import.meta.url), "utf8");
+  assert.match(intake, /lead_email_key/);
 });
