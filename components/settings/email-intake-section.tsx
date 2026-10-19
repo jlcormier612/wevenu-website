@@ -12,35 +12,47 @@ import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 
 const PROVIDERS: { name: string; steps: string[] }[] = [
   {
-    name: "The Knot",
+    name: "Here Comes the Guide",
     steps: [
-      "In your venue storefront, open notification or lead-alert settings (menus vary by account).",
-      "Add your Hello to Cheers forwarding address as an inquiry notification recipient, or forward those emails from your inbox.",
+      "Here Comes the Guide emails the venue when someone inquires. Which address receives that mail is set with them. Their site does not give venues a login to change it.",
+      "If those messages already arrive in a mailbox you control, forward only those messages to the address above. Do not point the listing at this address unless Here Comes the Guide confirms that for your listing.",
     ],
   },
   {
     name: "WeddingWire",
     steps: [
-      "In your storefront, open lead or notification settings (menus vary by account).",
-      "Add your Hello to Cheers forwarding address alongside your venue email, or forward inquiry alerts from your inbox.",
+      "WeddingWire keeps leads in the WeddingPro inbox. The app can forward one lead at a time to another email address. That is manual. It is not an automatic rule, and US WeddingPro help does not show an extra-recipient setting.",
+      "If new-lead emails already arrive in your inbox, forward only those messages to the address above.",
+    ],
+  },
+  {
+    name: "The Knot",
+    steps: [
+      "The Knot sends vendor email from partner.theknot.com and member.theknot.com. Leads are read in WeddingPro. No setting was found that adds a second address for new leads.",
+      "If inquiry emails already arrive in your inbox, forward only those messages to the address above. Do not add this address inside The Knot unless The Knot shows you that control.",
     ],
   },
   {
     name: "Zola",
     steps: [
-      "Confirm where Zola delivers venue inquiries for your listing (vendor email and/or inbox).",
-      "Forward those inquiry emails to your Hello to Cheers forwarding address, or add it as an additional recipient if your Zola account allows.",
+      "Zola documents inquiries inside the vendor dashboard. A separate inquiry email you can forward has not been confirmed.",
+      "Do not create a Zola forwarding rule until a real Zola inquiry email is in a mailbox you control.",
     ],
   },
   {
-    name: "Here Comes the Guide",
+    name: "Gmail",
     steps: [
-      "Confirm the inquiry destination on your Here Comes the Guide listing (usually the venue contact email).",
-      "Forward those inquiry emails to your Hello to Cheers forwarding address from that inbox.",
+      "Settings → Filters and Blocked Addresses → Create a new filter.",
+      "Match only the inquiry sender or subject you already receive, then choose Forward to the address above. Leave the rest of your inbox alone.",
     ],
   },
-  { name: "Gmail", steps: ["Settings → Filters and Blocked Addresses → Create a new filter", "Match inquiry emails, choose \"Forward to\" your forwarding address"] },
-  { name: "Outlook", steps: ["Settings → Mail → Rules → Add a new rule", "Condition: subject/sender matches your inquiry notifications", "Action: forward to your forwarding address"] },
+  {
+    name: "Outlook",
+    steps: [
+      "Settings → Mail → Rules → Add a new rule.",
+      "Condition: only the inquiry sender or subject. Action: forward to the address above. Do not forward all incoming mail.",
+    ],
+  },
 ];
 
 export function EmailIntakeSection({
@@ -94,10 +106,10 @@ export function EmailIntakeSection({
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Forward inquiry notifications from The Knot, WeddingWire, Zola, Here Comes the Guide, or
-        anywhere else that emails you a new inquiry — each one becomes a Lead automatically.
-        Marketplace brand is attributed only when the message evidence is trustworthy; otherwise
-        the lead is stored as email intake without a guessed marketplace.
+        After you connect, copy the address and send inquiry emails to it. Hello to Cheers creates
+        a Lead from the message. The Knot, WeddingWire, Zola, and Here Comes the Guide are not
+        connected integrations. A lead is labeled with one of those names only after that
+        provider&apos;s message has been verified. Until then it is stored as email intake.
       </p>
 
       {!isConnected ? (
@@ -116,8 +128,9 @@ export function EmailIntakeSection({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Forward a test inquiry to this address to confirm it&apos;s working. You&apos;ll see it
-            in Leads once it arrives.
+            Use a mailbox filter or forward one inquiry at a time. Send only inquiry mail — not
+            your whole inbox. Open Leads to confirm it arrived. If the marketplace cannot be
+            verified from the message, the lead still appears as email intake.
           </p>
 
           <div className="space-y-1.5">
@@ -139,7 +152,9 @@ export function EmailIntakeSection({
                 )}
               </div>
             ))}
-            <p className="text-[10px] text-muted-foreground italic">General steps — exact menus vary by provider and change over time.</p>
+            <p className="text-[10px] text-muted-foreground italic">
+              Mailbox steps are what you can do today. A marketplace name in this list is not a connection.
+            </p>
           </div>
         </div>
       )}
