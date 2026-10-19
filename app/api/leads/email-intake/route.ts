@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
   const extraction = await extractInquiryFromEmail(subject ?? "", body);
 
   if (!extraction.ok) {
-    const attemptId = await logIntakeAttempt(admin, {
+    const logged = await logIntakeAttempt(admin, {
       venueId: venue.id, source: leadSource, trustTier: "email_parsed",
       rawPayload, normalizedPayload: {
         firstName: "", lastName: "", email: null, phone: null, partnerFirstName: null, partnerLastName: null,
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         estimatedBudget: null, inquiryMessage: null, inquiryDate: null, confidenceScore: null, sourceData: {},
       },
     });
-    await markIntakeAttempt(admin, attemptId, { status: "rejected_invalid", errorMessage: extraction.message });
+    await markIntakeAttempt(admin, logged.status === "inserted" ? logged.id : null, { status: "rejected_invalid", errorMessage: extraction.message });
     return NextResponse.json({ ok: true });
   }
 

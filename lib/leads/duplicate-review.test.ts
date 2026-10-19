@@ -65,6 +65,17 @@ describe("Possible duplicate inquiry seams", () => {
     assert.match(review, /Email: \$\{best\.email\}/);
   });
 
+  it("keeps the same-email exception unless inquiry text also matches", () => {
+    assert.match(detection, /signals\.length === 1/);
+    assert.match(detection, /signals\[0\] === "email"/);
+    assert.match(detection, /normalizeInquiryText/);
+  });
+
+  it("keep separate does not delete either lead", () => {
+    assert.match(review, /status: "kept_separate"/);
+    assert.doesNotMatch(review, /from\("leads"\)\s*\.delete/);
+  });
+
   it("rejects fuzzy matching language in the detector", () => {
     assert.doesNotMatch(detection, /levenshtein|soundex|string.?similarity/i);
     assert.match(detection, /never fuzzy names/);

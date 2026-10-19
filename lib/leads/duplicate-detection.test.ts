@@ -7,6 +7,7 @@ import { describe, it } from "node:test";
 import {
   namePairKey,
   normalizeEmail,
+  normalizeInquiryText,
   normalizePhone,
   signalsAgainstRecord,
 } from "@/lib/leads/duplicate-detection";
@@ -101,6 +102,54 @@ describe("strong signals", () => {
       ),
       [],
     );
+  });
+
+  it("same email and exact inquiry text is a candidate signal", () => {
+    const signals = signalsAgainstRecord(
+      {
+        firstName: "A",
+        lastName: "B",
+        email: "JANE@example.com",
+        inquiryMessage: "  We   would like\r\nto visit.  ",
+      },
+      { ...jane, inquiryMessage: "We would like\nto visit." },
+    );
+    assert.ok(signals.includes("email"));
+    assert.ok(signals.includes("inquiry_text"));
+  });
+
+  it("same email and different inquiry text does not add the text signal", () => {
+    const signals = signalsAgainstRecord(
+      { firstName: "A", lastName: "B", email: "jane@example.com", inquiryMessage: "A June wedding." },
+      { ...jane, inquiryMessage: "An October wedding." },
+    );
+    assert.deepEqual(signals, ["email"]);
+  });
+
+  it("blank inquiry text does not match a stored message", () => {
+    assert.equal(normalizeInquiryText("  \n\t "), null);
+    const signals = signalsAgainstRecord(
+      { firstName: "A", lastName: "B", email: "jane@example.com", inquiryMessage: "   " },
+      { ...jane, inquiryMessage: "We would like to visit." },
+    );
+    assert.deepEqual(signals, ["email"]);
+  });
+
+  it("a material wording change does not match", () => {
+    assert.notEqual(
+      normalizeInquiryText("We would like to visit Saturday."),
+      normalizeInquiryText("We would like to visit Sunday."),
+    );
+  });
+
+  it("same email plus phone still matches without inquiry text", () => {
+    const signals = signalsAgainstRecord(
+      { firstName: "A", lastName: "B", email: "jane@example.com", phone: "555-111-2222" },
+      jane,
+    );
+    assert.ok(signals.includes("email"));
+    assert.ok(signals.includes("phone"));
+    assert.equal(signals.includes("inquiry_text"), false);
   });
 
   it("name pair requires both people fully named", () => {

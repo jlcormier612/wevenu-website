@@ -16,7 +16,7 @@
  */
 import { normalizeLeadInput } from "@/lib/lead-intake/normalize";
 import { validateLeadInput } from "@/lib/lead-intake/validate";
-import { findAcceptedAttemptByExternalRef, logIntakeAttempt, markIntakeAttempt } from "@/lib/lead-intake/attempt-log";
+import { findAcceptedAttemptByExternalRef, findAttemptByExternalRef, logIntakeAttempt, markIntakeAttempt } from "@/lib/lead-intake/attempt-log";
 import { checkRateLimit, isNearRateLimit } from "@/lib/lead-intake/rate-limit";
 import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/lead-intake/turnstile";
 import { resolveLeadOwner } from "@/lib/lead-intake/assignment";
@@ -40,7 +40,7 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
     }
   }
 
-  const attemptId = await logIntakeAttempt(opts.supabase, {
+  const logged = await logIntakeAttempt(opts.supabase, {
     venueId: opts.venueId,
     source: opts.source,
     trustTier: opts.trustTier,
@@ -49,6 +49,25 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
     ipAddress: opts.ipAddress ?? null,
     externalRef: opts.externalRef ?? null,
   });
+  let attemptId: string | null = logged.status === "inserted" ? logged.id : null;
+  if (logged.status === "conflict" && opts.externalRef) {
+    const existingRow = await findAttemptByExternalRef(opts.supabase, opts.source, opts.externalRef);
+    if (existingRow?.status === "accepted" && existingRow.leadId && existingRow.relationshipId) {
+      return {
+        ok: true,
+        leadId: existingRow.leadId,
+        relationshipId: existingRow.relationshipId,
+        isReturningRelationship: true,
+        attemptId: existingRow.attemptId,
+      };
+    }
+    // A failed attempt has no lead yet. Reuse that row so a later delivery can create once.
+    if (existingRow && existingRow.status !== "received" && !existingRow.leadId) {
+      attemptId = existingRow.attemptId;
+    } else {
+      return { ok: false, error: "This message is already being processed.", attemptId: existingRow?.attemptId ?? null };
+    }
+  }
 
   const validation = validateLeadInput(normalized);
   if (!validation.ok) {
@@ -142,6 +161,7 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
           partnerFirstName: normalized.partnerFirstName,
           partnerLastName: normalized.partnerLastName,
           partnerEmail: normalized.partnerEmail,
+          inquiryMessage: opts.trustTier === "email_parsed" ? normalized.inquiryMessage : null,
         },
         admin: true,
       });
@@ -169,9 +189,10 @@ export async function logDuplicateBatchRejection(
   supabase: AnyDbClient, venueId: string, source: string, trustTier: TrustTier, rawPayload: unknown, input: RawIntakeInput,
 ): Promise<void> {
   const normalized = normalizeLeadInput(input);
-  const attemptId = await logIntakeAttempt(supabase, {
+  const logged = await logIntakeAttempt(supabase, {
     venueId, source, trustTier, rawPayload, normalizedPayload: normalized,
   });
+  const attemptId = logged.status === "inserted" ? logged.id : null;
   await markIntakeAttempt(supabase, attemptId, {
     status: "rejected_duplicate_batch",
     errorMessage: "Duplicate within this import — matches an earlier row in the same file.",
