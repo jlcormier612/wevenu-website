@@ -6,8 +6,10 @@ import { Check, ChevronDown, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { connectEmailIntakeAction } from "@/app/(app)/settings/email-intake-actions";
+import { EmailIntakeHealth } from "@/components/settings/email-intake-health";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { EmailIntakeHealthView } from "@/lib/lead-intake/email-intake-health";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 
 const PROVIDERS: { name: string; steps: string[] }[] = [
@@ -56,11 +58,12 @@ const PROVIDERS: { name: string; steps: string[] }[] = [
 ];
 
 export function EmailIntakeSection({
-  status, leadEmailAddress,
+  status, leadEmailAddress, intakeHealth = null,
 }: {
   status: EmailIntakeStatus | null;
   /** null when RESEND_INBOUND_ADDRESS isn't set platform-wide — a genuinely different state from "this venue hasn't connected yet." */
   leadEmailAddress: string | null;
+  intakeHealth?: EmailIntakeHealthView | null;
 }) {
   const [connecting, startConnect] = React.useTransition();
   const [copied, setCopied] = React.useState(false);
@@ -158,6 +161,7 @@ export function EmailIntakeSection({
           </div>
         </div>
       )}
+      {intakeHealth ? <EmailIntakeHealth health={intakeHealth} /> : null}
     </div>
   );
 }

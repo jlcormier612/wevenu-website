@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
+import { getEmailIntakeHealth } from "@/lib/lead-intake/email-intake-health";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import { getInquiryFormSettings, getPublicInquiryFormConfig } from "@/lib/inquiry-form/service";
 import { getTourSettings } from "@/lib/tours/service";
@@ -23,8 +24,8 @@ import { getTourSettings } from "@/lib/tours/service";
 export const metadata: Metadata = { title: "Leads & Booking — Settings" };
 
 export default async function LeadsBookingSettingsPage() {
-  const [venue, emailIntakeStatus, tourSettings, inquiryFormSettings, role] = await Promise.all([
-    getCurrentVenue(), getEmailIntakeStatus(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
+  const [venue, emailIntakeStatus, intakeHealth, tourSettings, inquiryFormSettings, role] = await Promise.all([
+    getCurrentVenue(), getEmailIntakeStatus(), getEmailIntakeHealth(), getTourSettings(), getInquiryFormSettings(), getCurrentUserRole(),
   ]);
   const previewBaseConfig = venue?.embedKey
     ? await getPublicInquiryFormConfig(venue.embedKey)
@@ -100,6 +101,7 @@ export default async function LeadsBookingSettingsPage() {
                   : null
               }
               emailIntakeStatus={emailIntakeStatus}
+              intakeHealth={intakeHealth}
               inquiryFormSettings={inquiryFormSettings}
               canEditInquiryForm={canEditInquiryForm}
               previewBaseConfig={previewBaseConfig}

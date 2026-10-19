@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { EmailIntakeHealthView } from "@/lib/lead-intake/email-intake-health";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import {
   INQUIRY_FORM_PREVIEW_BANNER,
@@ -34,6 +35,7 @@ export function WebsiteFormsSection({
   appUrl,
   leadEmailAddress,
   emailIntakeStatus,
+  intakeHealth = null,
   inquiryFormSettings = null,
   canEditInquiryForm = true,
   previewBaseConfig = null,
@@ -43,6 +45,7 @@ export function WebsiteFormsSection({
   /** null when RESEND_INBOUND_ADDRESS isn't configured platform-wide. */
   leadEmailAddress: string | null;
   emailIntakeStatus: EmailIntakeStatus | null;
+  intakeHealth?: EmailIntakeHealthView | null;
   inquiryFormSettings?: InquiryFormSettings | null;
   canEditInquiryForm?: boolean;
   /** Saved public shell (venue brand / tour flags). Draft overlays this for Preview. */
@@ -187,7 +190,7 @@ export function WebsiteFormsSection({
         </div>
       </div>
 
-      <EmailIntakeSection status={emailIntakeStatus} leadEmailAddress={leadEmailAddress} />
+      <EmailIntakeSection status={emailIntakeStatus} leadEmailAddress={leadEmailAddress} intakeHealth={intakeHealth} />
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent
