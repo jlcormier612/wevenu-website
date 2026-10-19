@@ -36,6 +36,7 @@ import {
   formatDate,
   formatCurrency,
   leadDisplayName,
+  sourceLabel,
   statusLabel,
 } from "@/lib/leads/constants";
 import { isOpenLeadLifecycle, isOpenLeadOpportunity } from "@/lib/leads/open-lifecycle";
@@ -469,6 +470,7 @@ export function LeadList({
                 <TableHead>Date</TableHead>
                 <TableHead>Guests</TableHead>
                 <TableHead>Budget</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Stage</TableHead>
                 <TableHead>Received</TableHead>
                 <TableHead className="w-16" />
@@ -511,6 +513,9 @@ export function LeadList({
                   </TableCell>
                   <TableCell className="text-sm">
                     {lead.estimatedBudget != null ? formatCurrency(lead.estimatedBudget) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {lead.source ? sourceLabel(lead.source) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">

@@ -29,16 +29,24 @@
  *
  * The parser (lib/lead-intake/email-extract.ts) is generic — it extracts
  * "an inquiry" from whatever arrives, with no per-marketplace detection
- * logic. Extracted leads get a confidence score; low-confidence ones still
- * create immediately (same Lead object, same visibility as every other
- * source) but the pipeline holds Automation until a coordinator confirms
- * the details (see pipeline.ts's LOW_CONFIDENCE_THRESHOLD).
+ * logic. Marketplace attribution (lib/lead-intake/marketplace-attribution.ts)
+ * is separate from parsing: unknown stays email_parsed_generic; a
+ * marketplace key is written only when evidence is trustworthy. Extracted
+ * leads get a confidence score; low-confidence ones still create immediately
+ * (same Lead object, same visibility as every other source) but the pipeline
+ * holds Automation until a coordinator confirms the details (see pipeline.ts's
+ * LOW_CONFIDENCE_THRESHOLD).
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { extractInquiryFromEmail } from "@/lib/lead-intake/email-extract";
+import {
+  buildEmailIntakeSourceData,
+  classifyMarketplaceAttribution,
+  emailIntakeLeadSourceKey,
+} from "@/lib/lead-intake/marketplace-attribution";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { logIntakeAttempt, markIntakeAttempt } from "@/lib/lead-intake/attempt-log";
 import {
@@ -96,12 +104,37 @@ export async function POST(request: NextRequest) {
 
   const content = await fetchReceivedEmailContent(email_id);
   const body = content?.text || (content?.html ? htmlToText(content.html) : "") || "";
-  const rawPayload = { type: event.type, email_id, from, to, subject, contentRetrieved: Boolean(content) };
+  const headers = content?.headers ?? null;
+  const attribution = classifyMarketplaceAttribution({
+    from,
+    subject,
+    headers,
+    body,
+  });
+  const leadSource = emailIntakeLeadSourceKey(attribution);
+  const rawPayload = {
+    type: event.type,
+    email_id,
+    from,
+    to,
+    subject,
+    message_id: event.data.message_id ?? null,
+    contentRetrieved: Boolean(content),
+    inbound_headers: buildEmailIntakeSourceData({
+      attribution,
+      emailId: email_id,
+      from,
+      subject,
+      headers,
+    }).inbound_headers,
+    ingestion_method: attribution.ingestionMethod,
+    marketplace_source: attribution.marketplaceSource,
+  };
 
   if (!venue) {
     // A stale or guessed key — still worth a durable record, venue_id null.
     await logIntakeAttempt(admin, {
-      venueId: null, source: "email_parsed_generic", trustTier: "email_parsed",
+      venueId: null, source: leadSource, trustTier: "email_parsed",
       rawPayload, normalizedPayload: {
         firstName: "", lastName: "", email: null, phone: null, partnerFirstName: null, partnerLastName: null,
         partnerEmail: null, eventType: null, eventDate: null, endDate: null, guestCount: null,
@@ -115,7 +148,7 @@ export async function POST(request: NextRequest) {
 
   if (!extraction.ok) {
     const attemptId = await logIntakeAttempt(admin, {
-      venueId: venue.id, source: "email_parsed_generic", trustTier: "email_parsed",
+      venueId: venue.id, source: leadSource, trustTier: "email_parsed",
       rawPayload, normalizedPayload: {
         firstName: "", lastName: "", email: null, phone: null, partnerFirstName: null, partnerLastName: null,
         partnerEmail: null, eventType: null, eventDate: null, endDate: null, guestCount: null,
@@ -126,18 +159,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  const input = {
+    ...extraction.input,
+    sourceData: buildEmailIntakeSourceData({
+      attribution,
+      emailId: email_id,
+      from,
+      subject,
+      headers,
+      extractedSubject: subject ?? null,
+      priorSourceData: extraction.input.sourceData ?? null,
+    }),
+  };
+
   const outcome = await ingestLead({
     supabase: admin,
     venueId: venue.id,
-    source: "email_parsed_generic",
+    source: leadSource,
     trustTier: "email_parsed",
     rawPayload,
     externalRef: email_id,
-    input: extraction.input,
+    input,
     create: async (normalized) => {
       const { data, error } = await admin.rpc("ingest_lead", {
         p_venue_id: venue.id,
-        p_source: "email_parsed_generic",
+        p_source: leadSource,
         p_input: {
           firstName: normalized.firstName,
           lastName: normalized.lastName,

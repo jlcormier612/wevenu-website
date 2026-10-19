@@ -11,9 +11,34 @@ import { Button } from "@/components/ui/button";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 
 const PROVIDERS: { name: string; steps: string[] }[] = [
-  { name: "The Knot", steps: ["Storefront → Settings → Notifications", "Add your forwarding address as an additional inquiry notification recipient"] },
-  { name: "WeddingWire", steps: ["Storefront → Settings → Lead Notifications", "Add your forwarding address alongside your own email"] },
-  { name: "Zola", steps: ["Vendor dashboard → Settings → Notifications", "Add your forwarding address as a CC/additional recipient"] },
+  {
+    name: "The Knot",
+    steps: [
+      "In your venue storefront, open notification or lead-alert settings (menus vary by account).",
+      "Add your Hello to Cheers forwarding address as an inquiry notification recipient, or forward those emails from your inbox.",
+    ],
+  },
+  {
+    name: "WeddingWire",
+    steps: [
+      "In your storefront, open lead or notification settings (menus vary by account).",
+      "Add your Hello to Cheers forwarding address alongside your venue email, or forward inquiry alerts from your inbox.",
+    ],
+  },
+  {
+    name: "Zola",
+    steps: [
+      "Confirm where Zola delivers venue inquiries for your listing (vendor email and/or inbox).",
+      "Forward those inquiry emails to your Hello to Cheers forwarding address, or add it as an additional recipient if your Zola account allows.",
+    ],
+  },
+  {
+    name: "Here Comes the Guide",
+    steps: [
+      "Confirm the inquiry destination on your Here Comes the Guide listing (usually the venue contact email).",
+      "Forward those inquiry emails to your Hello to Cheers forwarding address from that inbox.",
+    ],
+  },
   { name: "Gmail", steps: ["Settings → Filters and Blocked Addresses → Create a new filter", "Match inquiry emails, choose \"Forward to\" your forwarding address"] },
   { name: "Outlook", steps: ["Settings → Mail → Rules → Add a new rule", "Condition: subject/sender matches your inquiry notifications", "Action: forward to your forwarding address"] },
 ];
@@ -69,8 +94,10 @@ export function EmailIntakeSection({
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Forward inquiry notifications from The Knot, WeddingWire, or anywhere else that emails you
-        a new inquiry — each one becomes a Lead automatically.
+        Forward inquiry notifications from The Knot, WeddingWire, Zola, Here Comes the Guide, or
+        anywhere else that emails you a new inquiry — each one becomes a Lead automatically.
+        Marketplace brand is attributed only when the message evidence is trustworthy; otherwise
+        the lead is stored as email intake without a guessed marketplace.
       </p>
 
       {!isConnected ? (

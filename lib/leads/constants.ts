@@ -38,17 +38,19 @@ export type Option = { value: string; label: string };
 export const EVENT_TYPES: Option[] = CANONICAL_EVENT_TYPES;
 
 export const LEAD_SOURCES: Option[] = [
-  { value: "website",      label: "Website" },
-  { value: "referral",     label: "Referral" },
-  { value: "the_knot",     label: "The Knot" },
-  { value: "wedding_wire", label: "WeddingWire" },
-  { value: "instagram",    label: "Instagram" },
-  { value: "facebook",     label: "Facebook" },
-  { value: "google",       label: "Google" },
-  { value: "email",        label: "Direct Email" },
-  { value: "phone",        label: "Phone Call" },
-  { value: "walk_in",      label: "Walk-in" },
-  { value: "other",        label: "Other" },
+  { value: "website",               label: "Website" },
+  { value: "referral",              label: "Referral" },
+  { value: "the_knot",              label: "The Knot" },
+  { value: "wedding_wire",          label: "WeddingWire" },
+  { value: "zola",                  label: "Zola" },
+  { value: "here_comes_the_guide",  label: "Here Comes the Guide" },
+  { value: "instagram",             label: "Instagram" },
+  { value: "facebook",              label: "Facebook" },
+  { value: "google",                label: "Google" },
+  { value: "email",                 label: "Direct Email" },
+  { value: "phone",                 label: "Phone Call" },
+  { value: "walk_in",               label: "Walk-in" },
+  { value: "other",                 label: "Other" },
 ];
 
 /**
@@ -113,10 +115,22 @@ const INTAKE_SOURCE_LABELS: Record<string, string> = {
   tour_scheduling: "Tour Request",
 };
 
+/**
+ * Legacy / alternate identifiers that map onto lead_sources keys.
+ * Migration Center uses `weddingwire`; leads.source uses `wedding_wire`.
+ */
+const SOURCE_KEY_ALIASES: Record<string, string> = {
+  weddingwire: "wedding_wire",
+  theknot: "the_knot",
+  herecomestheguide: "here_comes_the_guide",
+  hctg: "here_comes_the_guide",
+};
+
 export function sourceLabel(value: string | null): string {
   if (!value) return "";
-  return LEAD_SOURCES.find((s) => s.value === value)?.label
-    ?? INTAKE_SOURCE_LABELS[value]
+  const key = SOURCE_KEY_ALIASES[value] ?? value;
+  return LEAD_SOURCES.find((s) => s.value === key)?.label
+    ?? INTAKE_SOURCE_LABELS[key]
     ?? value;
 }
 
@@ -128,12 +142,17 @@ export function sourceLabel(value: string | null): string {
  * import row. Falls back to "other" rather than dropping the row, and never
  * discards the original text: the caller stores it in source_data so
  * nothing is silently lost.
+ *
+ * Also normalizes legacy marketplace identifiers (weddingwire → wedding_wire).
  */
 export function resolveLeadSourceKey(rawValue: string | null | undefined): { key: string; originalLabel: string | null } {
   const trimmed = rawValue?.trim();
   if (!trimmed) return { key: "other", originalLabel: null };
   const normalized = trimmed.toLowerCase().replace(/[\s-]+/g, "_");
-  const match = LEAD_SOURCES.find((s) => s.value === normalized || s.label.toLowerCase() === trimmed.toLowerCase());
+  const aliased = SOURCE_KEY_ALIASES[normalized] ?? normalized;
+  const match = LEAD_SOURCES.find(
+    (s) => s.value === aliased || s.value === normalized || s.label.toLowerCase() === trimmed.toLowerCase(),
+  );
   return match ? { key: match.value, originalLabel: null } : { key: "other", originalLabel: trimmed };
 }
 

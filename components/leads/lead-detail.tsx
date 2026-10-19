@@ -134,9 +134,16 @@ function LeadInquiryRecord({ lead }: { lead: LeadWithDetails }) {
   const answers = Array.isArray(lead.sourceData?.custom_answers)
     ? (lead.sourceData.custom_answers as CustomAnswer[])
     : [];
+  const ingestionMethod =
+    lead.sourceData?.ingestion_method === "email_forward" ? "email forward" : null;
+  const sourceLine = lead.source
+    ? `via ${sourceLabel(lead.source)}${
+        ingestionMethod && lead.source !== "email_parsed_generic" ? ` · ${ingestionMethod}` : ""
+      }`
+    : null;
   const received = [
     lead.inquiryDate ? `Received ${formatDate(lead.inquiryDate)}` : null,
-    lead.source ? `via ${sourceLabel(lead.source)}` : null,
+    sourceLine,
   ].filter(Boolean).join(" ");
   if (!received && !showMessage && answers.length === 0) return null;
   return (
