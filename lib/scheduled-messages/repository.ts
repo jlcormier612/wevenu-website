@@ -206,9 +206,17 @@ export async function getMergeContextForRelationship(
     };
   }
 
+  // A relationship can hold more than one lead (a later duplicate inquiry
+  // stays on the same relationship). Bare maybeSingle then fails with
+  // PGRST116 and the send is recorded as "Couldn't find who this message
+  // belongs to." even though the people exist. Same newest-row rule as
+  // getConversationRecipientEmail.
   const { data: lead } = await client.from("leads")
     .select("first_name, last_name, partner_first_name, partner_last_name, event_date")
-    .eq("relationship_id", relationshipId).maybeSingle<PersonRow>();
+    .eq("relationship_id", relationshipId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<PersonRow>();
   if (lead) {
     return {
       venueName: venue?.name ?? "",
@@ -253,6 +261,8 @@ export async function getRecipientContactForRelationship(
   const { data: lead } = await client.from("leads")
     .select("phone, partner_email")
     .eq("relationship_id", relationshipId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle<{ phone: string | null; partner_email: string | null }>();
   if (lead) {
     return {
