@@ -46,6 +46,10 @@ import {
   tourProtectionRequestExists,
 } from "@/lib/tours/protection";
 import { isTourProtectionMetadata } from "@/lib/tours/protection-rules";
+import {
+  capabilitySnapshotFromAccount,
+  persistConnectedAccountCapabilitiesByAccountId,
+} from "@/lib/stripe/account-capabilities";
 
 type PiMetadata = {
   htc_payment_line_item_id?: string;
@@ -332,4 +336,51 @@ export async function handleCheckoutSessionExpired(
     checkoutSessionId: session.id,
     connectedAccountVenueId,
   });
+}
+
+/**
+ * account.updated — Stripe Connect capability / KYC drift.
+ *
+ * Persists the account's current charges_enabled onto the venue that owns
+ * stripe_account_id. Unknown accounts are ignored (no cross-venue write).
+ * Duplicate deliveries are gated by stripe_webhook_events in the route;
+ * this handler is itself a pure upsert of the capability columns.
+ */
+export async function handleAccountUpdated(
+  account: Stripe.Account,
+  connectedAccountVenueId: string | null,
+): Promise<void> {
+  if (!account?.id) return;
+
+  // Prefer the Connect event's account → venue resolution; still require
+  // the Account object id to match that venue's stored stripe_account_id
+  // via the persist helper so a mismatched payload cannot retarget another row.
+  const snapshot = capabilitySnapshotFromAccount(account);
+  const admin = createAdminClient();
+  const result = await persistConnectedAccountCapabilitiesByAccountId(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    admin as any,
+    account.id,
+    snapshot,
+  );
+
+  if (!result.ok) {
+    if (result.reason === "not_found") {
+      // Not an HTC-connected account (or already disconnected) — ignore.
+      return;
+    }
+    console.error("[stripe webhook] account.updated persist failed", result.message);
+    throw new Error(result.message ?? "account.updated persist failed");
+  }
+
+  // If the route resolved a venue from event.account, it must be the same
+  // row we updated — otherwise something is inconsistent and we must not
+  // silently accept a cross-wire (should be unreachable given the lookup).
+  if (connectedAccountVenueId && connectedAccountVenueId !== result.venueId) {
+    console.error("[stripe webhook] account.updated venue mismatch", {
+      connectedAccountVenueId,
+      updatedVenueId: result.venueId,
+    });
+    throw new Error("account.updated venue mismatch");
+  }
 }

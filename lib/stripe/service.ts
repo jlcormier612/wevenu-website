@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import * as venueRepo from "@/lib/venue/repository";
 import { getStripeClient, isStripeConfigured, STRIPE_OAUTH_DEAUTHORIZE_URL, STRIPE_SUPPORTED_PAYMENT_METHODS } from "@/lib/stripe/config";
+import { chargesEnabledFromAccount } from "@/lib/stripe/account-capabilities";
 import type { StripeActionResult } from "@/lib/stripe/types";
 import type { StripePaymentMethodType } from "@/lib/venue/types";
 
@@ -38,7 +39,7 @@ export async function connectStripeAccount(accountId: string): Promise<void> {
   if (isStripeConfigured()) {
     try {
       const account = await getStripeClient().accounts.retrieve(accountId);
-      chargesEnabled = !!account.charges_enabled;
+      chargesEnabled = chargesEnabledFromAccount(account);
     } catch (err) {
       console.error("[stripe] could not retrieve connected account after OAuth", err);
     }

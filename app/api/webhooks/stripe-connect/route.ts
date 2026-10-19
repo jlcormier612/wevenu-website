@@ -20,6 +20,7 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { getStripeClient, isStripeWebhookConfigured } from "@/lib/stripe/config";
 import {
+  handleAccountUpdated,
   handleChargeRefunded,
   handleCheckoutSessionCompleted,
   handleCheckoutSessionExpired,
@@ -87,6 +88,9 @@ export async function POST(request: Request) {
         break;
       case "checkout.session.expired":
         await handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session, venueId);
+        break;
+      case "account.updated":
+        await handleAccountUpdated(event.data.object as Stripe.Account, venueId);
         break;
       default:
         // Not an event type we act on — still a valid, successfully
