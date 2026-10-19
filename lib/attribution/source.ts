@@ -16,14 +16,22 @@ export const UNKNOWN_SOURCE_KEY = "unknown";
 export const UNKNOWN_SOURCE_LABEL = "Not recorded";
 
 /**
- * Known for coverage: non-empty vocabulary key that is not the generic
- * `other` / unknown bucket. Explicit `other` is visible as its own row in
- * some operational UIs but does not count as known attribution coverage.
+ * Known for coverage: a non-empty source that is not other, unknown, or
+ * unattributed email intake. email_parsed_generic stays a valid lead source
+ * and reports as Not recorded until a verified correction is applied.
  */
+export const UNATTRIBUTED_EMAIL_SOURCE = "email_parsed_generic";
+
+const UNATTRIBUTED_ACQUISITION_KEYS = new Set([
+  "other",
+  UNKNOWN_SOURCE_KEY,
+  UNATTRIBUTED_EMAIL_SOURCE,
+]);
+
 export function isKnownAcquisitionSource(raw: string | null | undefined): boolean {
   const t = raw?.trim();
   if (!t) return false;
-  if (t === "other" || t === UNKNOWN_SOURCE_KEY) return false;
+  if (UNATTRIBUTED_ACQUISITION_KEYS.has(t)) return false;
   return true;
 }
 
@@ -33,7 +41,7 @@ export function isKnownAcquisitionSource(raw: string | null | undefined): boolea
  */
 export function reportingSourceGroupKey(raw: string | null | undefined): string {
   const t = raw?.trim();
-  if (!t || t === "other" || t === UNKNOWN_SOURCE_KEY) return UNKNOWN_SOURCE_KEY;
+  if (!t || UNATTRIBUTED_ACQUISITION_KEYS.has(t)) return UNKNOWN_SOURCE_KEY;
   if (t === "tour_scheduling") return "website";
   return t;
 }

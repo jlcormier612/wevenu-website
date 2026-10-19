@@ -21,6 +21,8 @@ describe("attribution source helpers", () => {
     assert.equal(isKnownAcquisitionSource("website"), true);
     assert.equal(isKnownAcquisitionSource("tour_scheduling"), true);
     assert.equal(isKnownAcquisitionSource("other"), false);
+    assert.equal(isKnownAcquisitionSource("email_parsed_generic"), false);
+    assert.equal(isKnownAcquisitionSource("the_knot"), true);
     assert.equal(isKnownAcquisitionSource(null), false);
     assert.equal(isKnownAcquisitionSource(""), false);
   });
@@ -33,6 +35,8 @@ describe("attribution source helpers", () => {
     assert.equal(reportingSourceGroupKey(null), UNKNOWN_SOURCE_KEY);
     assert.equal(reportingSourceDisplayLabel(null), UNKNOWN_SOURCE_LABEL);
     assert.equal(reportingSourceGroupKey("other"), UNKNOWN_SOURCE_KEY);
+    assert.equal(reportingSourceGroupKey("email_parsed_generic"), UNKNOWN_SOURCE_KEY);
+    assert.equal(reportingSourceDisplayLabel("email_parsed_generic"), UNKNOWN_SOURCE_LABEL);
   });
 
   it("groups website + tour_scheduling together and keeps Unknown visible", () => {
@@ -40,19 +44,20 @@ describe("attribution source helpers", () => {
       { source: "website" },
       { source: "tour_scheduling" },
       { source: null },
+      { source: "email_parsed_generic" },
       { source: "instagram" },
     ]);
     const byKey = Object.fromEntries(rows.map((r) => [r.key, r.count]));
     assert.equal(byKey.website, 2);
     assert.equal(byKey.instagram, 1);
-    assert.equal(byKey[UNKNOWN_SOURCE_KEY], 1);
+    assert.equal(byKey[UNKNOWN_SOURCE_KEY], 2);
   });
 
   it("computes source coverage with Unknown in the denominator", () => {
-    const cov = computeSourceCoverage(["website", null, "other", "instagram"]);
-    assert.equal(cov.total, 4);
+    const cov = computeSourceCoverage(["website", null, "other", "instagram", "email_parsed_generic"]);
+    assert.equal(cov.total, 5);
     assert.equal(cov.known, 2);
-    assert.equal(cov.percent, 50);
+    assert.equal(cov.percent, 40);
   });
 
   it("time-to-book is lead created → first lifecycle booking in whole days", () => {

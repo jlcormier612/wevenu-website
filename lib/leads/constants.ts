@@ -111,7 +111,7 @@ export function eventTypeLabel(value: string | null): string {
 /** Intake/registry keys that are not offered on the manual New Lead picker. */
 const INTAKE_SOURCE_LABELS: Record<string, string> = {
   facebook_lead_ads: "Facebook Lead Ads",
-  email_parsed_generic: "Email (auto-detected)",
+  email_parsed_generic: "Email — source unknown",
   tour_scheduling: "Tour Request",
 };
 
