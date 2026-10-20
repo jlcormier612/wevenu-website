@@ -234,7 +234,10 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
       continue;
     }
     try {
-      const result = await createLead(row, "import");
+      // Historical / CSV Import must not enroll lead_created sequences or
+      // fire venue new-inquiry notifications — same contract as Migration
+      // Center (createLead(..., "import", true)) and HQ createLeadForVenue.
+      const result = await createLead(row, "import", true);
       if (result.ok) {
         const accepted = await acceptCreatedImportRow({
           entityType: "leads",
