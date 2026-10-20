@@ -5,13 +5,47 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { asCleanupDeleteResult } from "@/lib/migration/session-cleanup";
 
 const src = readFileSync(join(process.cwd(), "lib/migration/session-cleanup.ts"), "utf8");
 const actions = readFileSync(join(process.cwd(), "app/(app)/settings/migration-actions.ts"), "utf8");
 const ui = readFileSync(join(process.cwd(), "components/settings/migration-center.tsx"), "utf8");
 const rollback = readFileSync(join(process.cwd(), "lib/import/batches.ts"), "utf8");
 
+describe("asCleanupDeleteResult — optional failure messages", () => {
+  it("passes through success", () => {
+    assert.deepEqual(asCleanupDeleteResult({ ok: true }, "fallback"), { ok: true });
+  });
+
+  it("keeps a present failure message", () => {
+    assert.deepEqual(
+      asCleanupDeleteResult({ ok: false, message: "Vendor is still assigned." }, "Could not remove this vendor."),
+      { ok: false, message: "Vendor is still assigned." },
+    );
+  });
+
+  it("uses fallback when vendor failure message is absent", () => {
+    assert.deepEqual(
+      asCleanupDeleteResult({ ok: false }, "Could not remove this vendor."),
+      { ok: false, message: "Could not remove this vendor." },
+    );
+  });
+
+  it("uses fallback when failure message is empty or whitespace", () => {
+    assert.deepEqual(
+      asCleanupDeleteResult({ ok: false, message: "   " }, "Could not remove this vendor."),
+      { ok: false, message: "Could not remove this vendor." },
+    );
+  });
+});
+
 describe("session-cleanup owner-control contract", () => {
+  it("normalizes optional delete messages via asCleanupDeleteResult", () => {
+    assert.match(src, /export function asCleanupDeleteResult/);
+    assert.match(src, /asCleanupDeleteResult\(await deleteVendor_/);
+    assert.match(src, /Could not remove this vendor\./);
+  });
+
   it("attributes only via createdEntityId — never name/email match or rollbackImportBatch()", () => {
     assert.match(src, /createdEntityId/);
     assert.doesNotMatch(src, /email\s*===|first_name.*last_name.*match|approximate|fuzzy/i);

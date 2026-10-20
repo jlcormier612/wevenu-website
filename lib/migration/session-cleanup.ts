@@ -423,6 +423,19 @@ export async function previewImportSessionCleanup(sessionId: string): Promise<
   };
 }
 
+/**
+ * Domain delete helpers often type failure `message` as optional.
+ * Cleanup outcomes require a non-empty string — never suppress failure as success.
+ */
+export function asCleanupDeleteResult(
+  result: { ok: true } | { ok: false; message?: string },
+  fallback: string,
+): { ok: true } | { ok: false; message: string } {
+  if (result.ok) return { ok: true };
+  const message = typeof result.message === "string" ? result.message.trim() : "";
+  return { ok: false, message: message.length > 0 ? message : fallback };
+}
+
 async function deleteOne(
   venueId: string,
   entityType: MigrationEntityType,
@@ -433,30 +446,18 @@ async function deleteOne(
       return deleteClientRecord(entityId);
     case "lead":
       return deleteLeadRecord(entityId);
-    case "vendor": {
-      const result = await deleteVendor_(entityId);
-      return result.ok ? { ok: true } : { ok: false, message: result.message };
-    }
-    case "package": {
-      const result = await deletePackage_(entityId);
-      return result.ok ? { ok: true } : { ok: false, message: result.message };
-    }
-    case "calendar_block": {
-      const result = await deleteBlock_(entityId);
-      return result.ok ? { ok: true } : { ok: false, message: result.message };
-    }
-    case "date_hold": {
-      const result = await deleteHold_(entityId);
-      return result.ok ? { ok: true } : { ok: false, message: result.message };
-    }
-    case "tour": {
-      const result = await deleteTourAppointment(entityId);
-      return result.ok ? { ok: true } : { ok: false, message: result.message };
-    }
-    case "timeline_entry": {
-      const result = await deleteEntry(entityId);
-      return result.ok ? { ok: true } : { ok: false, message: result.message };
-    }
+    case "vendor":
+      return asCleanupDeleteResult(await deleteVendor_(entityId), "Could not remove this vendor.");
+    case "package":
+      return asCleanupDeleteResult(await deletePackage_(entityId), "Could not remove this package.");
+    case "calendar_block":
+      return asCleanupDeleteResult(await deleteBlock_(entityId), "Could not remove this calendar block.");
+    case "date_hold":
+      return asCleanupDeleteResult(await deleteHold_(entityId), "Could not remove this date hold.");
+    case "tour":
+      return asCleanupDeleteResult(await deleteTourAppointment(entityId), "Could not remove this tour.");
+    case "timeline_entry":
+      return asCleanupDeleteResult(await deleteEntry(entityId), "Could not remove this timeline entry.");
     case "event_vendor_assignment": {
       const admin = createAdminClient();
       return vendorsRepo.deleteVendorAssignment(admin as never, venueId, entityId);
