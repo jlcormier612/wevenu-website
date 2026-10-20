@@ -5,9 +5,10 @@
 | Item | Value |
 |------|-------|
 | Prior product SHA (failed deploy) | `929bd817` — TypeScript error; never served |
-| This delivery HEAD | *(set after commit)* |
+| This delivery HEAD | `779c2d01` |
 | Prior serving (unchanged until new deploy) | `e6541f57` / TD `:809` |
-| Deploy run (failed) | https://github.com/jlcormier612/wevenu-website/actions/runs/39494692584 |
+| Deploy run (failed baseline) | https://github.com/jlcormier612/wevenu-website/actions/runs/39494692584 |
+| Deploy run (this HEAD) | https://github.com/jlcormier612/wevenu-website/actions/runs/39496546683 |
 | Production | untouched |
 | Dirty tree | preserved |
 
