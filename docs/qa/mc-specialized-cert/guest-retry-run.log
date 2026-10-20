@@ -1,0 +1,12 @@
+PASS [setup] fixture_venue — 1b3028f8
+PASS [setup] runtime_dpl — dpl=df26942e75993fd0d8255703bc6cb20b81f747b0 expectPrefix=df26942e
+PASS [parent] ui_client — committed=true
+PASS [parent] ui_event — committed=true
+PASS [special] ui_guest_list — committed=true
+PASS [special] ui_guest_orphan_review — OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINA
+PASS [db] guests_linked — n=2 named=2 names=GuestAda,GuestBen
+PASS [db] orphan_guest_absent — names=GuestAda,GuestBen
+PASS [side] no_invitations — invites=0
+PASS [db] prior_document_on_event_reconciled — docs=Spec Contract|floor-main-space|spec-client.csv|spec-event.csv|spec-vendor.csv|spec-guests.csv|spec-guests-orphan.csv|spec-assignments.csv|spec-timeline.csv|spec-timeline-far.csv|spec-document.csv|spec-commitment.csv
+
+10 passed, 0 failed → docs/qa/mc-specialized-cert/guest-retry-results.json
