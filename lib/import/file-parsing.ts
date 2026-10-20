@@ -5,6 +5,9 @@
  * structured rows is Luv's job (see lib/luv/import-assist.ts), not this
  * module's (Vendor Management — Next Iteration, 2026-07-10).
  */
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import ExcelJS from "exceljs";
 
 export type ParsedTable = { headers: string[]; rows: Record<string, string>[] };
@@ -98,9 +101,22 @@ export function ensurePdfJsDomPolyfills(): void {
   };
 }
 
+function resolvePdfParseWorkerSrc(): string | null {
+  const candidates = [
+    path.join(process.cwd(), "public", "pdf-parse.worker.mjs"),
+    path.join(process.cwd(), "public", "pdf.worker.min.mjs"),
+  ];
+  for (const file of candidates) {
+    if (fs.existsSync(file)) return pathToFileURL(file).href;
+  }
+  return null;
+}
+
 export async function extractPdfText(buffer: Buffer): Promise<string> {
   ensurePdfJsDomPolyfills();
   const { PDFParse } = await import("pdf-parse");
+  const workerSrc = resolvePdfParseWorkerSrc();
+  if (workerSrc) PDFParse.setWorker(workerSrc);
   const parser = new PDFParse({ data: buffer });
   try {
     const result = await parser.getText();
