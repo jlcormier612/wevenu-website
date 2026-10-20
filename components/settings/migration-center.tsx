@@ -189,6 +189,7 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "description", label: "Description", required: false },
     { key: "basePrice", label: "Base price", required: false },
     { key: "category", label: "Category", required: false },
+    { key: "includedItems", label: "Included Items (desc|qty|unit; …)", required: false },
     { key: "sourceId", label: "Their own record ID", required: false },
   ],
   event: [
