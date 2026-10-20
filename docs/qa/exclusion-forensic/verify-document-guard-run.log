@@ -1,0 +1,9 @@
+PASS guard_rejects_missing — No file found at storage path "00000000-0000-0000-0000-000000000000/migration-cert/absent.pdf". Upload the file into Hello to Cheers documents storage first, then put that storagePath and storageUrl i
+PASS guard_accepts_existing — ok
+PASS runtime_dpl — dpl=e6541f5716a0e365df872c2b37aa23c9fd629def expectPrefix=e6541f57
+PASS ui_document_prerequisite_callout — OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests Y
+PASS ui_payment_not_committable_select — paymentOptions=0
+PASS ui_key_date_not_committable_select — keyDateOptions=0
+PASS side_no_invitations — invites=0
+
+7 passed, 0 failed

@@ -1,0 +1,43 @@
+{
+  "venueId": "96070c98-2cfb-4bc8-9271-18bdae3096be",
+  "passed": 7,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "guard_rejects_missing",
+      "pass": true,
+      "detail": "No file found at storage path \"00000000-0000-0000-0000-000000000000/migration-cert/absent.pdf\". Upload the file into Hello to Cheers documents storage first, then put that storagePath and storageUrl i"
+    },
+    {
+      "name": "guard_accepts_existing",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=e6541f5716a0e365df872c2b37aa23c9fd629def expectPrefix=e6541f57"
+    },
+    {
+      "name": "ui_document_prerequisite_callout",
+      "pass": true,
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Task Center Requests Y"
+    },
+    {
+      "name": "ui_payment_not_committable_select",
+      "pass": true,
+      "detail": "paymentOptions=0"
+    },
+    {
+      "name": "ui_key_date_not_committable_select",
+      "pass": true,
+      "detail": "keyDateOptions=0"
+    },
+    {
+      "name": "side_no_invitations",
+      "pass": true,
+      "detail": "invites=0"
+    }
+  ],
+  "at": "2026-10-20T20:19:49.242Z"
+}
