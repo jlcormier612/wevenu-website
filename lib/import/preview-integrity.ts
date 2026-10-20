@@ -321,13 +321,11 @@ export function classifyImportPreview(
               rowNumber,
               disposition: "warn_ambiguous_name",
               message:
-                `Same name as row ${prior}, and neither has an email — both will be imported as separate records`,
+                `Same name as row ${prior}, and neither has an email — will attempt import; if a matching client already exists after earlier rows, this row may be skipped`,
               duplicateOfRow: prior,
             });
-            // Still "ready" for import — do not skip
+            // Still counted as ready for the import button — do not auto-skip
             nameSeen.set(nk, rowNumber);
-            // fall through to ready after push? We pushed warn — need ready disposition with warn
-            // Use warn disposition but count as ready for import button
             continue;
           }
           nameSeen.set(nk, rowNumber);
