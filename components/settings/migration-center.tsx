@@ -872,6 +872,16 @@ export function MigrationCenter({
             </div>
           ) : null}
 
+          {entityType === "document" ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              Document CSV rows link files that are <span className="font-medium">already in Hello to Cheers storage</span>.
+              Each row needs <span className="font-medium">fileName</span>, <span className="font-medium">storagePath</span>, and{" "}
+              <span className="font-medium">storageUrl</span> from an uploaded object. Missing paths are rejected — a database
+              row alone is not a migrated file. For contracts with booking financials, prefer{" "}
+              <span className="font-medium">Active commitment</span> Smart Import (upload PDF/DOCX). Floor plans have their own uploader below.
+            </div>
+          ) : null}
+
           <div className="rounded-lg border border-dashed border-border p-4 space-y-2">
             <p className="text-xs font-medium text-heading">CSV files</p>
             <div className="flex flex-wrap items-center gap-2">

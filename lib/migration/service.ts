@@ -100,6 +100,7 @@ import {
   type NormalizedTimelineEntry,
 } from "@/lib/migration/operational-timeline";
 import type { DocumentCategory } from "@/lib/documents/types";
+import { assertMigrationDocumentStorageExists } from "@/lib/migration/document-storage-guard";
 
 type AnyDbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
 
@@ -1331,6 +1332,9 @@ async function commitOneRecord(
       } else {
         entityId = clientId!;
       }
+      // Refuse metadata-only "success" when the referenced object is missing.
+      const storageOk = await assertMigrationDocumentStorageExists(n.storagePath);
+      if (!storageOk.ok) return storageOk;
       const documentId = await documentsRepo.insertDocument(client, session.venueId, {
         entityType: entityScope,
         entityId,

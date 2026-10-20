@@ -25,6 +25,7 @@ import {
   type NormalizedActiveCommitment,
 } from "@/lib/migration/active-commitment-model";
 import { resolveClientIdByEmail } from "@/lib/migration/resolve-refs";
+import { assertMigrationDocumentStorageExists } from "@/lib/migration/document-storage-guard";
 
 export {
   commitmentOrderLines,
@@ -452,11 +453,20 @@ export async function commitActiveCommitment(
 
     const documentIds: string[] = [];
     for (const doc of n.documents ?? []) {
-      if (!doc.storageUrl || !doc.storagePath || !doc.fileName) continue;
+      const hasAny = !!(doc.storageUrl || doc.storagePath || doc.fileName);
+      const hasAll = !!(doc.storageUrl && doc.storagePath && doc.fileName);
+      if (!hasAny) continue;
+      if (!hasAll) {
+        throw new Error(
+          "Active commitment documents need fileName, storagePath, and storageUrl together — or omit all three.",
+        );
+      }
+      const storageOk = await assertMigrationDocumentStorageExists(doc.storagePath!);
+      if (!storageOk.ok) throw new Error(storageOk.error);
       const entityType = doc.entityType ?? "event";
       const entityId = entityType === "client" ? resolved.clientId : resolved.eventId;
       if (entityType === "event") {
-        const existingDoc = await findExistingDocumentByStoragePath(client, venueId, resolved.eventId, doc.storagePath);
+        const existingDoc = await findExistingDocumentByStoragePath(client, venueId, resolved.eventId, doc.storagePath!);
         if (existingDoc) {
           documentIds.push(existingDoc);
           continue;
