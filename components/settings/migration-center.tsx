@@ -629,7 +629,10 @@ export function MigrationCenter({
       const started = await startMigrationSessionAction(importSourceKey);
       if (!started.ok) { toast.error(started.message); return; }
       const sourceFile = pendingFile;
-      const retained = sourceFile ? await uploadSourceFile(started.session.id, sourceFile) : null;
+      // Map + stage rows before source-file retention. Retention is a separate
+      // promise (keep a copy in history); a slow/hung storage upload must not
+      // block duplicate review or commit — white-glove operators were stuck on
+      // "Working…" with zero sessions when documents upload stalled.
       const sourceRows = rows.map((row) => {
         const mapped: Record<string, string | null> = {};
         for (const [key, col] of Object.entries(mapping)) mapped[key] = (row[col] ?? "").trim() || null;
@@ -640,6 +643,7 @@ export function MigrationCenter({
       const deduped = await runMigrationDedupeAction(started.session.id);
       if (!deduped.ok) { toast.error(deduped.message); return; }
       toast.success("Files recognized and checked for duplicates — review below.");
+      const retained = sourceFile ? await uploadSourceFile(started.session.id, sourceFile) : null;
       // Said only now, when the import outcome is actually known, and only
       // about the half that failed. The reason goes to the console for support
       // rather than into a sentence a coordinator has to decode.

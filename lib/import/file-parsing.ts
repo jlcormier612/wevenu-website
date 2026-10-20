@@ -71,12 +71,17 @@ export async function extractDocxText(buffer: Buffer): Promise<string> {
   return result.value;
 }
 
+/** Strip pdf-parse page footers so image-only PDFs aren't treated as readable text. */
+export function normalizeExtractedPdfText(text: string): string {
+  return text.replace(/--\s*\d+\s+of\s+\d+\s*--/gi, "").trim();
+}
+
 export async function extractPdfText(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer });
   try {
     const result = await parser.getText();
-    return result.text;
+    return normalizeExtractedPdfText(result.text ?? "");
   } finally {
     await parser.destroy();
   }
