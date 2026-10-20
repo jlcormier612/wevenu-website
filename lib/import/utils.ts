@@ -75,7 +75,7 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     phone:            val(row, mapping, "phone"),
     partnerFirstName: val(row, mapping, "partnerFirstName"),
     partnerLastName:  val(row, mapping, "partnerLastName"),
-    partnerEmail:     "",
+    partnerEmail:     val(row, mapping, "partnerEmail"),
     eventType:        val(row, mapping, "eventType"),
     eventDate:        mappedDate(row, mapping, "eventDate"),
     endDate:          mappedDate(row, mapping, "endDate"),
@@ -86,9 +86,7 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     teardownTime:     val(row, mapping, "teardownTime"),
     rehearsalDate:    "",
     internalNotes:    val(row, mapping, "internalNotes"),
-    // Space UUID mapping is resolved at commit when Import Wizard gains
-    // space-name resolution; spaceName is preserved via notes for now only
-    // if callers pass spaceId through a dedicated mapping key.
+    // Space name/UUID is resolved at commit via withResolvedSpace.
     spaceId:          val(row, mapping, "spaceId") || val(row, mapping, "spaceName"),
   };
 }
@@ -111,7 +109,7 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     eventType:        val(row, mapping, "eventType"),
     eventDate:        mappedDate(row, mapping, "eventDate"),
     endDate:          "",
-    guestCount:       "",
+    guestCount:       val(row, mapping, "guestCount"),
     estimatedBudget:  budget.ok ? budget.value : val(row, mapping, "estimatedBudget"),
     source:           sourceKey,
     originalSourceLabel: originalLabel,
@@ -195,6 +193,7 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
     firstName: "Emma", lastName: "Johnson",
     partnerFirstName: "James", partnerLastName: "Smith",
     email: "emma.johnson@example.com", phone: "555-0142",
+    partnerEmail: "james.smith@example.com",
     eventDate: "2027-06-12", endDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
     ceremonyTime: "16:00", receptionTime: "22:00", setupTime: "14:00", teardownTime: "23:00",
     spaceName: "Ballroom",
@@ -203,7 +202,7 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
   leads: {
     firstName: "Emma", lastName: "Johnson",
     email: "emma.johnson@example.com", phone: "555-0142",
-    eventDate: "2027-06-12", eventType: "Wedding",
+    eventDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
     estimatedBudget: "15000", source: "Website",
     inquiryMessage: "Interested in a June 2027 date",
   },

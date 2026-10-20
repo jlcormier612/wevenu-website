@@ -207,10 +207,16 @@ function validateMappedAmounts(
   mapping: FieldMapping,
 ): string | null {
   if (entity === "leads") {
-    const raw = val(row, mapping, "estimatedBudget");
-    if (!raw) return null;
-    const parsed = normalizeImportAmount(raw);
-    return parsed.ok ? null : parsed.message;
+    const budgetRaw = val(row, mapping, "estimatedBudget");
+    if (budgetRaw) {
+      const parsed = normalizeImportAmount(budgetRaw);
+      if (!parsed.ok) return parsed.message;
+    }
+    const guestRaw = val(row, mapping, "guestCount");
+    if (guestRaw && !/^\d+$/.test(guestRaw)) {
+      return `Guest count must be a whole number (got "${guestRaw}").`;
+    }
+    return null;
   }
   if (entity === "packages") {
     const raw = val(row, mapping, "basePrice");

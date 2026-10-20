@@ -259,6 +259,10 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
       errors.push({ row: i + 1, message: budgetNorm.message, kind: "error" });
       continue;
     }
+    if (row.guestCount?.trim() && !/^\d+$/.test(row.guestCount.trim())) {
+      errors.push({ row: i + 1, message: `Guest count must be a whole number (got "${row.guestCount.trim()}").`, kind: "error" });
+      continue;
+    }
     const normalizedLead: LeadInput = {
       ...row,
       eventDate: eventDateNorm.value ?? "",
