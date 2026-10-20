@@ -36,7 +36,7 @@ export default async function MigrationCenterPage({
     <div className="space-y-6">
       <PageHeader
         title="Migration Center"
-        description="Bring your business with you from wherever it lives today. If we don't list your system, you can still import a CSV or spreadsheet."
+        description="Cut over clients, calendar (Events, tours, holds, blocks), packages, documents, and active commitments (Event Order, invoice, payment schedule, signed agreement) with review before anything is created. Upload CSV here; for Excel, Word, or PDF contact lists use Import Data."
       />
       <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
       <SettingsTabs />

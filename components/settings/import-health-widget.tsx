@@ -9,7 +9,17 @@ import { getPackages } from "@/lib/packages/service";
 import { getVendors } from "@/lib/vendors/service";
 import type { EntityType } from "@/lib/import/types";
 
-const COMING_SOON = ["Events", "Contracts", "Invoices"];
+/** Not importable on this page — send venues to the real workflow. */
+const USE_MIGRATION_CENTER: Array<{ label: string; detail: string }> = [
+  {
+    label: "Events, tours, date holds, and calendar blocks",
+    detail: "Import these as CSV in Migration Center (after Calendar & Availability is set up for dated Events).",
+  },
+  {
+    label: "Invoices, payment schedules, and signed agreements",
+    detail: "Use Migration Center → Active commitment (and Documents for contract files on a Client or Event).",
+  },
+];
 
 const ENTITY_HISTORY_LABEL: Record<EntityType, string> = {
   couples: "Clients",
@@ -72,14 +82,28 @@ export async function ImportHealthWidget() {
             ))}
           </div>
 
-          <div className="pt-2 border-t border-border space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Coming soon</p>
-            {COMING_SOON.map((label) => (
-              <div key={label} className="flex items-center gap-2">
-                <Minus className="h-3 w-3 text-muted-foreground/40" />
-                <span className="text-xs text-muted-foreground/60">{label}</span>
+          <div className="pt-2 border-t border-border space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Not on Import Data — use{" "}
+              <Link href="/settings/migration" className="text-primary hover:underline">
+                Migration Center
+              </Link>
+            </p>
+            {USE_MIGRATION_CENTER.map((item) => (
+              <div key={item.label} className="space-y-0.5 pl-0.5">
+                <div className="flex items-start gap-2">
+                  <Minus className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/50" />
+                  <div>
+                    <p className="text-xs text-foreground">{item.label}</p>
+                    <p className="text-[11px] text-muted-foreground">{item.detail}</p>
+                  </div>
+                </div>
               </div>
             ))}
+            <p className="text-[11px] text-muted-foreground">
+              Standalone payment CSV and retired key-date imports are not available. Package and inventory
+              templates stay on this Import Data page.
+            </p>
           </div>
         </div>
       ) : null}

@@ -30,4 +30,35 @@ describe("Import page live totals vs import history", () => {
   it("is still mounted on the Import Data page", () => {
     assert.match(importPage, /ImportHealthWidget/);
   });
+
+  it("directs Events and financial records to Migration Center instead of Coming soon", () => {
+    assert.doesNotMatch(widget, /Coming soon/);
+    assert.match(widget, /Not on Import Data/);
+    assert.match(widget, /\/settings\/migration/);
+    assert.match(widget, /Active commitment/);
+    assert.match(widget, /Standalone payment CSV/);
+  });
+});
+
+describe("Import Data and Migration Center path copy", () => {
+  const wizard = readFileSync(resolve("components/settings/import-wizard.tsx"), "utf8");
+  const migrationPage = readFileSync(resolve("app/(app)/settings/migration/page.tsx"), "utf8");
+
+  it("Import Data page lists supported entities and points calendar/financial work to MC", () => {
+    assert.match(importPage, /Clients, Leads, Vendors, Inventory templates, or Package/);
+    assert.match(importPage, /Migration Center/);
+    assert.match(importPage, /Those records are not imported on this page/);
+  });
+
+  it("entity picker footer sends Events and invoices to Migration Center", () => {
+    assert.match(wizard, /Need Events, tours, holds/);
+    assert.match(wizard, /\/settings\/migration/);
+    assert.doesNotMatch(wizard, /Coming soon/);
+  });
+
+  it("Migration Center page describes cutover scope and CSV vs Import Data file types", () => {
+    assert.match(migrationPage, /active commitments/);
+    assert.match(migrationPage, /Import Data/);
+    assert.match(migrationPage, /CSV here/);
+  });
 });

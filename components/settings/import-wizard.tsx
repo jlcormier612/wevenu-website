@@ -78,7 +78,9 @@ function StepEntitySelect({
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">What are you importing?</h2>
-        <p className="text-sm text-muted-foreground mt-1">Choose the type of data in your CSV file.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Choose one list type. CSV, Excel, Word, PDF, and pasted text are supported on the next step.
+        </p>
       </div>
       {datedEventsMessage ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">
@@ -98,6 +100,14 @@ function StepEntitySelect({
           </button>
         ))}
       </div>
+      <p className="text-xs text-muted-foreground">
+        Need Events, tours, holds, calendar blocks, invoices, or signed agreements? Open{" "}
+        <Link href="/settings/migration" className="font-medium text-primary hover:underline">
+          Migration Center
+        </Link>
+        {" "}instead — Import Data does not create those records (except historical Events from a past
+        Client event date).
+      </p>
     </div>
   );
 }
