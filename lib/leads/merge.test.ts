@@ -1,0 +1,159 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, it } from "node:test";
+
+import { mergeTestHelpers, type MergeFieldKey } from "@/lib/leads/merge";
+
+const { buildFieldDiffs, pickDefaultPrimary, norm } = mergeTestHelpers;
+
+function snap(partial: Record<string, unknown>) {
+  return {
+    id: "a",
+    venue_id: "v",
+    first_name: "Ann",
+    last_name: "Early",
+    email: null,
+    phone: null,
+    partner_first_name: null,
+    partner_last_name: null,
+    partner_email: null,
+    event_type: null,
+    event_date: null,
+    end_date: null,
+    guest_count: null,
+    estimated_budget: null,
+    inquiry_message: null,
+    next_action_text: null,
+    next_action_due: null,
+    follow_up_date: null,
+    planned_event_space_id: null,
+    assigned_staff_id: null,
+    source: null,
+    preferred_communication_channels: null,
+    sales_stage: "new_inquiry",
+    created_at: "2026-01-01T10:00:00.000Z",
+    updated_at: "2026-01-01T10:00:00.000Z",
+    merged_into_lead_id: null,
+    ...partial,
+  } as Parameters<typeof buildFieldDiffs>[0];
+}
+
+describe("lead merge field reconciliation", () => {
+  it("fills empty primary from populated secondary", () => {
+    const diffs = buildFieldDiffs(
+      snap({ email: null, phone: null }),
+      snap({ id: "b", email: "b@example.com", phone: "555-0100" }),
+    );
+    const email = diffs.find((d) => d.key === "email");
+    const phone = diffs.find((d) => d.key === "phone");
+    assert.equal(email?.kind, "fill");
+    assert.equal(phone?.kind, "fill");
+    if (email?.kind === "fill") assert.equal(email.secondaryValue, "b@example.com");
+  });
+
+  it("treats identical values as one value", () => {
+    const diffs = buildFieldDiffs(
+      snap({ email: "same@example.com" }),
+      snap({ id: "b", email: "same@example.com" }),
+    );
+    const email = diffs.find((d) => d.key === "email");
+    assert.equal(email?.kind, "same");
+  });
+
+  it("flags conflicting populated values without choosing", () => {
+    const diffs = buildFieldDiffs(
+      snap({ email: "a@example.com", guest_count: 50 }),
+      snap({ id: "b", email: "b@example.com", guest_count: 100 }),
+    );
+    const email = diffs.find((d) => d.key === "email");
+    const guests = diffs.find((d) => d.key === "guest_count");
+    assert.equal(email?.kind, "conflict");
+    assert.equal(guests?.kind, "conflict");
+  });
+
+  it("defaults primary to earliest created_at", () => {
+    const early = snap({ id: "early", created_at: "2026-01-01T09:00:00.000Z" });
+    const late = snap({ id: "late", created_at: "2026-01-01T11:00:00.000Z" });
+    const picked = pickDefaultPrimary(late, early);
+    assert.equal(picked.primary.id, "early");
+    assert.equal(picked.secondary.id, "late");
+    assert.equal(picked.tied, false);
+  });
+
+  it("marks identical created_at as needing explicit choice", () => {
+    const a = snap({ id: "a", created_at: "2026-01-01T10:00:00.000Z" });
+    const b = snap({ id: "b", created_at: "2026-01-01T10:00:00.000Z" });
+    const picked = pickDefaultPrimary(a, b);
+    assert.equal(picked.tied, true);
+  });
+
+  it("norm collapses channel arrays for comparison", () => {
+    assert.equal(norm(["sms", "email"]), norm(["email", "sms"]));
+    assert.equal(norm("  "), null);
+  });
+});
+
+describe("lead merge safety contracts (source)", () => {
+  const mergeTs = readFileSync(resolve("lib/leads/merge.ts"), "utf8");
+  const migration = readFileSync(resolve("supabase/migrations/20261420100000_lead_merge.sql"), "utf8");
+  const dialog = readFileSync(resolve("components/leads/merge-lead-dialog.tsx"), "utf8");
+  const page = readFileSync(resolve("app/(app)/leads/[id]/page.tsx"), "utf8");
+  const repo = readFileSync(resolve("lib/leads/repository.ts"), "utf8");
+
+  it("confirm uses atomic RPC and revalidates stale timestamps", () => {
+    assert.match(mergeTs, /merge_leads_v1/);
+    assert.match(mergeTs, /stale/);
+    assert.match(mergeTs, /fieldChoices/);
+    assert.match(mergeTs, /tourCancelIds/);
+  });
+
+  it("RPC soft-marks secondary and reparents tours without drop", () => {
+    assert.match(migration, /merged_into_lead_id/);
+    assert.match(migration, /update public\.tour_appointments[\s\S]*lead_id = p_primary_id/);
+    assert.match(migration, /status = 'cancelled'/);
+    assert.doesNotMatch(migration, /delete from public\.leads/);
+  });
+
+  it("RPC does not send messages or enroll sequences", () => {
+    assert.doesNotMatch(migration, /sequence_enrollment|send_email|enqueue.*message/i);
+    assert.doesNotMatch(mergeTs, /enrollSequence|sendTour|sendEmail/);
+  });
+
+  it("blocks tour_protection and unauthorized callers", () => {
+    assert.match(migration, /tour_protection_requests/);
+    assert.match(migration, /unauthorized/);
+    assert.match(migration, /venue_staff/);
+  });
+
+  it("UI requires confirmation and surfaces conflicts/tours", () => {
+    assert.match(dialog, /Confirm merge/);
+    assert.match(dialog, /conflict/);
+    assert.match(dialog, /Tour appointments/);
+    assert.match(dialog, /Cancel this tour/);
+  });
+
+  it("secondary lead detail redirects to primary", () => {
+    assert.match(page, /mergedIntoLeadId/);
+    assert.match(page, /redirect\(`\/leads\/\$\{lead\.mergedIntoLeadId\}/);
+  });
+
+  it("list queries exclude merged secondaries", () => {
+    assert.match(repo, /merged_into_lead_id.*null/);
+  });
+
+  it("idempotent already-merged path exists", () => {
+    assert.match(migration, /alreadyMerged/);
+  });
+});
+
+describe("regression: duplicate detection still warn-only", () => {
+  it("duplicate-review still does not call merge on create", () => {
+    const review = readFileSync(resolve("lib/leads/duplicate-review.ts"), "utf8");
+    assert.doesNotMatch(review, /confirmMergeLeads|merge_leads_v1/);
+    assert.match(review, /kept_separate/);
+  });
+});
+
+// Silence unused type import when helpers change
+void (null as unknown as MergeFieldKey);

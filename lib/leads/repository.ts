@@ -406,6 +406,8 @@ type LeadRow = {
   first_booked_at?: string | null;
   venue_seen_at?: string | null;
   assigned_staff_id?: string | null;
+  merged_into_lead_id?: string | null;
+  merged_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -478,6 +480,8 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     firstBookedAt: r.first_booked_at ?? null,
     venueSeenAt: r.venue_seen_at ?? null,
     assignedStaffId: r.assigned_staff_id ?? null,
+    mergedIntoLeadId: r.merged_into_lead_id ?? null,
+    mergedAt: r.merged_at ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -513,7 +517,7 @@ export async function getLeads(
   venueId: string,
   filters?: { q?: string; status?: string; includeArchived?: boolean },
 ): Promise<Lead[]> {
-  let q = client.from("leads").select("*").eq("venue_id", venueId);
+  let q = client.from("leads").select("*").eq("venue_id", venueId).is("merged_into_lead_id", null);
   if (filters?.status) q = q.eq("sales_stage", filters.status);
   if (filters?.q) {
     const term = `%${filters.q}%`;

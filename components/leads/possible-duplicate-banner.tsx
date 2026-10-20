@@ -122,26 +122,25 @@ export function PossibleDuplicateBanner({
           </DialogHeader>
           <div className="space-y-3 text-sm text-foreground">
             <p>
-              If it is the same customer, consolidate the useful information into the existing
-              lead, then delete this duplicate lead. Hello to Cheers does not automatically merge
-              these records — you stay in control of what is kept.
+              If it is the same customer, use Merge lead on either lead detail page to consolidate
+              contact information, notes, communications, and tour appointments into the earliest
+              lead. Merge does not delete the duplicate — it soft-marks it and redirects to the
+              surviving lead. You stay in control of conflicting fields and tour times.
             </p>
             <div>
               <p className="font-medium text-heading">What to do</p>
               <ol className="mt-1 list-decimal space-y-1 pl-5 text-muted-foreground">
-                <li>Open the existing lead.</li>
-                <li>Add any new contact information you want to keep (email, phone, partner details).</li>
-                <li>Copy any useful inquiry details or message into a note on the existing lead.</li>
-                <li>Delete this duplicate lead.</li>
-                <li>Continue working from the original lead.</li>
+                <li>Open the existing (usually earlier) lead, or stay on this one.</li>
+                <li>Choose Merge lead and paste the other lead’s ID.</li>
+                <li>Review fields, notes, and tours — resolve any conflicts explicitly.</li>
+                <li>Confirm merge. Continue working from the surviving primary lead.</li>
               </ol>
             </div>
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-muted-foreground">
               <p className="font-medium text-heading">Reporting</p>
               <p className="mt-1">
-                Deleting an erroneous duplicate lead removes that duplicate from your lead and
-                conversion totals. It does not change the original lead&apos;s history or Booking
-                status, and it does not create a second Booking.
+                After a merge, the secondary lead is soft-marked and hidden from active lists. It
+                does not create a second Booking, and it does not resend past communications.
               </p>
             </div>
             <p className="text-muted-foreground">

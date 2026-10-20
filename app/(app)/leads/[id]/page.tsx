@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { LeadDetail } from "@/components/leads/lead-detail";
 import { withTimeout } from "@/lib/async/with-timeout";
@@ -85,6 +85,9 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getLeadSpacePreferences(id),
       ]);
       if (!lead) return null;
+      if (lead.mergedIntoLeadId) {
+        redirect(`/leads/${lead.mergedIntoLeadId}?mergedFrom=${id}`);
+      }
       const spaceAssignments = lead.linkedEventId
         ? (await getEventSpaceAssignments(lead.linkedEventId)).map((a) => ({
             useKey: a.useKey,

@@ -452,3 +452,39 @@ export async function keepDuplicateSeparateAction(leadId: string) {
   }
   return result;
 }
+
+export async function previewMergeLeadsAction(
+  leadAId: string,
+  leadBId: string,
+  primaryId?: string,
+) {
+  const { previewMergeLeads } = await import("@/lib/leads/merge");
+  return previewMergeLeads(leadAId, leadBId, primaryId ? { primaryId } : undefined);
+}
+
+export async function confirmMergeLeadsAction(input: {
+  primaryId: string;
+  secondaryId: string;
+  primaryUpdatedAt: string;
+  secondaryUpdatedAt: string;
+  fieldChoices: Record<string, string | string[] | null>;
+  tourCancelIds: string[];
+}) {
+  const { confirmMergeLeads } = await import("@/lib/leads/merge");
+  const result = await confirmMergeLeads({
+    primaryId: input.primaryId,
+    secondaryId: input.secondaryId,
+    primaryUpdatedAt: input.primaryUpdatedAt,
+    secondaryUpdatedAt: input.secondaryUpdatedAt,
+    fieldChoices: input.fieldChoices,
+    tourCancelIds: input.tourCancelIds,
+  });
+  if (result.ok) {
+    revalidatePath(`/leads/${result.primaryId}`);
+    revalidatePath(`/leads/${result.secondaryId}`);
+    revalidatePath("/leads");
+    revalidatePath("/tours");
+    revalidatePath("/dashboard");
+  }
+  return result;
+}

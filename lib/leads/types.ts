@@ -111,6 +111,9 @@ export type Lead = {
   venueSeenAt: string | null;
   /** Optional sales owner. Independent of the booked event assignee. */
   assignedStaffId?: string | null;
+  /** When set, this lead was soft-merged into another; prefer redirecting there. */
+  mergedIntoLeadId?: string | null;
+  mergedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

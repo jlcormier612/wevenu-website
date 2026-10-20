@@ -17,7 +17,7 @@ import { leadDisplayName, statusLabel } from "@/lib/leads/constants";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
-export type DuplicateReviewStatus = "needs_review" | "kept_separate";
+export type DuplicateReviewStatus = "needs_review" | "kept_separate" | "merged";
 
 export type DuplicateReview = {
   id: string;

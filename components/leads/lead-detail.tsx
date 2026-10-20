@@ -46,6 +46,7 @@ import { LeadLifecycleConfirmDialog } from "@/components/leads/lifecycle-confirm
 import { LostReasonDialog } from "@/components/leads/lost-reason-dialog";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { PossibleDuplicateBanner } from "@/components/leads/possible-duplicate-banner";
+import { MergeLeadButton } from "@/components/leads/merge-lead-dialog";
 import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { PipelineBookedConfirmDialog } from "@/components/leads/pipeline-booked-confirm-dialog";
 import { StaffAssignmentField } from "@/components/team/staff-assignment-field";
@@ -785,6 +786,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 Archive
               </Button>
             )}
+            <MergeLeadButton leadId={lead.id} />
             <DeleteRecordButton
               kind="lead"
               recordId={lead.id}
