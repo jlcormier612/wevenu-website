@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const section = readFileSync(resolve("components/settings/email-intake-section.tsx"), "utf8");
+const onboarding = readFileSync(resolve("lib/onboarding/types.ts"), "utf8");
 
 describe("email intake venue instructions", () => {
   it("says generic intake works and marketplace names are not connections", () => {
@@ -15,15 +16,21 @@ describe("email intake venue instructions", () => {
     assert.match(section, /A marketplace name in this list is not a connection/);
   });
 
-  it("does not tell venues to add this address as a Knot, WeddingWire, or Zola recipient", () => {
+  it("does not present Zola as a supported intake or setup option", () => {
+    assert.doesNotMatch(section, /\bZola\b/);
+    assert.doesNotMatch(onboarding, /Zola/);
+  });
+
+  it("does not tell venues to add this address as a Knot or WeddingWire recipient", () => {
     assert.doesNotMatch(section, /additional recipient/);
     assert.doesNotMatch(section, /notification recipient/);
     assert.doesNotMatch(section, /alongside your venue email/);
   });
 
-  it("keeps WeddingWire manual forward distinct from an automatic rule", () => {
+  it("keeps WeddingWire and The Knot manual forward distinct from an automatic rule", () => {
     assert.match(section, /one lead at a time/);
     assert.match(section, /not an automatic rule/);
+    assert.match(section, /The Knot leads are read in WeddingPro/);
   });
 
   it("does not claim the HCTG listing address is venue-editable", () => {

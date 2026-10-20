@@ -30,15 +30,8 @@ const PROVIDERS: { name: string; steps: string[] }[] = [
   {
     name: "The Knot",
     steps: [
-      "The Knot sends vendor email from partner.theknot.com and member.theknot.com. Leads are read in WeddingPro. No setting was found that adds a second address for new leads.",
+      "The Knot leads are read in WeddingPro. The app can forward one lead at a time to another email address. That is manual. It is not an automatic rule, and no setting was found that adds a second address for new leads.",
       "If inquiry emails already arrive in your inbox, forward only those messages to the address above. Do not add this address inside The Knot unless The Knot shows you that control.",
-    ],
-  },
-  {
-    name: "Zola",
-    steps: [
-      "Zola documents inquiries inside the vendor dashboard. A separate inquiry email you can forward has not been confirmed.",
-      "Do not create a Zola forwarding rule until a real Zola inquiry email is in a mailbox you control.",
     ],
   },
   {
@@ -110,9 +103,9 @@ export function EmailIntakeSection({
       </div>
       <p className="text-xs text-muted-foreground">
         After you connect, copy the address and send inquiry emails to it. Hello to Cheers creates
-        a Lead from the message. The Knot, WeddingWire, Zola, and Here Comes the Guide are not
-        connected integrations. A lead is labeled with one of those names only after that
-        provider&apos;s message has been verified. Until then it is stored as email intake.
+        a Lead from the message. The Knot, WeddingWire, and Here Comes the Guide are not connected
+        integrations. A lead is labeled with one of those names only after that provider&apos;s
+        message has been verified. Until then it is stored as email intake.
       </p>
 
       {!isConnected ? (

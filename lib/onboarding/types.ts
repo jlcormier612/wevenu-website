@@ -39,7 +39,7 @@ export const INQUIRY_SOURCE_OPTIONS: {
   { key: "facebook_instagram", label: "Facebook / Instagram" },
   {
     key: "marketplace",
-    label: "The Knot / WeddingWire / Here Comes the Guide / Zola",
+    label: "The Knot / WeddingWire / Here Comes the Guide",
   },
   { key: "other", label: "Other" },
 ];
