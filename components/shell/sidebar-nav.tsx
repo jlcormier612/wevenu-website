@@ -10,6 +10,7 @@ import {
   emptyNavAttentionCounts,
   formatAttentionBadge,
   NAV_ATTENTION_BADGE_CLASS,
+  NAV_ATTENTION_REFRESH_EVENT,
   navAttentionHref,
   navBadgeAriaLabel,
   UNSEEN_LEADS_ATTENTION_HREF,
@@ -17,6 +18,17 @@ import {
 } from "@/lib/navigation/attention";
 import { filterNavSectionsForRole } from "@/lib/navigation/financial-nav";
 import { cn } from "@/lib/utils";
+
+function applyAttentionPayload(d: Partial<NavAttentionCounts>): NavAttentionCounts {
+  return {
+    leads: Number(d.leads) || 0,
+    tours: Number(d.tours) || 0,
+    inbox: Number(d.inbox) || 0,
+    tasks: Number(d.tasks) || 0,
+    payments: Number(d.payments) || 0,
+    contracts: Number(d.contracts) || 0,
+  };
+}
 
 export function SidebarNav({
   onNavigate,
@@ -29,19 +41,21 @@ export function SidebarNav({
   const [counts, setCounts] = React.useState<NavAttentionCounts>(emptyNavAttentionCounts);
 
   React.useEffect(() => {
-    fetch("/api/navigation/attention")
-      .then((r) => r.json())
-      .then((d: Partial<NavAttentionCounts>) => {
-        setCounts({
-          leads: Number(d.leads) || 0,
-          tours: Number(d.tours) || 0,
-          inbox: Number(d.inbox) || 0,
-          tasks: Number(d.tasks) || 0,
-          payments: Number(d.payments) || 0,
-          contracts: Number(d.contracts) || 0,
-        });
-      })
-      .catch(() => {});
+    let cancelled = false;
+    function loadAttention() {
+      fetch("/api/navigation/attention")
+        .then((r) => r.json())
+        .then((d: Partial<NavAttentionCounts>) => {
+          if (!cancelled) setCounts(applyAttentionPayload(d));
+        })
+        .catch(() => {});
+    }
+    loadAttention();
+    window.addEventListener(NAV_ATTENTION_REFRESH_EVENT, loadAttention);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NAV_ATTENTION_REFRESH_EVENT, loadAttention);
+    };
   }, [pathname]);
 
   const sections = filterNavSectionsForRole(NAV_SECTIONS, staffRole);

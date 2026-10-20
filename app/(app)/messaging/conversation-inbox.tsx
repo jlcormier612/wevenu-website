@@ -44,9 +44,11 @@ import {
   selectionAfterInboxListReplace,
 } from "@/lib/conversations/inbox-selection";
 import type { ConversationMessagePreview, ConversationSummary } from "@/lib/conversations/types";
+import { totalUnreadAfterConversationCleared } from "@/lib/conversations/inbox-unread-totals";
 import {
   INBOX_CATEGORY_OPTIONS,
   inboxRelationshipParam,
+  requestNavAttentionRefresh,
   type InboxCategory,
 } from "@/lib/navigation/attention";
 import type { StaffMember } from "@/lib/team/types";
@@ -393,12 +395,18 @@ export function ConversationInbox({
     : items.filter((c) => needsResponseForRow(c, needsResponseOverrides)).length;
 
   function markConversationOpened(conversationId: string, needsResponse: boolean) {
+    const priorUnread = items.find((c) => c.id === conversationId)?.venueUnread ?? 0;
     setItems((prev) => prev.map((c) => (
       c.id === conversationId
         ? { ...c, venueUnread: 0, needsResponse }
         : c
     )));
     setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: needsResponse }));
+    // Only after successful get_conversation (caller). Subtract once; repeat open with 0 is a no-op.
+    if (priorUnread > 0) {
+      setTotalUnread((n) => totalUnreadAfterConversationCleared(n, priorUnread));
+      requestNavAttentionRefresh();
+    }
   }
 
   function markConversationSent(
@@ -406,6 +414,11 @@ export function ConversationInbox({
     latestMessage: ConversationMessagePreview,
     needsResponse: boolean,
   ) {
+    const priorUnread = items.find((c) => c.id === conversationId)?.venueUnread ?? 0;
+    const wasNeeded = needsResponseForRow(
+      items.find((c) => c.id === conversationId) ?? { id: conversationId, needsResponse: true } as ConversationSummary,
+      needsResponseOverrides,
+    );
     setItems((prev) => prev.map((c) => (
       c.id === conversationId
         ? {
@@ -419,7 +432,12 @@ export function ConversationInbox({
         : c
     )));
     setNeedsResponseOverrides((prev) => ({ ...prev, [conversationId]: needsResponse }));
-    if (!needsResponse) {
+    // Same unread-total defect as open when send syncs venueUnread→0 with a non-zero prior.
+    if (priorUnread > 0) {
+      setTotalUnread((n) => totalUnreadAfterConversationCleared(n, priorUnread));
+      requestNavAttentionRefresh();
+    }
+    if (wasNeeded && !needsResponse) {
       setTotalNeedsResponse((n) => Math.max(0, n - 1));
     }
   }

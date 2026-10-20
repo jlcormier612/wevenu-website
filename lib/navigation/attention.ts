@@ -42,6 +42,18 @@ export function emptyNavAttentionCounts(): NavAttentionCounts {
   return { leads: 0, tours: 0, inbox: 0, tasks: 0, payments: 0, contracts: 0 };
 }
 
+/**
+ * Sidebar listens for this so Inbox (and other) badges can refresh without a
+ * route change — e.g. after opening a conversation clears venue unread.
+ */
+export const NAV_ATTENTION_REFRESH_EVENT = "htc:nav-attention-refresh";
+
+/** Ask SidebarNav to re-fetch /api/navigation/attention (browser only). */
+export function requestNavAttentionRefresh(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(NAV_ATTENTION_REFRESH_EVENT));
+}
+
 export function badgeCountForNavItem(
   itemId: string,
   counts: NavAttentionCounts,

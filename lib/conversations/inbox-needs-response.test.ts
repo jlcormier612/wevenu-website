@@ -154,4 +154,10 @@ describe("persisted model wiring", () => {
     assert.match(inbox, /venueUnread > 0/);
     assert.match(inbox, /unread message/);
   });
+
+  it("opening clears unread totals via helper without clearing needs_response in get_conversation", () => {
+    const inbox = readFileSync(join(process.cwd(), "app/(app)/messaging/conversation-inbox.tsx"), "utf8");
+    assert.match(inbox, /totalUnreadAfterConversationCleared/);
+    assert.match(inbox, /requestNavAttentionRefresh/);
+  });
 });
