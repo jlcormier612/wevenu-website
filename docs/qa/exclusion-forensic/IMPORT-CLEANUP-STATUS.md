@@ -1,69 +1,65 @@
-# Import cleanup — owner control, safe overrides & actionable exceptions
+# Import cleanup — owner control delivery (GREEN)
 
-**Decision:** Option B hardened — venue owner is the authority; warnings inform; hard blocks only for real integrity/auth constraints.
+**Verdict: GREEN**
 
 | Item | Value |
 |------|-------|
-| Prior product SHA (failed deploy) | `929bd817` — TypeScript error; never served |
-| This delivery HEAD | `779c2d01` |
-| Prior serving (unchanged until new deploy) | `e6541f57` / TD `:809` |
-| Deploy run (failed baseline) | https://github.com/jlcormier612/wevenu-website/actions/runs/39494692584 |
-| Deploy run (this HEAD) | https://github.com/jlcormier612/wevenu-website/actions/runs/39496546683 |
+| Product SHA (serving) | `803046b4b7b833aa4fb2257fc200a25f0f4721a2` |
+| Short SHA | `803046b4` |
+| Deploy run | https://github.com/jlcormier612/wevenu-website/actions/runs/39504283272 — **success** |
+| Task definition | `htc-sandbox-venue-app:810` |
+| Serving dpl | `803046b4…` (matches product SHA) |
+| Disposable venue | `cd991d53-4a7e-47f4-bd56-c98b94558bb2` |
+| Session | `f1c15afd-3a35-4505-9d26-9792f373ab5e` |
+| Prior failed builds | `39494692584` (`929bd817` TS vendor!==), `39496546683` (`779c2d01` optional message) |
 | Production | untouched |
 | Dirty tree | preserved |
 
 ---
 
-## 1. Baseline of failed deploy
+## Fix that unblocked deploy (`803046b4`)
 
-Run `39494692584` **failed** at venue-app TypeScript:
+`VendorActionResult` / package / availability / timeline failures type `message?: string`.  
+Cleanup requires `message: string`. Added `asCleanupDeleteResult()` with non-empty fallback — never treats failure as success.
 
-`session-cleanup.ts` — unreachable `entityType !== "vendor"` after vendor early-return.
-
-Sandbox remained on `e6541f57`. Feature was **NOT GREEN**. Baseline verify against `929bd817` could not run on a live serving build.
-
----
-
-## 2. Owner-control policy (locked in code)
-
-| Outcome | Disposition | Examples | Behavior |
-|---------|-------------|----------|----------|
-| **A** | `eligible` | Unchanged attributed client/lead/vendor/… | Included in confirm delete |
-| **B** | `overridable` | Edited after import; floor-plan document without seating | Checkbox + consequences; owner opts in |
-| **C** | `blocked` | Active Commitment; signed contract / paid lines; Event (no standalone delete); tour hard-delete guard; floor-plan doc with seating | Reason + next step; **no** override checkbox |
-| — | `already_gone` | Previously removed | Reported; retry-safe |
-
-**Not overridable:** financial history (`previewDeleteClient` / AC), tour hard-delete when linked to a real customer, seating history on plans using the imported file, missing delete path (Event), unauthorized/cross-tenant (venue-scoped deletes).
-
-**Floor plan attribution:** MC `created_entity_id` is the **Documents** SoR id (`floor-plan-commit.ts`), not `floor_plans.id`. Cleanup deletes via `deleteDocument` after seating check on linked plans.
+Regression: `asCleanupDeleteResult` unit cases including absent vendor message.
 
 ---
 
-## 3. UI wording
+## Owner-control policy (verified on serving build)
 
-- Ready / Your choice / Will remove / Blocked / Gone  
-- Edited: “This record has changed since it was imported…”  
-- Financial: “linked to a signed contract or collected payments…” + next step  
-- Partial: `Cleanup completed for N… remain because they need additional review…`
+| Outcome | Verified |
+|---------|----------|
+| **A Eligible** | Unchanged client + lead deleted after confirm |
+| **B Overridable** | EditedDelete deleted when owner checked; EditedKeep retained unchecked; floor-plan document deleted when checked |
+| **C Hard-blocked** | Financial client + paid line retained; Event retained; AC blocked with wording; no fake override |
 
----
-
-## 4. Tests
-
-- `lib/migration/session-cleanup.test.ts` — 11/11 owner-control contract  
-- With AC / historical / accounting: **26/26** pass  
+Also verified: pre-existing controls + lookalike untouched; foreign-tenant client untouched; invitations/enrollments unchanged; partial summary (“4 removed, 4 remain”); retry-safe (eligible still gone).
 
 ---
 
-## 5. Runtime evidence
+## Runtime matrix
 
-*(Filled after Sandbox deploy of this HEAD + `EXPECT_SHA=… npx tsx docs/qa/exclusion-forensic/verify-import-cleanup.mts`)*
+Command:
 
-| Field | Value |
-|-------|-------|
-| Serving dpl | |
-| Task definition | |
-| Disposable venue | |
-| Browser matrix | |
-| Persist / side effects | |
-| Verdict | pending deploy + verify |
+```bash
+EXPECT_SHA=803046b4 npx tsx docs/qa/exclusion-forensic/verify-import-cleanup.mts
+```
+
+**Result: 32 pass / 0 fail** — `docs/qa/exclusion-forensic/import-cleanup-results.json`  
+Screenshots: `cleanup-panel.png`, `cleanup-overrides.png`, `cleanup-result.png`  
+Log: `import-cleanup-run.log`
+
+---
+
+## Unit / regression tests
+
+```text
+npx tsx --test lib/migration/session-cleanup.test.ts \
+  lib/migration/active-commitment.test.ts \
+  lib/migration/historical-record.test.ts \
+  lib/migration/session-accounting.test.ts
+→ 31 pass / 0 fail (includes asCleanupDeleteResult + owner-control contract)
+```
+
+Prior Migration Center certifications: not reopened; artifacts preserved under `docs/qa/`.

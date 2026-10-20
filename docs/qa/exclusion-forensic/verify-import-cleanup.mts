@@ -319,15 +319,53 @@ async function main() {
   await page.waitForTimeout(1500);
   await passWelcome(page);
 
-  const sessionRows = page.locator("button").filter({ has: page.locator("text=/Complete|Partly imported/i") });
-  if ((await sessionRows.count()) > 0) await sessionRows.first().click();
-  await page.waitForTimeout(2000);
+  // Open committed session from Import history (badge "Complete") — wait for list hydrate
+  await page.getByText(/Your import history/i).first().waitFor({ timeout: 30000 }).catch(() => {});
   await page.evaluate(() => {
     const main = document.querySelector("main") as HTMLElement | null;
     if (main) main.scrollTop = main.scrollHeight;
   }).catch(() => {});
 
-  const hasCleanup = (await page.getByText("Import cleanup", { exact: true }).count()) > 0;
+  let historyReady = false;
+  for (let i = 0; i < 40; i++) {
+    historyReady = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("button")).some((b) =>
+        /Complete|Partly imported/i.test(b.textContent || "")),
+    );
+    if (historyReady) break;
+    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      const main = document.querySelector("main") as HTMLElement | null;
+      if (main) main.scrollTop = main.scrollHeight;
+    }).catch(() => {});
+  }
+  record("browser", "history_list_ready", historyReady, historyReady ? "Complete badge visible" : "timed out");
+
+  const clickedLabel = await page.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll("button"));
+    const btn = buttons.find((b) => {
+      const t = (b.textContent || "").replace(/\s+/g, " ");
+      return /Another system/i.test(t) && /Complete|Partly imported/i.test(t);
+    }) ?? buttons.find((b) => /Complete|Partly imported/i.test(b.textContent || ""));
+    if (!btn) return null;
+    (btn as HTMLButtonElement).scrollIntoView({ block: "center" });
+    (btn as HTMLButtonElement).click();
+    return (btn.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  });
+  record("browser", "history_session_clicked", !!clickedLabel, clickedLabel ?? "no history button");
+  await page.waitForTimeout(1500);
+
+  // Wait for resume card + cleanup panel (openSession is async)
+  let hasCleanup = false;
+  for (let i = 0; i < 40; i++) {
+    hasCleanup = (await page.getByText("Import cleanup", { exact: true }).count()) > 0;
+    if (hasCleanup) break;
+    await page.evaluate(() => {
+      const main = document.querySelector("main") as HTMLElement | null;
+      if (main) main.scrollTop = main.scrollHeight;
+    }).catch(() => {});
+    await page.waitForTimeout(500);
+  }
   record("browser", "cleanup_panel_visible", hasCleanup, `url=${page.url()}`);
   await page.screenshot({ path: `${OUT}/cleanup-panel.png`, fullPage: true });
 
@@ -342,44 +380,66 @@ async function main() {
       "financial wording");
     record("browser", "shows_edited_warning", /changed since it was imported/i.test(body), "edited wording");
 
-    // Override EditedDelete only (leave EditedKeep unchecked)
-    const editedDelBox = page.getByRole("checkbox", { name: /Also remove EditedDelete/i });
-    if ((await editedDelBox.count()) > 0) {
-      await editedDelBox.first().check();
-      record("browser", "override_edited_delete", true, "checked EditedDelete");
-    } else {
-      // Fall back: first overridable checkbox near EditedDelete text
-      const row = page.locator("div").filter({ hasText: /EditedDelete/ }).locator('input[type="checkbox"]');
-      if ((await row.count()) > 0) {
-        await row.first().check();
-        record("browser", "override_edited_delete", true, "checked via row");
-      } else {
-        record("browser", "override_edited_delete", false, "checkbox missing");
-      }
+    // Select overrides via Playwright roles (avoid page.evaluate + tsx __name breakage)
+    const editedBox = page.getByRole("checkbox", { name: /Also remove EditedDelete/i });
+    const floorBox = page.getByRole("checkbox", { name: /Also remove Cleanup Plan/i });
+    if ((await editedBox.count()) > 0) {
+      await editedBox.first().check({ force: true });
+      await page.waitForTimeout(300);
     }
+    if (floorPlan && (await floorBox.count()) > 0) {
+      await floorBox.first().check({ force: true });
+      await page.waitForTimeout(300);
+    }
+    // Ensure both remain checked after React re-render
+    if ((await editedBox.count()) > 0 && !(await editedBox.first().isChecked())) {
+      await editedBox.first().check({ force: true });
+    }
+    if (floorPlan && (await floorBox.count()) > 0 && !(await floorBox.first().isChecked())) {
+      await floorBox.first().check({ force: true });
+    }
+    await page.waitForTimeout(400);
 
-    // Also override floor plan if present
-    const fpBox = page.locator("div").filter({ hasText: /Cleanup Plan|floor_plan/i }).locator('input[type="checkbox"]');
-    if ((await fpBox.count()) > 0) {
-      await fpBox.first().check();
-      record("browser", "override_floor_plan", true, "checked");
-    } else {
-      record("browser", "override_floor_plan", floorPlan == null, "no floor plan or no checkbox");
-    }
+    const editedChecked = (await editedBox.count()) > 0 && await editedBox.first().isChecked();
+    const floorChecked = !floorPlan || ((await floorBox.count()) > 0 && await floorBox.first().isChecked());
+    record("browser", "override_edited_delete", editedChecked, `checked=${editedChecked}`);
+    record("browser", "override_floor_plan", floorChecked,
+      floorPlan ? `checked=${floorChecked} count=${await floorBox.count()}` : "n/a");
 
     await page.screenshot({ path: `${OUT}/cleanup-overrides.png`, fullPage: true });
-    const removeBtn = page.getByRole("button", { name: /Remove \d+/i });
-    if ((await removeBtn.count()) > 0 && await removeBtn.first().isEnabled()) {
+    const removeBtn = page.getByRole("button", { name: /^Remove \d+$/i });
+    // Wait until button count reflects both overrides (2 eligible + overrides)
+    const expectMin = floorPlan ? 4 : 3;
+    let removeLabel = "";
+    let removeCount = 0;
+    for (let i = 0; i < 20; i++) {
+      removeLabel = (await removeBtn.count()) > 0 ? await removeBtn.first().innerText() : "";
+      removeCount = Number((removeLabel.match(/Remove (\d+)/i) ?? [])[1] ?? 0);
+      if (removeCount >= expectMin) break;
+      await page.waitForTimeout(250);
+      if ((await editedBox.count()) > 0 && !(await editedBox.first().isChecked())) {
+        await editedBox.first().check({ force: true });
+      }
+      if (floorPlan && (await floorBox.count()) > 0 && !(await floorBox.first().isChecked())) {
+        await floorBox.first().check({ force: true });
+      }
+    }
+    record("browser", "remove_count_includes_override", removeCount >= expectMin,
+      `label=${removeLabel} expectMin=${expectMin}`);
+
+    if ((await removeBtn.count()) > 0 && await removeBtn.first().isEnabled() && removeCount >= 1) {
       await removeBtn.first().click();
-      await page.waitForTimeout(6000);
+      await page.waitForTimeout(7000);
       await page.screenshot({ path: `${OUT}/cleanup-result.png`, fullPage: true });
       const after = await page.locator("body").innerText();
-      record("browser", "partial_summary", /Cleanup (finished|completed)/i.test(after) || /removed/i.test(after),
-        after.slice(0, 280));
-      record("browser", "remaining_called_out", /remain|blocked|left as chosen|additional review/i.test(after),
-        "partial result language");
+      const summaryLine = after.split("\n").map((l) => l.trim()).find((l) =>
+        /^Cleanup (finished|completed)/i.test(l));
+      record("browser", "partial_summary", !!summaryLine, summaryLine ?? after.slice(0, 200));
+      record("browser", "remaining_called_out",
+        /remain because they need additional review|blocked|left as chosen/i.test(after),
+        summaryLine ?? "partial result language");
     } else {
-      record("browser", "partial_summary", false, "Remove button missing");
+      record("browser", "partial_summary", false, `Remove button missing or count=0 label=${removeLabel}`);
       record("browser", "remaining_called_out", false, "n/a");
     }
   }

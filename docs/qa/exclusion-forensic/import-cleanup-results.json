@@ -1,0 +1,205 @@
+{
+  "venueId": "cd991d53-4a7e-47f4-bd56-c98b94558bb2",
+  "sessionId": "f1c15afd-3a35-4505-9d26-9792f373ab5e",
+  "userId": "75685e3f-00ad-476c-855f-2a655ce69e14",
+  "email": "jennifer+icln2.1792534499658@hellotocheers.com",
+  "stamp": 1792534499658,
+  "expectSha": "803046b4",
+  "dpl": "803046b4b7b833aa4fb2257fc200a25f0f4721a2",
+  "pass": 32,
+  "fail": 0,
+  "checks": [
+    {
+      "group": "setup",
+      "name": "venue",
+      "pass": true,
+      "detail": "cd991d53-4a7e-47f4-bd56-c98b94558bb2"
+    },
+    {
+      "group": "setup",
+      "name": "controls",
+      "pass": true,
+      "detail": "c=2c1d7d4c-49f2-43da-82d6-f4d4117487e5 l=ef327c37-8390-40a2-9832-a8a95a655c93 look=6ad96575-cac1-4795-817b-be3acf430cf7"
+    },
+    {
+      "group": "setup",
+      "name": "floor_doc",
+      "pass": true,
+      "detail": "116ba5aa-c8af-4386-bcad-b1f267336020"
+    },
+    {
+      "group": "setup",
+      "name": "active_commitment",
+      "pass": true,
+      "detail": "sched=ded6c48b-cb8b-4764-bf64-dcc788d8045d"
+    },
+    {
+      "group": "setup",
+      "name": "session_provenance",
+      "pass": true,
+      "detail": "session=f1c15afd-3a35-4505-9d26-9792f373ab5e rows=8"
+    },
+    {
+      "group": "setup",
+      "name": "foreign_client",
+      "pass": true,
+      "detail": "bb62aec9-93dc-4d0c-a1f8-a792405e1b0c"
+    },
+    {
+      "group": "deploy",
+      "name": "serving_dpl",
+      "pass": true,
+      "detail": "dpl=803046b4b7b833aa4fb2257fc200a25f0f4721a2 expect=803046b4"
+    },
+    {
+      "group": "browser",
+      "name": "history_list_ready",
+      "pass": true,
+      "detail": "Complete badge visible"
+    },
+    {
+      "group": "browser",
+      "name": "history_session_clicked",
+      "pass": true,
+      "detail": "Another system10/20/2026Complete"
+    },
+    {
+      "group": "browser",
+      "name": "cleanup_panel_visible",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration?source=another_system"
+    },
+    {
+      "group": "browser",
+      "name": "shows_ready_and_choice",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n2\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nImport "
+    },
+    {
+      "group": "browser",
+      "name": "shows_financial_block",
+      "pass": true,
+      "detail": "financial wording"
+    },
+    {
+      "group": "browser",
+      "name": "shows_edited_warning",
+      "pass": true,
+      "detail": "edited wording"
+    },
+    {
+      "group": "browser",
+      "name": "override_edited_delete",
+      "pass": true,
+      "detail": "checked=true"
+    },
+    {
+      "group": "browser",
+      "name": "override_floor_plan",
+      "pass": true,
+      "detail": "checked=true count=1"
+    },
+    {
+      "group": "browser",
+      "name": "remove_count_includes_override",
+      "pass": true,
+      "detail": "label=Remove 4 expectMin=4"
+    },
+    {
+      "group": "browser",
+      "name": "partial_summary",
+      "pass": true,
+      "detail": "Cleanup completed for 4 records. 4 records remain because they need additional review or failed. Nothing was deleted for those remaining records."
+    },
+    {
+      "group": "browser",
+      "name": "remaining_called_out",
+      "pass": true,
+      "detail": "Cleanup completed for 4 records. 4 records remain because they need additional review or failed. Nothing was deleted for those remaining records."
+    },
+    {
+      "group": "persist",
+      "name": "eligible_client_deleted",
+      "pass": true,
+      "detail": "ann=gone"
+    },
+    {
+      "group": "persist",
+      "name": "edited_override_deleted",
+      "pass": true,
+      "detail": "editedDel=gone"
+    },
+    {
+      "group": "persist",
+      "name": "edited_kept_retained",
+      "pass": true,
+      "detail": "editedKeep=27b16993-eb2a-412a-8ed4-d8fd8b2813f5"
+    },
+    {
+      "group": "persist",
+      "name": "eligible_lead_deleted",
+      "pass": true,
+      "detail": "lead=gone"
+    },
+    {
+      "group": "persist",
+      "name": "financial_client_retained",
+      "pass": true,
+      "detail": "cara=b72c9382-99a1-47bf-a1ab-b0a12cf97e16"
+    },
+    {
+      "group": "persist",
+      "name": "event_retained",
+      "pass": true,
+      "detail": "event=cfe08807-314f-455c-97e1-c11de78fde80"
+    },
+    {
+      "group": "persist",
+      "name": "floor_plan_deleted_or_skipped",
+      "pass": true,
+      "detail": "fp=gone-or-n/a"
+    },
+    {
+      "group": "persist",
+      "name": "preexisting_controls_intact",
+      "pass": true,
+      "detail": "c=true l=true"
+    },
+    {
+      "group": "persist",
+      "name": "lookalike_untouched",
+      "pass": true,
+      "detail": "look=6ad96575-cac1-4795-817b-be3acf430cf7"
+    },
+    {
+      "group": "persist",
+      "name": "foreign_tenant_untouched",
+      "pass": true,
+      "detail": "foreign=bb62aec9-93dc-4d0c-a1f8-a792405e1b0c"
+    },
+    {
+      "group": "persist",
+      "name": "paid_lines_preserved",
+      "pass": true,
+      "detail": "paid=1"
+    },
+    {
+      "group": "retry",
+      "name": "eligible_still_gone",
+      "pass": true,
+      "detail": "no resurrect"
+    },
+    {
+      "group": "side_effects",
+      "name": "no_new_invitations",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "group": "side_effects",
+      "name": "no_new_enrollments",
+      "pass": true,
+      "detail": "before=0 after=0"
+    }
+  ]
+}
