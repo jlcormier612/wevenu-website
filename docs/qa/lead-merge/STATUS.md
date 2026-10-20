@@ -1,17 +1,21 @@
 # Lead Merge — Status
 
-**Feature:** Venue-controlled Merge Lead (soft-mark secondary, atomic RPC)  
-**Branch:** `feat/spaces-booking-e1-smart-fields`  
+**Status: GREEN**  
+**Serving:** `14bf79a6` / TD `htc-sandbox-venue-app:811`  
+**Image:** `htc-sandbox-venue-app:14bf79a6f04ad43a7dbd89c7a1e3d67b37918919`  
+**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/39509479089  
+**Migration:** `20261420100000_lead_merge.sql` via https://github.com/jlcormier612/wevenu-website/actions/runs/39507787530  
 **Production:** untouched
 
-## Phase 1 — Forensic
-See `FORENSIC.md`. Tour cancel/reparent probe **8/8 GREEN**. Baseline lead suites **38/38** then **53/53** with merge unit contracts.
+## Evidence
+| Check | Result |
+|-------|--------|
+| Tour cancel releases slot + reparent probe | 8/8 (`probe-tour-slot-results.json`) |
+| Merge RPC (fields, notes, tour, idempotent, cross-venue) | 9/9 (`probe-merge-rpc-results.json`) |
+| Unit + regression suites | 53/53 then merge 15/15 |
+| Browser Fancy disposable merge + redirect + DB | 9/9 (`browser-results.json`) |
+| `/api/health` | `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}` |
 
-## Phase 2 — Implementation
-- Migration `20261420100000_lead_merge.sql` — columns + `merge_leads_v1`
-- `lib/leads/merge.ts` — preview/confirm
-- UI: Merge lead on lead detail; secondary redirects to primary
-- Duplicate banner points to Merge lead (detection still warn-only)
-
-## Phase 3–4
-Pending: migration apply → Sandbox deploy → RPC probe → browser verify.
+## Commits
+- `743ccab4` — feature + migration
+- `14bf79a6` — TS nullability fix (serving)

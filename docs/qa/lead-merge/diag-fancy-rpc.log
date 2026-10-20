@@ -1,0 +1,31 @@
+otp true undefined
+{
+  "data": {
+    "ok": true,
+    "primaryId": "5317d4a6-e6f9-4a9f-ab94-c765fa5d4ea1",
+    "secondaryId": "09274589-147d-4a5a-860a-f77014c77ce3",
+    "alreadyMerged": false
+  },
+  "error": null
+}
+staff [
+  {
+    user_id: '2fa73101-337b-4530-8c77-f3c272c5463e',
+    is_active: true,
+    is_owner: true,
+    role: 'owner',
+    email: 'jennifer@hellotocheers.com'
+  }
+]
+after [
+  {
+    id: '5317d4a6-e6f9-4a9f-ab94-c765fa5d4ea1',
+    merged_into_lead_id: null,
+    phone: '555-0001'
+  },
+  {
+    id: '09274589-147d-4a5a-860a-f77014c77ce3',
+    merged_into_lead_id: '5317d4a6-e6f9-4a9f-ab94-c765fa5d4ea1',
+    phone: '555-0001'
+  }
+]
