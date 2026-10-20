@@ -1,0 +1,2 @@
+name,eventDate,clientEmail,guestCount,eventType,sourceId
+SpecOps Active Wedding,2026-10-30,spec.ops.client@example.invalid,95,Wedding,spec-evt-001

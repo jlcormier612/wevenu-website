@@ -519,7 +519,19 @@ const STALE_CLAIM_MS = 5 * 60 * 1000;
  * error path would have said.
  */
 function unexpectedCommitErrorMessage(err: unknown): string {
-  const detail = err instanceof Error ? err.message : String(err);
+  let detail: string;
+  if (err instanceof Error) {
+    detail = err.message;
+  } else if (err && typeof err === "object" && "message" in err && (err as { message: unknown }).message != null) {
+    // PostgrestError-like objects are not always `instanceof Error`.
+    detail = String((err as { message: unknown }).message);
+  } else {
+    try {
+      detail = JSON.stringify(err);
+    } catch {
+      detail = String(err);
+    }
+  }
   return `An unexpected error interrupted this import attempt (${detail}). The record was not created — try again, or exclude it if it keeps failing.`;
 }
 
@@ -1343,8 +1355,13 @@ async function commitOneRecord(
       return { ok: true, entityId: result.eventId };
     }
     if (entityType === "guest_list") {
+      // couple_guests / couple_households are Client-Owned: venue staff JWT
+      // has SELECT only. Migration cutover was granted service_role DML
+      // (20261326000000_active_business_continuity) — venue MC commits must
+      // use the admin client for these writes or every guest row fails RLS.
       const n = record.normalizedPayload as unknown as NormalizedGuestListEntry;
-      const result = await commitOperationalGuest(client, session.venueId, n);
+      const writeClient = createAdminClient();
+      const result = await commitOperationalGuest(writeClient, session.venueId, n);
       if (!result.ok) return { ok: false, error: result.error };
       return { ok: true, entityId: result.guestId };
     }

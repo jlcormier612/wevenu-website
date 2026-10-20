@@ -89,7 +89,7 @@ async function resolveOrCreateHousehold(
     .insert({ venue_id: venueId, client_id: clientId, name })
     .select("id")
     .single<{ id: string }>();
-  if (error) throw error;
+  if (error) throw new Error(error.message || "Could not create household.");
   return data.id;
 }
 
@@ -211,7 +211,7 @@ export async function commitOperationalGuest(
     })
     .select("id")
     .single<{ id: string }>();
-  if (error) throw error;
+  if (error) throw new Error(error.message || "Could not create guest.");
 
   return {
     ok: true,

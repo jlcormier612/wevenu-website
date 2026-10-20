@@ -1,0 +1,2 @@
+firstName,lastName,email,phone,eventDate,eventType,guestCount,sourceId
+SpecOps,Client,spec.ops.client@example.invalid,5550600001,2026-10-30,Wedding,95,spec-cli-001

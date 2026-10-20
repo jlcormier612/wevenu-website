@@ -1,0 +1,165 @@
+{
+  "expectSha": "d62f4260",
+  "venueId": "47d34f27-e2b5-45ea-89f6-6f442d02dc2b",
+  "passed": 24,
+  "failed": 2,
+  "checks": [
+    {
+      "group": "setup",
+      "name": "fixture_venue",
+      "pass": true,
+      "detail": "47d34f27"
+    },
+    {
+      "group": "setup",
+      "name": "document_blob_uploaded",
+      "pass": true,
+      "detail": "47d34f27-e2b5-45ea-89f6-6f442d02dc2b/migration-cert/spec-con"
+    },
+    {
+      "group": "setup",
+      "name": "runtime_dpl",
+      "pass": true,
+      "detail": "dpl=d62f4260cbc77ed09858298ead614e141118fd23 expectPrefix=d62f4260"
+    },
+    {
+      "group": "parent",
+      "name": "ui_client",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "parent",
+      "name": "ui_event",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "parent",
+      "name": "ui_vendor",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_guest_list",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_guest_orphan_review",
+      "pass": true,
+      "detail": "committed=true needsReview=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_event_vendor_assignment",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_timeline",
+      "pass": true,
+      "detail": "committed=true needsReview=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_timeline_far_not_imported",
+      "pass": true,
+      "detail": "committed=true needsReview=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_document",
+      "pass": true,
+      "detail": "committed=true"
+    },
+    {
+      "group": "special",
+      "name": "ui_active_commitment",
+      "pass": true,
+      "detail": "committed=true ok=true OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automat"
+    },
+    {
+      "group": "special",
+      "name": "ui_floor_plan",
+      "pass": true,
+      "detail": "committed=true OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templ"
+    },
+    {
+      "group": "db",
+      "name": "parent_client_event",
+      "pass": true,
+      "detail": "client=2cfa1d49 event=031aaa3b date=2026-10-30"
+    },
+    {
+      "group": "db",
+      "name": "guests_linked",
+      "pass": false,
+      "detail": "n=0 named=0 clientMatch=true"
+    },
+    {
+      "group": "db",
+      "name": "vendor_assignments",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "group": "db",
+      "name": "timeline_near",
+      "pass": true,
+      "detail": "titles=Ceremony start"
+    },
+    {
+      "group": "db",
+      "name": "timeline_far_absent",
+      "pass": true,
+      "detail": "titles=Ceremony start"
+    },
+    {
+      "group": "db",
+      "name": "document_on_event",
+      "pass": false,
+      "detail": "docs="
+    },
+    {
+      "group": "db",
+      "name": "active_commitment_artifacts",
+      "pass": true,
+      "detail": "orders=1 invoices=1 schedules=1 eventStatus=confirmed"
+    },
+    {
+      "group": "db",
+      "name": "floor_plan_persisted",
+      "pass": true,
+      "detail": "floorDocs=true floor_plans=0"
+    },
+    {
+      "group": "side",
+      "name": "no_invitations",
+      "pass": true,
+      "detail": "invites=0"
+    },
+    {
+      "group": "side",
+      "name": "no_automation_enrollments",
+      "pass": true,
+      "detail": "enrollments=0"
+    },
+    {
+      "group": "side",
+      "name": "no_scheduled_messages",
+      "pass": true,
+      "detail": "scheduled=0"
+    },
+    {
+      "group": "db",
+      "name": "orphan_guest_absent",
+      "pass": true,
+      "detail": "guests="
+    }
+  ],
+  "at": "2026-10-20T18:37:09.365Z"
+}

@@ -1,0 +1,2 @@
+name,fileName,storagePath,storageUrl,mimeType,category,entityType,clientEmail,eventDate,sourceId
+Spec Contract,spec-contract.pdf,47d34f27-e2b5-45ea-89f6-6f442d02dc2b/migration-cert/spec-contract-1792521209417.pdf,https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/documents/47d34f27-e2b5-45ea-89f6-6f442d02dc2b/migration-cert/spec-contract-1792521209417.pdf,application/pdf,contract,event,spec.ops.client@example.invalid,2026-10-30,spec-doc-001
