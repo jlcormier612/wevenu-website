@@ -1,0 +1,14 @@
+PASS import_no_coming_soon — absent
+PASS import_lists_five — entity cards
+PASS import_points_to_mc — intro or footer
+PASS import_mc_link_visible — link
+PASS navigated_migration — https://app.sandbox.hellotocheers.com/settings/migration
+PASS mc_mentions_events_or_csv — copy present
+PASS help_has_import_data — section
+PASS help_has_migration_center — section
+PASS help_has_active_commitment — section
+PASS help_no_coming_soon — clean
+PASS widget_mc_directions — Not on Import Data
+PASS widget_no_coming_soon — ok
+
+SUMMARY pass=12 fail=0

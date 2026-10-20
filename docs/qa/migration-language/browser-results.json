@@ -1,0 +1,66 @@
+{
+  "pass": 12,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "import_no_coming_soon",
+      "pass": true,
+      "detail": "absent"
+    },
+    {
+      "name": "import_lists_five",
+      "pass": true,
+      "detail": "entity cards"
+    },
+    {
+      "name": "import_points_to_mc",
+      "pass": true,
+      "detail": "intro or footer"
+    },
+    {
+      "name": "import_mc_link_visible",
+      "pass": true,
+      "detail": "link"
+    },
+    {
+      "name": "navigated_migration",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/settings/migration"
+    },
+    {
+      "name": "mc_mentions_events_or_csv",
+      "pass": true,
+      "detail": "copy present"
+    },
+    {
+      "name": "help_has_import_data",
+      "pass": true,
+      "detail": "section"
+    },
+    {
+      "name": "help_has_migration_center",
+      "pass": true,
+      "detail": "section"
+    },
+    {
+      "name": "help_has_active_commitment",
+      "pass": true,
+      "detail": "section"
+    },
+    {
+      "name": "help_no_coming_soon",
+      "pass": true,
+      "detail": "clean"
+    },
+    {
+      "name": "widget_mc_directions",
+      "pass": true,
+      "detail": "Not on Import Data"
+    },
+    {
+      "name": "widget_no_coming_soon",
+      "pass": true,
+      "detail": "ok"
+    }
+  ]
+}
