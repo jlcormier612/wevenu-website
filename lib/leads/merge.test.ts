@@ -142,6 +142,18 @@ describe("lead merge safety contracts (source)", () => {
     assert.match(repo, /merged_into_lead_id.*null/);
   });
 
+  it("lead-received reporting also excludes soft-merged secondaries", () => {
+    const reporting = readFileSync(resolve("lib/reporting/service.ts"), "utf8");
+    assert.match(reporting, /getLeadsTrend/);
+    assert.match(reporting, /merged_into_lead_id.*null/);
+  });
+
+  it("duplicate banner no longer instructs manual copy/delete", () => {
+    const banner = readFileSync(resolve("components/leads/possible-duplicate-banner.tsx"), "utf8");
+    assert.doesNotMatch(banner, /delete this duplicate|copy any useful|paste the other lead/i);
+    assert.match(banner, /Nothing merges until you confirm/);
+  });
+
   it("idempotent already-merged path exists", () => {
     assert.match(migration, /alreadyMerged/);
   });

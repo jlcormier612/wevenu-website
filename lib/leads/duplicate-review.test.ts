@@ -42,10 +42,19 @@ describe("Possible duplicate inquiry seams", () => {
     assert.doesNotMatch(review, /relationship_id:\s*matched/);
     assert.doesNotMatch(review, /\.update\(\{[\s\S]*relationship_id/);
     assert.match(review, /never merges Relationships/);
-    // Detection remains warn-only; venue uses explicit Merge lead action.
+    // Detection remains warn-only; venue confirms Merge lead explicitly.
+    assert.match(banner, /Possible duplicate lead/);
+    assert.match(banner, /does not merge on its own/);
     assert.match(banner, /Merge lead/);
-    assert.match(banner, /You stay in control/);
+    assert.match(banner, /Keep separate/);
+    assert.doesNotMatch(banner, /delete this duplicate|copy the information|paste the other lead/i);
     assert.doesNotMatch(review, /confirmMergeLeads|merge_leads_v1/);
+  });
+
+  it("duplicate banner opens MergeLeadDialog with the matched lead prefilled", () => {
+    assert.match(banner, /MergeLeadDialog/);
+    assert.match(banner, /initialOtherLeadId=\{review\.matchedLeadId\}/);
+    assert.match(banner, /duplicate-merge-open/);
   });
 
   it("venue create requires an identity decision, not Create anyway", () => {

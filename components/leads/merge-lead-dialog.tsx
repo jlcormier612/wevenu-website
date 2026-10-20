@@ -76,11 +76,13 @@ export function MergeLeadDialog({
       setTourCancelIds([]);
       setExplicitPrimaryId(undefined);
       if (!initialOtherLeadId) setOtherId("");
+      return;
     }
+    if (initialOtherLeadId) setOtherId(initialOtherLeadId);
   }, [open, initialOtherLeadId]);
 
-  async function runPreview(primaryOverride?: string) {
-    const other = otherId.trim();
+  async function runPreview(primaryOverride?: string, otherOverride?: string) {
+    const other = (otherOverride ?? otherId).trim();
     if (!other) {
       toast.error("Enter the other lead’s ID to merge with.");
       return;
@@ -105,6 +107,13 @@ export function MergeLeadDialog({
     setFieldChoices(fills);
     setTourCancelIds([]);
   }
+
+  // When opened from duplicate review with a matched lead, load preview immediately.
+  React.useEffect(() => {
+    if (!open || !initialOtherLeadId) return;
+    void runPreview(undefined, initialOtherLeadId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open with matched id
+  }, [open, initialOtherLeadId, currentLeadId]);
 
   async function confirm() {
     if (!preview) return;

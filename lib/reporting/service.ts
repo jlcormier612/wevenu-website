@@ -171,9 +171,12 @@ export async function getLeadsTrend(window: DateWindow): Promise<{ total: number
   if (!venue) return { total: 0, trend: [] };
   const supabase = await createClient();
 
+  // Soft-merged duplicates stay on disk for redirect/audit but must not inflate
+  // "leads received" totals — same exclusion as active lead lists.
   const { data } = await onlyBusinessReporting(
     supabase.from("leads").select("created_at")
       .eq("venue_id", venue.id)
+      .is("merged_into_lead_id", null)
       .gte("created_at", window.from).lte("created_at", window.to + "T23:59:59"),
   );
   const rows = (data ?? []) as { created_at: string }[];
