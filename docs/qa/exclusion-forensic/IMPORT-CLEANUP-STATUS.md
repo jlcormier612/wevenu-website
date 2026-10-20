@@ -1,66 +1,68 @@
-# Import-scoped cleanup — recovery decision & delivery
+# Import cleanup — owner control, safe overrides & actionable exceptions
 
-**Decision:** Option B — safe bounded, reviewable import-scoped cleanup (not full Undo).
+**Decision:** Option B hardened — venue owner is the authority; warnings inform; hard blocks only for real integrity/auth constraints.
 
-**Commit:** `929bd817`  
-**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/39494692584 (Sandbox only)  
-**Production:** untouched  
-**Dirty tree:** preserved (unrelated local changes not staged)
-
----
-
-## 1. Decision
-
-Existing individual delete alone is **not** practical for hundreds of mistaken import rows.  
-`rollbackImportBatch` remains **unsafe** after Active Commitment / paid lines and is **not** wired to Migration Center.
-
-**Shipped:** Migration Center **Import cleanup** — preview + confirm delete for records attributed solely via `migration_records.created_entity_id` for the selected session, using existing product delete gates.
+| Item | Value |
+|------|-------|
+| Prior product SHA (failed deploy) | `929bd817` — TypeScript error; never served |
+| This delivery HEAD | *(set after commit)* |
+| Prior serving (unchanged until new deploy) | `e6541f57` / TD `:809` |
+| Deploy run (failed) | https://github.com/jlcormier612/wevenu-website/actions/runs/39494692584 |
+| Production | untouched |
+| Dirty tree | preserved |
 
 ---
 
-## 2. Actual recovery capability
+## 1. Baseline of failed deploy
 
-| Capability | Behavior |
-|------------|----------|
-| Identify import | Open Migration Center history → committed / partly committed session |
-| Review targets | “Review what can be removed” — eligible / review / already gone + warnings |
-| Auto-delete | Only eligible, unchanged, attributed rows (dependency order) |
-| Refused / flagged | Edited after import; Active Commitment; Events; floor plans; financial-blocked clients/leads; non-hard-deletable tours |
-| Confirm | Explicit browser confirm; re-check at execute |
-| Report | Per-entity deleted / review / already_gone / failed |
-| Not claimed | Global one-click Undo of the entire session |
+Run `39494692584` **failed** at venue-app TypeScript:
+
+`session-cleanup.ts` — unreachable `entityType !== "vendor"` after vendor early-return.
+
+Sandbox remained on `e6541f57`. Feature was **NOT GREEN**. Baseline verify against `929bd817` could not run on a live serving build.
 
 ---
 
-## 3. Implementation
+## 2. Owner-control policy (locked in code)
 
-| Item | Detail |
-|------|--------|
-| Engine | `lib/migration/session-cleanup.ts` |
-| Actions | `previewImportSessionCleanupAction`, `executeImportSessionCleanupAction` |
-| UI | Migration Center session panel — Import cleanup |
-| Tests | `lib/migration/session-cleanup.test.ts` (8) + existing AC / historical / accounting suites |
-| Verify script | `docs/qa/exclusion-forensic/verify-import-cleanup.mts` |
+| Outcome | Disposition | Examples | Behavior |
+|---------|-------------|----------|----------|
+| **A** | `eligible` | Unchanged attributed client/lead/vendor/… | Included in confirm delete |
+| **B** | `overridable` | Edited after import; floor-plan document without seating | Checkbox + consequences; owner opts in |
+| **C** | `blocked` | Active Commitment; signed contract / paid lines; Event (no standalone delete); tour hard-delete guard; floor-plan doc with seating | Reason + next step; **no** override checkbox |
+| — | `already_gone` | Previously removed | Reported; retry-safe |
 
----
+**Not overridable:** financial history (`previewDeleteClient` / AC), tour hard-delete when linked to a real customer, seating history on plans using the imported file, missing delete path (Event), unauthorized/cross-tenant (venue-scoped deletes).
 
-## 4. Safety results (contract)
-
-- Pre-existing records: never targeted (no created_entity_id on session).  
-- Edited: refused.  
-- Financial / AC / paid: refused via previewDeleteClient + AC review disposition.  
-- Events / floor plans: review-only.  
-- No `rollbackImportBatch`.  
-- No silent success on partial failure.  
-- Retries safe (already_gone).  
-
-Runtime browser + DB evidence: see `import-cleanup-results.json` after `EXPECT_SHA=929bd817 npx tsx docs/qa/exclusion-forensic/verify-import-cleanup.mts`.
+**Floor plan attribution:** MC `created_entity_id` is the **Documents** SoR id (`floor-plan-commit.ts`), not `floor_plans.id`. Cleanup deletes via `deleteDocument` after seating check on linked plans.
 
 ---
 
-## 5. Limitations (honest)
+## 3. UI wording
 
-- Not a complete session Undo — only eligible attributed subset.  
-- AC / paid / edited / Event / floor plan need manual follow-up.  
-- Tours linked to real leads: review (hard-delete guard), not auto-deleted.  
-- Attribution requires MC `created_entity_id`; Import Wizard batches still use separate (unsafe) rollback path for their entities only.
+- Ready / Your choice / Will remove / Blocked / Gone  
+- Edited: “This record has changed since it was imported…”  
+- Financial: “linked to a signed contract or collected payments…” + next step  
+- Partial: `Cleanup completed for N… remain because they need additional review…`
+
+---
+
+## 4. Tests
+
+- `lib/migration/session-cleanup.test.ts` — 11/11 owner-control contract  
+- With AC / historical / accounting: **26/26** pass  
+
+---
+
+## 5. Runtime evidence
+
+*(Filled after Sandbox deploy of this HEAD + `EXPECT_SHA=… npx tsx docs/qa/exclusion-forensic/verify-import-cleanup.mts`)*
+
+| Field | Value |
+|-------|-------|
+| Serving dpl | |
+| Task definition | |
+| Disposable venue | |
+| Browser matrix | |
+| Persist / side effects | |
+| Verdict | pending deploy + verify |

@@ -1,6 +1,5 @@
 /**
- * Import-scoped cleanup — safety contract (source + disposition rules).
- * Does not call rollbackImportBatch. Attribution is created_entity_id only.
+ * Import-scoped cleanup — owner-control safety contract.
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -12,8 +11,8 @@ const actions = readFileSync(join(process.cwd(), "app/(app)/settings/migration-a
 const ui = readFileSync(join(process.cwd(), "components/settings/migration-center.tsx"), "utf8");
 const rollback = readFileSync(join(process.cwd(), "lib/import/batches.ts"), "utf8");
 
-describe("session-cleanup safety contract", () => {
-  it("attributes only via createdEntityId / created_entity_id — never name/email/timestamp match", () => {
+describe("session-cleanup owner-control contract", () => {
+  it("attributes only via createdEntityId — never name/email match or rollbackImportBatch()", () => {
     assert.match(src, /createdEntityId/);
     assert.doesNotMatch(src, /email\s*===|first_name.*last_name.*match|approximate|fuzzy/i);
     assert.doesNotMatch(src, /rollbackImportBatch\s*\(/);
@@ -24,54 +23,78 @@ describe("session-cleanup safety contract", () => {
     assert.doesNotMatch(actions, /rollbackImportBatch/);
     assert.doesNotMatch(ui, /rollbackImportBatch/);
     assert.match(actions, /previewImportSessionCleanup/);
-    assert.match(actions, /executeImportSessionCleanup/);
+    assert.match(actions, /overrideRecordIds/);
     assert.match(ui, /Import cleanup/);
-    assert.match(ui, /previewImportSessionCleanupAction/);
-    assert.match(ui, /executeImportSessionCleanupAction/);
+    assert.match(ui, /cleanupOverrides/);
   });
 
-  it("refuses Active Commitment, Event, floor_plan, and edited records automatically", () => {
+  it("uses eligible / overridable / blocked / already_gone dispositions", () => {
+    assert.match(src, /"eligible" \| "overridable" \| "blocked" \| "already_gone"/);
+    assert.match(src, /overridableCount/);
+    assert.match(src, /blockedCount/);
+  });
+
+  it("treats edited-after-import as overridable, not a hard permanent block", () => {
+    assert.match(src, /This record has changed since it was imported/);
+    assert.match(src, /target\(\s*record,\s*"overridable"/);
+    assert.match(src, /overrideSet\.has\(t\.recordId\)/);
+    assert.doesNotMatch(src, /Edited after import — refused automatic deletion/);
+  });
+
+  it("hard-blocks Active Commitment and financial clients with plain next steps", () => {
     assert.match(src, /entityType === "active_commitment"/);
-    assert.match(src, /entityType === "event"/);
-    assert.match(src, /entityType === "floor_plan"/);
-    assert.match(src, /Edited after import/);
-    assert.match(src, /wasEditedSinceCommit/);
-  });
-
-  it("uses existing client/lead delete previews (financial / AC gates)", () => {
+    assert.match(src, /financial records \(Event Order, invoice, or payment schedule\)/);
+    assert.match(src, /signed contract or collected payments that must be preserved/);
     assert.match(src, /previewDeleteClient/);
-    assert.match(src, /previewDeleteLead/);
-    assert.match(src, /deleteClientRecord/);
-    assert.match(src, /deleteLeadRecord/);
+    assert.match(src, /target\(\s*record,\s*"blocked"/);
   });
 
-  it("requires explicit confirmation and re-checks eligibility at execute", () => {
+  it("treats floor_plan attribution as Documents SoR; blocks when linked seating exists", () => {
+    assert.match(src, /floorPlanDocumentSeatingBlocks/);
+    assert.match(src, /floor_plan: "documents"/);
+    assert.match(src, /case "floor_plan"/);
+    assert.match(src, /deleteDocument/);
+    assert.match(src, /seating assignments, submissions, or assistance history/);
+    assert.match(DELETE_ORDER_SNIPPET(), /"floor_plan"/);
+  });
+
+  it("requires confirmation and never deletes blocked rows even if listed in overrides", () => {
     assert.match(src, /confirmed: boolean/);
     assert.match(src, /Confirmation required before cleanup/);
-    assert.match(src, /Re-check existence \+ edit \+ financial gates at execute time/);
-    assert.match(src, /Edited after preview — refused/);
+    assert.match(src, /if \(t\.disposition === "blocked"\)/);
+    // Financial re-check at execute for clients selected via override path
+    assert.match(src, /previewDeleteClient\(t\.entityId\)/);
   });
 
-  it("reports deleted / review / already_gone / failed separately (no silent success)", () => {
-    assert.match(src, /outcome: "deleted" \| "review" \| "already_gone" \| "failed"/);
-    assert.match(src, /failed\+\+/);
-    assert.match(src, /alreadyGone\+\+/);
+  it("reports deleted / blocked / skipped / failed separately with partial summary", () => {
+    assert.match(src, /outcome: "deleted" \| "blocked" \| "skipped" \| "already_gone" \| "failed"/);
+    assert.match(src, /unresolved/);
+    assert.match(src, /Cleanup completed for/);
+    assert.match(src, /remain because they need additional review/);
   });
 
-  it("deletes children before parents", () => {
-    const orderMatch = src.match(/const DELETE_ORDER[\s\S]*?\];/);
-    assert.ok(orderMatch);
-    const order = orderMatch[0];
-    const guest = order.indexOf('"guest_list"');
-    const client = order.indexOf('"client"');
-    const lead = order.indexOf('"lead"');
-    assert.ok(guest >= 0 && client > guest, "guest_list before client");
-    assert.ok(lead > 0 && client > lead, "lead before client");
+  it("deletes children before parents and includes floor_plan before client", () => {
+    const order = DELETE_ORDER_SNIPPET();
+    assert.ok(order.indexOf('"guest_list"') < order.indexOf('"client"'));
+    assert.ok(order.indexOf('"floor_plan"') < order.indexOf('"client"'));
+    assert.ok(order.indexOf('"lead"') < order.indexOf('"client"'));
+  });
+
+  it("UI shows reasons, next steps, and owner checkboxes for overridable rows", () => {
+    assert.match(ui, /Your choice|Will remove/);
+    assert.match(ui, /Blocked/);
+    assert.match(ui, /Next: \{t\.nextStep\}/);
+    assert.match(ui, /type="checkbox"/);
+    assert.match(ui, /cleanupResult\.summary/);
   });
 
   it("existing batch rollback remains ungated for financials (do not wire to UI)", () => {
     assert.match(rollback, /export async function rollbackImportBatch/);
-    // Documented unsafe path still exists for Import Wizard batches — MC must not call it.
-    assert.doesNotMatch(src, /from ["']@\/lib\/imports/);
   });
 });
+
+function DELETE_ORDER_SNIPPET(): string {
+  const m = src.match(/const DELETE_ORDER[\s\S]*?\];/);
+  assert.ok(m);
+  return m![0];
+}

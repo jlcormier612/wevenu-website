@@ -459,7 +459,8 @@ export function MigrationCenter({
   const [commitmentDraft, setCommitmentDraft] = React.useState<NormalizedActiveCommitment | null>(null);
   const [cleanupPreview, setCleanupPreview] = React.useState<{
     eligibleCount: number;
-    reviewCount: number;
+    overridableCount: number;
+    blockedCount: number;
     alreadyGoneCount: number;
     warnings: string[];
     targets: Array<{
@@ -468,14 +469,20 @@ export function MigrationCenter({
       entityId: string;
       disposition: string;
       reason: string;
+      nextStep: string;
       label: string;
+      consequences: string[];
     }>;
   } | null>(null);
+  const [cleanupOverrides, setCleanupOverrides] = React.useState<Set<string>>(new Set());
   const [cleanupResult, setCleanupResult] = React.useState<{
     deleted: number;
-    review: number;
+    blocked: number;
+    skipped: number;
     alreadyGone: number;
     failed: number;
+    unresolved: number;
+    summary: string;
     items: Array<{ entityType: string; label?: string; outcome: string; message: string; entityId: string }>;
   } | null>(null);
   const [cleanupWorking, setCleanupWorking] = React.useState(false);
@@ -514,6 +521,7 @@ export function MigrationCenter({
   const openSession = React.useCallback((sessionId: string) => {
     setActiveSessionId(sessionId);
     setCleanupPreview(null);
+    setCleanupOverrides(new Set());
     startLoading(async () => {
       const [resumeState, files] = await Promise.all([
         getMigrationSessionResumeStateAction(sessionId),
@@ -731,6 +739,7 @@ export function MigrationCenter({
   async function handlePreviewCleanup(sessionId: string) {
     setCleanupWorking(true);
     setCleanupResult(null);
+    setCleanupOverrides(new Set());
     try {
       const result = await previewImportSessionCleanupAction(sessionId);
       if (!result.ok) {
@@ -744,33 +753,43 @@ export function MigrationCenter({
     }
   }
 
+  function toggleCleanupOverride(recordId: string) {
+    setCleanupOverrides((prev) => {
+      const next = new Set(prev);
+      if (next.has(recordId)) next.delete(recordId);
+      else next.add(recordId);
+      return next;
+    });
+  }
+
   async function handleExecuteCleanup(sessionId: string) {
-    if (!cleanupPreview || cleanupPreview.eligibleCount === 0) return;
+    if (!cleanupPreview) return;
+    const removeCount = cleanupPreview.eligibleCount + cleanupOverrides.size;
+    if (removeCount === 0) return;
+    const blockedNote = cleanupPreview.blockedCount > 0
+      ? `\n${cleanupPreview.blockedCount} blocked record${cleanupPreview.blockedCount === 1 ? "" : "s"} will stay — see the reasons listed.`
+      : "";
+    const overrideNote = cleanupOverrides.size > 0
+      ? `\n${cleanupOverrides.size} warned record${cleanupOverrides.size === 1 ? "" : "s"} you selected will also be removed (including any later edits).`
+      : "";
     const confirmed = window.confirm(
-      `Remove ${cleanupPreview.eligibleCount} eligible record${cleanupPreview.eligibleCount === 1 ? "" : "s"} from this import?\n\n` +
-      `${cleanupPreview.reviewCount} flagged for manual review will be kept.\n` +
-      `This is not a full Undo — only unchanged, attributed records are removed.`,
+      `Remove ${removeCount} record${removeCount === 1 ? "" : "s"} from this import?${overrideNote}${blockedNote}\n\n` +
+      `This is not a full Undo — only attributed records you chose are removed.`,
     );
     if (!confirmed) return;
     setCleanupWorking(true);
     try {
-      const result = await executeImportSessionCleanupAction(sessionId);
+      const result = await executeImportSessionCleanupAction(sessionId, [...cleanupOverrides]);
       if (!result.ok) {
         toast.error(result.message);
         return;
       }
       setCleanupPreview(null);
-      const parts = [
-        result.deleted ? `${result.deleted} removed` : null,
-        result.review ? `${result.review} need review` : null,
-        result.failed ? `${result.failed} failed` : null,
-        result.alreadyGone ? `${result.alreadyGone} already gone` : null,
-      ].filter(Boolean);
-      if (result.failed > 0) toast.error(`Cleanup finished with failures: ${parts.join(", ")}.`);
-      else toast.success(`Cleanup finished: ${parts.join(", ") || "nothing changed"}.`);
+      setCleanupOverrides(new Set());
+      if (result.unresolved > 0 || result.failed > 0) toast.message(result.summary);
+      else toast.success(result.summary);
       openSession(sessionId);
       refreshSessions();
-      // openSession clears prior cleanup UI state — restore the outcome report
       setCleanupResult(result);
     } finally {
       setCleanupWorking(false);
@@ -1161,8 +1180,8 @@ export function MigrationCenter({
                   <div>
                     <p className="text-sm font-medium text-heading">Import cleanup</p>
                     <p className="text-xs text-muted-foreground">
-                      Remove only records this import created and still attributed via created_entity_id.
-                      Edited records, financial commitments, Events, and floor plans stay for manual review.
+                      Remove records this import created. Ready-to-remove rows go first; warned rows need your choice;
+                      blocked rows stay with a clear next step. This is not a full Undo.
                     </p>
                   </div>
                   <Button
@@ -1182,43 +1201,73 @@ export function MigrationCenter({
                 {cleanupPreview && (
                   <div className="space-y-2 text-xs">
                     <p className="text-foreground">
-                      {cleanupPreview.eligibleCount} eligible · {cleanupPreview.reviewCount} need review · {cleanupPreview.alreadyGoneCount} already gone
+                      {cleanupPreview.eligibleCount} ready · {cleanupPreview.overridableCount} need your choice · {cleanupPreview.blockedCount} blocked · {cleanupPreview.alreadyGoneCount} already gone
                     </p>
                     {cleanupPreview.warnings.map((w) => (
                       <p key={w} className="text-muted-foreground">{w}</p>
                     ))}
-                    <div className="max-h-48 space-y-1 overflow-y-auto rounded border border-border bg-muted/10 p-2">
-                      {cleanupPreview.targets.map((t) => (
-                        <div key={t.recordId} className="flex items-start justify-between gap-2">
-                          <span className="text-foreground">
-                            <span className="font-medium">{t.entityType}</span>
-                            {" · "}
-                            {t.label}
-                          </span>
-                          <span className={
-                            t.disposition === "eligible" ? "text-success shrink-0"
-                              : t.disposition === "already_gone" ? "text-muted-foreground shrink-0"
-                              : "text-amber-600 shrink-0"
-                          }>
-                            {t.disposition === "eligible" ? "Eligible" : t.disposition === "already_gone" ? "Gone" : "Review"}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="max-h-64 space-y-2 overflow-y-auto rounded border border-border bg-muted/10 p-2">
+                      {cleanupPreview.targets.map((t) => {
+                        const selected = cleanupOverrides.has(t.recordId);
+                        return (
+                          <div key={t.recordId} className="space-y-1 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                            <div className="flex items-start gap-2">
+                              {t.disposition === "overridable" ? (
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5"
+                                  checked={selected}
+                                  onChange={() => toggleCleanupOverride(t.recordId)}
+                                  aria-label={`Also remove ${t.label}`}
+                                />
+                              ) : (
+                                <span className="mt-0.5 w-3.5 shrink-0" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-foreground">
+                                  <span className="font-medium">{t.label}</span>
+                                  <span className="text-muted-foreground"> · {t.entityType}</span>
+                                </p>
+                                <p className="text-muted-foreground">{t.reason}</p>
+                                {t.consequences.length > 0 && selected && (
+                                  <ul className="mt-1 list-disc pl-4 text-amber-700 dark:text-amber-400">
+                                    {t.consequences.map((c) => <li key={c}>{c}</li>)}
+                                  </ul>
+                                )}
+                                {t.disposition === "blocked" && (
+                                  <p className="mt-0.5 text-amber-700 dark:text-amber-400">Next: {t.nextStep}</p>
+                                )}
+                              </div>
+                              <span className={
+                                t.disposition === "eligible" ? "text-success shrink-0"
+                                  : t.disposition === "already_gone" ? "text-muted-foreground shrink-0"
+                                  : t.disposition === "overridable" ? "text-amber-600 shrink-0"
+                                  : "text-destructive shrink-0"
+                              }>
+                                {t.disposition === "eligible" ? "Ready"
+                                  : t.disposition === "already_gone" ? "Gone"
+                                  : t.disposition === "overridable" ? (selected ? "Will remove" : "Your choice")
+                                  : "Blocked"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" disabled={cleanupWorking} onClick={() => setCleanupPreview(null)}>
+                      <Button size="sm" variant="ghost" disabled={cleanupWorking} onClick={() => { setCleanupPreview(null); setCleanupOverrides(new Set()); }}>
                         Cancel
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
-                        disabled={cleanupWorking || cleanupPreview.eligibleCount === 0}
+                        disabled={cleanupWorking || (cleanupPreview.eligibleCount + cleanupOverrides.size) === 0}
                         onClick={() => handleExecuteCleanup(activeSession.id)}
                       >
                         {cleanupWorking ? (
                           <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Removing…</>
                         ) : (
-                          `Remove ${cleanupPreview.eligibleCount} eligible`
+                          `Remove ${cleanupPreview.eligibleCount + cleanupOverrides.size}`
                         )}
                       </Button>
                     </div>
@@ -1227,12 +1276,13 @@ export function MigrationCenter({
 
                 {cleanupResult && (
                   <div className="space-y-1 text-xs text-foreground">
-                    <p>
-                      Result: {cleanupResult.deleted} removed · {cleanupResult.review} review · {cleanupResult.failed} failed · {cleanupResult.alreadyGone} already gone
+                    <p>{cleanupResult.summary}</p>
+                    <p className="text-muted-foreground">
+                      {cleanupResult.deleted} removed · {cleanupResult.blocked} blocked · {cleanupResult.skipped} left as chosen · {cleanupResult.failed} failed · {cleanupResult.alreadyGone} already gone
                     </p>
-                    {cleanupResult.items.filter((i) => i.outcome === "failed" || i.outcome === "review").slice(0, 12).map((i) => (
+                    {cleanupResult.items.filter((i) => i.outcome === "failed" || i.outcome === "blocked").slice(0, 12).map((i) => (
                       <p key={`${i.entityId}-${i.outcome}`} className="text-muted-foreground">
-                        {i.entityType}: {i.message}
+                        {i.label ?? i.entityType}: {i.message}
                       </p>
                     ))}
                   </div>

@@ -2,12 +2,15 @@
  * Reviewable import-scoped cleanup for Migration Center sessions.
  *
  * Attribution is ONLY via migration_records.created_entity_id for this session.
- * Never uses name/email/timestamp matching. Never calls rollbackImportBatch
- * (unsafe after Active Commitment / financials).
+ * Never uses name/email/timestamp matching. Never calls rollbackImportBatch.
  *
- * Eligible deletes use existing product delete gates. Financial, edited,
- * unsupported, or missing records are flagged for manual review — never
- * silently skipped as success.
+ * Owner-control policy:
+ * - Outcome A (eligible): safe automatic delete after confirm.
+ * - Outcome B (overridable): warning with consequences; owner may opt in.
+ * - Outcome C (blocked): hard stop with plain-language reason + next step.
+ *   Hard blocks: financial integrity, tour hard-delete guard, seating history
+ *   on floor plans, missing delete path, unauthorized/cross-tenant (via
+ *   existing venue-scoped delete actions).
  */
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -26,7 +29,7 @@ import * as vendorsRepo from "@/lib/vendors/repository";
 import * as documentsRepo from "@/lib/documents/repository";
 import type { MigrationEntityType, MigrationRecord } from "@/lib/migration/types";
 
-export type CleanupDisposition = "eligible" | "review" | "already_gone";
+export type CleanupDisposition = "eligible" | "overridable" | "blocked" | "already_gone";
 
 export type CleanupTarget = {
   recordId: string;
@@ -34,7 +37,9 @@ export type CleanupTarget = {
   entityId: string;
   disposition: CleanupDisposition;
   reason: string;
+  nextStep: string;
   label: string;
+  consequences: string[];
 };
 
 export type CleanupPreview = {
@@ -42,7 +47,8 @@ export type CleanupPreview = {
   venueId: string;
   targets: CleanupTarget[];
   eligibleCount: number;
-  reviewCount: number;
+  overridableCount: number;
+  blockedCount: number;
   alreadyGoneCount: number;
   warnings: string[];
 };
@@ -51,25 +57,30 @@ export type CleanupItemResult = {
   recordId: string;
   entityType: MigrationEntityType;
   entityId: string;
-  outcome: "deleted" | "review" | "already_gone" | "failed";
+  label: string;
+  outcome: "deleted" | "blocked" | "skipped" | "already_gone" | "failed";
   message: string;
 };
 
 export type CleanupResult = {
   ok: true;
   deleted: number;
-  review: number;
+  blocked: number;
+  skipped: number;
   alreadyGone: number;
   failed: number;
+  unresolved: number;
+  summary: string;
   items: CleanupItemResult[];
 } | { ok: false; message: string };
 
-/** Child / leaf types before parents. active_commitment & event & floor_plan stay review-only. */
+/** Leaf / child types before parents. Events have no standalone delete. */
 const DELETE_ORDER: MigrationEntityType[] = [
   "guest_list",
   "timeline_entry",
   "event_vendor_assignment",
   "document",
+  "floor_plan", // created_entity_id is the Documents SoR row from floor-plan-commit
   "tour",
   "date_hold",
   "calendar_block",
@@ -94,6 +105,8 @@ const ENTITY_TABLE: Partial<Record<MigrationEntityType, string>> = {
   timeline_entry: "timeline_entries",
   document: "documents",
   event: "events",
+  // MC floor_plan commits return the document id (see floor-plan-commit.ts).
+  floor_plan: "documents",
 };
 
 function labelFor(record: MigrationRecord): string {
@@ -110,6 +123,25 @@ function labelFor(record: MigrationRecord): string {
   return String(name);
 }
 
+function target(
+  record: MigrationRecord,
+  disposition: CleanupDisposition,
+  reason: string,
+  nextStep: string,
+  consequences: string[] = [],
+): CleanupTarget {
+  return {
+    recordId: record.id,
+    entityType: record.targetEntityType,
+    entityId: record.createdEntityId!,
+    disposition,
+    reason,
+    nextStep,
+    label: labelFor(record),
+    consequences,
+  };
+}
+
 async function wasEditedSinceCommit(
   admin: ReturnType<typeof createAdminClient>,
   venueId: string,
@@ -123,22 +155,20 @@ async function wasEditedSinceCommit(
   const baseline = new Date(new Date(committedAt).getTime() + TOUCH_BUFFER_MS).toISOString();
 
   if (entityType === "vendor") {
-    // Venue relationship row is what import created for directory purposes.
     const { data } = await admin.from("venue_vendor_relationships")
       .select("updated_at, created_at")
       .eq("venue_id", venueId)
       .eq("vendor_id", entityId)
       .maybeSingle<{ updated_at: string; created_at: string }>();
-    if (!data) return false; // gone
+    if (!data) return false;
     return data.updated_at > baseline;
   }
 
-  let q = admin.from(table).select("updated_at, created_at").eq("id", entityId);
-  if (entityType !== "vendor") {
-    // Most venue-scoped tables have venue_id
-    q = q.eq("venue_id", venueId);
-  }
-  const { data } = await q.maybeSingle<{ updated_at: string; created_at: string }>();
+  const { data } = await admin.from(table)
+    .select("updated_at, created_at")
+    .eq("id", entityId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ updated_at: string; created_at: string }>();
   if (!data) return false;
   return data.updated_at > baseline;
 }
@@ -159,6 +189,30 @@ async function entityExists(
   const { data } = await admin.from(table)
     .select("id").eq("id", entityId).eq("venue_id", venueId).maybeSingle();
   return !!data;
+}
+
+/** True when any floor_plans row using this background document has seating history. */
+async function floorPlanDocumentSeatingBlocks(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  documentId: string,
+): Promise<boolean> {
+  const { data: plans } = await admin.from("floor_plans")
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("background_document_id", documentId);
+  const planIds = ((plans ?? []) as { id: string }[]).map((p) => p.id);
+  if (planIds.length === 0) return false;
+  const [{ count: a }, { count: s }, { count: d }] = await Promise.all([
+    admin.from("guest_seat_assignments").select("guest_id", { count: "exact", head: true }).in("floor_plan_id", planIds),
+    admin.from("seating_submissions").select("id", { count: "exact", head: true }).in("floor_plan_id", planIds),
+    admin.from("seating_delegations").select("id", { count: "exact", head: true }).in("floor_plan_id", planIds),
+  ]);
+  return (a ?? 0) > 0 || (s ?? 0) > 0 || (d ?? 0) > 0;
+}
+
+function isFinancialBlockMessage(message: string): boolean {
+  return /signed contract|collected payments|financial/i.test(message);
 }
 
 export async function previewImportSessionCleanup(sessionId: string): Promise<
@@ -189,80 +243,105 @@ export async function previewImportSessionCleanup(sessionId: string): Promise<
   for (const record of records) {
     const entityId = record.createdEntityId!;
     const entityType = record.targetEntityType;
-    const label = labelFor(record);
 
     if (entityType === "active_commitment") {
-      targets.push({
-        recordId: record.id, entityType, entityId, label,
-        disposition: "review",
-        reason: "Active commitment / financial records are not auto-deleted. Review Event Order, invoice, and payment schedule manually.",
-      });
+      targets.push(target(
+        record,
+        "blocked",
+        "This import created financial records (Event Order, invoice, or payment schedule) that must stay for your books.",
+        "Review those records on the client. You can correct details there; deleting payment history from Import cleanup is not available.",
+      ));
       continue;
     }
+
     if (entityType === "event") {
-      targets.push({
-        recordId: record.id, entityType, entityId, label,
-        disposition: "review",
-        reason: "Standalone Events are not auto-deleted. Delete the Client (if eligible) to cascade, or remove the Event manually.",
-      });
+      targets.push(target(
+        record,
+        "blocked",
+        "Events are not removed on their own from Import cleanup.",
+        "Delete the related Client in this cleanup if it was also imported and is eligible, or remove planning records from the client workspace.",
+      ));
       continue;
     }
+
+    if (entityType === "payment" || entityType === "key_date") {
+      targets.push(target(
+        record,
+        "blocked",
+        `This "${entityType}" row cannot be removed through Import cleanup.`,
+        "Open the related client or settings screen and use the supported edit or remove action there.",
+      ));
+      continue;
+    }
+
     if (entityType === "floor_plan") {
-      targets.push({
-        recordId: record.id, entityType, entityId, label,
-        disposition: "review",
-        reason: "Floor plans may be linked as Space templates — review and delete from Floor plans / Library.",
-      });
+      const exists = await entityExists(admin, venue.id, "floor_plan", entityId);
+      if (!exists) {
+        targets.push(target(record, "already_gone", "This floor plan file is already gone.", "Nothing more to do."));
+        continue;
+      }
+      if (await floorPlanDocumentSeatingBlocks(admin, venue.id, entityId)) {
+        targets.push(target(
+          record,
+          "blocked",
+          "A floor plan that uses this imported file has seating assignments, submissions, or assistance history.",
+          "Resolve seating first in Floor plans, then try cleanup again. Seating history is never deleted silently.",
+        ));
+        continue;
+      }
+      const edited = await wasEditedSinceCommit(admin, venue.id, "floor_plan", entityId, record.committedAt);
+      targets.push(target(
+        record,
+        "overridable",
+        edited
+          ? "This imported floor plan file has changed since import. Deleting it removes the file and later changes."
+          : "This floor plan file was created by this import. Deleting it removes the file from your library.",
+        "Select it below if you want it removed, then confirm.",
+        [
+          "The imported file (document) will be removed.",
+          "Space templates or event plans that used this file may need a new background.",
+        ],
+      ));
       continue;
     }
+
     if (!DELETE_ORDER.includes(entityType)) {
-      targets.push({
-        recordId: record.id, entityType, entityId, label,
-        disposition: "review",
-        reason: `Automatic cleanup is not supported for "${entityType}" yet.`,
-      });
+      targets.push(target(
+        record,
+        "blocked",
+        `Import cleanup does not support removing "${entityType}" yet.`,
+        "Use the record’s own Delete action in the product, or leave it for a follow-up.",
+      ));
       continue;
     }
 
     const exists = await entityExists(admin, venue.id, entityType, entityId);
     if (!exists) {
-      targets.push({
-        recordId: record.id, entityType, entityId, label,
-        disposition: "already_gone",
-        reason: "Record is already gone.",
-      });
+      targets.push(target(record, "already_gone", "This record is already gone.", "Nothing more to do."));
       continue;
     }
 
-    const edited = await wasEditedSinceCommit(admin, venue.id, entityType, entityId, record.committedAt);
-    if (edited) {
-      targets.push({
-        recordId: record.id, entityType, entityId, label,
-        disposition: "review",
-        reason: "Edited after import — refused automatic deletion.",
-      });
-      continue;
-    }
-
+    // Financial / product hard gates first (not overridable)
     if (entityType === "client") {
       const preview = await previewDeleteClient(entityId);
       if (!preview.ok) {
-        targets.push({
-          recordId: record.id, entityType, entityId, label,
-          disposition: "review",
-          reason: preview.message,
-        });
+        targets.push(target(
+          record,
+          "blocked",
+          isFinancialBlockMessage(preview.message)
+            ? "This client is linked to a signed contract or collected payments that must be preserved."
+            : preview.message,
+          isFinancialBlockMessage(preview.message)
+            ? "Keep this client for your books. Fix duplicates by deleting the extra inquiry instead of erasing paid history."
+            : "Resolve the issue named above, then try again.",
+        ));
         continue;
       }
     }
     if (entityType === "lead") {
       const preview = await previewDeleteLead(entityId);
       if (!preview.ok) {
-        targets.push({
-          recordId: record.id, entityType, entityId, label,
-          disposition: "review",
-          reason: preview.message,
-        });
+        targets.push(target(record, "blocked", preview.message, "Resolve the issue named above, then try again."));
         continue;
       }
     }
@@ -279,37 +358,54 @@ export async function previewImportSessionCleanup(sessionId: string): Promise<
           contactName: tour.contact_name,
         });
         if (!guard.allowed) {
-          targets.push({
-            recordId: record.id, entityType, entityId, label,
-            disposition: "review",
-            reason: guard.reason,
-          });
+          targets.push(target(
+            record,
+            "blocked",
+            "This tour is linked to a customer record, so hard delete is not available from Import cleanup.",
+            "Archive the tour in Tours, or delete the linked Lead from this cleanup if you no longer need either.",
+          ));
           continue;
         }
       }
     }
 
-    targets.push({
-      recordId: record.id, entityType, entityId, label,
-      disposition: "eligible",
-      reason: "Attributed to this import and unchanged — safe to remove.",
-    });
+    const edited = await wasEditedSinceCommit(admin, venue.id, entityType, entityId, record.committedAt);
+    if (edited) {
+      targets.push(target(
+        record,
+        "overridable",
+        "This record has changed since it was imported. Deleting it will also remove those later changes.",
+        "Select it below if you no longer need it, then confirm.",
+        ["Any edits made after import will be discarded with this record."],
+      ));
+      continue;
+    }
+
+    targets.push(target(
+      record,
+      "eligible",
+      "Created by this import and unchanged — ready to remove.",
+      "Included when you confirm cleanup.",
+    ));
   }
 
   const eligibleCount = targets.filter((t) => t.disposition === "eligible").length;
-  const reviewCount = targets.filter((t) => t.disposition === "review").length;
+  const overridableCount = targets.filter((t) => t.disposition === "overridable").length;
+  const blockedCount = targets.filter((t) => t.disposition === "blocked").length;
   const alreadyGoneCount = targets.filter((t) => t.disposition === "already_gone").length;
 
-  if (reviewCount > 0) {
+  if (overridableCount > 0) {
     warnings.push(
-      `${reviewCount} record${reviewCount === 1 ? "" : "s"} need manual review and will not be deleted automatically.`,
+      `${overridableCount} record${overridableCount === 1 ? "" : "s"} need your decision before they can be removed.`,
     );
   }
-  if (eligibleCount === 0 && reviewCount > 0) {
-    warnings.push("Nothing is eligible for automatic cleanup. Use individual Delete on each reviewed record, or resolve financials first.");
+  if (blockedCount > 0) {
+    warnings.push(
+      `${blockedCount} record${blockedCount === 1 ? "" : "s"} cannot be deleted from Import cleanup — see the reason and next step for each.`,
+    );
   }
   warnings.push(
-    "This is not a full session Undo — only records still attributed to this import and marked eligible are removed.",
+    "This is not a full session Undo. Only records attributed to this import are considered, and blocked records stay until you handle them another way.",
   );
 
   return {
@@ -319,7 +415,8 @@ export async function previewImportSessionCleanup(sessionId: string): Promise<
       venueId: venue.id,
       targets,
       eligibleCount,
-      reviewCount,
+      overridableCount,
+      blockedCount,
       alreadyGoneCount,
       warnings,
     },
@@ -374,7 +471,9 @@ async function deleteOne(
       if ((count ?? 0) === 0) return { ok: false, message: "Guest not found." };
       return { ok: true };
     }
-    case "document": {
+    case "document":
+    case "floor_plan": {
+      // floor_plan MC attribution is the Documents SoR id from commitFloorPlanImport.
       const admin = createAdminClient();
       try {
         await documentsRepo.deleteDocument(admin as never, venueId, entityId);
@@ -389,12 +488,12 @@ async function deleteOne(
 }
 
 /**
- * Deletes only preview-eligible records, in dependency-safe order.
- * Re-runs eligibility checks at execute time (idempotent / refuse if state changed).
+ * Deletes eligible records plus any overridable records the owner selected.
+ * Hard-blocked records are never deleted. Re-checks gates at execute time.
  */
 export async function executeImportSessionCleanup(
   sessionId: string,
-  opts: { confirmed: boolean },
+  opts: { confirmed: boolean; overrideRecordIds?: string[] },
 ): Promise<CleanupResult> {
   if (!opts.confirmed) {
     return { ok: false, message: "Confirmation required before cleanup." };
@@ -402,10 +501,12 @@ export async function executeImportSessionCleanup(
   const previewed = await previewImportSessionCleanup(sessionId);
   if (!previewed.ok) return previewed;
 
+  const overrideSet = new Set(opts.overrideRecordIds ?? []);
   const { preview } = previewed;
   const items: CleanupItemResult[] = [];
   let deleted = 0;
-  let review = 0;
+  let blocked = 0;
+  let skipped = 0;
   let alreadyGone = 0;
   let failed = 0;
 
@@ -415,65 +516,111 @@ export async function executeImportSessionCleanup(
     return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
   });
 
-  for (const target of ordered) {
-    if (target.disposition === "already_gone") {
+  for (const t of ordered) {
+    const base = {
+      recordId: t.recordId, entityType: t.entityType, entityId: t.entityId, label: t.label,
+    };
+
+    if (t.disposition === "already_gone") {
       alreadyGone++;
-      items.push({
-        recordId: target.recordId, entityType: target.entityType, entityId: target.entityId,
-        outcome: "already_gone", message: target.reason,
-      });
+      items.push({ ...base, outcome: "already_gone", message: t.reason });
       continue;
     }
-    if (target.disposition === "review") {
-      review++;
+
+    if (t.disposition === "blocked") {
+      blocked++;
+      items.push({ ...base, outcome: "blocked", message: `${t.reason} ${t.nextStep}` });
+      continue;
+    }
+
+    if (t.disposition === "overridable" && !overrideSet.has(t.recordId)) {
+      skipped++;
       items.push({
-        recordId: target.recordId, entityType: target.entityType, entityId: target.entityId,
-        outcome: "review", message: target.reason,
+        ...base,
+        outcome: "skipped",
+        message: "Left in place — you did not choose to remove this warned record.",
       });
       continue;
     }
 
-    // Re-check existence + edit + financial gates at execute time
+    // eligible OR overridable+selected — re-check hard gates
     const admin = createAdminClient();
-    const exists = await entityExists(admin, preview.venueId, target.entityType, target.entityId);
+    const exists = await entityExists(admin, preview.venueId, t.entityType, t.entityId);
     if (!exists) {
       alreadyGone++;
-      items.push({
-        recordId: target.recordId, entityType: target.entityType, entityId: target.entityId,
-        outcome: "already_gone", message: "Already removed before cleanup ran.",
-      });
-      continue;
-    }
-    const supabase = await createClient();
-    const records = await repo.listRecords(supabase, sessionId, "committed");
-    const record = records.find((r) => r.id === target.recordId);
-    const edited = await wasEditedSinceCommit(
-      admin, preview.venueId, target.entityType, target.entityId, record?.committedAt ?? null,
-    );
-    if (edited) {
-      review++;
-      items.push({
-        recordId: target.recordId, entityType: target.entityType, entityId: target.entityId,
-        outcome: "review", message: "Edited after preview — refused.",
-      });
+      items.push({ ...base, outcome: "already_gone", message: "Already removed before cleanup ran." });
       continue;
     }
 
-    const result = await deleteOne(preview.venueId, target.entityType, target.entityId);
+    if (t.entityType === "client") {
+      const previewClient = await previewDeleteClient(t.entityId);
+      if (!previewClient.ok) {
+        blocked++;
+        items.push({ ...base, outcome: "blocked", message: previewClient.message });
+        continue;
+      }
+    }
+    if (t.entityType === "lead") {
+      const previewLead = await previewDeleteLead(t.entityId);
+      if (!previewLead.ok) {
+        blocked++;
+        items.push({ ...base, outcome: "blocked", message: previewLead.message });
+        continue;
+      }
+    }
+    if (t.entityType === "floor_plan" && await floorPlanDocumentSeatingBlocks(admin, preview.venueId, t.entityId)) {
+      blocked++;
+      items.push({
+        ...base,
+        outcome: "blocked",
+        message: "A linked floor plan gained seating history before cleanup ran — resolve seating first.",
+      });
+      continue;
+    }
+    if (t.entityType === "tour") {
+      const { data: tour } = await admin.from("tour_appointments")
+        .select("lead_id, contact_email, contact_name")
+        .eq("id", t.entityId)
+        .eq("venue_id", preview.venueId)
+        .maybeSingle<{ lead_id: string | null; contact_email: string | null; contact_name: string | null }>();
+      if (tour) {
+        const guard = canHardDeleteTourAppointment({
+          leadId: tour.lead_id,
+          contactEmail: tour.contact_email,
+          contactName: tour.contact_name,
+        });
+        if (!guard.allowed) {
+          blocked++;
+          items.push({ ...base, outcome: "blocked", message: guard.reason });
+          continue;
+        }
+      }
+    }
+
+    const result = await deleteOne(preview.venueId, t.entityType, t.entityId);
     if (result.ok) {
       deleted++;
-      items.push({
-        recordId: target.recordId, entityType: target.entityType, entityId: target.entityId,
-        outcome: "deleted", message: "Removed.",
-      });
+      items.push({ ...base, outcome: "deleted", message: "Removed." });
     } else {
       failed++;
-      items.push({
-        recordId: target.recordId, entityType: target.entityType, entityId: target.entityId,
-        outcome: "failed", message: result.message,
-      });
+      items.push({ ...base, outcome: "failed", message: result.message });
     }
   }
 
-  return { ok: true, deleted, review, alreadyGone, failed, items };
+  const unresolved = blocked + skipped + failed;
+  const summary = unresolved === 0
+    ? `Cleanup finished. ${deleted} record${deleted === 1 ? "" : "s"} removed.`
+    : `Cleanup completed for ${deleted} record${deleted === 1 ? "" : "s"}. ${unresolved} record${unresolved === 1 ? "" : "s"} remain because they need additional review or failed. Nothing was deleted for those remaining records.`;
+
+  return {
+    ok: true,
+    deleted,
+    blocked,
+    skipped,
+    alreadyGone,
+    failed,
+    unresolved,
+    summary,
+    items,
+  };
 }

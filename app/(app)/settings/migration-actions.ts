@@ -132,9 +132,15 @@ export async function previewImportSessionCleanupAction(sessionId: string) {
   return previewImportSessionCleanup(sessionId);
 }
 
-export async function executeImportSessionCleanupAction(sessionId: string) {
+export async function executeImportSessionCleanupAction(
+  sessionId: string,
+  overrideRecordIds: string[] = [],
+) {
   const { executeImportSessionCleanup } = await import("@/lib/migration/session-cleanup");
-  const result = await executeImportSessionCleanup(sessionId, { confirmed: true });
+  const result = await executeImportSessionCleanup(sessionId, {
+    confirmed: true,
+    overrideRecordIds,
+  });
   if (result.ok) {
     revalidatePath("/settings/migration");
     revalidatePath("/clients");
@@ -142,6 +148,7 @@ export async function executeImportSessionCleanupAction(sessionId: string) {
     revalidatePath("/vendors");
     revalidatePath("/calendar");
     revalidatePath("/documents");
+    revalidatePath("/library/floor-plan-templates");
   }
   return result;
 }
