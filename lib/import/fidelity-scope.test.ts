@@ -24,25 +24,25 @@ const importActionsSrc = readFileSync(
 );
 
 describe("Import Data scope honesty", () => {
-  it("does not claim client imports create linked calendar Events", () => {
-    assert.doesNotMatch(wizardSrc, /clients with linked events/i);
-    assert.match(wizardSrc, /Calendar Events are not created here/i);
-    assert.match(wizardSrc, /Event dates stay on the client/i);
+  it("documents past-date historical Events and future dates staying on the client", () => {
+    assert.match(wizardSrc, /Past dates create historical Events/i);
+    assert.match(wizardSrc, /Future event dates stay on the client/i);
+    assert.match(importActionsSrc, /isPastEventDate/);
+    assert.match(importActionsSrc, /asHistorical/);
   });
 
-  it("states package import is shell-only (no package_items)", () => {
-    assert.match(wizardSrc, /Included line items and inventory links are not imported/i);
-    assert.match(wizardSrc, /Package shell only/i);
-    // Import path creates packages via createPackage(input) without items API
-    assert.match(importActionsSrc, /createPackage\(/);
-    assert.doesNotMatch(importActionsSrc, /package_items|addPackageItem|createPackageItem/);
-    assert.match(packageServiceSrc, /insertPackage/);
+  it("imports package composition via included items when mapped", () => {
+    assert.match(wizardSrc, /Included line items/i);
+    assert.match(wizardSrc, /description\|qty\|unit/i);
+    assert.match(importActionsSrc, /addPackageItems/);
+    assert.match(packageServiceSrc, /insertPackageItem/);
   });
 
   it("maps partner email and lead guest count into persisted inputs", () => {
     assert.ok(COUPLE_FIELDS.some((f) => f.key === "partnerEmail"));
     assert.ok(LEAD_FIELDS.some((f) => f.key === "guestCount"));
-    assert.ok(PACKAGE_FIELDS.every((f) => !/item|composition|inventory/i.test(f.key)));
+    assert.ok(PACKAGE_FIELDS.some((f) => f.key === "includedItems"));
+    assert.ok(PACKAGE_FIELDS.every((f) => !/inventory/i.test(f.key)));
 
     const client = rowToClientInput(
       {
@@ -91,16 +91,25 @@ describe("Import Data scope honesty", () => {
     assert.equal(lead.guestCount, "85");
 
     const pkg = rowToPackageInput(
-      { "Package Name": "Gold", Description: "Nice", "Base Price": "$1,200.00", Category: "Wedding" },
+      {
+        "Package Name": "Gold",
+        Description: "Nice",
+        "Base Price": "$1,200.00",
+        Category: "Wedding",
+        "Included Items (desc|qty|unit; …)": "Toast|50|each; Coord|1|flat",
+      },
       {
         name: "Package Name",
         description: "Description",
         basePrice: "Base Price",
         category: "Category",
+        includedItems: "Included Items (desc|qty|unit; …)",
       },
     );
     assert.equal(pkg.name, "Gold");
     assert.equal(pkg.basePrice, "1200");
-    assert.equal("items" in pkg, false);
+    assert.equal(pkg.includedItems.length, 2);
+    assert.equal(pkg.includedItems[0]?.description, "Toast");
+    assert.equal(pkg.includedItems[0]?.quantity, "50");
   });
 });

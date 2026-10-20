@@ -23,6 +23,7 @@ import type {
 } from "@/lib/migration/types";
 import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@/lib/migration/active-commitment-model";
 import { validateActiveCommitment } from "@/lib/migration/active-commitment-model";
+import { parsePackageIncludedItems } from "@/lib/import/package-items";
 import { MANUAL_SCHEDULE_TYPES, type ManualScheduleType, type RecurrenceRule } from "@/lib/availability/types";
 
 function str(row: SourceRow, key: string): string | null {
@@ -197,11 +198,19 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   if (entityType === "package") {
     const name = str(row, "name");
     if (!name) return { ok: false, error: "Packages need a name." };
+    const itemsRaw = str(row, "includedItems") ?? str(row, "items") ?? str(row, "packageItems");
+    let includedItems: NormalizedPackageLike["includedItems"] = null;
+    if (itemsRaw) {
+      const parsed = parsePackageIncludedItems(itemsRaw);
+      if (!parsed.ok) return { ok: false, error: parsed.message };
+      includedItems = parsed.items;
+    }
     const normalized: NormalizedPackageLike = {
       name,
       description: str(row, "description"),
       basePrice: str(row, "basePrice") ?? str(row, "price"),
       category: str(row, "category"),
+      includedItems,
       sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
     };
     return { ok: true, entityType, normalized };

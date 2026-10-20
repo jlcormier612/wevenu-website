@@ -15,7 +15,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClientForVenue, createClient_ } from "@/lib/clients/service";
 import { createLead, createLeadForVenue } from "@/lib/leads/service";
 import { createVendor, createVendorForVenue } from "@/lib/vendors/service";
-import { createPackage, createPackageForVenue } from "@/lib/packages/service";
+import { addPackageItems, addPackageItemsForVenue, createPackage, createPackageForVenue } from "@/lib/packages/service";
 import * as availRepo from "@/lib/availability/repository";
 import * as eventsRepo from "@/lib/events/repository";
 import { isAppointmentCatalogBuiltinKey } from "@/lib/calendar/schedule-item-catalog";
@@ -1037,7 +1037,10 @@ async function commitOneRecord(
   try {
     if (entityType === "client") {
       const n = record.normalizedPayload as unknown as NormalizedClientLike & { importAsHistoricalRecord?: boolean };
-      const asHistorical = !!n.importAsHistoricalRecord && isPastEventDate(n.eventDate);
+      // Past event dates always create a historical Event. The
+      // importAsHistoricalRecord flag is still set by approve_historical for
+      // availability-conflict review, but any past date commits as historical.
+      const asHistorical = isPastEventDate(n.eventDate);
       const requiresSpace = !asHistorical && !!n.eventDate && await venueRequiresEventSpace(client, session.venueId);
       const space = await resolveSpaceId(client, session.venueId, n.spaceId, n.spaceName);
       if (requiresSpace) {
@@ -1086,6 +1089,15 @@ async function commitOneRecord(
         ? await createPackageForVenue(session.venueId, input)
         : await createPackage(input);
       if (!result.ok) return { ok: false, error: result.message ?? "Could not create package." };
+      const items = n.includedItems ?? [];
+      if (items.length > 0) {
+        const itemsResult = isAdmin
+          ? await addPackageItemsForVenue(session.venueId, result.packageId, items)
+          : await addPackageItems(result.packageId, items);
+        if (!itemsResult.ok) {
+          return { ok: false, error: itemsResult.message ?? "Package created but included items could not be saved." };
+        }
+      }
       return { ok: true, entityId: result.packageId };
     }
     if (entityType === "calendar_block") {

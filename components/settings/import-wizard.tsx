@@ -30,11 +30,11 @@ import {
 type CsvRow = Record<string, string>;
 
 const ENTITY_META: Record<EntityType, { label: string; resultPath: string; description: string }> = {
-  couples:   { label: "Clients",   resultPath: "/clients",          description: "Import clients with contact details and optional event dates stored on the client record. Calendar Events are not created here — use Migration Center or book from the client for linked Events." },
+  couples:   { label: "Clients",   resultPath: "/clients",          description: "Import clients with contact details. Past event dates create a historical calendar Event; future dates stay on the client until you book (Migration Center event import or book from the client)." },
   leads:     { label: "Leads",     resultPath: "/leads",            description: "Import inquiries into your leads pipeline. Historical imports stay quiet (no automations, new-lead alerts, or scheduled outreach)." },
   vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
   inventory: { label: "Inventory Templates", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
-  packages:  { label: "Package Templates",   resultPath: "/packages",  description: "Import package name, description, category, and base price. Included line items and inventory links are not imported — add those on each package after import." },
+  packages:  { label: "Package Templates",   resultPath: "/packages",  description: "Import package name, description, category, base price, and optional included line items (description|qty|unit). Inventory links are not imported." },
 };
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
@@ -61,7 +61,7 @@ const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string 
   packages: {
     cta:    "Review your packages",
     href:   "/packages",
-    detail: "Confirm pricing, then add included items on each package before using them on invoices.",
+    detail: "Confirm pricing and included items, then packages are ready to add to invoices.",
   },
 };
 
@@ -514,18 +514,18 @@ function StepPreview({
 
       {entity === "couples" && mapping.eventDate && (
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
-          <p className="text-sm font-medium text-foreground">Event dates stay on the client</p>
+          <p className="text-sm font-medium text-foreground">Past dates create historical Events</p>
           <p className="text-xs text-muted-foreground">
-            Import Data saves event dates and related fields on the client record. It does not create calendar Events or hold dates. For linked Events, use Migration Center or book from the client after import.
+            Rows with a past event date create a historical calendar Event linked to the client (does not change future availability rules beyond what that Event records). Future event dates stay on the client only — book or use Migration Center event import for operational Events. No portal invitations are sent.
           </p>
         </div>
       )}
 
       {entity === "packages" && (
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 space-y-1">
-          <p className="text-sm font-medium text-foreground">Package shell only</p>
+          <p className="text-sm font-medium text-foreground">Included line items</p>
           <p className="text-xs text-muted-foreground">
-            This import creates the package name, description, category, and base price. It does not import included items or inventory links — add those on each package afterward.
+            Map &quot;Included Items&quot; as <span className="font-mono text-[11px]">description|qty|unit</span> entries separated by semicolons to create package line items. Inventory catalog links are not imported here.
           </p>
         </div>
       )}

@@ -102,6 +102,42 @@ export async function createPackageForVenue(venueId: string, input: PackageInput
   return { ok: true, packageId };
 }
 
+/** Append composition lines after package create (Import Data / Migration Center). */
+export async function addPackageItems(
+  packageId: string,
+  items: PackageItemInput[],
+): Promise<PackageActionResult> {
+  if (items.length === 0) return { ok: true };
+  for (const item of items) {
+    if (!item.description.trim()) return { ok: false, message: "Each included item needs a description." };
+  }
+  const result = await withVenue(async (c, venueId) => {
+    for (const item of items) {
+      await repo.insertPackageItem(c, venueId, packageId, item);
+    }
+    return { ok: true } as PackageActionResult;
+  });
+  return result as PackageActionResult;
+}
+
+export async function addPackageItemsForVenue(
+  venueId: string,
+  packageId: string,
+  items: PackageItemInput[],
+): Promise<PackageActionResult> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  if (items.length === 0) return { ok: true };
+  for (const item of items) {
+    if (!item.description.trim()) return { ok: false, message: "Each included item needs a description." };
+  }
+  const admin = createAdminClient();
+  for (const item of items) {
+    await repo.insertPackageItem(admin, venueId, packageId, item);
+  }
+  return { ok: true };
+}
+
 export async function updatePackage_(id: string, input: PackageInput): Promise<PackageActionResult> {
   const errors = validatePackageInput(input);
   if (errors) return { ok: false, errors };

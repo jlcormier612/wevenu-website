@@ -4,6 +4,7 @@
  * mirrored on the server for authoritative skip decisions.
  */
 import { ENTITY_FIELDS, type EntityType, type FieldMapping, type ImportFieldDef } from "@/lib/import/types";
+import { parsePackageIncludedItems } from "@/lib/import/package-items";
 import { parsePackagePriceInput } from "@/lib/packages/constants";
 
 type CsvRow = Record<string, string>;
@@ -245,9 +246,16 @@ function validateMappedAmounts(
   }
   if (entity === "packages") {
     const raw = val(row, mapping, "basePrice");
-    if (!raw) return null;
-    const parsed = normalizeImportAmount(raw);
-    return parsed.ok ? null : parsed.message;
+    if (raw) {
+      const parsed = normalizeImportAmount(raw);
+      if (!parsed.ok) return parsed.message;
+    }
+    const itemsRaw = val(row, mapping, "includedItems");
+    if (itemsRaw) {
+      const items = parsePackageIncludedItems(itemsRaw);
+      if (!items.ok) return items.message;
+    }
+    return null;
   }
   if (entity === "inventory") {
     const raw = val(row, mapping, "quantity");

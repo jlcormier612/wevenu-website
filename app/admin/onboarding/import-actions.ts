@@ -18,6 +18,7 @@ import { requireAdminUser } from "@/lib/hq/crm-service";
 import { getOnboardingEngagement } from "@/lib/hq/onboarding-service";
 import { createClientForVenue, findActiveDuplicateClientForVenue } from "@/lib/clients/service";
 import { resolveSpaceId } from "@/lib/migration/resolve-refs";
+import { isPastEventDate } from "@/lib/migration/historical-record";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import { createLeadForVenue, findActiveDuplicateLeadForVenue, leadInputToRawIntake } from "@/lib/leads/service";
 import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
@@ -26,7 +27,9 @@ import {
   createItemForVenue, findActiveDuplicateInventoryItemForVenue,
   getCategoriesForVenue, createCategoryForVenue,
 } from "@/lib/inventory/service";
-import { createPackageForVenue, findActiveDuplicatePackageForVenue } from "@/lib/packages/service";
+import {
+  addPackageItemsForVenue, createPackageForVenue, findActiveDuplicatePackageForVenue,
+} from "@/lib/packages/service";
 import { acceptCreatedImportRow, createImportBatchForVenue, finalizeImportBatch } from "@/lib/import/batches";
 import { decideHistoricalImportDuplicate, haltUntrackedHistoricalImport } from "@/lib/import/historical-guard";
 import {
@@ -40,7 +43,7 @@ import type { InventoryItemInput, InventoryShape } from "@/lib/inventory/types";
 import type { LeadInput } from "@/lib/leads/types";
 import type { PackageInput } from "@/lib/packages/types";
 import type { VendorInput } from "@/lib/vendors/types";
-import type { InventoryImportRow } from "@/lib/import/utils";
+import type { InventoryImportRow, PackageImportRow } from "@/lib/import/utils";
 import type { ImportResult } from "@/lib/import/types";
 import { DISPLAY_SHAPES } from "@/components/floor-plan/floor-plan-shapes";
 
@@ -118,7 +121,8 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
         }
         input = { ...row, spaceId: resolved.spaceId ?? "" };
       }
-      const result = await createClientForVenue(venueId, input);
+      const asHistorical = isPastEventDate(input.eventDate);
+      const result = await createClientForVenue(venueId, input, true, asHistorical);
       if (result.ok) {
         const accepted = await acceptCreatedImportRow({
           entityType: "couples",
@@ -382,7 +386,7 @@ export async function importInventoryForVenueAction(venueId: string, rows: Inven
   return { imported: createdIds.length, errors, batchId };
 }
 
-export async function importPackagesForVenueAction(venueId: string, rows: PackageInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importPackagesForVenueAction(venueId: string, rows: PackageImportRow[], sourceLabel?: string): Promise<ImportResult> {
   const actor = await requireAdminUser();
   if (!actor) return { imported: 0, errors: [{ row: 0, message: "Not signed in as an HQ admin.", kind: "error" }], batchId: null };
 
@@ -411,6 +415,14 @@ export async function importPackagesForVenueAction(venueId: string, rows: Packag
       }
       seenPackageKeys.add(withinKey);
     }
+    const shell: PackageInput = {
+      name: row.name,
+      description: row.description,
+      basePrice: row.basePrice,
+      category: row.category,
+      isActive: row.isActive,
+    };
+    const includedItems = row.includedItems ?? [];
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
       () => findActiveDuplicatePackageForVenue(venueId, row.name),
@@ -421,8 +433,18 @@ export async function importPackagesForVenueAction(venueId: string, rows: Packag
       continue;
     }
     try {
-      const result = await createPackageForVenue(venueId, row);
+      const result = await createPackageForVenue(venueId, shell);
       if (result.ok) {
+        if (includedItems.length > 0) {
+          const itemsResult = await addPackageItemsForVenue(venueId, result.packageId, includedItems);
+          if (!itemsResult.ok) {
+            errors.push({
+              row: i + 1,
+              message: itemsResult.message ?? "Package created but included items could not be saved.",
+              kind: "error",
+            });
+          }
+        }
         const accepted = await acceptCreatedImportRow({
           entityType: "packages",
           batchId,

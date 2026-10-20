@@ -3,7 +3,8 @@ import type { ClientInput } from "@/lib/clients/types";
 import type { LeadInput } from "@/lib/leads/types";
 import { resolveLeadSourceKey } from "@/lib/leads/constants";
 import type { VendorInput } from "@/lib/vendors/types";
-import type { PackageInput } from "@/lib/packages/types";
+import type { PackageInput, PackageItemInput } from "@/lib/packages/types";
+import { parsePackageIncludedItems } from "@/lib/import/package-items";
 import {
   normalizeImportAmount,
   normalizeImportDate,
@@ -22,6 +23,11 @@ type CsvRow = Record<string, string>;
 export type InventoryImportRow = {
   name: string; categoryName: string; quantityAvailable: string;
   width: string; length: string; height: string; shape: string; color: string; printableName: string;
+};
+
+/** Package shell plus optional composition lines for Import Data commit. */
+export type PackageImportRow = PackageInput & {
+  includedItems: PackageItemInput[];
 };
 
 const PHONE_LIKE = /^\+?\d{7,}$/;
@@ -164,15 +170,24 @@ export function rowToInventoryInput(row: CsvRow, mapping: FieldMapping): Invento
   };
 }
 
-export function rowToPackageInput(row: CsvRow, mapping: FieldMapping): PackageInput {
+export function rowToPackageInput(row: CsvRow, mapping: FieldMapping): PackageImportRow {
   const price = normalizeImportAmount(val(row, mapping, "basePrice"));
+  const parsedItems = parsePackageIncludedItems(val(row, mapping, "includedItems"));
   return {
     name:        val(row, mapping, "name"),
     description: val(row, mapping, "description"),
     basePrice:   price.ok ? price.value : val(row, mapping, "basePrice"),
     category:    val(row, mapping, "category"),
     isActive:    true,
+    // Invalid composition is rejected at preview/commit; keep empty here if parse fails
+    // so row shape stays stable (caller validates via parsePackageIncludedItems).
+    includedItems: parsedItems.ok ? parsedItems.items : [],
   };
+}
+
+export function packageIncludedItemsParseError(row: CsvRow, mapping: FieldMapping): string | null {
+  const parsed = parsePackageIncludedItems(val(row, mapping, "includedItems"));
+  return parsed.ok ? null : parsed.message;
 }
 
 export function getSampleValue(
@@ -228,6 +243,7 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
   packages: {
     name: "Silver Package", description: "Includes linens, chairs, and centerpieces for up to 100 guests.",
     basePrice: "2500", category: "Reception",
+    includedItems: "Linens|100|each; Chiavari chairs|100|each; Centerpieces|10|each",
   },
 };
 

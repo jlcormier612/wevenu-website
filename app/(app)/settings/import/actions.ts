@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient_, findActiveDuplicateClient } from "@/lib/clients/service";
+import { isPastEventDate } from "@/lib/migration/historical-record";
 import { resolveSpaceId } from "@/lib/migration/resolve-refs";
 import { DISPLAY_SHAPES } from "@/components/floor-plan/floor-plan-shapes";
 import { acceptCreatedImportRow, createImportBatch, finalizeImportBatch, getImportBatches, rollbackImportBatch, type RollbackResult } from "@/lib/import/batches";
@@ -17,12 +18,12 @@ import {
   personEmailWithinFileKey,
   vendorWithinFileKey,
 } from "@/lib/import/preview-integrity";
-import type { InventoryImportRow } from "@/lib/import/utils";
+import type { InventoryImportRow, PackageImportRow } from "@/lib/import/utils";
 import { createCategory, createItem as createInventoryItem, findActiveDuplicateInventoryItem, getCategories } from "@/lib/inventory/service";
 import { createLead, findActiveDuplicateLead, leadInputToRawIntake } from "@/lib/leads/service";
 import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
 import { proposeFieldMapping, proposeStructuredRows } from "@/lib/luv/import-assist";
-import { createPackage, findActiveDuplicatePackage } from "@/lib/packages/service";
+import { addPackageItems, createPackage, findActiveDuplicatePackage } from "@/lib/packages/service";
 import { createVendor, findActiveDuplicateVendor } from "@/lib/vendors/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { createClient } from "@/integrations/supabase/server";
@@ -190,7 +191,14 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
         errors.push({ row: i + 1, message: spaced.message, kind: "error" });
         continue;
       }
-      const result = await createClient_({ ...spaced.input, skipIdentityReview: true });
+      // Past event dates create a historical Event (does not invent commercial
+      // booked state for future dates — those stay on the client until booked).
+      const asHistorical = isPastEventDate(spaced.input.eventDate);
+      const result = await createClient_(
+        { ...spaced.input, skipIdentityReview: true },
+        true,
+        asHistorical,
+      );
       if (result.ok) {
         const accepted = await acceptCreatedImportRow({
           entityType: "couples",
@@ -494,7 +502,7 @@ export async function importInventoryAction(rows: InventoryImportRow[], sourceLa
   return { imported: createdIds.length, errors, batchId };
 }
 
-export async function importPackagesAction(rows: PackageInput[], sourceLabel?: string): Promise<ImportResult> {
+export async function importPackagesAction(rows: PackageImportRow[], sourceLabel?: string): Promise<ImportResult> {
   const errors: ImportResult["errors"] = [];
   const createdIds: string[] = [];
   const venue = await getCurrentVenue();
@@ -526,7 +534,14 @@ export async function importPackagesAction(rows: PackageInput[], sourceLabel?: s
       errors.push({ row: i + 1, message: priceNorm.message, kind: "error" });
       continue;
     }
-    const normalizedPkg: PackageInput = { ...row, basePrice: priceNorm.value };
+    const includedItems = row.includedItems ?? [];
+    const normalizedPkg: PackageInput = {
+      name: row.name,
+      description: row.description,
+      basePrice: priceNorm.value,
+      category: row.category,
+      isActive: row.isActive,
+    };
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
       () => findActiveDuplicatePackage(row.name),
@@ -539,6 +554,16 @@ export async function importPackagesAction(rows: PackageInput[], sourceLabel?: s
     try {
       const result = await createPackage(normalizedPkg);
       if (result.ok) {
+        if (includedItems.length > 0) {
+          const itemsResult = await addPackageItems(result.packageId, includedItems);
+          if (!itemsResult.ok) {
+            errors.push({
+              row: i + 1,
+              message: itemsResult.message ?? "Package created but included items could not be saved.",
+              kind: "error",
+            });
+          }
+        }
         const accepted = await acceptCreatedImportRow({
           entityType: "packages",
           batchId,

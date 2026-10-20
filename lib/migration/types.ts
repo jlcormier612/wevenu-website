@@ -225,6 +225,8 @@ export type NormalizedPackageLike = {
   description?: string | null;
   basePrice?: string | null;
   category?: string | null;
+  /** Optional composition lines (description/qty/unit) — not inventory FKs. */
+  includedItems?: Array<{ description: string; quantity: string; unit: string }> | null;
   sourceId?: string | null;
 };
 

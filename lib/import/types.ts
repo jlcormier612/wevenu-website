@@ -63,10 +63,15 @@ export const INVENTORY_FIELDS: ImportFieldDef[] = [
 ];
 
 export const PACKAGE_FIELDS: ImportFieldDef[] = [
-  { key: "name",        label: "Package Name", required: true  },
-  { key: "description", label: "Description",  required: false },
-  { key: "basePrice",   label: "Base Price",   required: false },
-  { key: "category",    label: "Category",     required: false },
+  { key: "name",           label: "Package Name", required: true  },
+  { key: "description",    label: "Description",  required: false },
+  { key: "basePrice",      label: "Base Price",   required: false },
+  { key: "category",       label: "Category",     required: false },
+  {
+    key: "includedItems",
+    label: "Included Items (desc|qty|unit; …)",
+    required: false,
+  },
 ];
 
 export const ENTITY_FIELDS: Record<EntityType, ImportFieldDef[]> = {
