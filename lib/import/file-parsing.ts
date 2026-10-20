@@ -83,9 +83,11 @@ export function normalizeExtractedPdfText(text: string): string {
  * reach mapping. Text extraction only needs the constructor to exist.
  */
 export function ensurePdfJsDomPolyfills(): void {
-  const g = globalThis as typeof globalThis & { DOMMatrix?: unknown };
+  const g = globalThis as Record<string, unknown>;
   if (typeof g.DOMMatrix !== "undefined") return;
-  g.DOMMatrix = class DOMMatrix {
+  // Minimal stub — pdfjs only needs the constructor present in Node.
+  // Assigned via Record so TypeScript does not require the full DOMMatrix API.
+  g.DOMMatrix = class {
     a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
     constructor(_init?: string | number[]) {}
     multiplySelf() { return this; }
