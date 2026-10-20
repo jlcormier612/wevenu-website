@@ -481,13 +481,30 @@ function toLeadInput(n: NormalizedLeadLike): LeadInput {
 }
 
 function toVendorInput(n: NormalizedVendorLike): VendorInput {
+  // Full VendorInput — createVendor / upsertVenueRelationship call .trim() on
+  // every string field; omitting notes/description/etc. threw during MC commit
+  // ("Cannot read properties of undefined (reading 'trim')") and left vendors
+  // stuck in needs_review with zero venue relationships.
   return {
-    businessName: n.businessName, category: n.category ?? "", contactName: n.contactName ?? "",
-    email: n.email ?? "", phone: n.phone ?? "", websiteUrl: n.websiteUrl ?? "",
-    instagramUrl: "", facebookUrl: "", pinterestUrl: "", tiktokUrl: "",
+    businessName: n.businessName,
+    category: n.category ?? "",
+    contactName: n.contactName ?? "",
+    email: n.email ?? "",
+    phone: n.phone ?? "",
+    websiteUrl: n.websiteUrl ?? "",
+    instagramUrl: "",
+    facebookUrl: "",
+    pinterestUrl: "",
+    tiktokUrl: "",
     preferenceLevel: "recommended",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+    isRequired: false,
+    isInHouse: false,
+    description: "",
+    logoUrl: "",
+    pricingTier: "",
+    notes: n.notes ?? "",
+    specialPricingNote: "",
+  };
 }
 
 const STALE_CLAIM_MS = 5 * 60 * 1000;
