@@ -4,6 +4,7 @@ import type { LeadInput } from "@/lib/leads/types";
 import { resolveLeadSourceKey } from "@/lib/leads/constants";
 import type { VendorInput } from "@/lib/vendors/types";
 import type { PackageInput } from "@/lib/packages/types";
+import { normalizeImportAmount, normalizeImportDate, normalizeImportQuantity } from "@/lib/import/preview-integrity";
 
 type CsvRow = Record<string, string>;
 
@@ -60,6 +61,12 @@ function val(row: CsvRow, mapping: FieldMapping, key: string): string {
   return col ? (row[col] ?? "").trim() : "";
 }
 
+function mappedDate(row: CsvRow, mapping: FieldMapping, key: string): string {
+  const parsed = normalizeImportDate(val(row, mapping, key));
+  if (!parsed.ok) return val(row, mapping, key);
+  return parsed.value ?? "";
+}
+
 export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInput {
   return {
     firstName:        val(row, mapping, "firstName"),
@@ -70,8 +77,8 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     partnerLastName:  val(row, mapping, "partnerLastName"),
     partnerEmail:     "",
     eventType:        val(row, mapping, "eventType"),
-    eventDate:        val(row, mapping, "eventDate"),
-    endDate:          val(row, mapping, "endDate"),
+    eventDate:        mappedDate(row, mapping, "eventDate"),
+    endDate:          mappedDate(row, mapping, "endDate"),
     guestCount:       val(row, mapping, "guestCount"),
     ceremonyTime:     val(row, mapping, "ceremonyTime"),
     receptionTime:    val(row, mapping, "receptionTime"),
@@ -92,6 +99,7 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
   // resolved against it here rather than passed through raw, so an
   // unrecognized value can't fail the whole row on import.
   const { key: sourceKey, originalLabel } = resolveLeadSourceKey(val(row, mapping, "source"));
+  const budget = normalizeImportAmount(val(row, mapping, "estimatedBudget"));
   return {
     firstName:        val(row, mapping, "firstName"),
     lastName:         val(row, mapping, "lastName"),
@@ -101,10 +109,10 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     partnerLastName:  "",
     partnerEmail:     "",
     eventType:        val(row, mapping, "eventType"),
-    eventDate:        val(row, mapping, "eventDate"),
+    eventDate:        mappedDate(row, mapping, "eventDate"),
     endDate:          "",
     guestCount:       "",
-    estimatedBudget:  val(row, mapping, "estimatedBudget"),
+    estimatedBudget:  budget.ok ? budget.value : val(row, mapping, "estimatedBudget"),
     source:           sourceKey,
     originalSourceLabel: originalLabel,
     inquiryMessage:   val(row, mapping, "inquiryMessage"),
@@ -136,10 +144,11 @@ export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInpu
 }
 
 export function rowToInventoryInput(row: CsvRow, mapping: FieldMapping): InventoryImportRow {
+  const qty = normalizeImportQuantity(val(row, mapping, "quantity"));
   return {
     name:              val(row, mapping, "name"),
     categoryName:      val(row, mapping, "category"),
-    quantityAvailable: val(row, mapping, "quantity"),
+    quantityAvailable: qty.ok ? qty.value : val(row, mapping, "quantity"),
     width:             val(row, mapping, "width"),
     length:            val(row, mapping, "length"),
     height:            val(row, mapping, "height"),
@@ -150,10 +159,11 @@ export function rowToInventoryInput(row: CsvRow, mapping: FieldMapping): Invento
 }
 
 export function rowToPackageInput(row: CsvRow, mapping: FieldMapping): PackageInput {
+  const price = normalizeImportAmount(val(row, mapping, "basePrice"));
   return {
     name:        val(row, mapping, "name"),
     description: val(row, mapping, "description"),
-    basePrice:   val(row, mapping, "basePrice"),
+    basePrice:   price.ok ? price.value : val(row, mapping, "basePrice"),
     category:    val(row, mapping, "category"),
     isActive:    true,
   };

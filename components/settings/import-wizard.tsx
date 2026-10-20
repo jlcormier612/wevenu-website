@@ -13,10 +13,11 @@ import {
   type EntityType, type FieldMapping, type ImportResult,
 } from "@/lib/import/types";
 import {
-  buildTemplateCsv, getSampleValue, validateRequiredFields, looksLikeHeaderRow, isSyntheticColumnHeaders,
+  buildTemplateCsv, getSampleValue, looksLikeHeaderRow, isSyntheticColumnHeaders,
   rowToClientInput, rowToLeadInput, rowToVendorInput, rowToInventoryInput, rowToPackageInput,
   loadSavedMapping, saveMapping,
 } from "@/lib/import/utils";
+import { classifyImportPreview } from "@/lib/import/preview-integrity";
 import {
   importCouplesAction, importLeadsAction, importVendorsAction, importInventoryAction, importPackagesAction,
   parseImportFileAction, parseImportTextAction, proposeFieldMappingAction,
@@ -444,6 +445,7 @@ function StepMapFields({
 
 function StepPreview({
   entity,
+  headers,
   rows,
   mapping,
   assisted,
@@ -452,6 +454,7 @@ function StepPreview({
   isPending,
 }: {
   entity: EntityType;
+  headers: string[];
   rows: CsvRow[];
   mapping: FieldMapping;
   assisted: boolean;
@@ -461,7 +464,9 @@ function StepPreview({
 }) {
   const fields = ENTITY_FIELDS[entity];
   const preview = rows.slice(0, 5);
-  const { readyCount, issueCount } = validateRequiredFields(fields, mapping, rows);
+  const summary = classifyImportPreview(entity, headers, mapping, rows);
+  const { readyCount, skipCount, warnCount, unmapped } = summary;
+  const previewStatuses = summary.rows.slice(0, 5);
 
   return (
     <div className="space-y-4">
@@ -469,7 +474,12 @@ function StepPreview({
         <h2 className="text-base font-semibold text-foreground">Preview</h2>
         <p className="text-sm text-muted-foreground mt-1">
           {readyCount} of {rows.length} rows are ready to import
-          {issueCount > 0 && <span className="text-destructive"> · {issueCount} have missing required fields (will be skipped)</span>}
+          {skipCount > 0 && (
+            <span className="text-destructive"> · {skipCount} will be skipped (see notes below)</span>
+          )}
+          {warnCount > 0 && (
+            <span className="text-amber-800 dark:text-amber-200"> · {warnCount} need your attention but will still import</span>
+          )}
         </p>
         {assisted && (
           <p className="text-xs text-primary mt-1.5 rounded-md bg-primary/5 px-2 py-1 inline-block">
@@ -478,10 +488,55 @@ function StepPreview({
         )}
       </div>
 
+      {unmapped.headers.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 px-3 py-2.5 space-y-1.5">
+          <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
+            {unmapped.withData.length > 0
+              ? `${unmapped.withData.length} column${unmapped.withData.length === 1 ? "" : "s"} will not be imported`
+              : "Some columns are not mapped"}
+          </p>
+          <p className="text-xs text-amber-900/90 dark:text-amber-200/90">
+            Unmapped columns stay in your file but Hello to Cheers will not store them. Go back to mapping if any of these should fill a Hello to Cheers field. Columns with no matching field in Hello to Cheers cannot be imported.
+          </p>
+          {unmapped.withData.length > 0 && (
+            <p className="text-xs text-amber-950 dark:text-amber-100">
+              <span className="font-medium">Has data (will be lost):</span>{" "}
+              {unmapped.withData.join(", ")}
+            </p>
+          )}
+          {unmapped.empty.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Empty in every row: {unmapped.empty.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+
+      {summary.rows.some((r) => r.message) && (
+        <ul className="text-xs space-y-1 rounded-lg border border-border bg-muted/30 px-3 py-2 max-h-36 overflow-y-auto">
+          {summary.rows.filter((r) => r.message).slice(0, 40).map((r) => (
+            <li
+              key={r.rowNumber}
+              className={
+                r.disposition === "warn_ambiguous_name"
+                  ? "text-amber-800 dark:text-amber-200"
+                  : "text-destructive"
+              }
+            >
+              Row {r.rowNumber}: {r.message}
+            </li>
+          ))}
+          {summary.rows.filter((r) => r.message).length > 40 && (
+            <li className="text-muted-foreground">…and more in the full file</li>
+          )}
+        </ul>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border bg-muted/50">
+              <th className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Status</th>
               {fields.filter((f) => mapping[f.key]).map((f) => (
                 <th key={f.key} className="text-left px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">
                   {f.label}
@@ -491,11 +546,24 @@ function StepPreview({
           </thead>
           <tbody className="divide-y divide-border">
             {preview.map((row, i) => {
-              const missingRequired = fields
-                .filter((f) => f.required)
-                .some((f) => { const col = mapping[f.key]; return !col || !(row[col] ?? "").trim(); });
+              const status = previewStatuses[i];
+              const highlight =
+                status?.disposition === "skip_required"
+                || status?.disposition === "skip_invalid"
+                || status?.disposition === "skip_within_file_duplicate";
+              const warn = status?.disposition === "warn_ambiguous_name";
               return (
-                <tr key={i} className={missingRequired ? "bg-destructive/5" : ""}>
+                <tr
+                  key={i}
+                  className={highlight ? "bg-destructive/5" : warn ? "bg-amber-50 dark:bg-amber-950/20" : ""}
+                >
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                    {status?.disposition === "ready" && "Import"}
+                    {status?.disposition === "warn_ambiguous_name" && "Import (review)"}
+                    {status?.disposition === "skip_required" && "Skip — required"}
+                    {status?.disposition === "skip_invalid" && "Skip — invalid"}
+                    {status?.disposition === "skip_within_file_duplicate" && "Skip — duplicate"}
+                  </td>
                   {fields.filter((f) => mapping[f.key]).map((f) => (
                     <td key={f.key} className="px-3 py-2 text-foreground whitespace-nowrap max-w-[140px] truncate">
                       {(row[mapping[f.key]!] ?? "").trim() || (
@@ -890,6 +958,7 @@ export function ImportWizard({
       {step === 3 && entity && (
         <StepPreview
           entity={entity}
+          headers={headers}
           rows={rows}
           mapping={mapping}
           assisted={assisted}

@@ -19,7 +19,7 @@ import { getOnboardingEngagement } from "@/lib/hq/onboarding-service";
 import { createClientForVenue, findActiveDuplicateClientForVenue } from "@/lib/clients/service";
 import { resolveSpaceId } from "@/lib/migration/resolve-refs";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
-import { createLeadForVenue, findActiveDuplicateLeadForVenue, leadIdentityKey, leadInputToRawIntake } from "@/lib/leads/service";
+import { createLeadForVenue, findActiveDuplicateLeadForVenue, leadInputToRawIntake } from "@/lib/leads/service";
 import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
 import { createVendorForVenue, findActiveDuplicateVendorForVenue } from "@/lib/vendors/service";
 import {
@@ -29,6 +29,11 @@ import {
 import { createPackageForVenue, findActiveDuplicatePackageForVenue } from "@/lib/packages/service";
 import { acceptCreatedImportRow, createImportBatchForVenue, finalizeImportBatch } from "@/lib/import/batches";
 import { decideHistoricalImportDuplicate, haltUntrackedHistoricalImport } from "@/lib/import/historical-guard";
+import {
+  catalogNameWithinFileKey,
+  personEmailWithinFileKey,
+  vendorWithinFileKey,
+} from "@/lib/import/preview-integrity";
 import type { ClientInput } from "@/lib/clients/types";
 import type { InventoryItemInput, InventoryShape } from "@/lib/inventory/types";
 import type { LeadInput } from "@/lib/leads/types";
@@ -61,6 +66,7 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
   );
   if (!tracked.ok) return tracked.result;
   const batchId = tracked.batchId;
+  const seenEmails = new Set<string>();
   const [{ count: spacesCount }, { data: rules }] = await Promise.all([
     admin.from("venue_spaces").select("id", { count: "exact", head: true }).eq("venue_id", venueId).eq("is_active", true),
     admin.from("venue_capacity_rules").select("max_simultaneous_events").eq("venue_id", venueId)
@@ -77,6 +83,14 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
     if (!row.firstName?.trim() || !row.lastName?.trim()) {
       errors.push({ row: i + 1, message: "Missing required fields: first name, last name", kind: "skipped" });
       continue;
+    }
+    const emailKey = personEmailWithinFileKey(row.email ?? "");
+    if (emailKey) {
+      if (seenEmails.has(emailKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
+        continue;
+      }
+      seenEmails.add(emailKey);
     }
     if (!cutover.readyForDatedEvents && row.eventDate?.trim()) {
       errors.push({ row: i + 1, message: cutover.message ?? "Add Event Spaces before importing dated Events.", kind: "error" });
@@ -151,18 +165,16 @@ export async function importLeadsForVenueAction(venueId: string, rows: LeadInput
       continue;
     }
 
-    // Migration Center §2.1 item 3 (2026-07-22) — see the identical check
-    // in app/(app)/settings/import/actions.ts's importLeadsAction for the
-    // full rationale.
-    const key = leadIdentityKey(row.email, row.firstName, row.lastName);
-    if (seenKeys.has(key)) {
-      errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
-      // Same source resolution createLeadCore already uses — see the
-      // identical comment in app/(app)/settings/import/actions.ts.
-      void logDuplicateBatchRejection(admin, venueId, row.source || "other", "import", row, leadInputToRawIntake(row));
-      continue;
+    // Email-only within-file skip — blank emails never match each other.
+    const emailKey = personEmailWithinFileKey(row.email ?? "");
+    if (emailKey) {
+      if (seenKeys.has(emailKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
+        void logDuplicateBatchRejection(admin, venueId, row.source || "other", "import", row, leadInputToRawIntake(row));
+        continue;
+      }
+      seenKeys.add(emailKey);
     }
-    seenKeys.add(key);
 
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
@@ -213,12 +225,21 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
   );
   if (!tracked.ok) return tracked.result;
   const batchId = tracked.batchId;
+  const seenVendorKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row.businessName?.trim()) {
       errors.push({ row: i + 1, message: "Missing required field: business name", kind: "skipped" });
       continue;
+    }
+    const withinKey = vendorWithinFileKey(row.businessName, row.email ?? "");
+    if (withinKey) {
+      if (seenVendorKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
+        continue;
+      }
+      seenVendorKeys.add(withinKey);
     }
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
@@ -269,6 +290,7 @@ export async function importInventoryForVenueAction(venueId: string, rows: Inven
   );
   if (!tracked.ok) return tracked.result;
   const batchId = tracked.batchId;
+  const seenInventoryKeys = new Set<string>();
 
   const existingCategories = await getCategoriesForVenue(venueId);
   const categoryIdByName = new Map(existingCategories.map((c) => [c.name.toLowerCase(), c.id]));
@@ -278,6 +300,14 @@ export async function importInventoryForVenueAction(venueId: string, rows: Inven
     if (!row.name.trim()) {
       errors.push({ row: i + 1, message: "Missing required field: item name", kind: "skipped" });
       continue;
+    }
+    const withinKey = catalogNameWithinFileKey(row.name);
+    if (withinKey) {
+      if (seenInventoryKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same name)", kind: "skipped" });
+        continue;
+      }
+      seenInventoryKeys.add(withinKey);
     }
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
@@ -352,12 +382,21 @@ export async function importPackagesForVenueAction(venueId: string, rows: Packag
   );
   if (!tracked.ok) return tracked.result;
   const batchId = tracked.batchId;
+  const seenPackageKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row.name.trim()) {
       errors.push({ row: i + 1, message: "Missing required field: package name", kind: "skipped" });
       continue;
+    }
+    const withinKey = catalogNameWithinFileKey(row.name);
+    if (withinKey) {
+      if (seenPackageKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same name)", kind: "skipped" });
+        continue;
+      }
+      seenPackageKeys.add(withinKey);
     }
     const dup = await decideHistoricalImportDuplicate(
       i + 1,

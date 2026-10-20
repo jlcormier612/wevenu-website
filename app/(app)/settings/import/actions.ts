@@ -8,9 +8,17 @@ import { DISPLAY_SHAPES } from "@/components/floor-plan/floor-plan-shapes";
 import { acceptCreatedImportRow, createImportBatch, finalizeImportBatch, getImportBatches, rollbackImportBatch, type RollbackResult } from "@/lib/import/batches";
 import { decideHistoricalImportDuplicate, haltUntrackedHistoricalImport } from "@/lib/import/historical-guard";
 import { extractDocxText, extractPdfText, parseExcelFile } from "@/lib/import/file-parsing";
+import {
+  catalogNameWithinFileKey,
+  normalizeImportAmount,
+  normalizeImportDate,
+  normalizeImportQuantity,
+  personEmailWithinFileKey,
+  vendorWithinFileKey,
+} from "@/lib/import/preview-integrity";
 import type { InventoryImportRow } from "@/lib/import/utils";
 import { createCategory, createItem as createInventoryItem, findActiveDuplicateInventoryItem, getCategories } from "@/lib/inventory/service";
-import { createLead, findActiveDuplicateLead, leadIdentityKey, leadInputToRawIntake } from "@/lib/leads/service";
+import { createLead, findActiveDuplicateLead, leadInputToRawIntake } from "@/lib/leads/service";
 import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
 import { proposeFieldMapping, proposeStructuredRows } from "@/lib/luv/import-assist";
 import { createPackage, findActiveDuplicatePackage } from "@/lib/packages/service";
@@ -127,6 +135,7 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
     hasCapacityRules: capacityRules != null,
     maxSimultaneousEvents: capacityRules?.maxSimultaneousEvents ?? null,
   });
+  const seenEmails = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -134,13 +143,40 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
       errors.push({ row: i + 1, message: "Missing required fields: first name, last name", kind: "skipped" });
       continue;
     }
-    if (!cutover.readyForDatedEvents && row.eventDate?.trim()) {
+    const eventDateNorm = normalizeImportDate(row.eventDate ?? "");
+    const endDateNorm = normalizeImportDate(row.endDate ?? "");
+    if (!eventDateNorm.ok) {
+      errors.push({ row: i + 1, message: eventDateNorm.message, kind: "error" });
+      continue;
+    }
+    if (!endDateNorm.ok) {
+      errors.push({ row: i + 1, message: endDateNorm.message, kind: "error" });
+      continue;
+    }
+    const normalizedRow: ClientInput = {
+      ...row,
+      eventDate: eventDateNorm.value ?? "",
+      endDate: endDateNorm.value ?? "",
+    };
+    if (row.guestCount?.trim() && !/^\d+$/.test(row.guestCount.trim())) {
+      errors.push({ row: i + 1, message: `Guest count must be a whole number (got "${row.guestCount.trim()}").`, kind: "error" });
+      continue;
+    }
+    const emailKey = personEmailWithinFileKey(normalizedRow.email ?? "");
+    if (emailKey) {
+      if (seenEmails.has(emailKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
+        continue;
+      }
+      seenEmails.add(emailKey);
+    }
+    if (!cutover.readyForDatedEvents && normalizedRow.eventDate?.trim()) {
       errors.push({ row: i + 1, message: cutover.message ?? "Add Event Spaces before importing dated Events.", kind: "error" });
       continue;
     }
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
-      () => findActiveDuplicateClient(row.email ?? "", row.firstName, row.lastName),
+      () => findActiveDuplicateClient(normalizedRow.email ?? "", normalizedRow.firstName, normalizedRow.lastName),
       "Skipped — matches an already-active client",
     );
     if (dup.action !== "create") {
@@ -148,7 +184,7 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
       continue;
     }
     try {
-      const spaced = await withResolvedSpace(row);
+      const spaced = await withResolvedSpace(normalizedRow);
       if (!spaced.ok) {
         errors.push({ row: i + 1, message: spaced.message, kind: "error" });
         continue;
@@ -198,26 +234,36 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
       continue;
     }
 
-    // Migration Center §2.1 item 3 (2026-07-22) — a within-file duplicate
-    // (two rows in this same CSV describing the same person), distinct
-    // from the against-the-database check below. Checked first: once a
-    // row's identity has been seen once in this run, every later
-    // occurrence in the same file is a batch duplicate regardless of what
-    // happened to the first one.
-    const key = leadIdentityKey(row.email, row.firstName, row.lastName);
-    if (seenKeys.has(key)) {
-      errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
-      if (venue) {
-        const supabase = await createClient();
-        // Same source resolution createLeadCore already uses for a real
-        // create — lead_intake_attempts.source is a foreign key into the
-        // registered lead_sources vocabulary, not a free-text "csv_import"
-        // label.
-        void logDuplicateBatchRejection(supabase, venue.id, row.source || "other", "import", row, leadInputToRawIntake(row));
+    // Within-file: email is the only auto-skip key. Blank emails never match
+    // each other — same-name rows without email are imported as separate people.
+    const emailKey = personEmailWithinFileKey(row.email ?? "");
+    if (emailKey) {
+      if (seenKeys.has(emailKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same email)", kind: "skipped" });
+        if (venue) {
+          const supabase = await createClient();
+          void logDuplicateBatchRejection(supabase, venue.id, row.source || "other", "import", row, leadInputToRawIntake(row));
+        }
+        continue;
       }
+      seenKeys.add(emailKey);
+    }
+
+    const eventDateNorm = normalizeImportDate(row.eventDate ?? "");
+    if (!eventDateNorm.ok) {
+      errors.push({ row: i + 1, message: eventDateNorm.message, kind: "error" });
       continue;
     }
-    seenKeys.add(key);
+    const budgetNorm = normalizeImportAmount(row.estimatedBudget ?? "");
+    if (!budgetNorm.ok) {
+      errors.push({ row: i + 1, message: budgetNorm.message, kind: "error" });
+      continue;
+    }
+    const normalizedLead: LeadInput = {
+      ...row,
+      eventDate: eventDateNorm.value ?? "",
+      estimatedBudget: budgetNorm.value,
+    };
 
     // Release Readiness Blocker #1 — find_or_create_relationship dedupes
     // the enduring Relationship, never the Lead/Opportunity row itself, so
@@ -226,7 +272,7 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
     // reported the same way a missing-field row already is.
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
-      () => findActiveDuplicateLead(row.email ?? "", row.firstName, row.lastName),
+      () => findActiveDuplicateLead(normalizedLead.email ?? "", normalizedLead.firstName, normalizedLead.lastName),
       "Skipped — matches an already-active lead",
     );
     if (dup.action !== "create") {
@@ -237,7 +283,7 @@ export async function importLeadsAction(rows: LeadInput[], sourceLabel?: string)
       // Historical / CSV Import must not enroll lead_created sequences or
       // fire venue new-inquiry notifications — same contract as Migration
       // Center (createLead(..., "import", true)) and HQ createLeadForVenue.
-      const result = await createLead(row, "import", true);
+      const result = await createLead(normalizedLead, "import", true);
       if (result.ok) {
         const accepted = await acceptCreatedImportRow({
           entityType: "leads",
@@ -273,12 +319,21 @@ export async function importVendorsAction(rows: VendorInput[], sourceLabel?: str
   if (!tracked.ok) return tracked.result;
   if (!venue) return { imported: 0, errors: [{ row: 0, message: "No venue found.", kind: "error" }], batchId: null };
   const batchId = tracked.batchId;
+  const seenVendorKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row.businessName?.trim()) {
       errors.push({ row: i + 1, message: "Missing required field: business name", kind: "skipped" });
       continue;
+    }
+    const withinKey = vendorWithinFileKey(row.businessName, row.email ?? "");
+    if (withinKey) {
+      if (seenVendorKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file", kind: "skipped" });
+        continue;
+      }
+      seenVendorKeys.add(withinKey);
     }
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
@@ -334,6 +389,7 @@ export async function importInventoryAction(rows: InventoryImportRow[], sourceLa
   if (!tracked.ok) return tracked.result;
   if (!venue) return { imported: 0, errors: [{ row: 0, message: "No venue found.", kind: "error" }], batchId: null };
   const batchId = tracked.batchId;
+  const seenInventoryKeys = new Set<string>();
 
   // Resolve-or-create categories by name once, reused across every row that
   // names the same category — never a duplicate category per row imported.
@@ -344,6 +400,19 @@ export async function importInventoryAction(rows: InventoryImportRow[], sourceLa
     const row = rows[i];
     if (!row.name.trim()) {
       errors.push({ row: i + 1, message: "Missing required field: item name", kind: "skipped" });
+      continue;
+    }
+    const withinKey = catalogNameWithinFileKey(row.name);
+    if (withinKey) {
+      if (seenInventoryKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same name)", kind: "skipped" });
+        continue;
+      }
+      seenInventoryKeys.add(withinKey);
+    }
+    const qtyNorm = normalizeImportQuantity(row.quantityAvailable);
+    if (!qtyNorm.ok) {
+      errors.push({ row: i + 1, message: qtyNorm.message, kind: "error" });
       continue;
     }
     const dup = await decideHistoricalImportDuplicate(
@@ -372,7 +441,7 @@ export async function importInventoryAction(rows: InventoryImportRow[], sourceLa
       const input: InventoryItemInput = {
         name: row.name.trim(),
         categoryId,
-        quantityAvailable: parseInt(row.quantityAvailable, 10) || 0,
+        quantityAvailable: parseInt(qtyNorm.value, 10) || 0,
         width: row.width.trim() ? parseFloat(row.width) : null,
         length: row.length.trim() ? parseFloat(row.length) : null,
         height: row.height.trim() ? parseFloat(row.height) : null,
@@ -419,6 +488,7 @@ export async function importPackagesAction(rows: PackageInput[], sourceLabel?: s
   if (!tracked.ok) return tracked.result;
   if (!venue) return { imported: 0, errors: [{ row: 0, message: "No venue found.", kind: "error" }], batchId: null };
   const batchId = tracked.batchId;
+  const seenPackageKeys = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -426,6 +496,20 @@ export async function importPackagesAction(rows: PackageInput[], sourceLabel?: s
       errors.push({ row: i + 1, message: "Missing required field: package name", kind: "skipped" });
       continue;
     }
+    const withinKey = catalogNameWithinFileKey(row.name);
+    if (withinKey) {
+      if (seenPackageKeys.has(withinKey)) {
+        errors.push({ row: i + 1, message: "Skipped — duplicate of an earlier row in this same file (same name)", kind: "skipped" });
+        continue;
+      }
+      seenPackageKeys.add(withinKey);
+    }
+    const priceNorm = normalizeImportAmount(row.basePrice ?? "");
+    if (!priceNorm.ok) {
+      errors.push({ row: i + 1, message: priceNorm.message, kind: "error" });
+      continue;
+    }
+    const normalizedPkg: PackageInput = { ...row, basePrice: priceNorm.value };
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
       () => findActiveDuplicatePackage(row.name),
@@ -436,7 +520,7 @@ export async function importPackagesAction(rows: PackageInput[], sourceLabel?: s
       continue;
     }
     try {
-      const result = await createPackage(row);
+      const result = await createPackage(normalizedPkg);
       if (result.ok) {
         const accepted = await acceptCreatedImportRow({
           entityType: "packages",

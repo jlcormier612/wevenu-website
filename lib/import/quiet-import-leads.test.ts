@@ -91,8 +91,8 @@ function baseOptions(client: unknown, historicalImport: boolean): IngestLeadOpti
 describe("CSV Import wizard — quiet lead import", () => {
   it("importLeadsAction passes historicalImport true into createLead", () => {
     const body = sliceImportLeadsAction();
-    assert.match(body, /createLead\(\s*row,\s*"import",\s*true\s*\)/);
-    assert.doesNotMatch(body, /createLead\(\s*row,\s*"import"\s*\)\s*;/);
+    assert.match(body, /createLead\(\s*(?:row|normalizedLead),\s*"import",\s*true\s*\)/);
+    assert.doesNotMatch(body, /createLead\(\s*(?:row|normalizedLead),\s*"import"\s*\)\s*;/);
   });
 
   it("Migration Center lead commit keeps historicalImport true", () => {
