@@ -113,6 +113,15 @@ Still manual / unsupported:
 
 ---
 
+## Follow-on (bulk delete / payments / key dates)
+
+See **`RECOVERY-PAYMENTS-KEYDATES.md`** (2026-10-20):
+
+- No venue-admin bulk delete; individual delete only; `rollbackImportBatch` UI-missing and unsafe after Active commitment.
+- Historical payments via Active commitment: **SUPPORTED WITH EXPLICIT LIMITATIONS** (runtime-proven multi-paid schedule).
+- Legacy key dates: rehearsal → `clients.rehearsal_date`; other freeform → manual / no equivalent.
+- **No product code change** — recovery is a documented operational procedure pending architecture for import-scoped delete.
+
 ## Safety
 
 - Production untouched.

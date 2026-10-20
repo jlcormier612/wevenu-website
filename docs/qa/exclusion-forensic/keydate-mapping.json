@@ -1,0 +1,29 @@
+{
+  "legacyFields": [
+    {
+      "field": "label + date (e.g. Rehearsal)",
+      "mapsTo": "clients.rehearsal_date when label is rehearsal — MAPS TO CURRENT FEATURE (Client Info)",
+      "class": "MAPS TO CURRENT FEATURE"
+    },
+    {
+      "field": "label + date (Final guest count due)",
+      "mapsTo": "Tasks / timeline / playbook dates — REQUIRES MANUAL REVIEW",
+      "class": "REQUIRES MANUAL REVIEW"
+    },
+    {
+      "field": "label + date (Hair/makeup, tasting, etc.)",
+      "mapsTo": "Timeline entries or calendar — REQUIRES MANUAL REVIEW (different semantics)",
+      "class": "REQUIRES MANUAL REVIEW"
+    },
+    {
+      "field": "note",
+      "mapsTo": "No dedicated key-date note field — notes on timeline/task/client",
+      "class": "NO CURRENT EQUIVALENT"
+    },
+    {
+      "field": "freeform milestone list UI",
+      "mapsTo": "Retired product surface",
+      "class": "NO CURRENT EQUIVALENT"
+    }
+  ]
+}
