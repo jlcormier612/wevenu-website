@@ -276,33 +276,32 @@ async function main() {
   // Side-effect baselines
   const { count: inviteBefore } = await admin.from("client_invitations")
     .select("id", { count: "exact", head: true }).eq("venue_id", venueId);
-  const { count: enrollBefore } = await admin.from("message_enrollments")
-    .select("id", { count: "exact", head: true }).eq("venue_id", venueId);
+  let enrollBefore = 0;
+  {
+    const { count } = await admin.from("automation_enrollments")
+      .select("id", { count: "exact", head: true }).eq("venue_id", venueId);
+    enrollBefore = count ?? 0;
+  }
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   page.on("dialog", async (d: any) => { await d.accept(); });
 
-  await page.goto(`${APP}/login`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-  await page.getByRole("button", { name: /sign in|log in|continue/i }).first().click();
-  await page.waitForTimeout(2500);
-  await passWelcome(page);
+  const loginHtml = await fetch(`${APP}/login`).then((r) => r.text());
+  const dpl = loginHtml.match(/data-dpl-id="([a-f0-9]+)"/)?.[1] || "";
+  record("deploy", "serving_dpl",
+    !EXPECT_SHA || dpl.startsWith(EXPECT_SHA),
+    `dpl=${dpl || "missing"} expect=${EXPECT_SHA || "(any)"}`);
 
-  if (EXPECT_SHA) {
-    const health = await page.evaluate(async () => {
-      try {
-        const r = await fetch("/api/health");
-        return await r.json();
-      } catch (e) {
-        return { error: String(e) };
-      }
-    });
-    const sha = String(health?.gitSha ?? health?.sha ?? health?.version ?? "").slice(0, 8);
-    record("deploy", "serving_sha", sha.startsWith(EXPECT_SHA) || sha.includes(EXPECT_SHA),
-      `expect=${EXPECT_SHA} got=${JSON.stringify(health).slice(0, 200)}`);
+  await page.goto(`${APP}/login`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.fill("#email", email);
+  await page.fill("#password", password);
+  await page.click('button[type="submit"]');
+  for (let i = 0; i < 50; i++) {
+    if (!page.url().includes("/login")) break;
+    await page.waitForTimeout(400);
   }
+  await passWelcome(page);
 
   await page.goto(`${APP}/settings/migration?source=another_system`, {
     waitUntil: "domcontentloaded", timeout: 60000,
@@ -373,11 +372,15 @@ async function main() {
 
   const { count: inviteAfter } = await admin.from("client_invitations")
     .select("id", { count: "exact", head: true }).eq("venue_id", venueId);
-  const { count: enrollAfter } = await admin.from("message_enrollments")
-    .select("id", { count: "exact", head: true }).eq("venue_id", venueId);
+  let enrollAfter = 0;
+  {
+    const { count } = await admin.from("automation_enrollments")
+      .select("id", { count: "exact", head: true }).eq("venue_id", venueId);
+    enrollAfter = count ?? 0;
+  }
   record("side_effects", "no_new_invitations", (inviteAfter ?? 0) === (inviteBefore ?? 0),
     `before=${inviteBefore} after=${inviteAfter}`);
-  record("side_effects", "no_new_enrollments", (enrollAfter ?? 0) === (enrollBefore ?? 0),
+  record("side_effects", "no_new_enrollments", enrollAfter === enrollBefore,
     `before=${enrollBefore} after=${enrollAfter}`);
 
   // Retry idempotency: eligible already gone → cleanup should not invent deletes
