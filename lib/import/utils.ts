@@ -4,7 +4,12 @@ import type { LeadInput } from "@/lib/leads/types";
 import { resolveLeadSourceKey } from "@/lib/leads/constants";
 import type { VendorInput } from "@/lib/vendors/types";
 import type { PackageInput } from "@/lib/packages/types";
-import { normalizeImportAmount, normalizeImportDate, normalizeImportQuantity } from "@/lib/import/preview-integrity";
+import {
+  normalizeImportAmount,
+  normalizeImportDate,
+  normalizeImportQuantity,
+  normalizeImportVendorPricingTier,
+} from "@/lib/import/preview-integrity";
 
 type CsvRow = Record<string, string>;
 
@@ -119,6 +124,7 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
 }
 
 export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInput {
+  const tier = normalizeImportVendorPricingTier(val(row, mapping, "pricingTier"));
   return {
     businessName:    val(row, mapping, "businessName"),
     category:        val(row, mapping, "category"),
@@ -135,7 +141,9 @@ export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInpu
     isInHouse:          false,
     description:        "",
     logoUrl:            "",
-    pricingTier:        val(row, mapping, "pricingTier"),
+    // Invalid tiers stay as the raw value so server-side validation can reject
+    // with a clear message; valid $ labels become canonical DB values.
+    pricingTier:        tier.ok ? tier.value : val(row, mapping, "pricingTier"),
     notes:              val(row, mapping, "notes"),
     specialPricingNote: "",
   };
@@ -209,7 +217,7 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
   vendors: {
     businessName: "Bloom & Co Florals", category: "Florist",
     contactName: "Maria Chen", email: "maria@abcflorals.com", phone: "555-0142",
-    websiteUrl: "https://example.com", pricingTier: "$$",
+    websiteUrl: "https://example.com", pricingTier: "mid_range",
     notes: "Preferred vendor, responsive",
   },
   inventory: {

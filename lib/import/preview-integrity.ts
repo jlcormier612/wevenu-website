@@ -145,6 +145,31 @@ export function normalizeImportQuantity(raw: string):
   return { ok: true, value: t };
 }
 
+const VENDOR_PRICING_CANONICAL = new Set(["budget", "mid_range", "premium", "luxury"]);
+
+/**
+ * Vendor pricing_tier DB check allows only budget|mid_range|premium|luxury.
+ * Spreadsheets often use $ / $$ labels — map those; reject unknown values
+ * rather than writing an invalid tier (check constraint → opaque import error).
+ */
+export function normalizeImportVendorPricingTier(raw: string):
+  | { ok: true; value: string }
+  | { ok: false; message: string } {
+  const t = raw.trim();
+  if (!t) return { ok: true, value: "" };
+  const lower = t.toLowerCase().replace(/\s+/g, "_");
+  if (VENDOR_PRICING_CANONICAL.has(lower)) return { ok: true, value: lower };
+  const dollars = t.replace(/\s+/g, "");
+  if (dollars === "$") return { ok: true, value: "budget" };
+  if (dollars === "$$") return { ok: true, value: "mid_range" };
+  if (dollars === "$$$") return { ok: true, value: "premium" };
+  if (dollars === "$$$$") return { ok: true, value: "luxury" };
+  return {
+    ok: false,
+    message: `Pricing tier must be budget, mid_range, premium, luxury, or $/$$/$$$/$$$$ (got "${t}").`,
+  };
+}
+
 function val(row: CsvRow, mapping: FieldMapping, key: string): string {
   const col = mapping[key];
   return col ? (row[col] ?? "").trim() : "";
@@ -228,6 +253,12 @@ function validateMappedAmounts(
     const raw = val(row, mapping, "quantity");
     if (!raw) return null;
     const parsed = normalizeImportQuantity(raw);
+    return parsed.ok ? null : parsed.message;
+  }
+  if (entity === "vendors") {
+    const raw = val(row, mapping, "pricingTier");
+    if (!raw) return null;
+    const parsed = normalizeImportVendorPricingTier(raw);
     return parsed.ok ? null : parsed.message;
   }
   if (entity === "couples") {

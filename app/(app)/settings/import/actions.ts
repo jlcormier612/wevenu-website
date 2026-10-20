@@ -13,6 +13,7 @@ import {
   normalizeImportAmount,
   normalizeImportDate,
   normalizeImportQuantity,
+  normalizeImportVendorPricingTier,
   personEmailWithinFileKey,
   vendorWithinFileKey,
 } from "@/lib/import/preview-integrity";
@@ -339,9 +340,15 @@ export async function importVendorsAction(rows: VendorInput[], sourceLabel?: str
       }
       seenVendorKeys.add(withinKey);
     }
+    const tierNorm = normalizeImportVendorPricingTier(row.pricingTier ?? "");
+    if (!tierNorm.ok) {
+      errors.push({ row: i + 1, message: tierNorm.message, kind: "error" });
+      continue;
+    }
+    const normalizedVendor = { ...row, pricingTier: tierNorm.value };
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
-      () => findActiveDuplicateVendor(row.businessName, row.email ?? ""),
+      () => findActiveDuplicateVendor(normalizedVendor.businessName, normalizedVendor.email ?? ""),
       "Skipped — matches a vendor already in your directory",
     );
     if (dup.action !== "create") {
@@ -349,7 +356,7 @@ export async function importVendorsAction(rows: VendorInput[], sourceLabel?: str
       continue;
     }
     try {
-      const result = await createVendor(row);
+      const result = await createVendor(normalizedVendor);
       if (result.ok) {
         const accepted = await acceptCreatedImportRow({
           entityType: "vendors",
@@ -362,10 +369,16 @@ export async function importVendorsAction(rows: VendorInput[], sourceLabel?: str
         else errors.push(accepted.error);
       } else {
         const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
-        errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
+        errors.push({ row: i + 1, message: msg || "Unknown error", kind: "error" });
       }
     } catch (e) {
-      errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
+      const msg =
+        e instanceof Error
+          ? e.message
+          : e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
+            ? (e as { message: string }).message
+            : "Unknown error";
+      errors.push({ row: i + 1, message: msg, kind: "error" });
     }
   }
 

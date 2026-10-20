@@ -31,6 +31,7 @@ import { acceptCreatedImportRow, createImportBatchForVenue, finalizeImportBatch 
 import { decideHistoricalImportDuplicate, haltUntrackedHistoricalImport } from "@/lib/import/historical-guard";
 import {
   catalogNameWithinFileKey,
+  normalizeImportVendorPricingTier,
   personEmailWithinFileKey,
   vendorWithinFileKey,
 } from "@/lib/import/preview-integrity";
@@ -241,9 +242,15 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
       }
       seenVendorKeys.add(withinKey);
     }
+    const tierNorm = normalizeImportVendorPricingTier(row.pricingTier ?? "");
+    if (!tierNorm.ok) {
+      errors.push({ row: i + 1, message: tierNorm.message, kind: "error" });
+      continue;
+    }
+    const normalizedVendor = { ...row, pricingTier: tierNorm.value };
     const dup = await decideHistoricalImportDuplicate(
       i + 1,
-      () => findActiveDuplicateVendorForVenue(venueId, row.businessName, row.email ?? ""),
+      () => findActiveDuplicateVendorForVenue(venueId, normalizedVendor.businessName, normalizedVendor.email ?? ""),
       "Skipped — matches a vendor already in this venue's directory",
     );
     if (dup.action !== "create") {
@@ -251,7 +258,7 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
       continue;
     }
     try {
-      const result = await createVendorForVenue(venueId, row);
+      const result = await createVendorForVenue(venueId, normalizedVendor);
       if (result.ok) {
         const accepted = await acceptCreatedImportRow({
           entityType: "vendors",
@@ -265,10 +272,16 @@ export async function importVendorsForVenueAction(venueId: string, rows: VendorI
         else errors.push(accepted.error);
       } else {
         const msg = "message" in result ? result.message : "errors" in result ? Object.values(result.errors ?? {}).join(", ") : "Unknown error";
-        errors.push({ row: i + 1, message: msg ?? "Unknown error", kind: "error" });
+        errors.push({ row: i + 1, message: msg || "Unknown error", kind: "error" });
       }
     } catch (e) {
-      errors.push({ row: i + 1, message: e instanceof Error ? e.message : "Unknown error", kind: "error" });
+      const msg =
+        e instanceof Error
+          ? e.message
+          : e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
+            ? (e as { message: string }).message
+            : "Unknown error";
+      errors.push({ row: i + 1, message: msg, kind: "error" });
     }
   }
   const skipped = errors.filter((e) => e.kind === "skipped").length;

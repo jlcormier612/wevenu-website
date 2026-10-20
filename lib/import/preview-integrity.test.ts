@@ -10,6 +10,7 @@ import {
   normalizeImportAmount,
   normalizeImportDate,
   normalizeImportQuantity,
+  normalizeImportVendorPricingTier,
   personEmailWithinFileKey,
   personNameKey,
   vendorWithinFileKey,
@@ -30,6 +31,19 @@ describe("normalizeImportDate", () => {
     assert.equal(normalizeImportDate("2/30/2027").ok, false);
     assert.equal(normalizeImportDate("not-a-date").ok, false);
     assert.equal(normalizeImportDate("2027/06/12").ok, false);
+  });
+});
+
+describe("normalizeImportVendorPricingTier", () => {
+  it("maps dollar labels to canonical tiers and rejects garbage", () => {
+    const dollars = normalizeImportVendorPricingTier("$$");
+    assert.equal(dollars.ok, true);
+    if (dollars.ok) assert.equal(dollars.value, "mid_range");
+    const premium = normalizeImportVendorPricingTier("premium");
+    assert.equal(premium.ok, true);
+    if (premium.ok) assert.equal(premium.value, "premium");
+    assert.equal(normalizeImportVendorPricingTier("").ok, true);
+    assert.equal(normalizeImportVendorPricingTier("expensive").ok, false);
   });
 });
 
