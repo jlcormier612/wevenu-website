@@ -35,12 +35,14 @@ import {
   attachMigrationSourceFileAction,
   commitMigrationSessionAction,
   commitReviewedActiveCommitmentAction,
+  executeImportSessionCleanupAction,
   getMigrationSessionRecordsAction,
   getMigrationSessionResumeStateAction,
   getMigrationSessionSourceFilesAction,
   getMigrationVendorMatchLabelsAction,
   listMigrationSessionsAction,
   migrationArtifactUploadPathAction,
+  previewImportSessionCleanupAction,
   proposeActiveCommitmentFromFileAction,
   proposeActiveCommitmentFromTextAction,
   proposeMigrationFieldMappingAction,
@@ -455,6 +457,28 @@ export function MigrationCenter({
   const [smartNotes, setSmartNotes] = React.useState<string[]>([]);
   const [smartWorking, setSmartWorking] = React.useState(false);
   const [commitmentDraft, setCommitmentDraft] = React.useState<NormalizedActiveCommitment | null>(null);
+  const [cleanupPreview, setCleanupPreview] = React.useState<{
+    eligibleCount: number;
+    reviewCount: number;
+    alreadyGoneCount: number;
+    warnings: string[];
+    targets: Array<{
+      recordId: string;
+      entityType: string;
+      entityId: string;
+      disposition: string;
+      reason: string;
+      label: string;
+    }>;
+  } | null>(null);
+  const [cleanupResult, setCleanupResult] = React.useState<{
+    deleted: number;
+    review: number;
+    alreadyGone: number;
+    failed: number;
+    items: Array<{ entityType: string; label?: string; outcome: string; message: string; entityId: string }>;
+  } | null>(null);
+  const [cleanupWorking, setCleanupWorking] = React.useState(false);
   const smartFileRef = React.useRef<HTMLInputElement>(null);
 
   const setLane = React.useCallback(
@@ -489,6 +513,7 @@ export function MigrationCenter({
 
   const openSession = React.useCallback((sessionId: string) => {
     setActiveSessionId(sessionId);
+    setCleanupPreview(null);
     startLoading(async () => {
       const [resumeState, files] = await Promise.all([
         getMigrationSessionResumeStateAction(sessionId),
@@ -701,6 +726,55 @@ export function MigrationCenter({
       openSession(sessionId);
       refreshSessions();
     });
+  }
+
+  async function handlePreviewCleanup(sessionId: string) {
+    setCleanupWorking(true);
+    setCleanupResult(null);
+    try {
+      const result = await previewImportSessionCleanupAction(sessionId);
+      if (!result.ok) {
+        toast.error(result.message);
+        setCleanupPreview(null);
+        return;
+      }
+      setCleanupPreview(result.preview);
+    } finally {
+      setCleanupWorking(false);
+    }
+  }
+
+  async function handleExecuteCleanup(sessionId: string) {
+    if (!cleanupPreview || cleanupPreview.eligibleCount === 0) return;
+    const confirmed = window.confirm(
+      `Remove ${cleanupPreview.eligibleCount} eligible record${cleanupPreview.eligibleCount === 1 ? "" : "s"} from this import?\n\n` +
+      `${cleanupPreview.reviewCount} flagged for manual review will be kept.\n` +
+      `This is not a full Undo — only unchanged, attributed records are removed.`,
+    );
+    if (!confirmed) return;
+    setCleanupWorking(true);
+    try {
+      const result = await executeImportSessionCleanupAction(sessionId);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      setCleanupPreview(null);
+      const parts = [
+        result.deleted ? `${result.deleted} removed` : null,
+        result.review ? `${result.review} need review` : null,
+        result.failed ? `${result.failed} failed` : null,
+        result.alreadyGone ? `${result.alreadyGone} already gone` : null,
+      ].filter(Boolean);
+      if (result.failed > 0) toast.error(`Cleanup finished with failures: ${parts.join(", ")}.`);
+      else toast.success(`Cleanup finished: ${parts.join(", ") || "nothing changed"}.`);
+      openSession(sessionId);
+      refreshSessions();
+      // openSession clears prior cleanup UI state — restore the outcome report
+      setCleanupResult(result);
+    } finally {
+      setCleanupWorking(false);
+    }
   }
 
   async function handleSmartActiveCommitmentFromText() {
@@ -1076,6 +1150,93 @@ export function MigrationCenter({
             {resume?.state === "done" && (
               <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-foreground">
                 Everything from this file has been resolved — {outcomeSentence(resume.summary)}.
+              </div>
+            )}
+
+            {(resume?.state === "done" || resume?.state === "partially_done") &&
+              (activeSession?.status === "committed" || activeSession?.status === "partially_committed" || activeSession?.status === "failed") &&
+              (resume.summary.counts.committed > 0) && (
+              <div className="space-y-3 rounded-lg border border-dashed border-border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-heading">Import cleanup</p>
+                    <p className="text-xs text-muted-foreground">
+                      Remove only records this import created and still attributed via created_entity_id.
+                      Edited records, financial commitments, Events, and floor plans stay for manual review.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={cleanupWorking || loading}
+                    onClick={() => handlePreviewCleanup(activeSession.id)}
+                  >
+                    {cleanupWorking && !cleanupPreview ? (
+                      <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Reviewing…</>
+                    ) : (
+                      "Review what can be removed"
+                    )}
+                  </Button>
+                </div>
+
+                {cleanupPreview && (
+                  <div className="space-y-2 text-xs">
+                    <p className="text-foreground">
+                      {cleanupPreview.eligibleCount} eligible · {cleanupPreview.reviewCount} need review · {cleanupPreview.alreadyGoneCount} already gone
+                    </p>
+                    {cleanupPreview.warnings.map((w) => (
+                      <p key={w} className="text-muted-foreground">{w}</p>
+                    ))}
+                    <div className="max-h-48 space-y-1 overflow-y-auto rounded border border-border bg-muted/10 p-2">
+                      {cleanupPreview.targets.map((t) => (
+                        <div key={t.recordId} className="flex items-start justify-between gap-2">
+                          <span className="text-foreground">
+                            <span className="font-medium">{t.entityType}</span>
+                            {" · "}
+                            {t.label}
+                          </span>
+                          <span className={
+                            t.disposition === "eligible" ? "text-success shrink-0"
+                              : t.disposition === "already_gone" ? "text-muted-foreground shrink-0"
+                              : "text-amber-600 shrink-0"
+                          }>
+                            {t.disposition === "eligible" ? "Eligible" : t.disposition === "already_gone" ? "Gone" : "Review"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" disabled={cleanupWorking} onClick={() => setCleanupPreview(null)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={cleanupWorking || cleanupPreview.eligibleCount === 0}
+                        onClick={() => handleExecuteCleanup(activeSession.id)}
+                      >
+                        {cleanupWorking ? (
+                          <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Removing…</>
+                        ) : (
+                          `Remove ${cleanupPreview.eligibleCount} eligible`
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {cleanupResult && (
+                  <div className="space-y-1 text-xs text-foreground">
+                    <p>
+                      Result: {cleanupResult.deleted} removed · {cleanupResult.review} review · {cleanupResult.failed} failed · {cleanupResult.alreadyGone} already gone
+                    </p>
+                    {cleanupResult.items.filter((i) => i.outcome === "failed" || i.outcome === "review").slice(0, 12).map((i) => (
+                      <p key={`${i.entityId}-${i.outcome}`} className="text-muted-foreground">
+                        {i.entityType}: {i.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

@@ -127,6 +127,25 @@ export async function commitMigrationSessionAction(sessionId: string) {
   return result;
 }
 
+export async function previewImportSessionCleanupAction(sessionId: string) {
+  const { previewImportSessionCleanup } = await import("@/lib/migration/session-cleanup");
+  return previewImportSessionCleanup(sessionId);
+}
+
+export async function executeImportSessionCleanupAction(sessionId: string) {
+  const { executeImportSessionCleanup } = await import("@/lib/migration/session-cleanup");
+  const result = await executeImportSessionCleanup(sessionId, { confirmed: true });
+  if (result.ok) {
+    revalidatePath("/settings/migration");
+    revalidatePath("/clients");
+    revalidatePath("/leads");
+    revalidatePath("/vendors");
+    revalidatePath("/calendar");
+    revalidatePath("/documents");
+  }
+  return result;
+}
+
 
 export async function getFloorPlanImportCatalogAction() {
   return getFloorPlanImportCatalog();
