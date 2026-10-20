@@ -1,0 +1,10 @@
+PASS leads — 0961ed0d-01c7-4b19-986d-d0d079395efd/f411cfe9-f5c4-4c1e-a019-f9f083b164af
+PASS two_tours — keep=699478dd-412d-4a15-9b02-01ddc4a4490e cancel=ebd3ab84-e47b-47a9-87cc-0d2a01905697
+PASS preview_lists_both_tours — section ok
+PASS cancel_checkboxes — count=2
+PASS merged_nav — https://app.sandbox.hellotocheers.com/leads/0961ed0d-01c7-4b19-986d-d0d079395efd
+PASS kept_tour_active — {"id":"699478dd-412d-4a15-9b02-01ddc4a4490e","lead_id":"0961ed0d-01c7-4b19-986d-d0d079395efd","status":"scheduled"}
+PASS cancelled_via_merge — {"id":"ebd3ab84-e47b-47a9-87cc-0d2a01905697","lead_id":"0961ed0d-01c7-4b19-986d-d0d079395efd","status":"cancelled"}
+PASS slot_released_rebookable — e6b2220c-dbc9-433b-9969-fd5a495cc17a
+
+SUMMARY pass=8 fail=0

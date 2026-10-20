@@ -1,0 +1,23 @@
+PASS fixtures_and_review — P=d8570939-4393-48b3-a3d4-ecf57b304e2c S=68f38a9b-bc43-4545-b7ca-01d8cf8be7c8
+PASS tour_on_secondary — 8f120721-2a96-40f8-8a81-5a02c19b47c3
+PASS banner_heading — heading
+PASS no_manual_copy_delete — old guidance absent on page
+PASS merge_cta_on_banner — cta
+PASS modal_title — Possible duplicate lead
+
+This new inquiry may match a lead you already have. Mer
+PASS modal_no_auto_merge — explicit
+PASS modal_no_copy_delete — clean
+PASS merge_dialog_opened — from modal CTA
+PASS preview_autoloaded — auto preview
+PASS primary_is_earliest — earliest
+PASS tour_shown — tours section
+PASS conflicts_resolved_or_none — groups=3
+PASS redirect_to_primary — https://app.sandbox.hellotocheers.com/leads/d8570939-4393-48b3-a3d4-ecf57b304e2c
+PASS secondary_soft_marked — {"merged_into_lead_id":"d8570939-4393-48b3-a3d4-ecf57b304e2c","merged_at":"2026-10-20T23:33:39.52664+00:00","phone":"555-0177","first_name":"DupSecondary"}
+PASS phone_filled — {"phone":"555-0177","merged_into_lead_id":null,"first_name":"DupPrimary"}
+PASS primary_name_kept — DupPrimary
+PASS tour_reparented — {"id":"8f120721-2a96-40f8-8a81-5a02c19b47c3","lead_id":"d8570939-4393-48b3-a3d4-ecf57b304e2c","status":"scheduled","scheduled_at":"2028-09-13T15:00:00+00:00"}
+PASS secondary_redirects — https://app.sandbox.hellotocheers.com/leads/d8570939-4393-48b3-a3d4-ecf57b304e2c?mergedFrom=68f38a9b-bc43-4545-b7ca-01d8cf8be7c8
+
+SUMMARY pass=19 fail=0
