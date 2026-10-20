@@ -84,12 +84,16 @@ async function main() {
   const { error: signErr } = await userClient.auth.signInWithPassword({ email, password });
   record("signed_in_as_owner", !signErr, signErr?.message ?? userId);
 
+  // Re-read timestamps immediately before RPC (related writes / triggers may bump updated_at)
+  const { data: aFresh } = await admin.from("leads").select("id,updated_at,phone").eq("id", leadA!.id).single();
+  const { data: bFresh } = await admin.from("leads").select("id,updated_at,phone").eq("id", leadB!.id).single();
+
   const { data: rpc1, error: rpcErr } = await userClient.rpc("merge_leads_v1", {
     p_venue_id: venueId,
     p_primary_id: leadA!.id,
     p_secondary_id: leadB!.id,
-    p_primary_updated_at: leadA!.updated_at,
-    p_secondary_updated_at: leadB!.updated_at,
+    p_primary_updated_at: aFresh!.updated_at,
+    p_secondary_updated_at: bFresh!.updated_at,
     p_field_patch: { phone: "555-0199" },
     p_tour_cancel_ids: [],
     p_audit: { probe: true, stamp },
@@ -112,10 +116,12 @@ async function main() {
 
   const { data: tourAfter } = await admin.from("tour_appointments")
     .select("id,lead_id,status,scheduled_at").eq("id", tour!.id).single();
+  const schedNorm = (s: string | null | undefined) =>
+    s ? new Date(s).toISOString() : "";
   record("tour_reparented_same_slot",
     tourAfter?.lead_id === leadA!.id
     && tourAfter?.status === "scheduled"
-    && tourAfter?.scheduled_at === tIso
+    && schedNorm(tourAfter?.scheduled_at) === schedNorm(tIso)
     && tourAfter?.id === tour!.id,
     JSON.stringify(tourAfter));
 

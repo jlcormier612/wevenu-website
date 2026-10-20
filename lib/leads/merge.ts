@@ -483,7 +483,7 @@ export async function confirmMergeLeads(
       return { ok: false, message: "A tour protection request blocks this merge." };
     }
     if (code === "secondary_already_merged") {
-      return { ok: false, message: `Secondary lead was already merged into ${result.mergedInto}.` };
+      return { ok: false, message: `Secondary lead was already merged into ${result?.mergedInto ?? "another lead"}.` };
     }
     return { ok: false, message: `Merge blocked (${code}).` };
   }

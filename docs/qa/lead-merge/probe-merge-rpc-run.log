@@ -1,0 +1,11 @@
+PASS signed_in_as_owner — 56b7bb5f-7739-40bf-91af-a6bed2c98c3c
+PASS merge_rpc_ok — {"ok":true,"primaryId":"fe9553c6-7342-4016-bd75-f494ab7acdc9","secondaryId":"15fb348e-841e-41d3-95b0-0681a2ea6750","alreadyMerged":false}
+PASS phone_filled_on_primary — 555-0199
+PASS secondary_soft_marked — {"id":"15fb348e-841e-41d3-95b0-0681a2ea6750","merged_into_lead_id":"fe9553c6-7342-4016-bd75-f494ab7acdc9","merged_at":"2026-10-20T22:25:11.642743+00:00"}
+PASS note_reparented — fe9553c6-7342-4016-bd75-f494ab7acdc9
+PASS tour_reparented_same_slot — {"id":"6a5f5877-52bd-489a-8034-e108dfef1d60","lead_id":"fe9553c6-7342-4016-bd75-f494ab7acdc9","status":"scheduled","scheduled_at":"2028-07-12T15:00:00+00:00"}
+PASS retry_idempotent_already_merged — {"rpc2":{"ok":true,"primaryId":"fe9553c6-7342-4016-bd75-f494ab7acdc9","secondaryId":"15fb348e-841e-41d3-95b0-0681a2ea6750","alreadyMerged":true},"rpc3":{"ok":true,"primaryId":"fe9553c6-7342-4016-bd75-f494ab7acdc9","secondaryId":"15fb348e-841e-41d3-95b0-0681a2ea6750","alreadyMerge
+PASS cross_venue_rejected — {"ok":false,"error":"secondary_not_found"}
+PASS no_tour_duplication — count=1
+
+SUMMARY pass=9 fail=0
