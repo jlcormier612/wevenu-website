@@ -656,6 +656,7 @@ function CapabilityDefaults({
         {incomplete ? (
           <p className="text-xs text-amber-800">
             Included but not configured — select a template, or mark Inventory Not included.
+            Saving this profile never creates an inventory draft; drafts start from Event Setup when you are ready.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
@@ -691,6 +692,7 @@ function CapabilityDefaults({
         {incomplete ? (
           <p className="text-xs text-amber-800">
             Included but not configured — select a package, or mark Event Order Not included (for package-only events).
+            Saving this profile never creates an Event Order draft; drafts start from Event Setup when you are ready.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
