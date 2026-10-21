@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   addCustomLine, addLineFromInventory, addLineFromOffering, addLineFromPackage, addSection,
   applyTemplateToEventOrder, ensureEventOrder, finalizeEventOrder, importPackageInclusions, removeLine, removeSection,
-  reopenEventOrder, setSectionFloorPlan, startOrApplyEventOrderTemplate, updateLine,
+  reopenEventOrder, replaceEventOrderFromTemplate, setSectionFloorPlan, startOrApplyEventOrderTemplate, updateLine,
 } from "@/lib/event-orders/service";
 import type {
   AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddOfferingLineInput,
@@ -53,6 +53,16 @@ export async function startOrApplyEventOrderTemplateAction(
   selections?: TemplateApplySelection[],
 ): Promise<EnsureEventOrderResult> {
   const result = await startOrApplyEventOrderTemplate(eventId, templateId, selections);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Overview setup — replace open Event Order contents from a Library package (no share/invoice). */
+export async function replaceEventOrderFromTemplateAction(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventOrderResult | EventOrderActionResult> {
+  const result = await replaceEventOrderFromTemplate(eventId, templateId);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

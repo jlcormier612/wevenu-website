@@ -66,6 +66,55 @@ export async function ensureEventInventory(eventId: string, templateId: string |
   return result as EnsureEventInventoryResult;
 }
 
+/**
+ * Overview setup editor — replace this event's inventory items from a Library template.
+ * Idempotent ensure first. Refuses shared/finalized inventories and any item already
+ * pushed to Event Order. Does not share, finalize, invoice, or mutate the Library.
+ */
+export async function replaceEventInventoryFromTemplate(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventInventoryResult | EventInventoryActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const template = await repo.getTemplate(supabase, venueId, templateId);
+    if (!template || template.isArchived) {
+      return { ok: false, message: "Select an active Inventory offering template." } as EventInventoryActionResult;
+    }
+    let details = await repo.getEventInventoryByEvent(supabase, venueId, eventId);
+    if (!details) {
+      const eventInventoryId = await repo.insertEventInventory(supabase, venueId, eventId, templateId);
+      await repo.applyTemplateItems(supabase, venueId, eventInventoryId, template.items);
+      await repo.insertActivity(
+        supabase, venueId, eventInventoryId, "created",
+        `Created from template: ${template.name}`,
+      );
+      return { ok: true, eventInventoryId } as EnsureEventInventoryResult;
+    }
+    if (details.status !== "draft") {
+      return {
+        ok: false,
+        message: `This Event Inventory is ${details.status}. Reopen it to draft (or use the Inventory workspace) before switching templates.`,
+      } as EventInventoryActionResult;
+    }
+    if (details.items.some((i) => i.addedToEventOrderAt)) {
+      return {
+        ok: false,
+        message: "Some inventory items were already added to the Event Order. Switch templates from the Inventory workspace after reviewing those links — setup replace is blocked.",
+      } as EventInventoryActionResult;
+    }
+    await repo.clearEventInventoryItems(supabase, venueId, details.id);
+    await repo.setEventInventoryTemplateId(supabase, venueId, details.id, templateId);
+    await repo.applyTemplateItems(supabase, venueId, details.id, template.items);
+    await repo.insertActivity(
+      supabase, venueId, details.id, "template_replaced",
+      `Replaced starting offering with: ${template.name}`,
+      "Event-specific items were replaced. The Library template was not changed. Not shared or invoiced.",
+    );
+    return { ok: true, eventInventoryId: details.id } as EnsureEventInventoryResult;
+  });
+  return result as EnsureEventInventoryResult | EventInventoryActionResult;
+}
+
 export async function shareEventInventory(eventInventoryId: string): Promise<EventInventoryActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);

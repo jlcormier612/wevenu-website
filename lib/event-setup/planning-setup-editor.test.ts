@@ -60,6 +60,13 @@ describe("Open Planning vs Change for this event destinations", () => {
     const changeFn = panel.slice(panel.indexOf("function changeForEvent"));
     assert.doesNotMatch(changeFn.slice(0, 500), /navigateStep\(step\)/);
   });
+
+  it("Change for Inventory and Event Order open setup editors, not management tabs", () => {
+    assert.match(panel, /setInventoryEditorOpen\(true\)/);
+    assert.match(panel, /setEventOrderEditorOpen\(true\)/);
+    const changeFn = panel.slice(panel.indexOf("function changeForEvent"));
+    assert.doesNotMatch(changeFn.slice(0, 1200), /navigateStep\(step\)/);
+  });
 });
 
 describe("setup editor editing paths and boundaries", () => {

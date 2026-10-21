@@ -42,6 +42,14 @@ describe("Change for this event opens the event editor", () => {
     assert.match(panel, /SETUP_EDITOR_STEPS/);
   });
 
+  it("Change for Inventory and Event Order open dedicated setup editors", () => {
+    assert.match(panel, /setInventoryEditorOpen\(true\)/);
+    assert.match(panel, /EventInventorySetupEditor/);
+    assert.match(panel, /setEventOrderEditorOpen\(true\)/);
+    assert.match(panel, /EventOrderSetupEditor/);
+    assert.match(panel, /"inventory", "event_order"/);
+  });
+
   it("profile-driven Planning defers release to Overview", () => {
     assert.match(detail, /preferOverviewRelease=\{Boolean\(eventSetup\.usesProfile\)\}/);
     assert.match(tasks, /preferOverviewRelease/);

@@ -157,6 +157,33 @@ export async function removeItem(client: DbClient, venueId: string, itemId: stri
   if (error) throw error;
 }
 
+/** Clears all items on an event inventory (setup template replace only). */
+export async function clearEventInventoryItems(
+  client: DbClient,
+  venueId: string,
+  eventInventoryId: string,
+): Promise<void> {
+  const { error } = await client.from("event_inventory_items")
+    .delete()
+    .eq("event_inventory_id", eventInventoryId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function setEventInventoryTemplateId(
+  client: DbClient,
+  venueId: string,
+  eventInventoryId: string,
+  templateId: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_inventory") as any)
+    .update({ template_id: templateId })
+    .eq("id", eventInventoryId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 /** D8 — marks these items as having actually reached the Event Order, so addToEventOrder's own dedupe check (and the panel's button-visibility check) never re-offer them, while newly added items independently remain eligible. */
 export async function markAddedToEventOrder(client: DbClient, venueId: string, itemIds: string[]): Promise<void> {
   if (itemIds.length === 0) return;

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   addItem, addTemplateItem, addToEventOrder, createTemplate, deleteTemplate,
   ensureEventInventory, finalizeEventInventory, getTemplate, removeItem, removeTemplateItem,
-  reopenEventInventory, sendInventoryTemplate, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
+  reopenEventInventory, replaceEventInventoryFromTemplate, sendInventoryTemplate, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
 } from "@/lib/event-inventory/service";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
@@ -18,6 +18,16 @@ function revalidateEvent(eventId: string) {
 
 export async function ensureEventInventoryAction(eventId: string, templateId: string | null = null): Promise<EnsureEventInventoryResult> {
   const result = await ensureEventInventory(eventId, templateId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Overview setup — replace event inventory items from a Library template (no share/invoice). */
+export async function replaceEventInventoryFromTemplateAction(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventInventoryResult | EventInventoryActionResult> {
+  const result = await replaceEventInventoryFromTemplate(eventId, templateId);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

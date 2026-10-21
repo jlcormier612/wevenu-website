@@ -11,11 +11,16 @@ import {
   prepareAndReleasePortalAction,
   reopenEventSetupAction,
 } from "@/app/(app)/events/[id]/setup-actions";
+import { EventInventorySetupEditor } from "@/components/events/event-inventory-setup-editor";
+import { EventOrderSetupEditor } from "@/components/events/event-order-setup-editor";
 import { EventPlanningSetupEditor } from "@/components/events/event-planning-setup-editor";
 import { EventTimelineSetupEditor } from "@/components/events/event-timeline-setup-editor";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { EventInventoryWithDetails, InventoryTemplate } from "@/lib/event-inventory/types";
+import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
+import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import {
   isOutstandingFollowUp,
@@ -47,7 +52,7 @@ import type {
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 
 /** Areas with a dedicated event-specific setup editor (Change ≠ Open). */
-const SETUP_EDITOR_STEPS = new Set<SetupStepKey>(["planning", "timeline"]);
+const SETUP_EDITOR_STEPS = new Set<SetupStepKey>(["planning", "timeline", "inventory", "event_order"]);
 
 function readinessBadgeVariant(
   status: keyof typeof SETUP_READINESS_LABEL,
@@ -86,6 +91,10 @@ export function EventSetupPanel({
   preferredFloorPlanName = null,
   hasEventInventory = false,
   eventOrder = null,
+  eventInventory = null,
+  inventoryTemplates = [],
+  eventOrderDetails = null,
+  eventOrderTemplates = [],
   eventTasks = [],
   templateNames = { planning: null, timeline: null, inventory: null, eventOrder: null },
   onNavigateTab,
@@ -114,6 +123,10 @@ export function EventSetupPanel({
   preferredFloorPlanName?: string | null;
   hasEventInventory?: boolean;
   eventOrder?: EventOrderReadinessInput | null;
+  eventInventory?: EventInventoryWithDetails | null;
+  inventoryTemplates?: InventoryTemplate[];
+  eventOrderDetails?: EventOrderWithDetails | null;
+  eventOrderTemplates?: EventOrderTemplate[];
   eventTasks?: EventTask[];
   templateNames?: {
     planning: string | null;
@@ -127,6 +140,8 @@ export function EventSetupPanel({
   const [pending, startTransition] = React.useTransition();
   const [planningEditorOpen, setPlanningEditorOpen] = React.useState(false);
   const [timelineEditorOpen, setTimelineEditorOpen] = React.useState(false);
+  const [inventoryEditorOpen, setInventoryEditorOpen] = React.useState(false);
+  const [eventOrderEditorOpen, setEventOrderEditorOpen] = React.useState(false);
   const effective = effectiveDecisionMap(state);
   const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
   const counts = setupDecisionCounts(applicableSteps, effective);
@@ -192,6 +207,14 @@ export function EventSetupPanel({
     }
     if (step === "timeline") {
       setTimelineEditorOpen(true);
+      return;
+    }
+    if (step === "inventory") {
+      setInventoryEditorOpen(true);
+      return;
+    }
+    if (step === "event_order") {
+      setEventOrderEditorOpen(true);
       return;
     }
     // Areas without a dedicated setup editor yet — do not pretend management is Change.
@@ -488,6 +511,26 @@ export function EventSetupPanel({
         preferredTemplateId={inheritedRefs.timelineTemplateId ?? null}
         templates={timelineTemplates}
         entries={timelineEntries}
+      />
+      <EventInventorySetupEditor
+        open={inventoryEditorOpen}
+        onOpenChange={setInventoryEditorOpen}
+        eventId={eventId}
+        eventName={eventName}
+        profileName={state.profileName ?? null}
+        preferredTemplateId={inheritedRefs.inventoryTemplateId ?? null}
+        templates={inventoryTemplates}
+        eventInventory={eventInventory}
+      />
+      <EventOrderSetupEditor
+        open={eventOrderEditorOpen}
+        onOpenChange={setEventOrderEditorOpen}
+        eventId={eventId}
+        eventName={eventName}
+        profileName={state.profileName ?? null}
+        preferredTemplateId={inheritedRefs.eventOrderTemplateId ?? null}
+        templates={eventOrderTemplates}
+        eventOrder={eventOrderDetails}
       />
     </section>
   );

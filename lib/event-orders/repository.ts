@@ -334,6 +334,38 @@ export async function removeLine(client: DbClient, venueId: string, lineId: stri
   if (error) throw error;
 }
 
+/** Clears lines then sections for a full package replace on an open Event Order. */
+export async function clearEventOrderContents(
+  client: DbClient,
+  venueId: string,
+  eventOrderId: string,
+): Promise<void> {
+  const { error: linesError } = await client.from("event_order_lines")
+    .delete()
+    .eq("event_order_id", eventOrderId)
+    .eq("venue_id", venueId);
+  if (linesError) throw linesError;
+  const { error: sectionsError } = await client.from("event_order_sections")
+    .delete()
+    .eq("event_order_id", eventOrderId)
+    .eq("venue_id", venueId);
+  if (sectionsError) throw sectionsError;
+}
+
+export async function setEventOrderTemplateId(
+  client: DbClient,
+  venueId: string,
+  eventOrderId: string,
+  templateId: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_orders") as any)
+    .update({ template_id: templateId })
+    .eq("id", eventOrderId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 export async function nextSortOrder(client: DbClient, table: "event_order_sections" | "event_order_lines", eventOrderId: string): Promise<number> {
   const { data } = await client.from(table).select("sort_order").eq("event_order_id", eventOrderId).order("sort_order", { ascending: false }).limit(1);
   return ((data?.[0] as { sort_order: number } | undefined)?.sort_order ?? -1) + 1;

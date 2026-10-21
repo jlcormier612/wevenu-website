@@ -737,14 +737,265 @@ async function main() {
       record("change_opens_dedicated_timeline_setup_editor", false, "timeline Change button missing");
     }
 
-    // Areas without setup editors must not show Change (no false management route)
+    // Floor Plans / Vendors / Questionnaires still lack dedicated Change editors
     record(
       "change_hidden_for_areas_without_setup_editor",
-      (await page.getByTestId("event-setup-change-inventory").count()) === 0
-        && (await page.getByTestId("event-setup-change-event_order").count()) === 0
-        && (await page.getByTestId("event-setup-change-floor_plans").count()) === 0,
-      "Inv/EO/Floor Change hidden until later phases",
+      (await page.getByTestId("event-setup-change-floor_plans").count()) === 0
+        && (await page.getByTestId("event-setup-change-vendors").count()) === 0
+        && (await page.getByTestId("event-setup-change-questionnaires").count()) === 0,
+      "Floor/Vendors/Q Change hidden until later phases",
     );
+
+    // Inventory Change → dedicated setup editor; customize persists; Open → management
+    const invChange = page.getByTestId("event-setup-change-inventory");
+    if ((await invChange.count()) > 0) {
+      const invIdBefore = (await admin
+        .from("event_inventory")
+        .select("id,status,template_id")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)
+        .maybeSingle()).data;
+      const invItemsBefore = invIdBefore
+        ? (await admin
+            .from("event_inventory_items")
+            .select("id", { count: "exact", head: true })
+            .eq("event_inventory_id", invIdBefore.id)
+            .eq("venue_id", FANCY)).count ?? 0
+        : 0;
+      await invChange.click();
+      await page.waitForSelector('[data-testid="event-inventory-setup-editor"]', { timeout: 15_000 });
+      record(
+        "change_opens_dedicated_inventory_setup_editor",
+        (await page.getByTestId("event-inventory-setup-editor").count()) === 1
+          && (await page.getByTestId("inventory-setup-mode-template").count()) === 1
+          && (await page.getByTestId("inventory-setup-mode-customize").count()) === 1,
+        "inventory setup editor visible",
+      );
+      await page.getByTestId("inventory-setup-mode-customize").click();
+      const invCustomName = `QA event-only inventory ${tag}`;
+      await page.getByTestId("inventory-setup-new-name").fill(invCustomName);
+      await page.getByTestId("inventory-setup-add-item").click();
+      await page.waitForTimeout(2500);
+      const invAfterAdd = await admin
+        .from("event_inventory_items")
+        .select("id,name")
+        .eq("event_inventory_id", invIdBefore!.id)
+        .eq("venue_id", FANCY)
+        .ilike("name", `%${invCustomName}%`);
+      record(
+        "inventory_setup_customize_persists",
+        (invAfterAdd.data?.length ?? 0) === 1,
+        `items=${JSON.stringify(invAfterAdd.data ?? [])}`,
+      );
+      await page.screenshot({ path: `${OUT}/03f-inventory-setup-editor-1280.png`, fullPage: true });
+
+      // Safe template switch on this open draft (no EO-pushed items)
+      const otherInvTpl = (await admin
+        .from("inventory_templates")
+        .select("id,name")
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)
+        .neq("id", invIdBefore!.template_id ?? "00000000-0000-0000-0000-000000000000")
+        .limit(1)
+        .maybeSingle()).data;
+      if (otherInvTpl?.id) {
+        await page.getByTestId("inventory-setup-mode-template").click();
+        await page.getByTestId("inventory-setup-template-select").click();
+        await page.getByRole("option", { name: otherInvTpl.name }).click().catch(async () => {
+          await page.locator(`[data-value="${otherInvTpl.id}"]`).first().click();
+        });
+        page.once("dialog", (d) => d.accept());
+        await page.getByTestId("inventory-setup-apply-template").click();
+        await page.waitForTimeout(3000);
+        const invAfterReplace = (await admin
+          .from("event_inventory")
+          .select("id,template_id,status")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .maybeSingle()).data;
+        const invCountAfterReplace = (await admin
+          .from("event_inventory")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)).count ?? 0;
+        record(
+          "inventory_setup_template_replace_safe",
+          invAfterReplace?.template_id === otherInvTpl.id
+            && invAfterReplace?.status === "draft"
+            && invCountAfterReplace === 1,
+          `template=${invAfterReplace?.template_id} status=${invAfterReplace?.status} drafts=${invCountAfterReplace}`,
+        );
+        // Re-open editor if sheet closed after apply
+        if ((await page.getByTestId("event-inventory-setup-editor").count()) === 0) {
+          await page.getByTestId("event-setup-change-inventory").click();
+          await page.waitForSelector('[data-testid="event-inventory-setup-editor"]', { timeout: 15_000 });
+        }
+      } else {
+        record("inventory_setup_template_replace_safe", true, "skipped — no alternate inventory template");
+      }
+
+      const libTplItemsBefore = invRef
+        ? (await admin
+            .from("inventory_template_items")
+            .select("id", { count: "exact", head: true })
+            .eq("template_id", invRef)
+            .eq("venue_id", FANCY)).count ?? 0
+        : null;
+
+      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+      await page.waitForTimeout(500);
+      await page.getByTestId("event-setup-open-inventory").click().catch(async () => {
+        await page.getByRole("button", { name: /Open Inventory/i }).click();
+      });
+      await page.waitForTimeout(900);
+      record(
+        "open_inventory_reaches_management_workspace",
+        /inventory/i.test(page.url()) || (await page.getByRole("tab", { name: /Inventory/i }).count()) > 0,
+        `url=${page.url()}`,
+      );
+      if (libTplItemsBefore != null && invRef) {
+        const libTplItemsAfter = (await admin
+          .from("inventory_template_items")
+          .select("id", { count: "exact", head: true })
+          .eq("template_id", invRef)
+          .eq("venue_id", FANCY)).count ?? 0;
+        record(
+          "inventory_library_template_unchanged",
+          libTplItemsAfter === libTplItemsBefore,
+          `before=${libTplItemsBefore} after=${libTplItemsAfter}`,
+        );
+      }
+      void invItemsBefore;
+      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
+        await page.locator('[value="overview"]').first().click();
+      });
+      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
+    } else {
+      record("change_opens_dedicated_inventory_setup_editor", false, "inventory Change button missing");
+    }
+
+    // Event Order Change → dedicated setup editor; customize persists; Open → management
+    const eoChange = page.getByTestId("event-setup-change-event_order");
+    if ((await eoChange.count()) > 0) {
+      const eoBefore = (await admin
+        .from("event_orders")
+        .select("id,status,template_id,shared_at")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)
+        .maybeSingle()).data;
+      await eoChange.click();
+      await page.waitForSelector('[data-testid="event-order-setup-editor"]', { timeout: 15_000 });
+      record(
+        "change_opens_dedicated_event_order_setup_editor",
+        (await page.getByTestId("event-order-setup-editor").count()) === 1
+          && (await page.getByTestId("event-order-setup-mode-template").count()) === 1
+          && (await page.getByTestId("event-order-setup-mode-customize").count()) === 1,
+        "event order setup editor visible",
+      );
+      await page.getByTestId("event-order-setup-mode-customize").click();
+      const eoCustomDesc = `QA event-only EO line ${tag}`;
+      await page.getByTestId("event-order-setup-new-description").fill(eoCustomDesc);
+      await page.getByTestId("event-order-setup-add-line").click();
+      await page.waitForTimeout(2500);
+      const eoLinesAfter = await admin
+        .from("event_order_lines")
+        .select("id,description")
+        .eq("event_order_id", eoBefore!.id)
+        .eq("venue_id", FANCY)
+        .ilike("description", `%${eoCustomDesc}%`);
+      record(
+        "event_order_setup_customize_persists",
+        (eoLinesAfter.data?.length ?? 0) === 1
+          && eoBefore?.status === "open"
+          && !eoBefore?.shared_at,
+        `lines=${JSON.stringify(eoLinesAfter.data ?? [])} status=${eoBefore?.status}`,
+      );
+      await page.screenshot({ path: `${OUT}/03g-event-order-setup-editor-1280.png`, fullPage: true });
+
+      const otherEoTpl = (await admin
+        .from("event_order_templates")
+        .select("id,name")
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)
+        .neq("id", eoBefore!.template_id ?? "00000000-0000-0000-0000-000000000000")
+        .limit(1)
+        .maybeSingle()).data;
+      if (otherEoTpl?.id && !eoBefore?.shared_at && eoBefore?.status === "open") {
+        await page.getByTestId("event-order-setup-mode-template").click();
+        await page.getByTestId("event-order-setup-template-select").click();
+        await page.getByRole("option", { name: otherEoTpl.name }).click().catch(async () => {
+          await page.locator(`[data-value="${otherEoTpl.id}"]`).first().click();
+        });
+        page.once("dialog", (d) => d.accept());
+        await page.getByTestId("event-order-setup-apply-template").click();
+        await page.waitForTimeout(3000);
+        const eoAfterReplace = (await admin
+          .from("event_orders")
+          .select("id,template_id,status,shared_at")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .maybeSingle()).data;
+        const eoCount = (await admin
+          .from("event_orders")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)).count ?? 0;
+        record(
+          "event_order_setup_package_replace_safe",
+          eoAfterReplace?.template_id === otherEoTpl.id
+            && eoAfterReplace?.status === "open"
+            && !eoAfterReplace?.shared_at
+            && eoCount === 1,
+          `template=${eoAfterReplace?.template_id} drafts=${eoCount}`,
+        );
+        if ((await page.getByTestId("event-order-setup-editor").count()) === 0) {
+          await page.getByTestId("event-setup-change-event_order").click();
+          await page.waitForSelector('[data-testid="event-order-setup-editor"]', { timeout: 15_000 });
+        }
+      } else {
+        record("event_order_setup_package_replace_safe", true, "skipped — no alternate EO package or not open");
+      }
+
+      const eoTplRef = (templateRefs.eventOrderTemplateId as string | null) ?? null;
+      const eoLibLinesBefore = eoTplRef
+        ? (await admin
+            .from("event_order_template_lines")
+            .select("id", { count: "exact", head: true })
+            .eq("template_id", eoTplRef)
+            .eq("venue_id", FANCY)).count ?? 0
+        : null;
+
+      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+      await page.waitForTimeout(500);
+      await page.getByTestId("event-setup-open-event_order").click().catch(async () => {
+        await page.getByRole("button", { name: /Open Event Order/i }).click();
+      });
+      await page.waitForTimeout(900);
+      record(
+        "open_event_order_reaches_management_workspace",
+        /event-order|event_order/i.test(page.url())
+          || (await page.getByRole("tab", { name: /Event Order/i }).count()) > 0,
+        `url=${page.url()}`,
+      );
+      if (eoLibLinesBefore != null && eoTplRef) {
+        const eoLibLinesAfter = (await admin
+          .from("event_order_template_lines")
+          .select("id", { count: "exact", head: true })
+          .eq("template_id", eoTplRef)
+          .eq("venue_id", FANCY)).count ?? 0;
+        record(
+          "event_order_library_package_unchanged",
+          eoLibLinesAfter === eoLibLinesBefore,
+          `before=${eoLibLinesBefore} after=${eoLibLinesAfter}`,
+        );
+      }
+      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
+        await page.locator('[value="overview"]').first().click();
+      });
+      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
+    } else {
+      record("change_opens_dedicated_event_order_setup_editor", false, "event order Change button missing");
+    }
 
     // Vendors tab: Vendor Network, not a second recommendation curator
     await page.getByRole("tab", { name: /Vendors/i }).click().catch(async () => {

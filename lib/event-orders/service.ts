@@ -229,6 +229,62 @@ export async function startOrApplyEventOrderTemplate(
   return { ok: true, eventOrderId: existing.id };
 }
 
+/**
+ * Overview setup editor — replace this event's open Event Order contents from a
+ * Library package/template. Clears existing sections/lines then copies defaults.
+ * Refuses finalized or previously shared orders. Does not invoice, share, or
+ * mutate the Library. Prefer this over merge-apply when switching starting package.
+ */
+export async function replaceEventOrderFromTemplate(
+  eventId: string,
+  templateId: string,
+): Promise<EnsureEventOrderResult | EventOrderActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const template = await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId);
+    if (!template || template.isArchived) {
+      return { ok: false, message: "Select an active Event Order package." } as EventOrderActionResult;
+    }
+    let existing = await repo.getEventOrderByEvent(supabase, venueId, eventId);
+    if (!existing) {
+      const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId, templateId);
+      await copyTemplateSnapshotsIntoOrder(
+        supabase, venueId, eventOrderId, template, defaultApplySelections(template.lines), null,
+      );
+      await repo.insertActivity(
+        supabase, venueId, eventOrderId, "started",
+        `Event Order started from template: ${template.name}`,
+      );
+      return { ok: true, eventOrderId } as EnsureEventOrderResult;
+    }
+    if (existing.status !== "open") {
+      return {
+        ok: false,
+        message: "This Event Order is finalized. Reopen it in the Event Order workspace before switching packages.",
+      } as EventOrderActionResult;
+    }
+    if (existing.sharedAt) {
+      return {
+        ok: false,
+        message: "This Event Order was already shared with the client. Package switch from setup is blocked — use the Event Order workspace so the shared snapshot stays intentional.",
+      } as EventOrderActionResult;
+    }
+    await repo.clearEventOrderContents(supabase, venueId, existing.id);
+    await repo.setEventOrderTemplateId(supabase, venueId, existing.id, templateId);
+    const copied = await copyTemplateSnapshotsIntoOrder(
+      supabase, venueId, existing.id, template, defaultApplySelections(template.lines), null,
+    );
+    await repo.insertActivity(
+      supabase, venueId, existing.id, "template_replaced",
+      `Replaced starting package with: ${template.name}`,
+      copied > 0
+        ? "Event Order contents were replaced for this event. Not an invoice, contract, or share."
+        : "Package sections applied. No default offerings were selected on the template.",
+    );
+    return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
+  });
+  return result as EnsureEventOrderResult | EventOrderActionResult;
+}
+
 export async function finalizeEventOrder(eventOrderId: string): Promise<EventOrderActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const order = await repo.getEventOrderById(supabase, venueId, eventOrderId);
