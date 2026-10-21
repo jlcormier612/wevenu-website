@@ -1,69 +1,42 @@
-# Booking-to-portal — complete Setup Profile lifecycle
+# Booking-to-portal — settings → profile → book → release → invite
 
 ## Status
 
 **GREEN / CLOSED**
 
-Locked product model implemented and verified on Sandbox: venue inclusion → complete Setup Profile (client **and** venue Planning checklists / task lists + Timeline + Floor Plans + Inventory + Event Order + Vendor Network) → auto-apply on book → optional edit → one prepare/release → separate invite. Questionnaires remain outside collective release.
+Venue-wide Planning tools are the inclusion source of truth for Setup Profiles, booking auto-apply, and prepare/release. One prepare/release + separate Invite client demonstrated on Sandbox with persisted data.
 
 ## Serving
 
 | Item | Value |
 |------|-------|
 | Branch | `feat/spaces-booking-e1-smart-fields` |
-| Product commit | `97973356b51c9cbc440ec2c53a0f0fc6e91b54cd` |
-| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/39650985442 success |
-| Serving SHA | `97973356b51c9cbc440ec2c53a0f0fc6e91b54cd` (link `dpl=` on `/login`) |
+| Product commits | `999ff34b` (SoT), `0cd25c62` (types + acceptance) |
+| Migration | `20261420500000_venue_setup_capability_flags.sql` via [apply-sandbox-migration 39656827723](https://github.com/jlcormier612/wevenu-website/actions/runs/39656827723) |
+| Deploy | [39658265225](https://github.com/jlcormier612/wevenu-website/actions/runs/39658265225) success |
+| Serving SHA | `0cd25c62a4b3e103c533c7be423b36c3b791bb7f` |
 
-## Root causes (fixed)
+## Workflow implemented
 
-See `ROOT-CAUSE-COMPLETE-LIFECYCLE.md`.
-
-1. Setup Profiles only stored a **client** Planning checklist; venue checklist came from a library heuristic — Settings/profile and booking disagreed.
-2. Hard gaps did not require a venue checklist when Planning was Included.
-3. Prepare/release could not recover a profile-selected venue checklist that was never snapshotted.
-
-## Code (`97973356`)
-
-- `venuePlanningPlaybookTemplateId` on template refs; UI select; sanitize; save validates `kind=venue`.
-- Hard gap: Planning Included requires **both** client and venue checklists.
-- Booking: apply profile venue checklist; legacy profiles without the ref still use `applyDefaultVenuePlaybook`.
-- Prepare/release: recover missing venue checklist from snapshot (stays internal).
-- Acceptance asserts both checklists (matching template ids), timeline, floor offers, Inv/EO drafts, no component prepare CTAs, invite/questionnaire boundaries.
+1. **Settings → Planning tools** — checklists, Timeline, Floor plans, Seating arrangements (distinct), Vendor Network, Inventory, Event Order, Questionnaires.
+2. **Setup Profiles** — only enabled capabilities appear; both Planning checklists + templates for Included steps.
+3. **Booking** — instantiates configured content; venue-wide off skips create even if profile still has old `set_up`.
+4. **Event Setup** — content already present; one **Prepare and release portal**; no Start/Prepare Inv/EO CTAs.
+5. **Invite client** — separate; questionnaires not sent.
 
 ## Acceptance
 
-`EXPECTED_SHA=97973356… npx tsx scripts/qa/booking-to-portal-simplification-acceptance.mts` → **35/35 PASS**
+`EXPECTED_SHA=0cd25c62… npx tsx scripts/qa/booking-to-portal-simplification-acceptance.mts` → **41/41 PASS**
 
-`docs/qa/booking-to-portal-simplification/browser-results.json`
-
-Synthetic fixture: event `c829d577-7246-4d09-98fc-d53944d92c3f` / client `29029447-6efa-4283-bdfb-6cd66849b159`
-
-### Persisted after booking
-
-| Component | Proof |
-|-----------|--------|
-| Client checklist | `template_id=7a1766d4…` unreleased until prepare |
-| Venue checklist | `template_id=b2808150…` (internal; released_at at apply) |
-| Timeline | 38 entries from profile timeline template |
-| Floor plan offers | 1 offered from preferred template |
-| Inventory draft | template match, not finalized |
-| Event Order draft | template match, not shared/finalized |
-
-### After Prepare and release portal
-
-- Client planning released; venue checklist unchanged/internal
-- No invitation, no questionnaire send, no invoice
-- Idempotent second prepare: still 1 Inv + 1 EO
-- Event Setup shows **Prepare and release portal** + **Invite client** only — no Start/Prepare inventory or Event Order CTAs
+Fixture: client `f2fb9dd9…` / event from latest run in `browser-results.json`.
 
 ## Unit tests
 
-`lib/event-setup/{profile,profile-config-gaps,setup-profile-model,setup-profile-client-experience,booking-to-portal-simplification}.test.ts` → **52/52 PASS**
+Focused event-setup + planning-capabilities suites green (incl. `venue-settings-sot.test.ts`).
 
-## Tracked limitation
+## Limitations
 
-Questionnaire delivery timing engine is not implemented — drafts may be created at booking; sends remain separate/manual. Do not claim automated scheduling.
+Questionnaire delivery timing engine is not implemented — drafts may exist at booking; sends remain separate/manual.
 
 ## Production
 
