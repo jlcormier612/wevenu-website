@@ -60,8 +60,17 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
   );
 }
 
-function StartInventory({ eventId, templates }: { eventId: string; templates: InventoryTemplate[] }) {
-  const [templateId, setTemplateId] = React.useState<string>("blank");
+function StartInventory({
+  eventId,
+  templates,
+  preferredTemplateId = null,
+}: {
+  eventId: string;
+  templates: InventoryTemplate[];
+  preferredTemplateId?: string | null;
+}) {
+  const preferredExists = Boolean(preferredTemplateId && templates.some((t) => t.id === preferredTemplateId));
+  const [templateId, setTemplateId] = React.useState<string>(preferredExists ? preferredTemplateId! : "blank");
   const [starting, startTransition] = React.useTransition();
 
   const options = [{ value: "blank", label: "Start blank" }, ...templates.map((t) => ({ value: t.id, label: t.name }))];
@@ -77,10 +86,15 @@ function StartInventory({ eventId, templates }: { eventId: string; templates: In
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Event Inventory</CardTitle>
-        <CardDescription>What's actually part of this event — chairs, decor, bar service, anything selected for this booking.</CardDescription>
+        <CardDescription>What&apos;s actually part of this event — chairs, decor, bar service, anything selected for this booking.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+          {preferredExists ? (
+            <p className="max-w-md text-xs text-muted-foreground">
+              Your Setup Profile suggests starting from this offering. Starting creates a draft only — it does not share with the couple or create invoices.
+            </p>
+          ) : null}
           {templates.length > 0 && (
             <Select value={templateId} onValueChange={setTemplateId} items={options}>
               <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
@@ -99,17 +113,26 @@ function StartInventory({ eventId, templates }: { eventId: string; templates: In
 }
 
 export function EventInventoryPanel({
-  eventId, eventInventory, templates, catalogItems,
+  eventId, eventInventory, templates, catalogItems, preferredTemplateId = null,
 }: {
   eventId: string;
   eventInventory: EventInventoryWithDetails | null;
   templates: InventoryTemplate[];
   catalogItems: InventoryItem[];
+  preferredTemplateId?: string | null;
 }) {
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
-  if (!eventInventory) return <StartInventory eventId={eventId} templates={templates} />;
+  if (!eventInventory) {
+    return (
+      <StartInventory
+        eventId={eventId}
+        templates={templates}
+        preferredTemplateId={preferredTemplateId}
+      />
+    );
+  }
 
   const inv = eventInventory;
   const isFinalized = inv.status === "finalized";

@@ -47,7 +47,8 @@ describe("Setup Profile one-default timeline model", () => {
   it("removes portal skip warning from Setup Profile but keeps portal non-skippable in event setup", () => {
     assert.doesNotMatch(section, /cannot be skipped/);
     assert.match(service, /The client portal cannot be skipped/);
-    assert.match(panel, /Always included/);
+    assert.match(panel, /PortalLinkWidget/);
+    assert.doesNotMatch(panel, /Skip Portal/);
   });
 
   it("persists preferred floor-plan id with optional multi-select membership list", () => {

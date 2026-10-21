@@ -179,6 +179,7 @@ export function EventOrderPanel({
   selectedPackageName = null, offerings = [], inventoryItems, invoices, bookingCommitmentInvoiceIds = [], floorPlans, overview,
   templates = [],
   linkedScheduleId = null,
+  preferredTemplateId = null,
 }: {
   eventId: string;
   planningClientId?: string | null;
@@ -199,13 +200,16 @@ export function EventOrderPanel({
   templates?: EventOrderTemplate[];
   /** Payment schedule already attached to the EO-linked invoice, if any. */
   linkedScheduleId?: string | null;
+  /** Setup Profile starting Event Order package — preselect only; does not auto-create. */
+  preferredTemplateId?: string | null;
 }) {
   const router = useRouter();
   const scopeId = eventId || planningClientId || "";
   const preBooking = Boolean(planningClientId) && !eventId;
   const [starting, startStarting] = React.useTransition();
   const [applying, startApplying] = React.useTransition();
-  const [templateId, setTemplateId] = React.useState("blank");
+  const preferredExists = Boolean(preferredTemplateId && templates.some((t) => t.id === preferredTemplateId));
+  const [templateId, setTemplateId] = React.useState(preferredExists ? preferredTemplateId! : "blank");
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [downloading, startDownload] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
@@ -304,6 +308,11 @@ export function EventOrderPanel({
               Optional — use when you need a detailed delivery list. Package-only events can skip this.
               Templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
             </p>
+            {preferredExists ? (
+              <p className="max-w-md text-xs text-muted-foreground">
+                Your Setup Profile suggests a starting package below. Starting creates a draft only — it does not share with the couple or create invoices.
+              </p>
+            ) : null}
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
                 onClick={() => startStarting(async () => {

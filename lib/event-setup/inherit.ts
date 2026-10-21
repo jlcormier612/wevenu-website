@@ -156,6 +156,11 @@ async function applyInheritedTemplates(
   if (profile.decisions.vendors === "set_up") {
     await applyInheritedVendorRecommendations(supabase, venueId, eventId, profile);
   }
+
+  // Inventory and Event Order template refs are intentional reminders only.
+  // Booking does not create those event-specific drafts — they start from
+  // Event Setup / module empty states when the venue is ready.
+  // See profile UI copy and setup-profile-model inherit seams.
 }
 
 /** Offer selected floor-plan templates to the client; preferred sorts first. */

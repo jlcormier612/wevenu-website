@@ -106,7 +106,8 @@ describe("venue setup profiles", () => {
     });
     const panel = readFileSync(resolve("components/events/event-setup-panel.tsx"), "utf8");
     assert.match(panel, /Using:/);
-    assert.match(panel, /presentation === "needs_decision"/);
+    assert.match(panel, /counts\.needsDecision/);
+    assert.match(panel, /need a decision/);
     assert.match(panel, /Change for this event/);
   });
 

@@ -1093,6 +1093,7 @@ export function EventDetail({
             linkedScheduleId={linkedScheduleId}
             floorPlans={event.floorPlans}
             templates={eventOrderTemplates}
+            preferredTemplateId={eventSetup.inheritedTemplateRefs?.eventOrderTemplateId ?? null}
             overview={{
               eventName: event.name,
               eventDate: event.eventDate,
@@ -1107,7 +1108,13 @@ export function EventDetail({
 
         {/* ── Event Inventory ──────────────────────────────────────── */}
         <TabsContent value="inventory">
-          <EventInventoryPanel eventId={event.id} eventInventory={eventInventory} templates={inventoryTemplates} catalogItems={inventoryItems} />
+          <EventInventoryPanel
+            eventId={event.id}
+            eventInventory={eventInventory}
+            templates={inventoryTemplates}
+            catalogItems={inventoryItems}
+            preferredTemplateId={eventSetup.inheritedTemplateRefs?.inventoryTemplateId ?? null}
+          />
         </TabsContent>
 
         {/* ── Invoice / Payments ────────────────────────────────────── */}

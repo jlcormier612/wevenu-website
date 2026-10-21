@@ -224,8 +224,8 @@ function inventoryDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     if (hasRef) {
       return {
         status: "needs_action",
-        summary: `Starting inventory offering "${name ?? "selected"}" is configured as a reference — booking does not create inventory. Start it on the event when ready.`,
-        nextAction: "Open Inventory to start",
+        summary: `Profile starting offering "${name ?? "selected"}" is ready to apply as an event inventory draft. Booking did not create inventory — start when you are ready. Does not share with the couple or create invoices.`,
+        nextAction: name ? `Start "${name}" inventory draft` : "Start inventory draft from profile",
       };
     }
     return {
@@ -250,14 +250,14 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     if (hasRef) {
       return {
         status: "needs_action",
-        summary: `Starting package "${name ?? "selected"}" is a reference. An Event Order is created with an explicit action — not at booking — and is not an invoice, contract, or payment plan.`,
-        nextAction: "Open Event Order to create or apply",
+        summary: `Profile package "${name ?? "selected"}" is ready to apply as an Event Order draft. Booking did not start an order — this is not an invoice, contract, or payment plan, and is not shared until you share it.`,
+        nextAction: name ? `Start "${name}" Event Order draft` : "Start Event Order draft from profile",
       };
     }
     return {
       status: "needs_action",
       summary:
-        "Event Order is included for this event, but none exists yet. Create or apply a template when ready. Package-only events may skip a detailed Event Order.",
+        "Event Order is included for this event, but none exists yet. Create or apply a template when ready. If this booking is package-only and does not need a detailed Event Order, Skip this area instead.",
       nextAction: "Open Event Order",
     };
   }

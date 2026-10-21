@@ -62,7 +62,9 @@ describe("Included / Not included semantics", () => {
     assert.match(section, /Not included/);
     assert.doesNotMatch(section, />Configured</);
     const panel = read("components/events/event-setup-panel.tsx");
-    assert.match(panel, /SETUP_PRESENTATION_LABEL/);
+    // Event Setup uses readiness labels; profile UI uses SETUP_PRESENTATION_LABEL (Included / Not included).
+    assert.match(panel, /SETUP_READINESS_LABEL/);
+    assert.match(panel, /setupStatusBadgeLabel/);
     assert.doesNotMatch(panel, />Configured</);
   });
 
@@ -84,8 +86,9 @@ describe("Portal is foundational", () => {
     const service = read("lib/event-setup/service.ts");
     assert.match(service, /The client portal cannot be skipped/);
     const panel = read("components/events/event-setup-panel.tsx");
-    assert.match(panel, /Always included/);
-    assert.doesNotMatch(panel, /decide\(step, "skipped"\).*portal|Skip Portal/);
+    assert.match(panel, /PortalLinkWidget/);
+    assert.doesNotMatch(panel, /Skip Portal/);
+    assert.doesNotMatch(panel, /decide\(step, "skipped"\).*portal/);
     const section = read("components/settings/setup-profiles-section.tsx");
     // Setup Profile no longer surfaces a portal configuration warning card.
     assert.doesNotMatch(section, /cannot be skipped/);
@@ -115,9 +118,8 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(section, /setup-profile-default-floor-plan/);
     assert.doesNotMatch(section, /Additional available timelines/);
     assert.doesNotMatch(section, /Vendors your team expects to book/);
-    assert.match(section, /Recommended vendors for the client/);
-    assert.match(section, /Required vendors are managed in your Vendor Network/);
-    assert.match(section, /Recommended vendors for the client/);
+    assert.match(section, /Optional recommendations/);
+    assert.match(section, /Required vendors are managed in Vendor Network/);
     assert.match(section, /Questionnaires to prepare for the client/);
     assert.match(section, /Starting inventory offering/);
     assert.match(section, /Starting event-order package/);
@@ -164,7 +166,7 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.match(inherit, /addRecommendation/);
   });
 
-  it("does not auto-assign required vendors or invent inventory/event-order artifacts", () => {
+  it("does not auto-assign required vendors or invent inventory/event-order artifacts at booking", () => {
     assert.doesNotMatch(inherit, /assignVendor/);
     assert.doesNotMatch(inherit, /from\("event_vendor_assignments"\)/);
     assert.doesNotMatch(inherit, /from\("event_inventories"\)/);
@@ -172,6 +174,19 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
     assert.doesNotMatch(inherit, /applyTemplateItems/);
     assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);
+    assert.match(inherit, /intentional reminders only/);
+  });
+
+  it("Event Setup starts inventory/EO drafts from profile refs without sharing or invoicing", () => {
+    const panel = read("components/events/event-setup-panel.tsx");
+    assert.match(panel, /ensureEventInventoryAction/);
+    assert.match(panel, /ensureEventOrderAction/);
+    assert.match(panel, /startProfileDraft/);
+    assert.match(panel, /Not shared with the couple/);
+    assert.match(panel, /Not an invoice and not shared/);
+    assert.doesNotMatch(panel, /shareEventInventoryAction/);
+    assert.doesNotMatch(panel, /shareEventOrderWithClient/);
+    assert.doesNotMatch(panel, /createInvoice/);
   });
 
   it("additional timeline templates are stored, never merged at inherit", () => {

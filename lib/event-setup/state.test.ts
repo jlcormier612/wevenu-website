@@ -97,10 +97,10 @@ describe("event setup state", () => {
       skipped: 1,
     });
     const panel = readFileSync(resolve("components/events/event-setup-panel.tsx"), "utf8");
-    assert.match(panel, /needs_decision/);
-    assert.match(panel, /Always included/);
+    assert.match(panel, /counts\.needsDecision/);
+    assert.match(panel, /need a decision/);
+    assert.match(panel, /PortalLinkWidget/);
     assert.doesNotMatch(panel, />Configured</);
-    assert.match(panel, /presentation === "needs_decision"/);
   });
 
   it("ignores a step the venue does not use", () => {

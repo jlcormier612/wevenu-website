@@ -5,6 +5,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { ensureEventInventoryAction } from "@/app/(app)/events/[id]/event-inventory-actions";
+import { ensureEventOrderAction } from "@/app/(app)/events/[id]/event-order-actions";
 import {
   collapseEventSetupAction,
   decideEventSetupAction,
@@ -145,6 +147,53 @@ export function EventSetupPanel({
   /** Decisions alone are not “setup complete” while drafts or missing artifacts remain. */
   const setupSettled = decisionsComplete && outstandingCount === 0;
   const collapsed = Boolean(state.collapsedAt) && setupSettled;
+  const inventoryTemplateId = inheritedRefs.inventoryTemplateId ?? null;
+  const eventOrderTemplateId = inheritedRefs.eventOrderTemplateId ?? null;
+
+  function navigateStep(step: SetupStepKey) {
+    const tab =
+      step === "planning" ? "playbook"
+        : step === "timeline" ? "timeline"
+          : step === "floor_plans" ? "floor-plans"
+            : step === "vendors" ? "vendors"
+              : step === "questionnaires" ? "questionnaires"
+                : step === "inventory" ? "inventory"
+                  : step === "event_order" ? "event-order"
+                    : "overview";
+    onNavigateTab(tab);
+  }
+
+  function startProfileDraft(step: "inventory" | "event_order") {
+    startTransition(async () => {
+      if (step === "inventory") {
+        if (!inventoryTemplateId) {
+          navigateStep("inventory");
+          return;
+        }
+        const result = await ensureEventInventoryAction(eventId, inventoryTemplateId);
+        if (!result.ok) {
+          toast.error(result.message ?? "Could not start inventory draft.");
+          return;
+        }
+        toast.success("Inventory draft started from your Setup Profile. Not shared with the couple.");
+        router.refresh();
+        navigateStep("inventory");
+        return;
+      }
+      if (!eventOrderTemplateId) {
+        navigateStep("event_order");
+        return;
+      }
+      const result = await ensureEventOrderAction(eventId, eventOrderTemplateId);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not start Event Order draft.");
+        return;
+      }
+      toast.success("Event Order draft started from your Setup Profile. Not an invoice and not shared.");
+      router.refresh();
+      navigateStep("event_order");
+    });
+  }
 
   function decide(step: SetupStepKey, decision: "set_up" | "skipped") {
     startTransition(async () => {
@@ -247,17 +296,17 @@ export function EventSetupPanel({
                   <Button
                     type="button"
                     size="sm"
+                    disabled={pending}
                     onClick={() => {
-                      const tab =
-                        step === "planning" ? "playbook"
-                          : step === "timeline" ? "timeline"
-                            : step === "floor_plans" ? "floor-plans"
-                              : step === "vendors" ? "vendors"
-                                : step === "questionnaires" ? "questionnaires"
-                                  : step === "inventory" ? "inventory"
-                                    : step === "event_order" ? "event-order"
-                                      : "overview";
-                      onNavigateTab(tab);
+                      if (step === "inventory" && inventoryTemplateId && !hasEventInventory) {
+                        startProfileDraft("inventory");
+                        return;
+                      }
+                      if (step === "event_order" && eventOrderTemplateId && !eventOrder) {
+                        startProfileDraft("event_order");
+                        return;
+                      }
+                      navigateStep(step);
                     }}
                   >
                     {detail.nextAction}
@@ -338,6 +387,13 @@ export function EventSetupPanel({
                     timelineTemplates={timelineTemplates}
                     onNavigateTab={onNavigateTab}
                     hideOpenTab={listedInOutstanding}
+                    inventoryTemplateId={inventoryTemplateId}
+                    eventOrderTemplateId={eventOrderTemplateId}
+                    hasEventInventory={hasEventInventory}
+                    hasEventOrder={Boolean(eventOrder)}
+                    onStartInventoryDraft={() => startProfileDraft("inventory")}
+                    onStartEventOrderDraft={() => startProfileDraft("event_order")}
+                    startPending={pending}
                   />
                 </div>
               ) : null}
@@ -417,8 +473,15 @@ function SetupTool(props: {
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
   timelineTemplates: TimelineTemplate[];
   onNavigateTab: (tab: string) => void;
-  /** When true, the Outstanding list already owns the primary open action. */
+  /** When true, the Outstanding list already owns the primary open/start action. */
   hideOpenTab?: boolean;
+  inventoryTemplateId?: string | null;
+  eventOrderTemplateId?: string | null;
+  hasEventInventory?: boolean;
+  hasEventOrder?: boolean;
+  onStartInventoryDraft?: () => void;
+  onStartEventOrderDraft?: () => void;
+  startPending?: boolean;
 }) {
   const { step, onNavigateTab, hideOpenTab } = props;
   if (step === "planning") {
@@ -460,11 +523,31 @@ function SetupTool(props: {
       </div>
     );
   }
+  if (step === "inventory") {
+    if (!props.hasEventInventory && props.inventoryTemplateId && !hideOpenTab) {
+      return (
+        <Button type="button" size="sm" disabled={props.startPending} onClick={props.onStartInventoryDraft}>
+          Start inventory draft from profile
+        </Button>
+      );
+    }
+    if (hideOpenTab) return null;
+    return <OpenTab label="Open Inventory" tab="inventory" onNavigateTab={onNavigateTab} />;
+  }
+  if (step === "event_order") {
+    if (!props.hasEventOrder && props.eventOrderTemplateId && !hideOpenTab) {
+      return (
+        <Button type="button" size="sm" disabled={props.startPending} onClick={props.onStartEventOrderDraft}>
+          Start Event Order draft from profile
+        </Button>
+      );
+    }
+    if (hideOpenTab) return null;
+    return <OpenTab label="Open Event Order" tab="event-order" onNavigateTab={onNavigateTab} />;
+  }
   if (hideOpenTab) return null;
   if (step === "floor_plans") return <OpenTab label="Open Floor Plans" tab="floorplan" onNavigateTab={onNavigateTab} />;
   if (step === "vendors") return <OpenTab label="Open Vendors" tab="vendors" onNavigateTab={onNavigateTab} />;
   if (step === "questionnaires") return <OpenTab label="Open Questionnaires" tab="questionnaires" onNavigateTab={onNavigateTab} />;
-  if (step === "inventory") return <OpenTab label="Open Inventory" tab="inventory" onNavigateTab={onNavigateTab} />;
-  if (step === "event_order") return <OpenTab label="Open Event Order" tab="event-order" onNavigateTab={onNavigateTab} />;
   return null;
 }

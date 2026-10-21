@@ -85,8 +85,9 @@ describe("setupReadinessDetail", () => {
       templateNames: { planning: null, timeline: null, inventory: "Starter kit", eventOrder: null },
     }));
     assert.equal(detail.status, "needs_action");
-    assert.match(detail.summary, /reference/i);
-    assert.match(detail.summary, /does not create inventory/i);
+    assert.match(detail.summary, /ready to apply/i);
+    assert.match(detail.summary, /did not create inventory/i);
+    assert.match(detail.nextAction ?? "", /Start "Starter kit" inventory draft/);
   });
 
   it("does not treat a starting event-order package as an invoice", () => {
@@ -97,6 +98,18 @@ describe("setupReadinessDetail", () => {
     }));
     assert.equal(detail.status, "needs_action");
     assert.match(detail.summary, /not an invoice/i);
+    assert.match(detail.nextAction ?? "", /Start "Classic package" Event Order draft/);
+  });
+
+  it("keeps package-only Event Order optional when no profile package is set", () => {
+    const detail = setupReadinessDetail(base({
+      step: "event_order",
+      inheritedRefs: {},
+      templateNames: { planning: null, timeline: null, inventory: null, eventOrder: null },
+    }));
+    assert.equal(detail.status, "needs_action");
+    assert.match(detail.summary, /package-only/i);
+    assert.match(detail.summary, /Skip this area/i);
   });
 
   it("flags empty vendor recommendations when the profile claimed a list", () => {
