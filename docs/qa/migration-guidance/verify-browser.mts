@@ -76,9 +76,12 @@ async function main() {
     await page.screenshot({ path: `${OUT}/mc-guidance-390.png`, fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
 
-    // Choose Another system so entity picker appears
-    const another = page.getByText("Another system", { exact: true });
-    if (await another.isVisible().catch(() => false)) {
+    // Choose Another system so entity picker appears (below the guidance panel)
+    await page.getByText("Bring your business with you", { exact: true }).scrollIntoViewIfNeeded().catch(() => {});
+    await page.waitForTimeout(400);
+    const another = page.locator("label").filter({ hasText: /^Another system/ }).first();
+    const anotherVisible = await another.isVisible().catch(() => false);
+    if (anotherVisible) {
       await another.click();
       await page.waitForTimeout(1200);
       body = await page.locator("body").innerText();
