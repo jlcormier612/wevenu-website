@@ -20,7 +20,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { FieldDiff, MergePreview } from "@/lib/leads/merge";
+import {
+  KEEP_BOTH_INQUIRY_CHOICE,
+  type FieldDiff,
+  type MergePreview,
+} from "@/lib/leads/merge";
 
 function formatTour(scheduledAt: string | null, status: string) {
   if (!scheduledAt) return `${status} (no scheduled time)`;
@@ -103,6 +107,10 @@ export function MergeLeadDialog({
     const fills: Record<string, string> = {};
     for (const d of result.fieldDiffs) {
       if (d.kind === "fill") fills[d.key] = d.secondaryValue;
+      // Default inquiry conflicts to Keep both (recommended).
+      if (d.kind === "conflict" && d.key === "inquiry_message") {
+        fills[d.key] = KEEP_BOTH_INQUIRY_CHOICE;
+      }
     }
     setFieldChoices(fills);
     setTourCancelIds([]);
@@ -177,6 +185,63 @@ export function MergeLeadDialog({
           {" — fill empty primary from secondary: "}
           <span className="text-muted-foreground">{d.secondaryValue}</span>
         </p>
+      );
+    }
+    if (d.key === "inquiry_message" && d.kind === "conflict") {
+      return (
+        <div
+          key={d.key}
+          className="space-y-2 rounded-md border border-border px-3 py-2"
+          data-testid="merge-inquiry-choices"
+        >
+          <p className="text-sm font-medium text-heading">{d.label}</p>
+          <p className="text-xs text-muted-foreground">
+            Keep both stores each submission separately in history. It does not combine them into one
+            field.
+          </p>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name={`merge-field-${d.key}`}
+              checked={fieldChoices[d.key] === KEEP_BOTH_INQUIRY_CHOICE}
+              onChange={() => setFieldChoices((c) => ({ ...c, [d.key]: KEEP_BOTH_INQUIRY_CHOICE }))}
+              data-testid="merge-inquiry-keep-both"
+            />
+            <span>
+              <span className="font-medium">Keep both messages</span>
+              <span className="block text-xs text-muted-foreground">
+                Recommended — primary inquiry stays: {d.primaryValue}. Secondary is kept as
+                additional inquiry history.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name={`merge-field-${d.key}`}
+              checked={fieldChoices[d.key] === d.primaryValue}
+              onChange={() => setFieldChoices((c) => ({ ...c, [d.key]: d.primaryValue }))}
+              data-testid="merge-inquiry-keep-primary"
+            />
+            <span>
+              Keep primary message only
+              <span className="block text-xs text-muted-foreground">{d.primaryValue}</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name={`merge-field-${d.key}`}
+              checked={fieldChoices[d.key] === d.secondaryValue}
+              onChange={() => setFieldChoices((c) => ({ ...c, [d.key]: d.secondaryValue }))}
+              data-testid="merge-inquiry-use-secondary"
+            />
+            <span>
+              Use secondary message as primary inquiry
+              <span className="block text-xs text-muted-foreground">{d.secondaryValue}</span>
+            </span>
+          </label>
+        </div>
       );
     }
     return (

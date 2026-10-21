@@ -54,6 +54,7 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   reopened:            RotateCcw,
   access_withdrawn:    ShieldOff,
   shared:              Send,
+  additional_inquiry_message: MessageSquareWarning,
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -80,6 +81,7 @@ const TYPE_COLOR: Record<string, string> = {
   reopened:            "bg-warning/15 text-warning-foreground",
   access_withdrawn:    "bg-muted text-muted-foreground",
   shared:              "bg-primary/15 text-primary",
+  additional_inquiry_message: "bg-accent/60 text-heading",
 };
 
 function ActivityItem({ activity }: { activity: ActivityRecord }) {

@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { mergeTestHelpers, type MergeFieldKey } from "@/lib/leads/merge";
+import {
+  KEEP_BOTH_INQUIRY_CHOICE,
+  mergeTestHelpers,
+  resolveInquiryMessageChoice,
+  type MergeFieldKey,
+} from "@/lib/leads/merge";
 
 const { buildFieldDiffs, pickDefaultPrimary, norm } = mergeTestHelpers;
 
@@ -94,9 +99,90 @@ describe("lead merge field reconciliation", () => {
   });
 });
 
+describe("inquiry message keep-both resolution", () => {
+  it("Keep both uses primary field and flags secondary history", () => {
+    const r = resolveInquiryMessageChoice({
+      choice: KEEP_BOTH_INQUIRY_CHOICE,
+      primaryValue: "First submission",
+      secondaryValue: "Second submission",
+    });
+    assert.equal(r.primaryFieldValue, "First submission");
+    assert.equal(r.preserveSecondaryAsHistory, true);
+  });
+
+  it("Keep primary does not archive secondary", () => {
+    const r = resolveInquiryMessageChoice({
+      choice: "First submission",
+      primaryValue: "First submission",
+      secondaryValue: "Second submission",
+    });
+    assert.equal(r.primaryFieldValue, "First submission");
+    assert.equal(r.preserveSecondaryAsHistory, false);
+  });
+
+  it("Use secondary sets primary field to secondary text", () => {
+    const r = resolveInquiryMessageChoice({
+      choice: "Second submission",
+      primaryValue: "First submission",
+      secondaryValue: "Second submission",
+    });
+    assert.equal(r.primaryFieldValue, "Second submission");
+    assert.equal(r.preserveSecondaryAsHistory, false);
+  });
+
+  it("identical text with keep-both does not create redundant history", () => {
+    const r = resolveInquiryMessageChoice({
+      choice: KEEP_BOTH_INQUIRY_CHOICE,
+      primaryValue: "Same text",
+      secondaryValue: "Same text",
+    });
+    assert.equal(r.preserveSecondaryAsHistory, false);
+  });
+
+  it("empty secondary with keep-both does not create history", () => {
+    const r = resolveInquiryMessageChoice({
+      choice: KEEP_BOTH_INQUIRY_CHOICE,
+      primaryValue: "Only primary",
+      secondaryValue: "  ",
+    });
+    assert.equal(r.preserveSecondaryAsHistory, false);
+  });
+
+  it("inquiry conflict is detected when both differ", () => {
+    const diffs = buildFieldDiffs(
+      snap({ inquiry_message: "A June wedding." }),
+      snap({ id: "b", inquiry_message: "An October wedding." }),
+    );
+    const inquiry = diffs.find((d) => d.key === "inquiry_message");
+    assert.equal(inquiry?.kind, "conflict");
+  });
+
+  it("identical inquiry messages are same, not conflict", () => {
+    const diffs = buildFieldDiffs(
+      snap({ inquiry_message: "We would like to visit." }),
+      snap({ id: "b", inquiry_message: "We would like to visit." }),
+    );
+    const inquiry = diffs.find((d) => d.key === "inquiry_message");
+    assert.equal(inquiry?.kind, "same");
+  });
+
+  it("empty primary + populated secondary is fill, not keep-both", () => {
+    const diffs = buildFieldDiffs(
+      snap({ inquiry_message: null }),
+      snap({ id: "b", inquiry_message: "Tour request details" }),
+    );
+    const inquiry = diffs.find((d) => d.key === "inquiry_message");
+    assert.equal(inquiry?.kind, "fill");
+  });
+});
+
 describe("lead merge safety contracts (source)", () => {
   const mergeTs = readFileSync(resolve("lib/leads/merge.ts"), "utf8");
   const migration = readFileSync(resolve("supabase/migrations/20261420100000_lead_merge.sql"), "utf8");
+  const preserveMig = readFileSync(
+    resolve("supabase/migrations/20261420400000_merge_preserve_inquiry.sql"),
+    "utf8",
+  );
   const dialog = readFileSync(resolve("components/leads/merge-lead-dialog.tsx"), "utf8");
   const page = readFileSync(resolve("app/(app)/leads/[id]/page.tsx"), "utf8");
   const repo = readFileSync(resolve("lib/leads/repository.ts"), "utf8");
@@ -156,6 +242,28 @@ describe("lead merge safety contracts (source)", () => {
 
   it("idempotent already-merged path exists", () => {
     assert.match(migration, /alreadyMerged/);
+  });
+
+  it("preserve-inquiry migration archives secondary as activity, not a note or message send", () => {
+    assert.match(preserveMig, /additional_inquiry_message/);
+    assert.match(preserveMig, /preserveSecondaryInquiry/);
+    assert.match(preserveMig, /Additional inquiry from merged lead/);
+    assert.doesNotMatch(preserveMig, /insert into public\.lead_notes/);
+    assert.doesNotMatch(preserveMig, /sequence_enrollment|send_email/i);
+    assert.match(preserveMig, /alreadyMerged/);
+  });
+
+  it("confirm maps keep-both sentinel before RPC field patch", () => {
+    assert.match(mergeTs, /KEEP_BOTH_INQUIRY_CHOICE/);
+    assert.match(mergeTs, /preserveSecondaryInquiry/);
+    assert.match(mergeTs, /resolveInquiryMessageChoice/);
+  });
+
+  it("dialog offers keep-both as default for inquiry conflicts", () => {
+    assert.match(dialog, /KEEP_BOTH_INQUIRY_CHOICE/);
+    assert.match(dialog, /Keep both messages/);
+    assert.match(dialog, /merge-inquiry-keep-both/);
+    assert.match(dialog, /does not combine them into one/);
   });
 });
 

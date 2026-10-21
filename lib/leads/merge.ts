@@ -77,6 +77,9 @@ export type MergeLeadCard = {
   mergedIntoLeadId: string | null;
 };
 
+/** Sentinel in fieldChoices.inquiry_message: keep primary text on the lead and archive secondary separately. */
+export const KEEP_BOTH_INQUIRY_CHOICE = "__keep_both__";
+
 export type ConfirmMergeInput = {
   primaryId: string;
   secondaryId: string;
@@ -87,6 +90,29 @@ export type ConfirmMergeInput = {
   /** Tour appointment ids to cancel (release slot) before reparent */
   tourCancelIds: string[];
 };
+
+/**
+ * Resolve inquiry conflict choice for confirm payload.
+ * Keep-both preserves secondary as lead_activities (not concatenated into inquiry_message).
+ */
+export function resolveInquiryMessageChoice(input: {
+  choice: string | null | undefined;
+  primaryValue: string;
+  secondaryValue: string;
+}): { primaryFieldValue: string; preserveSecondaryAsHistory: boolean } {
+  const primary = input.primaryValue.trim();
+  const secondary = input.secondaryValue.trim();
+  if (input.choice === KEEP_BOTH_INQUIRY_CHOICE) {
+    return { primaryFieldValue: primary, preserveSecondaryAsHistory: secondary.length > 0 && secondary !== primary };
+  }
+  if (input.choice != null && String(input.choice).trim() === secondary) {
+    return { primaryFieldValue: secondary, preserveSecondaryAsHistory: false };
+  }
+  if (input.choice != null && String(input.choice).trim().length > 0) {
+    return { primaryFieldValue: String(input.choice).trim(), preserveSecondaryAsHistory: false };
+  }
+  return { primaryFieldValue: primary, preserveSecondaryAsHistory: false };
+}
 
 type LeadSnap = {
   id: string;
@@ -417,6 +443,7 @@ export async function confirmMergeLeads(
   }
 
   const fieldPatch: Record<string, unknown> = {};
+  let preserveSecondaryInquiry = false;
   for (const diff of preview.fieldDiffs) {
     if (diff.kind === "fill") {
       const chosen = input.fieldChoices[diff.key];
@@ -426,7 +453,17 @@ export async function confirmMergeLeads(
       if (chosen === undefined || chosen === null || chosen === "") {
         return { ok: false, message: `Choose a value for conflicting field: ${diff.label}.` };
       }
-      fieldPatch[diff.key] = chosen;
+      if (diff.key === "inquiry_message") {
+        const resolved = resolveInquiryMessageChoice({
+          choice: typeof chosen === "string" ? chosen : String(chosen),
+          primaryValue: diff.primaryValue,
+          secondaryValue: diff.secondaryValue,
+        });
+        fieldPatch[diff.key] = resolved.primaryFieldValue;
+        preserveSecondaryInquiry = resolved.preserveSecondaryAsHistory;
+      } else {
+        fieldPatch[diff.key] = chosen;
+      }
     }
   }
 
@@ -443,6 +480,7 @@ export async function confirmMergeLeads(
     tourCancelIds: input.tourCancelIds,
     fills: preview.fieldDiffs.filter((d) => d.kind === "fill").map((d) => d.key),
     conflicts: preview.fieldDiffs.filter((d) => d.kind === "conflict").map((d) => d.key),
+    preserveSecondaryInquiry,
     actor: user.id,
     at: new Date().toISOString(),
   };
@@ -502,4 +540,6 @@ export const mergeTestHelpers = {
   pickDefaultPrimary,
   norm,
   FIELD_LABELS,
+  resolveInquiryMessageChoice,
+  KEEP_BOTH_INQUIRY_CHOICE,
 };
