@@ -1,0 +1,42 @@
+{
+  "stamp": "mvhgtxt1",
+  "pass": 7,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "normalize_rejects_guest_list",
+      "pass": true,
+      "detail": "Guest lists belong to the client and cannot be imported through the venue Migration Center. Clients manage their guest list in their portal; venues use guest counts, seating, floor plans, and event orders for delivery."
+    },
+    {
+      "name": "stale_guest_list_record_seeded",
+      "pass": true,
+      "detail": "27671903-eda2-410c-ae8f-351059574e26"
+    },
+    {
+      "name": "no_guest_insert_while_stale_session_exists",
+      "pass": true,
+      "detail": "before=1 mid=1"
+    },
+    {
+      "name": "commit_branch_rejects_without_admin_write",
+      "pass": true,
+      "detail": "service.ts guest_list branch"
+    },
+    {
+      "name": "existing_guest_visibility_unchanged",
+      "pass": true,
+      "detail": "vis=false notesMatch=true"
+    },
+    {
+      "name": "no_new_guests_or_households",
+      "pass": true,
+      "detail": "guests 1->1; households 0->0"
+    },
+    {
+      "name": "cross_venue_guest_rows_exist_elsewhere",
+      "pass": true,
+      "detail": "otherVenue=67d4ef6f-9536-4a32-b82b-fefa89f1a850 adminCount=0 (isolation via RLS + venue_id filters; MC resolve Event scopes venue)"
+    }
+  ]
+}

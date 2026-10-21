@@ -1,0 +1,56 @@
+{
+  "pass": 7,
+  "fail": 0,
+  "optionTexts": [
+    "Calendar blocks (incl. recurring)",
+    "Date holds",
+    "Clients (booked couples)",
+    "Leads (open inquiries)",
+    "Vendors",
+    "Packages",
+    "Events (standalone)",
+    "Tours / appointments",
+    "Documents (contracts & files on Events/Clients)",
+    "Booked-event finances (invoice, payments, signed agreement)",
+    "Event vendor assignments (photographer, caterer, …)",
+    "Timeline entries (near-event / finalized day-of)",
+    "Floor plans (Space masters, event layouts, reference files)"
+  ],
+  "checks": [
+    {
+      "name": "mc_another_system",
+      "pass": true,
+      "detail": "source picker"
+    },
+    {
+      "name": "mc_entity_select",
+      "pass": true,
+      "detail": "What are you bringing over"
+    },
+    {
+      "name": "mc_no_guest_list_option",
+      "pass": true,
+      "detail": "Calendar blocks (incl. recurring) | Date holds | Clients (booked couples) | Leads (open inquiries) | Vendors | Packages | Events (standalone) | Tours / appointments | Documents (contracts & files on Events/Clients) | Booked-event finances (invoice, payments, signed agreement) | Event vendor assignments (photographer, caterer, …) | Timeline entries (near-event / finalized day-of) | Floor plans (Spa"
+    },
+    {
+      "name": "mc_still_has_client",
+      "pass": true,
+      "detail": "Clients (booked couples)"
+    },
+    {
+      "name": "mc_still_has_event",
+      "pass": true,
+      "detail": "Events (standalone)"
+    },
+    {
+      "name": "mc_still_has_booked_finances",
+      "pass": true,
+      "detail": "Booked-event finances (invoice, payments, signed agreement)"
+    },
+    {
+      "name": "clients_list_loads",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients"
+    }
+  ]
+}

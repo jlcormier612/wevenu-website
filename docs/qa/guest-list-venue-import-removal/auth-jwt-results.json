@@ -1,0 +1,8 @@
+{
+  "venueJwt_select_by_id": { "rows": 0, "error": null },
+  "venueJwt_select_by_client": { "rows": 0, "error": null },
+  "venueJwt_select_by_venue": { "rows": 0, "error": null },
+  "intended": "venue staff JWT must not read individual couple_guests rows (Client-Owned RLS)",
+  "denied": true,
+  "note": "Synthetic Fancy guest with visibility_to_venue=true still returned 0 rows to jennifer@ venue JWT — visibility flag alone does not authorize table SELECT."
+}

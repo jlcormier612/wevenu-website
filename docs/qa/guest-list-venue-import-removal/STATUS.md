@@ -1,43 +1,64 @@
 # Venue Guest-List Import Removal — STATUS
 
-**Verdict:** PENDING Sandbox deploy + browser/DB verification  
+**Verdict:** **GREEN / CLOSED**  
 **Date:** 2026-10-20  
 **Branch:** `feat/spaces-booking-e1-smart-fields`  
-**Product decision:** Individual guest lists are client-owned; venue Migration Center must not import them.
+**Product commit:** `c6452a5824de658f0391081c9d9b377b8799bd27`  
+**Evidence commit:** _(this STATUS + runtime artifacts)_  
 
-## Implementation (local)
+## Product decision implemented
 
-| Change | Detail |
-|--------|--------|
-| UI | `guest_list` removed from `COMMITTABLE_ENTITIES` in `migration-center.tsx` |
-| Normalize | `generic-csv` rejects `guest_list` with shared message |
-| addRows / addRowsToOwnSession | Reject / throw before any `migration_records` insert |
-| commitOneRecord | Reject; no `createAdminClient`, no `commitOperationalGuest`, no visibility change |
-| Batch commit list | `guest_list` removed from `COMMITTABLE_ENTITY_TYPES` |
-| Shared message | `lib/migration/venue-guest-list-import.ts` |
+Individual guest-list data is **client-owned**. Venue Migration Center must not import `guest_list` rows into `couple_guests` / `couple_households` or force `visibility_to_venue = true`.
+
+## Code changes
+
+| Layer | Change |
+|-------|--------|
+| UI | `guest_list` removed from `COMMITTABLE_ENTITIES` |
+| Normalize | `generic-csv` rejects with shared message |
+| addRows / addRowsToOwnSession | Reject / throw before inserts |
+| commitOneRecord | Reject; no admin client / `commitOperationalGuest` |
+| Batch list | Removed from `COMMITTABLE_ENTITY_TYPES` |
+| Shared | `lib/migration/venue-guest-list-import.ts` |
 
 ## Unit / source tests
 
 `npx tsx --test lib/migration/venue-guest-list-import.test.ts lib/migration/guest-list-admin-write.test.ts lib/import/migration-language.test.ts lib/import/migration-guidance.test.ts` → **22/22 pass**
 
-## Audits (docs only)
-
-- `AUTHORIZATION.md` — intended vs effective vs verified
-- `CLIENT-IMPORT-EXPORT.md` — portal CSV import yes; export not found
-- `OPERATIONAL-HANDOFFS.md` — counts / seating / dietary aggregates / EO
-
-## Sandbox (fill after deploy)
+## Sandbox deploy
 
 | Item | Value |
 |------|-------|
-| Commit SHA | _pending_ |
-| Deploy run | _pending_ |
-| Serving SHA / TD | _pending_ |
-| Browser | _pending_ |
-| Server reject + DB | _pending_ |
-| Production | untouched |
-| Dirty tree | preserved |
+| Deploy run | [39529689140](https://github.com/jlcormier612/wevenu-website/actions/runs/39529689140) **success** |
+| Serving SHA | `c6452a5824de658f0391081c9d9b377b8799bd27` |
+| Task definition | `htc-sandbox-venue-app:818` |
+| Image | `htc-sandbox-venue-app:c6452a5824de658f0391081c9d9b377b8799bd27` |
+| Rollout | COMPLETED · 1/1 RUNNING |
+| Production | **untouched** |
 
-## Closure criteria
+## Runtime verification
 
-GREEN only when deploy serving SHA matches, browser shows no guest-list option, supported options remain, server reject + DB prove no guest/household writes or visibility changes, audits documented.
+| Check | Result | Artifact |
+|-------|--------|----------|
+| MC picker has no Guest list; Clients/Events/Booked finances remain | **7/7** | `browser-results.json`, `mc-entity-picker-1280.png` |
+| Normalize reject + stale session + visibility unchanged + no new guests/households | **7/7** | `server-reject-results.json` |
+| Supported Vendors MC import persists | **5/5** | `supported-portal-results.json`, `mc-vendor-import-1280.png` |
+| Portal Guest List still shows Import CSV | **pass** | `portal-guests-1280.png` |
+| Venue JWT SELECT on `couple_guests` returns 0 rows (even if `visibility_to_venue=true`) | **denied** | `auth-jwt-results.json` |
+
+## Audits (no new features built)
+
+- `AUTHORIZATION.md` — intended vs effective vs verified  
+- `CLIENT-IMPORT-EXPORT.md` — portal CSV import yes (narrow fields); **export not found**  
+- `OPERATIONAL-HANDOFFS.md` — counts / seating / dietary aggregates / EO  
+
+## Working tree
+
+Unrelated dirty files preserved (~886 before/after product commit).
+
+## Follow-ups (out of scope — documented only)
+
+1. Client guest-list **export** gap.  
+2. `getGuestReadinessSummary` may return empty under current RLS (stale Sprint 107 comment).  
+3. `get_wedding_day_ops` dietary aggregates do not gate on `visibility_to_venue`.  
+4. Do not re-wire `commitOperationalGuest` into venue MC.

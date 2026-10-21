@@ -1,0 +1,32 @@
+{
+  "stamp": "mvhgxq1l",
+  "pass": 5,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "vendor_option_present",
+      "pass": true,
+      "detail": "Vendors"
+    },
+    {
+      "name": "vendor_bring_button",
+      "pass": true,
+      "detail": "Bring in N row(s)"
+    },
+    {
+      "name": "vendor_commit_clicked",
+      "pass": true,
+      "detail": "Import N records"
+    },
+    {
+      "name": "supported_vendor_import_persisted",
+      "pass": true,
+      "detail": "session=b9e335ff-681c-468f-bd89-6b3ca3dc5528 status=committed vendor=6947e13a-e927-44da-a945-cd370240e617 rels=1"
+    },
+    {
+      "name": "portal_guest_import_csv_ui",
+      "pass": true,
+      "detail": "Import CSV visible"
+    }
+  ]
+}

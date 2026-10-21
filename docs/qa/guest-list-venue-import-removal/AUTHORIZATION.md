@@ -66,13 +66,18 @@ A client having an event at a venue does **not** authorize unrestricted individu
 
 ## Verified outcome (tests / Sandbox)
 
+Serving: `c6452a58` · TD `:818` · deploy [39529689140](https://github.com/jlcormier612/wevenu-website/actions/runs/39529689140)
+
 | Check | Result |
 |-------|--------|
-| UI list excludes `guest_list` | Source regression **pass** |
-| Normalize / addRows / commit reject | Source + normalize regression **pass** |
+| UI list excludes `guest_list` | Source + Sandbox browser **7/7** (`browser-results.json`) |
+| Normalize / addRows / commit reject | Source + Sandbox normalize/DB **7/7** (`server-reject-results.json`) |
 | No `createAdminClient` / `commitOperationalGuest(` on MC guest branch | **pass** |
+| Stale approved `guest_list` migration_record does not insert guests / flip visibility | **pass** (sentinel `visibility_to_venue=false` unchanged) |
+| Venue JWT direct SELECT on `couple_guests` (by id / client_id / venue_id) | **0 rows** even when seeded `visibility_to_venue=true` (`auth-jwt-results.json`) |
+| Supported MC Vendors import | **committed** + relationship row (`supported-portal-results.json`) |
+| Portal guest Import CSV | **visible** |
 | Cross-venue Event targeting on old path | Previously audited (resolveEventForMigration venue-scoped) — still relevant for ops, not for removed import |
-| Sandbox browser + DB before/after | See `STATUS.md` (filled after deploy) |
 
 ---
 
