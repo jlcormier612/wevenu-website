@@ -1,0 +1,106 @@
+{
+  "pass": 15,
+  "fail": 5,
+  "checks": [
+    {
+      "name": "import_has_mc_section",
+      "pass": true,
+      "detail": "section"
+    },
+    {
+      "name": "import_says_active_commitment",
+      "pass": true,
+      "detail": "FOUND (jargon)"
+    },
+    {
+      "name": "import_help_link",
+      "pass": true,
+      "detail": "link"
+    },
+    {
+      "name": "mc_page_loaded",
+      "pass": true,
+      "detail": "title"
+    },
+    {
+      "name": "mc_intro_present",
+      "pass": true,
+      "detail": "intro"
+    },
+    {
+      "name": "mc_says_active_commitment",
+      "pass": true,
+      "detail": "FOUND in UI"
+    },
+    {
+      "name": "mc_help_link",
+      "pass": true,
+      "detail": "link"
+    },
+    {
+      "name": "mc_has_recommended_order",
+      "pass": false,
+      "detail": "order checklist?"
+    },
+    {
+      "name": "mc_entity_picker",
+      "pass": false,
+      "detail": "picker"
+    },
+    {
+      "name": "mc_dropdown_has_active_commitment",
+      "pass": false,
+      "detail": "select not visible (starting fresh?)"
+    },
+    {
+      "name": "help_has_import_vs_mc",
+      "pass": true,
+      "detail": "paths"
+    },
+    {
+      "name": "help_has_step_order",
+      "pass": true,
+      "detail": "ordered steps?"
+    },
+    {
+      "name": "help_uses_active_commitment",
+      "pass": true,
+      "detail": "jargon present"
+    },
+    {
+      "name": "help_no_session_undo",
+      "pass": true,
+      "detail": "limitation"
+    },
+    {
+      "name": "byb_guide_loaded",
+      "pass": false,
+      "detail": "title"
+    },
+    {
+      "name": "byb_has_steps",
+      "pass": true,
+      "detail": "steps"
+    },
+    {
+      "name": "byb_uses_active_commitment",
+      "pass": true,
+      "detail": "jargon"
+    },
+    {
+      "name": "setup_hub_bring_business",
+      "pass": true,
+      "detail": "choices"
+    },
+    {
+      "name": "team_links_import",
+      "pass": false,
+      "detail": "import link?"
+    },
+    {
+      "name": "team_links_migration",
+      "pass": true,
+      "detail": "mc link?"
+    }
+  ]
+}
