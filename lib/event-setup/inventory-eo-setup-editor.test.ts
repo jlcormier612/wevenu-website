@@ -20,7 +20,7 @@ const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8
 
 describe("Inventory + Event Order Change vs Open destinations", () => {
   it("SETUP_EDITOR_STEPS includes inventory and event_order", () => {
-    assert.match(panel, /SETUP_EDITOR_STEPS = new Set<SetupStepKey>\(\["planning", "timeline", "inventory", "event_order"\]\)/);
+    assert.match(panel, /"inventory", "event_order", "floor_plans"/);
   });
 
   it("Change for inventory opens the dedicated inventory setup editor", () => {

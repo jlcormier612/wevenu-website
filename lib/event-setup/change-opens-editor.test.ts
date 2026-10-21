@@ -47,7 +47,12 @@ describe("Change for this event opens the event editor", () => {
     assert.match(panel, /EventInventorySetupEditor/);
     assert.match(panel, /setEventOrderEditorOpen\(true\)/);
     assert.match(panel, /EventOrderSetupEditor/);
-    assert.match(panel, /"inventory", "event_order"/);
+    assert.match(panel, /"inventory", "event_order", "floor_plans"/);
+  });
+
+  it("Change for Floor Plans opens a dedicated offers setup editor", () => {
+    assert.match(panel, /setFloorPlansEditorOpen\(true\)/);
+    assert.match(panel, /EventFloorPlansSetupEditor/);
   });
 
   it("profile-driven Planning defers release to Overview", () => {

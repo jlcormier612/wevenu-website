@@ -147,4 +147,16 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.status, "included");
     assert.match(detail.summary, /Vendor Network classifications/i);
   });
+
+  it("floor-plan offers without operational plans remain Included with honest copy", () => {
+    const detail = setupReadinessDetail(base({
+      step: "floor_plans",
+      floorPlanOfferCount: 1,
+      operationalFloorPlanCount: 0,
+      preferredFloorPlanName: "Ceremony",
+    }));
+    assert.equal(detail.status, "included");
+    assert.match(detail.summary, /offered to the client/i);
+    assert.match(detail.summary, /No operational floor plan/i);
+  });
 });

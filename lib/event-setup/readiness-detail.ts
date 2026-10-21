@@ -50,6 +50,8 @@ export type SetupReadinessContext = {
   questionnaires: QuestionnaireReadinessInput[];
   vendorRecommendationCount: number;
   floorPlanOfferCount: number;
+  /** Operational floor_plans rows for this booking — distinct from offers. */
+  operationalFloorPlanCount?: number;
   preferredFloorPlanName: string | null;
   hasEventInventory: boolean;
   eventOrder: EventOrderReadinessInput | null;
@@ -140,23 +142,36 @@ function timelineDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
 
 function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const preferred = ctx.preferredFloorPlanName;
+  const operational = ctx.operationalFloorPlanCount ?? 0;
+  const operationalNote =
+    operational === 0
+      ? " No operational floor plan for this booking yet — that is separate from offers and is managed under Open Floor Plans."
+      : ` ${operational} operational floor plan${operational === 1 ? "" : "s"} on this booking (venue working layout — not the same as offered layouts).`;
+
   if (ctx.floorPlanOfferCount === 0) {
     if (ctx.inheritedRefs.defaultFloorPlanTemplateId || (ctx.inheritedRefs.floorPlanTemplateIds?.length ?? 0) > 0) {
       return {
         status: "draft",
-        summary: "Configured floor-plan options are recoverable on Release to client portal.",
+        summary:
+          "Configured floor-plan options are recoverable on Release to client portal or Change for this event."
+          + operationalNote,
         nextAction: "Open Floor Plans",
       };
     }
     return {
       status: "needs_action",
-      summary: "No floor-plan layouts offered to the client yet. Offered layouts are separate from the venue's operational layout.",
+      summary:
+        "No floor-plan layouts offered to the client yet. Offered layouts are separate from the venue's operational layout."
+        + operationalNote,
       nextAction: "Open Floor Plans",
     };
   }
   return {
     status: "included",
-    summary: `${ctx.floorPlanOfferCount} layout${ctx.floorPlanOfferCount === 1 ? "" : "s"} offered to the client${preferred ? ` · preferred starting: ${preferred}` : ""}. Offered layouts are not the operational layout.`,
+    summary:
+      `${ctx.floorPlanOfferCount} layout${ctx.floorPlanOfferCount === 1 ? "" : "s"} offered to the client`
+      + `${preferred ? ` · preferred starting: ${preferred}` : ""}.`
+      + operationalNote,
     nextAction: "Open Floor Plans",
   };
 }

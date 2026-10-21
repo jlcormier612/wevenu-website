@@ -11,6 +11,7 @@ import {
   prepareAndReleasePortalAction,
   reopenEventSetupAction,
 } from "@/app/(app)/events/[id]/setup-actions";
+import { EventFloorPlansSetupEditor } from "@/components/events/event-floor-plans-setup-editor";
 import { EventInventorySetupEditor } from "@/components/events/event-inventory-setup-editor";
 import { EventOrderSetupEditor } from "@/components/events/event-order-setup-editor";
 import { EventPlanningSetupEditor } from "@/components/events/event-planning-setup-editor";
@@ -19,6 +20,8 @@ import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { EventInventoryWithDetails, InventoryTemplate } from "@/lib/event-inventory/types";
+import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
+import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
 import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { TimelineEntry } from "@/lib/timeline/types";
@@ -52,7 +55,9 @@ import type {
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 
 /** Areas with a dedicated event-specific setup editor (Change ≠ Open). */
-const SETUP_EDITOR_STEPS = new Set<SetupStepKey>(["planning", "timeline", "inventory", "event_order"]);
+const SETUP_EDITOR_STEPS = new Set<SetupStepKey>([
+  "planning", "timeline", "inventory", "event_order", "floor_plans",
+]);
 
 function readinessBadgeVariant(
   status: keyof typeof SETUP_READINESS_LABEL,
@@ -88,7 +93,11 @@ export function EventSetupPanel({
   questionnaires = [],
   vendorRecommendationCount = 0,
   floorPlanOfferCount = 0,
+  operationalFloorPlanCount = 0,
   preferredFloorPlanName = null,
+  floorPlanTemplates = [],
+  floorPlanOffers = [],
+  operationalFloorPlans = [],
   hasEventInventory = false,
   eventOrder = null,
   eventInventory = null,
@@ -120,7 +129,11 @@ export function EventSetupPanel({
   questionnaires?: QuestionnaireReadinessInput[];
   vendorRecommendationCount?: number;
   floorPlanOfferCount?: number;
+  operationalFloorPlanCount?: number;
   preferredFloorPlanName?: string | null;
+  floorPlanTemplates?: FloorPlanTemplate[];
+  floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
+  operationalFloorPlans?: { id: string; name: string }[];
   hasEventInventory?: boolean;
   eventOrder?: EventOrderReadinessInput | null;
   eventInventory?: EventInventoryWithDetails | null;
@@ -142,6 +155,7 @@ export function EventSetupPanel({
   const [timelineEditorOpen, setTimelineEditorOpen] = React.useState(false);
   const [inventoryEditorOpen, setInventoryEditorOpen] = React.useState(false);
   const [eventOrderEditorOpen, setEventOrderEditorOpen] = React.useState(false);
+  const [floorPlansEditorOpen, setFloorPlansEditorOpen] = React.useState(false);
   const effective = effectiveDecisionMap(state);
   const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
   const counts = setupDecisionCounts(applicableSteps, effective);
@@ -163,6 +177,7 @@ export function EventSetupPanel({
         questionnaires,
         vendorRecommendationCount,
         floorPlanOfferCount,
+        operationalFloorPlanCount,
         preferredFloorPlanName,
         hasEventInventory,
         eventOrder,
@@ -215,6 +230,10 @@ export function EventSetupPanel({
     }
     if (step === "event_order") {
       setEventOrderEditorOpen(true);
+      return;
+    }
+    if (step === "floor_plans") {
+      setFloorPlansEditorOpen(true);
       return;
     }
     // Areas without a dedicated setup editor yet — do not pretend management is Change.
@@ -531,6 +550,19 @@ export function EventSetupPanel({
         preferredTemplateId={inheritedRefs.eventOrderTemplateId ?? null}
         templates={eventOrderTemplates}
         eventOrder={eventOrderDetails}
+      />
+      <EventFloorPlansSetupEditor
+        open={floorPlansEditorOpen}
+        onOpenChange={setFloorPlansEditorOpen}
+        eventId={eventId}
+        eventName={eventName}
+        profileName={state.profileName ?? null}
+        preferredTemplateId={inheritedRefs.defaultFloorPlanTemplateId ?? null}
+        configuredTemplateIds={inheritedRefs.floorPlanTemplateIds ?? []}
+        templates={floorPlanTemplates}
+        offers={floorPlanOffers}
+        operationalPlans={operationalFloorPlans}
+        onOpenManagement={() => navigateStep("floor_plans")}
       />
     </section>
   );

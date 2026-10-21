@@ -216,6 +216,18 @@ export async function upsertFloorPlanOfferAction(
   return result;
 }
 
+/** Overview setup — recover offers from profile template ids (no operational plans). */
+export async function ensureEventFloorPlanOffersAction(
+  eventId: string,
+  templateIds: string[],
+  preferredId: string | null = null,
+): Promise<{ ok: true; created: number } | FloorPlanActionResult> {
+  const { ensureEventFloorPlanOffers } = await import("@/lib/floor-plan-offers/service");
+  const result = await ensureEventFloorPlanOffers(eventId, templateIds, preferredId);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
+  return result;
+}
+
 /** Phase 2 — update offer metadata / re-enable. */
 export async function updateFloorPlanOfferAction(
   eventId: string,

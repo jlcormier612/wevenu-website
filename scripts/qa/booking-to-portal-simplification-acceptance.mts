@@ -737,14 +737,165 @@ async function main() {
       record("change_opens_dedicated_timeline_setup_editor", false, "timeline Change button missing");
     }
 
-    // Floor Plans / Vendors / Questionnaires still lack dedicated Change editors
+    // Vendors / Questionnaires still lack dedicated Change editors
     record(
       "change_hidden_for_areas_without_setup_editor",
-      (await page.getByTestId("event-setup-change-floor_plans").count()) === 0
-        && (await page.getByTestId("event-setup-change-vendors").count()) === 0
+      (await page.getByTestId("event-setup-change-vendors").count()) === 0
         && (await page.getByTestId("event-setup-change-questionnaires").count()) === 0,
-      "Floor/Vendors/Q Change hidden until later phases",
+      "Vendors/Q Change hidden until later phases",
     );
+
+    // Floor Plans Change → dedicated offers editor; Open → management; offers ≠ operational
+    const floorChange = page.getByTestId("event-setup-change-floor_plans");
+    if ((await floorChange.count()) > 0) {
+      const offersBefore = (await admin
+        .from("event_floor_plan_offers")
+        .select("id,floor_plan_template_id,is_offered")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)).data ?? [];
+      const opsBefore = (await admin
+        .from("floor_plans")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)).count ?? 0;
+      const libTplCountBefore = (await admin
+        .from("floor_plan_templates")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)).count ?? 0;
+      const otherEventOffersBefore = (await admin
+        .from("event_floor_plan_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .neq("event_id", eventId!)).count ?? 0;
+
+      await floorChange.click();
+      await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
+      const operationalText = await page.getByTestId("floor-plans-setup-operational-state").innerText();
+      record(
+        "change_opens_dedicated_floor_plans_setup_editor",
+        (await page.getByTestId("event-floor-plans-setup-editor").count()) === 1
+          && (await page.getByTestId("floor-plans-setup-offers-path").count()) === 1
+          && /Operational floor plans/i.test(operationalText),
+        operationalText.slice(0, 240),
+      );
+      record(
+        "floor_plans_offers_vs_operational_state_shown",
+        opsBefore === 0
+          ? /None yet/i.test(operationalText)
+          : !/None yet/i.test(operationalText),
+        `opsBefore=${opsBefore} text=${operationalText.slice(0, 160)}`,
+      );
+
+      // Offer an additional library template when one is available
+      const offeredIds = new Set(offersBefore.map((o) => o.floor_plan_template_id));
+      const extraTpl = (await admin
+        .from("floor_plan_templates")
+        .select("id,name")
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)
+        .limit(20)).data?.find((t) => !offeredIds.has(t.id));
+      if (extraTpl?.id) {
+        await page.getByTestId("floor-plans-setup-template-select").click();
+        await page.getByRole("option", { name: extraTpl.name }).click().catch(async () => {
+          await page.locator(`[data-value="${extraTpl.id}"]`).first().click();
+        });
+        const coupleLabel = `QA floor offer ${tag}`;
+        await page.getByTestId("floor-plans-setup-couple-label").fill(coupleLabel);
+        await page.getByTestId("floor-plans-setup-offer").click();
+        await page.waitForTimeout(2500);
+        const offersAfter = (await admin
+          .from("event_floor_plan_offers")
+          .select("id,couple_label,is_offered,floor_plan_template_id")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .ilike("couple_label", `%${coupleLabel}%`)).data ?? [];
+        const opsAfterOffer = (await admin
+          .from("floor_plans")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)).count ?? 0;
+        record(
+          "floor_plans_setup_offer_persists",
+          offersAfter.length === 1 && offersAfter[0]?.is_offered === true,
+          JSON.stringify(offersAfter),
+        );
+        record(
+          "floor_plans_setup_did_not_create_operational_plan",
+          opsAfterOffer === opsBefore,
+          `opsBefore=${opsBefore} opsAfter=${opsAfterOffer}`,
+        );
+      } else {
+        record("floor_plans_setup_offer_persists", true, "skipped — no unused template");
+        record("floor_plans_setup_did_not_create_operational_plan", opsBefore === ((await admin
+          .from("floor_plans")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)).count ?? 0), "no extra offer attempted");
+      }
+
+      await page.screenshot({ path: `${OUT}/03h-floor-plans-setup-editor-1280.png`, fullPage: true });
+
+      // Idempotent ensure: reopen editor must not duplicate offers
+      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+      await page.waitForTimeout(400);
+      await page.getByTestId("event-setup-change-floor_plans").click();
+      await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
+      await page.waitForTimeout(1500);
+      const offersAfterReopen = (await admin
+        .from("event_floor_plan_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)).count ?? 0;
+      const offersCountBaseline = Math.max(offersBefore.length, 1);
+      record(
+        "floor_plans_setup_reopen_idempotent",
+        offersAfterReopen >= offersCountBaseline
+          && offersAfterReopen <= offersBefore.length + 1,
+        `before=${offersBefore.length} afterReopen=${offersAfterReopen}`,
+      );
+
+      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+      await page.waitForTimeout(400);
+      await page.getByTestId("event-setup-open-floor_plans").click().catch(async () => {
+        await page.getByRole("button", { name: /Open Floor Plans/i }).click();
+      });
+      await page.waitForTimeout(900);
+      record(
+        "open_floor_plans_reaches_management_workspace",
+        /floorplan|floor-plan|floor_plan/i.test(page.url())
+          || (await page.getByRole("tab", { name: /Floor Plans/i }).count()) > 0,
+        `url=${page.url()}`,
+      );
+
+      const libTplCountAfter = (await admin
+        .from("floor_plan_templates")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)).count ?? 0;
+      const otherEventOffersAfter = (await admin
+        .from("event_floor_plan_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .neq("event_id", eventId!)).count ?? 0;
+      record(
+        "floor_plans_library_templates_unchanged",
+        libTplCountAfter === libTplCountBefore,
+        `before=${libTplCountBefore} after=${libTplCountAfter}`,
+      );
+      record(
+        "floor_plans_other_events_offers_unchanged",
+        otherEventOffersAfter === otherEventOffersBefore,
+        `before=${otherEventOffersBefore} after=${otherEventOffersAfter}`,
+      );
+
+      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
+        await page.locator('[value="overview"]').first().click();
+      });
+      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
+    } else {
+      record("change_opens_dedicated_floor_plans_setup_editor", false, "floor plans Change button missing");
+    }
 
     // Inventory Change → dedicated setup editor; customize persists; Open → management
     const invChange = page.getByTestId("event-setup-change-inventory");

@@ -840,6 +840,7 @@ export function EventDetail({
             }))}
             vendorRecommendationCount={vendorRecommendations.length}
             floorPlanOfferCount={floorPlanOffers.filter((o) => o.isOffered).length}
+            operationalFloorPlanCount={(event.floorPlans ?? []).length}
             preferredFloorPlanName={
               (() => {
                 const preferredId = eventSetup.inheritedTemplateRefs?.defaultFloorPlanTemplateId;
@@ -849,6 +850,9 @@ export function EventDetail({
                   ?? null;
               })()
             }
+            floorPlanTemplates={floorPlanTemplates}
+            floorPlanOffers={floorPlanOffers}
+            operationalFloorPlans={(event.floorPlans ?? []).map((fp) => ({ id: fp.id, name: fp.name }))}
             hasEventInventory={Boolean(eventInventory)}
             eventOrder={eventOrder ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt, templateId: eventOrder.templateId ?? null } : null}
             eventInventory={eventInventory}

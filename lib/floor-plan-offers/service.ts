@@ -50,6 +50,42 @@ export async function upsertEventFloorPlanOffer(
   return result as { ok: true; offerId: string } | FloorPlanActionResult;
 }
 
+/**
+ * Overview setup — recover event floor-plan offers from configured template ids.
+ * Idempotent: if any offer rows already exist for the event, returns without
+ * creating more. Does not create operational floor_plans rows, share, or release.
+ */
+export async function ensureEventFloorPlanOffers(
+  eventId: string,
+  templateIds: string[],
+  preferredId: string | null = null,
+): Promise<{ ok: true; created: number } | FloorPlanActionResult> {
+  const selected = new Set(templateIds.filter(Boolean));
+  if (preferredId) selected.add(preferredId);
+  if (selected.size === 0) {
+    return { ok: false, message: "No floor-plan layouts are configured to recover." };
+  }
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const existing = await repo.listOffersForEvent(supabase, venueId, eventId);
+    if (existing.length > 0) {
+      return { ok: true as const, created: 0 };
+    }
+    const ordered = [
+      ...(preferredId && selected.has(preferredId) ? [preferredId] : []),
+      ...[...selected].filter((id) => id !== preferredId),
+    ];
+    for (let i = 0; i < ordered.length; i += 1) {
+      await repo.upsertOffer(supabase, venueId, eventId, {
+        templateId: ordered[i]!,
+        sortOrder: i,
+        isOffered: true,
+      });
+    }
+    return { ok: true as const, created: ordered.length };
+  });
+  return result as { ok: true; created: number } | FloorPlanActionResult;
+}
+
 export async function updateEventFloorPlanOffer(
   offerId: string,
   patch: {
