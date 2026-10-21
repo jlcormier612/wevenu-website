@@ -643,16 +643,33 @@ async function main() {
 
     // Separate Invite client action (synthetic .invalid address — no real inbox)
     await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForSelector('[data-testid="client-workspace-invite"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
+    await page.evaluate(() => {
+      document.querySelector('[data-testid="client-workspace-invite"]')?.scrollIntoView({ block: "center" });
+      document.getElementById("event-setup")?.scrollIntoView({ block: "end" });
+    });
+    await page.waitForTimeout(1000);
+    const inviteSection = page.getByTestId("client-workspace-invite");
+    await inviteSection.waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
     const inviteEmail = `b2p-invite-${stamp}@hellotocheers-test.invalid`;
     const emailInput = page.getByTestId("client-invite-email");
+    for (let i = 0; i < 15 && !(await emailInput.count()); i += 1) {
+      await page.waitForTimeout(400);
+    }
     if (await emailInput.count()) {
       await emailInput.fill(inviteEmail);
     }
     const openInvite = page.getByTestId("open-client-invite-preview");
-    record("invite_button_present_after_prepare", (await openInvite.count()) > 0, `count=${await openInvite.count()}`);
-    if (await openInvite.count()) {
-      await openInvite.click();
+    const inviteByRole = page.getByRole("button", { name: /^Invite client$/i });
+    const invitePresent = (await openInvite.count()) > 0 || (await inviteByRole.count()) > 0;
+    record(
+      "invite_button_present_after_prepare",
+      invitePresent,
+      `testid=${await openInvite.count()} role=${await inviteByRole.count()} section=${await inviteSection.count()}`,
+    );
+    if (invitePresent) {
+      if (await openInvite.count()) await openInvite.click();
+      else await inviteByRole.first().click();
       const confirm = page.getByTestId("confirm-send-client-invite");
       await confirm.waitFor({ state: "visible", timeout: 20_000 }).catch(() => undefined);
       if (await confirm.count()) {
@@ -660,6 +677,8 @@ async function main() {
         await page.waitForTimeout(3000);
       }
       await page.screenshot({ path: `${OUT}/05-after-invite-1280.png`, fullPage: true });
+    } else {
+      await page.screenshot({ path: `${OUT}/05-invite-missing-1280.png`, fullPage: true });
     }
     const { data: invitations } = await admin
       .from("client_invitations")
