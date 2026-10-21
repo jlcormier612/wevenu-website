@@ -67,11 +67,12 @@ function nameFor(id: string | null | undefined, options: NamedOption[], empty: s
   return options.find((option) => option.id === id)?.name ?? empty;
 }
 
-/** Drop refs that are not in the current library option lists (e.g. venue-kind playbook after Client-only filter). */
+/** Drop refs that are not in the current library option lists. */
 function sanitizeRefsAgainstLibrary(
   refs: SetupTemplateRefs,
   library: {
     playbooks: NamedOption[];
+    venuePlaybooks: NamedOption[];
     timelines: NamedOption[];
     floorPlans: NamedOption[];
     questionnaires: NamedOption[];
@@ -81,6 +82,7 @@ function sanitizeRefsAgainstLibrary(
   },
 ): SetupTemplateRefs {
   const playbookIds = new Set(library.playbooks.map((o) => o.id));
+  const venuePlaybookIds = new Set(library.venuePlaybooks.map((o) => o.id));
   const timelineIds = new Set(library.timelines.map((o) => o.id));
   const floorIds = new Set(library.floorPlans.map((o) => o.id));
   const questionnaireIds = new Set(library.questionnaires.map((o) => o.id));
@@ -88,12 +90,15 @@ function sanitizeRefsAgainstLibrary(
   const inventoryIds = new Set(library.inventoryTemplates.map((o) => o.id));
   const eventOrderIds = new Set(library.eventOrderTemplates.map((o) => o.id));
   const planningId = refs.planningPlaybookTemplateId ?? null;
+  const venuePlanningId = refs.venuePlanningPlaybookTemplateId ?? null;
   const timelineId = refs.timelineTemplateId ?? null;
   const preferredFloor = refs.defaultFloorPlanTemplateId ?? null;
   const floorPlanTemplateIds = (refs.floorPlanTemplateIds ?? []).filter((id) => floorIds.has(id));
   return {
     ...refs,
     planningPlaybookTemplateId: planningId && playbookIds.has(planningId) ? planningId : null,
+    venuePlanningPlaybookTemplateId:
+      venuePlanningId && venuePlaybookIds.has(venuePlanningId) ? venuePlanningId : null,
     timelineTemplateId: timelineId && timelineIds.has(timelineId) ? timelineId : null,
     timelineTemplateIds: (refs.timelineTemplateIds ?? []).filter((id) => timelineIds.has(id)),
     floorPlanTemplateIds,
@@ -119,6 +124,7 @@ function sanitizeRefsAgainstLibrary(
 function profileSummary(
   profile: VenueSetupProfile,
   playbooks: NamedOption[],
+  venuePlaybooks: NamedOption[],
   timelines: NamedOption[],
 ): string {
   const included = Object.entries(profile.decisions)
@@ -128,7 +134,12 @@ function profileSummary(
   const bits: string[] = [];
   if (included.length) bits.push(`Included: ${included.join(", ")}`);
   if (profile.decisions.planning === "set_up") {
-    bits.push(`Planning: ${nameFor(refs.planningPlaybookTemplateId, playbooks, "no checklist")}`);
+    bits.push(
+      `Client checklist: ${nameFor(refs.planningPlaybookTemplateId, playbooks, "none")}`,
+    );
+    bits.push(
+      `Venue checklist: ${nameFor(refs.venuePlanningPlaybookTemplateId, venuePlaybooks, "none")}`,
+    );
   }
   if (profile.decisions.timeline === "set_up") {
     bits.push(`Timeline: ${nameFor(refs.timelineTemplateId, timelines, "no default")}`);
@@ -143,6 +154,7 @@ export function SetupProfilesSection({
   assignments,
   usedForOptions,
   playbooks,
+  venuePlaybooks,
   timelines,
   floorPlans,
   vendors,
@@ -156,6 +168,7 @@ export function SetupProfilesSection({
   assignments: SetupProfileAssignment[];
   usedForOptions: SetupProfileUsedForOption[];
   playbooks: NamedOption[];
+  venuePlaybooks: NamedOption[];
   timelines: NamedOption[];
   floorPlans: NamedOption[];
   vendors: NamedOption[];
@@ -181,6 +194,7 @@ export function SetupProfilesSection({
       decisions: { ...profile.decisions },
       refs: sanitizeRefsAgainstLibrary(serializeTemplateRefs(profile.templateRefs), {
         playbooks,
+        venuePlaybooks,
         timelines,
         floorPlans,
         questionnaires,
@@ -219,6 +233,7 @@ export function SetupProfilesSection({
     startTransition(async () => {
       const safeRefs = sanitizeRefsAgainstLibrary(serializeTemplateRefs(draft.refs), {
         playbooks,
+        venuePlaybooks,
         timelines,
         floorPlans,
         questionnaires,
@@ -245,7 +260,7 @@ export function SetupProfilesSection({
         toast.error(result.message);
         return;
       }
-      toast.success("Setup profile saved. Event drafts still start from Event Setup when you are ready.");
+      toast.success("Setup profile saved. New bookings apply this starting setup automatically.");
       setDraft(null);
       router.refresh();
     });
@@ -301,7 +316,7 @@ export function SetupProfilesSection({
               <div>
                 <p className="text-sm font-medium text-heading">{profile.name}</p>
                 <p className="text-sm text-muted-foreground">Used for: {setupProfileUsedForLabel(usedFor)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{profileSummary(profile, playbooks, timelines)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{profileSummary(profile, playbooks, venuePlaybooks, timelines)}</p>
                 {hard.length > 0 ? (
                   <p className="mt-2 text-xs text-amber-800" data-testid="setup-profile-hard-gaps">
                     Incomplete — Included without a starting template: {hard.map((g) => setupStepLabel(g.step)).join(", ")}.
@@ -342,8 +357,12 @@ export function SetupProfilesSection({
               {decisionSteps.map((step) => {
                 const included = draft.decisions[step] === "set_up";
                 const incompleteRef =
-                  (step === "inventory" || step === "event_order")
-                  && profileTemplateRefIncomplete(step, draft.decisions, draft.refs);
+                  ((step === "inventory" || step === "event_order")
+                    && profileTemplateRefIncomplete(step, draft.decisions, draft.refs))
+                  || (step === "planning"
+                    && draft.decisions.planning === "set_up"
+                    && (!draft.refs.planningPlaybookTemplateId
+                      || !draft.refs.venuePlanningPlaybookTemplateId));
                 return (
                   <li key={step} className="rounded-lg border border-border px-3 py-3 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -380,6 +399,7 @@ export function SetupProfilesSection({
                         refs={draft.refs}
                         patchRefs={patchRefs}
                         playbooks={playbooks}
+                        venuePlaybooks={venuePlaybooks}
                         timelines={timelines}
                         floorPlans={floorPlans}
                         vendors={vendors}
@@ -438,6 +458,7 @@ function CapabilityDefaults({
   refs,
   patchRefs,
   playbooks,
+  venuePlaybooks,
   timelines,
   floorPlans,
   vendors,
@@ -449,6 +470,7 @@ function CapabilityDefaults({
   refs: SetupTemplateRefs;
   patchRefs: (patch: Partial<SetupTemplateRefs>) => void;
   playbooks: NamedOption[];
+  venuePlaybooks: NamedOption[];
   timelines: NamedOption[];
   floorPlans: NamedOption[];
   vendors: NamedOption[];
@@ -458,24 +480,46 @@ function CapabilityDefaults({
 }) {
   if (step === "planning") {
     return (
-      <label className="block space-y-1 text-sm">
-        <span className="font-medium text-heading">Starting client planning checklist</span>
-        <select
-          className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-          value={refs.planningPlaybookTemplateId ?? ""}
-          onChange={(event) => patchRefs({ planningPlaybookTemplateId: event.target.value || null })}
-          data-testid="setup-profile-default-planning"
-        >
-          <option value="">None</option>
-          {playbooks.map((option) => (
-            <option key={option.id} value={option.id}>{option.name}</option>
-          ))}
-        </select>
-        <span className="block text-xs text-muted-foreground">
-          Applied once when a new event is booked. Your team can edit or release it to the client later.
-          Options come from active Client Planning templates in your library.
-        </span>
-      </label>
+      <div className="space-y-4" data-testid="setup-profile-planning">
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium text-heading">Starting client planning checklist</span>
+          <select
+            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            value={refs.planningPlaybookTemplateId ?? ""}
+            onChange={(event) => patchRefs({ planningPlaybookTemplateId: event.target.value || null })}
+            data-testid="setup-profile-default-planning"
+          >
+            <option value="">None</option>
+            {playbooks.map((option) => (
+              <option key={option.id} value={option.id}>{option.name}</option>
+            ))}
+          </select>
+          <span className="block text-xs text-muted-foreground">
+            Client Planning checklist and client task list. Applied once when a new event is booked.
+            Options come from active Client Planning templates in your library.
+          </span>
+        </label>
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium text-heading">Starting venue/internal planning checklist</span>
+          <select
+            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            value={refs.venuePlanningPlaybookTemplateId ?? ""}
+            onChange={(event) =>
+              patchRefs({ venuePlanningPlaybookTemplateId: event.target.value || null })
+            }
+            data-testid="setup-profile-default-venue-planning"
+          >
+            <option value="">None</option>
+            {venuePlaybooks.map((option) => (
+              <option key={option.id} value={option.id}>{option.name}</option>
+            ))}
+          </select>
+          <span className="block text-xs text-muted-foreground">
+            Venue Planning checklist and venue task list. Applied once at booking and stays internal —
+            never released to the client portal. Options come from active Venue Planning templates.
+          </span>
+        </label>
+      </div>
     );
   }
   if (step === "timeline") {

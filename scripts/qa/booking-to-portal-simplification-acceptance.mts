@@ -94,8 +94,35 @@ async function main() {
       .eq("id", PROFILE_ID)
       .eq("venue_id", FANCY)
       .maybeSingle();
-    const invRef = profile?.template_refs?.inventoryTemplateId ?? null;
-    const eoRef = profile?.template_refs?.eventOrderTemplateId ?? null;
+    // Ensure complete Planning refs on the fixture profile (client + venue checklists).
+    // Does not rewrite event snapshots — only the reusable profile used for new bookings.
+    let templateRefs = { ...(profile?.template_refs ?? {}) } as Record<string, unknown>;
+    if (!templateRefs.venuePlanningPlaybookTemplateId) {
+      const { data: venueTpl } = await admin
+        .from("playbook_templates")
+        .select("id,name")
+        .eq("venue_id", FANCY)
+        .eq("kind", "venue")
+        .eq("is_archived", false)
+        .order("is_default", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (venueTpl?.id) {
+        templateRefs = { ...templateRefs, venuePlanningPlaybookTemplateId: venueTpl.id };
+        await admin
+          .from("venue_setup_profiles")
+          .update({ template_refs: templateRefs, updated_at: new Date().toISOString() })
+          .eq("id", PROFILE_ID)
+          .eq("venue_id", FANCY);
+      }
+    }
+    const invRef = (templateRefs.inventoryTemplateId as string | null) ?? null;
+    const eoRef = (templateRefs.eventOrderTemplateId as string | null) ?? null;
+    const clientPbRef = (templateRefs.planningPlaybookTemplateId as string | null) ?? null;
+    const venuePbRef = (templateRefs.venuePlanningPlaybookTemplateId as string | null) ?? null;
+    const timelineRef = (templateRefs.timelineTemplateId as string | null) ?? null;
+    const floorPreferred = (templateRefs.defaultFloorPlanTemplateId as string | null) ?? null;
+    const floorList = (templateRefs.floorPlanTemplateIds as string[] | undefined) ?? [];
     record(
       "profile_configured_inventory_eo",
       profile?.decisions?.inventory === "set_up"
@@ -103,6 +130,11 @@ async function main() {
         && !!invRef
         && !!eoRef,
       JSON.stringify({ invRef, eoRef }),
+    );
+    record(
+      "profile_configured_both_planning_checklists",
+      profile?.decisions?.planning === "set_up" && !!clientPbRef && !!venuePbRef,
+      JSON.stringify({ clientPbRef, venuePbRef }),
     );
 
     const beforeVenueInv = (
@@ -145,14 +177,34 @@ async function main() {
     const sectionSrc = readFileSync("components/settings/setup-profiles-section.tsx", "utf8");
     record(
       "profile_explains_auto_prepare",
-      /prepared automatically/.test(sectionSrc),
-      "source copy (unit + shipped UI)",
+      /prepared automatically/.test(sectionSrc)
+        && /Starting venue\/internal planning checklist/.test(sectionSrc)
+        && /setup-profile-default-venue-planning/.test(sectionSrc),
+      "source copy includes both Planning checklists + auto-prepare",
     );
     record(
       "profile_vendor_network_authoritative",
       /second recommendation list/.test(sectionSrc),
       "source copy (unit + shipped UI)",
     );
+    // Open edit form to prove venue checklist control is present in the live UI.
+    const editBtn = page.getByRole("button", { name: /^Edit$/i }).first();
+    if (await editBtn.count()) {
+      await editBtn.click();
+      await page.waitForSelector('[data-testid="setup-profile-default-venue-planning"]', {
+        timeout: 15_000,
+      }).catch(() => undefined);
+      const hasVenueSelect = (await page.getByTestId("setup-profile-default-venue-planning").count()) > 0;
+      const hasClientSelect = (await page.getByTestId("setup-profile-default-planning").count()) > 0;
+      record(
+        "profile_ui_both_planning_selects",
+        hasClientSelect && hasVenueSelect,
+        `client=${hasClientSelect} venue=${hasVenueSelect}`,
+      );
+      await page.getByRole("button", { name: /^Cancel$/i }).click().catch(() => undefined);
+    } else {
+      record("profile_ui_both_planning_selects", false, "no Edit button");
+    }
     await page.screenshot({ path: `${OUT}/01-setup-profiles-1280.png`, fullPage: true });
 
     const { data: lead, error: leadErr } = await admin
@@ -266,9 +318,13 @@ async function main() {
       .eq("event_id", eventId)
       .eq("venue_id", FANCY)
       .maybeSingle();
+    const snapRefs = (setup?.inherited_template_refs ?? {}) as Record<string, unknown>;
     record(
       "setup_snapshot_inherited",
-      !!setup?.uses_profile && setup.profile_id === PROFILE_ID,
+      !!setup?.uses_profile
+        && setup.profile_id === PROFILE_ID
+        && snapRefs.planningPlaybookTemplateId === clientPbRef
+        && snapRefs.venuePlanningPlaybookTemplateId === venuePbRef,
       JSON.stringify(setup),
     );
 
@@ -306,8 +362,41 @@ async function main() {
       .eq("venue_id", FANCY);
     const clientPb = clientApps?.find((a) => a.kind === "client");
     const venuePb = clientApps?.find((a) => a.kind === "venue");
-    record("booking_prepared_client_checklist", !!clientPb && !clientPb.released_at, JSON.stringify(clientPb));
-    record("booking_prepared_venue_checklist", !!venuePb, JSON.stringify(venuePb));
+    record(
+      "booking_prepared_client_checklist",
+      !!clientPb && !clientPb.released_at && clientPb.template_id === clientPbRef,
+      JSON.stringify(clientPb),
+    );
+    record(
+      "booking_prepared_venue_checklist",
+      !!venuePb && venuePb.template_id === venuePbRef,
+      JSON.stringify({ venuePb, expected: venuePbRef }),
+    );
+
+    // Timeline + floor-plan options when profile includes them
+    if (profile?.decisions?.timeline === "set_up" && timelineRef) {
+      const { count: tlCount } = await admin
+        .from("timeline_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId);
+      record("booking_prepared_timeline", (tlCount ?? 0) > 0, `entries=${tlCount} ref=${timelineRef}`);
+    } else {
+      record("booking_prepared_timeline", true, "timeline not Included on fixture profile — skipped");
+    }
+    if (profile?.decisions?.floor_plans === "set_up" && (floorPreferred || floorList.length > 0)) {
+      const { data: offers } = await admin
+        .from("event_floor_plan_offers")
+        .select("id,template_id,is_offered")
+        .eq("event_id", eventId)
+        .eq("venue_id", FANCY);
+      record(
+        "booking_prepared_floor_plan_offers",
+        (offers?.length ?? 0) > 0 && (offers ?? []).every((o) => o.is_offered),
+        JSON.stringify(offers),
+      );
+    } else {
+      record("booking_prepared_floor_plan_offers", true, "floor plans not Included — skipped");
+    }
 
     const { count: invoices } = await admin
       .from("invoices")
@@ -397,6 +486,18 @@ async function main() {
       !!clientAppsAfter?.released_at,
       JSON.stringify(clientAppsAfter),
     );
+    const { data: venueAppsAfter } = await admin
+      .from("event_playbook_applications")
+      .select("id,kind,released_at,template_id")
+      .eq("event_id", eventId)
+      .eq("venue_id", FANCY)
+      .eq("kind", "venue")
+      .maybeSingle();
+    record(
+      "prepare_kept_venue_checklist_internal",
+      !!venueAppsAfter && venueAppsAfter.template_id === venuePbRef,
+      JSON.stringify(venueAppsAfter),
+    );
 
     const { count: invitesAfterPrepare } = await admin
       .from("client_invitations")
@@ -466,7 +567,9 @@ async function main() {
     record(
       "profile_unchanged",
       profileAfter?.template_refs?.inventoryTemplateId === invRef
-        && profileAfter?.template_refs?.eventOrderTemplateId === eoRef,
+        && profileAfter?.template_refs?.eventOrderTemplateId === eoRef
+        && profileAfter?.template_refs?.planningPlaybookTemplateId === clientPbRef
+        && profileAfter?.template_refs?.venuePlanningPlaybookTemplateId === venuePbRef,
       JSON.stringify(profileAfter?.template_refs),
     );
 

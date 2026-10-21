@@ -27,30 +27,40 @@ describe("Setup Profile client experience copy", () => {
   });
 });
 
-describe("Planning uses active Client Planning library templates", () => {
-  it("filters playbooks to client kind, not venue", () => {
+describe("Planning uses active Client and Venue Planning library templates", () => {
+  it("filters playbooks into client and venue option lists", () => {
     assert.match(page, /template\.kind === "client"/);
-    assert.doesNotMatch(page, /template\.kind === "venue"/);
+    assert.match(page, /template\.kind === "venue"/);
+    assert.match(page, /venuePlaybooks=\{/);
     assert.match(section, /setup-profile-default-planning/);
+    assert.match(section, /setup-profile-default-venue-planning/);
     assert.match(section, /Starting client planning checklist/);
+    assert.match(section, /Starting venue\/internal planning checklist/);
     assert.match(section, /Client Planning templates/);
+    assert.match(section, /Venue Planning templates/);
   });
 
-  it("sanitizes stale refs that are not in the client library option list", () => {
+  it("sanitizes stale refs that are not in the matching library option list", () => {
     assert.match(section, /sanitizeRefsAgainstLibrary/);
     assert.match(section, /playbookIds\.has\(planningId\)/);
+    assert.match(section, /venuePlaybookIds\.has\(venuePlanningId\)/);
   });
 
-  it("inherit applies only active kind=client playbooks", () => {
+  it("inherit applies active kind=client and kind=venue playbooks from the profile", () => {
     assert.match(inherit, /template\.kind === "client"/);
+    assert.match(inherit, /template\.kind !== "venue"/);
     assert.match(inherit, /getTemplate\(playbookId\)/);
+    assert.match(inherit, /applyProfileVenuePlaybook/);
+    assert.match(inherit, /venuePlanningPlaybookTemplateId/);
   });
 
-  it("save drops a planning ref that is not an active client playbook", () => {
+  it("save drops planning refs that are not the correct active playbook kind", () => {
     const profiles = readFileSync(resolve("lib/event-setup/profiles.ts"), "utf8");
     assert.match(profiles, /playbook\.kind !== "client"/);
+    assert.match(profiles, /playbook\.kind !== "venue"/);
     assert.match(profiles, /playbook\.is_archived/);
     assert.match(profiles, /planningPlaybookTemplateId = null/);
+    assert.match(profiles, /venuePlanningPlaybookTemplateId = null/);
   });
 });
 

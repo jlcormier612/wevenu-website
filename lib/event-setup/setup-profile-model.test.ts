@@ -37,6 +37,7 @@ function profile(overrides: Partial<VenueSetupProfile> = {}): VenueSetupProfile 
     decisions,
     templateRefs: {
       planningPlaybookTemplateId: "pb-1",
+      venuePlanningPlaybookTemplateId: "pb-venue-1",
       timelineTemplateId: "tl-default",
       timelineTemplateIds: ["tl-extra"],
       floorPlanTemplateIds: ["fp-1", "fp-2"],
@@ -111,6 +112,8 @@ describe("selected defaults visible and editable on the profile", () => {
   it("nests capability defaults under Included with client-experience controls", () => {
     const section = read("components/settings/setup-profiles-section.tsx");
     assert.match(section, /Starting client planning checklist/);
+    assert.match(section, /Starting venue\/internal planning checklist/);
+    assert.match(section, /setup-profile-default-venue-planning/);
     assert.match(section, /Starting timeline/);
     assert.match(section, /setup-profile-default-timeline/);
     assert.match(section, /Floor plans clients can choose from/);
@@ -136,6 +139,8 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(page, /timelines=\{timelines\.filter/);
     assert.match(page, /floorPlans=\{floorPlans\.filter/);
     assert.match(page, /template\.kind === "client"/);
+    assert.match(page, /template\.kind === "venue"/);
+    assert.match(page, /venuePlaybooks=\{/);
   });
 
   it("preferred floor-plan default may stand alone without a multi-select membership list", () => {
@@ -177,6 +182,8 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.doesNotMatch(inherit, /createInvoice/);
     assert.match(inherit, /ensureEventInventory/);
     assert.match(inherit, /ensureEventOrder/);
+    assert.match(inherit, /applyProfileVenuePlaybook/);
+    assert.match(inherit, /venuePlanningPlaybookTemplateId/);
     assert.match(inherit, /applyDefaultVenuePlaybook/);
   });
 
@@ -205,6 +212,7 @@ describe("automatic inheritance applies client-experience presets", () => {
 describe("null / empty / missing template refs never apply artifacts", () => {
   function assertNoConfiguredRefs(refs: ReturnType<typeof parseTemplateRefs>) {
     assert.equal(refs.planningPlaybookTemplateId ?? null, null);
+    assert.equal(refs.venuePlanningPlaybookTemplateId ?? null, null);
     assert.equal(refs.timelineTemplateId ?? null, null);
     assert.deepEqual(refs.timelineTemplateIds ?? [], []);
     assert.deepEqual(refs.floorPlanTemplateIds ?? [], []);
@@ -265,6 +273,7 @@ describe("book-time reference snapshot", () => {
   it("copies template_refs onto event_setup_states, not a second table", () => {
     const snap = snapshotInheritedSetup(profile());
     assert.equal(snap.inheritedTemplateRefs?.planningPlaybookTemplateId, "pb-1");
+    assert.equal(snap.inheritedTemplateRefs?.venuePlanningPlaybookTemplateId, "pb-venue-1");
     assert.equal(snap.inheritedTemplateRefs?.timelineTemplateId, "tl-default");
     assert.deepEqual(snap.inheritedTemplateRefs?.timelineTemplateIds, ["tl-extra"]);
     assert.deepEqual(snap.inheritedTemplateRefs?.floorPlanTemplateIds, ["fp-1", "fp-2"]);

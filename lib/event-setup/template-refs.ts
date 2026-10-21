@@ -6,7 +6,13 @@
  */
 
 export type SetupTemplateRefs = {
+  /** Client Planning checklist (= client task list). kind=client playbook. */
   planningPlaybookTemplateId?: string | null;
+  /**
+   * Venue/internal Planning checklist (= venue task list). kind=venue playbook.
+   * Applied at book when Planning is Included; stays internal (never portal-released).
+   */
+  venuePlanningPlaybookTemplateId?: string | null;
   /** Setup Profile default timeline — applied once at book when Timeline is included. */
   timelineTemplateId?: string | null;
   /**
@@ -55,6 +61,7 @@ export function parseTemplateRefs(raw: unknown): SetupTemplateRefs {
   const timelineTemplateId = asId(row.timelineTemplateId);
   return {
     planningPlaybookTemplateId: asId(row.planningPlaybookTemplateId),
+    venuePlanningPlaybookTemplateId: asId(row.venuePlanningPlaybookTemplateId),
     timelineTemplateId,
     timelineTemplateIds: asIdList(row.timelineTemplateIds).filter((id) => id !== timelineTemplateId),
     floorPlanTemplateIds,

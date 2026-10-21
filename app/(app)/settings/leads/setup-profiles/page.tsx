@@ -64,6 +64,10 @@ export default async function SetupProfilesPage() {
             id: template.id,
             name: template.name,
           }))}
+          venuePlaybooks={playbooks.filter((template) => template.kind === "venue" && !template.isArchived).map((template) => ({
+            id: template.id,
+            name: template.name,
+          }))}
           timelines={timelines.filter((template) => !template.isArchived).map((template) => ({
             id: template.id,
             name: template.name,

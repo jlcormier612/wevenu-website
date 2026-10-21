@@ -105,6 +105,32 @@ export async function prepareAndReleasePortal(
     releasedPlanning = true;
   }
 
+  // Recover venue/internal checklist when Included snapshot has a ref but booking missed it.
+  // Venue applications stay internal — never portal-released here.
+  const { data: venueApp } = await supabase
+    .from("event_playbook_applications")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("venue_id", venue.id)
+    .eq("kind", "venue")
+    .limit(1);
+  if ((!venueApp || venueApp.length === 0) && refs.venuePlanningPlaybookTemplateId && event.event_date) {
+    try {
+      const { applyPlaybookToEvent } = await import("@/lib/playbooks/service");
+      const applied = await applyPlaybookToEvent(
+        eventId,
+        refs.venuePlanningPlaybookTemplateId,
+        event.event_date,
+      );
+      if (!applied.ok && !/already has/i.test(applied.message ?? "")) {
+        return { ok: false, message: applied.message ?? "Could not apply Venue Planning." };
+      }
+    } catch (err) {
+      console.error("prepareAndReleasePortal venue playbook failed:", err);
+      return { ok: false, message: "Could not apply Venue Planning checklist." };
+    }
+  }
+
   // Ensure portal session exists even when planning was already released.
   try {
     const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");

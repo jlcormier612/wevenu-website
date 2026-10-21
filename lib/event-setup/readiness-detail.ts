@@ -67,6 +67,7 @@ function planningDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const client = ctx.playbookApplications.find((a) => a.kind === "client");
   const venue = ctx.playbookApplications.find((a) => a.kind === "venue");
   const expected = ctx.inheritedRefs.planningPlaybookTemplateId;
+  const expectedVenue = ctx.inheritedRefs.venuePlanningPlaybookTemplateId;
   const expectedName = ctx.templateNames.planning;
 
   if (!client) {
@@ -86,9 +87,12 @@ function planningDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     };
   }
 
-  const venueNote = venue
-    ? " Venue-team checklist is separate and stays internal."
-    : "";
+  let venueNote = "";
+  if (venue) {
+    venueNote = " Venue-team checklist is on the event and stays internal.";
+  } else if (expectedVenue) {
+    venueNote = " Configured venue checklist was not applied — Prepare and release portal recovers it.";
+  }
 
   if (!client.releasedAt) {
     return {

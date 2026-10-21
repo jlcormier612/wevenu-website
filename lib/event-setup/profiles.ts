@@ -124,6 +124,19 @@ export async function saveVenueSetupProfile(
     }
   }
 
+  const venuePlanningId = templateRefs.venuePlanningPlaybookTemplateId ?? null;
+  if (venuePlanningId) {
+    const { data: playbook } = await supabase
+      .from("playbook_templates")
+      .select("id, kind, is_archived")
+      .eq("id", venuePlanningId)
+      .eq("venue_id", gate.venueId)
+      .maybeSingle<{ id: string; kind: string; is_archived: boolean }>();
+    if (!playbook || playbook.kind !== "venue" || playbook.is_archived) {
+      templateRefs.venuePlanningPlaybookTemplateId = null;
+    }
+  }
+
   const inventoryId = templateRefs.inventoryTemplateId ?? null;
   if (inventoryId) {
     const { data: invTemplate } = await supabase

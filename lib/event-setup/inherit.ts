@@ -113,7 +113,8 @@ async function applyInheritedTemplates(
   eventType: string | null,
   profile: VenueSetupProfile,
 ): Promise<void> {
-  const playbookId = profile.decisions.planning === "set_up"
+  const planningIncluded = profile.decisions.planning === "set_up";
+  const playbookId = planningIncluded
     ? profile.templateRefs.planningPlaybookTemplateId
     : null;
   if (playbookId && eventDate) {
@@ -131,6 +132,18 @@ async function applyInheritedTemplates(
       }
     } catch (err) {
       console.error("Setup profile playbook apply failed:", err);
+    }
+  }
+
+  // Venue/internal checklist (= venue task list): prefer the profile selection.
+  // Legacy profiles without venuePlanningPlaybookTemplateId fall back to the
+  // library heuristic so historical assignments keep applying something sensible.
+  if (planningIncluded && eventDate) {
+    const venuePlaybookId = profile.templateRefs.venuePlanningPlaybookTemplateId ?? null;
+    if (venuePlaybookId) {
+      await applyProfileVenuePlaybook(supabase, venueId, eventId, eventDate, venuePlaybookId);
+    } else {
+      await applyDefaultVenuePlaybook(supabase, venueId, eventId, eventDate, eventType);
     }
   }
 
@@ -169,12 +182,6 @@ async function applyInheritedTemplates(
   // prepare the event-level draft at booking (idempotent). Does not share,
   // finalize, invoice, or invite.
   await applyInheritedInventoryAndEventOrder(eventId, profile);
-
-  // Venue task list: apply the venue's default Venue Planning checklist when
-  // none is on the event yet. Venue applications release immediately (internal).
-  if (eventDate) {
-    await applyDefaultVenuePlaybook(supabase, venueId, eventId, eventDate, eventType);
-  }
 }
 
 async function applyInheritedInventoryAndEventOrder(
@@ -199,6 +206,39 @@ async function applyInheritedInventoryAndEventOrder(
   }
 }
 
+async function applyProfileVenuePlaybook(
+  supabase: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  templateId: string,
+): Promise<void> {
+  try {
+    const { data: existing } = await supabase
+      .from("event_playbook_applications")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("venue_id", venueId)
+      .eq("kind", "venue")
+      .limit(1);
+    if (existing && existing.length > 0) return;
+
+    const { getTemplate, applyPlaybookToEvent } = await import("@/lib/playbooks/service");
+    const template = await getTemplate(templateId);
+    if (!template || template.kind !== "venue" || template.isArchived) {
+      console.error(
+        "Setup profile venue playbook apply skipped: venuePlanningPlaybookTemplateId is not an active venue playbook.",
+        templateId,
+      );
+      return;
+    }
+    await applyPlaybookToEvent(eventId, templateId, eventDate);
+  } catch (err) {
+    console.error("Setup profile venue playbook apply failed:", err);
+  }
+}
+
+/** Legacy fallback when a profile has no venuePlanningPlaybookTemplateId. */
 async function applyDefaultVenuePlaybook(
   supabase: DbClient,
   venueId: string,

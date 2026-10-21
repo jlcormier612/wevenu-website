@@ -94,6 +94,7 @@ describe("venue setup profiles", () => {
     assert.equal(inherited.inheritedDecisions?.portal, undefined);
     assert.deepEqual(inherited.inheritedTemplateRefs, {
       planningPlaybookTemplateId: "pb-venue-1",
+      venuePlanningPlaybookTemplateId: null,
       timelineTemplateId: null,
       timelineTemplateIds: [],
       floorPlanTemplateIds: [],

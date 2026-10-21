@@ -53,6 +53,7 @@ describe("profileHardConfigGaps", () => {
     };
     const refs: SetupTemplateRefs = {
       planningPlaybookTemplateId: "pb-1",
+      venuePlanningPlaybookTemplateId: "pb-venue-1",
       timelineTemplateId: "tl-1",
       floorPlanTemplateIds: ["fp-1"],
       questionnaireTemplateIds: ["q-1"],
@@ -61,6 +62,25 @@ describe("profileHardConfigGaps", () => {
     };
     assert.equal(profileHardConfigGaps(decisions, refs).length, 0);
     assert.equal(profileIsHonestlyConfigured(decisions, refs), true);
+  });
+
+  it("requires both client and venue checklists when Planning is Included", () => {
+    const decisions: SetupDecisions = { planning: "set_up" };
+    assert.match(
+      profileHardConfigGaps(decisions, { planningPlaybookTemplateId: "pb-1" })[0]!.message,
+      /venue\/internal checklist/,
+    );
+    assert.match(
+      profileHardConfigGaps(decisions, { venuePlanningPlaybookTemplateId: "pb-v" })[0]!.message,
+      /client checklist/,
+    );
+    assert.equal(
+      profileHardConfigGaps(decisions, {
+        planningPlaybookTemplateId: "pb-1",
+        venuePlanningPlaybookTemplateId: "pb-v",
+      }).length,
+      0,
+    );
   });
 
   it("treats Included Inventory without a starting offering as a hard gap", () => {
@@ -120,7 +140,7 @@ describe("profileHardGapSummary", () => {
 
   it("returns the single hard message or a combined label list", () => {
     const one = profileHardConfigGaps({ planning: "set_up" }, emptyRefs);
-    assert.match(profileHardGapSummary(one) ?? "", /Client Planning is Included/);
+    assert.match(profileHardGapSummary(one) ?? "", /Planning is Included/);
     const many = profileHardConfigGaps(
       { planning: "set_up", timeline: "set_up" },
       emptyRefs,

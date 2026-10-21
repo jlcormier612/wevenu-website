@@ -6,15 +6,15 @@
  * - Preferred Vendors uses the Vendor Network by default; recommendations are optional.
  *
  * Hard gaps (block save / surface as incomplete on the profile):
- * - Planning Included → client planning checklist id required
+ * - Planning Included → client checklist AND venue/internal checklist ids required
  * - Timeline Included → default timeline template id required
  * - Floor plans Included → at least one floor-plan template (preferred or list)
  * - Questionnaires Included → at least one questionnaire template id
  * - Inventory Included → starting inventory offering id required
  * - Event Order Included → starting Event Order package id required
  *
- * Inventory / Event Order refs are reusable starting-point reminders only.
- * Selecting them does not create event drafts; drafts start from Event Setup.
+ * A saved profile with these refs is the complete standard starting setup.
+ * Booking instantiates event-level content from the selected templates.
  */
 
 import { setupStepLabel, type SetupDecisions, type SetupStepKey } from "@/lib/event-setup/state";
@@ -51,12 +51,29 @@ export function profileHardConfigGaps(
   refs: SetupTemplateRefs,
 ): ProfileConfigGap[] {
   const gaps: ProfileConfigGap[] = [];
-  if (decisions.planning === "set_up" && !hasId(refs.planningPlaybookTemplateId)) {
-    gaps.push({
-      step: "planning",
-      severity: "hard",
-      message: "Client Planning is Included but no starting client checklist is selected.",
-    });
+  if (decisions.planning === "set_up") {
+    const missingClient = !hasId(refs.planningPlaybookTemplateId);
+    const missingVenue = !hasId(refs.venuePlanningPlaybookTemplateId);
+    if (missingClient && missingVenue) {
+      gaps.push({
+        step: "planning",
+        severity: "hard",
+        message:
+          "Planning is Included but starting client and venue/internal checklists are not selected.",
+      });
+    } else if (missingClient) {
+      gaps.push({
+        step: "planning",
+        severity: "hard",
+        message: "Planning is Included but no starting client checklist is selected.",
+      });
+    } else if (missingVenue) {
+      gaps.push({
+        step: "planning",
+        severity: "hard",
+        message: "Planning is Included but no starting venue/internal checklist is selected.",
+      });
+    }
   }
   if (decisions.timeline === "set_up" && !hasId(refs.timelineTemplateId)) {
     gaps.push({
