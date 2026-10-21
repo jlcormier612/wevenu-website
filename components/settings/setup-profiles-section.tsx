@@ -20,6 +20,7 @@ import {
 import {
   profileConfigGaps,
   profileHardGapSummary,
+  profileTemplateRefIncomplete,
 } from "@/lib/event-setup/profile-config-gaps";
 import type { SetupProfileUsedForOption } from "@/lib/event-setup/setup-profile-event-types";
 import {
@@ -244,12 +245,7 @@ export function SetupProfilesSection({
         toast.error(result.message);
         return;
       }
-      const soft = profileConfigGaps(draft.decisions, safeRefs).filter((g) => g.severity === "soft");
-      toast.success(
-        soft.length > 0
-          ? "Setup profile saved. Inventory/Event Order still need a starting offering or a manual start on each event."
-          : "Setup profile saved.",
-      );
+      toast.success("Setup profile saved. Event drafts still start from Event Setup when you are ready.");
       setDraft(null);
       router.refresh();
     });
@@ -300,7 +296,6 @@ export function SetupProfilesSection({
           const usedFor = assignments.filter((row) => row.profileId === profile.id).map((row) => row.eventType);
           const gaps = profileConfigGaps(profile.decisions, profile.templateRefs);
           const hard = gaps.filter((g) => g.severity === "hard");
-          const soft = gaps.filter((g) => g.severity === "soft");
           return (
             <li key={profile.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border px-4 py-3">
               <div>
@@ -309,13 +304,8 @@ export function SetupProfilesSection({
                 <p className="mt-1 text-xs text-muted-foreground">{profileSummary(profile, playbooks, timelines)}</p>
                 {hard.length > 0 ? (
                   <p className="mt-2 text-xs text-amber-800" data-testid="setup-profile-hard-gaps">
-                    Needs templates before save can claim these are ready: {hard.map((g) => setupStepLabel(g.step)).join(", ")}.
-                    {" "}Edit to select templates or mark Not included.
-                  </p>
-                ) : null}
-                {soft.length > 0 ? (
-                  <p className="mt-1 text-xs text-muted-foreground" data-testid="setup-profile-soft-gaps">
-                    {soft.map((g) => g.message).join(" ")}
+                    Incomplete — Included without a starting template: {hard.map((g) => setupStepLabel(g.step)).join(", ")}.
+                    {" "}Edit to select templates or mark Not included. Existing events keep their current setup until you change them.
                   </p>
                 ) : null}
               </div>
@@ -351,10 +341,20 @@ export function SetupProfilesSection({
             <ul className="space-y-3">
               {decisionSteps.map((step) => {
                 const included = draft.decisions[step] === "set_up";
+                const incompleteRef =
+                  (step === "inventory" || step === "event_order")
+                  && profileTemplateRefIncomplete(step, draft.decisions, draft.refs);
                 return (
                   <li key={step} className="rounded-lg border border-border px-3 py-3 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-heading">{setupStepLabel(step)}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-heading">{setupStepLabel(step)}</span>
+                        {incompleteRef ? (
+                          <span className="text-xs font-medium text-amber-800" data-testid={`setup-profile-${step}-incomplete`}>
+                            Needs template
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -635,43 +635,73 @@ function CapabilityDefaults({
     );
   }
   if (step === "inventory") {
+    const selected = inventoryTemplates.find((option) => option.id === refs.inventoryTemplateId);
+    const incomplete = !refs.inventoryTemplateId;
     return (
-      <label className="block space-y-1 text-sm">
-        <span className="font-medium text-heading">Starting inventory offering</span>
-        <select
-          className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-          value={refs.inventoryTemplateId ?? ""}
-          onChange={(event) => patchRefs({ inventoryTemplateId: event.target.value || null })}
-        >
-          <option value="">No default inventory set</option>
-          {inventoryTemplates.map((option) => (
-            <option key={option.id} value={option.id}>{option.name}</option>
-          ))}
-        </select>
-        <span className="block text-xs text-muted-foreground">
-          Reminder for your team of the usual inventory starting point. Booking does not commit inventory to the event.
-        </span>
-      </label>
+      <div className="space-y-1 text-sm" data-testid="setup-profile-inventory">
+        <label className="block space-y-1">
+          <span className="font-medium text-heading">Starting inventory offering</span>
+          <select
+            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            value={refs.inventoryTemplateId ?? ""}
+            onChange={(event) => patchRefs({ inventoryTemplateId: event.target.value || null })}
+            aria-invalid={incomplete}
+          >
+            <option value="">Select a starting offering…</option>
+            {inventoryTemplates.map((option) => (
+              <option key={option.id} value={option.id}>{option.name}</option>
+            ))}
+          </select>
+        </label>
+        {incomplete ? (
+          <p className="text-xs text-amber-800">
+            Included but not configured — select a template, or mark Inventory Not included.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Configured starting point: {selected?.name}. This sets the reusable profile reminder only —
+            it does not create an inventory draft on any event. Drafts start from Event Setup when you are ready.
+          </p>
+        )}
+        {inventoryTemplates.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No inventory templates in your library yet.</p>
+        ) : null}
+      </div>
     );
   }
   if (step === "event_order") {
+    const selected = eventOrderTemplates.find((option) => option.id === refs.eventOrderTemplateId);
+    const incomplete = !refs.eventOrderTemplateId;
     return (
-      <label className="block space-y-1 text-sm">
-        <span className="font-medium text-heading">Starting event-order package</span>
-        <select
-          className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-          value={refs.eventOrderTemplateId ?? ""}
-          onChange={(event) => patchRefs({ eventOrderTemplateId: event.target.value || null })}
-        >
-          <option value="">No default event-order package</option>
-          {eventOrderTemplates.map((option) => (
-            <option key={option.id} value={option.id}>{option.name}</option>
-          ))}
-        </select>
-        <span className="block text-xs text-muted-foreground">
-          Reminder for your team of the usual package. Booking does not start or send an event order.
-        </span>
-      </label>
+      <div className="space-y-1 text-sm" data-testid="setup-profile-event-order">
+        <label className="block space-y-1">
+          <span className="font-medium text-heading">Starting event-order package</span>
+          <select
+            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            value={refs.eventOrderTemplateId ?? ""}
+            onChange={(event) => patchRefs({ eventOrderTemplateId: event.target.value || null })}
+            aria-invalid={incomplete}
+          >
+            <option value="">Select a starting package…</option>
+            {eventOrderTemplates.map((option) => (
+              <option key={option.id} value={option.id}>{option.name}</option>
+            ))}
+          </select>
+        </label>
+        {incomplete ? (
+          <p className="text-xs text-amber-800">
+            Included but not configured — select a package, or mark Event Order Not included (for package-only events).
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Configured starting point: {selected?.name}. This sets the reusable profile reminder only —
+            it does not create, share, or invoice an Event Order. Drafts start from Event Setup when you are ready.
+          </p>
+        )}
+        {eventOrderTemplates.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No Event Order templates in your library yet.</p>
+        ) : null}
+      </div>
     );
   }
   return null;

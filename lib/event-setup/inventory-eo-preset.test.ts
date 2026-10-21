@@ -24,10 +24,11 @@ describe("inventory and Event Order profile preset coverage", () => {
     assert.match(inherit, /intentional reminders only/);
   });
 
-  it("Setup Profile UI states booking does not commit inventory or start Event Orders", () => {
+  it("Setup Profile UI states template selection does not create event drafts", () => {
     const profiles = read("components/settings/setup-profiles-section.tsx");
-    assert.match(profiles, /Booking does not commit inventory to the event/);
-    assert.match(profiles, /Booking does not start or send an event order/);
+    assert.match(profiles, /does not create an inventory draft on any event/);
+    assert.match(profiles, /does not create, share, or invoice an Event Order/);
+    assert.match(profiles, /Drafts start from Event Setup/);
   });
 
   it("Event Setup can start drafts from inherited refs without share/invoice side effects", () => {

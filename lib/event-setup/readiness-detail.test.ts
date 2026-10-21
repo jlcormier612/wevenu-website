@@ -101,15 +101,28 @@ describe("setupReadinessDetail", () => {
     assert.match(detail.nextAction ?? "", /Start "Classic package" Event Order draft/);
   });
 
-  it("keeps package-only Event Order optional when no profile package is set", () => {
+  it("surfaces a Setup Profile configuration gap when Event Order is included without a package ref", () => {
     const detail = setupReadinessDetail(base({
       step: "event_order",
       inheritedRefs: {},
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: null },
     }));
     assert.equal(detail.status, "needs_action");
+    assert.match(detail.summary, /no starting package selected/i);
     assert.match(detail.summary, /package-only/i);
     assert.match(detail.summary, /Skip this area/i);
+    assert.equal(detail.nextAction, "Open Setup Profiles");
+  });
+
+  it("surfaces a Setup Profile configuration gap when Inventory is included without an offering ref", () => {
+    const detail = setupReadinessDetail(base({
+      step: "inventory",
+      inheritedRefs: {},
+      templateNames: { planning: null, timeline: null, inventory: null, eventOrder: null },
+    }));
+    assert.equal(detail.status, "needs_action");
+    assert.match(detail.summary, /no starting offering selected/i);
+    assert.equal(detail.nextAction, "Open Setup Profiles");
   });
 
   it("flags empty vendor recommendations when the profile claimed a list", () => {

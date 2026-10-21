@@ -4,15 +4,17 @@
  *
  * Not every Included step requires a template:
  * - Preferred Vendors uses the Vendor Network by default; recommendations are optional.
- * - Inventory / Event Order are references only (never auto-created on book); a
- *   missing starting offering is a soft gap (manual start on the event), not a
- *   hard block unless the venue claims a specific offering id that is absent.
  *
  * Hard gaps (block save / surface as incomplete on the profile):
  * - Planning Included → client planning checklist id required
  * - Timeline Included → default timeline template id required
  * - Floor plans Included → at least one floor-plan template (preferred or list)
  * - Questionnaires Included → at least one questionnaire template id
+ * - Inventory Included → starting inventory offering id required
+ * - Event Order Included → starting Event Order package id required
+ *
+ * Inventory / Event Order refs are reusable starting-point reminders only.
+ * Selecting them does not create event drafts; drafts start from Event Setup.
  */
 
 import { setupStepLabel, type SetupDecisions, type SetupStepKey } from "@/lib/event-setup/state";
@@ -32,32 +34,18 @@ function hasIds(values: string[] | null | undefined): boolean {
   return (values ?? []).some((id) => hasId(id));
 }
 
-/** Soft gaps for inventory/EO: Included without a starting offering reference. */
+/**
+ * Soft gaps are reserved for non-blocking guidance.
+ * Inventory and Event Order incomplete refs are hard gaps (Phase 4).
+ */
 export function profileSoftConfigGaps(
-  decisions: SetupDecisions,
-  refs: SetupTemplateRefs,
+  _decisions: SetupDecisions,
+  _refs: SetupTemplateRefs,
 ): ProfileConfigGap[] {
-  const gaps: ProfileConfigGap[] = [];
-  if (decisions.inventory === "set_up" && !hasId(refs.inventoryTemplateId)) {
-    gaps.push({
-      step: "inventory",
-      severity: "soft",
-      message:
-        "Inventory is Included without a starting offering. Booking will not create inventory — start it on the event when ready.",
-    });
-  }
-  if (decisions.event_order === "set_up" && !hasId(refs.eventOrderTemplateId)) {
-    gaps.push({
-      step: "event_order",
-      severity: "soft",
-      message:
-        "Event Order is Included without a starting package. Booking will not create an Event Order — apply one on the event when ready.",
-    });
-  }
-  return gaps;
+  return [];
 }
 
-/** Hard gaps — Included claim without the template the auto-prepare path needs. */
+/** Hard gaps — Included claim without the template the profile needs. */
 export function profileHardConfigGaps(
   decisions: SetupDecisions,
   refs: SetupTemplateRefs,
@@ -95,6 +83,22 @@ export function profileHardConfigGaps(
       message: "Questionnaires are Included but no questionnaire templates are selected to prepare as drafts.",
     });
   }
+  if (decisions.inventory === "set_up" && !hasId(refs.inventoryTemplateId)) {
+    gaps.push({
+      step: "inventory",
+      severity: "hard",
+      message:
+        "Inventory is Included but no starting offering is selected. Choose a template, or mark Not included.",
+    });
+  }
+  if (decisions.event_order === "set_up" && !hasId(refs.eventOrderTemplateId)) {
+    gaps.push({
+      step: "event_order",
+      severity: "hard",
+      message:
+        "Event Order is Included but no starting package is selected. Choose a template, or mark Not included.",
+    });
+  }
   return gaps;
 }
 
@@ -118,4 +122,16 @@ export function profileIsHonestlyConfigured(
   refs: SetupTemplateRefs,
 ): boolean {
   return profileHardConfigGaps(decisions, refs).length === 0;
+}
+
+/** True when an Included Inventory/Event Order step still lacks its starting template. */
+export function profileTemplateRefIncomplete(
+  step: "inventory" | "event_order",
+  decisions: SetupDecisions,
+  refs: SetupTemplateRefs,
+): boolean {
+  if (step === "inventory") {
+    return decisions.inventory === "set_up" && !hasId(refs.inventoryTemplateId);
+  }
+  return decisions.event_order === "set_up" && !hasId(refs.eventOrderTemplateId);
 }

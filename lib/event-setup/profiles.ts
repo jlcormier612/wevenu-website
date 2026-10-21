@@ -124,6 +124,32 @@ export async function saveVenueSetupProfile(
     }
   }
 
+  const inventoryId = templateRefs.inventoryTemplateId ?? null;
+  if (inventoryId) {
+    const { data: invTemplate } = await supabase
+      .from("inventory_templates")
+      .select("id")
+      .eq("id", inventoryId)
+      .eq("venue_id", gate.venueId)
+      .maybeSingle<{ id: string }>();
+    if (!invTemplate) {
+      return { ok: false, message: "That inventory offering is not available for this venue." };
+    }
+  }
+
+  const eventOrderId = templateRefs.eventOrderTemplateId ?? null;
+  if (eventOrderId) {
+    const { data: eoTemplate } = await supabase
+      .from("event_order_templates")
+      .select("id")
+      .eq("id", eventOrderId)
+      .eq("venue_id", gate.venueId)
+      .maybeSingle<{ id: string }>();
+    if (!eoTemplate) {
+      return { ok: false, message: "That Event Order package is not available for this venue." };
+    }
+  }
+
   const hardGaps = profileHardConfigGaps(decisions, templateRefs);
   const hardSummary = profileHardGapSummary(hardGaps);
   if (hardSummary) {

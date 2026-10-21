@@ -231,8 +231,8 @@ function inventoryDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     return {
       status: "needs_action",
       summary:
-        "Inventory is included for this event, but no starting offering is configured and none has been started. Start blank or from a template when ready — booking never creates inventory automatically.",
-      nextAction: "Open Inventory",
+        "Inventory is included, but this event's Setup Profile has no starting offering selected. Edit Setup Profiles to choose a template, or start blank from Inventory. If this event does not need inventory, Skip this area. Booking never creates inventory automatically.",
+      nextAction: "Open Setup Profiles",
     };
   }
   return {
@@ -257,8 +257,8 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     return {
       status: "needs_action",
       summary:
-        "Event Order is included for this event, but none exists yet. Create or apply a template when ready. If this booking is package-only and does not need a detailed Event Order, Skip this area instead.",
-      nextAction: "Open Event Order",
+        "Event Order is included, but this event's Setup Profile has no starting package selected. Edit Setup Profiles to choose a package, or start one from Event Order. If this booking is package-only and does not need a detailed Event Order, Skip this area instead.",
+      nextAction: "Open Setup Profiles",
     };
   }
   if (order.sharedAt) {

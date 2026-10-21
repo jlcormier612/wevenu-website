@@ -163,11 +163,15 @@ export function EventSetupPanel({
     onNavigateTab(tab);
   }
 
+  function openSetupProfiles() {
+    router.push("/settings/leads/setup-profiles");
+  }
+
   function startProfileDraft(step: "inventory" | "event_order") {
     startTransition(async () => {
       if (step === "inventory") {
         if (!inventoryTemplateId) {
-          navigateStep("inventory");
+          openSetupProfiles();
           return;
         }
         const result = await ensureEventInventoryAction(eventId, inventoryTemplateId);
@@ -181,7 +185,7 @@ export function EventSetupPanel({
         return;
       }
       if (!eventOrderTemplateId) {
-        navigateStep("event_order");
+        openSetupProfiles();
         return;
       }
       const result = await ensureEventOrderAction(eventId, eventOrderTemplateId);
@@ -298,6 +302,10 @@ export function EventSetupPanel({
                     size="sm"
                     disabled={pending}
                     onClick={() => {
+                      if (detail.nextAction === "Open Setup Profiles") {
+                        openSetupProfiles();
+                        return;
+                      }
                       if (step === "inventory" && inventoryTemplateId && !hasEventInventory) {
                         startProfileDraft("inventory");
                         return;
@@ -393,6 +401,7 @@ export function EventSetupPanel({
                     hasEventOrder={Boolean(eventOrder)}
                     onStartInventoryDraft={() => startProfileDraft("inventory")}
                     onStartEventOrderDraft={() => startProfileDraft("event_order")}
+                    onOpenSetupProfiles={openSetupProfiles}
                     startPending={pending}
                   />
                 </div>
@@ -481,6 +490,7 @@ function SetupTool(props: {
   hasEventOrder?: boolean;
   onStartInventoryDraft?: () => void;
   onStartEventOrderDraft?: () => void;
+  onOpenSetupProfiles?: () => void;
   startPending?: boolean;
 }) {
   const { step, onNavigateTab, hideOpenTab } = props;
@@ -531,6 +541,13 @@ function SetupTool(props: {
         </Button>
       );
     }
+    if (!props.hasEventInventory && !props.inventoryTemplateId && !hideOpenTab && props.onOpenSetupProfiles) {
+      return (
+        <Button type="button" size="sm" variant="outline" onClick={props.onOpenSetupProfiles}>
+          Open Setup Profiles
+        </Button>
+      );
+    }
     if (hideOpenTab) return null;
     return <OpenTab label="Open Inventory" tab="inventory" onNavigateTab={onNavigateTab} />;
   }
@@ -539,6 +556,13 @@ function SetupTool(props: {
       return (
         <Button type="button" size="sm" disabled={props.startPending} onClick={props.onStartEventOrderDraft}>
           Start Event Order draft from profile
+        </Button>
+      );
+    }
+    if (!props.hasEventOrder && !props.eventOrderTemplateId && !hideOpenTab && props.onOpenSetupProfiles) {
+      return (
+        <Button type="button" size="sm" variant="outline" onClick={props.onOpenSetupProfiles}>
+          Open Setup Profiles
         </Button>
       );
     }
