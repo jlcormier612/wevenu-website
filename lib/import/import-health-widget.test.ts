@@ -10,8 +10,8 @@ describe("Import page live totals vs import history", () => {
   it("does not title live CRM counts as Import Progress", () => {
     assert.doesNotMatch(widget, /Import Progress/);
     assert.match(widget, /In Hello to Cheers now/);
-    assert.match(widget, /Live counts of records in this venue/);
-    assert.match(widget, /not import-history totals/);
+    assert.match(widget, /records currently in your venue/);
+    assert.match(widget, /manually or imported/);
   });
 
   it("keeps live totals on the existing CRM queries", () => {
@@ -31,12 +31,14 @@ describe("Import page live totals vs import history", () => {
     assert.match(importPage, /ImportHealthWidget/);
   });
 
-  it("directs Events and financial records to Migration Center instead of Coming soon", () => {
+  it("keeps Migration Center direction on the page, not inside live-count bullets", () => {
     assert.doesNotMatch(widget, /Coming soon/);
-    assert.match(widget, /Not on Import Data/);
-    assert.match(widget, /\/settings\/migration/);
-    assert.match(widget, /Active commitment/);
-    assert.match(widget, /Standalone payment CSV/);
+    assert.doesNotMatch(widget, /Not on Import Data/);
+    assert.doesNotMatch(widget, /Standalone payment CSV/);
+    assert.doesNotMatch(widget, /USE_MIGRATION_CENTER/);
+    assert.match(importPage, /Bringing over existing bookings or financial records/);
+    assert.match(importPage, /\/settings\/migration/);
+    assert.match(importPage, /Active Commitment/);
   });
 });
 
@@ -44,15 +46,17 @@ describe("Import Data and Migration Center path copy", () => {
   const wizard = readFileSync(resolve("components/settings/import-wizard.tsx"), "utf8");
   const migrationPage = readFileSync(resolve("app/(app)/settings/migration/page.tsx"), "utf8");
 
-  it("Import Data page lists supported entities and points calendar/financial work to MC", () => {
-    assert.match(importPage, /Clients, Leads, Vendors, Inventory templates, or Package/);
+  it("Import Data page lists supported entities and points calendar/financial work to MC once", () => {
+    assert.match(importPage, /clients, leads, vendors, inventory templates, or package/);
+    assert.match(importPage, /CSV, Excel, Word, PDF, or a pasted list/);
+    assert.match(importPage, /Bringing over existing bookings or financial records/);
     assert.match(importPage, /Migration Center/);
-    assert.match(importPage, /Those records are not imported on this page/);
+    assert.doesNotMatch(importPage, /Those records are not imported on this page/);
+    assert.doesNotMatch(importPage, /Standalone payment CSV/);
   });
 
-  it("entity picker footer sends Events and invoices to Migration Center", () => {
-    assert.match(wizard, /Need Events, tours, holds/);
-    assert.match(wizard, /\/settings\/migration/);
+  it("entity picker no longer repeats Migration Center footer copy", () => {
+    assert.doesNotMatch(wizard, /Need Events, tours, holds/);
     assert.doesNotMatch(wizard, /Coming soon/);
   });
 

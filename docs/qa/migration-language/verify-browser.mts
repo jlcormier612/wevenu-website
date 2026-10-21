@@ -89,16 +89,20 @@ async function main() {
     record("help_no_coming_soon", !/coming soon/i.test(help), "clean");
     await page.screenshot({ path: `${OUT}/help-article-1280.png`, fullPage: true });
 
-    // Health widget: only if venue has data (Fancy does)
+    // Concise Migration Center section (always on Import Data page)
     await page.goto(`${APP}/settings/import`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForTimeout(2000);
     const after = await page.locator("body").innerText();
-    if (/Not on Import Data/i.test(after)) {
-      record("widget_mc_directions", true, "Not on Import Data");
-      record("widget_no_coming_soon", !/Coming soon/i.test(after), "ok");
-    } else {
-      record("widget_mc_directions", false, "widget section not visible (empty venue?)");
-    }
+    record(
+      "bringing_over_section",
+      /Bringing over existing bookings or financial records/i.test(after),
+      "section",
+    );
+    record("no_standalone_payment_sentence", !/Standalone payment CSV/i.test(after), "removed");
+    record("no_not_on_import_data_heading", !/Not on Import Data/i.test(after), "removed");
+    record("widget_no_coming_soon", !/Coming soon/i.test(after), "ok");
+    record("active_commitment_mentioned", /Active Commitment/i.test(after), "guidance");
+    record("calendar_availability_mentioned", /Calendar\s*&\s*Availability/i.test(after), "guidance");
   } catch (e) {
     record("browser_error", false, e instanceof Error ? e.message : String(e));
     await page.screenshot({ path: `${OUT}/browser-error.png`, fullPage: true }).catch(() => {});

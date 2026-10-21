@@ -21,8 +21,11 @@ describe("migration language honesty", () => {
   });
 
   it("Import Data vocabulary stays the five supported entities", () => {
-    assert.match(importPage, /VALID_TYPES[\s\S]*couples[\s\S]*leads[\s\S]*vendors[\s\S]*inventory[\s\S]*packages/);
-    assert.doesNotMatch(importPage, /VALID_TYPES[\s\S]*event/);
+    assert.match(
+      importPage,
+      /VALID_TYPES = new Set<EntityType>\(\["couples", "leads", "vendors", "inventory", "packages"\]\)/,
+    );
+    assert.doesNotMatch(importPage, /VALID_TYPES[\s\S]{0,120}"event"/);
   });
 
   it("Migration Center still exposes Events and active commitment (not Coming soon)", () => {
@@ -45,6 +48,17 @@ describe("migration language honesty", () => {
     assert.match(article, /Active commitment/);
     assert.match(article, /Standalone payment CSV/);
     assert.doesNotMatch(article, /coming soon/i);
+  });
+
+  it("Import Data page uses one concise Migration Center section without technical CSV caveats", () => {
+    assert.match(importPage, /Bringing over existing bookings or financial records/);
+    assert.match(importPage, /\/settings\/migration/);
+    assert.match(importPage, /\/settings\/availability/);
+    assert.match(importPage, /Active Commitment/);
+    assert.doesNotMatch(importPage, /Standalone payment CSV/);
+    assert.doesNotMatch(importPage, /Those records are not imported on this page/);
+    assert.doesNotMatch(widget, /Standalone payment CSV/);
+    assert.doesNotMatch(widget, /Not on Import Data/);
   });
 
   it("both settings pages keep the shared setup help link", () => {

@@ -36,23 +36,39 @@ export default async function ImportPage({
       <div className="space-y-1.5">
         <h1 className="text-xl font-bold text-foreground">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Bring a small, clean list of Clients, Leads, Vendors, Inventory templates, or Package
-          templates into Hello to Cheers from CSV, Excel, Word, PDF, or a pasted list. Column names
-          do not need to match ours — you map them before anything is saved.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          For a real calendar of Events, tours, date holds, or calendar blocks — or for invoices,
-          payment schedules, and signed agreements — use{" "}
-          <Link href="/settings/migration" className="font-medium text-primary hover:underline">
-            Migration Center
-          </Link>
-          . Those records are not imported on this page.
+          Bring a small, clean list of clients, leads, vendors, inventory templates, or package
+          templates into Hello to Cheers. Import from CSV, Excel, Word, PDF, or a pasted list, then
+          map your columns before anything is saved.
         </p>
         <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
       </div>
       <Suspense fallback={null}>
         <ImportHealthWidget />
       </Suspense>
+      <div className="rounded-sm border border-border bg-card p-4 space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">
+          Bringing over existing bookings or financial records?
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Use{" "}
+          <Link href="/settings/migration" className="font-medium text-primary hover:underline">
+            Migration Center
+          </Link>{" "}
+          to import events, tours, date holds, calendar blocks, invoices, payment schedules, and
+          signed agreements.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          For dated events, set up{" "}
+          <Link href="/settings/availability" className="font-medium text-primary hover:underline">
+            Calendar &amp; Availability
+          </Link>{" "}
+          first. In Migration Center, use{" "}
+          <Link href="/settings/migration" className="font-medium text-primary hover:underline">
+            Active Commitment
+          </Link>{" "}
+          for invoices, payment schedules, and signed agreements.
+        </p>
+      </div>
       <ImportWizard initialEntity={initialEntity} cutover={cutover} />
     </div>
   );

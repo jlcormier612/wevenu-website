@@ -100,14 +100,6 @@ function StepEntitySelect({
           </button>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Need Events, tours, holds, calendar blocks, invoices, or signed agreements? Open{" "}
-        <Link href="/settings/migration" className="font-medium text-primary hover:underline">
-          Migration Center
-        </Link>
-        {" "}instead — Import Data does not create those records (except historical Events from a past
-        Client event date).
-      </p>
     </div>
   );
 }
