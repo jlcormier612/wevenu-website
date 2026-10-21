@@ -119,6 +119,7 @@ describe("Phase 3 invite-at-release seams", () => {
   it("release UX states content becomes visible without claiming an invitation email", () => {
     const list = readFileSync(resolve("components/playbooks/event-task-list.tsx"), "utf8");
     assert.doesNotMatch(list, /they'll receive their invitation email if an email address is on file/);
+    assert.match(list, /does not send an invitation email/);
     assert.match(list, /result\.message/);
     const service = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
     assert.match(service, /does not send an invitation email/);

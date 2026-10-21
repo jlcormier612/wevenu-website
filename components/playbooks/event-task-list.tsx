@@ -751,6 +751,7 @@ export function PlaybookApplyRow({
             </Button>
             <p className="w-full text-[11px] text-muted-foreground">
               You&apos;re editing this event&apos;s copy — changes here don&apos;t update the Library template.
+              Release makes the checklist visible in their portal; it does not send an invitation email.
             </p>
           </div>
         </div>

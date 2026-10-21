@@ -16,6 +16,10 @@ import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  isOutstandingFollowUp,
+  setupStatusBadgeLabel,
+} from "@/lib/event-setup/outstanding-follow-ups";
+import {
   SETUP_READINESS_LABEL,
   setupReadinessDetail,
   type EventOrderReadinessInput,
@@ -132,11 +136,11 @@ export function EventSetupPanel({
       }),
     };
   });
+  /** Included areas that still need work — not undecided Set up / Skip rows. */
   const outstanding = stepDetails.filter((row) =>
-    row.detail.status === "needs_action"
-    || row.detail.status === "draft"
-    || row.detail.status === "unavailable",
+    isOutstandingFollowUp(row.decision, row.detail.status),
   );
+  const outstandingSteps = new Set(outstanding.map((row) => row.step));
   const outstandingCount = outstanding.length;
   /** Decisions alone are not “setup complete” while drafts or missing artifacts remain. */
   const setupSettled = decisionsComplete && outstandingCount === 0;
@@ -229,6 +233,9 @@ export function EventSetupPanel({
       {outstandingCount > 0 ? (
         <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-3 space-y-2" data-testid="event-setup-outstanding">
           <p className="text-sm font-medium text-heading">Outstanding on this event</p>
+          <p className="text-xs text-muted-foreground">
+            Included areas that still need a follow-up. Set up or Skip decisions stay on each area below.
+          </p>
           <ul className="space-y-2">
             {outstanding.map(({ step, detail }) => (
               <li key={step} className="flex flex-wrap items-start justify-between gap-2 text-sm">
@@ -240,7 +247,6 @@ export function EventSetupPanel({
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
                     onClick={() => {
                       const tab =
                         step === "planning" ? "playbook"
@@ -270,13 +276,15 @@ export function EventSetupPanel({
           const source = setupStepSource(state, step);
           const inherited = state.inheritedDecisions?.[step];
           const showChooser = decision == null || changing === step;
+          const listedInOutstanding = outstandingSteps.has(step);
+          const badgeLabel = setupStatusBadgeLabel(decision, detail.status, SETUP_READINESS_LABEL);
           return (
             <li key={step} className="rounded-lg border border-border px-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-heading">{setupStepLabel(step)}</p>
-                  <Badge variant={readinessBadgeVariant(detail.status)}>
-                    {SETUP_READINESS_LABEL[detail.status]}
+                  <Badge variant={decision == null ? "outline" : readinessBadgeVariant(detail.status)}>
+                    {badgeLabel}
                     {source === "profile" && state.profileName && detail.status !== "not_included"
                       ? ` · ${state.profileName}`
                       : ""}
@@ -306,7 +314,7 @@ export function EventSetupPanel({
                 ) : null}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{detail.summary}</p>
-              {detail.nextAction && decision === "set_up" ? (
+              {detail.nextAction && decision === "set_up" && !listedInOutstanding ? (
                 <p className="mt-1 text-xs font-medium text-foreground">Next: {detail.nextAction}</p>
               ) : null}
               {decision === "set_up" ? (
@@ -329,6 +337,7 @@ export function EventSetupPanel({
                     readinessByKind={readinessByKind}
                     timelineTemplates={timelineTemplates}
                     onNavigateTab={onNavigateTab}
+                    hideOpenTab={listedInOutstanding}
                   />
                 </div>
               ) : null}
@@ -364,14 +373,13 @@ function ClientWorkspaceInvite({
       <div>
         <h3 className="text-sm font-medium text-heading">Your client&apos;s planning workspace</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your venue&apos;s setup provides the starting point for this event. Review what&apos;s ready,
-          finish any essentials, and invite your client to plan with you in one shared workspace.
+          When you are ready, invite them to the planning workspace. Invitation is separate from
+          releasing checklists or sharing timeline items.
         </p>
       </div>
       <p className="text-xs text-muted-foreground">
-        Your client will receive an invitation to create or access their account and open the planning
-        tools and materials made available for this event. Drafts and other items that require a
-        separate send or share action will remain private until you share them.
+        Invite client to workspace sends an email when an address is on file. Drafts and items that
+        still need a separate release, share, or send stay private until you take that action.
       </p>
       <PortalLinkWidget
         clientId={clientId}
@@ -409,8 +417,10 @@ function SetupTool(props: {
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
   timelineTemplates: TimelineTemplate[];
   onNavigateTab: (tab: string) => void;
+  /** When true, the Outstanding list already owns the primary open action. */
+  hideOpenTab?: boolean;
 }) {
-  const { step, onNavigateTab } = props;
+  const { step, onNavigateTab, hideOpenTab } = props;
   if (step === "planning") {
     return (
       <div className="space-y-2">
@@ -426,7 +436,7 @@ function SetupTool(props: {
           readinessByKind={props.readinessByKind}
           onApplied={() => { props.onWorkApplied(); onNavigateTab("playbook"); }}
         />
-        {props.playbookApplications.length > 0 ? (
+        {!hideOpenTab && props.playbookApplications.length > 0 ? (
           <OpenTab label="Open Planning" tab="playbook" onNavigateTab={onNavigateTab} />
         ) : null}
       </div>
@@ -444,10 +454,13 @@ function SetupTool(props: {
           hasTimeline={props.hasTimeline}
           onApplied={() => { props.onWorkApplied(); onNavigateTab("timeline"); }}
         />
-        {props.hasTimeline ? <OpenTab label="Open Timeline" tab="timeline" onNavigateTab={onNavigateTab} /> : null}
+        {!hideOpenTab && props.hasTimeline ? (
+          <OpenTab label="Open Timeline" tab="timeline" onNavigateTab={onNavigateTab} />
+        ) : null}
       </div>
     );
   }
+  if (hideOpenTab) return null;
   if (step === "floor_plans") return <OpenTab label="Open Floor Plans" tab="floorplan" onNavigateTab={onNavigateTab} />;
   if (step === "vendors") return <OpenTab label="Open Vendors" tab="vendors" onNavigateTab={onNavigateTab} />;
   if (step === "questionnaires") return <OpenTab label="Open Questionnaires" tab="questionnaires" onNavigateTab={onNavigateTab} />;
