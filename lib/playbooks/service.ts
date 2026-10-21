@@ -295,12 +295,17 @@ export async function applyPlaybookToClient(clientId: string, templateId: string
   return result as PlaybookActionResult;
 }
 
-function draftGateMessage(reason: "not_found" | "already_released" | "wrong_task"): string {
+function draftGateMessage(
+  reason: "not_found" | "already_released" | "wrong_task" | "already_applied",
+): string {
   if (reason === "already_released") {
     return "Client Planning has already been released. Event-specific setup edits are locked — use the Planning management workspace for ongoing changes.";
   }
   if (reason === "wrong_task") {
     return "That task is not part of this event's client checklist.";
+  }
+  if (reason === "already_applied") {
+    return "This event already has a Client Planning checklist applied. Switch templates from the setup editor, or remove Planning and start over.";
   }
   return "Apply a Client Planning checklist to this event before editing it.";
 }
