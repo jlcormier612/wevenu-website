@@ -46,6 +46,10 @@ describe("setupStatusBadgeLabel", () => {
   it("presents shared lifecycle as Released on Overview badges", () => {
     assert.equal(setupStatusBadgeLabel("set_up", "shared", SETUP_READINESS_LABEL), "Released");
   });
+
+  it("presents Planning draft inclusion as Included, not Draft", () => {
+    assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL, "planning"), "Included");
+  });
 });
 
 describe("setupStepTemplateLabel", () => {

@@ -30,7 +30,7 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.nextAction, null);
   });
 
-  it("shows client planning draft as Draft with Open Planning, not Shared", () => {
+  it("shows client planning draft as Draft readiness with prepare-not-released summary", () => {
     const detail = setupReadinessDetail(base({
       playbookApplications: [{
         eventId: "e1",
@@ -42,7 +42,7 @@ describe("setupReadinessDetail", () => {
       }],
     }));
     assert.equal(detail.status, "draft");
-    assert.match(detail.summary, /not yet visible/i);
+    assert.match(detail.summary, /has not yet been released/i);
     assert.equal(detail.nextAction, "Open Planning");
   });
 

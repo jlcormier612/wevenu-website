@@ -30,8 +30,14 @@ export function setupStatusBadgeLabel(
   decision: SetupDecision | null | undefined,
   status: SetupReadinessStatus,
   readinessLabel: Record<SetupReadinessStatus, string>,
+  step?: SetupStepKey,
 ): string {
   if (decision == null && status === "needs_action") return "Decide";
+  // Planning inclusion stays Included until released — Draft must not replace inclusion.
+  if (decision === "set_up" && step === "planning") {
+    if (status === "shared") return "Released";
+    if (status === "draft" || status === "included") return "Included";
+  }
   // Portal-facing content uses Released; Shared remains the readiness enum.
   if (status === "shared") return "Released";
   return readinessLabel[status];

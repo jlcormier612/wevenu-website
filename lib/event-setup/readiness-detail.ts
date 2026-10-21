@@ -101,14 +101,14 @@ function planningDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (!client.releasedAt) {
     return {
       status: "draft",
-      summary: `Client checklist "${client.templateName}" is prepared — not yet visible to the client. Open Planning to edit, then use Release to client portal when ready.${venueNote}`,
+      summary: `The client checklist "${client.templateName}" is prepared but has not yet been released to the client. Use Change for this event to customize it, then Release to client portal from Overview when ready.${venueNote}`,
       nextAction: "Open Planning",
     };
   }
 
   return {
     status: "shared",
-    summary: `Client checklist "${client.templateName}" is released to the client.${venueNote}`,
+    summary: `The client checklist "${client.templateName}" has been released to the client.${venueNote}`,
     nextAction: "Open Planning",
   };
 }

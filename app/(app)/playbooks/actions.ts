@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, applyPlaybookToClient, completeEventTask_,
+  addCustomClientEventTask, addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, applyPlaybookToClient, completeEventTask_,
   createStandardClientPlanningTemplate, createStandardVenueWorkflowTemplate, createTemplate, createTemplateFromImport,
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   getMilestones, getTemplate, getTemplateTasks,
-  releasePlaybookApplication, unapplyPlaybookFromEvent,
+  releasePlaybookApplication, removeClientEventTask, replaceClientPlaybookOnEvent, unapplyPlaybookFromEvent,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
-  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
+  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateClientEventTaskFields, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
   updateEventTaskSchedule, updateTemplateTask_,
 } from "@/lib/playbooks/service";
 import type { ScheduleInput } from "@/lib/playbooks/repository";
@@ -307,5 +307,49 @@ export async function deleteMilestoneAction(templateId: string, milestoneId: str
 export async function setMilestoneKindAction(templateId: string, milestoneId: string, kind: PlaybookMilestone["kind"]): Promise<PlaybookActionResult> {
   const result = await setMilestoneKind(templateId, milestoneId, kind);
   if (result.ok) revalidatePath(`/library/playbooks/${templateId}`);
+  return result;
+}
+
+/** Pre-release event-specific Client Planning setup editor — never releases or mutates Library. */
+export async function replaceClientPlaybookAction(
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await replaceClientPlaybookOnEvent(eventId, templateId, eventDate);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/clients");
+  }
+  return result;
+}
+
+export async function addCustomClientEventTaskAction(
+  eventId: string,
+  eventDate: string,
+  input: { title: string; daysOffset: number; description?: string | null },
+): Promise<PlaybookActionResult & { taskId?: string }> {
+  const result = await addCustomClientEventTask(eventId, eventDate, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function removeClientEventTaskAction(
+  eventId: string,
+  taskId: string,
+): Promise<PlaybookActionResult> {
+  const result = await removeClientEventTask(eventId, taskId);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function updateClientEventTaskFieldsAction(
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: { title?: string; daysOffset?: number; description?: string | null },
+): Promise<PlaybookActionResult> {
+  const result = await updateClientEventTaskFields(eventId, eventDate, taskId, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }

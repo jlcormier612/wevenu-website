@@ -17,20 +17,23 @@ const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8
 const tasks = readFileSync(resolve("components/playbooks/event-task-list.tsx"), "utf8");
 
 describe("Change for this event opens the event editor", () => {
-  it("wires Change to navigateStep edit focus, not setChanging Set up/Skip", () => {
+  it("wires Change to changeForEvent, not setChanging Set up/Skip", () => {
     assert.match(panel, /data-testid=\{`event-setup-change-\$\{step\}`\}/);
-    assert.match(panel, /navigateStep\(step, "edit"\)/);
+    assert.match(panel, /changeForEvent\(step\)/);
     assert.doesNotMatch(panel, /setChanging\(step\)/);
     assert.match(panel, /Don&apos;t include for this event/);
   });
 
-  it("Open Planning lands on the event-specific checklist editor", () => {
+  it("Open Planning lands on the management workspace task list", () => {
     assert.match(panel, /playbook#planning-task-list/);
-    assert.match(panel, /playbook#planning-edit/);
     assert.match(detail, /planning-task-list/);
-    assert.match(detail, /planning-edit/);
     assert.match(tasks, /id="planning-task-list"/);
-    assert.match(tasks, /id="planning-edit"/);
+  });
+
+  it("Change for this event opens the dedicated Planning setup editor", () => {
+    assert.match(panel, /setPlanningEditorOpen\(true\)/);
+    assert.match(panel, /EventPlanningSetupEditor/);
+    assert.doesNotMatch(panel, /playbook#planning-edit/);
   });
 
   it("profile-driven Planning defers release to Overview", () => {
@@ -39,9 +42,9 @@ describe("Change for this event opens the event editor", () => {
     assert.match(tasks, /return to Overview and use Release to client portal/);
   });
 
-  it("keeps badge lifecycle separate from template naming", () => {
-    assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL), "Draft");
-    assert.equal(setupStatusBadgeLabel("set_up", "shared", SETUP_READINESS_LABEL), "Released");
+  it("keeps Planning inclusion Included separate from release copy", () => {
+    assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL, "planning"), "Included");
+    assert.equal(setupStatusBadgeLabel("set_up", "shared", SETUP_READINESS_LABEL, "planning"), "Released");
     assert.equal(
       setupStepTemplateLabel(
         "inventory",
@@ -49,7 +52,6 @@ describe("Change for this event opens the event editor", () => {
       ),
       "Bar basics",
     );
-    assert.doesNotMatch(panel, /\$\{state\.profileName\}/);
-    assert.match(panel, /setupStepTemplateLabel/);
+    assert.match(panel, /state\.profileName/);
   });
 });

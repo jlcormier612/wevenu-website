@@ -850,6 +850,7 @@ export function EventDetail({
             }
             hasEventInventory={Boolean(eventInventory)}
             eventOrder={eventOrder ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt, templateId: eventOrder.templateId ?? null } : null}
+            eventTasks={eventTasks}
             templateNames={{
               planning: playbookTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.planningPlaybookTemplateId)?.name
                 ?? playbookApplications.find((a) => a.kind === "client")?.templateName

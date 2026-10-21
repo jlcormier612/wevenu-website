@@ -11,6 +11,7 @@ import {
   prepareAndReleasePortalAction,
   reopenEventSetupAction,
 } from "@/app/(app)/events/[id]/setup-actions";
+import { EventPlanningSetupEditor } from "@/components/events/event-planning-setup-editor";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,13 +36,21 @@ import {
   type EventSetupState,
   type SetupStepKey,
 } from "@/lib/event-setup/state";
-import type { EventPlaybookApplication, EventReadiness, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
+import type {
+  EventPlaybookApplication,
+  EventReadiness,
+  EventTask,
+  PlaybookTemplateWithStats,
+} from "@/lib/playbooks/types";
 import type { TimelineTemplate } from "@/lib/timeline-templates/types";
 
 function readinessBadgeVariant(
   status: keyof typeof SETUP_READINESS_LABEL,
+  badgeLabel: string,
 ): "success" | "outline" | "warning" | "secondary" {
-  if (status === "included" || status === "shared") return "success";
+  if (badgeLabel === "Included" || badgeLabel === "Released" || status === "included" || status === "shared") {
+    return "success";
+  }
   if (status === "not_included") return "outline";
   if (status === "draft") return "secondary";
   return "warning";
@@ -71,6 +80,7 @@ export function EventSetupPanel({
   preferredFloorPlanName = null,
   hasEventInventory = false,
   eventOrder = null,
+  eventTasks = [],
   templateNames = { planning: null, timeline: null, inventory: null, eventOrder: null },
   onNavigateTab,
 }: {
@@ -97,6 +107,7 @@ export function EventSetupPanel({
   preferredFloorPlanName?: string | null;
   hasEventInventory?: boolean;
   eventOrder?: EventOrderReadinessInput | null;
+  eventTasks?: EventTask[];
   templateNames?: {
     planning: string | null;
     timeline: string | null;
@@ -107,6 +118,7 @@ export function EventSetupPanel({
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
+  const [planningEditorOpen, setPlanningEditorOpen] = React.useState(false);
   const effective = effectiveDecisionMap(state);
   const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
   const counts = setupDecisionCounts(applicableSteps, effective);
@@ -147,7 +159,7 @@ export function EventSetupPanel({
   const setupSettled = decisionsComplete && outstandingCount === 0 && portalReleased;
   const collapsed = Boolean(state.collapsedAt) && setupSettled;
 
-  function navigateStep(step: SetupStepKey, focus: "open" | "edit" = "open") {
+  function navigateStep(step: SetupStepKey) {
     const tab =
       step === "planning" ? "playbook"
         : step === "timeline" ? "timeline"
@@ -157,16 +169,20 @@ export function EventSetupPanel({
                 : step === "inventory" ? "inventory"
                   : step === "event_order" ? "event-order"
                     : "overview";
-    // Planning edit focus lands on the event-specific checklist editor.
-    if (step === "planning" && focus === "edit") {
-      onNavigateTab("playbook#planning-edit");
-      return;
-    }
-    if (step === "planning" && focus === "open") {
+    // Open Planning → management workspace (task list), not the setup editor.
+    if (step === "planning") {
       onNavigateTab("playbook#planning-task-list");
       return;
     }
     onNavigateTab(tab);
+  }
+
+  function changeForEvent(step: SetupStepKey) {
+    if (step === "planning") {
+      setPlanningEditorOpen(true);
+      return;
+    }
+    navigateStep(step);
   }
 
   function openSetupProfiles() {
@@ -344,23 +360,28 @@ export function EventSetupPanel({
           const source = setupStepSource(state, step);
           const inherited = state.inheritedDecisions?.[step];
           const undecided = decision == null;
-          const badgeLabel = setupStatusBadgeLabel(decision, detail.status, SETUP_READINESS_LABEL);
-          const templateLabel = setupStepTemplateLabel(step, templateNames, {
-            clientChecklistName: clientPlanning?.templateName ?? null,
-            preferredFloorPlanName,
-          });
+          const badgeLabel = setupStatusBadgeLabel(decision, detail.status, SETUP_READINESS_LABEL, step);
+          // Profile-included cards show the Setup Profile name (matches Timeline).
+          // Planning checklist template name stays in the summary / editor.
+          const nameLabel =
+            source === "profile" && state.profileName && detail.status !== "not_included"
+              ? state.profileName
+              : setupStepTemplateLabel(step, templateNames, {
+                clientChecklistName: clientPlanning?.templateName ?? null,
+                preferredFloorPlanName,
+              });
           return (
             <li key={step} className="rounded-lg border border-border px-3 py-3" data-testid={`event-setup-card-${step}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-heading">{setupStepLabel(step)}</p>
-                  <Badge variant={decision == null ? "outline" : readinessBadgeVariant(detail.status)}>
+                  <Badge variant={decision == null ? "outline" : readinessBadgeVariant(detail.status, badgeLabel)}>
                     {badgeLabel}
                     {source === "event" && state.usesProfile ? " · This event" : ""}
                   </Badge>
-                  {templateLabel && detail.status !== "not_included" ? (
+                  {nameLabel && detail.status !== "not_included" ? (
                     <span className="text-xs text-muted-foreground" data-testid={`event-setup-template-${step}`}>
-                      {templateLabel}
+                      {nameLabel}
                     </span>
                   ) : null}
                 </div>
@@ -382,7 +403,7 @@ export function EventSetupPanel({
                         variant="outline"
                         disabled={pending}
                         data-testid={`event-setup-change-${step}`}
-                        onClick={() => navigateStep(step, "edit")}
+                        onClick={() => changeForEvent(step)}
                       >
                         Change for this event
                       </Button>
@@ -411,7 +432,7 @@ export function EventSetupPanel({
                 <div className="mt-3">
                   <SetupEditorLink
                     step={step}
-                    onOpen={() => navigateStep(step, "open")}
+                    onOpen={() => navigateStep(step)}
                     onOpenSetupProfiles={
                       (step === "inventory" && !hasEventInventory && !inheritedRefs.inventoryTemplateId)
                       || (step === "event_order" && !eventOrder && !inheritedRefs.eventOrderTemplateId)
@@ -432,6 +453,18 @@ export function EventSetupPanel({
           clientEmail={clientEmail}
         />
       ) : null}
+      <EventPlanningSetupEditor
+        open={planningEditorOpen}
+        onOpenChange={setPlanningEditorOpen}
+        eventId={eventId}
+        eventName={eventName}
+        eventDate={eventDate}
+        clientName={clientName}
+        profileName={state.profileName ?? null}
+        applications={playbookApplications}
+        templates={playbookTemplates}
+        tasks={eventTasks}
+      />
     </section>
   );
 }

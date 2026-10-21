@@ -64,7 +64,8 @@ describe("workspace top nav simplification", () => {
     assert.match(setup, /"Open Inventory"/);
     assert.match(setup, /step === "inventory" \? "inventory"/);
     assert.match(setup, /step === "event_order" \? "event-order"/);
-    assert.match(setup, /navigateStep\(step, "edit"\)/);
+    assert.match(setup, /changeForEvent\(step\)/);
+    assert.match(setup, /EventPlanningSetupEditor/);
   });
 
   it("hash / tab sync still activates the selected module on this event", () => {

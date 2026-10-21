@@ -42,11 +42,6 @@ function noteDeployment(header: string | undefined): string | null {
   return header.match(/[0-9a-f]{40}/)?.[0] ?? null;
 }
 
-function preferOverviewReleaseCopy(text: string): boolean {
-  return /return to Overview and use Release to client portal/i.test(text)
-    || !/Release to .+Client/i.test(text);
-}
-
 async function cookies() {
   const { data: link } = await admin.auth.admin.generateLink({ type: "magiclink", email: EMAIL });
   const { data: otp, error } = await anon.auth.verifyOtp({
@@ -550,42 +545,94 @@ async function main() {
       const setupPanel = page.getByTestId("event-setup-panel");
       const changeCount = await setupPanel.getByTestId("event-setup-change-planning").count();
       const setUpChooser = await setupPanel.getByRole("button", { name: /^Set up$/ }).count();
+      const planningCard = await setupPanel.getByTestId("event-setup-card-planning").innerText();
       record(
         "event_setup_change_opens_editor_not_set_up_skip",
         changeCount === 1 && setUpChooser === 0,
         `change=${changeCount} setUpChooser=${setUpChooser}`,
       );
+      record(
+        "planning_badge_included_not_draft",
+        /\bIncluded\b/i.test(planningCard) && !/\bDraft\b/i.test(planningCard),
+        planningCard.slice(0, 280),
+      );
+      record(
+        "planning_shows_profile_name",
+        /Standard Wedding Setup/i.test(planningCard),
+        planningCard.slice(0, 280),
+      );
     }
 
-    // Open Planning → event checklist editor
+    // Open Planning → management workspace
     await page.getByTestId("event-setup-open-planning").click();
     await page.waitForTimeout(900);
-    const planningEditor = page.getByTestId("planning-task-list");
-    const planningEdit = page.getByTestId("planning-edit");
+    const managementList = page.getByTestId("planning-task-list");
     record(
-      "open_planning_reaches_event_editor",
-      (await planningEditor.count()) > 0 && (await planningEdit.count()) > 0,
-      `taskList=${await planningEditor.count()} edit=${await planningEdit.count()}`,
+      "open_planning_reaches_management_workspace",
+      (await managementList.count()) > 0,
+      `taskList=${await managementList.count()}`,
     );
-    const planningBody = await page.locator("body").innerText();
-    const genericVenueEmpty = /No team checklist applied yet/i.test(planningBody);
-    const configuredVenuePrompt = /Configured team checklist/i.test(planningBody);
-    const venueApplied = /Venue Planning|For your team:/i.test(planningBody) && !genericVenueEmpty;
+    const managementBody = await page.locator('[data-testid="planning-task-list"]').innerText().catch(() => "");
     record(
-      "planning_venue_checklist_honest",
-      venueApplied || configuredVenuePrompt || !genericVenueEmpty,
-      planningBody.slice(0, 280),
+      "management_workspace_keeps_fulfillment_actions",
+      /Waive|Create Request|Upcoming|complete/i.test(managementBody)
+        || (await page.getByRole("button", { name: /Waive/i }).count()) > 0,
+      managementBody.slice(0, 280),
     );
-    record(
-      "planning_defers_release_to_overview",
-      preferOverviewReleaseCopy(planningBody),
-      planningBody.slice(0, 280),
-    );
-    await page.screenshot({ path: `${OUT}/03b-planning-editor-1280.png`, fullPage: true });
+    await page.screenshot({ path: `${OUT}/03b-planning-management-1280.png`, fullPage: true });
+
     await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
       await page.locator('[value="overview"]').first().click();
     });
     await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
+
+    // Change for this event → dedicated setup editor
+    await page.getByTestId("event-setup-change-planning").click();
+    await page.waitForSelector('[data-testid="event-planning-setup-editor"]', { timeout: 15_000 });
+    const setupEditor = page.getByTestId("event-planning-setup-editor");
+    record(
+      "change_opens_dedicated_planning_setup_editor",
+      (await setupEditor.count()) === 1,
+      `editor=${await setupEditor.count()}`,
+    );
+    record(
+      "setup_editor_has_two_paths_only",
+      (await page.getByTestId("planning-setup-mode-template").count()) === 1
+        && (await page.getByTestId("planning-setup-mode-customize").count()) === 1
+        && (await setupEditor.getByRole("button", { name: /Waive/i }).count()) === 0
+        && (await setupEditor.getByRole("button", { name: /Create Request/i }).count()) === 0,
+      "template + customize; no waive/request",
+    );
+
+    // Customize: add a task, save, reopen
+    await page.getByTestId("planning-setup-mode-customize").click();
+    await page.getByTestId("planning-setup-new-title").fill("QA event-only planning task");
+    await page.getByTestId("planning-setup-add-task").click();
+    await page.waitForTimeout(2000);
+    const { data: customTasks } = await admin
+      .from("event_tasks")
+      .select("id,title,template_task_id,owner_type")
+      .eq("event_id", eventId!)
+      .eq("venue_id", FANCY)
+      .eq("title", "QA event-only planning task");
+    record(
+      "setup_editor_add_task_persists",
+      (customTasks ?? []).length === 1
+        && customTasks![0]!.template_task_id == null
+        && customTasks![0]!.owner_type === "couple",
+      JSON.stringify(customTasks),
+    );
+    await page.screenshot({ path: `${OUT}/03c-planning-setup-editor-1280.png`, fullPage: true });
+    await page.getByRole("button", { name: /Back to Overview/i }).click();
+    await page.waitForTimeout(500);
+
+    // Library template unchanged (spot-check: no new playbook_tasks titled QA…)
+    const { count: libraryHits } = await admin
+      .from("playbook_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", FANCY)
+      .eq("title", "QA event-only planning task");
+    record("setup_editor_did_not_mutate_library", (libraryHits ?? 0) === 0, `libraryHits=${libraryHits}`);
 
     // Vendors tab: Vendor Network, not a second recommendation curator
     await page.getByRole("tab", { name: /Vendors/i }).click().catch(async () => {
