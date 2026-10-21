@@ -182,15 +182,15 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
   if (qs.length === 0) {
     if (expected.length > 0) {
       return {
-        status: "included",
-        summary: `${expected.length} questionnaire${expected.length === 1 ? "" : "s"} are configured for separate scheduling and authorized send. Releasing the portal does not send them.`,
+        status: "draft",
+        summary: `${expected.length} questionnaire template${expected.length === 1 ? "" : "s"} selected in the Setup Profile, but no event draft has been created yet. Drafts are created at booking when possible. Staff send questionnaires with an explicit authorized send — portal release does not send them, and there is no automated delivery schedule.`,
         nextAction: "Open Questionnaires",
       };
     }
     return {
       status: "included",
       summary:
-        "Questionnaires are configured and sent on their own schedule. Releasing the portal does not send questionnaires.",
+        "Questionnaires stay separate from portal release. Staff create drafts and send them with an authorized send when ready — there is no automated delivery schedule.",
       nextAction: "Open Questionnaires",
     };
   }
@@ -200,14 +200,14 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
   if (sent.length === 0) {
     return {
       status: "draft",
-      summary: `${drafts.length} questionnaire draft${drafts.length === 1 ? "" : "s"} ready for scheduled or authorized send — not sent by portal release.`,
+      summary: `${drafts.length} questionnaire draft${drafts.length === 1 ? "" : "s"} on this event. Send with an authorized send when ready — not sent by portal release, and not on an automated schedule.`,
       nextAction: "Open Questionnaires",
     };
   }
   if (drafts.length > 0) {
     return {
       status: "shared",
-      summary: `${sent.length} sent · ${drafts.length} still draft (drafts stay private until sent). Separate from portal release.`,
+      summary: `${sent.length} sent · ${drafts.length} still draft (drafts stay private until staff send them). Separate from portal release.`,
       nextAction: "Open Questionnaires",
     };
   }

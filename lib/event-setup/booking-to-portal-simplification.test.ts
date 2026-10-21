@@ -50,7 +50,7 @@ describe("booking-to-portal simplification", () => {
     assert.match(panel, /prepareAndReleasePortalAction/);
     assert.match(panel, /data-testid="prepare-and-release-portal"/);
     assert.match(panel, /inviteLabel="Invite client"/);
-    assert.match(panel, /Questionnaires stay on their own delivery schedule/);
+    assert.match(panel, /Questionnaires use authorized send when staff choose/);
     assert.doesNotMatch(panel, /inviteLabel="Invite client to workspace"/);
     assert.doesNotMatch(panel, /ensureEventInventoryAction/);
     assert.doesNotMatch(panel, /ensureEventOrderAction/);

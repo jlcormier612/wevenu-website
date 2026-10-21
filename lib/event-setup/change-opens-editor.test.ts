@@ -36,6 +36,12 @@ describe("Change for this event opens the event editor", () => {
     assert.doesNotMatch(panel, /playbook#planning-edit/);
   });
 
+  it("Change for Timeline opens a dedicated editor, not navigateStep management", () => {
+    assert.match(panel, /setTimelineEditorOpen\(true\)/);
+    assert.match(panel, /EventTimelineSetupEditor/);
+    assert.match(panel, /SETUP_EDITOR_STEPS/);
+  });
+
   it("profile-driven Planning defers release to Overview", () => {
     assert.match(detail, /preferOverviewRelease=\{Boolean\(eventSetup\.usesProfile\)\}/);
     assert.match(tasks, /preferOverviewRelease/);

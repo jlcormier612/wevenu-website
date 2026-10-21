@@ -167,7 +167,7 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.match(inherit, /upsertOffer/);
     assert.match(inherit, /event_floor_plan_offers/);
     assert.match(inherit, /applyInheritedQuestionnaires/);
-    assert.match(inherit, /applyTemplateToEvent/);
+    assert.match(inherit, /applyQuestionnaireTemplateSnapshot/);
     assert.doesNotMatch(inherit, /applyInheritedVendorRecommendations/);
     assert.doesNotMatch(inherit, /addRecommendation/);
     assert.match(inherit, /Vendor Network classifications are authoritative/);

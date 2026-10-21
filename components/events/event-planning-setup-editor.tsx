@@ -12,6 +12,7 @@ import {
   replaceClientPlaybookAction,
   updateClientEventTaskFieldsAction,
 } from "@/app/(app)/playbooks/actions";
+import { EventVenuePlanningSetupEditor } from "@/components/events/event-venue-planning-setup-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -69,6 +70,7 @@ export function EventPlanningSetupEditor({
   const router = useRouter();
   const clientApp = applications.find((a) => a.kind === "client");
   const clientTemplates = templates.filter((t) => t.kind === "client" && !t.isArchived);
+  const [audience, setAudience] = React.useState<"client" | "venue">("client");
   const [mode, setMode] = React.useState<"template" | "customize">("customize");
   const [selectedTemplateId, setSelectedTemplateId] = React.useState(
     clientApp?.templateId ?? clientTemplates[0]?.id ?? "",
@@ -80,6 +82,7 @@ export function EventPlanningSetupEditor({
 
   React.useEffect(() => {
     if (!open) return;
+    setAudience("client");
     setSelectedTemplateId(clientApp?.templateId ?? clientTemplates[0]?.id ?? "");
     setRows(toDraftRows(tasks));
     setMode("customize");
@@ -95,10 +98,24 @@ export function EventPlanningSetupEditor({
 
   function requestClose() {
     if (pending) return;
-    if ((mode === "customize" && dirtyCustomize) || (mode === "template" && templateChanged)) {
+    if (
+      audience === "client"
+      && ((mode === "customize" && dirtyCustomize) || (mode === "template" && templateChanged))
+    ) {
       if (!confirm("You have unsaved changes. Leave without saving?")) return;
     }
     onOpenChange(false);
+  }
+
+  function switchAudience(next: "client" | "venue") {
+    if (next === audience) return;
+    if (
+      audience === "client"
+      && ((mode === "customize" && dirtyCustomize) || (mode === "template" && templateChanged))
+    ) {
+      if (!confirm("You have unsaved client checklist changes. Switch anyway?")) return;
+    }
+    setAudience(next);
   }
 
   function switchMode(next: "template" | "customize") {
@@ -219,16 +236,51 @@ export function EventPlanningSetupEditor({
         data-testid="event-planning-setup-editor"
       >
         <SheetHeader className="mb-4">
-          <SheetTitle>Edit client checklist for this event</SheetTitle>
+          <SheetTitle>Edit Planning for this event</SheetTitle>
           <SheetDescription>
             {eventName}
             {clientName ? ` · ${clientName}` : ""}
             {profileName ? ` · from ${profileName}` : ""}
             . Changes apply only to this event and do not update the reusable Library template.
-            Release still happens from Overview.
+            Client release still happens from Overview. Venue tasks stay internal.
           </SheetDescription>
         </SheetHeader>
 
+        <div className="mb-4 flex gap-2" data-testid="planning-setup-audience-tabs">
+          <Button
+            type="button"
+            size="sm"
+            variant={audience === "client" ? "default" : "outline"}
+            data-testid="planning-setup-audience-client"
+            onClick={() => switchAudience("client")}
+            disabled={pending}
+          >
+            Client checklist
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={audience === "venue" ? "default" : "outline"}
+            data-testid="planning-setup-audience-venue"
+            onClick={() => switchAudience("venue")}
+            disabled={pending}
+          >
+            Venue checklist
+          </Button>
+        </div>
+
+        {audience === "venue" ? (
+          <EventVenuePlanningSetupEditor
+            eventId={eventId}
+            eventDate={eventDate}
+            profileName={profileName}
+            applications={applications}
+            templates={templates}
+            tasks={tasks}
+            active={open && audience === "venue"}
+          />
+        ) : (
+          <>
         {released ? (
           <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             Client Planning is already released. Use Open Planning for ongoing management.
@@ -395,6 +447,8 @@ export function EventPlanningSetupEditor({
               </>
             )}
           </div>
+        )}
+          </>
         )}
 
         <div className="mt-6 flex justify-end">

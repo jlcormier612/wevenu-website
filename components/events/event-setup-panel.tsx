@@ -12,9 +12,11 @@ import {
   reopenEventSetupAction,
 } from "@/app/(app)/events/[id]/setup-actions";
 import { EventPlanningSetupEditor } from "@/components/events/event-planning-setup-editor";
+import { EventTimelineSetupEditor } from "@/components/events/event-timeline-setup-editor";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { TimelineEntry } from "@/lib/timeline/types";
 import {
   isOutstandingFollowUp,
   setupStatusBadgeLabel,
@@ -42,7 +44,10 @@ import type {
   EventTask,
   PlaybookTemplateWithStats,
 } from "@/lib/playbooks/types";
-import type { TimelineTemplate } from "@/lib/timeline-templates/types";
+import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
+
+/** Areas with a dedicated event-specific setup editor (Change ≠ Open). */
+const SETUP_EDITOR_STEPS = new Set<SetupStepKey>(["planning", "timeline"]);
 
 function readinessBadgeVariant(
   status: keyof typeof SETUP_READINESS_LABEL,
@@ -74,6 +79,7 @@ export function EventSetupPanel({
   playbookApplications,
   readinessByKind,
   timelineTemplates,
+  timelineEntries = [],
   questionnaires = [],
   vendorRecommendationCount = 0,
   floorPlanOfferCount = 0,
@@ -100,7 +106,8 @@ export function EventSetupPanel({
   playbookTemplates: PlaybookTemplateWithStats[];
   playbookApplications: EventPlaybookApplication[];
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
-  timelineTemplates: TimelineTemplate[];
+  timelineTemplates: TimelineTemplateWithStats[];
+  timelineEntries?: TimelineEntry[];
   questionnaires?: QuestionnaireReadinessInput[];
   vendorRecommendationCount?: number;
   floorPlanOfferCount?: number;
@@ -119,6 +126,7 @@ export function EventSetupPanel({
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [planningEditorOpen, setPlanningEditorOpen] = React.useState(false);
+  const [timelineEditorOpen, setTimelineEditorOpen] = React.useState(false);
   const effective = effectiveDecisionMap(state);
   const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
   const counts = setupDecisionCounts(applicableSteps, effective);
@@ -182,7 +190,12 @@ export function EventSetupPanel({
       setPlanningEditorOpen(true);
       return;
     }
-    navigateStep(step);
+    if (step === "timeline") {
+      setTimelineEditorOpen(true);
+      return;
+    }
+    // Areas without a dedicated setup editor yet — do not pretend management is Change.
+    toast.message("Event-specific setup editing for this area is not available yet. Use Open for ongoing management.");
   }
 
   function openSetupProfiles() {
@@ -269,7 +282,7 @@ export function EventSetupPanel({
               <p className="mt-1 text-sm text-muted-foreground">
                 Review your event&apos;s standard setup, make any event-specific changes, and release
                 the prepared experience to the client portal. Invite the client separately when
-                you&apos;re ready. Questionnaires stay on their own delivery schedule.
+                you&apos;re ready. Questionnaires use authorized send when staff choose — not an automated schedule.
               </p>
             </>
           ) : (
@@ -325,7 +338,7 @@ export function EventSetupPanel({
           <p className="text-sm font-medium text-heading">Outstanding on this event</p>
           <p className="text-xs text-muted-foreground">
             Genuine blockers only. Prepared drafts awaiting release are not listed here —
-            use Release to client portal once decisions are complete. Questionnaires are scheduled separately.
+            use Release to client portal once decisions are complete. Questionnaires use authorized send, separately from release.
           </p>
           <ul className="space-y-2">
             {outstanding.map(({ step, detail }) => (
@@ -396,7 +409,7 @@ export function EventSetupPanel({
                   </div>
                 ) : state.usesProfile ? (
                   <div className="flex flex-wrap gap-2">
-                    {decision === "set_up" ? (
+                    {decision === "set_up" && SETUP_EDITOR_STEPS.has(step) ? (
                       <Button
                         type="button"
                         size="sm"
@@ -465,6 +478,17 @@ export function EventSetupPanel({
         templates={playbookTemplates}
         tasks={eventTasks}
       />
+      <EventTimelineSetupEditor
+        open={timelineEditorOpen}
+        onOpenChange={setTimelineEditorOpen}
+        eventId={eventId}
+        eventName={eventName}
+        eventStartTime={eventStartTime}
+        profileName={state.profileName ?? null}
+        preferredTemplateId={inheritedRefs.timelineTemplateId ?? null}
+        templates={timelineTemplates}
+        entries={timelineEntries}
+      />
     </section>
   );
 }
@@ -492,7 +516,7 @@ function ClientWorkspaceInvite({
       </div>
       <p className="text-xs text-muted-foreground">
         Invite client sends an email when an address is on file. Questionnaires are never sent by
-        this invite — they stay on their own schedule.
+        this invite — staff send them with an authorized send when ready.
       </p>
       <PortalLinkWidget
         clientId={clientId}

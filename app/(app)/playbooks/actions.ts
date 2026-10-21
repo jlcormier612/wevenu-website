@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  addCustomClientEventTask, addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, applyPlaybookToClient, completeEventTask_,
+  addCustomClientEventTask, addCustomVenueEventTask, addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask,   applyPlaybookToEvent, applyPlaybookToClient, completeEventTask_,
   createStandardClientPlanningTemplate, createStandardVenueWorkflowTemplate, createTemplate, createTemplateFromImport,
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   getMilestones, getTemplate, getTemplateTasks,
-  releasePlaybookApplication, removeClientEventTask, replaceClientPlaybookOnEvent, unapplyPlaybookFromEvent,
+  releasePlaybookApplication, removeClientEventTask, removeVenueEventTask, replaceClientPlaybookOnEvent, replaceVenuePlaybookOnEvent, unapplyPlaybookFromEvent,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
-  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateClientEventTaskFields, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
+  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateClientEventTaskFields, updateVenueEventTaskFields, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
   updateEventTaskSchedule, updateTemplateTask_,
 } from "@/lib/playbooks/service";
 import type { ScheduleInput } from "@/lib/playbooks/repository";
@@ -350,6 +350,50 @@ export async function updateClientEventTaskFieldsAction(
   input: { title?: string; daysOffset?: number; description?: string | null },
 ): Promise<PlaybookActionResult> {
   const result = await updateClientEventTaskFields(eventId, eventDate, taskId, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+/** Pre-release event-specific Venue Planning setup — stays internal; never mutates Library. */
+export async function replaceVenuePlaybookAction(
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await replaceVenuePlaybookOnEvent(eventId, templateId, eventDate);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/clients");
+  }
+  return result;
+}
+
+export async function addCustomVenueEventTaskAction(
+  eventId: string,
+  eventDate: string,
+  input: { title: string; daysOffset: number; description?: string | null },
+): Promise<PlaybookActionResult & { taskId?: string }> {
+  const result = await addCustomVenueEventTask(eventId, eventDate, input);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function removeVenueEventTaskAction(
+  eventId: string,
+  taskId: string,
+): Promise<PlaybookActionResult> {
+  const result = await removeVenueEventTask(eventId, taskId);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function updateVenueEventTaskFieldsAction(
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: { title?: string; daysOffset?: number; description?: string | null },
+): Promise<PlaybookActionResult> {
+  const result = await updateVenueEventTaskFields(eventId, eventDate, taskId, input);
   if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }

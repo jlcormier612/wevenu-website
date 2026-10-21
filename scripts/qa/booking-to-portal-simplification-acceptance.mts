@@ -634,6 +634,118 @@ async function main() {
       .eq("title", "QA event-only planning task");
     record("setup_editor_did_not_mutate_library", (libraryHits ?? 0) === 0, `libraryHits=${libraryHits}`);
 
+    // Re-open Planning Change → Venue checklist path
+    await page.getByTestId("event-setup-change-planning").click();
+    await page.waitForSelector('[data-testid="event-planning-setup-editor"]', { timeout: 15_000 });
+    await page.getByTestId("planning-setup-audience-venue").click();
+    await page.waitForSelector('[data-testid="event-venue-planning-setup-editor"]', { timeout: 10_000 });
+    record(
+      "setup_editor_has_venue_audience",
+      (await page.getByTestId("event-venue-planning-setup-editor").count()) === 1
+        && (await page.getByTestId("venue-planning-setup-mode-template").count()) === 1
+        && (await page.getByTestId("venue-planning-setup-mode-customize").count()) === 1,
+      "venue audience + two paths",
+    );
+    await page.getByTestId("venue-planning-setup-mode-customize").click();
+    await page.getByTestId("venue-planning-setup-new-title").fill("QA venue-only planning task");
+    await page.getByTestId("venue-planning-setup-add-task").click();
+    await page.waitForTimeout(2000);
+    const { data: venueCustomTasks } = await admin
+      .from("event_tasks")
+      .select("id,title,template_task_id,owner_type")
+      .eq("event_id", eventId!)
+      .eq("venue_id", FANCY)
+      .eq("title", "QA venue-only planning task");
+    record(
+      "setup_editor_venue_add_task_persists",
+      (venueCustomTasks ?? []).length === 1
+        && venueCustomTasks![0]!.template_task_id == null
+        && venueCustomTasks![0]!.owner_type !== "couple",
+      JSON.stringify(venueCustomTasks),
+    );
+    const { count: venueLibraryHits } = await admin
+      .from("playbook_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", FANCY)
+      .eq("title", "QA venue-only planning task");
+    record(
+      "setup_editor_venue_did_not_mutate_library",
+      (venueLibraryHits ?? 0) === 0,
+      `libraryHits=${venueLibraryHits}`,
+    );
+    await page.screenshot({ path: `${OUT}/03d-venue-planning-setup-editor-1280.png`, fullPage: true });
+    await page.getByRole("button", { name: /Back to Overview/i }).click();
+    await page.waitForTimeout(500);
+
+    // Timeline Change ≠ Open
+    const timelineChange = page.getByTestId("event-setup-change-timeline");
+    if ((await timelineChange.count()) > 0) {
+      const { count: tlBefore } = await admin
+        .from("timeline_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!);
+      await timelineChange.click();
+      await page.waitForSelector('[data-testid="event-timeline-setup-editor"]', { timeout: 15_000 });
+      record(
+        "change_opens_dedicated_timeline_setup_editor",
+        (await page.getByTestId("event-timeline-setup-editor").count()) === 1
+          && (await page.getByTestId("timeline-setup-mode-template").count()) === 1
+          && (await page.getByTestId("timeline-setup-mode-customize").count()) === 1,
+        "timeline editor + two paths",
+      );
+      await page.getByTestId("timeline-setup-mode-customize").click();
+      await page.getByTestId("timeline-setup-new-title").fill("QA event-only timeline item");
+      await page.getByTestId("timeline-setup-add-item").click();
+      await page.waitForTimeout(2000);
+      const { data: tlCustom } = await admin
+        .from("timeline_entries")
+        .select("id,title,owner")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)
+        .eq("title", "QA event-only timeline item");
+      record(
+        "timeline_setup_add_item_persists",
+        (tlCustom ?? []).length === 1 && tlCustom![0]!.owner === "venue",
+        JSON.stringify(tlCustom),
+      );
+      const { count: tlAfter } = await admin
+        .from("timeline_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!);
+      record(
+        "timeline_setup_did_not_duplicate_on_add",
+        (tlAfter ?? 0) === (tlBefore ?? 0) + 1,
+        `before=${tlBefore} after=${tlAfter}`,
+      );
+      await page.screenshot({ path: `${OUT}/03e-timeline-setup-editor-1280.png`, fullPage: true });
+      await page.getByRole("button", { name: /Back to Overview/i }).click();
+      await page.waitForTimeout(500);
+      await page.getByTestId("event-setup-open-timeline").click().catch(async () => {
+        await page.getByRole("button", { name: /Open Timeline/i }).click();
+      });
+      await page.waitForTimeout(900);
+      record(
+        "open_timeline_reaches_management_workspace",
+        /timeline/i.test(page.url()) || (await page.getByRole("tab", { name: /Timeline/i }).count()) > 0,
+        `url=${page.url()}`,
+      );
+      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
+        await page.locator('[value="overview"]').first().click();
+      });
+      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
+    } else {
+      record("change_opens_dedicated_timeline_setup_editor", false, "timeline Change button missing");
+    }
+
+    // Areas without setup editors must not show Change (no false management route)
+    record(
+      "change_hidden_for_areas_without_setup_editor",
+      (await page.getByTestId("event-setup-change-inventory").count()) === 0
+        && (await page.getByTestId("event-setup-change-event_order").count()) === 0
+        && (await page.getByTestId("event-setup-change-floor_plans").count()) === 0,
+      "Inv/EO/Floor Change hidden until later phases",
+    );
+
     // Vendors tab: Vendor Network, not a second recommendation curator
     await page.getByRole("tab", { name: /Vendors/i }).click().catch(async () => {
       await page.locator('[value="vendors"], button:has-text("Vendors")').first().click();

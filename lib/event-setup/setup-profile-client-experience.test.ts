@@ -100,7 +100,7 @@ describe("Questionnaires are multi-select drafts, not auto-sent", () => {
     assert.match(section, /prepared as drafts at booking/);
     assert.match(section, /Preparing and releasing the portal never sends them/);
     assert.match(inherit, /applyInheritedQuestionnaires/);
-    assert.match(inherit, /applyTemplateToEvent/);
+    assert.match(inherit, /applyQuestionnaireTemplateSnapshot/);
     assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);
   });
 });

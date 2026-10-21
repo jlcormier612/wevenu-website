@@ -59,6 +59,29 @@ export async function applyTimelineTemplateToEvent(
   return { ok: true };
 }
 
+/**
+ * Event-specific timeline template switch for Overview setup.
+ * Removes venue-owned entries on this event, then applies the selected Library
+ * template as a fresh event copy. Client-owned entries are preserved.
+ * Does not share with the couple and does not mutate the Library template.
+ */
+export async function replaceEventTimelineFromTemplate(
+  eventId: string,
+  templateId: string,
+  eventStartTime: string | null,
+): Promise<TimelineActionResult> {
+  const { getTimelineEntries, deleteEntry } = await import("@/lib/timeline/service");
+  const existing = await getTimelineEntries(eventId);
+  const venueOwned = existing.filter((e) => e.owner === "venue");
+  for (const entry of venueOwned) {
+    const removed = await deleteEntry(entry.id);
+    if (!removed.ok) {
+      return { ok: false, message: removed.message ?? `Could not remove "${entry.title}" before switching templates.` };
+    }
+  }
+  return applyTimelineTemplateToEvent(eventId, templateId, eventStartTime);
+}
+
 export async function applyTimelineTemplateToClient(
   clientId: string, templateId: string, eventStartTime: string | null,
 ): Promise<TimelineActionResult> {

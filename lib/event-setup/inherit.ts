@@ -193,7 +193,7 @@ async function applyInheritedTemplates(
   }
 
   if (caps.questionnaires && profile.decisions.questionnaires === "set_up") {
-    await applyInheritedQuestionnaires(eventId, profile);
+    await applyInheritedQuestionnaires(supabase, venueId, eventId, profile);
   }
 
   // Vendors: Vendor Network classifications are authoritative. Do not copy a
@@ -351,19 +351,30 @@ async function applyInheritedFloorPlanOffers(
 /**
  * Snapshot selected questionnaire templates onto the event as drafts.
  * Does not send — staff still send when ready; portal only shows sent forms.
+ * Uses the booking supabase + venueId (not getCurrentVenue) so inherit cannot
+ * silently no-op when session venue context is unavailable.
  */
 async function applyInheritedQuestionnaires(
+  supabase: DbClient,
+  venueId: string,
   eventId: string,
   profile: VenueSetupProfile,
 ): Promise<void> {
   const ids = profile.templateRefs.questionnaireTemplateIds ?? [];
   if (ids.length === 0) return;
-  try {
-    const { applyTemplateToEvent } = await import("@/lib/questionnaire-templates/service");
-    for (const templateId of ids) {
-      await applyTemplateToEvent(templateId, eventId);
+  const { applyQuestionnaireTemplateSnapshot } = await import("@/lib/questionnaire-templates/service");
+  for (const templateId of ids) {
+    try {
+      const applied = await applyQuestionnaireTemplateSnapshot(supabase, venueId, eventId, templateId);
+      if (!applied.ok) {
+        console.error(
+          "Setup profile questionnaire apply failed:",
+          templateId,
+          applied.message,
+        );
+      }
+    } catch (err) {
+      console.error("Setup profile questionnaire apply failed:", templateId, err);
     }
-  } catch (err) {
-    console.error("Setup profile questionnaire apply failed:", err);
   }
 }

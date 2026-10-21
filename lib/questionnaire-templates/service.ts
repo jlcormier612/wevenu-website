@@ -260,19 +260,20 @@ export async function duplicateTemplate(id: string, newName: string): Promise<{ 
   return { ok: true, templateId: data.id };
 }
 
-/**
- * Snapshots template config onto the event's working questionnaire for this
- * template's kind. Creates the row if needed; only touches draft (unsent).
- */
-export async function applyTemplateToEvent(
-  templateId: string, eventId: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, message: "No venue found." };
-  const supabase = await createClient();
+type QuestionnaireDb = Awaited<ReturnType<typeof createClient>>;
 
+/**
+ * Venue-scoped questionnaire snapshot for booking inherit and staff apply.
+ * Does not send. Only creates/updates draft rows.
+ */
+export async function applyQuestionnaireTemplateSnapshot(
+  supabase: QuestionnaireDb,
+  venueId: string,
+  eventId: string,
+  templateId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
   const { data: template } = await supabase.from("questionnaire_templates").select("*")
-    .eq("id", templateId).eq("venue_id", venue.id).maybeSingle<Row>();
+    .eq("id", templateId).eq("venue_id", venueId).maybeSingle<Row>();
   if (!template) return { ok: false, message: "Template not found." };
   if (template.is_archived) {
     return { ok: false, message: "This questionnaire is archived. Restore it in the Library before using it on an event." };
@@ -281,7 +282,7 @@ export async function applyTemplateToEvent(
   const mapped = mapTemplate(template);
 
   const { data: existing } = await supabase.from("event_questionnaires").select("id, status")
-    .eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
+    .eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
     .maybeSingle<{ id: string; status: string }>();
 
   if (existing && existing.status !== "draft") {
@@ -306,8 +307,21 @@ export async function applyTemplateToEvent(
     if (error) return { ok: false, message: error.message };
   } else {
     const { error } = await supabase.from("event_questionnaires")
-      .insert({ venue_id: venue.id, event_id: eventId, ...patch } as never);
+      .insert({ venue_id: venueId, event_id: eventId, status: "draft", ...patch } as never);
     if (error) return { ok: false, message: error.message };
   }
   return { ok: true };
+}
+
+/**
+ * Snapshots template config onto the event's working questionnaire for this
+ * template's kind. Creates the row if needed; only touches draft (unsent).
+ */
+export async function applyTemplateToEvent(
+  templateId: string, eventId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  return applyQuestionnaireTemplateSnapshot(supabase, venue.id, eventId, templateId);
 }

@@ -52,6 +52,14 @@ describe("Open Planning vs Change for this event destinations", () => {
     assert.match(panel, /onNavigateTab\("playbook#planning-task-list"\)/);
     assert.doesNotMatch(panel, /changeForEvent[\s\S]{0,200}playbook#planning-task-list/);
   });
+
+  it("Change for Timeline opens the timeline setup editor, not the management tab", () => {
+    assert.match(panel, /setTimelineEditorOpen\(true\)/);
+    assert.match(panel, /EventTimelineSetupEditor/);
+    assert.match(panel, /SETUP_EDITOR_STEPS/);
+    const changeFn = panel.slice(panel.indexOf("function changeForEvent"));
+    assert.doesNotMatch(changeFn.slice(0, 500), /navigateStep\(step\)/);
+  });
 });
 
 describe("setup editor editing paths and boundaries", () => {
@@ -60,6 +68,12 @@ describe("setup editor editing paths and boundaries", () => {
     assert.match(editor, /planning-setup-mode-customize/);
     assert.match(editor, /Choose a different template/);
     assert.match(editor, /Customize this event/);
+  });
+
+  it("offers client and venue checklist audiences", () => {
+    assert.match(editor, /planning-setup-audience-client/);
+    assert.match(editor, /planning-setup-audience-venue/);
+    assert.match(editor, /EventVenuePlanningSetupEditor/);
   });
 
   it("does not expose management fulfillment actions", () => {
@@ -75,17 +89,40 @@ describe("setup editor editing paths and boundaries", () => {
     assert.match(actions, /addCustomClientEventTaskAction/);
     assert.match(actions, /removeClientEventTaskAction/);
     assert.match(actions, /updateClientEventTaskFieldsAction/);
+    assert.match(actions, /replaceVenuePlaybookAction/);
+    assert.match(actions, /addCustomVenueEventTaskAction/);
+    assert.match(actions, /removeVenueEventTaskAction/);
+    assert.match(actions, /updateVenueEventTaskFieldsAction/);
     assert.match(service, /replaceClientPlaybookOnEvent/);
+    assert.match(service, /replaceVenuePlaybookOnEvent/);
     assert.match(repo, /template_task_id: null/);
     assert.match(repo, /requireDraftClientApplication/);
+    assert.match(repo, /replaceVenuePlaybookOnEvent/);
     // Custom add writes event_tasks only — no playbook_tasks insert in the helper.
     const addFn = repo.slice(repo.indexOf("export async function addCustomClientEventTask"));
     assert.match(addFn, /from\("event_tasks"\)/);
     assert.doesNotMatch(addFn.slice(0, 1200), /from\("playbook_tasks"\)/);
+    const venueAdd = repo.slice(repo.indexOf("export async function addCustomVenueEventTask"));
+    assert.match(venueAdd, /owner_type: "coordinator"/);
+    assert.doesNotMatch(venueAdd.slice(0, 1200), /from\("playbook_tasks"\)/);
   });
 
   it("management workspace still has Create Request / Waive", () => {
     assert.match(tasks, /Create Request|createRequestForTaskAction/);
     assert.match(tasks, /Waive|waived/);
+  });
+});
+
+describe("Timeline setup editor seams", () => {
+  const timelineEditor = readFileSync(resolve("components/events/event-timeline-setup-editor.tsx"), "utf8");
+  const apply = readFileSync(resolve("lib/timeline-templates/apply.ts"), "utf8");
+
+  it("offers template switch and customize without share or Library mutation", () => {
+    assert.match(timelineEditor, /timeline-setup-mode-template/);
+    assert.match(timelineEditor, /timeline-setup-mode-customize/);
+    assert.match(timelineEditor, /replaceEventTimelineFromTemplateAction/);
+    assert.doesNotMatch(timelineEditor, /shareTimelineWithCouple/);
+    assert.match(apply, /replaceEventTimelineFromTemplate/);
+    assert.match(apply, /owner === "venue"/);
   });
 });

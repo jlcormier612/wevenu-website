@@ -397,6 +397,105 @@ export async function updateClientEventTaskFields(
   return result as PlaybookActionResult;
 }
 
+function venueSetupGateMessage(
+  reason: "not_found" | "wrong_task" | "already_applied" | "already_released",
+): string {
+  if (reason === "wrong_task") {
+    return "That task is not part of this event's venue checklist.";
+  }
+  if (reason === "already_applied" || reason === "already_released") {
+    return "This event already has a Venue Planning checklist applied. Switch templates from the setup editor, or remove Planning and start over.";
+  }
+  return "Apply a Venue Planning checklist to this event before editing it.";
+}
+
+/** Replace this event's Venue Planning with another active venue template. Stays internal. */
+export async function replaceVenuePlaybookOnEvent(
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const { data: venueRow } = await c.from("venues")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
+      .eq("id", venueId)
+      .maybeSingle();
+    const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
+    const caps = capabilitiesFromVenueRow(venueRow);
+    try {
+      const replaced = await repo.replaceVenuePlaybookOnEvent(
+        c, venueId, eventId, templateId, eventDate, caps,
+      );
+      if (!replaced.ok) {
+        return { ok: false, message: venueSetupGateMessage(replaced.reason) } as PlaybookActionResult;
+      }
+      return {
+        ok: true,
+        message: "This event's venue checklist now uses the selected template. It stays internal — the Library template was not changed.",
+      } as PlaybookActionResult;
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not switch the venue checklist template.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function addCustomVenueEventTask(
+  eventId: string,
+  eventDate: string,
+  input: { title: string; daysOffset: number; description?: string | null },
+): Promise<PlaybookActionResult & { taskId?: string }> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const added = await repo.addCustomVenueEventTask(c, venueId, eventId, eventDate, input);
+      if (!added.ok) return { ok: false, message: venueSetupGateMessage(added.reason) } as PlaybookActionResult;
+      return { ok: true, taskId: added.taskId, message: "Task added to this event's venue checklist." } as PlaybookActionResult & { taskId: string };
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not add the task.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult & { taskId?: string };
+}
+
+export async function removeVenueEventTask(
+  eventId: string,
+  taskId: string,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const removed = await repo.removeVenueEventTask(c, venueId, eventId, taskId);
+    if (!removed.ok) return { ok: false, message: venueSetupGateMessage(removed.reason) } as PlaybookActionResult;
+    return { ok: true, message: "Task removed from this event's venue checklist." } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function updateVenueEventTaskFields(
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: { title?: string; daysOffset?: number; description?: string | null },
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const updated = await repo.updateVenueEventTaskFields(c, venueId, eventId, eventDate, taskId, input);
+      if (!updated.ok) return { ok: false, message: venueSetupGateMessage(updated.reason) } as PlaybookActionResult;
+      return { ok: true, message: "Venue task saved for this event." } as PlaybookActionResult;
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not save the task.",
+      } as PlaybookActionResult;
+    }
+  });
+  return result as PlaybookActionResult;
+}
+
 /** Explicit Remove Planning / Start Over — never silent replace/merge. */
 export async function unapplyPlaybookFromEvent(
   eventId: string,

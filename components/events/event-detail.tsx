@@ -832,6 +832,7 @@ export function EventDetail({
             playbookApplications={playbookApplications}
             readinessByKind={readinessByKind}
             timelineTemplates={timelineTemplates}
+            timelineEntries={event.timeline ?? []}
             questionnaires={(questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])).map((q) => ({
               kind: q.kind,
               status: q.status,

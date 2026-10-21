@@ -70,14 +70,26 @@ describe("setupReadinessDetail", () => {
     assert.match(detail.summary, /Vendor Network classifications/i);
   });
 
-  it("treats questionnaire drafts as separately scheduled, not portal blockers", () => {
+  it("treats questionnaire drafts as authorized-send only, not portal blockers", () => {
     const detail = setupReadinessDetail(base({
       step: "questionnaires",
       questionnaires: [{ kind: "final_details", status: "draft" }],
     }));
     assert.equal(detail.status, "draft");
-    assert.match(detail.summary, /scheduled or authorized send/i);
+    assert.match(detail.summary, /authorized send/i);
     assert.match(detail.summary, /not sent by portal release/i);
+    assert.match(detail.summary, /not on an automated schedule/i);
+  });
+
+  it("does not claim configured questionnaire refs are ready when no drafts exist", () => {
+    const detail = setupReadinessDetail(base({
+      step: "questionnaires",
+      inheritedRefs: { questionnaireTemplateIds: ["q-1"] },
+      questionnaires: [],
+    }));
+    assert.equal(detail.status, "draft");
+    assert.match(detail.summary, /no event draft has been created yet/i);
+    assert.match(detail.summary, /no automated delivery schedule/i);
   });
 
   it("treats missing inventory draft with a valid template ref as recoverable Draft, not Unavailable", () => {

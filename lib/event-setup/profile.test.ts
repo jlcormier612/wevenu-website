@@ -214,7 +214,7 @@ describe("venue setup profiles", () => {
     assert.match(inherit, /applyTimelineTemplateToEvent/);
     assert.match(inherit, /inherited_template_refs/);
     assert.match(inherit, /if \(existing\) return/);
-    assert.match(inherit, /applyTemplateToEvent/);
+    assert.match(inherit, /applyQuestionnaireTemplateSnapshot/);
     assert.match(inherit, /upsertOffer/);
     assert.doesNotMatch(inherit, /addRecommendation/);
     assert.doesNotMatch(inherit, /assignVendor/);

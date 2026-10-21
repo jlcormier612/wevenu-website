@@ -151,6 +151,18 @@ export async function applyTemplateAction(
   return result;
 }
 
+/** Overview setup editor — replace venue-owned timeline from a Library template (no share). */
+export async function replaceEventTimelineFromTemplateAction(
+  eventId: string,
+  templateId: string,
+  eventStartTime: string | null,
+): Promise<TimelineActionResult> {
+  const { replaceEventTimelineFromTemplate } = await import("@/lib/timeline-templates/apply");
+  const result = await replaceEventTimelineFromTemplate(eventId, templateId, eventStartTime);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
 /** Persist Client audience on venue-owned items — portal visibility, no email. */
 export async function shareTimelineWithCoupleAction(
   eventId: string,

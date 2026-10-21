@@ -1241,6 +1241,175 @@ export async function updateClientEventTaskFields(
   return { ok: true };
 }
 
+/**
+ * Event-specific Venue Planning setup edits.
+ * Venue applications are active on apply (released_at set) but stay internal —
+ * never portal-released. Template replace uses explicit unapply + apply.
+ * Never mutates Library playbook_templates / playbook_tasks.
+ */
+async function requireVenueApplication(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" }> {
+  const { data: appRow, error } = await client.from("event_playbook_applications")
+    .select("id")
+    .eq("event_id", eventId).eq("venue_id", venueId).eq("kind", "venue")
+    .maybeSingle<{ id: string }>();
+  if (error) throw error;
+  if (!appRow) return { ok: false, reason: "not_found" };
+  return { ok: true };
+}
+
+export async function replaceVenuePlaybookOnEvent(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  templateId: string,
+  eventDate: string,
+  capabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities,
+): Promise<ApplyPlaybookResult | UnapplyPlaybookResult> {
+  const template = await getTemplate(client, venueId, templateId);
+  if (!template || template.kind !== "venue" || template.isArchived) {
+    throw new Error("Select an active Venue Planning template.");
+  }
+  const existing = await requireVenueApplication(client, venueId, eventId);
+  if (!existing.ok) {
+    return applyPlaybookToEvent(client, venueId, eventId, templateId, eventDate, capabilities);
+  }
+  const removed = await unapplyPlaybookFromEvent(client, venueId, eventId, "venue");
+  if (!removed.ok) return removed;
+  return applyPlaybookToEvent(client, venueId, eventId, templateId, eventDate, capabilities);
+}
+
+export async function addCustomVenueEventTask(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  input: { title: string; daysOffset: number; description?: string | null },
+): Promise<{ ok: true; taskId: string } | { ok: false; reason: "not_found" }> {
+  const gate = await requireVenueApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const title = input.title.trim();
+  if (!title) throw new Error("Task title is required.");
+  const daysOffset = clampDaysOffset(input.daysOffset);
+  const dueDate = offsetDate(eventDate, daysOffset);
+  const existing = await getEventTasks(client, venueId, eventId);
+  const venueTasks = existing.filter((t) => t.ownerType !== "couple");
+  const sortOrder = venueTasks.reduce((max, t) => Math.max(max, t.sortOrder), 0) + 1;
+  const { data: inserted, error } = await client.from("event_tasks")
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      template_task_id: null,
+      title,
+      description: input.description?.trim() || null,
+      owner_type: "coordinator",
+      visibility: "coordinator_only",
+      due_date: dueDate,
+      days_offset: daysOffset,
+      due_date_rule_kind: "relative_to_event",
+      category: "planning",
+      milestone_name: "Planning",
+      milestone_kind: null,
+      auto_complete_trigger: null,
+      depends_on_event_task_id: null,
+      is_required: false,
+      sort_order: sortOrder,
+      status: "pending",
+      reminder_before_days: null,
+      escalation_after_days: null,
+      notify_on_assign: false,
+      notify_on_complete: false,
+      action_type: null,
+      action_label: null,
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) throw error;
+  return { ok: true, taskId: inserted.id };
+}
+
+export async function removeVenueEventTask(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  taskId: string,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "wrong_task" }> {
+  const gate = await requireVenueApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const { data: row, error: fetchError } = await client.from("event_tasks")
+    .select("id, owner_type, event_id")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; owner_type: string; event_id: string | null }>();
+  if (fetchError) throw fetchError;
+  if (!row || row.event_id !== eventId || row.owner_type === "couple") {
+    return { ok: false, reason: "wrong_task" };
+  }
+  await cancelRemindersForTask(client, venueId, taskId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("event_tasks") as any)
+    .update({ depends_on_event_task_id: null })
+    .eq("venue_id", venueId)
+    .eq("depends_on_event_task_id", taskId);
+  const { error } = await client.from("event_tasks")
+    .delete()
+    .eq("id", taskId)
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function updateVenueEventTaskFields(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  taskId: string,
+  input: { title?: string; daysOffset?: number; description?: string | null },
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "wrong_task" }> {
+  const gate = await requireVenueApplication(client, venueId, eventId);
+  if (!gate.ok) return gate;
+  const { data: row, error: fetchError } = await client.from("event_tasks")
+    .select("id, owner_type, event_id")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; owner_type: string; event_id: string | null }>();
+  if (fetchError) throw fetchError;
+  if (!row || row.event_id !== eventId || row.owner_type === "couple") {
+    return { ok: false, reason: "wrong_task" };
+  }
+  const patch: Record<string, unknown> = {};
+  if (input.title !== undefined) {
+    const title = input.title.trim();
+    if (!title) throw new Error("Task title is required.");
+    patch.title = title;
+  }
+  if (input.description !== undefined) {
+    patch.description = input.description?.trim() || null;
+  }
+  if (input.daysOffset !== undefined) {
+    const daysOffset = clampDaysOffset(input.daysOffset);
+    patch.days_offset = daysOffset;
+    patch.due_date = offsetDate(eventDate, daysOffset);
+    patch.due_date_locked = false;
+    patch.due_date_rule_kind = "relative_to_event";
+  }
+  if (Object.keys(patch).length === 0) return { ok: true };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_tasks") as any)
+    .update(patch)
+    .eq("id", taskId)
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
+  if (typeof patch.due_date === "string") {
+    await cancelRemindersForTask(client, venueId, taskId);
+  }
+  return { ok: true };
+}
+
 // ---- Internal Notes (event_tasks.notes) --------------------------------------
 // Venue-only, event-scoped coordinator annotation. The column has existed
 // since Sprint 43 but never had a real write path — see docs/product-backlog.md.
