@@ -126,12 +126,15 @@ function StartInventory({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Event Inventory</CardTitle>
-        <CardDescription>What&apos;s actually part of this event — chairs, decor, bar service, anything selected for this booking.</CardDescription>
+        <CardDescription>
+          Manage this event&apos;s inventory draft and operational inventory state. Creating or
+          editing a draft does not share it with the client or create an invoice.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
           <p className="max-w-md text-xs text-muted-foreground">
-            No inventory draft yet. Choose a starting offering for this event only, or use Prepare and release portal from Event setup when a Setup Profile template is configured.
+            No inventory draft yet. Choose a starting offering for this event only, or use Release to client portal from Overview when a Setup Profile template is configured. Creating or editing a draft does not share it with the client or create an invoice.
           </p>
           {templates.length > 0 && (
             <Select value={templateId} onValueChange={setTemplateId} items={options}>

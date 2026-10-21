@@ -769,8 +769,7 @@ export function EventDetail({
           2026-07-10 — rather than just landing on the event and leaving the
           coordinator to find the right tab themselves. */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as string); window.location.hash = v as string; }}>
-        {/* Event preparation stays on this page. Event Order and Inventory
-            remain Setup-card and #hash deep links. */}
+        {/* Event preparation workspaces live on this page; Overview reviews and releases. */}
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="playbook">Planning</TabsTrigger>
@@ -778,6 +777,8 @@ export function EventDetail({
           <TabsTrigger value="floorplan">Floor Plans</TabsTrigger>
           <TabsTrigger value="vendors">Vendors</TabsTrigger>
           <TabsTrigger value="questionnaires">Questionnaires</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="event-order">Event Order</TabsTrigger>
           <TabsTrigger value="documents">
             Documents
             {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
@@ -883,7 +884,10 @@ export function EventDetail({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Planning</CardTitle>
-              <CardDescription>All tasks for this event, organized by section and due date. Tasks auto-complete as work is done.</CardDescription>
+              <CardDescription>
+                Manage the client checklist and your venue&apos;s internal task list. Client tasks are
+                shared through portal release; venue tasks remain internal.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <EventTaskList
@@ -914,7 +918,8 @@ export function EventDetail({
             <CardHeader>
               <CardTitle className="text-base">Questionnaires</CardTitle>
               <CardDescription>
-                Client Planning Questionnaire, Final Details, and Post-Event Feedback — create a draft from the Library, review as the client, then send when ready.
+                Manage questionnaire drafts, delivery timing where supported, and authorized sending
+                separately from portal release and invitation.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -944,7 +949,8 @@ export function EventDetail({
                 <div>
                   <CardTitle className="text-base">Timeline</CardTitle>
                   <CardDescription>
-                    The moment-by-moment schedule your team needs to run the day.
+                    Manage the event schedule, then share it with the client through portal release
+                    or the existing explicit sharing workflow.
                   </CardDescription>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -997,7 +1003,8 @@ export function EventDetail({
             <CardHeader>
               <CardTitle className="text-base">Floor Plans</CardTitle>
               <CardDescription>
-                These floor plans belong to this booking.
+                Manage available layouts and the event&apos;s current selection, using the existing
+                client-selection rules.
               </CardDescription>
             </CardHeader>
             <CardContent>

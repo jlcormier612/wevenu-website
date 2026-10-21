@@ -16,7 +16,7 @@ describe("Client workspace invitation hierarchy", () => {
     assert.match(panel, /Your client&apos;s planning workspace/);
     assert.match(panel, /invite the client/);
     assert.match(panel, /Invite client/);
-    assert.match(panel, /Prepare and release portal/);
+    assert.match(panel, /Release to client portal/);
     assert.match(panel, /sends an email when an address is on file/);
     assert.match(panel, /Questionnaires are never sent by/);
     assert.match(panel, /data-testid="client-workspace-invite"/);

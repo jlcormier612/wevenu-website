@@ -139,21 +139,19 @@ export function EventSetupPanel({
     isOutstandingFollowUp(row.decision, row.detail.status, row.step),
   );
   const clientPlanning = playbookApplications.find((a) => a.kind === "client");
-  const canPrepareRelease = Boolean(
-    clientId &&
-      decisionsComplete &&
-      outstanding.filter((row) => row.step !== "planning").length === 0,
-  );
-  const outstandingSteps = new Set(outstanding.map((row) => row.step));
   const outstandingCount = outstanding.length;
-  const setupSettled = decisionsComplete && outstandingCount === 0;
+  // Genuine blockers only hide the primary release CTA. Draft / recoverable
+  // content is recovered by Release itself and must not spawn per-row Prepare buttons.
+  const canPrepareRelease = Boolean(clientId && decisionsComplete && outstandingCount === 0);
+  const portalReleased = Boolean(clientPlanning?.releasedAt);
+  const setupSettled = decisionsComplete && outstandingCount === 0 && portalReleased;
   const collapsed = Boolean(state.collapsedAt) && setupSettled;
 
   function navigateStep(step: SetupStepKey) {
     const tab =
       step === "planning" ? "playbook"
         : step === "timeline" ? "timeline"
-          : step === "floor_plans" ? "floor-plans"
+          : step === "floor_plans" ? "floorplan"
             : step === "vendors" ? "vendors"
               : step === "questionnaires" ? "questionnaires"
                 : step === "inventory" ? "inventory"
@@ -244,15 +242,15 @@ export function EventSetupPanel({
             <>
               <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your standard setup was applied at booking. Optionally edit any area for this event,
-                then use Prepare and release portal once. Invite the client separately.
-                Questionnaires stay on their own delivery schedule.
+                Review your event&apos;s standard setup, make any event-specific changes, and release
+                the prepared experience to the client portal. Invite the client separately when
+                you&apos;re ready. Questionnaires stay on their own delivery schedule.
               </p>
             </>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">
               {decisionsComplete
-                ? "Review included areas below. Edit if needed, then prepare and release the portal. Invite the client separately."
+                ? "Review included areas below. Edit if needed, then release to the client portal. Invite the client separately."
                 : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
             </p>
           )}
@@ -277,11 +275,13 @@ export function EventSetupPanel({
           data-testid="event-setup-prepare-release"
         >
           <div>
-            <h3 className="text-sm font-medium text-heading">Prepare and release portal</h3>
+            <h3 className="text-sm font-medium text-heading">
+              {portalReleased ? "Client portal released" : "Release to client portal"}
+            </h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              One action for the reviewed setup: ensures included Inventory and Event Order drafts,
-              releases Client Planning, applies and shares the timeline when present, and keeps
-              floor-plan options ready. Does not invite the client, send questionnaires, or create invoices.
+              {portalReleased
+                ? "The prepared experience is released. You can still manage every area from its workspace tab. Re-running release is safe and does not invite the client or send questionnaires."
+                : "One action for the reviewed setup: ensures included Inventory and Event Order drafts, releases Client Planning, applies and shares the timeline when present, and keeps floor-plan options ready. Does not invite the client, send questionnaires, or create invoices."}
             </p>
           </div>
           <Button
@@ -291,9 +291,7 @@ export function EventSetupPanel({
             onClick={prepareAndRelease}
             data-testid="prepare-and-release-portal"
           >
-            {clientPlanning && !clientPlanning.releasedAt
-              ? "Prepare and release portal"
-              : "Prepare and release portal again"}
+            {portalReleased ? "Release to client portal again" : "Release to client portal"}
           </Button>
         </div>
       ) : null}
@@ -301,8 +299,8 @@ export function EventSetupPanel({
         <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-3 space-y-2" data-testid="event-setup-outstanding">
           <p className="text-sm font-medium text-heading">Outstanding on this event</p>
           <p className="text-xs text-muted-foreground">
-            Genuine gaps only. There are no separate Inventory or Event Order prepare steps —
-            use Prepare and release portal. Questionnaires are scheduled separately.
+            Genuine blockers only. Prepared drafts awaiting release are not listed here —
+            use Release to client portal once decisions are complete. Questionnaires are scheduled separately.
           </p>
           <ul className="space-y-2">
             {outstanding.map(({ step, detail }) => (
@@ -317,10 +315,6 @@ export function EventSetupPanel({
                     size="sm"
                     disabled={pending}
                     onClick={() => {
-                      if (detail.nextAction === "Prepare and release portal") {
-                        prepareAndRelease();
-                        return;
-                      }
                       if (detail.nextAction === "Open Setup Profiles") {
                         openSetupProfiles();
                         return;
@@ -341,7 +335,6 @@ export function EventSetupPanel({
           const source = setupStepSource(state, step);
           const inherited = state.inheritedDecisions?.[step];
           const showChooser = decision == null || changing === step;
-          const listedInOutstanding = outstandingSteps.has(step);
           const badgeLabel = setupStatusBadgeLabel(decision, detail.status, SETUP_READINESS_LABEL);
           return (
             <li key={step} className="rounded-lg border border-border px-3 py-3">
@@ -379,7 +372,7 @@ export function EventSetupPanel({
                 ) : null}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{detail.summary}</p>
-              {decision === "set_up" && !listedInOutstanding ? (
+              {decision === "set_up" ? (
                 <div className="mt-3">
                   <SetupEditorLink
                     step={step}
@@ -425,8 +418,8 @@ function ClientWorkspaceInvite({
       <div>
         <h3 className="text-sm font-medium text-heading">Your client&apos;s planning workspace</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          After you prepare and release the portal, invite the client. Invitation is a separate action
-          from preparation and does not re-run setup.
+          After you release to the client portal, invite the client. Invitation is a separate action
+          from release and does not re-run setup.
         </p>
       </div>
       <p className="text-xs text-muted-foreground">

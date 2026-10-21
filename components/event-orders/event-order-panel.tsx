@@ -324,9 +324,8 @@ export function EventOrderPanel({
         <CardHeader>
           <CardTitle className="text-base">Event Order</CardTitle>
           <CardDescription>
-            What this event is receiving.
-            <br />
-            Not your invoice, contract, or task list.
+            Manage the event&apos;s order/package draft and its operational status. An Event Order is
+            not itself an invoice, contract, or payment plan.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -339,7 +338,7 @@ export function EventOrderPanel({
             <p className="max-w-md text-sm text-muted-foreground">
               Optional — use when you need a detailed delivery list. Package-only events can skip this.
               Templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
-              When a Setup Profile package is configured, use Prepare and release portal from Event setup instead of starting here.
+              When a Setup Profile package is configured, use Release to client portal from Overview instead of starting here. An Event Order is not itself an invoice, contract, or payment plan.
             </p>
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}

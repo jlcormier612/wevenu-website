@@ -14,18 +14,24 @@ describe("isOutstandingFollowUp", () => {
     assert.equal(isOutstandingFollowUp("skipped", "not_included"), false);
   });
 
-  it("includes Included areas that are still draft, unavailable, or missing artifacts", () => {
-    assert.equal(isOutstandingFollowUp("set_up", "draft"), true);
-    assert.equal(isOutstandingFollowUp("set_up", "unavailable"), true);
-    assert.equal(isOutstandingFollowUp("set_up", "needs_action"), true);
+  it("treats Draft as prepared/recoverable content — not an outstanding blocker", () => {
+    assert.equal(isOutstandingFollowUp("set_up", "draft"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "planning"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "inventory"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "event_order"), false);
     assert.equal(isOutstandingFollowUp("set_up", "included"), false);
     assert.equal(isOutstandingFollowUp("set_up", "shared"), false);
   });
 
-  it("excludes questionnaires and Event Order drafts from portal settle blockers", () => {
+  it("keeps genuine unavailable and needs_action as outstanding", () => {
+    assert.equal(isOutstandingFollowUp("set_up", "unavailable"), true);
+    assert.equal(isOutstandingFollowUp("set_up", "needs_action"), true);
+    assert.equal(isOutstandingFollowUp("set_up", "needs_action", "inventory"), true);
+  });
+
+  it("excludes questionnaires from portal settle blockers", () => {
     assert.equal(isOutstandingFollowUp("set_up", "draft", "questionnaires"), false);
     assert.equal(isOutstandingFollowUp("set_up", "needs_action", "questionnaires"), false);
-    assert.equal(isOutstandingFollowUp("set_up", "draft", "event_order"), false);
     assert.equal(isOutstandingFollowUp("set_up", "unavailable", "event_order"), true);
   });
 });

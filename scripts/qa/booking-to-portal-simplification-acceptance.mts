@@ -1,6 +1,6 @@
 /**
  * Booking-to-portal simplification acceptance.
- * Configure once → book presets drafts → Prepare and release portal → Invite separate.
+ * Configure once → book presets drafts → Release to client portal → Invite separate.
  * Questionnaires stay unsent. Fancy Sandbox only. No Production. No real invites.
  */
 import { createRequire } from "node:module";
@@ -484,7 +484,7 @@ async function main() {
     const setupText = await page.locator('[data-testid="event-setup-panel"]').innerText();
     record(
       "event_setup_shows_prepare_release",
-      /Prepare and release portal/i.test(setupText),
+      /Release to client portal/i.test(setupText),
       setupText.slice(0, 280),
     );
     record(
@@ -506,6 +506,23 @@ async function main() {
       "event_setup_no_embedded_apply_wizards",
       !/Set up this booking/i.test(setupText) && !/Set up this booking's timeline/i.test(setupText),
       "no BookingSetupCard/TimelineSetupCard wizards in Event Setup",
+    );
+    record(
+      "event_setup_no_unavailable_inventory_eo",
+      !/Unavailable[\s\S]{0,80}Inventory|Inventory[\s\S]{0,80}Unavailable/i.test(setupText)
+        && !/Unavailable[\s\S]{0,80}Event Order|Event Order[\s\S]{0,80}Unavailable/i.test(setupText),
+      "configured Inventory/Event Order must not show Unavailable",
+    );
+    record(
+      "event_setup_open_planning_from_card",
+      /Open Planning/i.test(setupText),
+      "Planning card exposes Open Planning",
+    );
+    record(
+      "event_setup_single_release_cta",
+      (await page.getByTestId("prepare-and-release-portal").count()) === 1
+        && (await page.getByTestId("event-setup-outstanding").count()) === 0,
+      "one Release CTA; no yellow outstanding when only drafts await release",
     );
 
     // Vendors tab: Vendor Network, not a second recommendation curator

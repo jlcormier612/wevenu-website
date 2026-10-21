@@ -30,9 +30,10 @@ describe("inventory and Event Order profile preset coverage", () => {
     assert.match(profiles, /Event Order draft is prepared automatically/);
   });
 
-  it("Event Setup recovers missing drafts only via Prepare and release portal", () => {
+  it("Event Setup recovers missing drafts only via Release to client portal", () => {
     const panel = read("components/events/event-setup-panel.tsx");
     assert.match(panel, /prepareAndReleasePortalAction/);
+    assert.match(panel, /Release to client portal/);
     assert.doesNotMatch(panel, /ensureEventInventoryAction/);
     assert.doesNotMatch(panel, /ensureEventOrderAction/);
     assert.doesNotMatch(panel, /Start inventory draft/);
@@ -47,7 +48,7 @@ describe("inventory and Event Order profile preset coverage", () => {
     assert.match(orders, /if \(existing\) return \{ ok: true, eventOrderId: existing\.id \}/);
   });
 
-  it("Readiness routes missing drafts to Prepare and release portal, not a component prepare CTA", () => {
+  it("Readiness marks missing drafts with template refs as Draft + Open workspace, not Unavailable", () => {
     const inv = setupReadinessDetail({
       step: "inventory",
       decision: "set_up",
@@ -63,10 +64,10 @@ describe("inventory and Event Order profile preset coverage", () => {
       eventOrder: null,
       templateNames: { planning: null, timeline: null, inventory: "Bar basics", eventOrder: null },
     });
-    assert.equal(inv.status, "unavailable");
-    assert.equal(isOutstandingFollowUp("set_up", inv.status, "inventory"), true);
-    assert.equal(inv.nextAction, "Prepare and release portal");
-    assert.doesNotMatch(inv.nextAction ?? "", /inventory draft/i);
+    assert.equal(inv.status, "draft");
+    assert.equal(isOutstandingFollowUp("set_up", inv.status, "inventory"), false);
+    assert.equal(inv.nextAction, "Open Inventory");
+    assert.doesNotMatch(inv.nextAction ?? "", /Release to client portal/i);
 
     const eo = setupReadinessDetail({
       step: "event_order",
@@ -83,13 +84,15 @@ describe("inventory and Event Order profile preset coverage", () => {
       eventOrder: null,
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: "Classic" },
     });
-    assert.equal(eo.status, "unavailable");
-    assert.equal(eo.nextAction, "Prepare and release portal");
+    assert.equal(eo.status, "draft");
+    assert.equal(eo.nextAction, "Open Event Order");
+    assert.equal(isOutstandingFollowUp("set_up", eo.status, "event_order"), false);
   });
 
-  it("questionnaire drafts and Event Order drafts do not block portal settle", () => {
+  it("questionnaire and prepared drafts do not block portal settle", () => {
     assert.equal(isOutstandingFollowUp("set_up", "draft", "questionnaires"), false);
     assert.equal(isOutstandingFollowUp("set_up", "draft", "event_order"), false);
-    assert.equal(isOutstandingFollowUp("set_up", "draft", "planning"), true);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "planning"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "inventory"), false);
   });
 });

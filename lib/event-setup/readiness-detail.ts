@@ -2,6 +2,10 @@
  * Booked-event readiness row detail — derived only from persisted decisions
  * and verified artifact state. Does not invent completion from mere record
  * existence without the matching lifecycle field (released/sent/shared).
+ *
+ * A valid profile template that has not yet produced an event draft is
+ * recoverable (Draft), not Unavailable. Unavailable is reserved for genuine
+ * broken configuration that release cannot safely recover.
  */
 import type { EventPlaybookApplication } from "@/lib/playbooks/types";
 import type { SetupTemplateRefs } from "@/lib/event-setup/template-refs";
@@ -73,17 +77,17 @@ function planningDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (!client) {
     if (expected) {
       return {
-        status: "unavailable",
+        status: "draft",
         summary: expectedName
-          ? `Configured checklist "${expectedName}" was not applied to this event.`
-          : "Configured client checklist was not applied to this event.",
-        nextAction: "Open Planning to apply the checklist",
+          ? `Configured checklist "${expectedName}" is recoverable on Release to client portal. Open Planning to review once present.`
+          : "Configured client checklist is recoverable on Release to client portal. Open Planning to review once present.",
+        nextAction: "Open Planning",
       };
     }
     return {
       status: "needs_action",
       summary: "No client planning checklist on this event yet.",
-      nextAction: "Open Planning to apply a checklist",
+      nextAction: "Open Planning",
     };
   }
 
@@ -91,14 +95,14 @@ function planningDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (venue) {
     venueNote = " Venue-team checklist is on the event and stays internal.";
   } else if (expectedVenue) {
-    venueNote = " Configured venue checklist was not applied — Prepare and release portal recovers it.";
+    venueNote = " Configured venue checklist was not applied — Release to client portal recovers it.";
   }
 
   if (!client.releasedAt) {
     return {
       status: "draft",
-      summary: `Client checklist "${client.templateName}" is prepared — not yet visible to the client. Use Prepare and release portal when ready.${venueNote}`,
-      nextAction: "Prepare and release portal",
+      summary: `Client checklist "${client.templateName}" is prepared — not yet visible to the client. Open Planning to edit, then use Release to client portal when ready.${venueNote}`,
+      nextAction: "Open Planning",
     };
   }
 
@@ -114,22 +118,22 @@ function timelineDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (!ctx.hasTimeline) {
     if (ctx.inheritedRefs.timelineTemplateId) {
       return {
-        status: "unavailable",
+        status: "draft",
         summary: expectedName
-          ? `Configured timeline "${expectedName}" was not applied.`
-          : "Configured timeline template was not applied.",
-        nextAction: "Open Timeline to apply the starting schedule",
+          ? `Configured timeline "${expectedName}" is recoverable on Release to client portal.`
+          : "Configured timeline template is recoverable on Release to client portal.",
+        nextAction: "Open Timeline",
       };
     }
     return {
       status: "needs_action",
       summary: "No event timeline yet.",
-      nextAction: "Open Timeline to apply a template or build the schedule",
+      nextAction: "Open Timeline",
     };
   }
   return {
     status: "included",
-    summary: `${ctx.timelineItemCount} timeline item${ctx.timelineItemCount === 1 ? "" : "s"} on this event${expectedName ? ` (started from ${expectedName})` : ""}. Shared with the client when you Prepare and release portal.`,
+    summary: `${ctx.timelineItemCount} timeline item${ctx.timelineItemCount === 1 ? "" : "s"} on this event${expectedName ? ` (started from ${expectedName})` : ""}. Shared with the client when you Release to client portal.`,
     nextAction: "Open Timeline",
   };
 }
@@ -139,9 +143,9 @@ function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (ctx.floorPlanOfferCount === 0) {
     if (ctx.inheritedRefs.defaultFloorPlanTemplateId || (ctx.inheritedRefs.floorPlanTemplateIds?.length ?? 0) > 0) {
       return {
-        status: "unavailable",
-        summary: "Configured floor-plan options were not offered on this event.",
-        nextAction: "Open Floor Plans to offer layouts",
+        status: "draft",
+        summary: "Configured floor-plan options are recoverable on Release to client portal.",
+        nextAction: "Open Floor Plans",
       };
     }
     return {
@@ -179,15 +183,15 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
     if (expected.length > 0) {
       return {
         status: "included",
-        summary: `${expected.length} questionnaire${expected.length === 1 ? "" : "s"} are configured for separate scheduling and authorized send. Preparing the portal does not send them.`,
-        nextAction: "Open Questionnaires (separate schedule)",
+        summary: `${expected.length} questionnaire${expected.length === 1 ? "" : "s"} are configured for separate scheduling and authorized send. Releasing the portal does not send them.`,
+        nextAction: "Open Questionnaires",
       };
     }
     return {
       status: "included",
       summary:
-        "Questionnaires are configured and sent on their own schedule. Preparing or releasing the portal does not send questionnaires.",
-      nextAction: "Open Questionnaires (separate schedule)",
+        "Questionnaires are configured and sent on their own schedule. Releasing the portal does not send questionnaires.",
+      nextAction: "Open Questionnaires",
     };
   }
 
@@ -197,7 +201,7 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
     return {
       status: "draft",
       summary: `${drafts.length} questionnaire draft${drafts.length === 1 ? "" : "s"} ready for scheduled or authorized send — not sent by portal release.`,
-      nextAction: "Open Questionnaires (separate schedule)",
+      nextAction: "Open Questionnaires",
     };
   }
   if (drafts.length > 0) {
@@ -220,9 +224,9 @@ function inventoryDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (!ctx.hasEventInventory) {
     if (hasRef) {
       return {
-        status: "unavailable",
-        summary: `Starting offering "${name ?? "selected"}" should already be an event inventory draft. Use Prepare and release portal to recover — there is no separate inventory prepare step. Does not share with the couple or create invoices.`,
-        nextAction: "Prepare and release portal",
+        status: "draft",
+        summary: `Starting offering "${name ?? "selected"}" is configured. The event inventory draft is recoverable on Release to client portal — there is no separate inventory prepare step. Does not share with the couple or create invoices.`,
+        nextAction: "Open Inventory",
       };
     }
     return {
@@ -246,9 +250,9 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     const hasRef = Boolean(name || ctx.inheritedRefs.eventOrderTemplateId);
     if (hasRef) {
       return {
-        status: "unavailable",
-        summary: `Starting package "${name ?? "selected"}" should already be an Event Order draft. Use Prepare and release portal to recover — there is no separate Event Order prepare step. Not an invoice, contract, or payment plan.`,
-        nextAction: "Prepare and release portal",
+        status: "draft",
+        summary: `Starting package "${name ?? "selected"}" is configured. The Event Order draft is recoverable on Release to client portal — there is no separate Event Order prepare step. Not an invoice, contract, or payment plan.`,
+        nextAction: "Open Event Order",
       };
     }
     return {

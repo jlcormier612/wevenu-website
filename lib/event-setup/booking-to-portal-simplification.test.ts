@@ -44,9 +44,9 @@ describe("booking-to-portal simplification", () => {
     assert.match(actions, /prepareAndReleasePortalAction/);
   });
 
-  it("Event Setup exposes Prepare and release portal and Invite client as separate actions", () => {
+  it("Event Setup exposes Release to client portal and Invite client as separate actions", () => {
     const panel = read("components/events/event-setup-panel.tsx");
-    assert.match(panel, /Prepare and release portal/);
+    assert.match(panel, /Release to client portal/);
     assert.match(panel, /prepareAndReleasePortalAction/);
     assert.match(panel, /data-testid="prepare-and-release-portal"/);
     assert.match(panel, /inviteLabel="Invite client"/);

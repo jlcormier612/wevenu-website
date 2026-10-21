@@ -1,7 +1,6 @@
 /**
  * Client/event workspace top nav: ops tabs plus the event-preparation modules
- * staff move between without returning to Overview. Event Order and Inventory
- * still enter through Setup cards.
+ * staff move between without returning to Overview.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -26,9 +25,9 @@ const PREPARATION_TRIGGERS = [
   ['value="floorplan"', "Floor Plans"],
   ['value="vendors"', "Vendors"],
   ['value="questionnaires"', "Questionnaires"],
+  ['value="inventory"', "Inventory"],
+  ['value="event-order"', "Event Order"],
 ] as const;
-
-const SETUP_ONLY_TRIGGER_VALUES = ["event-order", "inventory"] as const;
 
 function tabsListBlock(source: string): string {
   const start = source.indexOf("<TabsList");
@@ -48,28 +47,24 @@ describe("workspace top nav simplification", () => {
     assert.doesNotMatch(list, /TabsTrigger value="team"/);
   });
 
-  it("keeps Planning, Timeline, Floor Plans, Vendors, and Questionnaires in the top nav", () => {
+  it("keeps Planning through Event Order in the top nav as ongoing workspaces", () => {
     const list = tabsListBlock(detail);
     for (const [value, label] of PREPARATION_TRIGGERS) {
       assert.match(list, new RegExp(`TabsTrigger ${value.replace(/"/g, '\\"')}[\\s\\S]*${label}`));
     }
   });
 
-  it("leaves Event Order and Inventory on Setup cards and hash deep links", () => {
-    const list = tabsListBlock(detail);
-    for (const value of SETUP_ONLY_TRIGGER_VALUES) {
-      assert.doesNotMatch(list, new RegExp(`TabsTrigger value="${value}"`));
-      assert.match(detail, new RegExp(`TabsContent value="${value}"`));
-    }
-  });
-
   it("Setup cards still open the corresponding modules", () => {
-    assert.match(setup, /Open Planning[\s\S]*tab="playbook"/);
-    assert.match(setup, /Open Timeline[\s\S]*tab="timeline"/);
-    assert.match(setup, /Open Floor Plans[\s\S]*tab="floorplan"/);
-    assert.match(setup, /Open Vendors[\s\S]*tab="vendors"/);
-    assert.match(setup, /Open Event Order[\s\S]*tab="event-order"/);
-    assert.match(setup, /Open Inventory[\s\S]*tab="inventory"/);
+    assert.match(setup, /"Open Planning"/);
+    assert.match(setup, /step === "planning" \? "playbook"/);
+    assert.match(setup, /"Open Timeline"/);
+    assert.match(setup, /"Open Floor Plans"/);
+    assert.match(setup, /step === "floor_plans" \? "floorplan"/);
+    assert.match(setup, /"Open Vendors"/);
+    assert.match(setup, /"Open Event Order"/);
+    assert.match(setup, /"Open Inventory"/);
+    assert.match(setup, /step === "inventory" \? "inventory"/);
+    assert.match(setup, /step === "event_order" \? "event-order"/);
   });
 
   it("hash / tab sync still activates the selected module on this event", () => {

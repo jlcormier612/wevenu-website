@@ -30,7 +30,7 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.nextAction, null);
   });
 
-  it("shows client planning draft as Draft, not Shared", () => {
+  it("shows client planning draft as Draft with Open Planning, not Shared", () => {
     const detail = setupReadinessDetail(base({
       playbookApplications: [{
         eventId: "e1",
@@ -43,6 +43,7 @@ describe("setupReadinessDetail", () => {
     }));
     assert.equal(detail.status, "draft");
     assert.match(detail.summary, /not yet visible/i);
+    assert.equal(detail.nextAction, "Open Planning");
   });
 
   it("shows released client planning as Shared", () => {
@@ -79,26 +80,26 @@ describe("setupReadinessDetail", () => {
     assert.match(detail.summary, /not sent by portal release/i);
   });
 
-  it("flags missing inventory draft and routes recovery to Prepare and release portal", () => {
+  it("treats missing inventory draft with a valid template ref as recoverable Draft, not Unavailable", () => {
     const detail = setupReadinessDetail(base({
       step: "inventory",
       inheritedRefs: { inventoryTemplateId: "inv-1" },
       templateNames: { planning: null, timeline: null, inventory: "Starter kit", eventOrder: null },
     }));
-    assert.equal(detail.status, "unavailable");
+    assert.equal(detail.status, "draft");
     assert.match(detail.summary, /no separate inventory prepare step/i);
-    assert.equal(detail.nextAction, "Prepare and release portal");
+    assert.equal(detail.nextAction, "Open Inventory");
   });
 
-  it("flags missing Event Order draft without a separate prepare CTA", () => {
+  it("treats missing Event Order draft with a valid package ref as recoverable Draft, not Unavailable", () => {
     const detail = setupReadinessDetail(base({
       step: "event_order",
       inheritedRefs: { eventOrderTemplateId: "eo-1" },
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: "Classic package" },
     }));
-    assert.equal(detail.status, "unavailable");
+    assert.equal(detail.status, "draft");
     assert.match(detail.summary, /not an invoice/i);
-    assert.equal(detail.nextAction, "Prepare and release portal");
+    assert.equal(detail.nextAction, "Open Event Order");
   });
 
   it("surfaces a Setup Profile configuration gap when Event Order is included without a package ref", () => {
