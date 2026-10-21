@@ -352,11 +352,30 @@ async function main() {
       throw new Error("booking-confirm-submit stayed disabled");
     }
     await submit.click();
-    await page.waitForURL(/\/(clients|events)\//, { timeout: 90_000 });
+    try {
+      await page.waitForURL(/\/(clients|events)\//, { timeout: 90_000 });
+    } catch (err) {
+      // Booking may succeed while navigation stalls — poll DB, then recover URL.
+      for (let i = 0; i < 30 && !clientId; i += 1) {
+        await page.waitForTimeout(1_000);
+        const { data: early } = await admin.from("clients").select("id").eq("lead_id", leadId).maybeSingle();
+        if (early?.id) {
+          clientId = early.id;
+          break;
+        }
+      }
+      if (clientId) {
+        await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      } else {
+        await page.screenshot({ path: `${OUT}/02-booking-nav-timeout.png`, fullPage: true });
+        const body = await page.locator("body").innerText().catch(() => "");
+        throw new Error(`booking navigation failed url=${page.url()} body=${body.slice(0, 500)} cause=${err}`);
+      }
+    }
     await page.screenshot({ path: `${OUT}/02-after-booking-1280.png`, fullPage: true });
 
     const { data: client } = await admin.from("clients").select("id").eq("lead_id", leadId).maybeSingle();
-    clientId = client?.id ?? null;
+    clientId = client?.id ?? clientId ?? null;
     const { data: event } = clientId
       ? await admin
           .from("events")
