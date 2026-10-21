@@ -144,9 +144,9 @@ export default async function BookedPage({ params, searchParams }: Props) {
     : "This client is booked.";
   handoff.prepareHeading = "What to do next";
   handoff.tagline =
-    "Planning continues with tasks, the timeline, vendors, messages, payments, and contracts. Booked does not mean planning is released.";
-  handoff.primaryLabel = "Open Event";
-  handoff.primaryHref = `/clients/${client.id}`;
+    "Booked does not release planning to the couple. Continue on Event setup on their client workspace — it stays available after you leave this screen.";
+  handoff.primaryLabel = "Continue event setup";
+  handoff.primaryHref = `/clients/${client.id}#event-setup`;
 
   return (
     <BookingCelebration

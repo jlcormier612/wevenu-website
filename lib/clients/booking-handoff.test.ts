@@ -15,7 +15,7 @@ function baseInput(overrides: Partial<Parameters<typeof buildBookingHandoff>[0]>
     playbookApplications: [],
     financialSummary: "Nothing on file yet. Contract and payment plan are optional.",
     communicationsSummary:
-      "Not sent — invite them when you're ready, or they'll be invited when you release Client Planning. Nothing is scheduled to send automatically when Booked.",
+      "Not sent — invite them when you're ready. Releasing Client Planning does not send this invitation. Nothing is scheduled to send automatically when Booked.",
     experienceSummary: "Your client's experience is set up for a wedding.",
     ...overrides,
   };
@@ -29,10 +29,11 @@ describe("buildBookingHandoff", () => {
     assert.doesNotMatch(blob, /wedding website ready/i);
     assert.doesNotMatch(blob, /planning tools ready/i);
     assert.equal(model.bookingLine, "are booked.");
-    assert.equal(model.prepareHeading, "Prepare Their Event");
+    assert.equal(model.prepareHeading, "What to do next");
     const communications = model.items.find((i) => i.key === "communications");
     assert.equal(communications?.complete, false);
-    assert.match(communications?.detail ?? "", /invite them when you're ready|release Client Planning/i);
+    assert.match(communications?.detail ?? "", /invite them when you're ready/i);
+    assert.match(communications?.detail ?? "", /does not send this invitation/i);
     const clientPlanning = model.items.find((i) => i.key === "client_planning");
     assert.equal(clientPlanning?.complete, false);
     assert.equal(clientPlanning?.detail, "Not configured");
@@ -44,15 +45,16 @@ describe("buildBookingHandoff", () => {
     assert.equal(model.items.find((i) => i.key === "venue_planning")?.complete, false);
     assert.equal(model.items.find((i) => i.key === "client_planning")?.detail, "Not configured");
     assert.equal(model.items.find((i) => i.key === "venue_planning")?.detail, "Not configured");
-    assert.equal(model.primaryHref, `/events/${EVENT_ID}#playbook`);
-    assert.equal(model.primaryLabel, "Prepare Their Event");
+    assert.equal(model.primaryHref, `/clients/${CLIENT_ID}#event-setup`);
+    assert.equal(model.primaryLabel, "Continue event setup");
   });
 
   it("represents invitation state truthfully on the Communications row", () => {
     const pending = buildBookingHandoff(baseInput({
-      communicationsSummary: "Not sent — invite them when you're ready, or they'll be invited when you release Client Planning. Nothing is scheduled to send automatically when Booked.",
+      communicationsSummary: "Not sent — invite them when you're ready. Releasing Client Planning does not send this invitation. Nothing is scheduled to send automatically when Booked.",
     }));
     assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /invite them when you're ready/i);
+    assert.match(pending.items.find((i) => i.key === "communications")?.detail ?? "", /does not send this invitation/i);
     assert.equal(pending.items.find((i) => i.key === "communications")?.complete, false);
 
     const noEmail = buildBookingHandoff(baseInput({
@@ -79,17 +81,19 @@ describe("buildBookingHandoff", () => {
     assert.equal(empty.items.find((i) => i.key === "communications")?.label, "Communications");
   });
 
-  it("distinguishes Client Planning draft from released without treating either as website-ready", () => {
+  it("distinguishes Client Planning draft from released without treating draft as complete", () => {
     const draft = buildBookingHandoff(baseInput({
       playbookApplications: [{ kind: "client", releasedAt: null, templateName: "Standard Wedding" }],
     }));
-    assert.equal(draft.items.find((i) => i.key === "client_planning")?.complete, true);
+    assert.equal(draft.items.find((i) => i.key === "client_planning")?.complete, false);
     assert.match(draft.items.find((i) => i.key === "client_planning")?.detail ?? "", /Draft/);
+    assert.equal(draft.items.find((i) => i.key === "client_planning")?.actionLabel, "Release Client Planning");
     assert.doesNotMatch(JSON.stringify(draft), /workspace is ready/i);
 
     const released = buildBookingHandoff(baseInput({
       playbookApplications: [{ kind: "client", releasedAt: "2026-09-02T00:00:00Z", templateName: "Standard Wedding" }],
     }));
+    assert.equal(released.items.find((i) => i.key === "client_planning")?.complete, true);
     assert.match(released.items.find((i) => i.key === "client_planning")?.detail ?? "", /Released to the client/);
     assert.match(released.items.find((i) => i.key === "client_planning")?.detail ?? "", /Standard Wedding/);
   });
@@ -155,12 +159,12 @@ describe("booked-event summary after the booking transition", () => {
     assert.doesNotMatch(hero, /text-5xl/);
     assert.doesNotMatch(hero, /text-center/);
     assert.match(hero, /EventStatusBadge/);
-    assert.match(hero, /<dt[^>]*>Time<\/dt>/);
+    assert.match(hero, /multiDay \? "Overall booking window" : "Time"/);
     assert.match(hero, /<dt[^>]*>Guests<\/dt>/);
     assert.match(hero, /<dt[^>]*>Spaces<\/dt>/);
     assert.match(hero, /sm:grid-cols-2/);
     assert.match(hero, /lg:grid-cols-3/);
-    assert.match(hero, /parseSpaceLines/);
+    assert.match(hero, /spaceLine/);
     assert.match(hero, /weekday: "long"/);
     const uses = readFileSync(resolve("lib/venue-spaces/uses.ts"), "utf8");
     assert.match(uses, /A stored label that is only the internal key is not a customer-facing name/);
@@ -194,8 +198,8 @@ describe("booked page — conversion and copy seams", () => {
     assert.match(celebration, /handoff\.prepareHeading/);
     assert.match(celebration, /handoff\.primaryLabel/);
     assert.doesNotMatch(celebration, /href=\{`\/events\/\$\{eventId\}`\}/);
-    assert.match(page, /primaryLabel = "Open Event"/);
-    assert.match(page, /primaryHref = `\/clients\/\$\{client\.id\}`/);
+    assert.match(page, /primaryLabel = "Continue event setup"/);
+    assert.match(page, /primaryHref = `\/clients\/\$\{client\.id\}#event-setup`/);
     assert.doesNotMatch(celebration, /Open booking/i);
     assert.doesNotMatch(celebration, /View Client/);
     assert.doesNotMatch(celebration, /Continue to booking/);

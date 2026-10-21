@@ -995,6 +995,11 @@ export function TimelineView({
             variant={needsCoupleShare ? "default" : "outline"}
             disabled={sharePending || totalCount === 0}
             onClick={handleShareWithCouple}
+            title={
+              needsCoupleShare
+                ? "Make venue timeline items visible in the couple portal. Does not send email."
+                : "Venue timeline items tagged Client are already visible in their portal. Sharing does not send email."
+            }
             aria-label={needsCoupleShare ? "Share timeline with couple" : "Timeline already shared with couple"}
           >
             <Share2 className="mr-1 h-3.5 w-3.5" />

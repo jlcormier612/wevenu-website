@@ -233,13 +233,15 @@ describe("Phase 5 communications review seams", () => {
     assert.doesNotMatch(panel, /fetch\(/);
   });
 
-  it("release still sends the invitation only after Client Planning is released", () => {
+  it("Client Planning release does not send the invitation email", () => {
     const src = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
     const fnStart = src.indexOf("export async function releasePlaybookApplication");
     const fn = src.slice(fnStart, src.indexOf("export async function updateEventTaskDaysOffset", fnStart));
-    assert.ok(fn.indexOf("inviteClient(") > fn.indexOf("if (!released.ok)"));
-    assert.match(fn, /The invitation could not be sent/);
+    assert.doesNotMatch(fn, /inviteClient\(/);
+    assert.match(fn, /Invite them to the workspace separately/);
     assert.doesNotMatch(fn, /buildCommunicationsReview/);
+    const helper = readFileSync(resolve("lib/clients/communications-review.ts"), "utf8");
+    assert.match(helper, /releasing Client Planning does not send an invitation email/i);
   });
 
   it("does not invent a welcome message or Booked Automation", () => {

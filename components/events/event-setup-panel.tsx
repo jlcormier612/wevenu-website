@@ -105,11 +105,42 @@ export function EventSetupPanel({
   const [pending, startTransition] = React.useTransition();
   const [changing, setChanging] = React.useState<SetupStepKey | null>(null);
   const effective = effectiveDecisionMap(state);
-  const complete = setupDecisionsComplete(applicableSteps, effective);
-  const collapsed = Boolean(state.collapsedAt) && complete;
+  const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
   const counts = setupDecisionCounts(applicableSteps, effective);
   const usingProfile = Boolean(state.usesProfile && state.profileName);
   const inheritedRefs = state.inheritedTemplateRefs ?? {};
+
+  const stepDetails = applicableSteps.map((step) => {
+    const decision = effectiveSetupDecision(state, step) ?? null;
+    return {
+      step,
+      decision,
+      detail: setupReadinessDetail({
+        step,
+        decision,
+        inheritedRefs,
+        playbookApplications,
+        hasTimeline,
+        timelineItemCount,
+        questionnaires,
+        vendorRecommendationCount,
+        floorPlanOfferCount,
+        preferredFloorPlanName,
+        hasEventInventory,
+        eventOrder,
+        templateNames,
+      }),
+    };
+  });
+  const outstanding = stepDetails.filter((row) =>
+    row.detail.status === "needs_action"
+    || row.detail.status === "draft"
+    || row.detail.status === "unavailable",
+  );
+  const outstandingCount = outstanding.length;
+  /** Decisions alone are not “setup complete” while drafts or missing artifacts remain. */
+  const setupSettled = decisionsComplete && outstandingCount === 0;
+  const collapsed = Boolean(state.collapsedAt) && setupSettled;
 
   function decide(step: SetupStepKey, decision: "set_up" | "skipped") {
     startTransition(async () => {
@@ -139,9 +170,12 @@ export function EventSetupPanel({
 
   if (collapsed) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-testid="event-setup-panel" id="event-setup">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
-          <p className="text-sm font-medium text-heading">Event setup complete</p>
+          <div>
+            <p className="text-sm font-medium text-heading">Event setup</p>
+            <p className="text-xs text-muted-foreground">No outstanding setup actions for this event.</p>
+          </div>
           <Button type="button" variant="outline" size="sm" onClick={reopen} disabled={pending}>
             Show setup
           </Button>
@@ -158,10 +192,10 @@ export function EventSetupPanel({
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card px-4 py-4">
+    <section className="space-y-3 rounded-lg border border-border bg-card px-4 py-4" data-testid="event-setup-panel" id="event-setup">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-medium text-heading">Get this event ready</h2>
+          <h2 className="text-base font-medium text-heading">Event setup</h2>
           {usingProfile ? (
             <>
               <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
@@ -172,8 +206,8 @@ export function EventSetupPanel({
             </>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">
-              {complete
-                ? "Every setup area has a decision. Included and not included are finished choices."
+              {decisionsComplete
+                ? "Every area has a Set up or Skip decision. Outstanding drafts and missing preparations still need attention below."
                 : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
             </p>
           )}
@@ -183,34 +217,58 @@ export function EventSetupPanel({
             {counts.included} included
             {" · "}
             {counts.skipped} not included
+            {outstandingCount > 0 ? ` · ${outstandingCount} need follow-up` : ""}
           </p>
         </div>
-        {complete ? (
+        {setupSettled ? (
           <Button type="button" variant="outline" size="sm" onClick={collapse} disabled={pending}>
             Hide setup
           </Button>
         ) : null}
       </div>
+      {outstandingCount > 0 ? (
+        <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-3 space-y-2" data-testid="event-setup-outstanding">
+          <p className="text-sm font-medium text-heading">Outstanding on this event</p>
+          <ul className="space-y-2">
+            {outstanding.map(({ step, detail }) => (
+              <li key={step} className="flex flex-wrap items-start justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium text-heading">{setupStepLabel(step)}</p>
+                  <p className="text-xs text-muted-foreground">{detail.summary}</p>
+                </div>
+                {detail.nextAction ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const tab =
+                        step === "planning" ? "playbook"
+                          : step === "timeline" ? "timeline"
+                            : step === "floor_plans" ? "floor-plans"
+                              : step === "vendors" ? "vendors"
+                                : step === "questionnaires" ? "questionnaires"
+                                  : step === "inventory" ? "inventory"
+                                    : step === "event_order" ? "event-order"
+                                      : "overview";
+                      onNavigateTab(tab);
+                    }}
+                  >
+                    {detail.nextAction}
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            Sharing or releasing content does not send an invitation email. Invite the couple separately when you are ready.
+          </p>
+        </div>
+      ) : null}
       <ul className="space-y-3">
-        {applicableSteps.map((step) => {
-          const decision = effectiveSetupDecision(state, step) ?? null;
+        {stepDetails.map(({ step, decision, detail }) => {
           const source = setupStepSource(state, step);
           const inherited = state.inheritedDecisions?.[step];
-          const detail = setupReadinessDetail({
-            step,
-            decision,
-            inheritedRefs,
-            playbookApplications,
-            hasTimeline,
-            timelineItemCount,
-            questionnaires,
-            vendorRecommendationCount,
-            floorPlanOfferCount,
-            preferredFloorPlanName,
-            hasEventInventory,
-            eventOrder,
-            templateNames,
-          });
           const showChooser = decision == null || changing === step;
           return (
             <li key={step} className="rounded-lg border border-border px-3 py-3">
@@ -248,6 +306,9 @@ export function EventSetupPanel({
                 ) : null}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{detail.summary}</p>
+              {detail.nextAction && decision === "set_up" ? (
+                <p className="mt-1 text-xs font-medium text-foreground">Next: {detail.nextAction}</p>
+              ) : null}
               {decision === "set_up" ? (
                 <div className="mt-3">
                   <SetupTool

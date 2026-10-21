@@ -319,12 +319,11 @@ export async function unapplyPlaybookFromEvent(
   return result as PlaybookActionResult;
 }
 
-/** The deliberate second step for Client Planning (Draft → Release,
- *  2026-07-10): makes the checklist visible in the couple portal and starts
- *  its reminders. Also makes sure a portal link actually exists for this
- *  client. Phase 3: after a successful release, send the existing client
- *  invitation if an email is on file. Invitation failure does not roll
- *  back the release. */
+/** The deliberate second step for Client Planning (Draft → Release):
+ *  makes the checklist visible in the couple portal and starts its reminders.
+ *  Ensures a portal session exists so the couple can open the portal when invited.
+ *  Does NOT send the client invitation email — invite is a separate, explicit action
+ *  (PortalLinkWidget / Invite client to workspace). */
 export async function releasePlaybookApplication(eventId: string, clientId: string, coupleName: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const released = await repo.releasePlaybookApplication(c, venueId, eventId);
@@ -341,37 +340,11 @@ export async function releasePlaybookApplication(eventId: string, clientId: stri
     const sessions = await getPortalSessions(clientId);
     if (sessions.length === 0) await createPortalSession(clientId, coupleName);
 
-    const { getClient } = await import("@/lib/clients/service");
-    const { inviteClient } = await import("@/lib/client-auth/service");
-    const client = await getClient(clientId);
-    const email = client?.email?.trim() ?? "";
-    if (!email) {
-      return {
-        ok: true,
-        message: "Client Planning released. No invitation sent — no client email on file.",
-      } as PlaybookActionResult;
-    }
-
-    try {
-      const invited = await inviteClient(clientId, email, coupleName);
-      if (!invited.ok) {
-        console.error("[release] inviteClient failed after release:", invited.error);
-        return {
-          ok: true,
-          message: "Client Planning released. The invitation could not be sent — invite them from the Client page.",
-        } as PlaybookActionResult;
-      }
-      return {
-        ok: true,
-        message: "Client Planning released. Their invitation has been sent.",
-      } as PlaybookActionResult;
-    } catch (e) {
-      console.error("[release] inviteClient threw after release:", e instanceof Error ? e.message : e);
-      return {
-        ok: true,
-        message: "Client Planning released. The invitation could not be sent — invite them from the Client page.",
-      } as PlaybookActionResult;
-    }
+    return {
+      ok: true,
+      message:
+        "Client Planning released — the checklist is now visible in their portal. This does not send an invitation email. Invite them to the workspace separately when you are ready.",
+    } as PlaybookActionResult;
   });
   return result as PlaybookActionResult;
 }

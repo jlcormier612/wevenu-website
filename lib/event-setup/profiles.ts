@@ -13,6 +13,7 @@ import {
   type SetupTemplateRefs,
   type VenueSetupProfile,
 } from "@/lib/event-setup/profile";
+import { profileHardGapSummary, profileHardConfigGaps } from "@/lib/event-setup/profile-config-gaps";
 import { validateSetupProfileEventTypes } from "@/lib/event-setup/setup-profile-event-types";
 import { applicableSetupSteps, type SetupDecisions, type SetupStepKey } from "@/lib/event-setup/state";
 import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
@@ -121,6 +122,15 @@ export async function saveVenueSetupProfile(
     if (!playbook || playbook.kind !== "client" || playbook.is_archived) {
       templateRefs.planningPlaybookTemplateId = null;
     }
+  }
+
+  const hardGaps = profileHardConfigGaps(decisions, templateRefs);
+  const hardSummary = profileHardGapSummary(hardGaps);
+  if (hardSummary) {
+    return {
+      ok: false,
+      message: `${hardSummary} Mark the area Not included if you do not want Hello to Cheers to prepare it automatically.`,
+    };
   }
 
   const payload = {

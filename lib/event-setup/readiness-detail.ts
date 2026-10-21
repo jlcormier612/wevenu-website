@@ -155,13 +155,22 @@ function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
 
 function vendorsDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const rec = ctx.vendorRecommendationCount;
+  const expectedRecs = ctx.inheritedRefs.recommendedVendorIds ?? [];
+  if (expectedRecs.length > 0 && rec === 0) {
+    return {
+      status: "unavailable",
+      summary:
+        "This event’s Setup Profile listed recommended vendors, but none were attached. Recommendations are separate from operational assignments.",
+      nextAction: "Open Vendors to recommend",
+    };
+  }
   return {
     status: "included",
     summary:
       `Eligible vendors from your Vendor Network are available for client discovery by default. ` +
       (rec > 0
         ? `${rec} optional recommendation${rec === 1 ? "" : "s"} highlighted for this event. `
-        : "No optional recommendations highlighted. ") +
+        : "No optional recommendations highlighted (that is fine — recommendations are optional). ") +
       "Required vendors are managed in Vendor Network and assigned separately.",
     nextAction: "Open Vendors",
   };
@@ -210,12 +219,19 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
 
 function inventoryDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const name = ctx.templateNames.inventory;
+  const hasRef = Boolean(name || ctx.inheritedRefs.inventoryTemplateId);
   if (!ctx.hasEventInventory) {
+    if (hasRef) {
+      return {
+        status: "needs_action",
+        summary: `Starting inventory offering "${name ?? "selected"}" is configured as a reference — booking does not create inventory. Start it on the event when ready.`,
+        nextAction: "Open Inventory to start",
+      };
+    }
     return {
-      status: name || ctx.inheritedRefs.inventoryTemplateId ? "included" : "needs_action",
-      summary: name
-        ? `Starting inventory offering "${name}" is a reference — booking does not commit inventory. Apply it on the event when ready.`
-        : "Starting inventory offering is a reference, not a commitment. Apply inventory for this event when ready.",
+      status: "needs_action",
+      summary:
+        "Inventory is included for this event, but no starting offering is configured and none has been started. Start blank or from a template when ready — booking never creates inventory automatically.",
       nextAction: "Open Inventory",
     };
   }
@@ -230,11 +246,18 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const name = ctx.templateNames.eventOrder;
   const order = ctx.eventOrder;
   if (!order) {
+    const hasRef = Boolean(name || ctx.inheritedRefs.eventOrderTemplateId);
+    if (hasRef) {
+      return {
+        status: "needs_action",
+        summary: `Starting package "${name ?? "selected"}" is a reference. An Event Order is created with an explicit action — not at booking — and is not an invoice, contract, or payment plan.`,
+        nextAction: "Open Event Order to create or apply",
+      };
+    }
     return {
-      status: name || ctx.inheritedRefs.eventOrderTemplateId ? "included" : "needs_action",
-      summary: name
-        ? `Starting package "${name}" is a reference. An Event Order is the record of what the event receives — not the invoice, contract, or payment plan — and is created with an explicit action.`
-        : "An Event Order is the record of what the event receives, not the invoice or payment plan. Create or apply one when ready.",
+      status: "needs_action",
+      summary:
+        "Event Order is included for this event, but none exists yet. Create or apply a template when ready. Package-only events may skip a detailed Event Order.",
       nextAction: "Open Event Order",
     };
   }

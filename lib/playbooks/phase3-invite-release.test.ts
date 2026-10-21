@@ -42,28 +42,16 @@ describe("Phase 3 invite-at-release seams", () => {
     assert.doesNotMatch(src.slice(coreStart, coreEnd), /inviteClient\(/);
   });
 
-  it("successful Client Planning release calls inviteClient only after release succeeds", () => {
+  it("Client Planning release does not invite the couple (content release ≠ invitation)", () => {
     const src = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
     const fnStart = src.indexOf("export async function releasePlaybookApplication");
     const fnEnd = src.indexOf("export async function updateEventTaskDaysOffset", fnStart);
     const fn = src.slice(fnStart, fnEnd);
-    const failReturn = fn.indexOf("if (!released.ok)");
-    const inviteCall = fn.indexOf("inviteClient(");
-    assert.ok(failReturn >= 0);
-    assert.ok(inviteCall > failReturn);
     assert.match(fn, /if \(!released\.ok\)/);
-    assert.match(fn, /inviteClient\(/);
-    assert.match(fn, /if \(!email\)/);
+    assert.doesNotMatch(fn, /inviteClient\(/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
-  });
-
-  it("release failure returns before inviteClient", () => {
-    const src = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
-    const fnStart = src.indexOf("export async function releasePlaybookApplication");
-    const fn = src.slice(fnStart, src.indexOf("export async function updateEventTaskDaysOffset", fnStart));
-    const beforeInvite = fn.slice(0, fn.indexOf("inviteClient("));
-    assert.match(beforeInvite, /already_released/);
-    assert.match(beforeInvite, /return \{/);
+    assert.match(fn, /checklist is now visible/);
+    assert.match(fn, /Invite them to the workspace separately/);
   });
 
   it("inviteClient skips insert when an active invitation already exists", () => {
@@ -128,10 +116,12 @@ describe("Phase 3 invite-at-release seams", () => {
     assert.doesNotMatch(page, /invited === ["']1["']/);
   });
 
-  it("release UX states that invitation email is sent when an address is on file", () => {
+  it("release UX states content becomes visible without claiming an invitation email", () => {
     const list = readFileSync(resolve("components/playbooks/event-task-list.tsx"), "utf8");
-    assert.match(list, /they'll receive their invitation email if an email address is on file/);
+    assert.doesNotMatch(list, /they'll receive their invitation email if an email address is on file/);
     assert.match(list, /result\.message/);
+    const service = readFileSync(resolve("lib/playbooks/service.ts"), "utf8");
+    assert.match(service, /does not send an invitation email/);
   });
 
   it("wedding wording and Event Experience resolver are unchanged", () => {

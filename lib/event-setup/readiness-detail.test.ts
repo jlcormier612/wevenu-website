@@ -78,15 +78,15 @@ describe("setupReadinessDetail", () => {
     assert.match(detail.summary, /not visible to the client until sent/i);
   });
 
-  it("does not treat a starting inventory template as a commitment", () => {
+  it("does not treat a starting inventory template as created inventory", () => {
     const detail = setupReadinessDetail(base({
       step: "inventory",
       inheritedRefs: { inventoryTemplateId: "inv-1" },
       templateNames: { planning: null, timeline: null, inventory: "Starter kit", eventOrder: null },
     }));
-    assert.equal(detail.status, "included");
+    assert.equal(detail.status, "needs_action");
     assert.match(detail.summary, /reference/i);
-    assert.match(detail.summary, /does not commit/i);
+    assert.match(detail.summary, /does not create inventory/i);
   });
 
   it("does not treat a starting event-order package as an invoice", () => {
@@ -95,7 +95,17 @@ describe("setupReadinessDetail", () => {
       inheritedRefs: { eventOrderTemplateId: "eo-1" },
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: "Classic package" },
     }));
-    assert.equal(detail.status, "included");
-    assert.match(detail.summary, /not the invoice/i);
+    assert.equal(detail.status, "needs_action");
+    assert.match(detail.summary, /not an invoice/i);
+  });
+
+  it("flags empty vendor recommendations when the profile claimed a list", () => {
+    const detail = setupReadinessDetail(base({
+      step: "vendors",
+      vendorRecommendationCount: 0,
+      inheritedRefs: { recommendedVendorIds: ["v1", "v2"] },
+    }));
+    assert.equal(detail.status, "unavailable");
+    assert.match(detail.summary, /none were attached/i);
   });
 });

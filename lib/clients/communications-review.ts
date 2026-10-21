@@ -62,7 +62,7 @@ export type CommunicationsReviewModel = {
 };
 
 export const COMMUNICATIONS_REVIEW_NOTE =
-  "Opening this page does not send a message. Use Invite client when you're ready, or the client is invited when you release Client Planning if an email is on file.";
+  "Opening this page does not send a message. Use Invite client when you're ready — releasing Client Planning does not send an invitation email.";
 
 export function isActiveBookedStageAutomation(automation: CommunicationsReviewAutomation): boolean {
   return (
@@ -78,7 +78,7 @@ export function invitationDetail(
 ): string {
   if (!invitation) {
     return clientHasEmail
-      ? "Not sent — invite them when you're ready, or they'll be invited when you release Client Planning."
+      ? "Not sent — invite them when you're ready. Releasing Client Planning does not send this invitation."
       : "Not sent — no client email on file";
   }
   if (invitation.status === "accepted") return "Client accepted their invitation";

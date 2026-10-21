@@ -17,6 +17,10 @@ import {
   type SetupTemplateRefs,
   type VenueSetupProfile,
 } from "@/lib/event-setup/profile";
+import {
+  profileConfigGaps,
+  profileHardGapSummary,
+} from "@/lib/event-setup/profile-config-gaps";
 import type { SetupProfileUsedForOption } from "@/lib/event-setup/setup-profile-event-types";
 import {
   setupStepLabel,
@@ -221,6 +225,13 @@ export function SetupProfilesSection({
         inventoryTemplates,
         eventOrderTemplates,
       });
+      const hardSummary = profileHardGapSummary(profileConfigGaps(draft.decisions, safeRefs));
+      if (hardSummary) {
+        toast.error(
+          `${hardSummary} Mark the area Not included if you do not want Hello to Cheers to prepare it automatically.`,
+        );
+        return;
+      }
       const result = await saveSetupProfileAction({
         id: draft.id,
         name: draft.name,
@@ -233,7 +244,12 @@ export function SetupProfilesSection({
         toast.error(result.message);
         return;
       }
-      toast.success("Setup profile saved.");
+      const soft = profileConfigGaps(draft.decisions, safeRefs).filter((g) => g.severity === "soft");
+      toast.success(
+        soft.length > 0
+          ? "Setup profile saved. Inventory/Event Order still need a starting offering or a manual start on each event."
+          : "Setup profile saved.",
+      );
       setDraft(null);
       router.refresh();
     });
@@ -282,12 +298,26 @@ export function SetupProfilesSection({
           <li className="text-sm text-muted-foreground">No setup profiles yet.</li>
         ) : profiles.map((profile) => {
           const usedFor = assignments.filter((row) => row.profileId === profile.id).map((row) => row.eventType);
+          const gaps = profileConfigGaps(profile.decisions, profile.templateRefs);
+          const hard = gaps.filter((g) => g.severity === "hard");
+          const soft = gaps.filter((g) => g.severity === "soft");
           return (
             <li key={profile.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-heading">{profile.name}</p>
                 <p className="text-sm text-muted-foreground">Used for: {setupProfileUsedForLabel(usedFor)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{profileSummary(profile, playbooks, timelines)}</p>
+                {hard.length > 0 ? (
+                  <p className="mt-2 text-xs text-amber-800" data-testid="setup-profile-hard-gaps">
+                    Needs templates before save can claim these are ready: {hard.map((g) => setupStepLabel(g.step)).join(", ")}.
+                    {" "}Edit to select templates or mark Not included.
+                  </p>
+                ) : null}
+                {soft.length > 0 ? (
+                  <p className="mt-1 text-xs text-muted-foreground" data-testid="setup-profile-soft-gaps">
+                    {soft.map((g) => g.message).join(" ")}
+                  </p>
+                ) : null}
               </div>
               {canEdit ? (
                 <Button type="button" variant="outline" size="sm" onClick={() => beginEdit(profile)}>Edit</Button>
