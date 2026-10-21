@@ -21,6 +21,13 @@ describe("isOutstandingFollowUp", () => {
     assert.equal(isOutstandingFollowUp("set_up", "included"), false);
     assert.equal(isOutstandingFollowUp("set_up", "shared"), false);
   });
+
+  it("excludes questionnaires and Event Order drafts from portal settle blockers", () => {
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "questionnaires"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "needs_action", "questionnaires"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "event_order"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "unavailable", "event_order"), true);
+  });
 });
 
 describe("setupStatusBadgeLabel", () => {

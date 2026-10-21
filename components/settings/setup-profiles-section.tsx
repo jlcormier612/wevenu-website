@@ -279,7 +279,7 @@ export function SetupProfilesSection({
           </p>
           <p className="text-sm text-muted-foreground">
             Once you&apos;re happy with your setup, use{" "}
-            <span className="font-medium text-heading">Invite client to workspace</span>
+            <span className="font-medium text-heading">Invite client</span>
             {" "}
             from the client&apos;s event to invite them.
           </p>
@@ -566,46 +566,32 @@ function CapabilityDefaults({
     );
   }
   if (step === "vendors") {
-    const recommended = refs.recommendedVendorIds ?? [];
     return (
       <div className="space-y-4" data-testid="setup-profile-vendors">
         <div className="space-y-1">
-          <p className="text-sm font-medium text-heading">Vendor directory</p>
+          <p className="text-sm font-medium text-heading">Vendor Network</p>
           <p className="text-xs text-muted-foreground">
-            Eligible vendors from your Vendor Network are available for client discovery by default
-            when you invite the client. You do not need to select every vendor here.
+            Preferred, recommended, and required classifications in your Vendor Network are the
+            source of truth. Eligible vendors are available for client discovery by default when
+            you invite the client. You do not select a second recommendation list here.
           </p>
         </div>
-        <fieldset className="space-y-1">
-          <legend className="text-sm font-medium text-heading">Optional recommendations</legend>
-          <p className="text-xs text-muted-foreground">
-            Optionally highlight specific vendors for this event type. Leave unchecked to keep the
-            full eligible directory available without special recommendations. An empty list here
-            does not hide the directory from the client.
-          </p>
-          {vendors.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No vendors in the library yet.</p>
-          ) : (
-            vendors.map((option) => (
-              <label key={option.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={recommended.includes(option.id)}
-                  onChange={() => patchRefs({ recommendedVendorIds: toggleId(recommended, option.id) })}
-                />
-                {option.name}
-              </label>
-            ))
-          )}
-        </fieldset>
         <div className="space-y-1">
           <p className="text-sm font-medium text-heading">Required vendors</p>
           <p className="text-xs text-muted-foreground">
-            Required vendors are managed in Vendor Network (including the existing required setting)
-            and are automatically assigned when an event is booked. They are separate from optional
-            recommendations and are not selected here.
+            Required vendors keep their existing Vendor Network assignment behavior when an event
+            is booked. Manage preferred, recommended, and required flags in Vendor Network — not
+            in this Setup Profile.
           </p>
         </div>
+        {vendors.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No vendors in the library yet.</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {vendors.length} vendor{vendors.length === 1 ? "" : "s"} in your network are available
+            according to their existing classifications.
+          </p>
+        )}
       </div>
     );
   }
@@ -656,12 +642,13 @@ function CapabilityDefaults({
         {incomplete ? (
           <p className="text-xs text-amber-800">
             Included but not configured — select a template, or mark Inventory Not included.
-            Saving this profile never creates an inventory draft; drafts start from Event Setup when you are ready.
+            Saving this profile never creates an inventory draft on existing events.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Configured starting point: {selected?.name}. This sets the reusable profile reminder only —
-            it does not create an inventory draft on any event. Drafts start from Event Setup when you are ready.
+            Configured starting point: {selected?.name}. When a client is booked with this profile,
+            the event inventory draft is prepared automatically from this offering. It is not shared
+            with the couple and does not create invoices. Saving the profile does not change existing events.
           </p>
         )}
         {inventoryTemplates.length === 0 ? (
@@ -692,12 +679,13 @@ function CapabilityDefaults({
         {incomplete ? (
           <p className="text-xs text-amber-800">
             Included but not configured — select a package, or mark Event Order Not included (for package-only events).
-            Saving this profile never creates an Event Order draft; drafts start from Event Setup when you are ready.
+            Saving this profile never creates an Event Order draft on existing events.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Configured starting point: {selected?.name}. This sets the reusable profile reminder only —
-            it does not create, share, or invoice an Event Order. Drafts start from Event Setup when you are ready.
+            Configured starting point: {selected?.name}. When a client is booked with this profile,
+            the Event Order draft is prepared automatically from this package. It is not shared,
+            not an invoice, and not a payment plan. Saving the profile does not change existing events.
           </p>
         )}
         {eventOrderTemplates.length === 0 ? (

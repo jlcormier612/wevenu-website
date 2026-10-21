@@ -12,13 +12,13 @@ const inherit = readFileSync(resolve("lib/event-setup/inherit.ts"), "utf8");
 const bookingModel = readFileSync(resolve("lib/booking-journey/model.ts"), "utf8");
 
 describe("Setup Profile client experience copy", () => {
-  it("explains preset client experience and Invite client to workspace next step", () => {
+  it("explains preset client experience and Invite client next step", () => {
     assert.match(section, /setup-profile-explanation/);
     assert.match(section, /Set up the client experience/);
     assert.match(section, /preset in their client portal/);
     assert.match(section, /starting choices/);
-    assert.match(section, /Invite client to workspace/);
-    assert.match(bookingModel, /Invite client to workspace/);
+    assert.match(section, /Invite client/);
+    assert.match(bookingModel, /Invite client/);
     assert.doesNotMatch(section, /Invite to portal/);
     assert.doesNotMatch(bookingModel, /Invite to portal/);
     assert.doesNotMatch(section, /Invite to portalfrom/);
@@ -95,15 +95,14 @@ describe("Questionnaires are multi-select drafts, not auto-sent", () => {
   });
 });
 
-describe("Vendors: directory default + optional recommendations; required from Vendor Network", () => {
-  it("explains directory default, optional recommendations, and Vendor Network required", () => {
+describe("Vendors: Vendor Network classifications are authoritative", () => {
+  it("explains preferred/recommended/required without a second recommendation picker", () => {
     assert.match(section, /setup-profile-vendors/);
-    assert.match(section, /Vendor directory/);
-    assert.match(section, /available for client discovery by default/);
-    assert.match(section, /Optional recommendations/);
-    assert.match(section, /does not hide the directory/);
-    assert.match(section, /Required vendors/);
     assert.match(section, /Vendor Network/);
+    assert.match(section, /Preferred, recommended, and required classifications/);
+    assert.match(section, /You do not select a second recommendation list here/);
+    assert.match(section, /Required vendors/);
+    assert.doesNotMatch(section, /Optional recommendations/);
     assert.doesNotMatch(section, /Vendors your team expects to book/);
     assert.doesNotMatch(section, /Recommended vendors for the client/);
     assert.match(inherit, /applyInheritedVendorRecommendations/);

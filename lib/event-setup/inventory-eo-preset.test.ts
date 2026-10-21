@@ -1,6 +1,6 @@
 /**
- * Phase 3: Setup Profile inventory / Event Order preset coverage seams.
- * Book-time remains reference-only; Event Setup starts drafts explicitly.
+ * Booking-to-portal: Inventory / Event Order auto-preset at booking.
+ * Drafts are prepared when Included with a template; share/invoice stay separate.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -15,28 +15,33 @@ function read(path: string) {
 }
 
 describe("inventory and Event Order profile preset coverage", () => {
-  it("booking inherit never creates inventory or Event Order records", () => {
+  it("booking inherit ensures inventory and Event Order drafts when Included with a template", () => {
     const inherit = read("lib/event-setup/inherit.ts");
+    assert.match(inherit, /applyInheritedInventoryAndEventOrder/);
+    assert.match(inherit, /ensureEventInventory/);
+    assert.match(inherit, /ensureEventOrder/);
+    assert.doesNotMatch(inherit, /shareEventInventory/);
+    assert.doesNotMatch(inherit, /shareEventOrderWithClient/);
+    assert.doesNotMatch(inherit, /createInvoice/);
     assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
-    assert.doesNotMatch(inherit, /applyTemplateItems/);
-    assert.doesNotMatch(inherit, /event_inventor/);
-    assert.doesNotMatch(inherit, /from\("event_orders"\)/);
-    assert.match(inherit, /intentional reminders only/);
   });
 
-  it("Setup Profile UI states template selection does not create event drafts", () => {
+  it("Setup Profile UI states booking prepares drafts without sharing or invoicing", () => {
     const profiles = read("components/settings/setup-profiles-section.tsx");
-    assert.match(profiles, /does not create an inventory draft on any event/);
-    assert.match(profiles, /does not create, share, or invoice an Event Order/);
-    assert.match(profiles, /Drafts start from Event Setup/);
+    assert.match(profiles, /inventory draft is prepared automatically/);
+    assert.match(profiles, /Event Order draft is prepared automatically/);
+    assert.match(profiles, /does not create invoices/);
+    assert.match(profiles, /not an invoice/);
+    assert.match(profiles, /does not change existing events/);
   });
 
-  it("Event Setup can start drafts from inherited refs without share/invoice side effects", () => {
+  it("Event Setup can recover missing drafts from inherited refs without share/invoice side effects", () => {
     const panel = read("components/events/event-setup-panel.tsx");
     assert.match(panel, /ensureEventInventoryAction/);
     assert.match(panel, /ensureEventOrderAction/);
     assert.match(panel, /inventoryTemplateId && !hasEventInventory/);
     assert.match(panel, /eventOrderTemplateId && !eventOrder/);
+    assert.match(panel, /prepareAndReleasePortalAction/);
     assert.doesNotMatch(panel, /shareEventInventoryAction/);
     assert.doesNotMatch(panel, /finalizeEventInventoryAction/);
     assert.doesNotMatch(panel, /finalizeEventOrderAction/);
@@ -60,7 +65,7 @@ describe("inventory and Event Order profile preset coverage", () => {
     assert.match(orders, /if \(existing\) return \{ ok: true, eventOrderId: existing\.id \}/);
   });
 
-  it("Readiness treats a profile ref without records as startable draft work, not completion", () => {
+  it("Readiness treats a profile ref without records as unavailable preparation gap", () => {
     const inv = setupReadinessDetail({
       step: "inventory",
       decision: "set_up",
@@ -76,8 +81,8 @@ describe("inventory and Event Order profile preset coverage", () => {
       eventOrder: null,
       templateNames: { planning: null, timeline: null, inventory: "Bar basics", eventOrder: null },
     });
-    assert.equal(inv.status, "needs_action");
-    assert.equal(isOutstandingFollowUp("set_up", inv.status), true);
+    assert.equal(inv.status, "unavailable");
+    assert.equal(isOutstandingFollowUp("set_up", inv.status, "inventory"), true);
     assert.match(inv.nextAction ?? "", /inventory draft/);
 
     const eo = setupReadinessDetail({
@@ -95,12 +100,18 @@ describe("inventory and Event Order profile preset coverage", () => {
       eventOrder: null,
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: "Classic" },
     });
-    assert.equal(eo.status, "needs_action");
+    assert.equal(eo.status, "unavailable");
     assert.match(eo.nextAction ?? "", /Event Order draft/);
   });
 
   it("skipped Event Order is not outstanding follow-up", () => {
     assert.equal(isOutstandingFollowUp("skipped", "not_included"), false);
     assert.equal(isOutstandingFollowUp(null, "needs_action"), false);
+  });
+
+  it("questionnaire drafts and Event Order drafts do not block portal settle", () => {
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "questionnaires"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "event_order"), false);
+    assert.equal(isOutstandingFollowUp("set_up", "draft", "planning"), true);
   });
 });

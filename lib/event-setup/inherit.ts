@@ -93,7 +93,15 @@ export async function inheritSetupProfileForNewEvent(
     throw insertError;
   }
 
-  await applyInheritedTemplates(supabase, venueId, eventId, event.event_date, event.start_time, profile);
+  await applyInheritedTemplates(
+    supabase,
+    venueId,
+    eventId,
+    event.event_date,
+    event.start_time,
+    event.event_type,
+    profile,
+  );
 }
 
 async function applyInheritedTemplates(
@@ -102,6 +110,7 @@ async function applyInheritedTemplates(
   eventId: string,
   eventDate: string | null,
   startTime: string | null,
+  eventType: string | null,
   profile: VenueSetupProfile,
 ): Promise<void> {
   const playbookId = profile.decisions.planning === "set_up"
@@ -157,10 +166,76 @@ async function applyInheritedTemplates(
     await applyInheritedVendorRecommendations(supabase, venueId, eventId, profile);
   }
 
-  // Inventory and Event Order template refs are intentional reminders only.
-  // Booking does not create those event-specific drafts — they start from
-  // Event Setup / module empty states when the venue is ready.
-  // See profile UI copy and setup-profile-model inherit seams.
+  // Inventory / Event Order: when Included with a valid starting template,
+  // prepare the event-level draft at booking (idempotent). Does not share,
+  // finalize, invoice, or invite.
+  await applyInheritedInventoryAndEventOrder(eventId, profile);
+
+  // Venue task list: apply the venue's default Venue Planning checklist when
+  // none is on the event yet. Venue applications release immediately (internal).
+  if (eventDate) {
+    await applyDefaultVenuePlaybook(supabase, venueId, eventId, eventDate, eventType);
+  }
+}
+
+async function applyInheritedInventoryAndEventOrder(
+  eventId: string,
+  profile: VenueSetupProfile,
+): Promise<void> {
+  if (profile.decisions.inventory === "set_up" && profile.templateRefs.inventoryTemplateId) {
+    try {
+      const { ensureEventInventory } = await import("@/lib/event-inventory/service");
+      await ensureEventInventory(eventId, profile.templateRefs.inventoryTemplateId);
+    } catch (err) {
+      console.error("Setup profile inventory ensure failed:", err);
+    }
+  }
+  if (profile.decisions.event_order === "set_up" && profile.templateRefs.eventOrderTemplateId) {
+    try {
+      const { ensureEventOrder } = await import("@/lib/event-orders/service");
+      await ensureEventOrder(eventId, profile.templateRefs.eventOrderTemplateId);
+    } catch (err) {
+      console.error("Setup profile Event Order ensure failed:", err);
+    }
+  }
+}
+
+async function applyDefaultVenuePlaybook(
+  supabase: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  eventType: string | null,
+): Promise<void> {
+  try {
+    const { data: existing } = await supabase
+      .from("event_playbook_applications")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("venue_id", venueId)
+      .eq("kind", "venue")
+      .limit(1);
+    if (existing && existing.length > 0) return;
+
+    const { data: defaults } = await supabase
+      .from("playbook_templates")
+      .select("id, event_type")
+      .eq("venue_id", venueId)
+      .eq("kind", "venue")
+      .eq("is_default", true)
+      .eq("is_archived", false);
+    const rows = (defaults ?? []) as { id: string; event_type: string | null }[];
+    const match =
+      (eventType ? rows.find((row) => row.event_type === eventType) : undefined)
+      ?? rows.find((row) => row.event_type == null)
+      ?? rows[0];
+    if (!match) return;
+
+    const { applyPlaybookToEvent } = await import("@/lib/playbooks/service");
+    await applyPlaybookToEvent(eventId, match.id, eventDate);
+  } catch (err) {
+    console.error("Setup profile venue playbook apply failed:", err);
+  }
 }
 
 /** Offer selected floor-plan templates to the client; preferred sorts first. */

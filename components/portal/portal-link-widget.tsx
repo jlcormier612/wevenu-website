@@ -34,7 +34,7 @@ export function PortalLinkWidget({
   clientId,
   coupleName,
   primaryEmail = null,
-  inviteLabel = "Invite client to workspace",
+  inviteLabel = "Invite client",
 }: {
   clientId: string;
   coupleName: string;

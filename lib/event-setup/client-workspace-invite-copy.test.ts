@@ -12,12 +12,13 @@ const profiles = readFileSync(resolve("components/settings/setup-profiles-sectio
 const bookingModel = readFileSync(resolve("lib/booking-journey/model.ts"), "utf8");
 
 describe("Client workspace invitation hierarchy", () => {
-  it("uses the locked Overview heading and separates invite from release/share", () => {
+  it("uses the locked Overview heading and separates invite from prepare/release", () => {
     assert.match(panel, /Your client&apos;s planning workspace/);
-    assert.match(panel, /Invitation is separate from/);
-    assert.match(panel, /Invite client to workspace/);
+    assert.match(panel, /invite the client/);
+    assert.match(panel, /Invite client/);
+    assert.match(panel, /Prepare and release portal/);
     assert.match(panel, /sends an email when an address is on file/);
-    assert.match(panel, /stay private until you take that action/);
+    assert.match(panel, /Questionnaires are never sent by/);
     assert.match(panel, /data-testid="client-workspace-invite"/);
   });
 
@@ -28,20 +29,20 @@ describe("Client workspace invitation hierarchy", () => {
     // Explicit space tokens around the emphasized CTA in Setup Profiles.
     assert.match(profiles, /use\{\s*" "\s*\}/);
     assert.match(profiles, /\{\s*" "\s*\}/);
-    assert.match(profiles, /Invite client to workspace/);
+    assert.match(profiles, /Invite client/);
   });
 
   it("keeps invitation available without gating on optional setup completion", () => {
     assert.match(panel, /ClientWorkspaceInvite/);
     assert.doesNotMatch(panel, /complete \? null/);
-    assert.match(widget, /inviteLabel = "Invite client to workspace"/);
+    assert.match(widget, /inviteLabel = "Invite client"/);
     assert.match(widget, /Not invited/);
     assert.match(widget, /Invitation sent/);
     assert.match(widget, /Accepted/);
   });
 
   it("updates booking-journey primary label", () => {
-    assert.match(bookingModel, /Invite client to workspace/);
+    assert.match(bookingModel, /Invite client/);
     assert.doesNotMatch(bookingModel, /Invite to portal/);
   });
 });

@@ -135,8 +135,10 @@ describe("profile UI and save seams for Inventory/Event Order honesty", () => {
     const profiles = read("lib/event-setup/profiles.ts");
     assert.match(section, /Needs template/);
     assert.match(section, /Included but not configured/);
-    assert.match(section, /does not create an inventory draft/);
-    assert.match(section, /does not create, share, or invoice an Event Order/);
+    assert.match(section, /inventory draft is prepared automatically/);
+    assert.match(section, /Event Order draft is prepared automatically/);
+    assert.match(section, /does not create invoices/);
+    assert.match(section, /not an invoice/);
     assert.match(section, /Select a starting offering/);
     assert.match(section, /Select a starting package/);
     assert.doesNotMatch(section, /setup-profile-soft-gaps/);

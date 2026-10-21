@@ -10,6 +10,7 @@ import { ensureEventOrderAction } from "@/app/(app)/events/[id]/event-order-acti
 import {
   collapseEventSetupAction,
   decideEventSetupAction,
+  prepareAndReleasePortalAction,
   reopenEventSetupAction,
 } from "@/app/(app)/events/[id]/setup-actions";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
@@ -140,7 +141,19 @@ export function EventSetupPanel({
   });
   /** Included areas that still need work — not undecided Set up / Skip rows. */
   const outstanding = stepDetails.filter((row) =>
-    isOutstandingFollowUp(row.decision, row.detail.status),
+    isOutstandingFollowUp(row.decision, row.detail.status, row.step),
+  );
+  const clientPlanning = playbookApplications.find((a) => a.kind === "client");
+  const portalReadyToRelease = Boolean(
+    clientId &&
+      decisionsComplete &&
+      outstanding.every((row) => row.step === "planning") &&
+      (!clientPlanning || !clientPlanning.releasedAt),
+  );
+  const canPrepareRelease = Boolean(
+    clientId &&
+      decisionsComplete &&
+      outstanding.filter((row) => row.step !== "planning").length === 0,
   );
   const outstandingSteps = new Set(outstanding.map((row) => row.step));
   const outstandingCount = outstanding.length;
@@ -223,6 +236,26 @@ export function EventSetupPanel({
     });
   }
 
+  function prepareAndRelease() {
+    if (!clientId) {
+      toast.error("Link a client before preparing the portal.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await prepareAndReleasePortalAction(
+        eventId,
+        clientId,
+        clientName?.trim() || "your client",
+      );
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      toast.success(result.message);
+      router.refresh();
+    });
+  }
+
   if (applicableSteps.length === 0) return null;
 
   if (collapsed) {
@@ -257,14 +290,15 @@ export function EventSetupPanel({
             <>
               <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                This Setup Profile supplies your venue&apos;s normal starting setup for this event.
-                You can change anything for this event without updating the reusable profile.
+                This Setup Profile supplied the standard starting setup at booking.
+                Edit anything for this event if needed, then prepare and release the portal once.
+                Questionnaires stay on their own schedule.
               </p>
             </>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">
               {decisionsComplete
-                ? "Every area has a Set up or Skip decision. Outstanding drafts and missing preparations still need attention below."
+                ? "Review the included areas below. Edit if needed, then prepare and release the portal. Invite the client separately."
                 : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
             </p>
           )}
@@ -283,11 +317,37 @@ export function EventSetupPanel({
           </Button>
         ) : null}
       </div>
+      {clientId && canPrepareRelease ? (
+        <div
+          className="rounded-lg border border-border bg-muted/30 px-3 py-3 space-y-3"
+          data-testid="event-setup-prepare-release"
+        >
+          <div>
+            <h3 className="text-sm font-medium text-heading">Prepare and release portal</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Finalizes the reviewed setup for the couple&apos;s portal: releases Client Planning when present,
+              shares the timeline when present, and ensures included Inventory / Event Order drafts exist.
+              Does not invite the client, send questionnaires, or create invoices.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending}
+            onClick={prepareAndRelease}
+            data-testid="prepare-and-release-portal"
+          >
+            {portalReadyToRelease || (clientPlanning && !clientPlanning.releasedAt)
+              ? "Prepare and release portal"
+              : "Prepare and release portal again"}
+          </Button>
+        </div>
+      ) : null}
       {outstandingCount > 0 ? (
         <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-3 space-y-2" data-testid="event-setup-outstanding">
           <p className="text-sm font-medium text-heading">Outstanding on this event</p>
           <p className="text-xs text-muted-foreground">
-            Included areas that still need a follow-up. Set up or Skip decisions stay on each area below.
+            Genuine gaps that block prepare/release. Questionnaires are scheduled separately and are not listed here.
           </p>
           <ul className="space-y-2">
             {outstanding.map(({ step, detail }) => (
@@ -302,6 +362,10 @@ export function EventSetupPanel({
                     size="sm"
                     disabled={pending}
                     onClick={() => {
+                      if (detail.nextAction === "Prepare and release portal") {
+                        prepareAndRelease();
+                        return;
+                      }
                       if (detail.nextAction === "Open Setup Profiles") {
                         openSetupProfiles();
                         return;
@@ -324,7 +388,7 @@ export function EventSetupPanel({
             ))}
           </ul>
           <p className="text-xs text-muted-foreground">
-            Sharing or releasing content does not send an invitation email. Invite the couple separately when you are ready.
+            Prepare and release does not send an invitation. Invite the couple separately when you are ready.
           </p>
         </div>
       ) : null}
@@ -438,19 +502,19 @@ function ClientWorkspaceInvite({
       <div>
         <h3 className="text-sm font-medium text-heading">Your client&apos;s planning workspace</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          When you are ready, invite them to the planning workspace. Invitation is separate from
-          releasing checklists or sharing timeline items.
+          After you prepare and release the portal, invite the client. Invitation is a separate action
+          from preparation and does not re-run setup.
         </p>
       </div>
       <p className="text-xs text-muted-foreground">
-        Invite client to workspace sends an email when an address is on file. Drafts and items that
-        still need a separate release, share, or send stay private until you take that action.
+        Invite client sends an email when an address is on file. Questionnaires are never sent by
+        this invite — they stay on their own schedule.
       </p>
       <PortalLinkWidget
         clientId={clientId}
         coupleName={clientName?.trim() || "your client"}
         primaryEmail={clientEmail}
-        inviteLabel="Invite client to workspace"
+        inviteLabel="Invite client"
       />
     </div>
   );

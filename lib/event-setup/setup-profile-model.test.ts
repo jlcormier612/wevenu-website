@@ -118,8 +118,9 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(section, /setup-profile-default-floor-plan/);
     assert.doesNotMatch(section, /Additional available timelines/);
     assert.doesNotMatch(section, /Vendors your team expects to book/);
-    assert.match(section, /Optional recommendations/);
-    assert.match(section, /Required vendors are managed in Vendor Network/);
+    assert.doesNotMatch(section, /Optional recommendations/);
+    assert.match(section, /Preferred, recommended, and required classifications/);
+    assert.match(section, /Required vendors keep their existing Vendor Network/);
     assert.match(section, /Questionnaires to prepare for the client/);
     assert.match(section, /Starting inventory offering/);
     assert.match(section, /Starting event-order package/);
@@ -166,22 +167,24 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.match(inherit, /addRecommendation/);
   });
 
-  it("does not auto-assign required vendors or invent inventory/event-order artifacts at booking", () => {
+  it("does not auto-assign required vendors or share/invoice at booking; inventory/EO drafts are ensured", () => {
     assert.doesNotMatch(inherit, /assignVendor/);
     assert.doesNotMatch(inherit, /from\("event_vendor_assignments"\)/);
-    assert.doesNotMatch(inherit, /from\("event_inventories"\)/);
-    assert.doesNotMatch(inherit, /from\("event_orders"\)/);
     assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
-    assert.doesNotMatch(inherit, /applyTemplateItems/);
     assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);
-    assert.match(inherit, /intentional reminders only/);
+    assert.doesNotMatch(inherit, /shareEventInventory/);
+    assert.doesNotMatch(inherit, /createInvoice/);
+    assert.match(inherit, /ensureEventInventory/);
+    assert.match(inherit, /ensureEventOrder/);
+    assert.match(inherit, /applyDefaultVenuePlaybook/);
   });
 
-  it("Event Setup starts inventory/EO drafts from profile refs without sharing or invoicing", () => {
+  it("Event Setup recovers inventory/EO drafts and prepare/release without sharing or invoicing", () => {
     const panel = read("components/events/event-setup-panel.tsx");
     assert.match(panel, /ensureEventInventoryAction/);
     assert.match(panel, /ensureEventOrderAction/);
     assert.match(panel, /startProfileDraft/);
+    assert.match(panel, /prepareAndReleasePortalAction/);
     assert.match(panel, /Not shared with the couple/);
     assert.match(panel, /Not an invoice and not shared/);
     assert.doesNotMatch(panel, /shareEventInventoryAction/);

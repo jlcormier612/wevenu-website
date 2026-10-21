@@ -93,8 +93,8 @@ function planningDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (!client.releasedAt) {
     return {
       status: "draft",
-      summary: `Client checklist "${client.templateName}" is a draft — not yet visible to the client.${venueNote}`,
-      nextAction: "Open Planning to edit or release",
+      summary: `Client checklist "${client.templateName}" is prepared — not yet visible to the client. Use Prepare and release portal when ready.${venueNote}`,
+      nextAction: "Prepare and release portal",
     };
   }
 
@@ -155,23 +155,15 @@ function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
 
 function vendorsDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const rec = ctx.vendorRecommendationCount;
-  const expectedRecs = ctx.inheritedRefs.recommendedVendorIds ?? [];
-  if (expectedRecs.length > 0 && rec === 0) {
-    return {
-      status: "unavailable",
-      summary:
-        "This event’s Setup Profile listed recommended vendors, but none were attached. Recommendations are separate from operational assignments.",
-      nextAction: "Open Vendors to recommend",
-    };
-  }
   return {
     status: "included",
     summary:
-      `Eligible vendors from your Vendor Network are available for client discovery by default. ` +
+      `Vendor Network classifications (preferred, recommended, required) are authoritative. ` +
+      `Eligible vendors are available for client discovery by default. ` +
       (rec > 0
-        ? `${rec} optional recommendation${rec === 1 ? "" : "s"} highlighted for this event. `
-        : "No optional recommendations highlighted (that is fine — recommendations are optional). ") +
-      "Required vendors are managed in Vendor Network and assigned separately.",
+        ? `${rec} optional highlight${rec === 1 ? "" : "s"} on this event. `
+        : "") +
+      "Required vendors keep their existing assignment behavior.",
     nextAction: "Open Vendors",
   };
 }
@@ -182,15 +174,16 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
   if (qs.length === 0) {
     if (expected.length > 0) {
       return {
-        status: "unavailable",
-        summary: `${expected.length} questionnaire${expected.length === 1 ? "" : "s"} were configured to prepare but no drafts exist on this event.`,
-        nextAction: "Open Questionnaires to prepare drafts",
+        status: "included",
+        summary: `${expected.length} questionnaire${expected.length === 1 ? "" : "s"} are configured for separate scheduling. Preparing the portal does not send them.`,
+        nextAction: "Open Questionnaires (separate from portal release)",
       };
     }
     return {
-      status: "needs_action",
-      summary: "No questionnaires prepared yet. Drafts are not visible to the client until sent.",
-      nextAction: "Open Questionnaires",
+      status: "included",
+      summary:
+        "Questionnaires are scheduled and sent separately. Preparing or releasing the portal does not send questionnaires.",
+      nextAction: "Open Questionnaires (separate from portal release)",
     };
   }
 
@@ -199,20 +192,20 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
   if (sent.length === 0) {
     return {
       status: "draft",
-      summary: `${drafts.length} questionnaire draft${drafts.length === 1 ? "" : "s"} prepared — not visible to the client until sent.`,
-      nextAction: "Open Questionnaires to preview or send",
+      summary: `${drafts.length} questionnaire draft${drafts.length === 1 ? "" : "s"} prepared — sent on their own schedule, not by portal release.`,
+      nextAction: "Open Questionnaires (separate from portal release)",
     };
   }
   if (drafts.length > 0) {
     return {
       status: "shared",
-      summary: `${sent.length} sent · ${drafts.length} still draft (drafts stay private until sent).`,
+      summary: `${sent.length} sent · ${drafts.length} still draft (drafts stay private until sent). Separate from portal release.`,
       nextAction: "Open Questionnaires",
     };
   }
   return {
     status: "shared",
-    summary: `${sent.length} questionnaire${sent.length === 1 ? "" : "s"} sent to the client.`,
+    summary: `${sent.length} questionnaire${sent.length === 1 ? "" : "s"} sent to the client. Separate from portal release.`,
     nextAction: "Open Questionnaires",
   };
 }
@@ -223,21 +216,21 @@ function inventoryDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   if (!ctx.hasEventInventory) {
     if (hasRef) {
       return {
-        status: "needs_action",
-        summary: `Profile starting offering "${name ?? "selected"}" is ready to apply as an event inventory draft. Booking did not create inventory — start when you are ready. Does not share with the couple or create invoices.`,
-        nextAction: name ? `Start "${name}" inventory draft` : "Start inventory draft from profile",
+        status: "unavailable",
+        summary: `Starting offering "${name ?? "selected"}" should have been prepared at booking. No inventory draft is on this event yet. Does not share with the couple or create invoices.`,
+        nextAction: name ? `Prepare "${name}" inventory draft` : "Prepare inventory draft",
       };
     }
     return {
       status: "needs_action",
       summary:
-        "Inventory is included, but this event's Setup Profile has no starting offering selected. Edit Setup Profiles to choose a template, or start blank from Inventory. If this event does not need inventory, Skip this area. Booking never creates inventory automatically.",
+        "Inventory is included, but this event's Setup Profile has no starting offering selected. Edit Setup Profiles to choose a template, or Skip this area if inventory is not needed.",
       nextAction: "Open Setup Profiles",
     };
   }
   return {
     status: "included",
-    summary: "Event inventory is set for this event. This is operational inventory, not a financial commitment by itself.",
+    summary: "Event inventory draft is prepared for this event. Not shared with the couple and not an invoice.",
     nextAction: "Open Inventory",
   };
 }
@@ -249,15 +242,15 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     const hasRef = Boolean(name || ctx.inheritedRefs.eventOrderTemplateId);
     if (hasRef) {
       return {
-        status: "needs_action",
-        summary: `Profile package "${name ?? "selected"}" is ready to apply as an Event Order draft. Booking did not start an order — this is not an invoice, contract, or payment plan, and is not shared until you share it.`,
-        nextAction: name ? `Start "${name}" Event Order draft` : "Start Event Order draft from profile",
+        status: "unavailable",
+        summary: `Starting package "${name ?? "selected"}" should have been prepared at booking. No Event Order draft is on this event yet. Not an invoice, contract, or payment plan.`,
+        nextAction: name ? `Prepare "${name}" Event Order draft` : "Prepare Event Order draft",
       };
     }
     return {
       status: "needs_action",
       summary:
-        "Event Order is included, but this event's Setup Profile has no starting package selected. Edit Setup Profiles to choose a package, or start one from Event Order. If this booking is package-only and does not need a detailed Event Order, Skip this area instead.",
+        "Event Order is included, but this event's Setup Profile has no starting package selected. Edit Setup Profiles to choose a package, or Skip this area for package-only events.",
       nextAction: "Open Setup Profiles",
     };
   }
@@ -270,7 +263,7 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   }
   return {
     status: "draft",
-    summary: `Event Order exists (${order.status}) — not yet shared with the client. Not an invoice or payment plan.`,
+    summary: `Event Order draft exists (${order.status}) — not yet shared. Not an invoice or payment plan. Sharing stays separate from portal release.`,
     nextAction: "Open Event Order",
   };
 }
@@ -310,7 +303,7 @@ export function setupReadinessDetail(ctx: SetupReadinessContext): SetupReadiness
       return {
         status: "included",
         summary: "Client invitation uses the existing portal invitation flow.",
-        nextAction: "Invite client to workspace",
+        nextAction: "Invite client",
       };
     default:
       return {

@@ -59,46 +59,46 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.status, "shared");
   });
 
-  it("keeps vendor directory discoverable when recommendations are empty", () => {
+  it("keeps vendor directory discoverable from Vendor Network classifications", () => {
     const detail = setupReadinessDetail(base({
       step: "vendors",
       vendorRecommendationCount: 0,
     }));
     assert.equal(detail.status, "included");
     assert.match(detail.summary, /available for client discovery by default/i);
-    assert.match(detail.summary, /No optional recommendations/i);
+    assert.match(detail.summary, /Vendor Network classifications/i);
   });
 
-  it("treats questionnaire drafts as not client-visible", () => {
+  it("treats questionnaire drafts as separately scheduled, not portal blockers", () => {
     const detail = setupReadinessDetail(base({
       step: "questionnaires",
       questionnaires: [{ kind: "final_details", status: "draft" }],
     }));
     assert.equal(detail.status, "draft");
-    assert.match(detail.summary, /not visible to the client until sent/i);
+    assert.match(detail.summary, /own schedule/i);
+    assert.match(detail.summary, /not by portal release/i);
   });
 
-  it("does not treat a starting inventory template as created inventory", () => {
+  it("flags missing inventory draft when a starting template was configured", () => {
     const detail = setupReadinessDetail(base({
       step: "inventory",
       inheritedRefs: { inventoryTemplateId: "inv-1" },
       templateNames: { planning: null, timeline: null, inventory: "Starter kit", eventOrder: null },
     }));
-    assert.equal(detail.status, "needs_action");
-    assert.match(detail.summary, /ready to apply/i);
-    assert.match(detail.summary, /did not create inventory/i);
-    assert.match(detail.nextAction ?? "", /Start "Starter kit" inventory draft/);
+    assert.equal(detail.status, "unavailable");
+    assert.match(detail.summary, /should have been prepared at booking/i);
+    assert.match(detail.nextAction ?? "", /Prepare "Starter kit" inventory draft/);
   });
 
-  it("does not treat a starting event-order package as an invoice", () => {
+  it("flags missing Event Order draft without treating it as an invoice", () => {
     const detail = setupReadinessDetail(base({
       step: "event_order",
       inheritedRefs: { eventOrderTemplateId: "eo-1" },
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: "Classic package" },
     }));
-    assert.equal(detail.status, "needs_action");
+    assert.equal(detail.status, "unavailable");
     assert.match(detail.summary, /not an invoice/i);
-    assert.match(detail.nextAction ?? "", /Start "Classic package" Event Order draft/);
+    assert.match(detail.nextAction ?? "", /Prepare "Classic package" Event Order draft/);
   });
 
   it("surfaces a Setup Profile configuration gap when Event Order is included without a package ref", () => {
@@ -125,13 +125,13 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.nextAction, "Open Setup Profiles");
   });
 
-  it("flags empty vendor recommendations when the profile claimed a list", () => {
+  it("does not treat missing optional highlights as a Vendor Network failure", () => {
     const detail = setupReadinessDetail(base({
       step: "vendors",
       vendorRecommendationCount: 0,
       inheritedRefs: { recommendedVendorIds: ["v1", "v2"] },
     }));
-    assert.equal(detail.status, "unavailable");
-    assert.match(detail.summary, /none were attached/i);
+    assert.equal(detail.status, "included");
+    assert.match(detail.summary, /Vendor Network classifications/i);
   });
 });
