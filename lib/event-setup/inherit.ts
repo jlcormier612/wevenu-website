@@ -162,9 +162,8 @@ async function applyInheritedTemplates(
     await applyInheritedQuestionnaires(eventId, profile);
   }
 
-  if (profile.decisions.vendors === "set_up") {
-    await applyInheritedVendorRecommendations(supabase, venueId, eventId, profile);
-  }
+  // Vendors: Vendor Network classifications are authoritative. Do not copy a
+  // second event-level recommendation list from Setup Profile refs.
 
   // Inventory / Event Order: when Included with a valid starting template,
   // prepare the event-level draft at booking (idempotent). Does not share,
@@ -297,23 +296,5 @@ async function applyInheritedQuestionnaires(
     }
   } catch (err) {
     console.error("Setup profile questionnaire apply failed:", err);
-  }
-}
-
-async function applyInheritedVendorRecommendations(
-  supabase: DbClient,
-  venueId: string,
-  eventId: string,
-  profile: VenueSetupProfile,
-): Promise<void> {
-  const recommended = profile.templateRefs.recommendedVendorIds ?? [];
-  if (recommended.length === 0) return;
-  try {
-    const { addRecommendation } = await import("@/lib/vendor-recommendations/repository");
-    for (const vendorId of recommended) {
-      await addRecommendation(supabase, venueId, eventId, vendorId, null);
-    }
-  } catch (err) {
-    console.error("Setup profile vendor recommendations apply failed:", err);
   }
 }

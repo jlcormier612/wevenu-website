@@ -121,7 +121,7 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.doesNotMatch(section, /Optional recommendations/);
     assert.match(section, /Preferred, recommended, and required classifications/);
     assert.match(section, /Required vendors keep their existing Vendor Network/);
-    assert.match(section, /Questionnaires to prepare for the client/);
+    assert.match(section, /Questionnaires for this event type/);
     assert.match(section, /Starting inventory offering/);
     assert.match(section, /Starting event-order package/);
     assert.match(section, /CapabilityDefaults/);
@@ -157,14 +157,15 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.match(inherit, /Default timeline only/);
   });
 
-  it("applies floor-plan offers, questionnaire drafts, and recommended vendors", () => {
+  it("applies floor-plan offers and questionnaire drafts; does not copy vendor recommendations", () => {
     assert.match(inherit, /applyInheritedFloorPlanOffers/);
     assert.match(inherit, /upsertOffer/);
     assert.match(inherit, /event_floor_plan_offers/);
     assert.match(inherit, /applyInheritedQuestionnaires/);
     assert.match(inherit, /applyTemplateToEvent/);
-    assert.match(inherit, /applyInheritedVendorRecommendations/);
-    assert.match(inherit, /addRecommendation/);
+    assert.doesNotMatch(inherit, /applyInheritedVendorRecommendations/);
+    assert.doesNotMatch(inherit, /addRecommendation/);
+    assert.match(inherit, /Vendor Network classifications are authoritative/);
   });
 
   it("does not auto-assign required vendors or share/invoice at booking; inventory/EO drafts are ensured", () => {
@@ -179,14 +180,12 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.match(inherit, /applyDefaultVenuePlaybook/);
   });
 
-  it("Event Setup recovers inventory/EO drafts and prepare/release without sharing or invoicing", () => {
+  it("Event Setup recovers via Prepare and release portal without component draft-start CTAs", () => {
     const panel = read("components/events/event-setup-panel.tsx");
-    assert.match(panel, /ensureEventInventoryAction/);
-    assert.match(panel, /ensureEventOrderAction/);
-    assert.match(panel, /startProfileDraft/);
     assert.match(panel, /prepareAndReleasePortalAction/);
-    assert.match(panel, /Not shared with the couple/);
-    assert.match(panel, /Not an invoice and not shared/);
+    assert.doesNotMatch(panel, /ensureEventInventoryAction/);
+    assert.doesNotMatch(panel, /ensureEventOrderAction/);
+    assert.doesNotMatch(panel, /startProfileDraft/);
     assert.doesNotMatch(panel, /shareEventInventoryAction/);
     assert.doesNotMatch(panel, /shareEventOrderWithClient/);
     assert.doesNotMatch(panel, /createInvoice/);
@@ -243,7 +242,6 @@ describe("null / empty / missing template refs never apply artifacts", () => {
     assert.match(inherit, /if \(timelineId\) \{/);
     assert.match(inherit, /if \(selected\.size === 0\) return/);
     assert.match(inherit, /if \(ids\.length === 0\) return/);
-    assert.match(inherit, /if \(recommended\.length === 0\) return/);
     const includedNoRefs = snapshotInheritedSetup(profile({ templateRefs: {} }));
     assertNoConfiguredRefs(includedNoRefs.inheritedTemplateRefs ?? {});
     assert.equal(includedNoRefs.inheritedDecisions?.planning, "set_up");

@@ -114,7 +114,7 @@ export async function prepareAndReleasePortal(
     console.error("prepareAndReleasePortal portal session failed:", err);
   }
 
-  // Share timeline with the couple when entries exist (idempotent share).
+  // Timeline: apply starting template if missing, then share with the couple.
   let sharedTimeline = false;
   const timelineDecision = setup ? effectiveSetupDecision(setup, "timeline") : null;
   if (timelineDecision !== "skipped") {
@@ -123,18 +123,71 @@ export async function prepareAndReleasePortal(
       .select("id")
       .eq("event_id", eventId)
       .limit(1);
-    if (entries && entries.length > 0) {
+    if ((!entries || entries.length === 0) && refs.timelineTemplateId) {
+      try {
+        const { data: eventTimes } = await supabase
+          .from("events")
+          .select("start_time")
+          .eq("id", eventId)
+          .eq("venue_id", venue.id)
+          .maybeSingle<{ start_time: string | null }>();
+        const { applyTimelineTemplateToEvent } = await import("@/lib/timeline-templates/apply");
+        await applyTimelineTemplateToEvent(eventId, refs.timelineTemplateId, eventTimes?.start_time ?? null);
+      } catch (err) {
+        console.error("prepareAndReleasePortal timeline apply failed:", err);
+        return { ok: false, message: "Could not apply the starting timeline." };
+      }
+    }
+    const { data: afterEntries } = await supabase
+      .from("timeline_entries")
+      .select("id")
+      .eq("event_id", eventId)
+      .limit(1);
+    if (afterEntries && afterEntries.length > 0) {
       try {
         const { shareTimelineWithCouple } = await import("@/lib/timeline/service");
         const shared = await shareTimelineWithCouple(eventId);
         if (shared.ok === false) {
-          // Non-fatal if already shared or unavailable — continue.
           console.error("prepareAndReleasePortal timeline share:", shared.message);
         } else {
           sharedTimeline = true;
         }
       } catch (err) {
         console.error("prepareAndReleasePortal timeline share failed:", err);
+      }
+    }
+  }
+
+  // Floor-plan offers: ensure configured options exist when Included.
+  const floorDecision = setup ? effectiveSetupDecision(setup, "floor_plans") : null;
+  if (floorDecision === "set_up") {
+    const preferred = refs.defaultFloorPlanTemplateId ?? null;
+    const selected = new Set(refs.floorPlanTemplateIds ?? []);
+    if (preferred) selected.add(preferred);
+    if (selected.size > 0) {
+      const { data: existingOffers } = await supabase
+        .from("event_floor_plan_offers")
+        .select("id")
+        .eq("event_id", eventId)
+        .eq("venue_id", venue.id)
+        .limit(1);
+      if (!existingOffers || existingOffers.length === 0) {
+        try {
+          const { upsertOffer } = await import("@/lib/floor-plan-offers/repository");
+          const ordered = [
+            ...(preferred ? [preferred] : []),
+            ...[...selected].filter((id) => id !== preferred),
+          ];
+          for (let i = 0; i < ordered.length; i += 1) {
+            await upsertOffer(supabase, venue.id, eventId, {
+              templateId: ordered[i]!,
+              sortOrder: i,
+              isOffered: true,
+            });
+          }
+        } catch (err) {
+          console.error("prepareAndReleasePortal floor-plan offers failed:", err);
+        }
       }
     }
   }

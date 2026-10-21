@@ -175,15 +175,15 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
     if (expected.length > 0) {
       return {
         status: "included",
-        summary: `${expected.length} questionnaire${expected.length === 1 ? "" : "s"} are configured for separate scheduling. Preparing the portal does not send them.`,
-        nextAction: "Open Questionnaires (separate from portal release)",
+        summary: `${expected.length} questionnaire${expected.length === 1 ? "" : "s"} are configured for separate scheduling and authorized send. Preparing the portal does not send them.`,
+        nextAction: "Open Questionnaires (separate schedule)",
       };
     }
     return {
       status: "included",
       summary:
-        "Questionnaires are scheduled and sent separately. Preparing or releasing the portal does not send questionnaires.",
-      nextAction: "Open Questionnaires (separate from portal release)",
+        "Questionnaires are configured and sent on their own schedule. Preparing or releasing the portal does not send questionnaires.",
+      nextAction: "Open Questionnaires (separate schedule)",
     };
   }
 
@@ -192,8 +192,8 @@ function questionnairesDetail(ctx: SetupReadinessContext): SetupReadinessDetail 
   if (sent.length === 0) {
     return {
       status: "draft",
-      summary: `${drafts.length} questionnaire draft${drafts.length === 1 ? "" : "s"} prepared — sent on their own schedule, not by portal release.`,
-      nextAction: "Open Questionnaires (separate from portal release)",
+      summary: `${drafts.length} questionnaire draft${drafts.length === 1 ? "" : "s"} ready for scheduled or authorized send — not sent by portal release.`,
+      nextAction: "Open Questionnaires (separate schedule)",
     };
   }
   if (drafts.length > 0) {
@@ -217,8 +217,8 @@ function inventoryDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     if (hasRef) {
       return {
         status: "unavailable",
-        summary: `Starting offering "${name ?? "selected"}" should have been prepared at booking. No inventory draft is on this event yet. Does not share with the couple or create invoices.`,
-        nextAction: name ? `Prepare "${name}" inventory draft` : "Prepare inventory draft",
+        summary: `Starting offering "${name ?? "selected"}" should already be an event inventory draft. Use Prepare and release portal to recover — there is no separate inventory prepare step. Does not share with the couple or create invoices.`,
+        nextAction: "Prepare and release portal",
       };
     }
     return {
@@ -243,8 +243,8 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     if (hasRef) {
       return {
         status: "unavailable",
-        summary: `Starting package "${name ?? "selected"}" should have been prepared at booking. No Event Order draft is on this event yet. Not an invoice, contract, or payment plan.`,
-        nextAction: name ? `Prepare "${name}" Event Order draft` : "Prepare Event Order draft",
+        summary: `Starting package "${name ?? "selected"}" should already be an Event Order draft. Use Prepare and release portal to recover — there is no separate Event Order prepare step. Not an invoice, contract, or payment plan.`,
+        nextAction: "Prepare and release portal",
       };
     }
     return {

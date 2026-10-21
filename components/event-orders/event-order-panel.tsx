@@ -223,6 +223,20 @@ export function EventOrderPanel({
 
   function refresh() { router.refresh(); }
 
+  // Profile-configured Event Order should already exist after booking / prepare-release.
+  // Recover once so this tab is an editor, not a second setup wizard.
+  React.useEffect(() => {
+    if (eventOrder || !preferredExists || !preferredTemplateId || preBooking) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await ensureEventOrderAction(eventId, preferredTemplateId);
+      if (cancelled) return;
+      if (!result.ok) toast.error(result.message ?? "Could not prepare Event Order.");
+      else refresh();
+    })();
+    return () => { cancelled = true; };
+  }, [eventOrder, preferredExists, preferredTemplateId, preBooking, eventId]);
+
   // Work Package D5E — unified Share experience.
   const shareRecipient = clientName ? { name: clientName, contact: clientEmail ?? null, relationshipLabel: "Client" } : null;
   const shareMergeData = buildMergeData({
@@ -287,6 +301,24 @@ export function EventOrderPanel({
   }
 
   if (!eventOrder) {
+    if (preferredExists && !preBooking) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Event Order</CardTitle>
+            <CardDescription>
+              Preparing the profile starting package for this event. Draft only — not an invoice, contract, or payment plan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Preparing Event Order draft…</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <Card>
         <CardHeader>
@@ -307,12 +339,8 @@ export function EventOrderPanel({
             <p className="max-w-md text-sm text-muted-foreground">
               Optional — use when you need a detailed delivery list. Package-only events can skip this.
               Templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
+              When a Setup Profile package is configured, use Prepare and release portal from Event setup instead of starting here.
             </p>
-            {preferredExists ? (
-              <p className="max-w-md text-xs text-muted-foreground">
-                Your Setup Profile suggests a starting package below. Starting creates a draft only — it does not share with the couple or create invoices.
-              </p>
-            ) : null}
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
                 onClick={() => startStarting(async () => {

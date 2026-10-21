@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -69,17 +70,56 @@ function StartInventory({
   templates: InventoryTemplate[];
   preferredTemplateId?: string | null;
 }) {
+  const router = useRouter();
   const preferredExists = Boolean(preferredTemplateId && templates.some((t) => t.id === preferredTemplateId));
   const [templateId, setTemplateId] = React.useState<string>(preferredExists ? preferredTemplateId! : "blank");
   const [starting, startTransition] = React.useTransition();
+  const [recovering, setRecovering] = React.useState(false);
 
   const options = [{ value: "blank", label: "Start blank" }, ...templates.map((t) => ({ value: t.id, label: t.name }))];
+
+  // Profile-configured inventory should already exist after booking / prepare-release.
+  // Recover silently once so this tab is an editor, not a second setup wizard.
+  React.useEffect(() => {
+    if (!preferredExists || !preferredTemplateId) return;
+    let cancelled = false;
+    setRecovering(true);
+    void (async () => {
+      const result = await ensureEventInventoryAction(eventId, preferredTemplateId);
+      if (cancelled) return;
+      setRecovering(false);
+      if (!result.ok) toast.error(result.message ?? "Could not prepare Event Inventory.");
+      else router.refresh();
+    })();
+    return () => { cancelled = true; };
+  }, [eventId, preferredExists, preferredTemplateId, router]);
 
   function handleStart() {
     startTransition(async () => {
       const result = await ensureEventInventoryAction(eventId, templateId === "blank" ? null : templateId);
       if (!result.ok) toast.error(result.message ?? "Could not start Event Inventory.");
     });
+  }
+
+  if (preferredExists) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Event Inventory</CardTitle>
+          <CardDescription>
+            Preparing the profile starting offering for this event. This is a draft only — not shared and not an invoice.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">
+              {recovering ? "Preparing inventory draft…" : "Refreshing…"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -90,11 +130,9 @@ function StartInventory({
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-          {preferredExists ? (
-            <p className="max-w-md text-xs text-muted-foreground">
-              Your Setup Profile suggests starting from this offering. Starting creates a draft only — it does not share with the couple or create invoices.
-            </p>
-          ) : null}
+          <p className="max-w-md text-xs text-muted-foreground">
+            No inventory draft yet. Choose a starting offering for this event only, or use Prepare and release portal from Event setup when a Setup Profile template is configured.
+          </p>
           {templates.length > 0 && (
             <Select value={templateId} onValueChange={setTemplateId} items={options}>
               <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>

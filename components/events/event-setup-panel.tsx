@@ -5,16 +5,12 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { ensureEventInventoryAction } from "@/app/(app)/events/[id]/event-inventory-actions";
-import { ensureEventOrderAction } from "@/app/(app)/events/[id]/event-order-actions";
 import {
   collapseEventSetupAction,
   decideEventSetupAction,
   prepareAndReleasePortalAction,
   reopenEventSetupAction,
 } from "@/app/(app)/events/[id]/setup-actions";
-import { BookingSetupCard } from "@/components/events/booking-setup-card";
-import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -139,17 +135,10 @@ export function EventSetupPanel({
       }),
     };
   });
-  /** Included areas that still need work — not undecided Set up / Skip rows. */
   const outstanding = stepDetails.filter((row) =>
     isOutstandingFollowUp(row.decision, row.detail.status, row.step),
   );
   const clientPlanning = playbookApplications.find((a) => a.kind === "client");
-  const portalReadyToRelease = Boolean(
-    clientId &&
-      decisionsComplete &&
-      outstanding.every((row) => row.step === "planning") &&
-      (!clientPlanning || !clientPlanning.releasedAt),
-  );
   const canPrepareRelease = Boolean(
     clientId &&
       decisionsComplete &&
@@ -157,11 +146,8 @@ export function EventSetupPanel({
   );
   const outstandingSteps = new Set(outstanding.map((row) => row.step));
   const outstandingCount = outstanding.length;
-  /** Decisions alone are not “setup complete” while drafts or missing artifacts remain. */
   const setupSettled = decisionsComplete && outstandingCount === 0;
   const collapsed = Boolean(state.collapsedAt) && setupSettled;
-  const inventoryTemplateId = inheritedRefs.inventoryTemplateId ?? null;
-  const eventOrderTemplateId = inheritedRefs.eventOrderTemplateId ?? null;
 
   function navigateStep(step: SetupStepKey) {
     const tab =
@@ -178,38 +164,6 @@ export function EventSetupPanel({
 
   function openSetupProfiles() {
     router.push("/settings/leads/setup-profiles");
-  }
-
-  function startProfileDraft(step: "inventory" | "event_order") {
-    startTransition(async () => {
-      if (step === "inventory") {
-        if (!inventoryTemplateId) {
-          openSetupProfiles();
-          return;
-        }
-        const result = await ensureEventInventoryAction(eventId, inventoryTemplateId);
-        if (!result.ok) {
-          toast.error(result.message ?? "Could not start inventory draft.");
-          return;
-        }
-        toast.success("Inventory draft started from your Setup Profile. Not shared with the couple.");
-        router.refresh();
-        navigateStep("inventory");
-        return;
-      }
-      if (!eventOrderTemplateId) {
-        openSetupProfiles();
-        return;
-      }
-      const result = await ensureEventOrderAction(eventId, eventOrderTemplateId);
-      if (!result.ok) {
-        toast.error(result.message ?? "Could not start Event Order draft.");
-        return;
-      }
-      toast.success("Event Order draft started from your Setup Profile. Not an invoice and not shared.");
-      router.refresh();
-      navigateStep("event_order");
-    });
   }
 
   function decide(step: SetupStepKey, decision: "set_up" | "skipped") {
@@ -290,15 +244,15 @@ export function EventSetupPanel({
             <>
               <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                This Setup Profile supplied the standard starting setup at booking.
-                Edit anything for this event if needed, then prepare and release the portal once.
-                Questionnaires stay on their own schedule.
+                Your standard setup was applied at booking. Optionally edit any area for this event,
+                then use Prepare and release portal once. Invite the client separately.
+                Questionnaires stay on their own delivery schedule.
               </p>
             </>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">
               {decisionsComplete
-                ? "Review the included areas below. Edit if needed, then prepare and release the portal. Invite the client separately."
+                ? "Review included areas below. Edit if needed, then prepare and release the portal. Invite the client separately."
                 : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
             </p>
           )}
@@ -325,9 +279,9 @@ export function EventSetupPanel({
           <div>
             <h3 className="text-sm font-medium text-heading">Prepare and release portal</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Finalizes the reviewed setup for the couple&apos;s portal: releases Client Planning when present,
-              shares the timeline when present, and ensures included Inventory / Event Order drafts exist.
-              Does not invite the client, send questionnaires, or create invoices.
+              One action for the reviewed setup: ensures included Inventory and Event Order drafts,
+              releases Client Planning, applies and shares the timeline when present, and keeps
+              floor-plan options ready. Does not invite the client, send questionnaires, or create invoices.
             </p>
           </div>
           <Button
@@ -337,7 +291,7 @@ export function EventSetupPanel({
             onClick={prepareAndRelease}
             data-testid="prepare-and-release-portal"
           >
-            {portalReadyToRelease || (clientPlanning && !clientPlanning.releasedAt)
+            {clientPlanning && !clientPlanning.releasedAt
               ? "Prepare and release portal"
               : "Prepare and release portal again"}
           </Button>
@@ -347,7 +301,8 @@ export function EventSetupPanel({
         <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-3 space-y-2" data-testid="event-setup-outstanding">
           <p className="text-sm font-medium text-heading">Outstanding on this event</p>
           <p className="text-xs text-muted-foreground">
-            Genuine gaps that block prepare/release. Questionnaires are scheduled separately and are not listed here.
+            Genuine gaps only. There are no separate Inventory or Event Order prepare steps —
+            use Prepare and release portal. Questionnaires are scheduled separately.
           </p>
           <ul className="space-y-2">
             {outstanding.map(({ step, detail }) => (
@@ -370,14 +325,6 @@ export function EventSetupPanel({
                         openSetupProfiles();
                         return;
                       }
-                      if (step === "inventory" && inventoryTemplateId && !hasEventInventory) {
-                        startProfileDraft("inventory");
-                        return;
-                      }
-                      if (step === "event_order" && eventOrderTemplateId && !eventOrder) {
-                        startProfileDraft("event_order");
-                        return;
-                      }
                       navigateStep(step);
                     }}
                   >
@@ -387,9 +334,6 @@ export function EventSetupPanel({
               </li>
             ))}
           </ul>
-          <p className="text-xs text-muted-foreground">
-            Prepare and release does not send an invitation. Invite the couple separately when you are ready.
-          </p>
         </div>
       ) : null}
       <ul className="space-y-3">
@@ -435,38 +379,17 @@ export function EventSetupPanel({
                 ) : null}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{detail.summary}</p>
-              {detail.nextAction && decision === "set_up" && !listedInOutstanding ? (
-                <p className="mt-1 text-xs font-medium text-foreground">Next: {detail.nextAction}</p>
-              ) : null}
-              {decision === "set_up" ? (
+              {decision === "set_up" && !listedInOutstanding ? (
                 <div className="mt-3">
-                  <SetupTool
-                    onWorkApplied={() => router.refresh()}
+                  <SetupEditorLink
                     step={step}
-                    eventId={eventId}
-                    clientId={clientId}
-                    eventDate={eventDate}
-                    eventName={eventName}
-                    clientName={clientName}
-                    clientEmail={clientEmail}
-                    eventType={eventType}
-                    spaceId={spaceId}
-                    eventStartTime={eventStartTime}
-                    hasTimeline={hasTimeline}
-                    playbookTemplates={playbookTemplates}
-                    playbookApplications={playbookApplications}
-                    readinessByKind={readinessByKind}
-                    timelineTemplates={timelineTemplates}
                     onNavigateTab={onNavigateTab}
-                    hideOpenTab={listedInOutstanding}
-                    inventoryTemplateId={inventoryTemplateId}
-                    eventOrderTemplateId={eventOrderTemplateId}
-                    hasEventInventory={hasEventInventory}
-                    hasEventOrder={Boolean(eventOrder)}
-                    onStartInventoryDraft={() => startProfileDraft("inventory")}
-                    onStartEventOrderDraft={() => startProfileDraft("event_order")}
-                    onOpenSetupProfiles={openSetupProfiles}
-                    startPending={pending}
+                    onOpenSetupProfiles={
+                      (step === "inventory" && !hasEventInventory && !inheritedRefs.inventoryTemplateId)
+                      || (step === "event_order" && !eventOrder && !inheritedRefs.eventOrderTemplateId)
+                        ? openSetupProfiles
+                        : undefined
+                    }
                   />
                 </div>
               ) : null}
@@ -520,122 +443,44 @@ function ClientWorkspaceInvite({
   );
 }
 
-function OpenTab({ label, tab, onNavigateTab }: { label: string; tab: string; onNavigateTab: (tab: string) => void }) {
+function SetupEditorLink({
+  step,
+  onNavigateTab,
+  onOpenSetupProfiles,
+}: {
+  step: SetupStepKey;
+  onNavigateTab: (tab: string) => void;
+  onOpenSetupProfiles?: () => void;
+}) {
+  if (onOpenSetupProfiles) {
+    return (
+      <Button type="button" variant="outline" size="sm" onClick={onOpenSetupProfiles}>
+        Open Setup Profiles
+      </Button>
+    );
+  }
+  const label =
+    step === "planning" ? "Open Planning"
+      : step === "timeline" ? "Open Timeline"
+        : step === "floor_plans" ? "Open Floor Plans"
+          : step === "vendors" ? "Open Vendors"
+            : step === "questionnaires" ? "Open Questionnaires"
+              : step === "inventory" ? "Open Inventory"
+                : step === "event_order" ? "Open Event Order"
+                  : null;
+  const tab =
+    step === "planning" ? "playbook"
+      : step === "timeline" ? "timeline"
+        : step === "floor_plans" ? "floorplan"
+          : step === "vendors" ? "vendors"
+            : step === "questionnaires" ? "questionnaires"
+              : step === "inventory" ? "inventory"
+                : step === "event_order" ? "event-order"
+                  : null;
+  if (!label || !tab) return null;
   return (
     <Button type="button" variant="outline" size="sm" onClick={() => onNavigateTab(tab)}>
       {label}
     </Button>
   );
-}
-
-function SetupTool(props: {
-  onWorkApplied: () => void;
-  step: SetupStepKey;
-  eventId: string;
-  clientId: string | null;
-  eventDate: string;
-  eventName: string;
-  clientName: string | null;
-  clientEmail: string | null;
-  eventType: string | null;
-  spaceId: string | null;
-  eventStartTime: string | null;
-  hasTimeline: boolean;
-  playbookTemplates: PlaybookTemplateWithStats[];
-  playbookApplications: EventPlaybookApplication[];
-  readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
-  timelineTemplates: TimelineTemplate[];
-  onNavigateTab: (tab: string) => void;
-  /** When true, the Outstanding list already owns the primary open/start action. */
-  hideOpenTab?: boolean;
-  inventoryTemplateId?: string | null;
-  eventOrderTemplateId?: string | null;
-  hasEventInventory?: boolean;
-  hasEventOrder?: boolean;
-  onStartInventoryDraft?: () => void;
-  onStartEventOrderDraft?: () => void;
-  onOpenSetupProfiles?: () => void;
-  startPending?: boolean;
-}) {
-  const { step, onNavigateTab, hideOpenTab } = props;
-  if (step === "planning") {
-    return (
-      <div className="space-y-2">
-        <BookingSetupCard
-          eventId={props.eventId}
-          clientId={props.clientId}
-          eventDate={props.eventDate}
-          eventName={props.eventName}
-          clientName={props.clientName}
-          eventType={props.eventType}
-          templates={props.playbookTemplates}
-          applications={props.playbookApplications}
-          readinessByKind={props.readinessByKind}
-          onApplied={() => { props.onWorkApplied(); onNavigateTab("playbook"); }}
-        />
-        {!hideOpenTab && props.playbookApplications.length > 0 ? (
-          <OpenTab label="Open Planning" tab="playbook" onNavigateTab={onNavigateTab} />
-        ) : null}
-      </div>
-    );
-  }
-  if (step === "timeline") {
-    return (
-      <div className="space-y-2">
-        <TimelineSetupCard
-          eventId={props.eventId}
-          eventType={props.eventType}
-          spaceId={props.spaceId}
-          eventStartTime={props.eventStartTime}
-          templates={props.timelineTemplates}
-          hasTimeline={props.hasTimeline}
-          onApplied={() => { props.onWorkApplied(); onNavigateTab("timeline"); }}
-        />
-        {!hideOpenTab && props.hasTimeline ? (
-          <OpenTab label="Open Timeline" tab="timeline" onNavigateTab={onNavigateTab} />
-        ) : null}
-      </div>
-    );
-  }
-  if (step === "inventory") {
-    if (!props.hasEventInventory && props.inventoryTemplateId && !hideOpenTab) {
-      return (
-        <Button type="button" size="sm" disabled={props.startPending} onClick={props.onStartInventoryDraft}>
-          Start inventory draft from profile
-        </Button>
-      );
-    }
-    if (!props.hasEventInventory && !props.inventoryTemplateId && !hideOpenTab && props.onOpenSetupProfiles) {
-      return (
-        <Button type="button" size="sm" variant="outline" onClick={props.onOpenSetupProfiles}>
-          Open Setup Profiles
-        </Button>
-      );
-    }
-    if (hideOpenTab) return null;
-    return <OpenTab label="Open Inventory" tab="inventory" onNavigateTab={onNavigateTab} />;
-  }
-  if (step === "event_order") {
-    if (!props.hasEventOrder && props.eventOrderTemplateId && !hideOpenTab) {
-      return (
-        <Button type="button" size="sm" disabled={props.startPending} onClick={props.onStartEventOrderDraft}>
-          Start Event Order draft from profile
-        </Button>
-      );
-    }
-    if (!props.hasEventOrder && !props.eventOrderTemplateId && !hideOpenTab && props.onOpenSetupProfiles) {
-      return (
-        <Button type="button" size="sm" variant="outline" onClick={props.onOpenSetupProfiles}>
-          Open Setup Profiles
-        </Button>
-      );
-    }
-    if (hideOpenTab) return null;
-    return <OpenTab label="Open Event Order" tab="event-order" onNavigateTab={onNavigateTab} />;
-  }
-  if (hideOpenTab) return null;
-  if (step === "floor_plans") return <OpenTab label="Open Floor Plans" tab="floorplan" onNavigateTab={onNavigateTab} />;
-  if (step === "vendors") return <OpenTab label="Open Vendors" tab="vendors" onNavigateTab={onNavigateTab} />;
-  if (step === "questionnaires") return <OpenTab label="Open Questionnaires" tab="questionnaires" onNavigateTab={onNavigateTab} />;
-  return null;
 }

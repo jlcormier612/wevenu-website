@@ -84,11 +84,11 @@ describe("Floor plans support multiple client-selectable options", () => {
 });
 
 describe("Questionnaires are multi-select drafts, not auto-sent", () => {
-  it("describes prepare-and-send semantics and applies drafts at inherit", () => {
+  it("describes separate schedule semantics and applies drafts at inherit", () => {
     assert.match(section, /setup-profile-questionnaires/);
-    assert.match(section, /Questionnaires to prepare for the client/);
-    assert.match(section, /set up as drafts/);
-    assert.match(section, /until you send them/);
+    assert.match(section, /Questionnaires for this event type/);
+    assert.match(section, /prepared as drafts at booking/);
+    assert.match(section, /Preparing and releasing the portal never sends them/);
     assert.match(inherit, /applyInheritedQuestionnaires/);
     assert.match(inherit, /applyTemplateToEvent/);
     assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);
@@ -105,10 +105,9 @@ describe("Vendors: Vendor Network classifications are authoritative", () => {
     assert.doesNotMatch(section, /Optional recommendations/);
     assert.doesNotMatch(section, /Vendors your team expects to book/);
     assert.doesNotMatch(section, /Recommended vendors for the client/);
-    assert.match(inherit, /applyInheritedVendorRecommendations/);
-    assert.match(inherit, /recommendedVendorIds/);
-    assert.match(inherit, /addRecommendation/);
-    assert.doesNotMatch(inherit, /requiredVendorIds/);
+    assert.match(inherit, /Vendor Network classifications are authoritative/);
+    assert.doesNotMatch(inherit, /applyInheritedVendorRecommendations/);
+    assert.doesNotMatch(inherit, /addRecommendation/);
     assert.doesNotMatch(inherit, /assignVendor/);
   });
 });

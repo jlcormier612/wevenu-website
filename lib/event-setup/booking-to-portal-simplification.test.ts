@@ -46,8 +46,14 @@ describe("booking-to-portal simplification", () => {
     assert.match(panel, /prepareAndReleasePortalAction/);
     assert.match(panel, /data-testid="prepare-and-release-portal"/);
     assert.match(panel, /inviteLabel="Invite client"/);
-    assert.match(panel, /Questionnaires stay on their own schedule/);
+    assert.match(panel, /Questionnaires stay on their own delivery schedule/);
     assert.doesNotMatch(panel, /inviteLabel="Invite client to workspace"/);
+    assert.doesNotMatch(panel, /ensureEventInventoryAction/);
+    assert.doesNotMatch(panel, /ensureEventOrderAction/);
+    assert.doesNotMatch(panel, /Start inventory draft/);
+    assert.doesNotMatch(panel, /Start Event Order draft/);
+    assert.doesNotMatch(panel, /BookingSetupCard/);
+    assert.doesNotMatch(panel, /TimelineSetupCard/);
   });
 
   it("Setup Profiles defer to Vendor Network classifications without a second recommendation picker", () => {
@@ -56,5 +62,12 @@ describe("booking-to-portal simplification", () => {
     assert.match(section, /You do not select a second recommendation list here/);
     assert.doesNotMatch(section, /Optional recommendations/);
     assert.doesNotMatch(section, /recommendedVendorIds: toggleId/);
+  });
+
+  it("booking does not copy event-level vendor recommendations from profile refs", () => {
+    const inherit = read("lib/event-setup/inherit.ts");
+    assert.doesNotMatch(inherit, /applyInheritedVendorRecommendations/);
+    assert.doesNotMatch(inherit, /addRecommendation/);
+    assert.match(inherit, /Vendor Network classifications are authoritative/);
   });
 });

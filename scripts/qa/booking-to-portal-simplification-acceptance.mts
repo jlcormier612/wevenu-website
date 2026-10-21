@@ -19,7 +19,7 @@ const ssrUtils = require(
 const APP = "https://app.sandbox.hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const EMAIL = "jennifer@hellotocheers.com";
-const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "db43eff778a69b5cf4cad06b9f41c65a7f885c8f";
+const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "REPLACE_AFTER_DEPLOY";
 const PROFILE_ID = "b2c5bb44-cdea-4b1a-9aca-995c04fea327";
 const SPACE_ID = "95f961e0-1995-4c62-8b01-add7a2cffc84";
 const OUT = "docs/qa/booking-to-portal-simplification";
@@ -359,9 +359,34 @@ async function main() {
     );
     record(
       "event_setup_no_start_draft_ctas",
-      !/Start .*inventory draft/i.test(setupText) && !/Start .*Event Order draft/i.test(setupText),
-      "start draft CTAs absent after book-time prepare",
+      !/Start .*inventory draft/i.test(setupText)
+        && !/Start .*Event Order draft/i.test(setupText)
+        && !/Prepare ".*inventory draft/i.test(setupText)
+        && !/Prepare ".*Event Order draft/i.test(setupText)
+        && !/Prepare inventory draft/i.test(setupText)
+        && !/Prepare Event Order draft/i.test(setupText),
+      "no component-level prepare/start draft CTAs",
     );
+    record(
+      "event_setup_no_embedded_apply_wizards",
+      !/Set up this booking/i.test(setupText) && !/Set up this booking's timeline/i.test(setupText),
+      "no BookingSetupCard/TimelineSetupCard wizards in Event Setup",
+    );
+
+    // Vendors tab: Vendor Network, not a second recommendation curator
+    await page.getByRole("tab", { name: /Vendors/i }).click().catch(async () => {
+      await page.locator('[value="vendors"], button:has-text("Vendors")').first().click();
+    });
+    await page.waitForTimeout(800);
+    const vendorsText = await page.locator("body").innerText();
+    record(
+      "vendors_tab_uses_vendor_network",
+      /Vendor Network/i.test(vendorsText) && !/Recommended to /i.test(vendorsText),
+      vendorsText.slice(0, 280),
+    );
+
+    await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
 
     const prepareBtn = page.getByTestId("prepare-and-release-portal");
     record("prepare_release_button_present", (await prepareBtn.count()) > 0, `count=${await prepareBtn.count()}`);

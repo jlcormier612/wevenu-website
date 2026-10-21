@@ -35,7 +35,7 @@ import { EventVendorsSection } from "@/components/events/vendors/event-vendors-s
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
 import type { LuvObservation } from "@/lib/luv/types";
-import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
+import { VenueVendorDirectorySummary } from "@/components/events/vendors/venue-vendor-directory-summary";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
@@ -1035,18 +1035,15 @@ export function EventDetail({
         <TabsContent value="vendors" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Recommended to {event.clientName || "the Client"}</CardTitle>
+              <CardTitle className="text-base">Vendor Network</CardTitle>
               <CardDescription>
-                Vendors from your Library, suggested for this client to consider. They&apos;ll see these in their portal and can choose one — you&apos;ll see their pick here immediately.
+                Preferred, recommended, and required classifications come from your Vendor Network.
+                Eligible vendors are available for client discovery by default. There is no second
+                recommendation list to curate on this event.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EventVendorRecommendationsSection
-                eventId={event.id}
-                clientName={event.clientName}
-                initialRecommendations={vendorRecommendations}
-                vendorLibrary={availableVendors}
-              />
+              <VenueVendorDirectorySummary vendors={availableVendors} />
             </CardContent>
           </Card>
 
@@ -1054,7 +1051,8 @@ export function EventDetail({
             <CardHeader>
               <CardTitle className="text-base">Assigned to This Event</CardTitle>
               <CardDescription>
-                Who is operationally confirmed and working this event, and when they arrive — separate from what&apos;s recommended to the client above.
+                Who is operationally confirmed and working this event, and when they arrive.
+                Required vendors keep their existing Vendor Network assignment behavior.
               </CardDescription>
             </CardHeader>
             <CardContent>

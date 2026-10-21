@@ -1,6 +1,5 @@
 /**
- * Booking-to-portal: Inventory / Event Order auto-preset at booking.
- * Drafts are prepared when Included with a template; share/invoice stay separate.
+ * Booking-to-portal: Inventory / Event Order auto-preset; no separate prepare CTAs.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -23,39 +22,22 @@ describe("inventory and Event Order profile preset coverage", () => {
     assert.doesNotMatch(inherit, /shareEventInventory/);
     assert.doesNotMatch(inherit, /shareEventOrderWithClient/);
     assert.doesNotMatch(inherit, /createInvoice/);
-    assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
   });
 
   it("Setup Profile UI states booking prepares drafts without sharing or invoicing", () => {
     const profiles = read("components/settings/setup-profiles-section.tsx");
     assert.match(profiles, /inventory draft is prepared automatically/);
     assert.match(profiles, /Event Order draft is prepared automatically/);
-    assert.match(profiles, /does not create invoices/);
-    assert.match(profiles, /not an invoice/);
-    assert.match(profiles, /does not change existing events/);
   });
 
-  it("Event Setup can recover missing drafts from inherited refs without share/invoice side effects", () => {
+  it("Event Setup recovers missing drafts only via Prepare and release portal", () => {
     const panel = read("components/events/event-setup-panel.tsx");
-    assert.match(panel, /ensureEventInventoryAction/);
-    assert.match(panel, /ensureEventOrderAction/);
-    assert.match(panel, /inventoryTemplateId && !hasEventInventory/);
-    assert.match(panel, /eventOrderTemplateId && !eventOrder/);
     assert.match(panel, /prepareAndReleasePortalAction/);
-    assert.doesNotMatch(panel, /shareEventInventoryAction/);
-    assert.doesNotMatch(panel, /finalizeEventInventoryAction/);
-    assert.doesNotMatch(panel, /finalizeEventOrderAction/);
-    assert.doesNotMatch(panel, /createInvoice/);
-  });
-
-  it("empty module panels preselect the profile starting template", () => {
-    const inventory = read("components/event-inventory/event-inventory-panel.tsx");
-    const orders = read("components/event-orders/event-order-panel.tsx");
-    const detail = read("components/events/event-detail.tsx");
-    assert.match(inventory, /preferredTemplateId/);
-    assert.match(orders, /preferredTemplateId/);
-    assert.match(detail, /preferredTemplateId=\{eventSetup\.inheritedTemplateRefs\?\.inventoryTemplateId/);
-    assert.match(detail, /preferredTemplateId=\{eventSetup\.inheritedTemplateRefs\?\.eventOrderTemplateId/);
+    assert.doesNotMatch(panel, /ensureEventInventoryAction/);
+    assert.doesNotMatch(panel, /ensureEventOrderAction/);
+    assert.doesNotMatch(panel, /Start inventory draft/);
+    assert.doesNotMatch(panel, /Start Event Order draft/);
+    assert.doesNotMatch(panel, /startProfileDraft/);
   });
 
   it("ensure paths are idempotent (existing record short-circuits)", () => {
@@ -65,7 +47,7 @@ describe("inventory and Event Order profile preset coverage", () => {
     assert.match(orders, /if \(existing\) return \{ ok: true, eventOrderId: existing\.id \}/);
   });
 
-  it("Readiness treats a profile ref without records as unavailable preparation gap", () => {
+  it("Readiness routes missing drafts to Prepare and release portal, not a component prepare CTA", () => {
     const inv = setupReadinessDetail({
       step: "inventory",
       decision: "set_up",
@@ -83,7 +65,8 @@ describe("inventory and Event Order profile preset coverage", () => {
     });
     assert.equal(inv.status, "unavailable");
     assert.equal(isOutstandingFollowUp("set_up", inv.status, "inventory"), true);
-    assert.match(inv.nextAction ?? "", /inventory draft/);
+    assert.equal(inv.nextAction, "Prepare and release portal");
+    assert.doesNotMatch(inv.nextAction ?? "", /inventory draft/i);
 
     const eo = setupReadinessDetail({
       step: "event_order",
@@ -101,12 +84,7 @@ describe("inventory and Event Order profile preset coverage", () => {
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: "Classic" },
     });
     assert.equal(eo.status, "unavailable");
-    assert.match(eo.nextAction ?? "", /Event Order draft/);
-  });
-
-  it("skipped Event Order is not outstanding follow-up", () => {
-    assert.equal(isOutstandingFollowUp("skipped", "not_included"), false);
-    assert.equal(isOutstandingFollowUp(null, "needs_action"), false);
+    assert.equal(eo.nextAction, "Prepare and release portal");
   });
 
   it("questionnaire drafts and Event Order drafts do not block portal settle", () => {

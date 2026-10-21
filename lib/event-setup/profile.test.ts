@@ -215,9 +215,10 @@ describe("venue setup profiles", () => {
     assert.match(inherit, /if \(existing\) return/);
     assert.match(inherit, /applyTemplateToEvent/);
     assert.match(inherit, /upsertOffer/);
-    assert.match(inherit, /addRecommendation/);
+    assert.doesNotMatch(inherit, /addRecommendation/);
     assert.doesNotMatch(inherit, /assignVendor/);
-    assert.doesNotMatch(inherit, /event_inventor/);
+    assert.match(inherit, /ensureEventInventory/);
+    assert.match(inherit, /ensureEventOrder/);
     assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
     assert.doesNotMatch(inherit, /timelineTemplateIds/);
     assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);

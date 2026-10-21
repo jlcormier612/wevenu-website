@@ -599,11 +599,11 @@ function CapabilityDefaults({
     const selected = refs.questionnaireTemplateIds ?? [];
     return (
       <div className="space-y-1" data-testid="setup-profile-questionnaires">
-        <p className="text-sm font-medium text-heading">Questionnaires to prepare for the client</p>
+        <p className="text-sm font-medium text-heading">Questionnaires for this event type</p>
         <p className="text-xs text-muted-foreground">
-          Choose which questionnaires should be prepared on the event when it is booked.
-          They are set up as drafts for your team — nothing is emailed or shown in the client portal until you send them.
-          You can select more than one (for example planning, final details, and post-event feedback).
+          Choose which questionnaires belong with this standard setup. They are prepared as drafts at booking
+          for scheduled or explicitly authorized sends — Preparing and releasing the portal never sends them.
+          Delivery timing stays in your questionnaires and communication workflow, separate from portal release and invitation.
         </p>
         {questionnaires.length === 0 ? (
           <p className="text-sm text-muted-foreground">No questionnaire templates yet.</p>

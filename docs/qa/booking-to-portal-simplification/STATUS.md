@@ -2,14 +2,15 @@
 
 ## Status
 
-**GREEN / CLOSED**
+**CORRECTIVE IN PROGRESS** — prior GREEN was insufficient (see `FORENSIC-CORRECTIVE.md`). Product corrections implemented; pending Sandbox redeploy + re-acceptance.
 
-## Commits
+## Commits (product)
 
 | SHA | Purpose |
 |-----|---------|
-| `b1c1f189e8fa4f2cc2990be0232ab1af103b450b` | Preset Inventory/EO + venue checklist on book; Prepare and release portal; Invite separate; Vendor Network authoritative |
-| `db43eff778a69b5cf4cad06b9f41c65a7f885c8f` | Venue checklist falls back to active event-type match when no `is_default` |
+| `b1c1f189` | First-pass preset + prepare/release (insufficient UX) |
+| `db43eff7` | Venue checklist event-type fallback |
+| _(pending)_ | Remove component Prepare/Start draft CTAs; Vendor Network only; prepare/release recovers Inv/EO/timeline/floor plans |
 
 ## Sandbox deploy
 
