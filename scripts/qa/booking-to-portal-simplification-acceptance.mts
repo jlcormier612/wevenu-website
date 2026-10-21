@@ -306,32 +306,30 @@ async function main() {
     await page.getByTestId("booking-confirm-date").fill(eventDate);
 
     async function pickUse(useKey: string) {
-      const row = dialog.getByTestId(`esa-row-${useKey}`);
-      if (!(await row.count())) return false;
-      const trigger = row.locator(`#esa-${useKey}`);
+      const trigger = dialog.locator(`#esa-${useKey}`);
+      if (!(await trigger.count())) return false;
       await trigger.click();
-      const opt = page.getByRole("option", { name: /Barn/i }).first();
-      await opt.waitFor({ state: "visible", timeout: 10_000 });
-      await opt.click();
-      await page.waitForFunction(
-        (id) => {
-          const el = document.getElementById(id);
-          return Boolean(el && /Barn/i.test(el.textContent ?? ""));
-        },
-        `esa-${useKey}`,
-        { timeout: 8_000 },
-      );
-      const start = row.locator(`#esa-${useKey}-start`);
-      await start.waitFor({ state: "visible", timeout: 5_000 });
-      for (let i = 0; i < 20 && !(await start.isEnabled()); i += 1) {
+      // Fancy Barn — match substring; do not require a leading "Barn".
+      const opt = page.getByRole("option", { name: /Fancy Barn|Barn/i }).first();
+      try {
+        await opt.waitFor({ state: "visible", timeout: 8_000 });
+      } catch {
+        await trigger.click({ force: true });
+        await opt.waitFor({ state: "visible", timeout: 8_000 });
+      }
+      await opt.click({ force: true });
+      const date = dialog.getByTestId(`esa-date-${useKey}`);
+      if (await date.count()) await date.fill(eventDate);
+      const start = dialog.locator(`#esa-${useKey}-start`);
+      const end = dialog.locator(`#esa-${useKey}-end`);
+      for (let i = 0; i < 25 && (await start.count()) && !(await start.isEnabled()); i += 1) {
         await page.waitForTimeout(200);
       }
-      if (!(await start.isEnabled())) return false;
-      await start.fill("11:00");
-      const end = row.locator(`#esa-${useKey}-end`);
-      if (await end.isEnabled()) await end.fill("17:00");
-      const date = row.getByTestId(`esa-date-${useKey}`);
-      if (await date.count() && await date.isEnabled()) await date.fill(eventDate);
+      if (await start.count()) {
+        if (!(await start.isEnabled())) return false;
+        await start.fill("11:00");
+      }
+      if (await end.count() && (await end.isEnabled())) await end.fill("17:00");
       return true;
     }
     if (!(await pickUse("reception")) && !(await pickUse("ceremony"))) {

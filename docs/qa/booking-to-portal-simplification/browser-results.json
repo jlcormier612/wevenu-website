@@ -1,16 +1,16 @@
 {
   "workflow": "booking-to-portal-simplification",
   "status": "GREEN",
-  "expectedSha": "0cd25c62a4b3e103c533c7be423b36c3b791bb7f",
-  "servingSha": "0cd25c62a4b3e103c533c7be423b36c3b791bb7f",
+  "expectedSha": "0ff9098b5105263a3e7fd673df098309bbc30aa0",
+  "servingSha": "0ff9098b5105263a3e7fd673df098309bbc30aa0",
   "ids": {
-    "leadId": "236bbc9a-f426-4446-af9a-ad3f247417b7",
-    "clientId": "095b91b9-f658-4a97-801e-3b95af948dc6",
-    "eventId": "c887b992-ce98-461e-af7d-6a9904fe6323",
+    "leadId": "140ce4ad-5333-438c-b87a-25f1b431a925",
+    "clientId": "cd47d555-66ec-4d21-9016-f36f6ef1097a",
+    "eventId": "c4e728d7-17ae-441e-b2c6-5f7917f3f31f",
     "profileId": "b2c5bb44-cdea-4b1a-9aca-995c04fea327",
-    "tag": "B2P-1792610010340-8e0f"
+    "tag": "B2P-1792612581936-a815"
   },
-  "passed": 41,
+  "passed": 44,
   "failed": 0,
   "checks": [
     {
@@ -26,7 +26,7 @@
     {
       "name": "serving_sha",
       "pass": true,
-      "detail": "serving=0cd25c62a4b3e103c533c7be423b36c3b791bb7f expected=0cd25c62a4b3e103c533c7be423b36c3b791bb7f"
+      "detail": "serving=0ff9098b5105263a3e7fd673df098309bbc30aa0 expected=0ff9098b5105263a3e7fd673df098309bbc30aa0"
     },
     {
       "name": "settings_lists_full_capability_set",
@@ -66,7 +66,7 @@
     {
       "name": "booked_client_and_event",
       "pass": true,
-      "detail": "{\"clientId\":\"095b91b9-f658-4a97-801e-3b95af948dc6\",\"eventId\":\"c887b992-ce98-461e-af7d-6a9904fe6323\"}"
+      "detail": "{\"clientId\":\"cd47d555-66ec-4d21-9016-f36f6ef1097a\",\"eventId\":\"c4e728d7-17ae-441e-b2c6-5f7917f3f31f\"}"
     },
     {
       "name": "setup_snapshot_inherited",
@@ -76,22 +76,22 @@
     {
       "name": "booking_prepared_inventory_draft",
       "pass": true,
-      "detail": "[{\"id\":\"9f886a59-dbeb-47c0-83f4-14a9faeb0a82\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"ecfd3c06-1596-406d-9c55-d1dd68673de2\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_event_order_draft",
       "pass": true,
-      "detail": "[{\"id\":\"fe7c666b-a98a-4e69-9955-1ab34f4bad5a\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"bb6365bd-f6ca-48bc-9949-66989b202854\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_client_checklist",
       "pass": true,
-      "detail": "{\"id\":\"f65ab8fe-832c-46f7-946e-33aff4c42089\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
+      "detail": "{\"id\":\"8d822171-0e7a-4bf9-9241-db8d691e203a\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
     },
     {
       "name": "booking_prepared_venue_checklist",
       "pass": true,
-      "detail": "{\"venuePb\":{\"id\":\"5e3edd15-53d8-473f-96ae-c37c159fbb95\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T19:13:50.674+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"},\"expected\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+      "detail": "{\"venuePb\":{\"id\":\"6dc767b7-3fe8-460a-ae06-1c1a97042bf6\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T19:56:45.402+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"},\"expected\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
     },
     {
       "name": "booking_prepared_timeline",
@@ -101,7 +101,7 @@
     {
       "name": "booking_prepared_floor_plan_offers",
       "pass": true,
-      "detail": "{\"offers\":[{\"id\":\"fd435e60-2fe4-44d6-8f29-8c8e281dcb54\",\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"is_offered\":true}],\"offersErr\":null}"
+      "detail": "{\"offers\":[{\"id\":\"8efb2b32-38e9-4f44-9b5c-edbdb95f0c41\",\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"is_offered\":true}],\"offersErr\":null}"
     },
     {
       "name": "booking_no_invoice",
@@ -121,12 +121,12 @@
     {
       "name": "event_setup_shows_prepare_release",
       "pass": true,
-      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nYour standard setup was applied at booking. Optionally edit any area for this event, then use Prepare and release portal once. Invite the client separately. Questionnaires stay on their own delivery schedule.\n\n0 need a decision · 7 incl"
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires stay on their own delivery schedule.\n\n0 need a"
     },
     {
       "name": "event_setup_shows_invite_separate",
       "pass": true,
-      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nYour standard setup was applied at booking. Optionally edit any area for this event, then use Prepare and release portal once. Invite the client separately. Questionnaires stay on their own delivery schedule.\n\n0 need a decision · 7 incl"
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires stay on their own delivery schedule.\n\n0 need a"
     },
     {
       "name": "event_setup_no_start_draft_ctas",
@@ -137,6 +137,21 @@
       "name": "event_setup_no_embedded_apply_wizards",
       "pass": true,
       "detail": "no BookingSetupCard/TimelineSetupCard wizards in Event Setup"
+    },
+    {
+      "name": "event_setup_no_unavailable_inventory_eo",
+      "pass": true,
+      "detail": "configured Inventory/Event Order must not show Unavailable"
+    },
+    {
+      "name": "event_setup_open_planning_from_card",
+      "pass": true,
+      "detail": "Planning card exposes Open Planning"
+    },
+    {
+      "name": "event_setup_single_release_cta",
+      "pass": true,
+      "detail": "one Release CTA; no yellow outstanding when only drafts await release"
     },
     {
       "name": "vendors_tab_uses_vendor_network",
@@ -151,12 +166,12 @@
     {
       "name": "prepare_released_client_planning",
       "pass": true,
-      "detail": "{\"id\":\"f65ab8fe-832c-46f7-946e-33aff4c42089\",\"kind\":\"client\",\"released_at\":\"2026-10-21T19:14:13.058+00:00\"}"
+      "detail": "{\"id\":\"8d822171-0e7a-4bf9-9241-db8d691e203a\",\"kind\":\"client\",\"released_at\":\"2026-10-21T19:57:16.593+00:00\"}"
     },
     {
       "name": "prepare_kept_venue_checklist_internal",
       "pass": true,
-      "detail": "{\"id\":\"5e3edd15-53d8-473f-96ae-c37c159fbb95\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T19:13:50.674+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+      "detail": "{\"id\":\"6dc767b7-3fe8-460a-ae06-1c1a97042bf6\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T19:56:45.402+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
     },
     {
       "name": "prepare_did_not_invite",
@@ -181,12 +196,12 @@
     {
       "name": "venue_inventory_grew_by_one",
       "pass": true,
-      "detail": "before=19 after=20"
+      "detail": "before=20 after=21"
     },
     {
       "name": "venue_eo_grew_by_one",
       "pass": true,
-      "detail": "before=22 after=23"
+      "detail": "before=23 after=24"
     },
     {
       "name": "profile_unchanged",
@@ -206,7 +221,7 @@
     {
       "name": "invite_created_separately",
       "pass": true,
-      "detail": "[{\"id\":\"cbd8af29-2b1a-4cfa-8ea9-9a8e0bf9149f\",\"status\":\"pending\",\"email\":\"b2p-invite-1792610010340@hellotocheers-test.invalid\"}]"
+      "detail": "[{\"id\":\"dfe5a4de-bbb8-4b3d-9218-4c4246b2373c\",\"status\":\"pending\",\"email\":\"b2p-invite-1792612581936@hellotocheers-test.invalid\"}]"
     },
     {
       "name": "invite_did_not_send_questionnaires",
@@ -219,5 +234,5 @@
       "detail": "invoices=0"
     }
   ],
-  "at": "2026-10-21T19:14:26.874Z"
+  "at": "2026-10-21T19:57:30.565Z"
 }

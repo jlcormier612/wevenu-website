@@ -1,5 +1,8 @@
 PASS profile_configured_inventory_eo — {"invRef":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","eoRef":"d73d9734-98d9-46a0-b54b-dccadb036150"}
-PASS serving_sha — serving=19eb9a01e7d556e784f9d796094c4daea21be3ec expected=19eb9a01e7d556e784f9d796094c4daea21be3ec
+PASS profile_configured_both_planning_checklists — {"clientPbRef":"7a1766d4-f1cd-4882-a8ed-19a54aba68ea","venuePbRef":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
+PASS serving_sha — serving=0ff9098b5105263a3e7fd673df098309bbc30aa0 expected=0ff9098b5105263a3e7fd673df098309bbc30aa0
+PASS settings_lists_full_capability_set — Planning checklists, Floor plans, Floor Plans, Seating arrangements, Floor plans, Vendor Network, Vendor Network, Vendor Network, Inventory, inventory, inventory, Inventory, Event Order, Event Order, Event Order, Event Order, Questionnaires
+PASS settings_keeps_floor_and_seating_distinct — floor plans vs seating copy
 PASS profile_list_shows_standard_wedding — OVERVIEW
 
 Dashboard
@@ -29,14 +32,18 @@ FINANCIALS
 
 Contracts
 Pa
-PASS profile_explains_auto_prepare — source copy (unit + shipped UI)
+PASS profile_explains_auto_prepare — source copy includes both Planning checklists + auto-prepare
 PASS profile_vendor_network_authoritative — source copy (unit + shipped UI)
-PASS booked_client_and_event — {"clientId":"30e09cb2-934f-4362-b956-83bdf8531fe6","eventId":"a51e01ba-1632-4dbf-9cde-a816577281df"}
+PASS profile_list_shows_both_checklists — Client checklist: Standard Wedding — Client Planning · Venue checklist: Standard Wedding — Venue Planning · Timeline: Standard Wedding Day Timeline
+PASS profile_ui_both_planning_selects — client=true venue=true
+PASS booked_client_and_event — {"clientId":"cd47d555-66ec-4d21-9016-f36f6ef1097a","eventId":"c4e728d7-17ae-441e-b2c6-5f7917f3f31f"}
 PASS setup_snapshot_inherited — {"uses_profile":true,"profile_id":"b2c5bb44-cdea-4b1a-9aca-995c04fea327","inherited_template_refs":{"requiredVendorIds":[],"timelineTemplateId":"a5855821-8c1a-4424-906a-7b2f6cf686c4","inventoryTemplateId":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a3
-PASS booking_prepared_inventory_draft — [{"id":"73628b7e-e41e-4c36-959a-b4d069aa8bc1","status":"draft","template_id":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","finalized_at":null}]
-PASS booking_prepared_event_order_draft — [{"id":"f3b9ca4c-356a-480f-aec5-a6e505fd9860","status":"open","template_id":"d73d9734-98d9-46a0-b54b-dccadb036150","shared_at":null,"finalized_at":null}]
-PASS booking_prepared_client_checklist — {"id":"a261a30f-2a41-4a2f-8814-9cd24b38b06a","kind":"client","released_at":null,"template_id":"7a1766d4-f1cd-4882-a8ed-19a54aba68ea"}
-PASS booking_prepared_venue_checklist — {"id":"4d0e8b7e-381c-4f43-869a-05882634e558","kind":"venue","released_at":"2026-10-21T17:53:45.231+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
+PASS booking_prepared_inventory_draft — [{"id":"ecfd3c06-1596-406d-9c55-d1dd68673de2","status":"draft","template_id":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","finalized_at":null}]
+PASS booking_prepared_event_order_draft — [{"id":"bb6365bd-f6ca-48bc-9949-66989b202854","status":"open","template_id":"d73d9734-98d9-46a0-b54b-dccadb036150","shared_at":null,"finalized_at":null}]
+PASS booking_prepared_client_checklist — {"id":"8d822171-0e7a-4bf9-9241-db8d691e203a","kind":"client","released_at":null,"template_id":"7a1766d4-f1cd-4882-a8ed-19a54aba68ea"}
+PASS booking_prepared_venue_checklist — {"venuePb":{"id":"6dc767b7-3fe8-460a-ae06-1c1a97042bf6","kind":"venue","released_at":"2026-10-21T19:56:45.402+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"},"expected":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
+PASS booking_prepared_timeline — entries=38 ref=a5855821-8c1a-4424-906a-7b2f6cf686c4
+PASS booking_prepared_floor_plan_offers — {"offers":[{"id":"8efb2b32-38e9-4f44-9b5c-edbdb95f0c41","floor_plan_template_id":"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3","is_offered":true}],"offersErr":null}
 PASS booking_no_invoice — invoices=0
 PASS booking_no_questionnaire_sent — sent=0
 PASS booking_no_invitation — invites=0
@@ -44,14 +51,17 @@ PASS event_setup_shows_prepare_release — Event setup
 
 Using: Standard Wedding Setup
 
-Your standard setup was applied at booking. Optionally edit any area for this event, then use Prepare and release portal once. Invite the client separately. Questionnaires stay on their own delive
+Review your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires stay o
 PASS event_setup_shows_invite_separate — Event setup
 
 Using: Standard Wedding Setup
 
-Your standard setup was applied at booking. Optionally edit any area for this event, then use Prepare and release portal once. Invite the client separately. Questionnaires stay on their own delive
+Review your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires stay o
 PASS event_setup_no_start_draft_ctas — no component-level prepare/start draft CTAs
 PASS event_setup_no_embedded_apply_wizards — no BookingSetupCard/TimelineSetupCard wizards in Event Setup
+PASS event_setup_no_unavailable_inventory_eo — configured Inventory/Event Order must not show Unavailable
+PASS event_setup_open_planning_from_card — Planning card exposes Open Planning
+PASS event_setup_single_release_cta — one Release CTA; no yellow outstanding when only drafts await release
 PASS vendors_tab_uses_vendor_network — OVERVIEW
 
 Dashboard
@@ -93,20 +103,25 @@ Requests
 
 YOUR VENUE
 PASS prepare_release_button_present — count=1
-PASS prepare_released_client_planning — {"id":"a261a30f-2a41-4a2f-8814-9cd24b38b06a","kind":"client","released_at":"2026-10-21T17:54:02.841+00:00"}
+PASS prepare_released_client_planning — {"id":"8d822171-0e7a-4bf9-9241-db8d691e203a","kind":"client","released_at":"2026-10-21T19:57:16.593+00:00"}
+PASS prepare_kept_venue_checklist_internal — {"id":"6dc767b7-3fe8-460a-ae06-1c1a97042bf6","kind":"venue","released_at":"2026-10-21T19:56:45.402+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
 PASS prepare_did_not_invite — invites=0
 PASS prepare_did_not_send_questionnaires — sent=0
 PASS prepare_did_not_create_invoice — invoices=0
 PASS prepare_idempotent_no_duplicate_drafts — inv=1 eo=1
-PASS venue_inventory_grew_by_one — before=13 after=14
-PASS venue_eo_grew_by_one — before=16 after=17
+PASS venue_inventory_grew_by_one — before=20 after=21
+PASS venue_eo_grew_by_one — before=23 after=24
 PASS profile_unchanged — {"requiredVendorIds":[],"timelineTemplateId":"a5855821-8c1a-4424-906a-7b2f6cf686c4","inventoryTemplateId":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","timelineTemplateIds":[],"eventOrderTemplateId":"d73d9734-98d9-46a0-b54b-dccadb036150","floorPl
 PASS prepare_release_code_boundaries — prepare-release side-effect boundaries
+PASS invite_button_present_after_prepare — testid=1 role=1 section=1
+PASS invite_created_separately — [{"id":"dfe5a4de-bbb8-4b3d-9218-4c4246b2373c","status":"pending","email":"b2p-invite-1792612581936@hellotocheers-test.invalid"}]
+PASS invite_did_not_send_questionnaires — sent=0
+PASS invite_did_not_create_invoice — invoices=0
 {
-  "passed": 29,
+  "passed": 44,
   "failed": 0,
-  "servingSha": "19eb9a01e7d556e784f9d796094c4daea21be3ec",
-  "leadId": "0bed02fd-ab46-48b6-ac02-8ede78c69436",
-  "clientId": "30e09cb2-934f-4362-b956-83bdf8531fe6",
-  "eventId": "a51e01ba-1632-4dbf-9cde-a816577281df"
+  "servingSha": "0ff9098b5105263a3e7fd673df098309bbc30aa0",
+  "leadId": "140ce4ad-5333-438c-b87a-25f1b431a925",
+  "clientId": "cd47d555-66ec-4d21-9016-f36f6ef1097a",
+  "eventId": "c4e728d7-17ae-441e-b2c6-5f7917f3f31f"
 }
