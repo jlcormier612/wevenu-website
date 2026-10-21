@@ -697,7 +697,7 @@ export async function releasePlaybookApplication(client: DbClient, venueId: stri
     .maybeSingle<{ event_date: string }>();
   if (eventRow?.event_date) {
     const { data: venueRow } = await client.from("venues")
-      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
       .eq("id", venueId)
       .maybeSingle();
     const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");

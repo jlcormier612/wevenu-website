@@ -14,6 +14,10 @@ import {
   snapshotInheritedSetup,
   type VenueSetupProfile,
 } from "@/lib/event-setup/profile";
+import {
+  capabilitiesFromVenueRow,
+  type VenuePlanningCapabilities,
+} from "@/lib/playbooks/capabilities";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -52,12 +56,25 @@ export async function inheritSetupProfileForNewEvent(
   if (eventError) throw eventError;
   if (!event) return;
 
-  const [{ data: profileRows, error: profileError }, { data: assignmentRows, error: assignmentError }] = await Promise.all([
+  const [
+    { data: profileRows, error: profileError },
+    { data: assignmentRows, error: assignmentError },
+    { data: venueCapsRow, error: venueCapsError },
+  ] = await Promise.all([
     supabase.from("venue_setup_profiles").select("id, name, decisions, template_refs").eq("venue_id", venueId),
     supabase.from("venue_setup_profile_assignments").select("profile_id, event_type").eq("venue_id", venueId),
+    supabase
+      .from("venues")
+      .select(
+        "planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled",
+      )
+      .eq("id", venueId)
+      .maybeSingle(),
   ]);
   if (profileError) throw profileError;
   if (assignmentError) throw assignmentError;
+  if (venueCapsError) throw venueCapsError;
+  const venueCaps = capabilitiesFromVenueRow(venueCapsRow);
 
   const profiles: VenueSetupProfile[] = ((profileRows ?? []) as ProfileRow[]).map((row) => ({
     id: row.id,
@@ -101,6 +118,7 @@ export async function inheritSetupProfileForNewEvent(
     event.start_time,
     event.event_type,
     profile,
+    venueCaps,
   );
 }
 
@@ -112,8 +130,11 @@ async function applyInheritedTemplates(
   startTime: string | null,
   eventType: string | null,
   profile: VenueSetupProfile,
+  caps: VenuePlanningCapabilities,
 ): Promise<void> {
-  const planningIncluded = profile.decisions.planning === "set_up";
+  // Venue-wide inclusion wins: profile set_up for a disabled capability is ignored
+  // for new bookings. Saved profiles are not rewritten.
+  const planningIncluded = caps.checklists && profile.decisions.planning === "set_up";
   const playbookId = planningIncluded
     ? profile.templateRefs.planningPlaybookTemplateId
     : null;
@@ -147,7 +168,7 @@ async function applyInheritedTemplates(
     }
   }
 
-  const timelineId = profile.decisions.timeline === "set_up"
+  const timelineId = caps.timeline && profile.decisions.timeline === "set_up"
     ? profile.templateRefs.timelineTemplateId
     : null;
   if (timelineId) {
@@ -167,28 +188,32 @@ async function applyInheritedTemplates(
     }
   }
 
-  if (profile.decisions.floor_plans === "set_up") {
+  if (caps.floorPlan && profile.decisions.floor_plans === "set_up") {
     await applyInheritedFloorPlanOffers(supabase, venueId, eventId, profile);
   }
 
-  if (profile.decisions.questionnaires === "set_up") {
+  if (caps.questionnaires && profile.decisions.questionnaires === "set_up") {
     await applyInheritedQuestionnaires(eventId, profile);
   }
 
   // Vendors: Vendor Network classifications are authoritative. Do not copy a
   // second event-level recommendation list from Setup Profile refs.
 
-  // Inventory / Event Order: when Included with a valid starting template,
-  // prepare the event-level draft at booking (idempotent). Does not share,
-  // finalize, invoice, or invite.
-  await applyInheritedInventoryAndEventOrder(eventId, profile);
+  // Inventory / Event Order: when venue-wide enabled and profile Included with a
+  // valid starting template, prepare the event-level draft at booking (idempotent).
+  await applyInheritedInventoryAndEventOrder(eventId, profile, caps);
 }
 
 async function applyInheritedInventoryAndEventOrder(
   eventId: string,
   profile: VenueSetupProfile,
+  caps: VenuePlanningCapabilities,
 ): Promise<void> {
-  if (profile.decisions.inventory === "set_up" && profile.templateRefs.inventoryTemplateId) {
+  if (
+    caps.inventory
+    && profile.decisions.inventory === "set_up"
+    && profile.templateRefs.inventoryTemplateId
+  ) {
     try {
       const { ensureEventInventory } = await import("@/lib/event-inventory/service");
       await ensureEventInventory(eventId, profile.templateRefs.inventoryTemplateId);
@@ -196,7 +221,11 @@ async function applyInheritedInventoryAndEventOrder(
       console.error("Setup profile inventory ensure failed:", err);
     }
   }
-  if (profile.decisions.event_order === "set_up" && profile.templateRefs.eventOrderTemplateId) {
+  if (
+    caps.eventOrder
+    && profile.decisions.event_order === "set_up"
+    && profile.templateRefs.eventOrderTemplateId
+  ) {
     try {
       const { ensureEventOrder } = await import("@/lib/event-orders/service");
       await ensureEventOrder(eventId, profile.templateRefs.eventOrderTemplateId);

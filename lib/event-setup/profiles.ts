@@ -163,7 +163,7 @@ export async function saveVenueSetupProfile(
     }
   }
 
-  const hardGaps = profileHardConfigGaps(decisions, templateRefs);
+  const hardGaps = profileHardConfigGaps(decisions, templateRefs, input.applicable);
   const hardSummary = profileHardGapSummary(hardGaps);
   if (hardSummary) {
     return {

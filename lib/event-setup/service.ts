@@ -10,27 +10,13 @@ import {
   type EventSetupState,
   type SetupDecision,
 } from "@/lib/event-setup/state";
-import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getCurrentVenue } from "@/lib/venue/service";
-
-function capabilitiesForVenue(venue: {
-  planningTimelineEnabled: boolean;
-  planningFloorPlanEnabled: boolean;
-  planningSeatingEnabled: boolean;
-  planningVendorsEnabled: boolean;
-}): VenuePlanningCapabilities {
-  return {
-    timeline: venue.planningTimelineEnabled,
-    floorPlan: venue.planningFloorPlanEnabled,
-    seating: venue.planningSeatingEnabled,
-    vendors: venue.planningVendorsEnabled,
-  };
-}
 
 async function venueContext(): Promise<{ venueId: string; applicable: ReturnType<typeof applicableSetupSteps> } | null> {
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  return { venueId: venue.id, applicable: applicableSetupSteps(capabilitiesForVenue(venue)) };
+  return { venueId: venue.id, applicable: applicableSetupSteps(capabilitiesFromVenue(venue)) };
 }
 
 export async function loadEventSetup(eventId: string): Promise<EventSetupState> {

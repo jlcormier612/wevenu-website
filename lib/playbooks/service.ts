@@ -250,7 +250,7 @@ export async function getClientPlaybookApplications(clientId: string): Promise<E
 export async function applyPlaybookToEvent(eventId: string, templateId: string, eventDate: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const { data: venueRow } = await c.from("venues")
-      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
       .eq("id", venueId)
       .maybeSingle();
     const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
@@ -276,7 +276,7 @@ export async function applyPlaybookToEvent(eventId: string, templateId: string, 
 export async function applyPlaybookToClient(clientId: string, templateId: string, anchorDate: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const { data: venueRow } = await c.from("venues")
-      .select("planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled")
+      .select("planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled")
       .eq("id", venueId)
       .maybeSingle();
     const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");

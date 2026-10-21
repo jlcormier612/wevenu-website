@@ -43,6 +43,14 @@ describe("event setup state", () => {
       vendors: false,
     });
     assert.deepEqual(limited, ["planning", "questionnaires", "inventory", "event_order"]);
+    const setupOnly = applicableSetupSteps({
+      ...DEFAULT_PLANNING_CAPABILITIES,
+      checklists: false,
+      inventory: false,
+      eventOrder: false,
+      questionnaires: false,
+    });
+    assert.deepEqual(setupOnly, ["timeline", "floor_plans", "vendors"]);
   });
 
   it("set up and skip are explicit and do not invent module records", () => {

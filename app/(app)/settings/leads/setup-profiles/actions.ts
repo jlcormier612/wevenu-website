@@ -6,6 +6,7 @@ import { deleteVenueSetupProfile, saveVenueSetupProfile } from "@/lib/event-setu
 import type { SetupDecisions } from "@/lib/event-setup/state";
 import type { SetupTemplateRefs } from "@/lib/event-setup/profile";
 import { applicableSetupSteps } from "@/lib/event-setup/state";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 function revalidate() {
@@ -25,12 +26,7 @@ export async function saveSetupProfileAction(input: {
   if (!venue) return { ok: false, message: "No venue found." };
   const result = await saveVenueSetupProfile({
     ...input,
-    applicable: applicableSetupSteps({
-      timeline: venue.planningTimelineEnabled,
-      floorPlan: venue.planningFloorPlanEnabled,
-      seating: venue.planningSeatingEnabled,
-      vendors: venue.planningVendorsEnabled,
-    }),
+    applicable: applicableSetupSteps(capabilitiesFromVenue(venue)),
   });
   if (result.ok) revalidate();
   return result.ok ? { ok: true } : result;

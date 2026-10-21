@@ -7,6 +7,7 @@ import { applicableSetupSteps } from "@/lib/event-setup/state";
 import { listVenueSetupProfiles } from "@/lib/event-setup/profiles";
 import { buildSetupProfileUsedForOptions } from "@/lib/event-setup/setup-profile-event-types";
 import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getTemplates as getPlaybookTemplates } from "@/lib/playbooks/service";
 import { getTemplates as getTimelineTemplates } from "@/lib/timeline-templates/service";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
@@ -36,12 +37,7 @@ export default async function SetupProfilesPage() {
     ])
     : [[], [], [], [], [], [], [], null];
 
-  const steps = applicableSetupSteps({
-    timeline: venue?.planningTimelineEnabled ?? true,
-    floorPlan: venue?.planningFloorPlanEnabled ?? true,
-    seating: venue?.planningSeatingEnabled ?? true,
-    vendors: venue?.planningVendorsEnabled ?? true,
-  });
+  const steps = applicableSetupSteps(capabilitiesFromVenue(venue));
   const usedForOptions = buildSetupProfileUsedForOptions(
     inquirySettings?.acceptedEventTypes ?? null,
   );

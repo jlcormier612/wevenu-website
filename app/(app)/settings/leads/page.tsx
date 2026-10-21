@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DEFAULT_COMMERCIAL_BOOKING_PREFS } from "@/lib/booking-journey/venue-prefs";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { getEmailIntakeHealth } from "@/lib/lead-intake/email-intake-health";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
@@ -31,12 +32,7 @@ export default async function LeadsBookingSettingsPage() {
     ? await getPublicInquiryFormConfig(venue.embedKey)
     : null;
   const canEditInquiryForm = role === "owner" || role === "manager";
-  const planningCapabilities = {
-    timeline: venue?.planningTimelineEnabled ?? true,
-    floorPlan: venue?.planningFloorPlanEnabled ?? true,
-    seating: venue?.planningSeatingEnabled ?? true,
-    vendors: venue?.planningVendorsEnabled ?? true,
-  };
+  const planningCapabilities = capabilitiesFromVenue(venue);
 
   return (
     <div className="space-y-6">
@@ -67,7 +63,9 @@ export default async function LeadsBookingSettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Planning tools</CardTitle>
             <CardDescription>
-              Venue-wide choices for which planning experiences Hello to Cheers includes for your clients and events. Separate from Planning Templates, which are reusable checklists you apply per event.
+              Venue-wide choices for which capabilities belong in your normal post-booking event workflow.
+              Setup Profiles configure the starting templates for each enabled capability by event type.
+              Turning a capability off does not rewrite existing profiles or booked events.
             </CardDescription>
           </CardHeader>
           <CardContent>

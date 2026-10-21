@@ -95,16 +95,12 @@ export async function getPlaybookApplyPreviewAction(templateId: string): Promise
   ]);
   if (!template) return { ok: false, message: "That checklist template could not be found." };
   const { getCurrentVenue } = await import("@/lib/venue/service");
-  const { filterTasksForVenueCapabilities } = await import("@/lib/playbooks/capabilities");
+  const {
+    capabilitiesFromVenue,
+    filterTasksForVenueCapabilities,
+  } = await import("@/lib/playbooks/capabilities");
   const venue = await getCurrentVenue();
-  const caps = venue
-    ? {
-        timeline: venue.planningTimelineEnabled,
-        floorPlan: venue.planningFloorPlanEnabled,
-        seating: venue.planningSeatingEnabled,
-        vendors: venue.planningVendorsEnabled,
-      }
-    : undefined;
+  const caps = venue ? capabilitiesFromVenue(venue) : undefined;
   const tasks = caps ? filterTasksForVenueCapabilities(tasksRaw, caps) : tasksRaw;
   return {
     ok: true,

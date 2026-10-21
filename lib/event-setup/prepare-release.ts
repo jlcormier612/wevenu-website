@@ -11,6 +11,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { eventSetupFromColumns } from "@/lib/event-setup/profile";
 import { parseTemplateRefs } from "@/lib/event-setup/template-refs";
 import { effectiveSetupDecision } from "@/lib/event-setup/state";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 
 export type PrepareReleaseResult =
   | { ok: true; message: string; releasedPlanning: boolean; sharedTimeline: boolean }
@@ -23,6 +24,7 @@ export async function prepareAndReleasePortal(
 ): Promise<PrepareReleaseResult> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
+  const caps = capabilitiesFromVenue(venue);
   const supabase = await createClient();
 
   const { data: event, error: eventError } = await supabase
@@ -42,11 +44,11 @@ export async function prepareAndReleasePortal(
   const setup = setupRow ? eventSetupFromColumns(setupRow as never) : null;
   const refs = parseTemplateRefs(setup?.inheritedTemplateRefs ?? {});
 
-  // Ensure Inventory / Event Order drafts when Included with a template.
+  // Ensure Inventory / Event Order drafts when venue-wide enabled and Included.
   const inventoryDecision = setup ? effectiveSetupDecision(setup, "inventory") : null;
   const eventOrderDecision = setup ? effectiveSetupDecision(setup, "event_order") : null;
 
-  if (inventoryDecision === "set_up" && refs.inventoryTemplateId) {
+  if (caps.inventory && inventoryDecision === "set_up" && refs.inventoryTemplateId) {
     try {
       const { ensureEventInventory } = await import("@/lib/event-inventory/service");
       const ensured = await ensureEventInventory(eventId, refs.inventoryTemplateId);
@@ -59,7 +61,7 @@ export async function prepareAndReleasePortal(
     }
   }
 
-  if (eventOrderDecision === "set_up" && refs.eventOrderTemplateId) {
+  if (caps.eventOrder && eventOrderDecision === "set_up" && refs.eventOrderTemplateId) {
     try {
       const { ensureEventOrder } = await import("@/lib/event-orders/service");
       const ensured = await ensureEventOrder(eventId, refs.eventOrderTemplateId);
@@ -91,7 +93,7 @@ export async function prepareAndReleasePortal(
     releasedPlanning = true;
   } else if (clientApp?.released_at) {
     releasedPlanning = true;
-  } else if (refs.planningPlaybookTemplateId && event.event_date) {
+  } else if (caps.checklists && refs.planningPlaybookTemplateId && event.event_date) {
     // Apply then release if profile had a checklist but booking somehow skipped it.
     const { applyPlaybookToEvent, releasePlaybookApplication } = await import("@/lib/playbooks/service");
     const applied = await applyPlaybookToEvent(eventId, refs.planningPlaybookTemplateId, event.event_date);
@@ -114,7 +116,12 @@ export async function prepareAndReleasePortal(
     .eq("venue_id", venue.id)
     .eq("kind", "venue")
     .limit(1);
-  if ((!venueApp || venueApp.length === 0) && refs.venuePlanningPlaybookTemplateId && event.event_date) {
+  if (
+    caps.checklists
+    && (!venueApp || venueApp.length === 0)
+    && refs.venuePlanningPlaybookTemplateId
+    && event.event_date
+  ) {
     try {
       const { applyPlaybookToEvent } = await import("@/lib/playbooks/service");
       const applied = await applyPlaybookToEvent(
@@ -143,7 +150,7 @@ export async function prepareAndReleasePortal(
   // Timeline: apply starting template if missing, then share with the couple.
   let sharedTimeline = false;
   const timelineDecision = setup ? effectiveSetupDecision(setup, "timeline") : null;
-  if (timelineDecision !== "skipped") {
+  if (caps.timeline && timelineDecision !== "skipped") {
     const { data: entries } = await supabase
       .from("timeline_entries")
       .select("id")
@@ -186,7 +193,7 @@ export async function prepareAndReleasePortal(
 
   // Floor-plan offers: ensure configured options exist when Included.
   const floorDecision = setup ? effectiveSetupDecision(setup, "floor_plans") : null;
-  if (floorDecision === "set_up") {
+  if (caps.floorPlan && floorDecision === "set_up") {
     const preferred = refs.defaultFloorPlanTemplateId ?? null;
     const selected = new Set(refs.floorPlanTemplateIds ?? []);
     if (preferred) selected.add(preferred);

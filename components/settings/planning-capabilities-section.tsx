@@ -51,12 +51,12 @@ export function PlanningCapabilitiesSection({
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground leading-relaxed">
-        Choose the planning tools your venue uses with couples and events.
-        These settings control which planning experiences appear for your
-        clients and which planning work Hello to Cheers includes for your
-        events. They affect what couples see in their portal, what shows in
-        Event Readiness for Timeline, Floor Plan, and Seating, and which
-        related work Planning Templates can create when applied.
+        Choose what Hello to Cheers includes in your standard event setup.
+        Enabled capabilities appear in Setup Profiles so you can pick starting
+        templates per event type; booking applies those templates automatically.
+        Disabled capabilities do not create configuration gaps and are not
+        auto-created at booking. Existing booked events keep whatever they
+        already have.
       </p>
       <div className="space-y-5">
         {PLANNING_CAPABILITY_OPTIONS.map((opt) => (

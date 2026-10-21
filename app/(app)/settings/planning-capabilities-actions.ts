@@ -13,6 +13,7 @@ export async function savePlanningCapabilitiesAction(
     revalidatePath("/library/playbooks");
     revalidatePath("/settings");
     revalidatePath("/settings/leads");
+    revalidatePath("/settings/leads/setup-profiles");
     revalidatePath("/clients");
   }
   return result;

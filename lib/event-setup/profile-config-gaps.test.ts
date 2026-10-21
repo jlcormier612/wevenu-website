@@ -114,6 +114,17 @@ describe("profileHardConfigGaps", () => {
     assert.equal(profileTemplateRefIncomplete("inventory", decisions, emptyRefs), false);
     assert.equal(profileTemplateRefIncomplete("event_order", decisions, emptyRefs), false);
   });
+
+  it("ignores Included steps that are not applicable under venue-wide settings", () => {
+    const decisions: SetupDecisions = {
+      planning: "set_up",
+      inventory: "set_up",
+      questionnaires: "set_up",
+    };
+    const gaps = profileHardConfigGaps(decisions, emptyRefs, ["timeline", "vendors"]);
+    assert.equal(gaps.length, 0);
+    assert.equal(profileIsHonestlyConfigured(decisions, emptyRefs, ["timeline"]), true);
+  });
 });
 
 describe("profileSoftConfigGaps", () => {

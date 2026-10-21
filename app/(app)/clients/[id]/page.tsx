@@ -89,6 +89,7 @@ import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relati
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
 import { loadEventSetup } from "@/lib/event-setup/service";
 import { applicableSetupSteps } from "@/lib/event-setup/state";
+import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -638,24 +639,12 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     contracts, invoices: eventInvoices, documents,
     conversationMessages,
     paymentScheduleLines: bookingJourney.paymentLines,
-    planningCapabilities: venue
-      ? {
-          timeline: venue.planningTimelineEnabled,
-          floorPlan: venue.planningFloorPlanEnabled,
-          seating: venue.planningSeatingEnabled,
-          vendors: venue.planningVendorsEnabled,
-        }
-      : undefined,
+    planningCapabilities: venue ? capabilitiesFromVenue(venue) : undefined,
   });
 
   const workspaceName = clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName);
   const eventSetup = await loadEventSetup(event.id);
-  const setupSteps = applicableSetupSteps({
-    timeline: venue?.planningTimelineEnabled ?? true,
-    floorPlan: venue?.planningFloorPlanEnabled ?? true,
-    seating: venue?.planningSeatingEnabled ?? true,
-    vendors: venue?.planningVendorsEnabled ?? true,
-  });
+  const setupSteps = applicableSetupSteps(capabilitiesFromVenue(venue));
   return (
     <div className="space-y-3">
       <div className="flex justify-end">

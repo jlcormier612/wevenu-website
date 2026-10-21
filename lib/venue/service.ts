@@ -576,10 +576,14 @@ export async function updateVenuePlanningCapabilities(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Venue not found." };
   await repository.updateVenueFields(supabase, venue.id, {
+    planning_checklists_enabled: caps.checklists,
     planning_timeline_enabled: caps.timeline,
     planning_floor_plan_enabled: caps.floorPlan,
     planning_seating_enabled: caps.seating,
     planning_vendors_enabled: caps.vendors,
+    planning_inventory_enabled: caps.inventory,
+    planning_event_order_enabled: caps.eventOrder,
+    planning_questionnaires_enabled: caps.questionnaires,
   });
   return { ok: true };
 }

@@ -241,7 +241,9 @@ export function SetupProfilesSection({
         inventoryTemplates,
         eventOrderTemplates,
       });
-      const hardSummary = profileHardGapSummary(profileConfigGaps(draft.decisions, safeRefs));
+      const hardSummary = profileHardGapSummary(
+        profileConfigGaps(draft.decisions, safeRefs, decisionSteps),
+      );
       if (hardSummary) {
         toast.error(
           `${hardSummary} Mark the area Not included if you do not want Hello to Cheers to prepare it automatically.`,
@@ -309,7 +311,7 @@ export function SetupProfilesSection({
           <li className="text-sm text-muted-foreground">No setup profiles yet.</li>
         ) : profiles.map((profile) => {
           const usedFor = assignments.filter((row) => row.profileId === profile.id).map((row) => row.eventType);
-          const gaps = profileConfigGaps(profile.decisions, profile.templateRefs);
+          const gaps = profileConfigGaps(profile.decisions, profile.templateRefs, decisionSteps);
           const hard = gaps.filter((g) => g.severity === "hard");
           return (
             <li key={profile.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border px-4 py-3">

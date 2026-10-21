@@ -71,10 +71,14 @@ type VenueRow = {
   tour_scheduling_enabled: boolean;
   conversation_experience_enabled: boolean;
   event_order_enabled: boolean;
+  planning_checklists_enabled: boolean | null;
   planning_timeline_enabled: boolean | null;
   planning_floor_plan_enabled: boolean | null;
   planning_seating_enabled: boolean | null;
   planning_vendors_enabled: boolean | null;
+  planning_inventory_enabled: boolean | null;
+  planning_event_order_enabled: boolean | null;
+  planning_questionnaires_enabled: boolean | null;
   access_disabled: boolean | null;
   account_status: "active" | "suspended" | null;
   saas_stripe_customer_id: string | null;
@@ -137,10 +141,14 @@ function mapVenue(r: VenueRow): Venue {
     tourSchedulingEnabled: r.tour_scheduling_enabled ?? false,
     conversationExperienceEnabled: r.conversation_experience_enabled ?? false,
     eventOrderEnabled: r.event_order_enabled ?? false,
+    planningChecklistsEnabled: r.planning_checklists_enabled ?? true,
     planningTimelineEnabled: r.planning_timeline_enabled ?? true,
     planningFloorPlanEnabled: r.planning_floor_plan_enabled ?? true,
     planningSeatingEnabled: r.planning_seating_enabled ?? true,
     planningVendorsEnabled: r.planning_vendors_enabled ?? true,
+    planningInventoryEnabled: r.planning_inventory_enabled ?? true,
+    planningEventOrderEnabled: r.planning_event_order_enabled ?? true,
+    planningQuestionnairesEnabled: r.planning_questionnaires_enabled ?? true,
     accessDisabled: r.access_disabled === true,
     accountStatus: r.account_status === "suspended" ? "suspended" : "active",
     saasStripeCustomerId: r.saas_stripe_customer_id ?? null,

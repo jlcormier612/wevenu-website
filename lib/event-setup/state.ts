@@ -2,7 +2,11 @@
  * Booked Client setup decisions and Overview exceptions.
  * Pure: does not read module tables and does not treat an empty module as late.
  */
-import type { VenuePlanningCapabilities } from "@/lib/playbooks/capabilities";
+import {
+  isCapabilityEnabled,
+  type PlanningCapabilityId,
+  type VenuePlanningCapabilities,
+} from "@/lib/playbooks/capabilities";
 import type { ReadinessNavTarget, ReadinessSection } from "@/lib/readiness/types";
 import type { SetupTemplateRefs } from "@/lib/event-setup/template-refs";
 
@@ -143,14 +147,35 @@ export function effectiveSetupDecision(state: EventSetupState, step: SetupStepKe
   return effectiveDecisionMap(state)[step];
 }
 
+/** Map a Setup Profile / Event Setup step to its venue-wide capability. */
+export function setupStepCapability(step: SetupStepKey): PlanningCapabilityId | null {
+  switch (step) {
+    case "planning":
+      return "checklists";
+    case "timeline":
+      return "timeline";
+    case "floor_plans":
+      return "floor_plan";
+    case "vendors":
+      return "vendors";
+    case "inventory":
+      return "inventory";
+    case "event_order":
+      return "event_order";
+    case "questionnaires":
+      return "questionnaires";
+    case "portal":
+      return null;
+  }
+}
+
 /** Venue capability off means the step is not offered. On does not mean this event must use it. */
 export function applicableSetupSteps(caps: VenuePlanningCapabilities): SetupStepKey[] {
   return SETUP_STEP_ORDER.filter((step) => {
     if (step === "portal") return false;
-    if (step === "timeline") return caps.timeline;
-    if (step === "floor_plans") return caps.floorPlan;
-    if (step === "vendors") return caps.vendors;
-    return true;
+    const capability = setupStepCapability(step);
+    if (!capability) return true;
+    return isCapabilityEnabled(caps, capability);
   });
 }
 

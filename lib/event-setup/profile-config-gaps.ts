@@ -49,9 +49,12 @@ export function profileSoftConfigGaps(
 export function profileHardConfigGaps(
   decisions: SetupDecisions,
   refs: SetupTemplateRefs,
+  applicable?: readonly SetupStepKey[],
 ): ProfileConfigGap[] {
+  const offered = applicable ? new Set(applicable) : null;
+  const include = (step: SetupStepKey) => !offered || offered.has(step);
   const gaps: ProfileConfigGap[] = [];
-  if (decisions.planning === "set_up") {
+  if (include("planning") && decisions.planning === "set_up") {
     const missingClient = !hasId(refs.planningPlaybookTemplateId);
     const missingVenue = !hasId(refs.venuePlanningPlaybookTemplateId);
     if (missingClient && missingVenue) {
@@ -75,7 +78,7 @@ export function profileHardConfigGaps(
       });
     }
   }
-  if (decisions.timeline === "set_up" && !hasId(refs.timelineTemplateId)) {
+  if (include("timeline") && decisions.timeline === "set_up" && !hasId(refs.timelineTemplateId)) {
     gaps.push({
       step: "timeline",
       severity: "hard",
@@ -83,7 +86,8 @@ export function profileHardConfigGaps(
     });
   }
   if (
-    decisions.floor_plans === "set_up"
+    include("floor_plans")
+    && decisions.floor_plans === "set_up"
     && !hasId(refs.defaultFloorPlanTemplateId)
     && !hasIds(refs.floorPlanTemplateIds)
   ) {
@@ -93,14 +97,18 @@ export function profileHardConfigGaps(
       message: "Floor plans are Included but no layout template is selected to offer.",
     });
   }
-  if (decisions.questionnaires === "set_up" && !hasIds(refs.questionnaireTemplateIds)) {
+  if (
+    include("questionnaires")
+    && decisions.questionnaires === "set_up"
+    && !hasIds(refs.questionnaireTemplateIds)
+  ) {
     gaps.push({
       step: "questionnaires",
       severity: "hard",
       message: "Questionnaires are Included but no questionnaire templates are selected to prepare as drafts.",
     });
   }
-  if (decisions.inventory === "set_up" && !hasId(refs.inventoryTemplateId)) {
+  if (include("inventory") && decisions.inventory === "set_up" && !hasId(refs.inventoryTemplateId)) {
     gaps.push({
       step: "inventory",
       severity: "hard",
@@ -108,7 +116,11 @@ export function profileHardConfigGaps(
         "Inventory is Included but no starting offering is selected. Choose a template, or mark Not included.",
     });
   }
-  if (decisions.event_order === "set_up" && !hasId(refs.eventOrderTemplateId)) {
+  if (
+    include("event_order")
+    && decisions.event_order === "set_up"
+    && !hasId(refs.eventOrderTemplateId)
+  ) {
     gaps.push({
       step: "event_order",
       severity: "hard",
@@ -122,8 +134,12 @@ export function profileHardConfigGaps(
 export function profileConfigGaps(
   decisions: SetupDecisions,
   refs: SetupTemplateRefs,
+  applicable?: readonly SetupStepKey[],
 ): ProfileConfigGap[] {
-  return [...profileHardConfigGaps(decisions, refs), ...profileSoftConfigGaps(decisions, refs)];
+  return [
+    ...profileHardConfigGaps(decisions, refs, applicable),
+    ...profileSoftConfigGaps(decisions, refs),
+  ];
 }
 
 export function profileHardGapSummary(gaps: ProfileConfigGap[]): string | null {
@@ -137,8 +153,9 @@ export function profileHardGapSummary(gaps: ProfileConfigGap[]): string | null {
 export function profileIsHonestlyConfigured(
   decisions: SetupDecisions,
   refs: SetupTemplateRefs,
+  applicable?: readonly SetupStepKey[],
 ): boolean {
-  return profileHardConfigGaps(decisions, refs).length === 0;
+  return profileHardConfigGaps(decisions, refs, applicable).length === 0;
 }
 
 /** True when an Included Inventory/Event Order step still lacks its starting template. */

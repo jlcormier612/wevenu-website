@@ -25,16 +25,10 @@ export async function resolvePortalContext(token: string): Promise<PortalContext
     const { data: venueRow } = await admin
       .from("venues")
       .select(
-        "updated_at, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled",
+        "updated_at, planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled",
       )
       .eq("id", ctx.venue.id)
-      .maybeSingle<{
-        updated_at: string;
-        planning_timeline_enabled: boolean | null;
-        planning_floor_plan_enabled: boolean | null;
-        planning_seating_enabled: boolean | null;
-        planning_vendors_enabled: boolean | null;
-      }>();
+      .maybeSingle();
     const { capabilitiesFromVenueRow } = await import("@/lib/playbooks/capabilities");
     ctx.venue = {
       ...ctx.venue,
