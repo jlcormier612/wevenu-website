@@ -87,9 +87,9 @@ import {
   type NormalizedActiveCommitment,
 } from "@/lib/migration/active-commitment";
 import {
-  commitOperationalGuest,
-  type NormalizedGuestListEntry,
-} from "@/lib/migration/operational-guest";
+  isVenueGuestListImportRemoved,
+  VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE,
+} from "@/lib/migration/venue-guest-list-import";
 import {
   commitEventVendorAssignmentQuietly,
   type NormalizedEventVendorAssignment,
@@ -171,6 +171,9 @@ export async function listSessionsForCurrentVenue(): Promise<MigrationSession[]>
 export async function addRows(
   client: AnyDbClient, session: MigrationSession, entityType: MigrationEntityType, rows: SourceRow[],
 ): Promise<{ added: number }> {
+  if (isVenueGuestListImportRemoved(entityType)) {
+    throw new Error(VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE);
+  }
   const adapter = getSourceAdapter(session.sourceKey);
   const toInsert = rows.map((row, i) => ({ sourceRowRef: `row ${i + 1}`, rawPayload: row as Record<string, unknown> }));
   const inserted = await repo.insertRecords(client, session.id, session.venueId, entityType, toInsert);
@@ -431,7 +434,7 @@ export async function getSessionSummary(client: AnyDbClient, session: MigrationS
 
 const COMMITTABLE_ENTITY_TYPES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "vendor", "lead", "client", "package", "event", "tour",
-  "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
+  "document", "active_commitment", "event_vendor_assignment", "timeline_entry",
   "floor_plan",
 ];
 
@@ -826,6 +829,9 @@ export async function addRowsToOwnSession(
   if (entityType === "floor_plan") {
     const role = await getCurrentUserRole();
     if (!canEditFloorPlans(role)) return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+  }
+  if (isVenueGuestListImportRemoved(entityType)) {
+    return { ok: false, message: VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE };
   }
   const result = await addRows(actor.client, session, entityType, rows);
   return { ok: true, ...result };
@@ -1359,15 +1365,11 @@ async function commitOneRecord(
       return { ok: true, entityId: result.eventId };
     }
     if (entityType === "guest_list") {
-      // couple_guests / couple_households are Client-Owned: venue staff JWT
-      // has SELECT only. Migration cutover was granted service_role DML
-      // (20261326000000_active_business_continuity) — venue MC commits must
-      // use the admin client for these writes or every guest row fails RLS.
-      const n = record.normalizedPayload as unknown as NormalizedGuestListEntry;
-      const writeClient = createAdminClient();
-      const result = await commitOperationalGuest(writeClient, session.venueId, n);
-      if (!result.ok) return { ok: false, error: result.error };
-      return { ok: true, entityId: result.guestId };
+      // Product: individual guests are client-owned. Venue Migration Center
+      // must not write couple_guests / couple_households or force visibility.
+      // Stale sessions / forged entity types are rejected here — no admin
+      // client, no commitOperationalGuest, no visibility_to_venue change.
+      return { ok: false, error: VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE };
     }
     if (entityType === "event_vendor_assignment") {
       const n = record.normalizedPayload as unknown as NormalizedEventVendorAssignment;

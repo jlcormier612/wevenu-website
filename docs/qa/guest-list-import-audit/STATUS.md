@@ -1,23 +1,11 @@
 # Guest List Import Audit — STATUS
 
-**Verdict:** **NOT GREEN — PRODUCT DECISION REQUIRED**  
-**Date:** 2026-10-20  
+**Original verdict (2026-10-20):** **NOT GREEN — PRODUCT DECISION REQUIRED**  
 **HEAD at audit:** `487cb347`  
-**Sandbox serving:** `c1247d09` · TD `htc-sandbox-venue-app:817`  
-**Code/schema changes:** none  
-**Production:** untouched  
-**Unrelated dirty tree:** preserved (~886)
+**Artifacts:** `FORENSIC.md`, `probe-sandbox.mts`, `probe-results.json`
 
-## Why not GREEN
+## Follow-up (implemented)
 
-Guest lists are Client-Owned (`couple_guests`). Migration Center imports them with service-role writes and forced `visibility_to_venue = true`, while UI claims “on an active Event” though guests have **no Event FK**. Cross-venue Event targeting is blocked; ownership/authorization product intent is unresolved.
+Product decision accepted: remove venue-facing Migration Center guest-list import with server-side enforcement; preserve client-owned tables/features; audit client I/O and operational handoffs without building new features.
 
-## Decision needed
-
-See `FORENSIC.md` §6 — whether MC may seed couple guest lists, venue visibility expectations, and whether Event-scoped storage is required.
-
-## Artifacts
-
-- `FORENSIC.md`  
-- `probe-sandbox.mts` / `probe-results.json`  
-- Baseline tests: operational-continuity + guest-list-admin-write **14/14**
+**Implementation + closure evidence:** `docs/qa/guest-list-venue-import-removal/`

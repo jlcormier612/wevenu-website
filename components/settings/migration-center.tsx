@@ -98,14 +98,14 @@ const ENTITY_LABEL: Record<MigrationEntityType, string> = {
   package: "Packages",
   key_date: "Key dates (historical — no longer importable)",
   active_commitment: "Booked-event finances (invoice, payments, signed agreement)",
-  guest_list: "Guest list (operational couple guests on an active Event)",
+  guest_list: "Guest list (client-owned — not importable via venue Migration Center)",
   event_vendor_assignment: "Event vendor assignments (photographer, caterer, …)",
   timeline_entry: "Timeline entries (near-event / finalized day-of)",
   floor_plan: "Floor plans (Space masters, event layouts, reference files)",
 };
 const COMMITTABLE_ENTITIES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "client", "lead", "vendor", "package", "event", "tour",
-  "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
+  "document", "active_commitment", "event_vendor_assignment", "timeline_entry",
   "floor_plan",
 ];
 

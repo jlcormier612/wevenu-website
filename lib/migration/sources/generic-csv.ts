@@ -25,6 +25,10 @@ import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@
 import { validateActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { parsePackageIncludedItems } from "@/lib/import/package-items";
 import { MANUAL_SCHEDULE_TYPES, type ManualScheduleType, type RecurrenceRule } from "@/lib/availability/types";
+import {
+  isVenueGuestListImportRemoved,
+  VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE,
+} from "@/lib/migration/venue-guest-list-import";
 
 function str(row: SourceRow, key: string): string | null {
   const v = row[key];
@@ -388,40 +392,9 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
     return { ok: true, entityType, normalized: normalized as unknown as Record<string, unknown> };
   }
 
-  if (entityType === "guest_list") {
-    const firstName = str(row, "firstName") ?? str(row, "guestFirstName");
-    if (!firstName) return { ok: false, error: "Guest rows need a firstName." };
-    const bool = (v: string | null | undefined) => ["yes", "true", "1"].includes((v ?? "").toLowerCase());
-    const splitTags = (v: string | null | undefined) =>
-      (v ?? "").split(/[,|;]/).map((t) => t.trim().toLowerCase()).filter(Boolean);
-    const normalized = {
-      eventId: str(row, "eventId"),
-      clientEmail: str(row, "clientEmail"),
-      clientId: str(row, "clientId"),
-      eventDate: str(row, "eventDate"),
-      firstName,
-      lastName: str(row, "lastName") ?? str(row, "guestLastName"),
-      email: str(row, "guestEmail"),
-      phone: str(row, "phone") ?? str(row, "guestPhone"),
-      household: str(row, "household") ?? str(row, "householdName"),
-      rsvpStatus: str(row, "rsvpStatus") ?? str(row, "rsvp"),
-      mealChoice: str(row, "mealChoice"),
-      dietaryRestrictions: str(row, "dietaryRestrictions") ?? str(row, "dietary"),
-      isChild: bool(str(row, "isChild")),
-      isWeddingParty: bool(str(row, "isWeddingParty")),
-      plusOne: bool(str(row, "plusOne")),
-      plusOneName: str(row, "plusOneName"),
-      dietaryTags: splitTags(str(row, "dietaryTags")),
-      accessibilityTags: splitTags(str(row, "accessibilityTags")),
-      accessibilityNotes: str(row, "accessibilityNotes"),
-      age: str(row, "age"),
-      highChairRequired: bool(str(row, "highChairRequired")),
-      childNotes: str(row, "childNotes"),
-      isVendorMeal: bool(str(row, "isVendorMeal")),
-      notes: str(row, "notes"),
-      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
-    };
-    return { ok: true, entityType, normalized };
+  if (isVenueGuestListImportRemoved(entityType)) {
+    // Client-owned guest lists — venue Migration Center must not normalize PII rows.
+    return { ok: false, error: VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE };
   }
 
   if (entityType === "event_vendor_assignment") {

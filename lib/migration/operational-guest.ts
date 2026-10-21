@@ -1,6 +1,12 @@
 /**
- * Operational guest-list cutover — writes into canonical couple_guests
- * (same table the couple portal uses). Quiet: never sends invitations/emails.
+ * Quiet guest-list write helper for couple_guests (same table the couple
+ * portal uses). Never sends invitations/emails.
+ *
+ * Venue Migration Center must NOT call this. Product decision: individual
+ * guests are client-owned; venue MC rejects `guest_list` at normalize /
+ * addRows / commitOneRecord (see venue-guest-list-import.ts). This module
+ * remains for historical continuity tests and any non-MC callers that are
+ * separately authorized — do not re-wire it into venue MC.
  */
 
 import type { createClient } from "@/integrations/supabase/server";
