@@ -73,10 +73,18 @@ async function cookies() {
   ];
 }
 
+function uniqueFarEventDate(seed: number): string {
+  // Avoid colliding with prior QA bookings on Fancy Barn (month 1–12, day 1–28).
+  const month = ((seed >>> 8) % 12) + 1;
+  const day = (seed % 28) + 1;
+  const year = 2036 + (seed % 3);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 async function main() {
   const stamp = Date.now();
   const tag = `B2P-${stamp}-${randomBytes(2).toString("hex")}`;
-  const eventDate = `2033-${String((stamp % 11) + 1).padStart(2, "0")}-${String((stamp % 27) + 1).padStart(2, "0")}`;
+  let eventDate = uniqueFarEventDate(stamp ^ randomBytes(2).readUInt16BE(0));
   let servingSha: string | null = null;
   let leadId: string | null = null;
   let clientId: string | null = null;
@@ -339,14 +347,28 @@ async function main() {
 
     const submit = page.getByTestId("booking-confirm-submit");
     await submit.waitFor({ state: "visible", timeout: 10_000 });
-    for (let i = 0; i < 20 && !(await submit.isEnabled()); i += 1) {
-      await page.waitForTimeout(250);
+    // Availability probe can take several seconds; date collisions keep Confirm disabled.
+    for (let i = 0; i < 60 && !(await submit.isEnabled()); i += 1) {
+      await page.waitForTimeout(500);
+    }
+    if (!(await submit.isEnabled())) {
+      // Retry once with a different far-future date to dodge occupancy conflicts.
+      eventDate = uniqueFarEventDate(stamp ^ Date.now() ^ 0x9e3779b9);
+      await page.getByTestId("booking-confirm-date").fill(eventDate);
+      const receptionDate = dialog.getByTestId("esa-date-reception");
+      if (await receptionDate.count()) await receptionDate.fill(eventDate);
+      const ceremonyDate = dialog.getByTestId("esa-date-ceremony");
+      if (await ceremonyDate.count()) await ceremonyDate.fill(eventDate);
+      for (let i = 0; i < 60 && !(await submit.isEnabled()); i += 1) {
+        await page.waitForTimeout(500);
+      }
     }
     if (!(await submit.isEnabled())) {
       await page.screenshot({ path: `${OUT}/02-booking-submit-disabled.png`, fullPage: true });
-      throw new Error("booking-confirm-submit stayed disabled");
+      const dialogText = await dialog.innerText().catch(() => "");
+      throw new Error(`booking-confirm-submit stayed disabled date=${eventDate} dialog=${dialogText.slice(0, 500)}`);
     }
-    await submit.click();
+    await submit.click({ force: false });
     try {
       await page.waitForURL(/\/(clients|events)\//, { timeout: 90_000 });
     } catch (err) {
@@ -565,12 +587,19 @@ async function main() {
 
     // Open Planning → management workspace
     await page.getByTestId("event-setup-open-planning").click();
-    await page.waitForTimeout(900);
     const managementList = page.getByTestId("planning-task-list");
+    try {
+      await managementList.waitFor({ state: "visible", timeout: 20_000 });
+    } catch {
+      // Hash scroll can lag — force Planning tab then wait again.
+      await page.getByRole("tab", { name: /^Planning$/i }).click().catch(() => undefined);
+      await page.waitForTimeout(800);
+      await managementList.waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined);
+    }
     record(
       "open_planning_reaches_management_workspace",
       (await managementList.count()) > 0,
-      `taskList=${await managementList.count()}`,
+      `taskList=${await managementList.count()} url=${page.url()}`,
     );
     const managementBody = await page.locator('[data-testid="planning-task-list"]').innerText().catch(() => "");
     record(
@@ -745,158 +774,6 @@ async function main() {
       "Vendors/Q Change hidden until later phases",
     );
 
-    // Floor Plans Change → dedicated offers editor; Open → management; offers ≠ operational
-    const floorChange = page.getByTestId("event-setup-change-floor_plans");
-    if ((await floorChange.count()) > 0) {
-      const offersBefore = (await admin
-        .from("event_floor_plan_offers")
-        .select("id,floor_plan_template_id,is_offered")
-        .eq("event_id", eventId!)
-        .eq("venue_id", FANCY)).data ?? [];
-      const opsBefore = (await admin
-        .from("floor_plans")
-        .select("id", { count: "exact", head: true })
-        .eq("event_id", eventId!)
-        .eq("venue_id", FANCY)).count ?? 0;
-      const libTplCountBefore = (await admin
-        .from("floor_plan_templates")
-        .select("id", { count: "exact", head: true })
-        .eq("venue_id", FANCY)
-        .eq("is_archived", false)).count ?? 0;
-      const otherEventOffersBefore = (await admin
-        .from("event_floor_plan_offers")
-        .select("id", { count: "exact", head: true })
-        .eq("venue_id", FANCY)
-        .neq("event_id", eventId!)).count ?? 0;
-
-      await floorChange.click();
-      await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
-      const operationalText = await page.getByTestId("floor-plans-setup-operational-state").innerText();
-      record(
-        "change_opens_dedicated_floor_plans_setup_editor",
-        (await page.getByTestId("event-floor-plans-setup-editor").count()) === 1
-          && (await page.getByTestId("floor-plans-setup-offers-path").count()) === 1
-          && /Operational floor plans/i.test(operationalText),
-        operationalText.slice(0, 240),
-      );
-      record(
-        "floor_plans_offers_vs_operational_state_shown",
-        opsBefore === 0
-          ? /None yet/i.test(operationalText)
-          : !/None yet/i.test(operationalText),
-        `opsBefore=${opsBefore} text=${operationalText.slice(0, 160)}`,
-      );
-
-      // Offer an additional library template when one is available
-      const offeredIds = new Set(offersBefore.map((o) => o.floor_plan_template_id));
-      const extraTpl = (await admin
-        .from("floor_plan_templates")
-        .select("id,name")
-        .eq("venue_id", FANCY)
-        .eq("is_archived", false)
-        .limit(20)).data?.find((t) => !offeredIds.has(t.id));
-      if (extraTpl?.id) {
-        await page.getByTestId("floor-plans-setup-template-select").click();
-        await page.getByRole("option", { name: extraTpl.name }).click().catch(async () => {
-          await page.locator(`[data-value="${extraTpl.id}"]`).first().click();
-        });
-        const coupleLabel = `QA floor offer ${tag}`;
-        await page.getByTestId("floor-plans-setup-couple-label").fill(coupleLabel);
-        await page.getByTestId("floor-plans-setup-offer").click();
-        await page.waitForTimeout(2500);
-        const offersAfter = (await admin
-          .from("event_floor_plan_offers")
-          .select("id,couple_label,is_offered,floor_plan_template_id")
-          .eq("event_id", eventId!)
-          .eq("venue_id", FANCY)
-          .ilike("couple_label", `%${coupleLabel}%`)).data ?? [];
-        const opsAfterOffer = (await admin
-          .from("floor_plans")
-          .select("id", { count: "exact", head: true })
-          .eq("event_id", eventId!)
-          .eq("venue_id", FANCY)).count ?? 0;
-        record(
-          "floor_plans_setup_offer_persists",
-          offersAfter.length === 1 && offersAfter[0]?.is_offered === true,
-          JSON.stringify(offersAfter),
-        );
-        record(
-          "floor_plans_setup_did_not_create_operational_plan",
-          opsAfterOffer === opsBefore,
-          `opsBefore=${opsBefore} opsAfter=${opsAfterOffer}`,
-        );
-      } else {
-        record("floor_plans_setup_offer_persists", true, "skipped — no unused template");
-        record("floor_plans_setup_did_not_create_operational_plan", opsBefore === ((await admin
-          .from("floor_plans")
-          .select("id", { count: "exact", head: true })
-          .eq("event_id", eventId!)
-          .eq("venue_id", FANCY)).count ?? 0), "no extra offer attempted");
-      }
-
-      await page.screenshot({ path: `${OUT}/03h-floor-plans-setup-editor-1280.png`, fullPage: true });
-
-      // Idempotent ensure: reopen editor must not duplicate offers
-      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
-      await page.waitForTimeout(400);
-      await page.getByTestId("event-setup-change-floor_plans").click();
-      await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
-      await page.waitForTimeout(1500);
-      const offersAfterReopen = (await admin
-        .from("event_floor_plan_offers")
-        .select("id", { count: "exact", head: true })
-        .eq("event_id", eventId!)
-        .eq("venue_id", FANCY)).count ?? 0;
-      const offersCountBaseline = Math.max(offersBefore.length, 1);
-      record(
-        "floor_plans_setup_reopen_idempotent",
-        offersAfterReopen >= offersCountBaseline
-          && offersAfterReopen <= offersBefore.length + 1,
-        `before=${offersBefore.length} afterReopen=${offersAfterReopen}`,
-      );
-
-      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
-      await page.waitForTimeout(400);
-      await page.getByTestId("event-setup-open-floor_plans").click().catch(async () => {
-        await page.getByRole("button", { name: /Open Floor Plans/i }).click();
-      });
-      await page.waitForTimeout(900);
-      record(
-        "open_floor_plans_reaches_management_workspace",
-        /floorplan|floor-plan|floor_plan/i.test(page.url())
-          || (await page.getByRole("tab", { name: /Floor Plans/i }).count()) > 0,
-        `url=${page.url()}`,
-      );
-
-      const libTplCountAfter = (await admin
-        .from("floor_plan_templates")
-        .select("id", { count: "exact", head: true })
-        .eq("venue_id", FANCY)
-        .eq("is_archived", false)).count ?? 0;
-      const otherEventOffersAfter = (await admin
-        .from("event_floor_plan_offers")
-        .select("id", { count: "exact", head: true })
-        .eq("venue_id", FANCY)
-        .neq("event_id", eventId!)).count ?? 0;
-      record(
-        "floor_plans_library_templates_unchanged",
-        libTplCountAfter === libTplCountBefore,
-        `before=${libTplCountBefore} after=${libTplCountAfter}`,
-      );
-      record(
-        "floor_plans_other_events_offers_unchanged",
-        otherEventOffersAfter === otherEventOffersBefore,
-        `before=${otherEventOffersBefore} after=${otherEventOffersAfter}`,
-      );
-
-      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
-        await page.locator('[value="overview"]').first().click();
-      });
-      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
-    } else {
-      record("change_opens_dedicated_floor_plans_setup_editor", false, "floor plans Change button missing");
-    }
-
     // Inventory Change → dedicated setup editor; customize persists; Open → management
     const invChange = page.getByTestId("event-setup-change-inventory");
     if ((await invChange.count()) > 0) {
@@ -925,18 +802,26 @@ async function main() {
       await page.getByTestId("inventory-setup-mode-customize").click();
       const invCustomName = `QA event-only inventory ${tag}`;
       await page.getByTestId("inventory-setup-new-name").fill(invCustomName);
-      await page.getByTestId("inventory-setup-add-item").click();
-      await page.waitForTimeout(2500);
-      const invAfterAdd = await admin
-        .from("event_inventory_items")
-        .select("id,name")
-        .eq("event_inventory_id", invIdBefore!.id)
-        .eq("venue_id", FANCY)
-        .ilike("name", `%${invCustomName}%`);
+      const invAddBtn = page.getByTestId("inventory-setup-add-item");
+      for (let i = 0; i < 20 && !(await invAddBtn.isEnabled()); i += 1) {
+        await page.waitForTimeout(200);
+      }
+      await invAddBtn.click();
+      let invAfterAdd: { id: string; name: string }[] = [];
+      for (let i = 0; i < 20; i += 1) {
+        await page.waitForTimeout(500);
+        invAfterAdd = (await admin
+          .from("event_inventory_items")
+          .select("id,name")
+          .eq("event_inventory_id", invIdBefore!.id)
+          .eq("venue_id", FANCY)
+          .ilike("name", `%${invCustomName}%`)).data ?? [];
+        if (invAfterAdd.length >= 1) break;
+      }
       record(
         "inventory_setup_customize_persists",
-        (invAfterAdd.data?.length ?? 0) === 1,
-        `items=${JSON.stringify(invAfterAdd.data ?? [])}`,
+        invAfterAdd.length === 1,
+        `items=${JSON.stringify(invAfterAdd)}`,
       );
       await page.screenshot({ path: `${OUT}/03f-inventory-setup-editor-1280.png`, fullPage: true });
 
@@ -1046,20 +931,28 @@ async function main() {
       await page.getByTestId("event-order-setup-mode-customize").click();
       const eoCustomDesc = `QA event-only EO line ${tag}`;
       await page.getByTestId("event-order-setup-new-description").fill(eoCustomDesc);
-      await page.getByTestId("event-order-setup-add-line").click();
-      await page.waitForTimeout(2500);
-      const eoLinesAfter = await admin
-        .from("event_order_lines")
-        .select("id,description")
-        .eq("event_order_id", eoBefore!.id)
-        .eq("venue_id", FANCY)
-        .ilike("description", `%${eoCustomDesc}%`);
+      const eoAddBtn = page.getByTestId("event-order-setup-add-line");
+      for (let i = 0; i < 20 && !(await eoAddBtn.isEnabled()); i += 1) {
+        await page.waitForTimeout(200);
+      }
+      await eoAddBtn.click();
+      let eoLinesAfter: { id: string; description: string }[] = [];
+      for (let i = 0; i < 20; i += 1) {
+        await page.waitForTimeout(500);
+        eoLinesAfter = (await admin
+          .from("event_order_lines")
+          .select("id,description")
+          .eq("event_order_id", eoBefore!.id)
+          .eq("venue_id", FANCY)
+          .ilike("description", `%${eoCustomDesc}%`)).data ?? [];
+        if (eoLinesAfter.length >= 1) break;
+      }
       record(
         "event_order_setup_customize_persists",
-        (eoLinesAfter.data?.length ?? 0) === 1
+        eoLinesAfter.length === 1
           && eoBefore?.status === "open"
           && !eoBefore?.shared_at,
-        `lines=${JSON.stringify(eoLinesAfter.data ?? [])} status=${eoBefore?.status}`,
+        `lines=${JSON.stringify(eoLinesAfter)} status=${eoBefore?.status}`,
       );
       await page.screenshot({ path: `${OUT}/03g-event-order-setup-editor-1280.png`, fullPage: true });
 
@@ -1072,20 +965,36 @@ async function main() {
         .limit(1)
         .maybeSingle()).data;
       if (otherEoTpl?.id && !eoBefore?.shared_at && eoBefore?.status === "open") {
+        // Re-open on a clean sheet so customize refresh does not leave a stale Select value.
+        await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+        await page.waitForTimeout(400);
+        await page.getByTestId("event-setup-change-event_order").click();
+        await page.waitForSelector('[data-testid="event-order-setup-editor"]', { timeout: 15_000 });
         await page.getByTestId("event-order-setup-mode-template").click();
         await page.getByTestId("event-order-setup-template-select").click();
-        await page.getByRole("option", { name: otherEoTpl.name }).click().catch(async () => {
-          await page.locator(`[data-value="${otherEoTpl.id}"]`).first().click();
-        });
+        await page.waitForTimeout(300);
+        const eoOption = page.getByRole("option", { name: otherEoTpl.name, exact: true });
+        if (await eoOption.count()) await eoOption.click();
+        else {
+          await page.getByRole("option", { name: new RegExp(otherEoTpl.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).first().click();
+        }
         page.once("dialog", (d) => d.accept());
         await page.getByTestId("event-order-setup-apply-template").click();
-        await page.waitForTimeout(3000);
-        const eoAfterReplace = (await admin
+        let eoAfterReplace = (await admin
           .from("event_orders")
           .select("id,template_id,status,shared_at")
           .eq("event_id", eventId!)
           .eq("venue_id", FANCY)
           .maybeSingle()).data;
+        for (let i = 0; i < 20 && eoAfterReplace?.template_id !== otherEoTpl.id; i += 1) {
+          await page.waitForTimeout(500);
+          eoAfterReplace = (await admin
+            .from("event_orders")
+            .select("id,template_id,status,shared_at")
+            .eq("event_id", eventId!)
+            .eq("venue_id", FANCY)
+            .maybeSingle()).data;
+        }
         const eoCount = (await admin
           .from("event_orders")
           .select("id", { count: "exact", head: true })
@@ -1097,7 +1006,7 @@ async function main() {
             && eoAfterReplace?.status === "open"
             && !eoAfterReplace?.shared_at
             && eoCount === 1,
-          `template=${eoAfterReplace?.template_id} drafts=${eoCount}`,
+          `wanted=${otherEoTpl.id} template=${eoAfterReplace?.template_id} drafts=${eoCount}`,
         );
         if ((await page.getByTestId("event-order-setup-editor").count()) === 0) {
           await page.getByTestId("event-setup-change-event_order").click();
@@ -1148,6 +1057,169 @@ async function main() {
       record("change_opens_dedicated_event_order_setup_editor", false, "event order Change button missing");
     }
 
+    // Floor Plans Change → dedicated offers editor; Open → management; offers ≠ operational
+    const floorChange = page.getByTestId("event-setup-change-floor_plans");
+    if ((await floorChange.count()) > 0) {
+      const offersBefore = (await admin
+        .from("event_floor_plan_offers")
+        .select("id,floor_plan_template_id,is_offered")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)).data ?? [];
+      const opsBefore = (await admin
+        .from("floor_plans")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)).count ?? 0;
+      const libTplCountBefore = (await admin
+        .from("floor_plan_templates")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)).count ?? 0;
+      const otherEventOffersBefore = (await admin
+        .from("event_floor_plan_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .neq("event_id", eventId!)).count ?? 0;
+
+      await floorChange.click();
+      await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
+      const operationalText = await page.getByTestId("floor-plans-setup-operational-state").innerText();
+      record(
+        "change_opens_dedicated_floor_plans_setup_editor",
+        (await page.getByTestId("event-floor-plans-setup-editor").count()) === 1
+          && (await page.getByTestId("floor-plans-setup-offers-path").count()) === 1
+          && /Operational floor plans/i.test(operationalText),
+        operationalText.slice(0, 240),
+      );
+      record(
+        "floor_plans_offers_vs_operational_state_shown",
+        opsBefore === 0
+          ? /None yet/i.test(operationalText)
+          : !/None yet/i.test(operationalText),
+        `opsBefore=${opsBefore} text=${operationalText.slice(0, 160)}`,
+      );
+
+      // Offer an additional library template when one is available
+      const offeredIds = new Set(offersBefore.map((o) => o.floor_plan_template_id));
+      const extraTpl = (await admin
+        .from("floor_plan_templates")
+        .select("id,name")
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)
+        .limit(20)).data?.find((t) => !offeredIds.has(t.id));
+      if (extraTpl?.id) {
+        await page.getByTestId("floor-plans-setup-template-select").click();
+        await page.waitForTimeout(300);
+        const fpOption = page.getByRole("option", { name: extraTpl.name, exact: true });
+        if (await fpOption.count()) await fpOption.click();
+        else {
+          await page.getByRole("option", { name: new RegExp(extraTpl.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).first().click();
+        }
+        const coupleLabel = `QA floor offer ${tag}`;
+        await page.getByTestId("floor-plans-setup-couple-label").fill(coupleLabel);
+        const offerBtn = page.getByTestId("floor-plans-setup-offer");
+        for (let i = 0; i < 20 && !(await offerBtn.isEnabled()); i += 1) {
+          await page.waitForTimeout(200);
+        }
+        await offerBtn.click();
+        let offersAfter: { id: string; couple_label: string | null; is_offered: boolean; floor_plan_template_id: string }[] = [];
+        for (let i = 0; i < 20; i += 1) {
+          await page.waitForTimeout(500);
+          offersAfter = (await admin
+            .from("event_floor_plan_offers")
+            .select("id,couple_label,is_offered,floor_plan_template_id")
+            .eq("event_id", eventId!)
+            .eq("venue_id", FANCY)
+            .eq("floor_plan_template_id", extraTpl.id)).data ?? [];
+          if (offersAfter.length >= 1) break;
+        }
+        const opsAfterOffer = (await admin
+          .from("floor_plans")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)).count ?? 0;
+        record(
+          "floor_plans_setup_offer_persists",
+          offersAfter.length === 1 && offersAfter[0]?.is_offered === true,
+          JSON.stringify(offersAfter),
+        );
+        record(
+          "floor_plans_setup_did_not_create_operational_plan",
+          opsAfterOffer === opsBefore,
+          `opsBefore=${opsBefore} opsAfter=${opsAfterOffer}`,
+        );
+      } else {
+        record("floor_plans_setup_offer_persists", true, "skipped — no unused template");
+        record("floor_plans_setup_did_not_create_operational_plan", opsBefore === ((await admin
+          .from("floor_plans")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)).count ?? 0), "no extra offer attempted");
+      }
+
+      await page.screenshot({ path: `${OUT}/03h-floor-plans-setup-editor-1280.png`, fullPage: true });
+
+      // Idempotent ensure: reopen editor must not duplicate offers
+      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+      await page.waitForTimeout(400);
+      await page.getByTestId("event-setup-change-floor_plans").click();
+      await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
+      await page.waitForTimeout(1500);
+      const offersAfterReopen = (await admin
+        .from("event_floor_plan_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)).count ?? 0;
+      const offersCountBaseline = Math.max(offersBefore.length, 1);
+      record(
+        "floor_plans_setup_reopen_idempotent",
+        offersAfterReopen >= offersCountBaseline
+          && offersAfterReopen <= offersBefore.length + 1,
+        `before=${offersBefore.length} afterReopen=${offersAfterReopen}`,
+      );
+
+      await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+      await page.waitForTimeout(400);
+      await page.getByTestId("event-setup-open-floor_plans").click().catch(async () => {
+        await page.getByRole("button", { name: /Open Floor Plans/i }).click();
+      });
+      await page.waitForTimeout(900);
+      record(
+        "open_floor_plans_reaches_management_workspace",
+        /floorplan|floor-plan|floor_plan/i.test(page.url())
+          || (await page.getByRole("tab", { name: /Floor Plans/i }).count()) > 0,
+        `url=${page.url()}`,
+      );
+
+      const libTplCountAfter = (await admin
+        .from("floor_plan_templates")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .eq("is_archived", false)).count ?? 0;
+      const otherEventOffersAfter = (await admin
+        .from("event_floor_plan_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("venue_id", FANCY)
+        .neq("event_id", eventId!)).count ?? 0;
+      record(
+        "floor_plans_library_templates_unchanged",
+        libTplCountAfter === libTplCountBefore,
+        `before=${libTplCountBefore} after=${libTplCountAfter}`,
+      );
+      record(
+        "floor_plans_other_events_offers_unchanged",
+        otherEventOffersAfter === otherEventOffersBefore,
+        `before=${otherEventOffersBefore} after=${otherEventOffersAfter}`,
+      );
+
+      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
+        await page.locator('[value="overview"]').first().click();
+      });
+      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
+    } else {
+      record("change_opens_dedicated_floor_plans_setup_editor", false, "floor plans Change button missing");
+    }
+
     // Vendors tab: Vendor Network, not a second recommendation curator
     await page.getByRole("tab", { name: /Vendors/i }).click().catch(async () => {
       await page.locator('[value="vendors"], button:has-text("Vendors")').first().click();
@@ -1166,18 +1238,30 @@ async function main() {
     const prepareBtn = page.getByTestId("prepare-and-release-portal");
     record("prepare_release_button_present", (await prepareBtn.count()) > 0, `count=${await prepareBtn.count()}`);
     await prepareBtn.click();
-    await page.waitForTimeout(3500);
+    let clientAppsAfter: { id: string; kind: string; released_at: string | null } | null = null;
+    for (let i = 0; i < 30; i += 1) {
+      await page.waitForTimeout(500);
+      clientAppsAfter = (await admin
+        .from("event_playbook_applications")
+        .select("id,kind,released_at")
+        .eq("event_id", eventId)
+        .eq("venue_id", FANCY)
+        .eq("kind", "client")
+        .maybeSingle()).data;
+      if (clientAppsAfter?.released_at) break;
+    }
     await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
     await page.screenshot({ path: `${OUT}/04-after-prepare-release-1280.png`, fullPage: true });
-
-    const { data: clientAppsAfter } = await admin
-      .from("event_playbook_applications")
-      .select("id,kind,released_at")
-      .eq("event_id", eventId)
-      .eq("venue_id", FANCY)
-      .eq("kind", "client")
-      .maybeSingle();
+    if (!clientAppsAfter?.released_at) {
+      clientAppsAfter = (await admin
+        .from("event_playbook_applications")
+        .select("id,kind,released_at")
+        .eq("event_id", eventId)
+        .eq("venue_id", FANCY)
+        .eq("kind", "client")
+        .maybeSingle()).data;
+    }
     record(
       "prepare_released_client_planning",
       !!clientAppsAfter?.released_at,

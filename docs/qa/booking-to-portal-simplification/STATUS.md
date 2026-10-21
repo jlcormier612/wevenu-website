@@ -1,50 +1,52 @@
-# Booking-to-portal — Phase 3 (Inventory + Event Order setup editors)
+# Booking-to-portal — Phase 4 (Floor Plans offers setup editor)
 
 ## Status
 
-**GREEN / CLOSED** for Phase 3.
+**GREEN / CLOSED** for Phase 4.
 
-Settings and Setup Profiles remain frozen. Accepted client Planning, venue Planning, and Timeline editors preserved. Inventory and Event Order now have dedicated `Change for this event` setup editors; `Open Inventory` / `Open Event Order` remain management workspaces. Floor Plans, Vendors, and Questionnaires still defer Change editors.
+Settings and Setup Profiles remain frozen. Phases 1–3 editors preserved. Floor Plans now has a dedicated `Change for this event` offers editor; `Open Floor Plans` remains the operational-layout management workspace. Vendors and Questionnaires still defer Change editors.
 
 ## Serving
 
 | Item | Value |
 |------|-------|
 | Branch | `feat/spaces-booking-e1-smart-fields` |
-| Product commit | `65fde46a341312cd1678a471997b89bdfcae5152` |
-| Deploy | [39689077642](https://github.com/jlcormier612/wevenu-website/actions/runs/39689077642) **success** |
-| Serving SHA | `65fde46a341312cd1678a471997b89bdfcae5152` (`data-dpl-id` + font `dpl=` query) |
+| Product commit | `897cfacef8049782ac44e4f5d3e72938efef25af` |
+| Deploy | [39691305171](https://github.com/jlcormier612/wevenu-website/actions/runs/39691305171) **success** |
+| Serving SHA | `897cfacef8049782ac44e4f5d3e72938efef25af` (`data-dpl-id`) |
 | Settings/Profiles | Unmodified |
-| Planning + Timeline editors | Intact (regressions still pass) |
+| Phase 1–3 editors | Intact (acceptance regressions pass) |
 
 ## Acceptance
 
 ```bash
-EXPECTED_SHA=65fde46a341312cd1678a471997b89bdfcae5152 \
+EXPECTED_SHA=897cfacef8049782ac44e4f5d3e72938efef25af \
   npx tsx scripts/qa/booking-to-portal-simplification-acceptance.mts
 ```
 
-**71/71 PASS** against serving `65fde46a…`
+**79/79 PASS** against serving `897cface…`
 
-Fixture: lead `c7baaf38-…` / client `e2734e02-…` / event `486b67d5-…`
+Fixture: lead `997daae2-…` / client `16fa5cc2-…` / event `6e1eaee7-…`
 
-Evidence: `browser-results.json`, `browser-run.log`, screenshots `03b`–`03g`, `04`, `05`.
+Evidence: `browser-results.json`, `browser-run.log`, screenshot `03h-floor-plans-setup-editor-1280.png` (+ refreshed Phase 1–3 screenshots).
 
-### Phase 3 highlights
+### Phase 4 highlights
 
-- Inventory Change opens `event-inventory-setup-editor`; customize item persisted; template replace kept single draft; Library template item count unchanged (32→32).
-- Event Order Change opens `event-order-setup-editor`; customize line persisted (open, not shared); package replace kept single draft; Library package unchanged.
-- Open Inventory / Open Event Order reach management tabs (`#inventory`, `#event-order`).
-- Release idempotent (inv=1, eo=1); no invite/Q-send/invoice from prepare; invite remains separate.
-- Floor/Vendors/Q Change still hidden.
+- Floor Plans Change opens `event-floor-plans-setup-editor` (offers path + operational state callout).
+- Offers present with **no** operational floor plan is truthful (“None yet”), not Unavailable.
+- Offering an extra Library layout persists on this event only; operational `floor_plans` count unchanged (0→0).
+- Reopen/ensure does not duplicate beyond the intentional +1 offer.
+- Open Floor Plans → management `#floorplan`.
+- Library template count unchanged (3→3); other events’ offers unchanged.
+- Release remains idempotent; no invite/Q-send/invoice from prepare; invite separate.
 
 ## Unit / seam
 
-Focused `lib/event-setup/*.test.ts` — **145/145 PASS** (includes `inventory-eo-setup-editor.test.ts`).
+Focused `lib/event-setup/*.test.ts` — **157/157 PASS** (includes `floor-plans-setup-editor.test.ts`).
 
 ## Deferred (later phases)
 
-Floor-plan offers editor, Vendors, Questionnaire-draft editors.
+Vendors, Questionnaire-draft editors.
 
 ## Production
 
