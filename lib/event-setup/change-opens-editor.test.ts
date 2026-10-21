@@ -55,6 +55,12 @@ describe("Change for this event opens the event editor", () => {
     assert.match(panel, /EventFloorPlansSetupEditor/);
   });
 
+  it("Change for Vendors opens a dedicated highlights setup editor", () => {
+    assert.match(panel, /setVendorsEditorOpen\(true\)/);
+    assert.match(panel, /EventVendorsSetupEditor/);
+    assert.match(panel, /"floor_plans", "vendors"/);
+  });
+
   it("profile-driven Planning defers release to Overview", () => {
     assert.match(detail, /preferOverviewRelease=\{Boolean\(eventSetup\.usesProfile\)\}/);
     assert.match(tasks, /preferOverviewRelease/);

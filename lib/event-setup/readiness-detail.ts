@@ -184,9 +184,9 @@ function vendorsDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
       `Vendor Network classifications (preferred, recommended, required) are authoritative. ` +
       `Eligible vendors are available for client discovery by default. ` +
       (rec > 0
-        ? `${rec} optional highlight${rec === 1 ? "" : "s"} on this event. `
-        : "") +
-      "Required vendors keep their existing assignment behavior.",
+        ? `${rec} optional highlight${rec === 1 ? "" : "s"} on this event (Change for this event). `
+        : "Optional event highlights are managed with Change for this event. ") +
+      "Assignments stay under Open Vendors. Required vendors keep their existing assignment behavior.",
     nextAction: "Open Vendors",
   };
 }

@@ -68,6 +68,7 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.status, "included");
     assert.match(detail.summary, /available for client discovery by default/i);
     assert.match(detail.summary, /Vendor Network classifications/i);
+    assert.match(detail.summary, /Change for this event/i);
   });
 
   it("treats questionnaire drafts as authorized-send only, not portal blockers", () => {

@@ -16,6 +16,7 @@ import { EventInventorySetupEditor } from "@/components/events/event-inventory-s
 import { EventOrderSetupEditor } from "@/components/events/event-order-setup-editor";
 import { EventPlanningSetupEditor } from "@/components/events/event-planning-setup-editor";
 import { EventTimelineSetupEditor } from "@/components/events/event-timeline-setup-editor";
+import { EventVendorsSetupEditor } from "@/components/events/event-vendors-setup-editor";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/ty
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
 import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
+import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
+import type { Vendor } from "@/lib/vendors/types";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import {
   isOutstandingFollowUp,
@@ -56,7 +59,7 @@ import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 
 /** Areas with a dedicated event-specific setup editor (Change ≠ Open). */
 const SETUP_EDITOR_STEPS = new Set<SetupStepKey>([
-  "planning", "timeline", "inventory", "event_order", "floor_plans",
+  "planning", "timeline", "inventory", "event_order", "floor_plans", "vendors",
 ]);
 
 function readinessBadgeVariant(
@@ -98,6 +101,9 @@ export function EventSetupPanel({
   floorPlanTemplates = [],
   floorPlanOffers = [],
   operationalFloorPlans = [],
+  vendorRecommendations = [],
+  availableVendors = [],
+  vendorAssignments = [],
   hasEventInventory = false,
   eventOrder = null,
   eventInventory = null,
@@ -134,6 +140,9 @@ export function EventSetupPanel({
   floorPlanTemplates?: FloorPlanTemplate[];
   floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
   operationalFloorPlans?: { id: string; name: string }[];
+  vendorRecommendations?: EventVendorRecommendation[];
+  availableVendors?: Vendor[];
+  vendorAssignments?: { id: string; vendorName: string }[];
   hasEventInventory?: boolean;
   eventOrder?: EventOrderReadinessInput | null;
   eventInventory?: EventInventoryWithDetails | null;
@@ -156,6 +165,7 @@ export function EventSetupPanel({
   const [inventoryEditorOpen, setInventoryEditorOpen] = React.useState(false);
   const [eventOrderEditorOpen, setEventOrderEditorOpen] = React.useState(false);
   const [floorPlansEditorOpen, setFloorPlansEditorOpen] = React.useState(false);
+  const [vendorsEditorOpen, setVendorsEditorOpen] = React.useState(false);
   const effective = effectiveDecisionMap(state);
   const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
   const counts = setupDecisionCounts(applicableSteps, effective);
@@ -234,6 +244,10 @@ export function EventSetupPanel({
     }
     if (step === "floor_plans") {
       setFloorPlansEditorOpen(true);
+      return;
+    }
+    if (step === "vendors") {
+      setVendorsEditorOpen(true);
       return;
     }
     // Areas without a dedicated setup editor yet — do not pretend management is Change.
@@ -563,6 +577,18 @@ export function EventSetupPanel({
         offers={floorPlanOffers}
         operationalPlans={operationalFloorPlans}
         onOpenManagement={() => navigateStep("floor_plans")}
+      />
+      <EventVendorsSetupEditor
+        open={vendorsEditorOpen}
+        onOpenChange={setVendorsEditorOpen}
+        eventId={eventId}
+        eventName={eventName}
+        clientName={clientName}
+        profileName={state.profileName ?? null}
+        recommendations={vendorRecommendations}
+        availableVendors={availableVendors}
+        assignments={vendorAssignments}
+        onOpenManagement={() => navigateStep("vendors")}
       />
     </section>
   );

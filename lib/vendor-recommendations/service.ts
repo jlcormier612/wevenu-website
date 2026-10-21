@@ -20,7 +20,20 @@ export async function getEventRecommendations(eventId: string): Promise<EventVen
 }
 
 export async function addRecommendation(eventId: string, vendorId: string, note: string | null): Promise<RecommendationActionResult> {
+  if (!vendorId) return { ok: false, message: "Choose a vendor." };
   const result = await withVenue(async (c, venueId) => {
+    // Venue-scoped only — reject cross-venue / unknown vendor ids.
+    const { data: rel, error } = await c
+      .from("venue_vendor_relationships")
+      .select("vendor_id,status")
+      .eq("venue_id", venueId)
+      .eq("vendor_id", vendorId)
+      .maybeSingle<{ vendor_id: string; status: string }>();
+    if (error) throw error;
+    if (!rel) return { ok: false, message: "That vendor is not in this venue's Vendor Network." } as RecommendationActionResult;
+    if (rel.status === "inactive") {
+      return { ok: false, message: "Inactive Vendor Network relationships cannot be highlighted for an event." } as RecommendationActionResult;
+    }
     await repo.addRecommendation(c, venueId, eventId, vendorId, note);
     return { ok: true } as RecommendationActionResult;
   });

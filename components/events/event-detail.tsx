@@ -853,6 +853,12 @@ export function EventDetail({
             floorPlanTemplates={floorPlanTemplates}
             floorPlanOffers={floorPlanOffers}
             operationalFloorPlans={(event.floorPlans ?? []).map((fp) => ({ id: fp.id, name: fp.name }))}
+            vendorRecommendations={vendorRecommendations}
+            availableVendors={availableVendors}
+            vendorAssignments={(event.vendorAssignments ?? []).map((a) => ({
+              id: a.id,
+              vendorName: a.vendorName ?? "Vendor",
+            }))}
             hasEventInventory={Boolean(eventInventory)}
             eventOrder={eventOrder ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt, templateId: eventOrder.templateId ?? null } : null}
             eventInventory={eventInventory}
