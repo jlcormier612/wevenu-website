@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  DEFAULT_PLANNING_CAPABILITIES,
   capabilityRequiredByTask,
   filterTasksForVenueCapabilities,
   isPortalSectionEnabledByCapabilities,
@@ -19,18 +20,17 @@ import {
 } from "@/lib/portal/unified-tasks";
 import type { PortalTask } from "@/lib/portal/types";
 
-const ALL_ON: VenuePlanningCapabilities = {
-  timeline: true,
-  floorPlan: true,
-  seating: true,
-  vendors: true,
-};
+const ALL_ON: VenuePlanningCapabilities = { ...DEFAULT_PLANNING_CAPABILITIES };
 
 const ALL_OFF: VenuePlanningCapabilities = {
+  checklists: false,
   timeline: false,
   floorPlan: false,
   seating: false,
   vendors: false,
+  inventory: false,
+  eventOrder: false,
+  questionnaires: false,
 };
 
 describe("PLAN-02/03 planning capabilities", () => {
@@ -265,16 +265,15 @@ describe("Planning capabilities Settings IA", () => {
     assert.match(leads, /Planning tools/);
 
     const section = readFileSync(resolve("components/settings/planning-capabilities-section.tsx"), "utf8");
-    assert.match(section, /Choose the planning tools your venue uses with couples and events/);
+    assert.match(section, /Choose what Hello to Cheers includes in your standard event setup/);
     assert.match(section, /Save planning settings/);
     assert.doesNotMatch(section, /planning surfaces/);
 
     const caps = readFileSync(resolve("lib/playbooks/capabilities.ts"), "utf8");
-    assert.match(caps, /Preferred Vendors/);
-    assert.match(caps, /preferred vendor network/);
+    assert.match(caps, /Vendor Network/);
+    assert.match(caps, /Planning checklists/);
     assert.match(caps, /couple.s portal/);
-    // Vendors gate portal + template tasks — not an Event Readiness section today.
-    assert.match(caps, /Planning Templates will not create vendor-selection work/);
+    assert.match(caps, /separate from Floor plans/);
   });
 
   it("preferred-vendors navigation respects vendors capability", async () => {

@@ -167,6 +167,39 @@ async function main() {
       throw new Error(`serving ${servingSha}, expected ${EXPECTED_SHA}`);
     }
 
+    // Venue-wide Planning tools: inclusion SoT for Setup Profiles
+    await page.goto(`${APP}/settings/leads`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.waitForSelector("text=Planning tools", { timeout: 60_000 });
+    const settingsText = await page.locator("body").innerText();
+    record(
+      "settings_lists_full_capability_set",
+      /Planning checklists/i.test(settingsText)
+        && /Timeline/i.test(settingsText)
+        && /Floor plans/i.test(settingsText)
+        && /Seating arrangements/i.test(settingsText)
+        && /Vendor Network/i.test(settingsText)
+        && /Inventory/i.test(settingsText)
+        && /Event Order/i.test(settingsText)
+        && /Questionnaires/i.test(settingsText),
+      settingsText.match(/Planning checklists|Floor plans|Seating arrangements|Vendor Network|Inventory|Event Order|Questionnaires/gi)?.join(", ")
+        ?? settingsText.slice(0, 240),
+    );
+    record(
+      "settings_keeps_floor_and_seating_distinct",
+      /Floor plans/i.test(settingsText)
+        && /Seating arrangements/i.test(settingsText)
+        && /separate from Floor plans/i.test(settingsText),
+      "floor plans vs seating copy",
+    );
+    await page.screenshot({ path: `${OUT}/00-planning-tools-1280.png`, fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${OUT}/00-planning-tools-390.png`, fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    await page.goto(`${APP}/settings/leads/setup-profiles`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
     await page.waitForSelector("text=Standard Wedding Setup", { timeout: 60_000 });
     const profilesBody = await page.locator("body").innerText();
     record(
@@ -607,6 +640,49 @@ async function main() {
         && !/createInvoice/.test(prepareSrc),
       "prepare-release side-effect boundaries",
     );
+
+    // Separate Invite client action (synthetic .invalid address — no real inbox)
+    await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.waitForSelector('[data-testid="client-workspace-invite"]', { timeout: 60_000 });
+    const inviteEmail = `b2p-invite-${stamp}@hellotocheers-test.invalid`;
+    const emailInput = page.getByTestId("client-invite-email");
+    if (await emailInput.count()) {
+      await emailInput.fill(inviteEmail);
+    }
+    const openInvite = page.getByTestId("open-client-invite-preview");
+    record("invite_button_present_after_prepare", (await openInvite.count()) > 0, `count=${await openInvite.count()}`);
+    if (await openInvite.count()) {
+      await openInvite.click();
+      const confirm = page.getByTestId("confirm-send-client-invite");
+      await confirm.waitFor({ state: "visible", timeout: 20_000 }).catch(() => undefined);
+      if (await confirm.count()) {
+        await confirm.click();
+        await page.waitForTimeout(3000);
+      }
+      await page.screenshot({ path: `${OUT}/05-after-invite-1280.png`, fullPage: true });
+    }
+    const { data: invitations } = await admin
+      .from("client_invitations")
+      .select("id,status,email")
+      .eq("client_id", clientId);
+    record(
+      "invite_created_separately",
+      (invitations?.length ?? 0) >= 1,
+      JSON.stringify(invitations),
+    );
+    const { count: qSentAfterInvite } = await admin
+      .from("event_questionnaires")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("venue_id", FANCY)
+      .neq("status", "draft");
+    record("invite_did_not_send_questionnaires", (qSentAfterInvite ?? 0) === 0, `sent=${qSentAfterInvite}`);
+    const { count: invoicesAfterInvite } = await admin
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("venue_id", FANCY);
+    record("invite_did_not_create_invoice", (invoicesAfterInvite ?? 0) === 0, `invoices=${invoicesAfterInvite}`);
   } finally {
     await browser.close();
     const passed = checks.filter((c) => c.pass).length;
