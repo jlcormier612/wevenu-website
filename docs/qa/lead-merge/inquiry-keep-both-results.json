@@ -1,0 +1,81 @@
+{
+  "pass": 15,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "keep_both_ui",
+      "pass": true,
+      "detail": "merged"
+    },
+    {
+      "name": "keep_both_primary_field",
+      "pass": true,
+      "detail": "Primary inquiry mvhfl7dw"
+    },
+    {
+      "name": "keep_both_secondary_soft",
+      "pass": true,
+      "detail": "0b645b36-3930-4227-b374-488d8748d4d6"
+    },
+    {
+      "name": "keep_both_history_activity",
+      "pass": true,
+      "detail": "[\"Additional inquiry from merged lead\"]"
+    },
+    {
+      "name": "keep_both_not_concatenated",
+      "pass": true,
+      "detail": "primary field clean"
+    },
+    {
+      "name": "keep_both_no_duplicate_activity",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "keep_primary_ui",
+      "pass": true,
+      "detail": "merged"
+    },
+    {
+      "name": "keep_primary_field",
+      "pass": true,
+      "detail": "Only primary mvhfl7dw"
+    },
+    {
+      "name": "keep_primary_no_history",
+      "pass": true,
+      "detail": "acts=0"
+    },
+    {
+      "name": "use_secondary_ui",
+      "pass": true,
+      "detail": "merged"
+    },
+    {
+      "name": "use_secondary_field",
+      "pass": true,
+      "detail": "Now primary mvhfl7dw"
+    },
+    {
+      "name": "use_secondary_no_history",
+      "pass": true,
+      "detail": "acts=0"
+    },
+    {
+      "name": "identical_no_inquiry_choice",
+      "pass": true,
+      "detail": "no keep-both UI"
+    },
+    {
+      "name": "identical_no_history_dup",
+      "pass": true,
+      "detail": "acts=0"
+    },
+    {
+      "name": "no_sequence_enrollment",
+      "pass": true,
+      "detail": "enroll=null"
+    }
+  ]
+}
