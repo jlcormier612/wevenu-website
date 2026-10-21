@@ -5,10 +5,9 @@ import { describe, it } from "node:test";
 
 import {
   KEEP_BOTH_INQUIRY_CHOICE,
-  mergeTestHelpers,
   resolveInquiryMessageChoice,
-  type MergeFieldKey,
-} from "@/lib/leads/merge";
+} from "@/lib/leads/merge-inquiry-choice";
+import { mergeTestHelpers, type MergeFieldKey } from "@/lib/leads/merge";
 
 const { buildFieldDiffs, pickDefaultPrimary, norm } = mergeTestHelpers;
 

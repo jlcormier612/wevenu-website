@@ -20,11 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  KEEP_BOTH_INQUIRY_CHOICE,
-  type FieldDiff,
-  type MergePreview,
-} from "@/lib/leads/merge";
+import { KEEP_BOTH_INQUIRY_CHOICE } from "@/lib/leads/merge-inquiry-choice";
+import type { FieldDiff, MergePreview } from "@/lib/leads/merge";
 
 function formatTour(scheduledAt: string | null, status: string) {
   if (!scheduledAt) return `${status} (no scheduled time)`;

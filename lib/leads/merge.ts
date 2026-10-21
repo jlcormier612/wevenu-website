@@ -6,6 +6,9 @@
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { leadDisplayName } from "@/lib/leads/constants";
+import { resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
+
+export { KEEP_BOTH_INQUIRY_CHOICE, resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
 
 export type MergeFieldKey =
   | "first_name"
@@ -77,9 +80,6 @@ export type MergeLeadCard = {
   mergedIntoLeadId: string | null;
 };
 
-/** Sentinel in fieldChoices.inquiry_message: keep primary text on the lead and archive secondary separately. */
-export const KEEP_BOTH_INQUIRY_CHOICE = "__keep_both__";
-
 export type ConfirmMergeInput = {
   primaryId: string;
   secondaryId: string;
@@ -90,29 +90,6 @@ export type ConfirmMergeInput = {
   /** Tour appointment ids to cancel (release slot) before reparent */
   tourCancelIds: string[];
 };
-
-/**
- * Resolve inquiry conflict choice for confirm payload.
- * Keep-both preserves secondary as lead_activities (not concatenated into inquiry_message).
- */
-export function resolveInquiryMessageChoice(input: {
-  choice: string | null | undefined;
-  primaryValue: string;
-  secondaryValue: string;
-}): { primaryFieldValue: string; preserveSecondaryAsHistory: boolean } {
-  const primary = input.primaryValue.trim();
-  const secondary = input.secondaryValue.trim();
-  if (input.choice === KEEP_BOTH_INQUIRY_CHOICE) {
-    return { primaryFieldValue: primary, preserveSecondaryAsHistory: secondary.length > 0 && secondary !== primary };
-  }
-  if (input.choice != null && String(input.choice).trim() === secondary) {
-    return { primaryFieldValue: secondary, preserveSecondaryAsHistory: false };
-  }
-  if (input.choice != null && String(input.choice).trim().length > 0) {
-    return { primaryFieldValue: String(input.choice).trim(), preserveSecondaryAsHistory: false };
-  }
-  return { primaryFieldValue: primary, preserveSecondaryAsHistory: false };
-}
 
 type LeadSnap = {
   id: string;
@@ -541,5 +518,4 @@ export const mergeTestHelpers = {
   norm,
   FIELD_LABELS,
   resolveInquiryMessageChoice,
-  KEEP_BOTH_INQUIRY_CHOICE,
 };
