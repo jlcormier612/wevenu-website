@@ -20,6 +20,8 @@ describe("booking-to-portal simplification", () => {
     assert.match(inherit, /ensureEventOrder/);
     assert.match(inherit, /applyDefaultVenuePlaybook/);
     assert.match(inherit, /kind", "venue"/);
+    assert.match(inherit, /is_default && row\.event_type === eventType/);
+    assert.match(inherit, /row\.event_type === eventType/);
     assert.doesNotMatch(inherit, /inviteClient\(/);
     assert.doesNotMatch(inherit, /sendQuestionnaire/);
     assert.doesNotMatch(inherit, /createInvoice/);

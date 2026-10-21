@@ -217,16 +217,20 @@ async function applyDefaultVenuePlaybook(
       .limit(1);
     if (existing && existing.length > 0) return;
 
-    const { data: defaults } = await supabase
+    const { data: templates } = await supabase
       .from("playbook_templates")
-      .select("id, event_type")
+      .select("id, event_type, is_default")
       .eq("venue_id", venueId)
       .eq("kind", "venue")
-      .eq("is_default", true)
       .eq("is_archived", false);
-    const rows = (defaults ?? []) as { id: string; event_type: string | null }[];
+    const rows = (templates ?? []) as { id: string; event_type: string | null; is_default: boolean }[];
+    // Prefer marked defaults, then event-type match, then venue-wide. Do not
+    // invent a checklist when the library has none.
     const match =
-      (eventType ? rows.find((row) => row.event_type === eventType) : undefined)
+      (eventType ? rows.find((row) => row.is_default && row.event_type === eventType) : undefined)
+      ?? rows.find((row) => row.is_default && row.event_type == null)
+      ?? rows.find((row) => row.is_default)
+      ?? (eventType ? rows.find((row) => row.event_type === eventType) : undefined)
       ?? rows.find((row) => row.event_type == null)
       ?? rows[0];
     if (!match) return;
