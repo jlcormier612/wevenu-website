@@ -129,7 +129,7 @@ function timelineDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   }
   return {
     status: "included",
-    summary: `${ctx.timelineItemCount} timeline item${ctx.timelineItemCount === 1 ? "" : "s"} on this event${expectedName ? ` (started from ${expectedName})` : ""}. Sharing with the client is a separate action.`,
+    summary: `${ctx.timelineItemCount} timeline item${ctx.timelineItemCount === 1 ? "" : "s"} on this event${expectedName ? ` (started from ${expectedName})` : ""}. Shared with the client when you Prepare and release portal.`,
     nextAction: "Open Timeline",
   };
 }

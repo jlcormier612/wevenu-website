@@ -1,16 +1,16 @@
 {
   "workflow": "booking-to-portal-simplification",
   "status": "GREEN",
-  "expectedSha": "19eb9a01e7d556e784f9d796094c4daea21be3ec",
-  "servingSha": "19eb9a01e7d556e784f9d796094c4daea21be3ec",
+  "expectedSha": "97973356b51c9cbc440ec2c53a0f0fc6e91b54cd",
+  "servingSha": "97973356b51c9cbc440ec2c53a0f0fc6e91b54cd",
   "ids": {
-    "leadId": "0bed02fd-ab46-48b6-ac02-8ede78c69436",
-    "clientId": "30e09cb2-934f-4362-b956-83bdf8531fe6",
-    "eventId": "a51e01ba-1632-4dbf-9cde-a816577281df",
+    "leadId": "4d7c8d17-9592-4533-9450-e05a5288118f",
+    "clientId": "29029447-6efa-4283-bdfb-6cd66849b159",
+    "eventId": "c829d577-7246-4d09-98fc-d53944d92c3f",
     "profileId": "b2c5bb44-cdea-4b1a-9aca-995c04fea327",
-    "tag": "B2P-1792605182744-a0dd"
+    "tag": "B2P-1792607375330-5c5f"
   },
-  "passed": 29,
+  "passed": 35,
   "failed": 0,
   "checks": [
     {
@@ -19,9 +19,14 @@
       "detail": "{\"invRef\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"eoRef\":\"d73d9734-98d9-46a0-b54b-dccadb036150\"}"
     },
     {
+      "name": "profile_configured_both_planning_checklists",
+      "pass": true,
+      "detail": "{\"clientPbRef\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\",\"venuePbRef\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+    },
+    {
       "name": "serving_sha",
       "pass": true,
-      "detail": "serving=19eb9a01e7d556e784f9d796094c4daea21be3ec expected=19eb9a01e7d556e784f9d796094c4daea21be3ec"
+      "detail": "serving=97973356b51c9cbc440ec2c53a0f0fc6e91b54cd expected=97973356b51c9cbc440ec2c53a0f0fc6e91b54cd"
     },
     {
       "name": "profile_list_shows_standard_wedding",
@@ -31,7 +36,7 @@
     {
       "name": "profile_explains_auto_prepare",
       "pass": true,
-      "detail": "source copy (unit + shipped UI)"
+      "detail": "source copy includes both Planning checklists + auto-prepare"
     },
     {
       "name": "profile_vendor_network_authoritative",
@@ -39,9 +44,19 @@
       "detail": "source copy (unit + shipped UI)"
     },
     {
+      "name": "profile_list_shows_both_checklists",
+      "pass": true,
+      "detail": "Client checklist: Standard Wedding — Client Planning · Venue checklist: Standard Wedding — Venue Planning · Timeline: Standard Wedding Day Timeline"
+    },
+    {
+      "name": "profile_ui_both_planning_selects",
+      "pass": true,
+      "detail": "client=true venue=true"
+    },
+    {
       "name": "booked_client_and_event",
       "pass": true,
-      "detail": "{\"clientId\":\"30e09cb2-934f-4362-b956-83bdf8531fe6\",\"eventId\":\"a51e01ba-1632-4dbf-9cde-a816577281df\"}"
+      "detail": "{\"clientId\":\"29029447-6efa-4283-bdfb-6cd66849b159\",\"eventId\":\"c829d577-7246-4d09-98fc-d53944d92c3f\"}"
     },
     {
       "name": "setup_snapshot_inherited",
@@ -51,22 +66,32 @@
     {
       "name": "booking_prepared_inventory_draft",
       "pass": true,
-      "detail": "[{\"id\":\"73628b7e-e41e-4c36-959a-b4d069aa8bc1\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"a6f3053d-b795-4244-9896-df3fcf0d7f11\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_event_order_draft",
       "pass": true,
-      "detail": "[{\"id\":\"f3b9ca4c-356a-480f-aec5-a6e505fd9860\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"8baff691-2dc6-45f3-814b-ee8441cd77b4\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_client_checklist",
       "pass": true,
-      "detail": "{\"id\":\"a261a30f-2a41-4a2f-8814-9cd24b38b06a\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
+      "detail": "{\"id\":\"9c0edb27-c4a0-4cd8-9879-b268283c8883\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
     },
     {
       "name": "booking_prepared_venue_checklist",
       "pass": true,
-      "detail": "{\"id\":\"4d0e8b7e-381c-4f43-869a-05882634e558\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T17:53:45.231+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+      "detail": "{\"venuePb\":{\"id\":\"aef12140-4f6b-4e34-b61b-511a0702c8b3\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T18:30:03.806+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"},\"expected\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+    },
+    {
+      "name": "booking_prepared_timeline",
+      "pass": true,
+      "detail": "entries=38 ref=a5855821-8c1a-4424-906a-7b2f6cf686c4"
+    },
+    {
+      "name": "booking_prepared_floor_plan_offers",
+      "pass": true,
+      "detail": "{\"offers\":[{\"id\":\"45ff8e1b-1275-43ae-ba71-c38c02c57b57\",\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"is_offered\":true}],\"offersErr\":null}"
     },
     {
       "name": "booking_no_invoice",
@@ -116,7 +141,12 @@
     {
       "name": "prepare_released_client_planning",
       "pass": true,
-      "detail": "{\"id\":\"a261a30f-2a41-4a2f-8814-9cd24b38b06a\",\"kind\":\"client\",\"released_at\":\"2026-10-21T17:54:02.841+00:00\"}"
+      "detail": "{\"id\":\"9c0edb27-c4a0-4cd8-9879-b268283c8883\",\"kind\":\"client\",\"released_at\":\"2026-10-21T18:30:33.926+00:00\"}"
+    },
+    {
+      "name": "prepare_kept_venue_checklist_internal",
+      "pass": true,
+      "detail": "{\"id\":\"aef12140-4f6b-4e34-b61b-511a0702c8b3\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T18:30:03.806+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
     },
     {
       "name": "prepare_did_not_invite",
@@ -141,17 +171,17 @@
     {
       "name": "venue_inventory_grew_by_one",
       "pass": true,
-      "detail": "before=13 after=14"
+      "detail": "before=17 after=18"
     },
     {
       "name": "venue_eo_grew_by_one",
       "pass": true,
-      "detail": "before=16 after=17"
+      "detail": "before=20 after=21"
     },
     {
       "name": "profile_unchanged",
       "pass": true,
-      "detail": "{\"requiredVendorIds\":[],\"timelineTemplateId\":\"a5855821-8c1a-4424-906a-7b2f6cf686c4\",\"inventoryTemplateId\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"timelineTemplateIds\":[],\"eventOrderTemplateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"floorPlanTemplateIds\":[\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\"],\"recommendedVendorIds\":[],\"questionnaireTemplateIds\":[\"7d0f8006-adeb-42b3-ad42-596c64e1e76a\"],\"defaultFloorPlanTemplateId\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"planningPlaybookTemplateId\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
+      "detail": "{\"requiredVendorIds\":[],\"timelineTemplateId\":\"a5855821-8c1a-4424-906a-7b2f6cf686c4\",\"inventoryTemplateId\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"timelineTemplateIds\":[],\"eventOrderTemplateId\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"floorPlanTemplateIds\":[\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\"],\"recommendedVendorIds\":[],\"questionnaireTemplateIds\":[\"7d0f8006-adeb-42b3-ad42-596c64e1e76a\"],\"defaultFloorPlanTemplateId\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"planningPlaybookTemplateId\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\",\"venuePlanningPlaybookTemplateId\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
     },
     {
       "name": "prepare_release_code_boundaries",
@@ -159,5 +189,5 @@
       "detail": "prepare-release side-effect boundaries"
     }
   ],
-  "at": "2026-10-21T17:54:08.763Z"
+  "at": "2026-10-21T18:30:39.094Z"
 }
