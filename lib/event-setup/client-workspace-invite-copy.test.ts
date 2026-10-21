@@ -12,11 +12,12 @@ const profiles = readFileSync(resolve("components/settings/setup-profiles-sectio
 const bookingModel = readFileSync(resolve("lib/booking-journey/model.ts"), "utf8");
 
 describe("Client workspace invitation hierarchy", () => {
-  it("uses the locked Overview heading and supporting copy", () => {
+  it("uses the locked Overview heading and separates invite from release/share", () => {
     assert.match(panel, /Your client&apos;s planning workspace/);
-    assert.match(panel, /Your venue&apos;s setup provides the starting point for this event/);
+    assert.match(panel, /Invitation is separate from/);
     assert.match(panel, /Invite client to workspace/);
-    assert.match(panel, /remain private until you share them/);
+    assert.match(panel, /sends an email when an address is on file/);
+    assert.match(panel, /stay private until you take that action/);
     assert.match(panel, /data-testid="client-workspace-invite"/);
   });
 
