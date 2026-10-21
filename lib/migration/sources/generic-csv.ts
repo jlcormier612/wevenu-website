@@ -257,7 +257,7 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   if (entityType === "payment") {
     return {
       ok: false,
-      error: "Use Active commitment (Event Order, invoice, and payment plan) — standalone payment rows are not imported alone.",
+      error: "Use Booked-event finances (invoice, payment schedule, and signed agreement) — standalone payment rows are not imported alone.",
     };
   }
   if (entityType === "document") {
@@ -291,7 +291,7 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   if (entityType === "active_commitment") {
     const contractedTotal = str(row, "contractedTotal") ?? str(row, "total") ?? str(row, "contractTotal");
     if (!contractedTotal) {
-      return { ok: false, error: "Active commitments need a contractedTotal." };
+      return { ok: false, error: "Booked-event finances need a contractedTotal." };
     }
 
     const scheduleLines: ActiveCommitmentScheduleLine[] = [];

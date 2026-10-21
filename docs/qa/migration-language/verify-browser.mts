@@ -101,7 +101,8 @@ async function main() {
     record("no_standalone_payment_sentence", !/Standalone payment CSV/i.test(after), "removed");
     record("no_not_on_import_data_heading", !/Not on Import Data/i.test(after), "removed");
     record("widget_no_coming_soon", !/Coming soon/i.test(after), "ok");
-    record("active_commitment_mentioned", /Active Commitment/i.test(after), "guidance");
+    record("booked_event_finances_or_invoices", /booked-event finances|invoices, payment schedules/i.test(after), "guidance");
+    record("no_unexplained_active_commitment", !/Active Commitment/i.test(after), "plain language");
     record("calendar_availability_mentioned", /Calendar\s*&\s*Availability/i.test(after), "guidance");
   } catch (e) {
     record("browser_error", false, e instanceof Error ? e.message : String(e));

@@ -37,7 +37,7 @@ describe("migration language honesty", () => {
     assert.match(migrationCenter, /"calendar_block"/);
   });
 
-  it("help article linked from Import/Migration explains both paths", () => {
+  it("help article linked from Import/Migration explains both paths in plain language", () => {
     assert.match(helpArticle, /slug: "what-should-i-set-up-before-i-start"/);
     const article = helpArticle.slice(
       helpArticle.indexOf('slug: "what-should-i-set-up-before-i-start"'),
@@ -45,16 +45,17 @@ describe("migration language honesty", () => {
     );
     assert.match(article, /Import Data/);
     assert.match(article, /Migration Center/);
-    assert.match(article, /Active commitment/);
-    assert.match(article, /Standalone payment CSV/);
+    assert.match(article, /Booked-event finances/);
+    assert.match(article, /Standalone payment/);
     assert.doesNotMatch(article, /coming soon/i);
+    assert.doesNotMatch(article, /\(Active commitment\)/);
   });
 
   it("Import Data page uses one concise Migration Center section without technical CSV caveats", () => {
     assert.match(importPage, /Bringing over existing bookings or financial records/);
     assert.match(importPage, /\/settings\/migration/);
     assert.match(importPage, /\/settings\/availability/);
-    assert.match(importPage, /Active Commitment/);
+    assert.doesNotMatch(importPage, /Active Commitment/);
     assert.doesNotMatch(importPage, /Standalone payment CSV/);
     assert.doesNotMatch(importPage, /Those records are not imported on this page/);
     assert.doesNotMatch(widget, /Standalone payment CSV/);
@@ -64,5 +65,7 @@ describe("migration language honesty", () => {
   it("both settings pages keep the shared setup help link", () => {
     assert.match(importPage, /\/help\/what-should-i-set-up-before-i-start/);
     assert.match(migrationPage, /\/help\/what-should-i-set-up-before-i-start/);
+    assert.match(importPage, /How to bring your business over/);
+    assert.match(migrationPage, /How to bring your business over/);
   });
 });

@@ -38,7 +38,8 @@ describe("Import page live totals vs import history", () => {
     assert.doesNotMatch(widget, /USE_MIGRATION_CENTER/);
     assert.match(importPage, /Bringing over existing bookings or financial records/);
     assert.match(importPage, /\/settings\/migration/);
-    assert.match(importPage, /Active Commitment/);
+    assert.doesNotMatch(importPage, /Active Commitment/);
+    assert.match(importPage, /booked-event finances|invoices, payment schedules/i);
   });
 });
 
@@ -61,8 +62,8 @@ describe("Import Data and Migration Center path copy", () => {
   });
 
   it("Migration Center page describes cutover scope and CSV vs Import Data file types", () => {
-    assert.match(migrationPage, /active commitments/);
+    assert.match(migrationPage, /booked-event invoices/);
     assert.match(migrationPage, /Import Data/);
-    assert.match(migrationPage, /CSV here/);
+    assert.match(migrationPage, /MigrationGuidancePanel/);
   });
 });

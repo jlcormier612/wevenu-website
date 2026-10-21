@@ -90,14 +90,14 @@ const ENTITY_LABEL: Record<MigrationEntityType, string> = {
   lead: "Leads (open inquiries)",
   vendor: "Vendors",
   event: "Events (standalone)",
-  payment: "Payments (use Active commitment)",
+  payment: "Payments (use Booked-event finances below)",
   document: "Documents (contracts & files on Events/Clients)",
   calendar_block: "Calendar blocks (incl. recurring)",
   date_hold: "Date holds",
   tour: "Tours / appointments",
   package: "Packages",
   key_date: "Key dates (historical — no longer importable)",
-  active_commitment: "Active commitment (Event Order, invoice, payments, signed agreement)",
+  active_commitment: "Booked-event finances (invoice, payments, signed agreement)",
   guest_list: "Guest list (operational couple guests on an active Event)",
   event_vendor_assignment: "Event vendor assignments (photographer, caterer, …)",
   timeline_entry: "Timeline entries (near-event / finalized day-of)",
@@ -850,7 +850,7 @@ export function MigrationCenter({
       }
       toast.success(
         result.outcome.committed > 0
-          ? "Active commitment imported into Hello to Cheers."
+          ? "Booked-event finances imported into Hello to Cheers."
           : `Imported ${result.outcome.committed}, skipped ${result.outcome.skipped}${result.outcome.failed ? `, ${result.outcome.failed} need another look` : ""}.`,
       );
       setCommitmentDraft(null);
@@ -914,11 +914,14 @@ export function MigrationCenter({
           {entityType === "active_commitment" ? (
             <div className="space-y-3 rounded-lg border border-border bg-muted/20 px-3 py-3">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-heading">Smart Import — active booked Event</p>
+                <p className="text-sm font-medium text-heading">
+                  Booked-event finances — invoice, payments, signed agreement
+                </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Upload the signed PDF/DOCX (preferred) or paste booking text. Hello to Cheers extracts a proposal,
-                  retains the original file, and shows a full financial review before anything is created.
-                  Import the Client and Event first when they are not already in HTC.
+                  Use this when a booking already has money terms or a signed agreement outside Hello to
+                  Cheers. Upload the signed PDF/DOCX (preferred) or paste booking text. Hello to Cheers
+                  proposes an invoice, payment schedule, and agreement for you to review — nothing is
+                  created until you confirm. Import the client and event first if they are not already here.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -971,7 +974,7 @@ export function MigrationCenter({
               Each row needs <span className="font-medium">fileName</span>, <span className="font-medium">storagePath</span>, and{" "}
               <span className="font-medium">storageUrl</span> from an uploaded object. Missing paths are rejected — a database
               row alone is not a migrated file. For contracts with booking financials, prefer{" "}
-              <span className="font-medium">Active commitment</span> Smart Import (upload PDF/DOCX). Floor plans have their own uploader below.
+              <span className="font-medium">Booked-event finances</span> (upload PDF/DOCX). Floor plans have their own uploader below.
             </div>
           ) : null}
 

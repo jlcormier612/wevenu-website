@@ -129,7 +129,7 @@ export function sourceSelectionGuidance(
     return {
       headline: "Your system doesn't need to be listed",
       body:
-        "Export what you want to bring over (clients, leads, or vendors), upload the CSV, and match the columns. We'll check for duplicates and let you review before anything is created in Hello to Cheers.",
+        "Export what you want to bring over (clients, leads, vendors, events, tours, holds, calendar blocks, packages, or documents), upload the CSV, and match the columns. For booked-event invoices and signed agreements, choose Booked-event finances after the client and event exist. We'll check for duplicates and let you review before anything is created.",
     };
   }
 
@@ -143,7 +143,7 @@ export function sourceSelectionGuidance(
 export const MIGRATION_CENTER_INTRO = {
   title: "Bring your business with you",
   body:
-    "Moving from another system? Choose it below and we'll give you the best way to bring your information into Hello to Cheers. If you don't see your system, that's okay — you can still import your data from a CSV or spreadsheet. Or start from scratch and import later.",
+    "Choose where you're moving from, then pick what you're bringing over — clients, calendar records, documents, or booked-event invoices and signed agreements. If you don't see your system, use Another system with a CSV. Small contact or template lists can also use Import Data. Or start from scratch and import later.",
 } as const;
 
 /** Customer-facing import history (not internal "migration" jargon). */

@@ -189,7 +189,7 @@ export function BringYourBusinessChoices({
         className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
       >
         <HelpCircle className="h-3 w-3" />
-        What Should I Set Up Before I Start?
+        How to bring your business over
       </Link>
     </div>
   );

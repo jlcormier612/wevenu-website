@@ -153,7 +153,7 @@ describe("genericCsvAdapter.normalizeRow — unsupported entity", () => {
   it("returns an explicit error for orphan payment rows", () => {
     const result = genericCsvAdapter.normalizeRow({ firstName: "x" }, "payment");
     assert.equal(result.ok, false);
-    if (!result.ok) assert.match(result.error, /Active commitment|payment/i);
+    if (!result.ok) assert.match(result.error, /Booked-event finances|payment/i);
   });
 
   it("requires storage fields for document rows", () => {

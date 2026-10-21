@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { MigrationCenter } from "@/components/settings/migration-center";
+import { MigrationGuidancePanel } from "@/components/settings/migration-guidance-panel";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { getSourceProfilesAction } from "@/app/(app)/settings/migration-actions";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
@@ -36,9 +37,13 @@ export default async function MigrationCenterPage({
     <div className="space-y-6">
       <PageHeader
         title="Migration Center"
-        description="Cut over clients, calendar (Events, tours, holds, blocks), packages, documents, and active commitments (Event Order, invoice, payment schedule, signed agreement) with review before anything is created. Upload CSV here; for Excel, Word, or PDF contact lists use Import Data."
+        description="Bring over events, tours, date holds, calendar blocks, packages, documents, and booked-event invoices, payment schedules, and signed agreements — with review before anything is created. For a small contact or template list (CSV, Excel, Word, or PDF), use Import Data."
       />
-      <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
+      <SetupGuideLink
+        href="/help/what-should-i-set-up-before-i-start"
+        label="How to bring your business over"
+      />
+      <MigrationGuidancePanel />
       <SettingsTabs />
       <MigrationCenter
         sourceProfiles={sourceProfiles}

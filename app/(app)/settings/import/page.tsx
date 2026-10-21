@@ -40,7 +40,10 @@ export default async function ImportPage({
           templates into Hello to Cheers. Import from CSV, Excel, Word, PDF, or a pasted list, then
           map your columns before anything is saved.
         </p>
-        <SetupGuideLink href="/help/what-should-i-set-up-before-i-start" label="What Should I Set Up Before I Start?" />
+        <SetupGuideLink
+          href="/help/what-should-i-set-up-before-i-start"
+          label="How to bring your business over"
+        />
       </div>
       <Suspense fallback={null}>
         <ImportHealthWidget />
@@ -54,19 +57,16 @@ export default async function ImportPage({
           <Link href="/settings/migration" className="font-medium text-primary hover:underline">
             Migration Center
           </Link>{" "}
-          to import events, tours, date holds, calendar blocks, invoices, payment schedules, and
-          signed agreements.
+          for events, tours, date holds, calendar blocks, and for invoices, payment schedules, and
+          signed agreements on booked events.
         </p>
         <p className="text-xs text-muted-foreground">
           For dated events, set up{" "}
           <Link href="/settings/availability" className="font-medium text-primary hover:underline">
             Calendar &amp; Availability
           </Link>{" "}
-          first. In Migration Center, use{" "}
-          <Link href="/settings/migration" className="font-medium text-primary hover:underline">
-            Active Commitment
-          </Link>{" "}
-          for invoices, payment schedules, and signed agreements.
+          first. Migration Center walks you through booked-event finances after the client and event
+          are in Hello to Cheers.
         </p>
       </div>
       <ImportWizard initialEntity={initialEntity} cutover={cutover} />

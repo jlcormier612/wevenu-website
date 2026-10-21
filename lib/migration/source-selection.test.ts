@@ -150,7 +150,8 @@ describe("Migration Center source selection", () => {
   it("introduces Migration Center as inclusive, not list-gated", () => {
     assert.equal(MIGRATION_CENTER_INTRO.title, "Bring your business with you");
     assert.match(MIGRATION_CENTER_INTRO.body, /don't see your system/i);
-    assert.match(MIGRATION_CENTER_INTRO.body, /csv or spreadsheet/i);
+    assert.match(MIGRATION_CENTER_INTRO.body, /CSV/i);
+    assert.match(MIGRATION_CENTER_INTRO.body, /booked-event invoices/i);
   });
 
   it("does not name unverified systems in Another system copy", () => {

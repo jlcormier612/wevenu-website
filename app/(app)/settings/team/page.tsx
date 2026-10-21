@@ -79,7 +79,7 @@ export default async function TeamDataSettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Import Existing Data</CardTitle>
           <CardDescription>
-            Bring your clients, leads, vendors, inventory, and packages into Hello to Cheers from any CSV export. No template required — map your own column names.
+            Small clean lists of clients, leads, vendors, inventory templates, or package templates — CSV, Excel, Word, PDF, or paste. Map your columns before anything is saved.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -89,6 +89,7 @@ export default async function TeamDataSettingsPage() {
             <Link href="/settings/import?type=vendors" className="text-sm font-medium text-primary hover:underline">Import Vendors →</Link>
             <Link href="/settings/import?type=inventory" className="text-sm font-medium text-primary hover:underline">Import Inventory →</Link>
             <Link href="/settings/import?type=packages" className="text-sm font-medium text-primary hover:underline">Import Packages →</Link>
+            <Link href="/settings/import" className="text-sm font-medium text-primary hover:underline">Open Import Data →</Link>
           </div>
         </CardContent>
       </Card>
@@ -97,11 +98,16 @@ export default async function TeamDataSettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Migration Center</CardTitle>
           <CardDescription>
-            Switching from another venue-management system? Bring over your existing clients, leads, and vendors — we&apos;ll recognize duplicates and import quietly, with no surprise emails to your customers.
+            Bringing over a real calendar or booked-event paperwork? Import events, tours, date holds, calendar blocks, documents, and invoices, payment schedules, and signed agreements — with review before anything is created.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <Link href="/settings/migration" className="text-sm font-medium text-primary hover:underline">Open Migration Center →</Link>
+          <div>
+            <Link href="/help/what-should-i-set-up-before-i-start" className="text-xs text-muted-foreground hover:text-primary hover:underline">
+              How to bring your business over →
+            </Link>
+          </div>
         </CardContent>
       </Card>
 
