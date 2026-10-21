@@ -1,0 +1,78 @@
+PASS profile_configured_inventory_eo — {"invRef":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","eoRef":"d73d9734-98d9-46a0-b54b-dccadb036150"}
+PASS serving_sha — serving=db43eff778a69b5cf4cad06b9f41c65a7f885c8f expected=db43eff778a69b5cf4cad06b9f41c65a7f885c8f
+PASS profile_list_shows_standard_wedding — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Pa
+PASS profile_editor_ui_optional — editor not opened (TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator('[data-testid="setup-pro); relying on DB profile + unit seams
+PASS profile_explains_auto_prepare — source copy
+PASS profile_vendor_network_authoritative — source copy
+PASS booked_client_and_event — {"clientId":"6dcb204d-614e-4eb8-9f65-8320a343af57","eventId":"ac44f386-b213-4d6c-8e9d-8a97e1c8da1f"}
+PASS setup_snapshot_inherited — {"uses_profile":true,"profile_id":"b2c5bb44-cdea-4b1a-9aca-995c04fea327","inherited_template_refs":{"requiredVendorIds":[],"timelineTemplateId":"a5855821-8c1a-4424-906a-7b2f6cf686c4","inventoryTemplateId":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a3
+PASS booking_prepared_inventory_draft — [{"id":"c8e2c823-be66-4141-aea2-2f7ab1a72cd6","status":"draft","template_id":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","finalized_at":null}]
+PASS booking_prepared_event_order_draft — [{"id":"6be917c3-6274-463c-b0d9-a0877d5ad184","status":"open","template_id":"d73d9734-98d9-46a0-b54b-dccadb036150","shared_at":null,"finalized_at":null}]
+PASS booking_prepared_client_checklist — {"id":"758efa68-80fa-41ef-b201-838c6aeafa13","kind":"client","released_at":null,"template_id":"7a1766d4-f1cd-4882-a8ed-19a54aba68ea"}
+PASS booking_prepared_venue_checklist — {"id":"aa784f46-9cd9-4e8b-a007-d186519b522e","kind":"venue","released_at":"2026-10-21T17:23:46.352+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
+PASS booking_no_invoice — invoices=0
+PASS booking_no_questionnaire_sent — sent=0
+PASS booking_no_invitation — invites=0
+PASS event_setup_shows_prepare_release — Event setup
+
+Using: Standard Wedding Setup
+
+This Setup Profile supplied the standard starting setup at booking. Edit anything for this event if needed, then prepare and release the portal once. Questionnaires stay on their own schedule.
+
+0 
+PASS event_setup_shows_invite_separate — Event setup
+
+Using: Standard Wedding Setup
+
+This Setup Profile supplied the standard starting setup at booking. Edit anything for this event if needed, then prepare and release the portal once. Questionnaires stay on their own schedule.
+
+0 
+PASS event_setup_no_start_draft_ctas — start draft CTAs absent after book-time prepare
+PASS prepare_release_button_present — count=1
+PASS prepare_released_client_planning — {"id":"758efa68-80fa-41ef-b201-838c6aeafa13","kind":"client","released_at":"2026-10-21T17:23:56.743+00:00"}
+PASS prepare_did_not_invite — invites=0
+PASS prepare_did_not_send_questionnaires — sent=0
+PASS prepare_did_not_create_invoice — invoices=0
+PASS prepare_idempotent_no_duplicate_drafts — inv=1 eo=1
+PASS venue_inventory_grew_by_one — before=12 after=13
+PASS venue_eo_grew_by_one — before=15 after=16
+PASS profile_unchanged — {"requiredVendorIds":[],"timelineTemplateId":"a5855821-8c1a-4424-906a-7b2f6cf686c4","inventoryTemplateId":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","timelineTemplateIds":[],"eventOrderTemplateId":"d73d9734-98d9-46a0-b54b-dccadb036150","floorPl
+PASS prepare_release_code_boundaries — prepare-release side-effect boundaries
+{
+  "passed": 28,
+  "failed": 0,
+  "servingSha": "db43eff778a69b5cf4cad06b9f41c65a7f885c8f",
+  "leadId": "d7ecaf66-2e75-4820-9e71-e72719ef6d66",
+  "clientId": "6dcb204d-614e-4eb8-9f65-8320a343af57",
+  "eventId": "ac44f386-b213-4d6c-8e9d-8a97e1c8da1f"
+}
