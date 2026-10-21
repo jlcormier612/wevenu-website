@@ -651,6 +651,7 @@ function TaskRow({
 export function PlaybookApplyRow({
   kind, eventId, clientId, eventDate, eventName, clientName, eventType, templates, application, readiness, onApplied,
   preselectTemplateId,
+  preferOverviewRelease = false,
 }: {
   kind: PlaybookKind;
   eventId: string;
@@ -665,12 +666,25 @@ export function PlaybookApplyRow({
   onApplied: () => void;
   /** Preselect the venue's default template for this kind/event type, when one exists — falls back to today's behavior (first template) when not given. */
   preselectTemplateId?: string;
+  /** When true, Client Planning draft is released from Overview — not a second Release CTA here. */
+  preferOverviewRelease?: boolean;
 }) {
   const meta = PLAYBOOK_KINDS.find((k) => k.value === kind)!;
-  const [selectedTemplate, setSelectedTemplate] = React.useState(preselectTemplateId ?? templates[0]?.id ?? "");
+  const preferred =
+    preselectTemplateId && templates.some((t) => t.id === preselectTemplateId)
+      ? preselectTemplateId
+      : templates[0]?.id ?? "";
+  const [selectedTemplate, setSelectedTemplate] = React.useState(preferred);
   const [releasing, startRelease] = React.useTransition();
   const [removing, startRemove] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const preferredTemplate = templates.find((t) => t.id === preselectTemplateId);
+
+  React.useEffect(() => {
+    if (preferred && preferred !== selectedTemplate && !application) {
+      setSelectedTemplate(preferred);
+    }
+  }, [preferred, application]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleEditDraft() {
     document.getElementById("planning-task-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -736,9 +750,11 @@ export function PlaybookApplyRow({
             <Button type="button" size="sm" variant="outline" onClick={handleEditDraft} className="h-7 px-2 text-xs">
               Edit this event&apos;s checklist
             </Button>
-            <Button type="button" size="sm" onClick={handleRelease} disabled={releasing} className="h-7 px-2 text-xs">
-              {releasing ? <Loader2 className="h-3 w-3 animate-spin" /> : `Release to ${clientName ?? "Client"}`}
-            </Button>
+            {!preferOverviewRelease ? (
+              <Button type="button" size="sm" onClick={handleRelease} disabled={releasing} className="h-7 px-2 text-xs">
+                {releasing ? <Loader2 className="h-3 w-3 animate-spin" /> : `Release to ${clientName ?? "Client"}`}
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -751,7 +767,9 @@ export function PlaybookApplyRow({
             </Button>
             <p className="w-full text-[11px] text-muted-foreground">
               You&apos;re editing this event&apos;s copy — changes here don&apos;t update the Library template.
-              Release makes the checklist visible in their portal; it does not send an invitation email.
+              {preferOverviewRelease
+                ? " When the checklist is ready, return to Overview and use Release to client portal. That does not send an invitation."
+                : " Release makes the checklist visible in their portal; it does not send an invitation email."}
             </p>
           </div>
         </div>
@@ -840,14 +858,21 @@ export function PlaybookApplyRow({
   // before committing a copy onto the event.
   const selectedStats = templates.find((t) => t.id === selectedTemplate);
   const kindCopy = applyPreviewKindCopy(kind);
+  const emptyState = preferredTemplate
+    ? `Configured ${kind === "venue" ? "team" : "couple"} checklist "${preferredTemplate.name}" is not on this event yet.`
+    : kindCopy.emptyState;
 
   return (
     <div className="rounded-lg border border-dashed border-border px-3 py-2">
       <div className="flex items-center gap-2">
         <span className="text-sm">{meta.emoji}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">{kindCopy.emptyState}</p>
-          <p className="text-[11px] text-muted-foreground/90 line-clamp-2">{kindCopy.explanation}</p>
+          <p className="text-xs text-muted-foreground">{emptyState}</p>
+          <p className="text-[11px] text-muted-foreground/90 line-clamp-2">
+            {preferredTemplate
+              ? `Preview and apply "${preferredTemplate.name}" for this event, or choose a different valid template. This creates an event-specific copy — Library templates stay unchanged.`
+              : kindCopy.explanation}
+          </p>
         </div>
         <Select value={selectedTemplate} onValueChange={setSelectedTemplate} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
           <SelectTrigger className="h-7 w-40 text-xs shrink-0"><SelectValue /></SelectTrigger>
@@ -945,6 +970,9 @@ export function EventTaskList({
   linkableConversationMessages,
   requestsByTaskId = {},
   staffOptions = [],
+  preferOverviewRelease = false,
+  preferredClientTemplateId = null,
+  preferredVenueTemplateId = null,
 }: {
   eventId: string;
   clientId: string | null;
@@ -963,6 +991,9 @@ export function EventTaskList({
   linkableConversationMessages: LinkableConversationMessage[];
   requestsByTaskId?: Record<string, Request>;
   staffOptions?: StaffOption[];
+  preferOverviewRelease?: boolean;
+  preferredClientTemplateId?: string | null;
+  preferredVenueTemplateId?: string | null;
 }) {
   const router = useRouter();
   // useSyncedState (not a plain useState(initialTasks)) — applying a
@@ -1064,7 +1095,7 @@ export function EventTaskList({
         )}
       />
       {/* Two independent planning systems — never merged into one status */}
-      <div className="space-y-2">
+      <div className="space-y-2" id="planning-edit" data-testid="planning-edit">
         {PLAYBOOK_KINDS.map((k) => (
           <PlaybookApplyRow
             key={k.value}
@@ -1079,6 +1110,12 @@ export function EventTaskList({
             application={applications.find((a) => a.kind === k.value)}
             readiness={k.value === "client" ? readinessByKind.client : readinessByKind.venue}
             onApplied={() => router.refresh()}
+            preferOverviewRelease={preferOverviewRelease}
+            preselectTemplateId={
+              k.value === "client"
+                ? preferredClientTemplateId ?? undefined
+                : preferredVenueTemplateId ?? undefined
+            }
           />
         ))}
       </div>

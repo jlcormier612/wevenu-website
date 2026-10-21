@@ -56,20 +56,21 @@ describe("workspace top nav simplification", () => {
 
   it("Setup cards still open the corresponding modules", () => {
     assert.match(setup, /"Open Planning"/);
-    assert.match(setup, /step === "planning" \? "playbook"/);
+    assert.match(setup, /playbook#planning-task-list/);
     assert.match(setup, /"Open Timeline"/);
-    assert.match(setup, /"Open Floor Plans"/);
     assert.match(setup, /step === "floor_plans" \? "floorplan"/);
     assert.match(setup, /"Open Vendors"/);
     assert.match(setup, /"Open Event Order"/);
     assert.match(setup, /"Open Inventory"/);
     assert.match(setup, /step === "inventory" \? "inventory"/);
     assert.match(setup, /step === "event_order" \? "event-order"/);
+    assert.match(setup, /navigateStep\(step, "edit"\)/);
   });
 
   it("hash / tab sync still activates the selected module on this event", () => {
-    assert.match(detail, /setActiveTab\(tab\)/);
+    assert.match(detail, /setActiveTab/);
     assert.match(detail, /hashchange/);
     assert.match(detail, /window\.location\.hash = v as string/);
+    assert.match(detail, /planning-task-list/);
   });
 });

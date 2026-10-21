@@ -32,5 +32,31 @@ export function setupStatusBadgeLabel(
   readinessLabel: Record<SetupReadinessStatus, string>,
 ): string {
   if (decision == null && status === "needs_action") return "Decide";
+  // Portal-facing content uses Released; Shared remains the readiness enum.
+  if (status === "shared") return "Released";
   return readinessLabel[status];
+}
+
+/** Event-specific template/offering name for Overview — not the Setup Profile name. */
+export function setupStepTemplateLabel(
+  step: SetupStepKey,
+  templateNames: {
+    planning: string | null;
+    timeline: string | null;
+    inventory: string | null;
+    eventOrder: string | null;
+  },
+  extras?: {
+    clientChecklistName?: string | null;
+    preferredFloorPlanName?: string | null;
+  },
+): string | null {
+  if (step === "planning") {
+    return extras?.clientChecklistName?.trim() || templateNames.planning || null;
+  }
+  if (step === "timeline") return templateNames.timeline;
+  if (step === "inventory") return templateNames.inventory;
+  if (step === "event_order") return templateNames.eventOrder;
+  if (step === "floor_plans") return extras?.preferredFloorPlanName?.trim() || null;
+  return null;
 }

@@ -42,4 +42,22 @@ describe("setupStatusBadgeLabel", () => {
     assert.equal(setupStatusBadgeLabel("set_up", "needs_action", SETUP_READINESS_LABEL), "Needs action");
     assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL), "Draft");
   });
+
+  it("presents shared lifecycle as Released on Overview badges", () => {
+    assert.equal(setupStatusBadgeLabel("set_up", "shared", SETUP_READINESS_LABEL), "Released");
+  });
+});
+
+describe("setupStepTemplateLabel", () => {
+  it("prefers the applied client checklist name over the profile planning ref name", async () => {
+    const { setupStepTemplateLabel } = await import("@/lib/event-setup/outstanding-follow-ups");
+    assert.equal(
+      setupStepTemplateLabel(
+        "planning",
+        { planning: "Profile ref name", timeline: null, inventory: null, eventOrder: null },
+        { clientChecklistName: "Standard Wedding — Client Planning" },
+      ),
+      "Standard Wedding — Client Planning",
+    );
+  });
 });

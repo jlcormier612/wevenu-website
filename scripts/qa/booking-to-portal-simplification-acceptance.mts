@@ -42,6 +42,11 @@ function noteDeployment(header: string | undefined): string | null {
   return header.match(/[0-9a-f]{40}/)?.[0] ?? null;
 }
 
+function preferOverviewReleaseCopy(text: string): boolean {
+  return /return to Overview and use Release to client portal/i.test(text)
+    || !/Release to .+Client/i.test(text);
+}
+
 async function cookies() {
   const { data: link } = await admin.auth.admin.generateLink({ type: "magiclink", email: EMAIL });
   const { data: otp, error } = await anon.auth.verifyOtp({
@@ -522,6 +527,46 @@ async function main() {
         && (await page.getByTestId("event-setup-outstanding").count()) === 0,
       "one Release CTA; no yellow outstanding when only drafts await release",
     );
+    {
+      const setupPanel = page.getByTestId("event-setup-panel");
+      const changeCount = await setupPanel.getByTestId("event-setup-change-planning").count();
+      const setUpChooser = await setupPanel.getByRole("button", { name: /^Set up$/ }).count();
+      record(
+        "event_setup_change_opens_editor_not_set_up_skip",
+        changeCount === 1 && setUpChooser === 0,
+        `change=${changeCount} setUpChooser=${setUpChooser}`,
+      );
+    }
+
+    // Open Planning → event checklist editor
+    await page.getByTestId("event-setup-open-planning").click();
+    await page.waitForTimeout(900);
+    const planningEditor = page.getByTestId("planning-task-list");
+    const planningEdit = page.getByTestId("planning-edit");
+    record(
+      "open_planning_reaches_event_editor",
+      (await planningEditor.count()) > 0 && (await planningEdit.count()) > 0,
+      `taskList=${await planningEditor.count()} edit=${await planningEdit.count()}`,
+    );
+    const planningBody = await page.locator("body").innerText();
+    const genericVenueEmpty = /No team checklist applied yet/i.test(planningBody);
+    const configuredVenuePrompt = /Configured team checklist/i.test(planningBody);
+    const venueApplied = /Venue Planning|For your team:/i.test(planningBody) && !genericVenueEmpty;
+    record(
+      "planning_venue_checklist_honest",
+      venueApplied || configuredVenuePrompt || !genericVenueEmpty,
+      planningBody.slice(0, 280),
+    );
+    record(
+      "planning_defers_release_to_overview",
+      preferOverviewReleaseCopy(planningBody),
+      planningBody.slice(0, 280),
+    );
+    await page.screenshot({ path: `${OUT}/03b-planning-editor-1280.png`, fullPage: true });
+    await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
+      await page.locator('[value="overview"]').first().click();
+    });
+    await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
 
     // Vendors tab: Vendor Network, not a second recommendation curator
     await page.getByRole("tab", { name: /Vendors/i }).click().catch(async () => {

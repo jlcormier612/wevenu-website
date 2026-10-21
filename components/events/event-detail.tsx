@@ -539,6 +539,16 @@ export function EventDetail({
       const hash = window.location.hash.replace("#", "");
       const tabParam = new URLSearchParams(window.location.search).get("tab");
       const raw = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
+      // Planning Overview deep links land on the Planning workspace + scroll target.
+      if (raw === "planning-task-list" || raw === "planning-edit") {
+        setActiveTab("playbook");
+        requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
+        });
+        return;
+      }
       const tab = raw === "team" ? "overview" : raw;
       if (tab) setActiveTab(tab);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
@@ -849,8 +859,16 @@ export function EventDetail({
               eventOrder: eventOrderTemplates.find((t) => t.id === eventSetup.inheritedTemplateRefs?.eventOrderTemplateId)?.name ?? null,
             }}
             onNavigateTab={(tab) => {
-              setActiveTab(tab);
-              window.location.hash = tab;
+              const [baseTab, anchor] = tab.includes("#") ? tab.split("#") as [string, string] : [tab, ""];
+              setActiveTab(baseTab);
+              window.location.hash = anchor || baseTab;
+              if (anchor) {
+                requestAnimationFrame(() => {
+                  window.setTimeout(() => {
+                    document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 80);
+                });
+              }
             }}
           />
           <NeedsAttentionList
@@ -908,6 +926,9 @@ export function EventDetail({
                 linkableConversationMessages={linkableConversationMessages}
                 requestsByTaskId={requestsByTaskId}
                 staffOptions={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
+                preferOverviewRelease={Boolean(eventSetup.usesProfile)}
+                preferredClientTemplateId={eventSetup.inheritedTemplateRefs?.planningPlaybookTemplateId ?? null}
+                preferredVenueTemplateId={eventSetup.inheritedTemplateRefs?.venuePlanningPlaybookTemplateId ?? null}
               />
             </CardContent>
           </Card>

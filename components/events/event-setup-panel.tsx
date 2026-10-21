@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   isOutstandingFollowUp,
   setupStatusBadgeLabel,
+  setupStepTemplateLabel,
 } from "@/lib/event-setup/outstanding-follow-ups";
 import {
   SETUP_READINESS_LABEL,
@@ -106,7 +107,6 @@ export function EventSetupPanel({
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
-  const [changing, setChanging] = React.useState<SetupStepKey | null>(null);
   const effective = effectiveDecisionMap(state);
   const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
   const counts = setupDecisionCounts(applicableSteps, effective);
@@ -147,7 +147,7 @@ export function EventSetupPanel({
   const setupSettled = decisionsComplete && outstandingCount === 0 && portalReleased;
   const collapsed = Boolean(state.collapsedAt) && setupSettled;
 
-  function navigateStep(step: SetupStepKey) {
+  function navigateStep(step: SetupStepKey, focus: "open" | "edit" = "open") {
     const tab =
       step === "planning" ? "playbook"
         : step === "timeline" ? "timeline"
@@ -157,6 +157,15 @@ export function EventSetupPanel({
                 : step === "inventory" ? "inventory"
                   : step === "event_order" ? "event-order"
                     : "overview";
+    // Planning edit focus lands on the event-specific checklist editor.
+    if (step === "planning" && focus === "edit") {
+      onNavigateTab("playbook#planning-edit");
+      return;
+    }
+    if (step === "planning" && focus === "open") {
+      onNavigateTab("playbook#planning-task-list");
+      return;
+    }
     onNavigateTab(tab);
   }
 
@@ -334,36 +343,62 @@ export function EventSetupPanel({
         {stepDetails.map(({ step, decision, detail }) => {
           const source = setupStepSource(state, step);
           const inherited = state.inheritedDecisions?.[step];
-          const showChooser = decision == null || changing === step;
+          const undecided = decision == null;
           const badgeLabel = setupStatusBadgeLabel(decision, detail.status, SETUP_READINESS_LABEL);
+          const templateLabel = setupStepTemplateLabel(step, templateNames, {
+            clientChecklistName: clientPlanning?.templateName ?? null,
+            preferredFloorPlanName,
+          });
           return (
-            <li key={step} className="rounded-lg border border-border px-3 py-3">
+            <li key={step} className="rounded-lg border border-border px-3 py-3" data-testid={`event-setup-card-${step}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-heading">{setupStepLabel(step)}</p>
                   <Badge variant={decision == null ? "outline" : readinessBadgeVariant(detail.status)}>
                     {badgeLabel}
-                    {source === "profile" && state.profileName && detail.status !== "not_included"
-                      ? ` · ${state.profileName}`
-                      : ""}
                     {source === "event" && state.usesProfile ? " · This event" : ""}
                   </Badge>
+                  {templateLabel && detail.status !== "not_included" ? (
+                    <span className="text-xs text-muted-foreground" data-testid={`event-setup-template-${step}`}>
+                      {templateLabel}
+                    </span>
+                  ) : null}
                 </div>
-                {showChooser ? (
+                {undecided ? (
                   <div className="flex gap-2">
-                    <Button type="button" size="sm" disabled={pending} onClick={() => { setChanging(null); decide(step, "set_up"); }}>
+                    <Button type="button" size="sm" disabled={pending} onClick={() => decide(step, "set_up")}>
                       Set up
                     </Button>
-                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { setChanging(null); decide(step, "skipped"); }}>
+                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => decide(step, "skipped")}>
                       Skip
                     </Button>
                   </div>
                 ) : state.usesProfile ? (
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setChanging(step)}>
-                      Change for this event
-                    </Button>
-                    {source === "event" && inherited ? (
+                  <div className="flex flex-wrap gap-2">
+                    {decision === "set_up" ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        data-testid={`event-setup-change-${step}`}
+                        onClick={() => navigateStep(step, "edit")}
+                      >
+                        Change for this event
+                      </Button>
+                    ) : null}
+                    {decision === "set_up" ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() => decide(step, "skipped")}
+                      >
+                        Don&apos;t include for this event
+                      </Button>
+                    ) : null}
+                    {decision === "skipped" && inherited ? (
                       <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => decide(step, inherited)}>
                         Use {state.profileName}
                       </Button>
@@ -376,7 +411,7 @@ export function EventSetupPanel({
                 <div className="mt-3">
                   <SetupEditorLink
                     step={step}
-                    onNavigateTab={onNavigateTab}
+                    onOpen={() => navigateStep(step, "open")}
                     onOpenSetupProfiles={
                       (step === "inventory" && !hasEventInventory && !inheritedRefs.inventoryTemplateId)
                       || (step === "event_order" && !eventOrder && !inheritedRefs.eventOrderTemplateId)
@@ -438,11 +473,11 @@ function ClientWorkspaceInvite({
 
 function SetupEditorLink({
   step,
-  onNavigateTab,
+  onOpen,
   onOpenSetupProfiles,
 }: {
   step: SetupStepKey;
-  onNavigateTab: (tab: string) => void;
+  onOpen: () => void;
   onOpenSetupProfiles?: () => void;
 }) {
   if (onOpenSetupProfiles) {
@@ -461,18 +496,15 @@ function SetupEditorLink({
               : step === "inventory" ? "Open Inventory"
                 : step === "event_order" ? "Open Event Order"
                   : null;
-  const tab =
-    step === "planning" ? "playbook"
-      : step === "timeline" ? "timeline"
-        : step === "floor_plans" ? "floorplan"
-          : step === "vendors" ? "vendors"
-            : step === "questionnaires" ? "questionnaires"
-              : step === "inventory" ? "inventory"
-                : step === "event_order" ? "event-order"
-                  : null;
-  if (!label || !tab) return null;
+  if (!label) return null;
   return (
-    <Button type="button" variant="outline" size="sm" onClick={() => onNavigateTab(tab)}>
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      data-testid={`event-setup-open-${step}`}
+      onClick={onOpen}
+    >
       {label}
     </Button>
   );
