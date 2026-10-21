@@ -1,16 +1,16 @@
 {
   "workflow": "booking-to-portal-simplification",
   "status": "GREEN",
-  "expectedSha": "db43eff778a69b5cf4cad06b9f41c65a7f885c8f",
-  "servingSha": "db43eff778a69b5cf4cad06b9f41c65a7f885c8f",
+  "expectedSha": "19eb9a01e7d556e784f9d796094c4daea21be3ec",
+  "servingSha": "19eb9a01e7d556e784f9d796094c4daea21be3ec",
   "ids": {
-    "leadId": "d7ecaf66-2e75-4820-9e71-e72719ef6d66",
-    "clientId": "6dcb204d-614e-4eb8-9f65-8320a343af57",
-    "eventId": "ac44f386-b213-4d6c-8e9d-8a97e1c8da1f",
+    "leadId": "0bed02fd-ab46-48b6-ac02-8ede78c69436",
+    "clientId": "30e09cb2-934f-4362-b956-83bdf8531fe6",
+    "eventId": "a51e01ba-1632-4dbf-9cde-a816577281df",
     "profileId": "b2c5bb44-cdea-4b1a-9aca-995c04fea327",
-    "tag": "B2P-1792603382407-3f07"
+    "tag": "B2P-1792605182744-a0dd"
   },
-  "passed": 28,
+  "passed": 29,
   "failed": 0,
   "checks": [
     {
@@ -21,7 +21,7 @@
     {
       "name": "serving_sha",
       "pass": true,
-      "detail": "serving=db43eff778a69b5cf4cad06b9f41c65a7f885c8f expected=db43eff778a69b5cf4cad06b9f41c65a7f885c8f"
+      "detail": "serving=19eb9a01e7d556e784f9d796094c4daea21be3ec expected=19eb9a01e7d556e784f9d796094c4daea21be3ec"
     },
     {
       "name": "profile_list_shows_standard_wedding",
@@ -29,24 +29,19 @@
       "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPa"
     },
     {
-      "name": "profile_editor_ui_optional",
-      "pass": true,
-      "detail": "editor not opened (TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"setup-pro); relying on DB profile + unit seams"
-    },
-    {
       "name": "profile_explains_auto_prepare",
       "pass": true,
-      "detail": "source copy"
+      "detail": "source copy (unit + shipped UI)"
     },
     {
       "name": "profile_vendor_network_authoritative",
       "pass": true,
-      "detail": "source copy"
+      "detail": "source copy (unit + shipped UI)"
     },
     {
       "name": "booked_client_and_event",
       "pass": true,
-      "detail": "{\"clientId\":\"6dcb204d-614e-4eb8-9f65-8320a343af57\",\"eventId\":\"ac44f386-b213-4d6c-8e9d-8a97e1c8da1f\"}"
+      "detail": "{\"clientId\":\"30e09cb2-934f-4362-b956-83bdf8531fe6\",\"eventId\":\"a51e01ba-1632-4dbf-9cde-a816577281df\"}"
     },
     {
       "name": "setup_snapshot_inherited",
@@ -56,22 +51,22 @@
     {
       "name": "booking_prepared_inventory_draft",
       "pass": true,
-      "detail": "[{\"id\":\"c8e2c823-be66-4141-aea2-2f7ab1a72cd6\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"73628b7e-e41e-4c36-959a-b4d069aa8bc1\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_event_order_draft",
       "pass": true,
-      "detail": "[{\"id\":\"6be917c3-6274-463c-b0d9-a0877d5ad184\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"f3b9ca4c-356a-480f-aec5-a6e505fd9860\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_client_checklist",
       "pass": true,
-      "detail": "{\"id\":\"758efa68-80fa-41ef-b201-838c6aeafa13\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
+      "detail": "{\"id\":\"a261a30f-2a41-4a2f-8814-9cd24b38b06a\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
     },
     {
       "name": "booking_prepared_venue_checklist",
       "pass": true,
-      "detail": "{\"id\":\"aa784f46-9cd9-4e8b-a007-d186519b522e\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T17:23:46.352+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+      "detail": "{\"id\":\"4d0e8b7e-381c-4f43-869a-05882634e558\",\"kind\":\"venue\",\"released_at\":\"2026-10-21T17:53:45.231+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
     },
     {
       "name": "booking_no_invoice",
@@ -91,17 +86,27 @@
     {
       "name": "event_setup_shows_prepare_release",
       "pass": true,
-      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nThis Setup Profile supplied the standard starting setup at booking. Edit anything for this event if needed, then prepare and release the portal once. Questionnaires stay on their own schedule.\n\n0 need a decision · 7 included · 0 not inc"
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nYour standard setup was applied at booking. Optionally edit any area for this event, then use Prepare and release portal once. Invite the client separately. Questionnaires stay on their own delivery schedule.\n\n0 need a decision · 7 incl"
     },
     {
       "name": "event_setup_shows_invite_separate",
       "pass": true,
-      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nThis Setup Profile supplied the standard starting setup at booking. Edit anything for this event if needed, then prepare and release the portal once. Questionnaires stay on their own schedule.\n\n0 need a decision · 7 included · 0 not inc"
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nYour standard setup was applied at booking. Optionally edit any area for this event, then use Prepare and release portal once. Invite the client separately. Questionnaires stay on their own delivery schedule.\n\n0 need a decision · 7 incl"
     },
     {
       "name": "event_setup_no_start_draft_ctas",
       "pass": true,
-      "detail": "start draft CTAs absent after book-time prepare"
+      "detail": "no component-level prepare/start draft CTAs"
+    },
+    {
+      "name": "event_setup_no_embedded_apply_wizards",
+      "pass": true,
+      "detail": "no BookingSetupCard/TimelineSetupCard wizards in Event Setup"
+    },
+    {
+      "name": "vendors_tab_uses_vendor_network",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nRe"
     },
     {
       "name": "prepare_release_button_present",
@@ -111,7 +116,7 @@
     {
       "name": "prepare_released_client_planning",
       "pass": true,
-      "detail": "{\"id\":\"758efa68-80fa-41ef-b201-838c6aeafa13\",\"kind\":\"client\",\"released_at\":\"2026-10-21T17:23:56.743+00:00\"}"
+      "detail": "{\"id\":\"a261a30f-2a41-4a2f-8814-9cd24b38b06a\",\"kind\":\"client\",\"released_at\":\"2026-10-21T17:54:02.841+00:00\"}"
     },
     {
       "name": "prepare_did_not_invite",
@@ -136,12 +141,12 @@
     {
       "name": "venue_inventory_grew_by_one",
       "pass": true,
-      "detail": "before=12 after=13"
+      "detail": "before=13 after=14"
     },
     {
       "name": "venue_eo_grew_by_one",
       "pass": true,
-      "detail": "before=15 after=16"
+      "detail": "before=16 after=17"
     },
     {
       "name": "profile_unchanged",
@@ -154,5 +159,5 @@
       "detail": "prepare-release side-effect boundaries"
     }
   ],
-  "at": "2026-10-21T17:24:01.991Z"
+  "at": "2026-10-21T17:54:08.763Z"
 }

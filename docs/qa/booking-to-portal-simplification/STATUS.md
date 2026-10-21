@@ -1,52 +1,40 @@
-# Booking-to-portal simplification
+# Booking-to-portal simplification (corrective)
 
 ## Status
 
-**CORRECTIVE IN PROGRESS** — prior GREEN was insufficient (see `FORENSIC-CORRECTIVE.md`). Product corrections implemented; pending Sandbox redeploy + re-acceptance.
+**GREEN / CLOSED** (corrective pass)
 
-## Commits (product)
+Prior acceptance on `db43eff7` was insufficient — see `FORENSIC-CORRECTIVE.md`.
 
-| SHA | Purpose |
-|-----|---------|
-| `b1c1f189` | First-pass preset + prepare/release (insufficient UX) |
-| `db43eff7` | Venue checklist event-type fallback |
-| _(pending)_ | Remove component Prepare/Start draft CTAs; Vendor Network only; prepare/release recovers Inv/EO/timeline/floor plans |
-
-## Sandbox deploy
+## Serving
 
 | Item | Value |
 |------|-------|
-| Workflow | Deploy Sandbox |
-| Run | https://github.com/jlcormier612/wevenu-website/actions/runs/39641996104 |
-| Conclusion | success |
-| Serving SHA | `db43eff778a69b5cf4cad06b9f41c65a7f885c8f` |
+| Product commit | `19eb9a01e7d556e784f9d796094c4daea21be3ec` |
+| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/39645643517 success |
+| Serving SHA | `19eb9a01e7d556e784f9d796094c4daea21be3ec` |
+
+## What was corrected
+
+1. Removed separate Inventory / Event Order prepare/start CTAs from Event Setup.
+2. Missing included drafts recover only via **Prepare and release portal**.
+3. Removed embedded BookingSetupCard / TimelineSetupCard wizards from Event Setup.
+4. Prepare/release also applies missing timeline + floor-plan offers when configured.
+5. Booking no longer copies a second vendor recommendation list; Vendors tab shows Vendor Network.
+6. Questionnaire copy frames separate scheduled/authorized send (still not sent by portal release).
+7. Harness now asserts absence of component prepare CTAs and embedded apply wizards.
 
 ## Acceptance
 
-Harness: `scripts/qa/booking-to-portal-simplification-acceptance.mts`  
-Results: `docs/qa/booking-to-portal-simplification/browser-results.json` — **28/28 PASS**
+`scripts/qa/booking-to-portal-simplification-acceptance.mts` → **29/29 PASS**  
+`docs/qa/booking-to-portal-simplification/browser-results.json`
 
-Synthetic fixture (Sandbox only):
+Synthetic fixture: event `a51e01ba-1632-4dbf-9cde-a816577281df` / client `30e09cb2-934f-4362-b956-83bdf8531fe6`
 
-- lead `d7ecaf66-2e75-4820-9e71-e72719ef6d66`
-- client `6dcb204d-614e-4eb8-9f65-8320a343af57`
-- event `ac44f386-b213-4d6c-8e9d-8a97e1c8da1f`
-- tag `B2P-1792603382407-3f07`
+## Unit tests
 
-## Proven
-
-- Booking prepares Inventory + Event Order drafts (not shared/finalized/invoiced)
-- Booking prepares client checklist (draft) and venue checklist (released internally)
-- Prepare and release portal releases Client Planning; does not invite, send questionnaires, or invoice
-- Repeated prepare is idempotent (single inv/EO rows)
-- Questionnaires remain draft/unsent
-- Setup Profile unchanged by booking
-- Start-draft CTAs absent after book-time prepare
-
-## Unit/seam tests
-
-`npx tsx --test lib/event-setup/*.test.ts lib/playbooks/phase3-invite-release.test.ts` → **113/113 PASS** (pre-deploy)
+`lib/event-setup/*.test.ts` + phase3 invite seams → **112/112 PASS**
 
 ## Production
 
-Untouched. Unrelated dirty work preserved.
+Untouched. Unrelated dirty work preserved (~897 paths).

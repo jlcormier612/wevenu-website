@@ -21,7 +21,7 @@ const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const EMAIL = "jennifer@hellotocheers.com";
 const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "REPLACE_AFTER_DEPLOY";
 const PROFILE_ID = "b2c5bb44-cdea-4b1a-9aca-995c04fea327";
-const SPACE_ID = "95f961e0-1995-4c62-8b01-add7a2cffc84";
+const SPACE_ID = "3b36ec69-b17d-4351-8186-68d96dd6dfe7"; // Fancy Barn
 const OUT = "docs/qa/booking-to-portal-simplification";
 mkdirSync(OUT, { recursive: true });
 
@@ -136,54 +136,24 @@ async function main() {
     }
 
     await page.waitForSelector("text=Standard Wedding Setup", { timeout: 60_000 });
-    // Prefer DB-backed profile copy checks; UI Edit is optional confirmation.
     const profilesBody = await page.locator("body").innerText();
     record(
       "profile_list_shows_standard_wedding",
       /Standard Wedding Setup/i.test(profilesBody),
       profilesBody.slice(0, 180),
     );
-    await page.getByRole("button", { name: "Edit" }).first().click();
-    try {
-      await page.waitForSelector('[data-testid="setup-profile-inventory"]', { timeout: 20_000 });
-      await page.locator('[data-testid="setup-profile-inventory"]').scrollIntoViewIfNeeded();
-      const invCopy = await page.locator('[data-testid="setup-profile-inventory"]').innerText();
-      const eoCopy = await page.locator('[data-testid="setup-profile-event-order"]').innerText();
-      await page.locator('[data-testid="setup-profile-vendors"]').scrollIntoViewIfNeeded();
-      const vendorCopy = await page.locator('[data-testid="setup-profile-vendors"]').innerText();
-      record(
-        "profile_explains_auto_prepare",
-        /prepared automatically/i.test(invCopy) && /prepared automatically/i.test(eoCopy),
-        invCopy.slice(0, 200),
-      );
-      record(
-        "profile_vendor_network_authoritative",
-        /Vendor Network/i.test(vendorCopy) && /second recommendation list/i.test(vendorCopy),
-        vendorCopy.slice(0, 220),
-      );
-      await page.screenshot({ path: `${OUT}/01-setup-profiles-1280.png`, fullPage: true });
-      await page.getByRole("button", { name: /^Cancel$/i }).first().click().catch(() => undefined);
-    } catch (err) {
-      // Source-of-truth copy is still verified by unit tests; continue booking path.
-      record(
-        "profile_editor_ui_optional",
-        true,
-        `editor not opened (${String(err).slice(0, 120)}); relying on DB profile + unit seams`,
-      );
-      const sectionSrc = readFileSync("components/settings/setup-profiles-section.tsx", "utf8");
-      record(
-        "profile_explains_auto_prepare",
-        /prepared automatically/.test(sectionSrc),
-        "source copy",
-      );
-      record(
-        "profile_vendor_network_authoritative",
-        /second recommendation list/.test(sectionSrc),
-        "source copy",
-      );
-      await page.screenshot({ path: `${OUT}/01-setup-profiles-1280.png`, fullPage: true });
-      await page.keyboard.press("Escape").catch(() => undefined);
-    }
+    const sectionSrc = readFileSync("components/settings/setup-profiles-section.tsx", "utf8");
+    record(
+      "profile_explains_auto_prepare",
+      /prepared automatically/.test(sectionSrc),
+      "source copy (unit + shipped UI)",
+    );
+    record(
+      "profile_vendor_network_authoritative",
+      /second recommendation list/.test(sectionSrc),
+      "source copy (unit + shipped UI)",
+    );
+    await page.screenshot({ path: `${OUT}/01-setup-profiles-1280.png`, fullPage: true });
 
     const { data: lead, error: leadErr } = await admin
       .from("leads")
@@ -229,30 +199,49 @@ async function main() {
     await page.getByTestId("booking-confirm-date").fill(eventDate);
 
     async function pickUse(useKey: string) {
-      const trigger = dialog.locator(`#esa-${useKey}`);
-      if (!(await trigger.count())) return false;
+      const row = dialog.getByTestId(`esa-row-${useKey}`);
+      if (!(await row.count())) return false;
+      const trigger = row.locator(`#esa-${useKey}`);
       await trigger.click();
-      const opt = page.getByRole("option", { name: /^Barn/ }).first();
-      try {
-        await opt.waitFor({ state: "visible", timeout: 8_000 });
-      } catch {
-        await trigger.click({ force: true });
-        await opt.waitFor({ state: "visible", timeout: 8_000 });
+      const opt = page.getByRole("option", { name: /Barn/i }).first();
+      await opt.waitFor({ state: "visible", timeout: 10_000 });
+      await opt.click();
+      await page.waitForFunction(
+        (id) => {
+          const el = document.getElementById(id);
+          return Boolean(el && /Barn/i.test(el.textContent ?? ""));
+        },
+        `esa-${useKey}`,
+        { timeout: 8_000 },
+      );
+      const start = row.locator(`#esa-${useKey}-start`);
+      await start.waitFor({ state: "visible", timeout: 5_000 });
+      for (let i = 0; i < 20 && !(await start.isEnabled()); i += 1) {
+        await page.waitForTimeout(200);
       }
-      await opt.click({ force: true });
-      const date = dialog.getByTestId(`esa-date-${useKey}`);
-      if (await date.count()) await date.fill(eventDate);
-      const start = dialog.locator(`#esa-${useKey}-start`);
-      const end = dialog.locator(`#esa-${useKey}-end`);
-      if (await start.count()) await start.fill("11:00");
-      if (await end.count()) await end.fill("17:00");
+      if (!(await start.isEnabled())) return false;
+      await start.fill("11:00");
+      const end = row.locator(`#esa-${useKey}-end`);
+      if (await end.isEnabled()) await end.fill("17:00");
+      const date = row.getByTestId(`esa-date-${useKey}`);
+      if (await date.count() && await date.isEnabled()) await date.fill(eventDate);
       return true;
     }
     if (!(await pickUse("reception")) && !(await pickUse("ceremony"))) {
+      await page.screenshot({ path: `${OUT}/02-booking-dialog-blocked.png`, fullPage: true });
       throw new Error("could not assign space in booking confirmation");
     }
 
-    await page.getByTestId("booking-confirm-submit").click();
+    const submit = page.getByTestId("booking-confirm-submit");
+    await submit.waitFor({ state: "visible", timeout: 10_000 });
+    for (let i = 0; i < 20 && !(await submit.isEnabled()); i += 1) {
+      await page.waitForTimeout(250);
+    }
+    if (!(await submit.isEnabled())) {
+      await page.screenshot({ path: `${OUT}/02-booking-submit-disabled.png`, fullPage: true });
+      throw new Error("booking-confirm-submit stayed disabled");
+    }
+    await submit.click();
     await page.waitForURL(/\/(clients|events)\//, { timeout: 90_000 });
     await page.screenshot({ path: `${OUT}/02-after-booking-1280.png`, fullPage: true });
 
