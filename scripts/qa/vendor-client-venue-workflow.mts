@@ -253,24 +253,18 @@ async function main() {
     );
     await page.screenshot({ path: `${OUT}/01-vendors-list-1280.png`, fullPage: true }).catch(() => undefined);
 
-    // Pick Harah despite not_confirmed (button should be present)
-    const harahRow = page.getByRole("button", { name: /Harah'?s Hair/i }).first();
-    // Prefer list Pick button near Harah
-    const pickBtn = page.getByRole("button", { name: /^Pick$/i }).first();
-    const pickVisible = await pickBtn.isVisible().catch(() => false);
-    record("pick_visible_when_not_confirmed", pickVisible, `pickVisible=${pickVisible}`);
-    if (pickVisible) {
-      await pickBtn.click();
-      await page.waitForTimeout(1500);
-    } else {
-      // open profile and Select vendor
-      await page.getByText(/Harah'?s Hair/i).first().click();
-      await page.waitForTimeout(800);
-      const selectBtn = page.getByRole("button", { name: /Select vendor/i });
+    // Open Harah profile and Select (avoids clicking the wrong list Pick)
+    await page.getByText(/Harah'?s Hair/i).first().click();
+    await page.waitForTimeout(1000);
+    const selectBtn = page.getByRole("button", { name: /Select vendor/i });
+    const selectVisible = await selectBtn.isVisible().catch(() => false);
+    record("pick_visible_when_not_confirmed", selectVisible, `selectVisible=${selectVisible}`);
+    if (selectVisible) {
       await selectBtn.click();
-      await page.waitForTimeout(1500);
-      await page.getByRole("button", { name: /Back to vendors/i }).click().catch(() => undefined);
+      await page.waitForTimeout(2000);
     }
+    await page.getByRole("button", { name: /Back to vendors/i }).click().catch(() => undefined);
+    await page.waitForTimeout(800);
 
     const { data: harahRec } = await admin.from("event_vendor_recommendations")
       .select("id,picked_at,selected_at,vendor_id")
@@ -299,26 +293,25 @@ async function main() {
     );
 
     if (conversationId) {
-      const { data: msgs } = await admin.from("messages")
-        .select("id,body,sender_type")
+      const { data: messageRows, error: msgErr } = await admin.from("conversation_messages")
+        .select("id,body,sender_type,conversation_id")
         .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        .limit(5);
       record(
         "inquiry_message_row_exists",
-        (msgs?.length ?? 0) >= 1,
-        JSON.stringify(msgs?.slice(0, 2)),
+        (messageRows?.length ?? 0) >= 1,
+        JSON.stringify({ err: msgErr?.message, rows: messageRows?.slice(0, 2) }),
       );
 
-      // Cross-vendor isolation: Baker's Dozen cannot read Harah inquiry via RLS as anon
-      const cross = await anon.from("messages").select("id").eq("conversation_id", conversationId);
+      const cross = await anon.from("conversations").select("id").eq("id", conversationId).maybeSingle();
       record(
-        "anon_cannot_read_inquiry_messages_directly",
-        !cross.data?.length,
-        JSON.stringify({ err: cross.error?.message, n: cross.data?.length }),
+        "anon_cannot_read_inquiry_conversation_directly",
+        cross.data == null,
+        JSON.stringify({ err: cross.error?.message, data: cross.data }),
       );
     } else {
       record("inquiry_message_row_exists", false, "no conversation");
-      record("anon_cannot_read_inquiry_messages_directly", false, "skipped");
+      record("anon_cannot_read_inquiry_conversation_directly", false, "skipped");
     }
 
     // Unclaimed Meadowbrook-style probe on a Fancy vendor we temporarily mark unclaimed? Skip —
