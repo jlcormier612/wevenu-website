@@ -205,7 +205,7 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
             channel: "email",
             body: text,
             clientId: event.clientId,
-            providerId: emailResult.ok ? emailResult.id ?? null : null,
+            providerId: emailResult.ok ? emailResult.providerId ?? null : null,
             status: emailResult.ok ? "accepted" : "failed",
             failureReason: emailResult.ok ? null : emailResult.message,
             sourceType: "event_order_shared",

@@ -292,7 +292,7 @@ async function notifyInventoryShared(
       channel: "email",
       body,
       clientId: event.clientId,
-      providerId: emailResult.ok ? emailResult.id ?? null : null,
+      providerId: emailResult.ok ? emailResult.providerId ?? null : null,
       status: emailResult.ok ? "accepted" : "failed",
       failureReason: emailResult.ok ? null : emailResult.message,
       sourceType: "event_inventory_shared",
