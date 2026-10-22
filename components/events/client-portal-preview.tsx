@@ -170,8 +170,13 @@ export function ClientPortalPreview({ data }: { data: PortalPreviewData }) {
         {tab === "vendors" ? (
           <section data-testid="portal-preview-vendors" className="space-y-2">
             <div className="flex justify-end px-4">
-              <Badge variant={visibilityBadge(data.vendors.visibility).variant}>
-                {visibilityBadge(data.vendors.visibility).label}
+              <Badge
+                variant={visibilityBadge(data.vendors.visibility).variant}
+                data-testid="portal-preview-vendors-badge"
+              >
+                {data.vendors.recommendations.length > 0
+                  ? "Recommendations — not the assigned roster"
+                  : visibilityBadge(data.vendors.visibility).label}
               </Badge>
             </div>
             <VendorsPortalPreviewView

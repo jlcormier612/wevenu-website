@@ -6,8 +6,8 @@
  * below this on the same tab). A recommendation is "here are options for
  * the couple to consider," made before any decision; any number of vendors
  * can be recommended, even within the same category (three florist options
- * is the point). Selected vendors automatically appear in the client
- * portal (Vendor Management — Next Iteration, 2026-07-10).
+ * is the point). Couple Submit sets selectedAt and creates assignments —
+ * this section only manages highlights.
  */
 
 import * as React from "react";
@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
+import { partitionRecommendationsByCoupleSubmission } from "@/lib/vendors/recommendation-submission-groups";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import type { Vendor } from "@/lib/vendors/types";
 
@@ -49,6 +50,8 @@ export function EventVendorRecommendationsSection({
 
   const recommendedIds = new Set(recommendations.map((r) => r.vendorId));
   const available = vendorLibrary.filter((v) => !recommendedIds.has(v.id));
+  const { chosen, notYetSubmitted } = partitionRecommendationsByCoupleSubmission(recommendations);
+  const coupleLabel = clientName || "the couple";
 
   function handleAdd() {
     if (!vendorId) return;
@@ -67,41 +70,69 @@ export function EventVendorRecommendationsSection({
     else toast.error(result.message ?? "Could not remove recommendation.");
   }
 
+  function renderRow(r: EventVendorRecommendation) {
+    return (
+      <div
+        key={r.id}
+        className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3"
+        data-testid={`vendor-highlight-row-${r.id}`}
+        data-selected-at={r.selectedAt ? "true" : "false"}
+      >
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/vendors/${r.vendorId}`} className="text-sm font-medium text-foreground hover:text-primary">
+              {r.vendorName}
+            </Link>
+            {r.vendorCategory && <span className="text-xs text-muted-foreground">{vendorCategoryLabel(r.vendorCategory)}</span>}
+            {r.selectedAt && (
+              <Badge variant="success" className="text-[10px] flex items-center gap-1">
+                <Check className="h-3 w-3" /> Chosen by {clientName || "client"}
+              </Badge>
+            )}
+          </div>
+          {r.note && <p className="text-xs italic text-muted-foreground">{r.note}</p>}
+        </div>
+        <button
+          type="button" onClick={() => handleRemove(r.id)} disabled={removingId === r.id}
+          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+          aria-label="Remove recommendation"
+          title="Removes this event highlight only — does not unassign the vendor"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="event-vendor-highlights">
+      <p className="text-sm text-muted-foreground" data-testid="event-vendor-highlights-help">
+        These are optional suggestions shown to the couple. &ldquo;Chosen by {coupleLabel}&rdquo; means the couple
+        submitted that vendor; assigned vendors appear under Assigned to This Event. Removing a highlight
+        only removes the suggestion — it does not unassign anyone.
+      </p>
+
       {recommendations.length === 0 && !showForm && (
-        <p className="py-4 text-center text-sm text-muted-foreground">
+        <p className="py-4 text-center text-sm text-muted-foreground" data-testid="event-vendor-highlights-empty">
           No vendors recommended yet. Choose vendors from your Library to suggest to {clientName || "this client"} — they&apos;ll see them in their portal.
         </p>
       )}
 
-      {recommendations.length > 0 && (
-        <div className="space-y-2">
-          {recommendations.map((r) => (
-            <div key={r.id} className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/vendors/${r.vendorId}`} className="text-sm font-medium text-foreground hover:text-primary">
-                    {r.vendorName}
-                  </Link>
-                  {r.vendorCategory && <span className="text-xs text-muted-foreground">{vendorCategoryLabel(r.vendorCategory)}</span>}
-                  {r.selectedAt && (
-                    <Badge variant="success" className="text-[10px] flex items-center gap-1">
-                      <Check className="h-3 w-3" /> Chosen by {clientName || "client"}
-                    </Badge>
-                  )}
-                </div>
-                {r.note && <p className="text-xs italic text-muted-foreground">{r.note}</p>}
-              </div>
-              <button
-                type="button" onClick={() => handleRemove(r.id)} disabled={removingId === r.id}
-                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                aria-label="Remove recommendation"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+      {chosen.length > 0 && (
+        <div className="space-y-2" data-testid="vendor-highlights-chosen">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Chosen by the couple ({chosen.length})
+          </p>
+          {chosen.map(renderRow)}
+        </div>
+      )}
+
+      {notYetSubmitted.length > 0 && (
+        <div className="space-y-2" data-testid="vendor-highlights-not-submitted">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Not yet submitted by the couple ({notYetSubmitted.length})
+          </p>
+          {notYetSubmitted.map(renderRow)}
         </div>
       )}
 

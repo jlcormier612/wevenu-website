@@ -16,21 +16,23 @@ import { pickNextOpenPaymentLine } from "@/lib/invoices/amount-due-now";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
+import { overviewVendorSummaryLines } from "@/lib/vendors/overview-vendor-copy";
 import type { ConversationMessage } from "@/lib/conversations/types";
 import type { Document } from "@/lib/documents/types";
 
 // ---- Small shared tile ------------------------------------------------------
 
 function SummaryTile({
-  title, lines, linkHref, linkLabel,
+  title, lines, linkHref, linkLabel, testId,
 }: {
   title: string;
   lines: ReactNode[];
   linkHref: string;
   linkLabel: string;
+  testId?: string;
 }) {
   return (
-    <Card>
+    <Card data-testid={testId}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>
@@ -121,9 +123,12 @@ export function BookingOverviewSummary({
     ? timeline.reduce((latest, e) => (e.updatedAt > latest ? e.updatedAt : latest), timeline[0].updatedAt)
     : null;
 
-  // ---- Vendors ----
-  const vendorsSelected = vendorAssignments.length;
-  const recommendationsPending = vendorRecommendations.filter((r) => !r.selectedAt).length;
+  // ---- Vendors (assignments ≠ couple selections; unsubmitted highlights ≠ staff queue) ----
+  const vendorOverviewLines = overviewVendorSummaryLines({
+    assignmentCount: vendorAssignments.length,
+    highlightCount: vendorRecommendations.length,
+    submittedHighlightCount: vendorRecommendations.filter((r) => Boolean(r.selectedAt)).length,
+  });
 
   // ---- Messages: real per-message unread count (venueReadAt). ----
   const lastConversationMessage = [...conversationMessages].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1))[0];
@@ -216,11 +221,9 @@ export function BookingOverviewSummary({
         />
         <SummaryTile
           title="Vendors"
-          lines={[
-            `${vendorsSelected} vendor${vendorsSelected === 1 ? "" : "s"} selected`,
-            `${recommendationsPending} recommendation${recommendationsPending === 1 ? "" : "s"} pending`,
-          ]}
+          lines={vendorOverviewLines}
           linkHref="#vendors" linkLabel="Open Vendors"
+          testId="overview-vendors-tile"
         />
         <SummaryTile
           title="Conversation"

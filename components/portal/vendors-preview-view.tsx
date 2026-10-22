@@ -50,7 +50,8 @@ export function VendorsPortalPreviewView({
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-heading">Recommended for you</h2>
         <p className="text-sm text-muted-foreground">
-          Vendors {venueName} highlights for your celebration. Preview is view-only — couples pick and submit in their portal.
+          Optional highlights from {venueName}. Preview is view-only and does not show the assigned roster or
+          whether the couple has submitted choices — couples pick and submit in their portal.
         </p>
       </div>
       <ul className="space-y-3">
