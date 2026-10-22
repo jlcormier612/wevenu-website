@@ -21,6 +21,7 @@ import {
   reorderEntries,
   reorderEntry,
   reorderSections,
+  saveEventTimelineDraft,
   setSectionClientCanAdd,
   shareClientTimelineWithCouple,
   shareTimelineWithCouple,
@@ -35,6 +36,8 @@ import type {
   AddSectionResult,
   DuplicateSectionResult,
   TimelineActionResult,
+  TimelineDraftBatchInput,
+  TimelineDraftBatchResult,
   TimelineEntryInput,
   TimelineRelatedSourceType,
 } from "@/lib/timeline/types";
@@ -116,6 +119,22 @@ export async function deleteEntryAction(
 ): Promise<TimelineActionResult> {
   const result = await deleteEntry(entryId);
   if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
+/**
+ * Event Timeline setup editor — apply deletes + upserts in one action
+ * (single revalidate). Does not touch Library templates or other events.
+ */
+export async function saveEventTimelineDraftAction(
+  eventId: string,
+  draft: TimelineDraftBatchInput,
+): Promise<TimelineDraftBatchResult> {
+  const result = await saveEventTimelineDraft(eventId, draft);
+  if (result.ok && (result.deleted > 0 || result.updated > 0 || result.created > 0)) {
+    await revalidateTimelineSurfaces(eventId);
+    void triggerTimelineAutoComplete(eventId);
+  }
   return result;
 }
 

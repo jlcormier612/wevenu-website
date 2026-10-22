@@ -13,6 +13,8 @@ import type {
   AddSectionResult,
   DuplicateSectionResult,
   TimelineActionResult,
+  TimelineDraftBatchInput,
+  TimelineDraftBatchResult,
   TimelineEntry,
   TimelineEntryAttachment,
   TimelineEntryInput,
@@ -112,6 +114,76 @@ export async function deleteEntry(entryId: string): Promise<TimelineActionResult
     return { ok: true } as TimelineActionResult;
   });
   return result as TimelineActionResult;
+}
+
+/**
+ * Persist a multi-row Timeline setup draft in one venue-scoped call.
+ * Deletes → updates → inserts (sequential). Not a DB transaction; on failure
+ * earlier ops may have committed — caller keeps the draft for retry.
+ * No-op when both lists are empty (no duplicate mutations).
+ */
+export async function saveEventTimelineDraft(
+  eventId: string,
+  draft: TimelineDraftBatchInput,
+): Promise<TimelineDraftBatchResult> {
+  const deleteIds = [...new Set(draft.deleteIds.filter(Boolean))];
+  const upserts = draft.upserts ?? [];
+  if (deleteIds.length === 0 && upserts.length === 0) {
+    return { ok: true, deleted: 0, updated: 0, created: 0, createdIds: [] };
+  }
+
+  for (const row of upserts) {
+    if (!row.title.trim()) {
+      return { ok: false, message: "Every timeline item needs a title.", errors: { title: "Title is required." } };
+    }
+  }
+
+  const result = await withVenue(async (supabase, venueId) => {
+    let deleted = 0;
+    let updated = 0;
+    let created = 0;
+    const createdIds: string[] = [];
+
+    for (const id of deleteIds) {
+      const outcome = await repo.deleteEntry(supabase, venueId, id);
+      if (!outcome.ok) {
+        return { ok: false, message: outcome.message } as TimelineDraftBatchResult;
+      }
+      deleted += 1;
+    }
+
+    for (const row of upserts) {
+      const input: TimelineEntryInput = {
+        title: row.title,
+        description: row.description ?? "",
+        entryTime: row.entryTime ?? "",
+        dayOffset: row.dayOffset ?? 0,
+      };
+      const existingId = row.id && !row.id.startsWith("new:") ? row.id : null;
+      if (existingId) {
+        try {
+          await repo.updateEntry(supabase, venueId, existingId, input);
+          updated += 1;
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not save this item.";
+          return { ok: false, message } as TimelineDraftBatchResult;
+        }
+      } else {
+        try {
+          const entry = await repo.insertEntry(supabase, venueId, eventId, input);
+          created += 1;
+          createdIds.push(entry.id);
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not add this item.";
+          return { ok: false, message } as TimelineDraftBatchResult;
+        }
+      }
+    }
+
+    return { ok: true, deleted, updated, created, createdIds } as TimelineDraftBatchResult;
+  });
+
+  return result as TimelineDraftBatchResult;
 }
 
 export async function shiftEntriesAfter(

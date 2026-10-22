@@ -71,6 +71,9 @@ export async function saveEventSpaceAssignmentsAction(
   const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
   const result = await replaceEventSpaceAssignments(eventId, assignments);
   if (result.ok) {
+    // Event (+ client) first — the open page needs these. Calendar is a
+    // separate surface; revalidate it too but it is not required for the
+    // schedule dialog to finish honestly.
     revalidateEvent(eventId);
     if (clientId) revalidatePath(`/clients/${clientId}`);
     revalidatePath("/calendar");

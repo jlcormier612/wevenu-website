@@ -51,8 +51,9 @@ export function EditBookingScheduleDialog({
 }: Props) {
   const router = useRouter();
   const [draft, setDraft] = React.useState<EventSpaceAssignmentInput[]>([]);
-  const [pending, startPending] = React.useTransition();
+  const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const saveInFlight = React.useRef(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -64,25 +65,33 @@ export function EditBookingScheduleDialog({
   const experience = resolveExperienceProfile(eventType);
   const uses = relevantUsesForExperience(spaces, experience);
 
-  function save() {
-    startPending(async () => {
-      setError(null);
-      const intra = intraEventSpaceOverlapError(draft);
-      if (intra) {
-        setError(intra);
-        toast.error(intra);
-        return;
-      }
+  async function save() {
+    if (saveInFlight.current || saving) return;
+    setError(null);
+    const intra = intraEventSpaceOverlapError(draft);
+    if (intra) {
+      setError(intra);
+      toast.error(intra);
+      return;
+    }
+    saveInFlight.current = true;
+    setSaving(true);
+    try {
       const result = await saveEventSpaceAssignmentsAction(eventId, draft, clientId);
       if (!result.ok) {
+        // Keep dialog + draft so the user can retry.
         setError(result.message ?? "Could not save the schedule.");
         toast.error(result.message ?? "Could not save the schedule.");
         return;
       }
+      // Honest success only after persistence; refresh does not block the spinner.
       toast.success("Schedule updated.");
       onOpenChange(false);
       router.refresh();
-    });
+    } finally {
+      saveInFlight.current = false;
+      setSaving(false);
+    }
   }
 
   return (
@@ -111,12 +120,12 @@ export function EditBookingScheduleDialog({
         ) : null}
 
         <DialogFooter className="gap-2">
-          <Button type="button" variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="ghost" disabled={saving} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" disabled={pending} onClick={save} data-testid="edit-schedule-save">
-            {pending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-            Save changes
+          <Button type="button" disabled={saving} onClick={() => void save()} data-testid="edit-schedule-save">
+            {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+            {saving ? "Saving…" : "Save changes"}
           </Button>
         </DialogFooter>
       </DialogContent>

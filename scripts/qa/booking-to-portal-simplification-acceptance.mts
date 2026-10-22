@@ -815,6 +815,10 @@ async function main() {
       const tlAddBtn = page.getByTestId("timeline-setup-add-item");
       for (let i = 0; i < 20 && !(await tlAddBtn.isEnabled()); i += 1) await page.waitForTimeout(200);
       await tlAddBtn.click();
+      // Draft workflow: Add is local until Save all changes.
+      const tlSaveAll = page.getByTestId("timeline-setup-save-all");
+      for (let i = 0; i < 20 && !(await tlSaveAll.isEnabled()); i += 1) await page.waitForTimeout(200);
+      await tlSaveAll.click();
       let tlCustom: { id: string; title: string; owner: string }[] = [];
       for (let i = 0; i < 20; i += 1) {
         await page.waitForTimeout(500);
@@ -825,8 +829,8 @@ async function main() {
           .eq("venue_id", FANCY)
           .eq("title", tlTitle)).data ?? [];
         if (tlCustom.length >= 1) break;
-        if (i === 8 && (await page.getByTestId("timeline-setup-new-title").inputValue()) === tlTitle) {
-          await tlAddBtn.click();
+        if (i === 8 && (await page.getByTestId("timeline-setup-save-all").isEnabled())) {
+          await page.getByTestId("timeline-setup-save-all").click();
         }
       }
       record(

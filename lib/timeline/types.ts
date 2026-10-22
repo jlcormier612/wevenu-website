@@ -121,6 +121,34 @@ export type TimelineEntryInput = {
   assignedToStaffId?: string | null;
 };
 
+/** Event-specific Timeline setup editor — one server round-trip for multi-row drafts. */
+export type TimelineDraftUpsert = {
+  /** Existing entry id, or omit / null for a new venue-owned row. */
+  id?: string | null;
+  title: string;
+  description: string;
+  entryTime: string;
+  dayOffset: number;
+};
+
+export type TimelineDraftBatchInput = {
+  /** Venue-owned entry ids marked for removal on this event only. */
+  deleteIds: string[];
+  /** Dirty existing rows and new rows (no id). */
+  upserts: TimelineDraftUpsert[];
+};
+
+export type TimelineDraftBatchResult =
+  | {
+      ok: true;
+      deleted: number;
+      updated: number;
+      created: number;
+      /** New rows keyed by client temp id when provided via upserts[].id starting with "new:". */
+      createdIds: string[];
+    }
+  | { ok: false; message: string; errors?: TimelineErrors };
+
 /** Upcoming / Today — computed from the event's own date + day_offset, never stored. */
 export type TimelineDueStatus = "upcoming" | "today";
 

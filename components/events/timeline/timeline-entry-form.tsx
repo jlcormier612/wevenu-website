@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { TimeAmPmInput } from "@/components/ui/time-ampm-input";
 import type { Document } from "@/lib/documents/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -148,12 +149,12 @@ export function TimelineEntryForm({
           )}
           <div className="space-y-1.5">
             <Label htmlFor="et-time" className="text-xs">Time</Label>
-            <Input
+            <TimeAmPmInput
               id="et-time"
-              type="time"
               value={entryTime}
-              onChange={(e) => setEntryTime(e.target.value)}
+              onChange={setEntryTime}
               className="w-32"
+              data-testid="timeline-entry-time"
             />
           </div>
         </div>

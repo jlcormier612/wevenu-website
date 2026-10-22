@@ -50,14 +50,20 @@ export function EventSpaceAssignmentsEditor({
 }) {
   const uses = usesProp ?? configuredUsesFromSpaces(spaces);
   const rangeEnd = eventEndDate && eventEndDate >= eventDate ? eventEndDate : eventDate;
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
 
   // Persist the date the timed inputs already show — never leave a display-only
-  // eventDate fallback that submits as null.
+  // eventDate fallback that submits as null. Depend on a stable fingerprint of
+  // scheduled dates (not the full value object) so typing times does not
+  // re-enter materialize on every keystroke.
+  const scheduledDateKey = value.map((r) => `${r.useKey}:${r.scheduledDate ?? ""}`).join("|");
   React.useEffect(() => {
     if (!withTimes) return;
     const { next, changed } = materializeMissingScheduledDates(value, eventDate);
-    if (changed) onChange(next);
-  }, [withTimes, eventDate, value, onChange]);
+    if (changed) onChangeRef.current(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fingerprint + eventDate gate re-runs
+  }, [withTimes, eventDate, scheduledDateKey]);
 
   if (uses.length === 0) {
     return (
