@@ -273,7 +273,9 @@ export function EventOrderSetupEditor({
           <SheetDescription>
             {eventName}
             {profileName ? ` · from ${profileName}` : ""}
-            . Changes apply only to this event and do not update the reusable Library package.
+            . This is the delivery list for this event — what the couple sees as read-only when you share.
+            It is not a couple pick-list; optional choice requests use Client selections when your package
+            has choice groups. Changes apply only to this event and do not update the reusable Library package.
             Sharing, finalization, and invoices stay in the Event Order workspace — not here.
           </SheetDescription>
         </SheetHeader>

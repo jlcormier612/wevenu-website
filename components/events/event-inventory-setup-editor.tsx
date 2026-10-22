@@ -13,6 +13,7 @@ import {
   replaceEventInventoryFromTemplateAction,
   updateEventInventoryItemAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -263,7 +264,9 @@ export function EventInventorySetupEditor({
           <SheetDescription>
             {eventName}
             {profileName ? ` · from ${profileName}` : ""}
-            . Changes apply only to this event and do not update the reusable Library offering.
+            . Included items are operational (what you are providing). Additional items may carry extra cost.
+            Sharing shows this list informationally in the client portal — it does not ask the couple to select
+            every item. Changes apply only to this event and do not update the reusable Library offering.
             Sharing and Event Order handoff stay in the Inventory workspace — not here.
           </SheetDescription>
         </SheetHeader>
@@ -347,20 +350,30 @@ export function EventInventorySetupEditor({
               </p>
             ) : (
               <>
-                <ul className="space-y-3">
+                <ul className="space-y-3" data-testid="inventory-setup-items">
                   {rows.map((row) => (
                     <li key={row.id} className="rounded-md border border-border p-3 space-y-2">
-                      <Input
-                        value={row.name}
-                        aria-label="Inventory item name"
-                        disabled={pending || locked}
-                        onChange={(e) => {
-                          const name = e.target.value;
-                          setRows((prev) =>
-                            prev.map((r) => (r.id === row.id ? { ...r, name, dirty: true } : r)),
-                          );
-                        }}
-                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          className="min-w-0 flex-1"
+                          value={row.name}
+                          aria-label="Inventory item name"
+                          disabled={pending || locked}
+                          onChange={(e) => {
+                            const name = e.target.value;
+                            setRows((prev) =>
+                              prev.map((r) => (r.id === row.id ? { ...r, name, dirty: true } : r)),
+                            );
+                          }}
+                        />
+                        <Badge
+                          variant={row.isIncluded ? "muted" : "accent"}
+                          className="text-[10px]"
+                          data-testid={row.isIncluded ? "inventory-setup-included" : "inventory-setup-additional"}
+                        >
+                          {row.isIncluded ? "Included" : "Additional"}
+                        </Badge>
+                      </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <label className="text-xs text-muted-foreground">
                           Qty

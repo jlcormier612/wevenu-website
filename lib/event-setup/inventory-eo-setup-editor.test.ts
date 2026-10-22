@@ -68,6 +68,13 @@ describe("Inventory setup editor seams", () => {
     assert.doesNotMatch(invEditor, /Invite client/);
   });
 
+  it("customize path labels Included vs Additional (operational vs optional cost)", () => {
+    assert.match(invEditor, /inventory-setup-included/);
+    assert.match(invEditor, /inventory-setup-additional/);
+    assert.match(invEditor, /Included items are operational/);
+    assert.match(invEditor, /does not ask the couple to select/);
+  });
+
   it("replace clears items then applies template; blocks shared/finalized and EO-pushed items", () => {
     assert.match(invService, /export async function replaceEventInventoryFromTemplate/);
     assert.match(invService, /clearEventInventoryItems/);
@@ -98,6 +105,14 @@ describe("Event Order setup editor seams", () => {
     assert.doesNotMatch(eoEditor, /shareEventOrderWithClient/);
     assert.doesNotMatch(eoEditor, /createInvoiceFromEventOrderAction/);
     assert.doesNotMatch(eoEditor, /Invite client/);
+  });
+
+  it("states delivery list vs Client selections pick-list (setup is not couple select)", () => {
+    assert.match(eoEditor, /delivery list for this event/);
+    assert.match(eoEditor, /not a couple pick-list/);
+    assert.match(eoEditor, /Client selections/);
+    assert.match(eoEditor, /Included/);
+    assert.match(eoEditor, /Additional/);
   });
 
   it("replace clears contents then copies package; blocks finalized/shared", () => {

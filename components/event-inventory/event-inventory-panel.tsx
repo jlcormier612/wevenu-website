@@ -43,7 +43,9 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
       </div>
       <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
       <span className="text-right w-24 font-medium text-foreground">
-        {item.unitPrice != null ? formatMoney(item.unitPrice) : <span className="font-normal text-muted-foreground">—</span>}
+        {item.isIncluded || item.unitPrice == null
+          ? <span className="font-normal text-muted-foreground">—</span>
+          : formatMoney(item.unitPrice)}
       </span>
       <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">
         {item.isIncluded ? "Included" : "Additional"}
@@ -247,7 +249,9 @@ export function EventInventoryPanel({
           )}
         />
         <p className="text-xs text-muted-foreground -mt-1">
-          What's actually part of this event. Additional-cost total: <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
+          What&apos;s actually part of this event. Included items are operational — Share shows them
+          informationally in the client portal (no selection request, no invoice). Additional-cost total:{" "}
+          <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

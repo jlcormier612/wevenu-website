@@ -22,6 +22,10 @@ describe("Client portal preview fidelity", () => {
     assert.match(preview, /EventOrderPortalView/);
     assert.match(eoView, /Not shared yet/);
     assert.match(eoView, /What you&apos;re receiving/);
+    assert.match(eoView, /eventOrderPortalLineMoneyLabel/);
+    assert.match(eoView, /eventOrderPortalAdditionalReferenceTotal/);
+    assert.match(eoView, /Additional total \(for reference\)/);
+    assert.doesNotMatch(eoView, /Delivery subtotal \(for reference\)/);
   });
 
   it("Inventory portal section and preview share InventoryPortalView", () => {

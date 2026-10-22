@@ -3,6 +3,10 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  eventOrderPortalAdditionalReferenceTotal,
+  eventOrderPortalLineMoneyLabel,
+} from "@/lib/client-portal/event-order-portal-display";
 
 export type PortalEventOrderLineView = {
   id: string;
@@ -27,11 +31,6 @@ export type PortalEventOrderViewModel = {
 
 function formatMoney(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-}
-
-function formatOptionalMoney(n: number | null): string {
-  if (n == null) return "—";
-  return formatMoney(n);
 }
 
 /**
@@ -60,7 +59,7 @@ export function EventOrderPortalView({
     );
   }
 
-  const pricedTotal = data.lines.reduce((sum, l) => sum + (l.amount ?? 0), 0);
+  const additionalReferenceTotal = eventOrderPortalAdditionalReferenceTotal(data.lines);
   const sectionKeys = [...new Set(data.lines.map((l) => l.sectionId))];
 
   return (
@@ -106,7 +105,7 @@ export function EventOrderPortalView({
                       {l.notes && <p className="mt-1 text-xs text-muted-foreground">{l.notes}</p>}
                     </div>
                     <p className="shrink-0 text-sm font-medium text-foreground">
-                      {formatOptionalMoney(l.unitPrice == null ? null : l.amount)}
+                      {eventOrderPortalLineMoneyLabel(l, formatMoney)}
                     </p>
                   </div>
                 ))}
@@ -116,14 +115,14 @@ export function EventOrderPortalView({
         })
       )}
 
-      {pricedTotal > 0 && (
+      {additionalReferenceTotal > 0 && (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-1">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Delivery subtotal (for reference)</span>
-            <span className="font-medium">{formatMoney(pricedTotal)}</span>
+            <span className="text-muted-foreground">Additional total (for reference)</span>
+            <span className="font-medium">{formatMoney(additionalReferenceTotal)}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Prices shown for your reference. Amount due is on Payments.
+            Included items are part of your arrangement, not extra charges. Amount due is on Payments.
           </p>
           {paymentsHref ? (
             <Link href={paymentsHref} className="inline-block text-sm font-medium text-primary hover:underline">
