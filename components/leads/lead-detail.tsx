@@ -219,8 +219,15 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
   React.useEffect(() => {
     const syncFromHash = () => {
+      const params = new URLSearchParams(window.location.search);
       const hash = window.location.hash.replace("#", "");
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      // Contract "Set up payments" lands on Lead Overview + #booking-journey-payments.
+      // That hash is a scroll target inside Overview — not a tab id.
+      if (params.get("setupPayments") === "1" || hash === "booking-journey-payments") {
+        setActiveTab("overview");
+        return;
+      }
+      const tabParam = params.get("tab");
       const tab = hash || (tabParam === "conversation" ? "messages" : tabParam) || "";
       if (tab) setActiveTab(tab);
     };
@@ -228,6 +235,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
   }, []);
+
+  // Soft-nav / searchParam arrival with ?setupPayments=1 must keep Overview
+  // (Booking Journey owns payment setup) even if EventDetail-style hash sync raced.
+  React.useEffect(() => {
+    if (openSetupPayments) setActiveTab("overview");
+  }, [openSetupPayments]);
 
   // Soft-nav or prop arrival with ?luv= must land on the Luv drafting tab.
   React.useEffect(() => {

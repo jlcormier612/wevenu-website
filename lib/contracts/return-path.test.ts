@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import { greetingFirstName } from "@shared/relationships/normalize";
 import {
   BOOKING_JOURNEY_PAYMENTS_HASH,
+  CLIENT_PAYMENTS_HASH,
   resolveContractBackNavigation,
   resolveContractSetupPaymentsHref,
   safeContractReturnPath,
@@ -97,7 +98,7 @@ describe("resolveContractSetupPaymentsHref — Fully Executed ≠ Booked", () =>
     assert.doesNotMatch(href!, /\/clients\//);
   });
 
-  it("booked relationship → client workspace setupPayments", () => {
+  it("booked relationship → client Payments tab + setupPayments", () => {
     assert.equal(
       resolveContractSetupPaymentsHref({
         returnTo: `/leads/${leadId}`,
@@ -105,7 +106,7 @@ describe("resolveContractSetupPaymentsHref — Fully Executed ≠ Booked", () =>
         clientId,
         relationshipBooked: true,
       }),
-      `/clients/${clientId}?setupPayments=1`,
+      `/clients/${clientId}?setupPayments=1#invoice`,
     );
   });
 
@@ -113,6 +114,18 @@ describe("resolveContractSetupPaymentsHref — Fully Executed ≠ Booked", () =>
     const detail = readFileSync(resolve("components/contracts/contract-detail.tsx"), "utf8");
     assert.match(detail, /resolveContractSetupPaymentsHref/);
     assert.doesNotMatch(detail, /\/clients\/\$\{contract\.clientId\}\?setupPayments=1/);
+  });
+
+  it("booked href uses CLIENT_PAYMENTS_HASH and EventDetail prioritizes setupPayments", () => {
+    assert.equal(CLIENT_PAYMENTS_HASH, "invoice");
+    const eventDetail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
+    assert.match(eventDetail, /params\.get\("setupPayments"\) === "1"/);
+    assert.match(eventDetail, /if \(!openSetupPayments\) return/);
+    assert.match(eventDetail, /setActiveTab\("invoice"\)/);
+    assert.match(eventDetail, /setSetupPaymentsOpen\(true\)/);
+    const leadDetail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
+    assert.match(leadDetail, /hash === "booking-journey-payments"/);
+    assert.match(leadDetail, /setActiveTab\("overview"\)/);
   });
 });
 

@@ -12,6 +12,9 @@ const UUID_RE =
 /** Anchor on Lead Overview for the Booking Journey payment setup section. */
 export const BOOKING_JOURNEY_PAYMENTS_HASH = "booking-journey-payments";
 
+/** Client workspace Payments tab hash (EventDetail `invoice` tab). */
+export const CLIENT_PAYMENTS_HASH = "invoice";
+
 function isRecordPath(prefix: "/leads/" | "/clients/", pathNoQuery: string): boolean {
   if (!pathNoQuery.startsWith(prefix)) return false;
   const id = pathNoQuery.slice(prefix.length);
@@ -91,7 +94,7 @@ export function resolveContractSetupPaymentsHref(input: {
   }
 
   if (input.clientId?.trim()) {
-    return `/clients/${input.clientId.trim()}?setupPayments=1`;
+    return `/clients/${input.clientId.trim()}?setupPayments=1#${CLIENT_PAYMENTS_HASH}`;
   }
   return null;
 }

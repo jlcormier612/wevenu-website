@@ -532,12 +532,43 @@ export function EventDetail({
   const [returnDraftError, setReturnDraftError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState(openSetupPayments ? "invoice" : "overview");
   const [setupPaymentsOpen, setSetupPaymentsOpen] = React.useState(openSetupPayments);
+  // Soft-nav / searchParam arrival: openSetupPayments is a prop, not only mount state.
+  // Contract "Set up payments" and ?setupPayments=1 must open Payments even when
+  // EventDetail was already mounted on another tab (e.g. Documents → contract → back).
+  React.useEffect(() => {
+    if (!openSetupPayments) return;
+    setActiveTab("invoice");
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace("#", "");
+      if (hash !== "invoice") {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#invoice`);
+      }
+    }
+    // Sheet only applies when there is no invoice yet; otherwise Payments tab is enough.
+    if (invoices.length > 0) {
+      setSetupPaymentsOpen(false);
+      return;
+    }
+    if (selectedPackage) {
+      setSetupPaymentsOpen(true);
+    } else {
+      setSetupPaymentsOpen(false);
+      toast.error("Select a package under Commercial before setting up payments.");
+    }
+  }, [openSetupPayments, selectedPackage, invoices.length]);
+
   // useLayoutEffect so /clients/{id}#documents selects Documents before paint
   // (avoids Overview flash after /events/{id}#documents → booking replace).
   React.useLayoutEffect(() => {
     const syncFromHash = () => {
+      const params = new URLSearchParams(window.location.search);
+      // Contract / deep-link payment setup wins over stale tab hashes.
+      if (params.get("setupPayments") === "1") {
+        setActiveTab("invoice");
+        return;
+      }
       const hash = window.location.hash.replace("#", "");
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      const tabParam = params.get("tab");
       const raw = hash || (tabParam ? (tabParam === "final-details" ? "documents" : tabParam === "conversation" ? "messages" : tabParam) : "");
       // Planning Overview deep links land on the Planning workspace + scroll target.
       if (raw === "planning-task-list" || raw === "planning-edit") {
@@ -553,7 +584,7 @@ export function EventDetail({
       if (tab) setActiveTab(tab);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
       // Open Vendors when a thread id is present and no Conversation/hash was supplied.
-      else if (new URLSearchParams(window.location.search).get("conversation")) {
+      else if (params.get("conversation")) {
         setActiveTab("vendors");
       }
     };
