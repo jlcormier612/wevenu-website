@@ -633,22 +633,33 @@ async function main() {
       "template + customize; no waive/request",
     );
 
-    // Customize: add a task, save, reopen
+    // Customize: add a task, save, reopen (poll DB — fixed 2s wait was flaky)
     await page.getByTestId("planning-setup-mode-customize").click();
-    await page.getByTestId("planning-setup-new-title").fill("QA event-only planning task");
-    await page.getByTestId("planning-setup-add-task").click();
-    await page.waitForTimeout(2000);
-    const { data: customTasks } = await admin
-      .from("event_tasks")
-      .select("id,title,template_task_id,owner_type")
-      .eq("event_id", eventId!)
-      .eq("venue_id", FANCY)
-      .eq("title", "QA event-only planning task");
+    await page.waitForSelector('[data-testid="planning-setup-new-title"]', { timeout: 10_000 });
+    const clientTaskTitle = "QA event-only planning task";
+    await page.getByTestId("planning-setup-new-title").fill(clientTaskTitle);
+    const clientAddBtn = page.getByTestId("planning-setup-add-task");
+    for (let i = 0; i < 20 && !(await clientAddBtn.isEnabled()); i += 1) await page.waitForTimeout(200);
+    await clientAddBtn.click();
+    let customTasks: { id: string; title: string; template_task_id: string | null; owner_type: string }[] = [];
+    for (let i = 0; i < 20; i += 1) {
+      await page.waitForTimeout(500);
+      customTasks = (await admin
+        .from("event_tasks")
+        .select("id,title,template_task_id,owner_type")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)
+        .eq("title", clientTaskTitle)).data ?? [];
+      if (customTasks.length >= 1) break;
+      if (i === 8 && (await page.getByTestId("planning-setup-new-title").inputValue()) === clientTaskTitle) {
+        await clientAddBtn.click();
+      }
+    }
     record(
       "setup_editor_add_task_persists",
-      (customTasks ?? []).length === 1
-        && customTasks![0]!.template_task_id == null
-        && customTasks![0]!.owner_type === "couple",
+      customTasks.length === 1
+        && customTasks[0]!.template_task_id == null
+        && customTasks[0]!.owner_type === "couple",
       JSON.stringify(customTasks),
     );
     await page.screenshot({ path: `${OUT}/03c-planning-setup-editor-1280.png`, fullPage: true });
@@ -676,20 +687,31 @@ async function main() {
       "venue audience + two paths",
     );
     await page.getByTestId("venue-planning-setup-mode-customize").click();
-    await page.getByTestId("venue-planning-setup-new-title").fill("QA venue-only planning task");
-    await page.getByTestId("venue-planning-setup-add-task").click();
-    await page.waitForTimeout(2000);
-    const { data: venueCustomTasks } = await admin
-      .from("event_tasks")
-      .select("id,title,template_task_id,owner_type")
-      .eq("event_id", eventId!)
-      .eq("venue_id", FANCY)
-      .eq("title", "QA venue-only planning task");
+    await page.waitForSelector('[data-testid="venue-planning-setup-new-title"]', { timeout: 10_000 });
+    const venueTaskTitle = "QA venue-only planning task";
+    await page.getByTestId("venue-planning-setup-new-title").fill(venueTaskTitle);
+    const venueAddBtn = page.getByTestId("venue-planning-setup-add-task");
+    for (let i = 0; i < 20 && !(await venueAddBtn.isEnabled()); i += 1) await page.waitForTimeout(200);
+    await venueAddBtn.click();
+    let venueCustomTasks: { id: string; title: string; template_task_id: string | null; owner_type: string }[] = [];
+    for (let i = 0; i < 20; i += 1) {
+      await page.waitForTimeout(500);
+      venueCustomTasks = (await admin
+        .from("event_tasks")
+        .select("id,title,template_task_id,owner_type")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)
+        .eq("title", venueTaskTitle)).data ?? [];
+      if (venueCustomTasks.length >= 1) break;
+      if (i === 8 && (await page.getByTestId("venue-planning-setup-new-title").inputValue()) === venueTaskTitle) {
+        await venueAddBtn.click();
+      }
+    }
     record(
       "setup_editor_venue_add_task_persists",
-      (venueCustomTasks ?? []).length === 1
-        && venueCustomTasks![0]!.template_task_id == null
-        && venueCustomTasks![0]!.owner_type !== "couple",
+      venueCustomTasks.length === 1
+        && venueCustomTasks[0]!.template_task_id == null
+        && venueCustomTasks[0]!.owner_type !== "couple",
       JSON.stringify(venueCustomTasks),
     );
     const { count: venueLibraryHits } = await admin
@@ -723,18 +745,29 @@ async function main() {
         "timeline editor + two paths",
       );
       await page.getByTestId("timeline-setup-mode-customize").click();
-      await page.getByTestId("timeline-setup-new-title").fill("QA event-only timeline item");
-      await page.getByTestId("timeline-setup-add-item").click();
-      await page.waitForTimeout(2000);
-      const { data: tlCustom } = await admin
-        .from("timeline_entries")
-        .select("id,title,owner")
-        .eq("event_id", eventId!)
-        .eq("venue_id", FANCY)
-        .eq("title", "QA event-only timeline item");
+      await page.waitForSelector('[data-testid="timeline-setup-new-title"]', { timeout: 10_000 });
+      const tlTitle = "QA event-only timeline item";
+      await page.getByTestId("timeline-setup-new-title").fill(tlTitle);
+      const tlAddBtn = page.getByTestId("timeline-setup-add-item");
+      for (let i = 0; i < 20 && !(await tlAddBtn.isEnabled()); i += 1) await page.waitForTimeout(200);
+      await tlAddBtn.click();
+      let tlCustom: { id: string; title: string; owner: string }[] = [];
+      for (let i = 0; i < 20; i += 1) {
+        await page.waitForTimeout(500);
+        tlCustom = (await admin
+          .from("timeline_entries")
+          .select("id,title,owner")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .eq("title", tlTitle)).data ?? [];
+        if (tlCustom.length >= 1) break;
+        if (i === 8 && (await page.getByTestId("timeline-setup-new-title").inputValue()) === tlTitle) {
+          await tlAddBtn.click();
+        }
+      }
       record(
         "timeline_setup_add_item_persists",
-        (tlCustom ?? []).length === 1 && tlCustom![0]!.owner === "venue",
+        tlCustom.length === 1 && tlCustom[0]!.owner === "venue",
         JSON.stringify(tlCustom),
       );
       const { count: tlAfter } = await admin
@@ -1564,21 +1597,32 @@ async function main() {
       await confirm.waitFor({ state: "visible", timeout: 20_000 }).catch(() => undefined);
       if (await confirm.count()) {
         await confirm.click();
-        await page.waitForTimeout(3000);
+      }
+      // Poll — invite send can exceed a fixed 3s wait (screenshot previously caught "Sending…")
+      let invitations: { id: string; status: string; email: string }[] = [];
+      for (let i = 0; i < 40; i += 1) {
+        await page.waitForTimeout(500);
+        invitations = (await admin
+          .from("client_invitations")
+          .select("id,status,email")
+          .eq("client_id", clientId)).data ?? [];
+        if (invitations.length >= 1) break;
+        const stillSending = await page.getByRole("button", { name: /Sending/i }).count();
+        if (stillSending === 0 && i > 10 && invitations.length === 0) {
+          // Retry confirm once if dialog still open
+          if (await confirm.count()) await confirm.click();
+        }
       }
       await page.screenshot({ path: `${OUT}/05-after-invite-1280.png`, fullPage: true });
+      record(
+        "invite_created_separately",
+        invitations.length >= 1,
+        JSON.stringify(invitations),
+      );
     } else {
       await page.screenshot({ path: `${OUT}/05-invite-missing-1280.png`, fullPage: true });
+      record("invite_created_separately", false, "invite button missing");
     }
-    const { data: invitations } = await admin
-      .from("client_invitations")
-      .select("id,status,email")
-      .eq("client_id", clientId);
-    record(
-      "invite_created_separately",
-      (invitations?.length ?? 0) >= 1,
-      JSON.stringify(invitations),
-    );
     const { count: qSentAfterInvite } = await admin
       .from("event_questionnaires")
       .select("id", { count: "exact", head: true })
