@@ -152,8 +152,23 @@ function KindPanel({
 }) {
   const master = getQuestionnaireMasterByKind(kind);
   const kindTemplates = templates.filter((t) => t.kind === kind && !t.isArchived);
-  const [selectedTemplateId, setSelectedTemplateId] = React.useState("");
+
+  function initialTemplateSelection(): string {
+    if (initial?.templateId && kindTemplates.some((t) => t.id === initial.templateId)) {
+      return initial.templateId;
+    }
+    if (kindTemplates.length === 1) return kindTemplates[0].id;
+    return "";
+  }
+
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState(() => initialTemplateSelection());
   const [applying, startApply] = React.useTransition();
+
+  React.useEffect(() => {
+    setSelectedTemplateId(initialTemplateSelection());
+    // Reset only when kind/templates/draft template change — KindPanel is keyed by kind.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, initial?.templateId, kindTemplates.map((t) => t.id).join(",")]);
   const [reopening, startReopen] = React.useTransition();
   const [withdrawing, startWithdraw] = React.useTransition();
   const [saving, startSave] = React.useTransition();
@@ -405,7 +420,7 @@ function KindPanel({
                   ? `Sent ${sentLabel ?? ""} — opened, awaiting submission.`
                   : `Sent ${sentLabel ?? ""} — waiting for the client to open it.`}
           </p>
-          <a href={`/events/${eventId}/questionnaire-preview?kind=${kind}`} target="_blank" rel="noopener noreferrer">
+          <a href={`/events/${eventId}/questionnaire-preview?kind=${encodeURIComponent(kind)}&from=event`}>
             <Button type="button" variant="ghost" size="sm">Preview as client</Button>
           </a>
         </div>
@@ -438,10 +453,14 @@ function KindPanel({
               items={kindTemplates.map((t) => ({ value: t.id, label: t.name }))}
             >
               <SelectTrigger className="w-64" data-testid={`questionnaire-template-select-${kind}`}>
-                <SelectValue placeholder="Choose…">
+                <SelectValue placeholder={kindTemplates.length === 0 ? "No templates for this type" : "Select a template…"}>
                   {(value: string | null) => {
                     if (!value) return null;
-                    return kindTemplates.find((t) => t.id === value)?.name ?? "Template unavailable";
+                    const match = kindTemplates.find((t) => t.id === value);
+                    if (match) return match.name;
+                    // Wrong kind / stale value — never imply the Library template is missing.
+                    if (kindTemplates.length === 0) return "Loading templates…";
+                    return "Select a template…";
                   }}
                 </SelectValue>
               </SelectTrigger>
@@ -592,6 +611,7 @@ export function QuestionnaireFamilyPanel({
         })}
       </div>
       <KindPanel
+        key={active}
         kind={active}
         eventId={eventId}
         initial={byKind[active] ?? null}

@@ -41,11 +41,14 @@ describe("directory versus assignment", () => {
     assert.match(tab, /EventVendorsSection/);
     assert.ok(tab.indexOf("VenueVendorDirectorySummary") < tab.indexOf("EventVendorRecommendationsSection"));
     assert.ok(tab.indexOf("EventVendorRecommendationsSection") < tab.indexOf("EventVendorsSection"));
-    // Change editor manages booking assignments; highlights live on the Vendors tab.
+    // Change editor manages booking assignments + client-facing recommendations.
+    // Full Network / operational workspace remains on the Vendors tab.
     const setupEditor = readFileSync(resolve(root, "components/events/event-vendors-setup-editor.tsx"), "utf8");
     assert.match(setupEditor, /assignVendorAction/);
     assert.match(setupEditor, /vendors-setup-assignments-path/);
-    assert.doesNotMatch(setupEditor, /recommendVendorAction/);
+    assert.match(setupEditor, /recommendVendorAction/);
+    assert.match(setupEditor, /vendors-setup-recommendations-path/);
+    assert.doesNotMatch(setupEditor, /Open Vendors/);
   });
 
   it("pre-booking assign does not notify; booked assign and couple submit still do", () => {

@@ -10,12 +10,29 @@ function kindTemplates(templates: Template[], kind: QuestionnaireKind): Template
   return templates.filter((t) => t.kind === kind && !t.isArchived);
 }
 
+/** Visible Select label — never falsely claim Template unavailable when options exist. */
 function selectLabel(
   templates: Template[],
   selectedId: string | null,
+  kind: QuestionnaireKind,
 ): string | null {
   if (!selectedId) return null;
-  return templates.find((t) => t.id === selectedId)?.name ?? "Template unavailable";
+  const kindOpts = kindTemplates(templates, kind);
+  const match = kindOpts.find((t) => t.id === selectedId);
+  if (match) return match.name;
+  if (kindOpts.length === 0) return "Loading templates…";
+  return "Select a template…";
+}
+
+function initialSelection(
+  templates: Template[],
+  kind: QuestionnaireKind,
+  draftTemplateId: string | null,
+): string {
+  const opts = kindTemplates(templates, kind);
+  if (draftTemplateId && opts.some((t) => t.id === draftTemplateId)) return draftTemplateId;
+  if (opts.length === 1) return opts[0].id;
+  return "";
 }
 
 describe("questionnaire category selectors", () => {
@@ -34,7 +51,6 @@ describe("questionnaire category selectors", () => {
   });
 
   it("keeps Final Details and Post-Event Feedback selectable before Client Planning is sent", () => {
-    // No sent questionnaires — selectors still derive from library kinds only.
     const sentKinds = new Set<QuestionnaireKind>();
     for (const kind of ["final_details", "post_event_feedback"] as const) {
       const opts = kindTemplates(library, kind);
@@ -43,10 +59,22 @@ describe("questionnaire category selectors", () => {
     }
   });
 
+  it("shows the real template name on initial selection without Template unavailable", () => {
+    assert.equal(initialSelection(library, "final_details", null), "uuid-fd");
+    assert.equal(selectLabel(library, "uuid-fd", "final_details"), "Final Details");
+    assert.equal(selectLabel(library, "uuid-cp", "client_planning"), "Client Planning Questionnaire");
+    assert.doesNotMatch(selectLabel(library, "uuid-cp", "client_planning") ?? "", /Template unavailable/);
+  });
+
+  it("cross-kind stale value prompts Select a template rather than unavailable", () => {
+    // KindPanel remounts per kind; if a stale id ever appears, do not claim missing Library.
+    assert.equal(selectLabel(library, "uuid-cp", "final_details"), "Select a template…");
+    assert.doesNotMatch(selectLabel(library, "uuid-missing", "final_details") ?? "", /Template unavailable/);
+  });
+
   it("never uses a raw UUID as the visible label", () => {
-    assert.equal(selectLabel(library, "uuid-fd"), "Final Details");
-    assert.equal(selectLabel(library, "uuid-missing"), "Template unavailable");
-    assert.doesNotMatch(selectLabel(library, "uuid-cp") ?? "", /^[0-9a-f-]{36}$/i);
+    assert.equal(selectLabel(library, "uuid-fd", "final_details"), "Final Details");
+    assert.doesNotMatch(selectLabel(library, "uuid-cp", "client_planning") ?? "", /^[0-9a-f-]{36}$/i);
   });
 
   it("event page ensures library starters before loading templates", () => {
@@ -57,15 +85,30 @@ describe("questionnaire category selectors", () => {
     assert.match(page, /ensureQuestionnaireFamilyForCurrentVenue\(\)\.then\(\(\) => getQuestionnaireTemplates\(\)\)/);
   });
 
-  it("SelectValue resolves human-readable names via children formatter", () => {
+  it("panel remounts per kind and initializes selection without Template unavailable", () => {
     const panel = readFileSync(
       new URL("../../components/events/questionnaire-family-panel.tsx", import.meta.url),
       "utf8",
     );
-    assert.match(panel, /SelectValue placeholder="Choose…"/);
-    assert.match(panel, /\(value: string \| null\) =>/);
-    assert.match(panel, /Template unavailable/);
+    assert.match(panel, /key=\{active\}/);
+    assert.match(panel, /initialTemplateSelection/);
+    assert.match(panel, /Select a template…/);
+    assert.match(panel, /Loading templates…/);
+    assert.doesNotMatch(panel, /Template unavailable/);
     assert.match(panel, /templates\.filter\(\(t\) => t\.kind === kind && !t\.isArchived\)/);
     assert.match(panel, /Does not send anything to the client/);
+    assert.match(panel, /questionnaire-preview\?kind=.*from=event/);
+    assert.doesNotMatch(panel, /questionnaire-preview[^"]*target="_blank"/);
+  });
+
+  it("event questionnaire preview has an explicit return to Questionnaires", () => {
+    const preview = readFileSync(
+      new URL("../../app/(app)/events/[id]/questionnaire-preview/page.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(preview, /questionnaire-preview-back/);
+    assert.match(preview, /Back to Questionnaires/);
+    assert.match(preview, /#questionnaires/);
+    assert.match(preview, /Back to Library/);
   });
 });

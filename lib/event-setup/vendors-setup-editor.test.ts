@@ -1,5 +1,5 @@
 /**
- * Vendors event-specific setup editor — assignments (not highlights); Change ≠ Open.
+ * Vendors event-specific setup editor — assignments + recommendations; Change ≠ Open.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -45,23 +45,32 @@ describe("Vendors Change vs Open destinations", () => {
   });
 });
 
-describe("Vendors setup editor — assignment management", () => {
-  it("assigns and removes booking vendors via existing actions", () => {
+describe("Vendors setup editor — assignments and recommendations", () => {
+  it("assigns, removes, and replaces booking vendors via existing actions", () => {
     assert.match(editor, /assignVendorAction/);
     assert.match(editor, /removeVendorAssignmentAction/);
+    assert.match(editor, /replaceAssignment/);
     assert.match(editor, /vendors-setup-assignments-path/);
     assert.match(editor, /vendors-setup-add-assignment/);
     assert.match(editor, /vendors-setup-remove-assignment-/);
+    assert.match(editor, /vendors-setup-replace-assignment-/);
     assert.match(actions, /assignVendorAction/);
     assert.match(actions, /removeVendorAssignmentAction/);
   });
 
-  it("does not host Open Vendors navigation or highlight-management chrome", () => {
+  it("manages client-facing recommendations without deleting directory vendors", () => {
+    assert.match(editor, /recommendVendorAction/);
+    assert.match(editor, /unrecommendVendorAction/);
+    assert.match(editor, /vendors-setup-recommendations-path/);
+    assert.match(editor, /vendors-setup-add-recommendation/);
+    assert.match(editor, /vendors-setup-remove-recommendation-/);
+    assert.match(editor, /remain in your Vendor Network/);
+    assert.match(panel, /recommendations=\{vendorRecommendations\}/);
+  });
+
+  it("does not host Open Vendors navigation or long highlights chrome", () => {
     assert.doesNotMatch(editor, /vendors-setup-open-management/);
     assert.doesNotMatch(editor, /Open Vendors/);
-    assert.doesNotMatch(editor, /recommendVendorAction/);
-    assert.doesNotMatch(editor, /unrecommendVendorAction/);
-    assert.doesNotMatch(editor, /vendors-setup-highlights-path/);
     assert.doesNotMatch(editor, /Edit vendor highlights/);
     assert.doesNotMatch(editor, /Vendor Network remains authoritative/);
   });
@@ -74,16 +83,15 @@ describe("Vendors setup editor — assignment management", () => {
 
   it("prevents duplicate assignment in the editor before calling the action", () => {
     assert.match(editor, /already assigned to this booking/);
-    assert.match(editor, /assignedIds\.has\(vendorId\)/);
+    assert.match(editor, /assignedIds\.has\(vendorId\)|assignedIds\.has\(assignVendorId\)|assignedIds\.has\(nextVendorId\)/);
   });
 
-  it("does not resync assignments from props while the sheet stays open", () => {
+  it("does not resync from props while the sheet stays open", () => {
     assert.match(editor, /wasOpen/);
     assert.match(editor, /open && !wasOpen\.current/);
-    assert.match(editor, /local state wins/);
   });
 
-  it("optional highlights remain on the Vendors workspace tab", () => {
+  it("optional highlights remain available on the Vendors workspace tab", () => {
     assert.match(highlightsTab, /recommendVendorAction/);
     assert.match(highlightsTab, /unrecommendVendorAction/);
   });

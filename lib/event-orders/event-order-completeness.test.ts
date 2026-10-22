@@ -102,8 +102,9 @@ describe("Event Order completeness seams", () => {
     assert.match(service, /lineDedupeKey/);
   });
 
-  it("setup editor heals empty shells and groups lines by section", () => {
-    assert.match(editor, /eventOrder\.lines\.length > 0/);
+  it("setup editor heals incomplete shells and groups lines by section", () => {
+    assert.match(editor, /heal incomplete shells|Create missing drafts and heal/);
+    assert.match(editor, /ensureEventOrderAction/);
     assert.match(editor, /groupDraftRowsBySection/);
     assert.match(editor, /event-order-setup-lines/);
     assert.match(editor, /Included/);

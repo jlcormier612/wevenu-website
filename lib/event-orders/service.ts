@@ -161,18 +161,23 @@ export async function ensureEventOrder(
   const result = await withVenue(async (supabase, venueId) => {
     const existing = await repo.getEventOrderByEvent(supabase, venueId, eventId);
     if (existing) {
-      // Heal empty shells created before delivery-starter offering repair.
+      // Heal empty or incomplete shells (e.g. only includedByDefault lines after
+      // delivery-starter repair). Dedupe keeps custom event lines intact.
       const healTemplateId = templateId ?? existing.templateId;
       if (
-        existing.lines.length === 0
-        && healTemplateId
+        healTemplateId
         && existing.status === "open"
         && !existing.sharedAt
       ) {
         const template = await loadTemplateReadyForApply(supabase, venueId, healTemplateId);
-        if (template && template.lines.length > 0) {
+        if (template && template.lines.length > existing.lines.length) {
           const copied = await copyTemplateSnapshotsIntoOrder(
-            supabase, venueId, existing.id, template, selections, existing,
+            supabase,
+            venueId,
+            existing.id,
+            template,
+            selections ?? packageStartingSelections(template.lines),
+            existing,
           );
           if (copied > 0) {
             await repo.insertActivity(

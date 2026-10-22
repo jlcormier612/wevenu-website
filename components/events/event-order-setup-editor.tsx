@@ -123,8 +123,7 @@ export function EventOrderSetupEditor({
   React.useEffect(() => {
     if (!open || !preferredTemplateId) return;
     if (!activeTemplates.some((t) => t.id === preferredTemplateId)) return;
-    // Create missing drafts, or heal empty shells after delivery-starter repair.
-    if (eventOrder && eventOrder.lines.length > 0) return;
+    // Create missing drafts and heal incomplete shells (service dedupes).
     let cancelled = false;
     setEnsuring(true);
     void (async () => {
@@ -135,7 +134,7 @@ export function EventOrderSetupEditor({
       else router.refresh();
     })();
     return () => { cancelled = true; };
-  }, [open, eventOrder, preferredTemplateId, eventId, router]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, preferredTemplateId, eventId, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dirtyCustomize = rows.some((r) => r.dirty) || Boolean(newDescription.trim());
   const currentTemplateName =
