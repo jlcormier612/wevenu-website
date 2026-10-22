@@ -1,6 +1,6 @@
 # Floor Plan & Seating Functionality Gap Closure
 
-**Verdict: IN PROGRESS** — product + migration implemented; awaiting Sandbox migrate/deploy/browser A–F.
+**Verdict: IN PROGRESS** — product committed; Sandbox migrate/deploy dispatched; browser A–F pending serving SHA.
 
 Production untouched. Unrelated dirty tree preserved.
 
@@ -26,10 +26,10 @@ Canvas units = **inches**. When `room_width_ft` / `room_depth_ft` are set, room 
 | Item | Value |
 | --- | --- |
 | Migration | `20261422300000_floor_plan_portal_furniture_catalog_limits.sql` |
-| Product commit | _(fill after commit)_ |
-| Migration run | _(fill)_ |
-| Deploy run | _(fill)_ |
-| Serving `dpl=` | _(fill)_ |
+| Product commit | `7904ae019370c207ace8bf6706501ab273b6a7a1` |
+| Migration run | [39858646496](https://github.com/jlcormier612/wevenu-website/actions/runs/39858646496) |
+| Deploy run | [39858649627](https://github.com/jlcormier612/wevenu-website/actions/runs/39858649627) |
+| Serving `dpl=` | pending (baseline was `3dbc2a45…`) |
 
 ## Verification
 

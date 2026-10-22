@@ -69,53 +69,57 @@ async function cleanup(email?: string) {
 }
 
 async function createFixture(email: string, eventDate: string, tag: string) {
-  const { data: rel } = await admin.from("relationships").insert({
-    venue_id: FANCY, kind: "couple", display_name: `${FIXTURE} ${tag}`,
-  }).select("id").single();
-  const relId = rel!.id;
+  const { data: relId, error: relErr } = await admin.rpc("find_or_create_relationship", {
+    p_venue_id: FANCY, p_email: email, p_first_name: FIXTURE, p_last_name: "Gap",
+  });
+  if (relErr || !relId) throw relErr ?? new Error("rel");
 
-  const { data: lead } = await admin.from("leads").insert({
+  const { data: lead, error: leadErr } = await admin.from("leads").insert({
     venue_id: FANCY, relationship_id: relId, first_name: FIXTURE, last_name: "Gap",
     email, event_type: "wedding", event_date: eventDate, guest_count: 80,
     status: "active", sales_stage: "proposal_sent", assigned_staff_id: JEN,
     planned_event_space_id: SPACE,
   }).select("id").single();
+  if (leadErr || !lead) throw leadErr ?? new Error("lead");
 
-  const { data: client } = await admin.from("clients").insert({
-    venue_id: FANCY, lead_id: lead!.id, first_name: FIXTURE, last_name: "Gap",
+  const { data: client, error: clientErr } = await admin.from("clients").insert({
+    venue_id: FANCY, lead_id: lead.id, first_name: FIXTURE, last_name: "Gap",
     email, status: "booking", event_type: "wedding", event_date: eventDate,
     relationship_id: relId, lifecycle_booked_at: new Date().toISOString(),
   }).select("id").single();
+  if (clientErr || !client) throw clientErr ?? new Error("client");
 
-  const { data: event } = await admin.from("events").insert({
-    venue_id: FANCY, client_id: client!.id, name: `${tag} Gap Wedding`,
+  const { data: event, error: eventErr } = await admin.from("events").insert({
+    venue_id: FANCY, client_id: client.id, name: `${tag} Gap Wedding`,
     event_type: "wedding", event_date: eventDate, start_time: "16:00", end_time: "22:00",
     guest_count: 80, status: "confirmed", space_id: SPACE, assigned_staff_id: JEN,
     booked_at: new Date().toISOString(),
   }).select("id").single();
+  if (eventErr || !event) throw eventErr ?? new Error("event");
 
-  const guests = [];
+  const guests: string[] = [];
   for (let i = 1; i <= 4; i++) {
     const { data: g } = await admin.from("couple_guests").insert({
-      venue_id: FANCY, client_id: client!.id, first_name: `Guest${i}`, last_name: "Gap",
+      venue_id: FANCY, client_id: client.id, first_name: `Guest${i}`, last_name: "Gap",
       rsvp_status: "attending", sort_order: i,
     }).select("id").single();
     if (g) guests.push(g.id);
   }
 
   const token = `fpgc_${tag}_${randomBytes(3).toString("hex")}`;
-  await admin.from("client_portal_sessions").insert({
-    venue_id: FANCY, client_id: client!.id, access_token: token,
+  const { error: sessErr } = await admin.from("client_portal_sessions").insert({
+    venue_id: FANCY, client_id: client.id, access_token: token,
     access_level: "couple", label: "Floor gap closure",
     expires_at: new Date(Date.now() + 7 * 864e5).toISOString(),
   });
+  if (sessErr) throw sessErr;
 
   const { error: createErr } = await admin.auth.admin.createUser({
     email, password: PASSWORD, email_confirm: true,
   });
   if (createErr && !/already/i.test(createErr.message)) throw createErr;
 
-  return { clientId: client!.id, eventId: event!.id, guestIds: guests, token };
+  return { clientId: client.id, eventId: event.id, guestIds: guests, token };
 }
 
 async function main() {
