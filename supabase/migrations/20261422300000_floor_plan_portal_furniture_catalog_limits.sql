@@ -22,7 +22,7 @@ returns table (
 language sql
 immutable
 as $$
-  select *
+  select v.object_type, v.display_shape, v.default_width, v.default_height, v.default_capacity
   from (values
     ('round',       'table_round', 'round',       72::numeric, 72::numeric, 8),
     ('cocktail',    'table_round', 'cocktail',    30::numeric, 30::numeric, 2),
