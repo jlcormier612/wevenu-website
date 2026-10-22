@@ -61,11 +61,16 @@ export function EventVendorsSetupEditor({
   const [pending, startTransition] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
+  // Sync from props only when the sheet opens. While open, local state wins so a
+  // background router.refresh() cannot wipe an optimistic add/remove mid-edit.
+  const wasOpen = React.useRef(false);
   React.useEffect(() => {
-    if (!open) return;
-    setAssignments(initialAssignments);
-    setVendorId("");
-    setRemovingId(null);
+    if (open && !wasOpen.current) {
+      setAssignments(initialAssignments);
+      setVendorId("");
+      setRemovingId(null);
+    }
+    wasOpen.current = open;
   }, [open, initialAssignments]);
 
   const assignedIds = new Set(assignments.map((a) => a.vendorId));

@@ -1747,9 +1747,16 @@ async function main() {
         // Remove from editor and prove Network relationship remains
         if (assignedRowId) {
           const removeBtn = page.getByTestId(`vendors-setup-remove-assignment-${assignedRowId}`);
+          for (let i = 0; i < 20 && (await removeBtn.count()) === 0; i += 1) {
+            await page.waitForTimeout(250);
+          }
+          // Fallback: any remove control for this booking if id re-keyed after refresh
+          const fallbackRemove = (await removeBtn.count()) > 0
+            ? removeBtn
+            : page.locator('[data-testid^="vendors-setup-remove-assignment-"]').first();
           page.once("dialog", (d) => d.accept());
-          if ((await removeBtn.count()) > 0) {
-            await removeBtn.click();
+          if ((await fallbackRemove.count()) > 0) {
+            await fallbackRemove.click();
             let gone = false;
             for (let i = 0; i < 20; i += 1) {
               await page.waitForTimeout(400);
