@@ -445,13 +445,12 @@ export function FloorPlanWorkspace({
     || null;
   const otherPlans = floorPlans.filter((p) => p.id !== workingPlan?.id);
 
-  // Open working layout immediately; initialize from offers when missing.
+  // Stay on this workspace — do not auto-redirect into the designer.
+  // When offers exist but no operational plan yet, ensure once and refresh
+  // so the working card appears; staff open the editor via the card link.
   React.useEffect(() => {
     if (preBooking || !eventId || !canEdit) return;
-    if (operationalFloorPlanId) {
-      router.replace(`/events/${eventId}/floor-plans/${operationalFloorPlanId}`);
-      return;
-    }
+    if (operationalFloorPlanId) return;
     if (ensureAttempted.current) return;
     if (activeOffers.length === 0) return;
     ensureAttempted.current = true;
@@ -459,8 +458,8 @@ export function FloorPlanWorkspace({
     void (async () => {
       const result = await ensureWorkingFloorPlanAction(eventId, null);
       setEnsuring(false);
-      if (result.ok && "floorPlanId" in result && result.floorPlanId) {
-        router.replace(`/events/${eventId}/floor-plans/${result.floorPlanId}`);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not initialize working layout.");
         return;
       }
       router.refresh();
@@ -474,9 +473,9 @@ export function FloorPlanWorkspace({
           ? "Sketch the room for this client. Sharing a plan and client layout choice wait until this relationship is Booked."
           : (
             <>
-              This tab opens the event&apos;s <span className="font-medium text-foreground">working layout</span> for
-              arrangement and seating. Offer which Library layouts the client can choose from under Event setup
-              → Change for this event.
+              Review offers, the event&apos;s <span className="font-medium text-foreground">working layout</span>, and
+              whether the client has selected a layout. Open a plan to edit arrangement and seating. Offer Library
+              layouts under Event setup → Change for this event.
             </>
           )}
       </p>

@@ -159,7 +159,7 @@ describe("task waiver vs completion counts", () => {
     assert.match(ui, /const isWaived = task\.status === "waived"/);
     assert.match(ui, /isComplete \? "text-muted-foreground line-through"/);
     assert.match(ui, /\{isWaived && \(/);
-    assert.match(ui, /renderGroup\(waived,\s*"Waived"/);
+    assert.match(ui, /renderStatusGroup\(sectionWaived,\s*"Waived"/);
     assert.match(ui, /!isClosed &&/);
   });
 });

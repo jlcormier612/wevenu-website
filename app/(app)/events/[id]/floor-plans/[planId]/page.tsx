@@ -45,8 +45,8 @@ export default async function FloorPlanEditorPage({ params }: Props) {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <BusinessAssetHeader
-        backHref={event.clientId ? `/clients/${event.clientId}#floorplan` : "/events"}
-        backLabel="Floor Plans"
+        backHref={event.clientId ? `/clients/${event.clientId}#floorplan` : `/events/${event.id}`}
+        backLabel="Back to Floor Plans"
         whatIsThis="Floor Plan"
         title={plan.name}
         status={null}

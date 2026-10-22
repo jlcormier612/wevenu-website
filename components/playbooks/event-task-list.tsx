@@ -37,6 +37,11 @@ import {
   PLAYBOOK_KINDS, STATUS_CONFIG, TASK_VISIBILITY, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import {
+  groupTasksByResponsibility,
+  TASK_RESPONSIBILITY_LABEL,
+  type TaskResponsibility,
+} from "@/lib/playbooks/task-responsibility";
+import {
   INTERNAL_NOTES_PRIVACY_HINT,
   internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
@@ -1009,14 +1014,16 @@ export function EventTaskList({
     router.refresh();
   }
 
-  const clientTasks = tasks.filter((t) => t.ownerType === "couple");
+  const byResponsibility = groupTasksByResponsibility(tasks);
+  const clientTasks = byResponsibility.client;
+  const venueTasks = byResponsibility.venue;
+  const vendorTasks = byResponsibility.vendor;
   const byDue = (list: EventTask[]) =>
     sortByDueDateAsc(list, (t) => t.dueDate);
   const overdue   = byDue(tasks.filter((t) => t.status === "overdue"));
   const pending   = byDue(tasks.filter((t) => t.status === "pending" || t.status === "blocked"));
   const complete  = byDue(tasks.filter((t) => t.status === "complete"));
   const waived    = byDue(tasks.filter((t) => t.status === "waived"));
-  const venueTasks = tasks.filter((t) => t.ownerType !== "couple");
 
   const renderTaskRow = (task: EventTask) => {
     const kind: PlaybookKind = task.ownerType === "couple" ? "client" : "venue";
@@ -1035,12 +1042,38 @@ export function EventTaskList({
     );
   };
 
-  const renderGroup = (groupTasks: EventTask[], label: string, show: boolean) => !show || groupTasks.length === 0 ? null : (
+  const renderStatusGroup = (groupTasks: EventTask[], label: string, show: boolean) => !show || groupTasks.length === 0 ? null : (
     <div className="space-y-0">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground py-2">{label} ({groupTasks.length})</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground py-1.5">{label} ({groupTasks.length})</p>
       {groupTasks.map(renderTaskRow)}
     </div>
   );
+
+  const renderResponsibilitySection = (key: TaskResponsibility, sectionTasks: EventTask[]) => {
+    if (sectionTasks.length === 0) return null;
+    const sectionOverdue = byDue(sectionTasks.filter((t) => t.status === "overdue"));
+    const sectionPending = byDue(sectionTasks.filter((t) => t.status === "pending" || t.status === "blocked"));
+    const sectionComplete = byDue(sectionTasks.filter((t) => t.status === "complete"));
+    const sectionWaived = byDue(sectionTasks.filter((t) => t.status === "waived"));
+    return (
+      <section
+        key={key}
+        className="rounded-lg border border-border bg-card/40 px-3 py-2 space-y-1"
+        data-testid={`planning-responsibility-${key}`}
+        data-responsibility={key}
+        data-task-count={sectionTasks.length}
+      >
+        <h3 className="text-sm font-semibold text-heading pt-1 pb-0.5">
+          {TASK_RESPONSIBILITY_LABEL[key]}
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">({sectionTasks.length})</span>
+        </h3>
+        {renderStatusGroup(sectionOverdue, "Overdue", true)}
+        {renderStatusGroup(sectionPending, "Upcoming", true)}
+        {renderStatusGroup(sectionComplete, "Completed", true)}
+        {renderStatusGroup(sectionWaived, "Waived", sectionWaived.length > 0)}
+      </section>
+    );
+  };
 
   // Business Asset Experience Consolidation (BA4B, Step 5) — INTENTIONAL
   // DIFFERENCE, not an oversight: unlike Contracts/Invoices/etc., a Task
@@ -1136,9 +1169,11 @@ export function EventTaskList({
         data-listed-tasks={listCount}
         data-client-tasks={clientTasks.length}
         data-venue-tasks={venueTasks.length}
+        data-vendor-tasks={vendorTasks.length}
         data-completed={complete.length}
         data-waived={waived.length}
         data-open={openCount}
+        className="space-y-3"
       >
         {tasks.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-8">
@@ -1146,10 +1181,9 @@ export function EventTaskList({
           </p>
         ) : (
           <>
-            {renderGroup(overdue,  "Overdue",  true)}
-            {renderGroup(pending,  "Upcoming", true)}
-            {renderGroup(complete, "Completed", true)}
-            {renderGroup(waived,   "Waived",   waived.length > 0)}
+            {renderResponsibilitySection("client", clientTasks)}
+            {renderResponsibilitySection("venue", venueTasks)}
+            {renderResponsibilitySection("vendor", vendorTasks)}
           </>
         )}
       </div>
