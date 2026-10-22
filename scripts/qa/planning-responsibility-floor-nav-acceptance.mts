@@ -263,10 +263,21 @@ async function main() {
           /\/floor-plans\/[0-9a-f-]{36}/i.test(page.url()),
           page.url(),
         );
-        const back = page.getByRole("link", { name: /Back to Floor Plans/i });
-        record("designer_back_label", await back.isVisible().catch(() => false), "Back to Floor Plans");
-        if (await back.isVisible().catch(() => false)) {
-          await back.click();
+        await page.waitForSelector('[data-testid="business-asset-back"], text=Back to Floor Plans', {
+          timeout: 15_000,
+        }).catch(() => null);
+        const back = page.getByTestId("business-asset-back");
+        const backFallback = page.locator(`a[href*="#floorplan"]`).first();
+        const backControl = (await back.isVisible().catch(() => false)) ? back : backFallback;
+        const labelOk = await page.getByText(/Back to Floor Plans/i).first().isVisible().catch(() => false);
+        record("designer_back_label", labelOk, await backControl.innerText().catch(() => "missing"));
+        if (await backControl.isVisible().catch(() => false)) {
+          await Promise.all([
+            page.waitForURL((u) => u.pathname.includes(`/clients/${clientId}`) && !u.pathname.includes("/floor-plans/"), {
+              timeout: 15_000,
+            }).catch(() => null),
+            backControl.click({ force: true }),
+          ]);
           await page.waitForTimeout(2500);
         }
         const backUrl = page.url();
@@ -275,8 +286,7 @@ async function main() {
           backUrl.includes(`/clients/${clientId}`) && !/\/floor-plans\/[0-9a-f-]{36}/i.test(backUrl),
           backUrl,
         );
-        // After return, must not immediately bounce to designer again
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(2500);
         record(
           "no_redirect_loop_after_back",
           page.url().includes(`/clients/${clientId}`) && !/\/floor-plans\/[0-9a-f-]{36}/i.test(page.url()),

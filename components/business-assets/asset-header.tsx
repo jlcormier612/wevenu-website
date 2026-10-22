@@ -63,6 +63,7 @@ export function BusinessAssetHeader({
           variant="ghost"
           size="sm"
           className="-ml-2 text-muted-foreground"
+          data-testid="business-asset-back"
           render={<Link href={backHref} />}
           onClick={(e) => {
             if (beforeNavigate && !beforeNavigate()) e.preventDefault();
