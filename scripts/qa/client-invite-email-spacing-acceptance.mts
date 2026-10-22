@@ -63,27 +63,31 @@ async function staffCookies() {
 }
 
 async function measureSpacing(page: import("playwright").Page) {
-  return page.evaluate(() => {
-    const greet = document.querySelector("[data-invite-greet]") as HTMLElement | null;
-    const invite = document.querySelector("[data-invite-lead]") as HTMLElement | null;
-    const ctaIntro = document.querySelector("[data-invite-cta-intro]") as HTMLElement | null;
-    const cta = document.querySelector("[data-invite-cta]") as HTMLElement | null;
-    const legal = document.querySelector("[data-invite-legal]") as HTMLElement | null;
-    const card = document.querySelector("[data-invite-card]") as HTMLElement | null;
-    const footer = document.querySelector("[data-invite-footer]") as HTMLElement | null;
-    function gap(a: HTMLElement | null, b: HTMLElement | null) {
+  // Keep this evaluate body free of nested function declarations — tsx/esbuild
+  // can inject __name helpers that are undefined in the browser context.
+  return page.evaluate(`(() => {
+    const greet = document.querySelector("[data-invite-greet]");
+    const invite = document.querySelector("[data-invite-lead]");
+    const ctaIntro = document.querySelector("[data-invite-cta-intro]");
+    const cta = document.querySelector("[data-invite-cta]");
+    const legal = document.querySelector("[data-invite-legal]");
+    const card = document.querySelector("[data-invite-card]");
+    const footer = document.querySelector("[data-invite-footer]");
+    const footerText = footer ? footer.querySelector("p") : null;
+    const gap = (a, b) => {
       if (!a || !b) return null;
       return Math.round(b.getBoundingClientRect().top - a.getBoundingClientRect().bottom);
-    }
+    };
     return {
       greetToInvite: gap(greet, invite),
       ctaIntroToButton: gap(ctaIntro, cta),
       buttonToLegal: gap(cta, legal),
-      cardToFooter: gap(card, footer),
+      // Footer cell padding-top creates the visual gap to signature text (td edges abut).
+      cardToFooter: gap(card, footerText),
       cardPadBottom: card ? parseInt(getComputedStyle(card).paddingBottom, 10) : null,
       overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
     };
-  });
+  })()`);
 }
 
 async function main() {
@@ -185,9 +189,11 @@ async function main() {
       `serving=${servingSha} expected=${EXPECTED_SHA}`,
     );
 
-    // Render the exact shared HTML (file://) — same markup as preview/send.
+    // Render the exact shared HTML — same markup as preview/send.
+    // about:blank avoids leftover app DOM / CSP from the SHA probe navigation.
+    await page.goto("about:blank", { waitUntil: "domcontentloaded" });
     await page.setContent(annotated, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
     const desktop = await measureSpacing(page);
     record(
       "desktop_greeting_gap",
@@ -213,8 +219,9 @@ async function main() {
     await page.screenshot({ path: `${SHOTS}/invite-desktop-1280.png`, fullPage: true });
 
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("about:blank", { waitUntil: "domcontentloaded" });
     await page.setContent(annotated, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
     const mobile = await measureSpacing(page);
     record(
       "mobile_greeting_gap",
