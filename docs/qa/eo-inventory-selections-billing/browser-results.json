@@ -1,0 +1,108 @@
+{
+  "expectedSha": "fbd44c7399f78b7b1bcd07da004e51bee55d58a4",
+  "servingSha": "fbd44c7399f78b7b1bcd07da004e51bee55d58a4",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+  "eoId": "624eceef-5096-4288-b104-62daa3a82d11",
+  "before": {
+    "invites": 27,
+    "notes": -1,
+    "invoices": 38,
+    "templateFingerprints": [
+      "d73d9734-98d9-46a0-b54b-dccadb036150:2026-09-13T00:52:20.573607+00:00",
+      "99585da2-587c-4b7a-9e59-5e9db5d4d998:2026-09-13T00:52:20.417138+00:00",
+      "29c1ff59-61d0-40e2-a969-b1b4c80c292e:2026-09-13T00:52:20.339282+00:00",
+      "9fc0154c-18c1-432f-9640-887e0a055642:2026-09-13T00:52:20.339282+00:00"
+    ]
+  },
+  "passed": 17,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=fbd44c7399f78b7b1bcd07da004e51bee55d58a4 expected=fbd44c7399f78b7b1bcd07da004e51bee55d58a4"
+    },
+    {
+      "name": "fixture_event_order",
+      "pass": true,
+      "detail": "event=ebf74f77-2944-474a-b735-48762ecb6842 eo=624eceef-5096-4288-b104-62daa3a82d11 includedPriced=5 additionalPriced=0"
+    },
+    {
+      "name": "eo_setup_delivery_not_picklist",
+      "pass": true,
+      "detail": "Edit Event Order for this event\n\nB2P 96736-9a50 & Portal Partner · from Standard Wedding Setup. This is the delivery list for this event — what the couple sees as read-only when you share. It is not a couple pick-list; optional choice requests use Client selections when your package has choice groups. Changes apply only to this event and do not update the reusable Library package. Sharing, finaliz"
+    },
+    {
+      "name": "eo_setup_included_badge",
+      "pass": true,
+      "detail": "hasIncluded=true"
+    },
+    {
+      "name": "inventory_setup_included_optional",
+      "pass": true,
+      "detail": "Edit inventory for this event\n\nB2P 96736-9a50 & Portal Partner · from Standard Wedding Setup. Included items are operational (what you are providing). Additional items may carry extra cost. Sharing shows this list informationally in the client portal — it does not ask the couple to select every item. Changes apply only to this event and do not update the reusable Library offering. Sharing and Even"
+    },
+    {
+      "name": "inventory_setup_badges",
+      "pass": true,
+      "detail": "includedBadges=28 additionalBadges=0"
+    },
+    {
+      "name": "inventory_workspace_share_copy",
+      "pass": true,
+      "detail": "Delete\nBookings\nBP\nB2P 96736-9a50 & Portal Partner\nView original lead\nBooked\nCancel event\nEdit event\nDay-of Sheet\n\nJuly 17, 2060\n\nSaturday · In 12321 days\n\nBooked\nEdit schedule\n\nDay-of schedule\n\n11:00 AM – 5:00 PM\n\nGuests\n\n88 guests\n\nSATURDAY, JUL 17, 2060\n\nReception\n\n11:00 AM – 5:00 PM · Barn\n\nTeam assignment\nThe person responsible for this booked"
+    },
+    {
+      "name": "portal_eo_section_present",
+      "pass": true,
+      "detail": "Preview — not yet released\n\nNot shared yet\n\nYour venue has not shared an Event Order for this event. This is not your invoice or contract.\n\nStaff draft below — not visible to the couple until you share the Event Order.\n\nWhat you're receiving\nPreview — not yet released\n\nYour Event Order — the delivery list for your event. Not your invoice or contract.\n\nCATERING\n\nVegetarian entrée\n\n×1 guest · Included\n\nPer person\n\nIncluded\n\nCaesar salad\n\n×1 guest · Included\n\nPer person\n\nIncluded\n\nPlated Dinner\n\n×1"
+    },
+    {
+      "name": "portal_eo_no_delivery_subtotal_label",
+      "pass": true,
+      "detail": "Preview — not yet released\n\nNot shared yet\n\nYour venue has not shared an Event Order for this event. This is not your invoice or contract.\n\nStaff draft below — not visible to the couple until you share the Event Order.\n\nWhat you're receiving\nPreview — not yet released\n\nYour Event Order — the delivery list for your event. Not your invoice or contract.\n\nCATERING\n\nVegetarian entrée\n\n×1 guest · Includ"
+    },
+    {
+      "name": "portal_eo_shows_included_word",
+      "pass": true,
+      "detail": "includedWord=true"
+    },
+    {
+      "name": "portal_eo_included_priced_shows_included_label",
+      "pass": true,
+      "detail": "includedPriced=5 includedMentions=11"
+    },
+    {
+      "name": "client_selections_panel_present",
+      "pass": true,
+      "detail": "Delete\nBookings\nBP\nB2P 96736-9a50 & Portal Partner\nView original lead\nBooked\nCancel event\nEdit event\nDay-of Sheet\n\nJuly 17, 2060\n\nSaturday · In 12321 days\n\nBooked\nEdit schedule\n\nDay-of schedule\n\n11:00 AM – 5:00 PM\n\nGuests\n\n88 guests\n\nSATURDAY, JUL 17, 2060\n\nReception\n\n11:00 AM – 5:00 PM · Barn\n\nTeam assignment\nThe person responsible for this booked"
+    },
+    {
+      "name": "no_side_effect_invites",
+      "pass": true,
+      "detail": "before=27 after=27"
+    },
+    {
+      "name": "no_side_effect_notifications",
+      "pass": true,
+      "detail": "before=-1 after=-1"
+    },
+    {
+      "name": "no_side_effect_invoices",
+      "pass": true,
+      "detail": "before=38 after=38"
+    },
+    {
+      "name": "library_templates_unchanged",
+      "pass": true,
+      "detail": "before=d73d9734-98d9-46a0-b54b-dccadb036150:2026-09-13T00:52:20.573607+00:00,99585da2-587c-4b7a-9e59-5e9db5d4d998:2026-09-13T00:52:20.417138+00:00,29c1ff59-61d0-40e2-a969-b1b4c80c292e:2026-09-13T00:52:20.339282+00:00,9fc0154c-18c1-432f-9640-887e0a055642:2026-09-13T00:52:20.339282+00:00 after=d73d9734-98d9-46a0-b54b-dccadb036150:2026-09-13T00:52:20.573607+00:00,99585da2-587c-4b7a-9e59-5e9db5d4d998:2026-09-13T00:52:20.417138+00:00,29c1ff59-61d0-40e2-a969-b1b4c80c292e:2026-09-13T00:52:20.339282+00:00,9fc0154c-18c1-432f-9640-887e0a055642:2026-09-13T00:52:20.339282+00:00"
+    },
+    {
+      "name": "db_included_priced_not_billable",
+      "pass": true,
+      "detail": "includedWithPrice=5 billable=6"
+    }
+  ],
+  "green": true
+}

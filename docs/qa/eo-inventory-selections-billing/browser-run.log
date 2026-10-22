@@ -1,0 +1,109 @@
+PASS serving_sha — serving=fbd44c7399f78b7b1bcd07da004e51bee55d58a4 expected=fbd44c7399f78b7b1bcd07da004e51bee55d58a4
+PASS fixture_event_order — event=ebf74f77-2944-474a-b735-48762ecb6842 eo=624eceef-5096-4288-b104-62daa3a82d11 includedPriced=5 additionalPriced=0
+PASS eo_setup_delivery_not_picklist — Edit Event Order for this event
+
+B2P 96736-9a50 & Portal Partner · from Standard Wedding Setup. This is the delivery list for this event — what the couple sees as read-only when you share. It is not a couple pick-list; optional choice requests use Client selections when your package has choice groups. Changes apply onl
+PASS eo_setup_included_badge — hasIncluded=true
+PASS inventory_setup_included_optional — Edit inventory for this event
+
+B2P 96736-9a50 & Portal Partner · from Standard Wedding Setup. Included items are operational (what you are providing). Additional items may carry extra cost. Sharing shows this list informationally in the client portal — it does not ask the couple to select every item. Changes apply only
+PASS inventory_setup_badges — includedBadges=28 additionalBadges=0
+PASS inventory_workspace_share_copy — Delete
+Bookings
+BP
+B2P 96736-9a50 & Portal Partner
+View original lead
+Booked
+Cancel event
+Edit event
+Day-of Sheet
+
+July 17, 2060
+
+Saturday · In 12321 days
+
+Booked
+Edit schedule
+
+Day-of schedule
+
+11:00 AM – 5:00 PM
+
+Guests
+
+88 guests
+
+SATURDAY, JUL 17, 2060
+
+Reception
+
+11:00 AM – 5:00 PM · Barn
+
+Team assignment
+The pers
+PASS portal_eo_section_present — Preview — not yet released
+
+Not shared yet
+
+Your venue has not shared an Event Order for this event. This is not your invoice or contract.
+
+Staff draft below — not visible to the couple until you share the Event Order.
+
+What you're receiving
+Preview — not yet released
+
+Your Event Order — the delivery list for your even
+PASS portal_eo_no_delivery_subtotal_label — Preview — not yet released
+
+Not shared yet
+
+Your venue has not shared an Event Order for this event. This is not your invoice or contract.
+
+Staff draft below — not visible to the couple until you share the Event Order.
+
+What you're receiving
+Preview — not yet released
+
+Your Event Order — the delivery list for your even
+PASS portal_eo_shows_included_word — includedWord=true
+PASS portal_eo_included_priced_shows_included_label — includedPriced=5 includedMentions=11
+PASS client_selections_panel_present — Delete
+Bookings
+BP
+B2P 96736-9a50 & Portal Partner
+View original lead
+Booked
+Cancel event
+Edit event
+Day-of Sheet
+
+July 17, 2060
+
+Saturday · In 12321 days
+
+Booked
+Edit schedule
+
+Day-of schedule
+
+11:00 AM – 5:00 PM
+
+Guests
+
+88 guests
+
+SATURDAY, JUL 17, 2060
+
+Reception
+
+11:00 AM – 5:00 PM · Barn
+
+Team assignment
+The pers
+PASS no_side_effect_invites — before=27 after=27
+PASS no_side_effect_notifications — before=-1 after=-1
+PASS no_side_effect_invoices — before=38 after=38
+PASS library_templates_unchanged — before=d73d9734-98d9-46a0-b54b-dccadb036150:2026-09-13T00:52:20.573607+00:00,99585da2-587c-4b7a-9e59-5e9db5d4d998:2026-09-13T00:52:20.417138+00:00,29c1ff59-61d0-40e2-a969-b1b4c80c292e:2026-09-13T00:52:20.339282+00:00,9fc0154c-18c1-432f-9640-887e0a055642:2026-09-13T00:52:20.339282+00:00 after=d73d9734-98d9-46a0-b54b-dcc
+PASS db_included_priced_not_billable — includedWithPrice=5 billable=6
+
+RESULT GREEN 17/17

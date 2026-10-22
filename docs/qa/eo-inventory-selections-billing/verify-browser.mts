@@ -87,13 +87,19 @@ async function main() {
   const page = await context.newPage();
 
   try {
-    const res = await page.goto(`${APP}/settings/leads`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    const link = res?.headers()["link"] ?? "";
-    const html = await page.content();
-    servingSha =
-      link.match(/[0-9a-f]{40}/)?.[0]
-      ?? html.match(/data-dpl-id="([a-f0-9]{40})"/)?.[1]
-      ?? null;
+    // Rolling ECS can briefly dual-serve old/new tasks — poll login until expected SHA.
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const probe = await page.goto(`${APP}/login`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      const link = probe?.headers()["link"] ?? "";
+      const html = await page.content();
+      const fromHtml = html.match(/data-dpl-id="([a-f0-9]{40})"/)?.[1] ?? null;
+      const fromLink = link.match(/dpl=([a-f0-9]{40})/)?.[1] ?? null;
+      servingSha = fromHtml ?? fromLink;
+      if (servingSha === EXPECTED_SHA && (!fromHtml || fromHtml === EXPECTED_SHA) && (!fromLink || fromLink === EXPECTED_SHA)) {
+        break;
+      }
+      await page.waitForTimeout(5_000);
+    }
     record(
       "serving_sha",
       !!servingSha && servingSha === EXPECTED_SHA,
@@ -101,7 +107,9 @@ async function main() {
     );
     if (servingSha !== EXPECTED_SHA) throw new Error("serving SHA mismatch — abort before mutating UI");
 
-    // Prefer Fancy booked event with open EO that has included + optional priced lines.
+    await page.goto(`${APP}/settings/leads`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+
+    // Prefer Fancy B2P fixture ebf74f77… (included priced EO lines + inventory).
     const { data: orders } = await admin
       .from("event_orders")
       .select("id, event_id, status, shared_at, events!inner(id, client_id, status)")
@@ -110,7 +118,12 @@ async function main() {
       .order("updated_at", { ascending: false })
       .limit(40);
 
-    for (const o of orders ?? []) {
+    const preferred = (orders ?? []).find((o) => o.event_id.startsWith("ebf74f77"));
+    const ordered = preferred
+      ? [preferred, ...(orders ?? []).filter((o) => o.id !== preferred.id)]
+      : (orders ?? []);
+
+    for (const o of ordered) {
       const ev = Array.isArray(o.events) ? o.events[0] : o.events;
       if (!ev?.client_id || ev.status === "cancelled") continue;
       const { data: lines } = await admin
@@ -138,22 +151,17 @@ async function main() {
 
     // --- Event Setup → EO setup editor ---
     await page.goto(`${APP}/events/${eventId}?tab=overview`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(1500);
-    const changeEo = page.getByTestId("event-setup-change-event_order").or(
-      page.locator('[data-testid="event-setup-change-event_order"]'),
-    );
-    const changeBtn = page.locator('button:has-text("Change")').filter({ has: page.locator("xpath=ancestor::*[contains(., 'Event Order')]") }).first();
-    if (await changeEo.count()) await changeEo.first().click();
-    else if (await changeBtn.count()) await changeBtn.click();
-    else {
-      // Fallback: open via readiness row text
-      const row = page.locator("text=Event Order").first();
-      await row.click({ timeout: 5000 }).catch(() => {});
-      await page.getByRole("button", { name: /Change/i }).first().click({ timeout: 8000 }).catch(() => {});
-    }
+    await page.waitForSelector('[data-testid="event-setup-change-event_order"], [data-testid="event-setup-change-inventory"]', {
+      timeout: 45_000,
+    }).catch(() => {});
+    await page.waitForTimeout(800);
+    await page.getByTestId("event-setup-change-event_order").click({ timeout: 20_000 });
 
     const eoEditor = page.getByTestId("event-order-setup-editor");
     await eoEditor.waitFor({ state: "visible", timeout: 20_000 });
+    // Customize path shows line badges
+    await eoEditor.getByTestId("event-order-setup-mode-customize").click({ timeout: 8_000 }).catch(() => {});
+    await page.waitForTimeout(400);
     const eoCopy = await eoEditor.innerText();
     record(
       "eo_setup_delivery_not_picklist",
@@ -170,11 +178,7 @@ async function main() {
     await page.waitForTimeout(500);
 
     // --- Inventory setup editor ---
-    const changeInv = page.getByTestId("event-setup-change-inventory");
-    if (await changeInv.count()) await changeInv.first().click();
-    else {
-      await page.getByRole("button", { name: /Change/i }).nth(1).click({ timeout: 8000 }).catch(() => {});
-    }
+    await page.getByTestId("event-setup-change-inventory").click({ timeout: 15_000 });
     const invEditor = page.getByTestId("event-inventory-setup-editor");
     let invSetupOk = false;
     try {
@@ -215,36 +219,49 @@ async function main() {
     );
     await page.screenshot({ path: `${OUT}/shots/inventory-workspace-1280.png`, fullPage: true });
 
-    // --- Client portal preview Event Order ---
+    // --- Client portal preview Event Order (staff draft when unshared) ---
     await page.goto(`${APP}/clients/${clientId}/portal-preview?event=${eventId}`, {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
     await page.waitForTimeout(2000);
-    const preview = await page.locator("main").innerText().catch(() => "");
-    const eoPortal = page.getByTestId("event-order-portal-view").or(page.getByTestId("event-order-portal-empty"));
-    await eoPortal.first().waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
-    const eoPortalText = (await eoPortal.first().innerText().catch(() => "")) || preview;
-    record(
-      "portal_eo_included_label_not_dollar_for_included",
-      /What you're receiving|Not shared yet/i.test(eoPortalText),
-      eoPortalText.slice(0, 500),
+    await page.getByRole("button", { name: /Event Order/i }).click({ timeout: 8_000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const preview = await page.locator('[data-testid="portal-preview-event-order"]').innerText().catch(
+      async () => page.locator("main").innerText(),
     );
-    // When lines render: Included must appear; Delivery subtotal wording must be gone.
-    if (/What you're receiving/i.test(eoPortalText)) {
+    record(
+      "portal_eo_section_present",
+      /What you're receiving|Not shared yet|Staff draft/i.test(preview),
+      preview.slice(0, 500),
+    );
+    // Staff draft uses the same EventOrderPortalView — Included priced lines must show "Included", not $.
+    if (/What you're receiving/i.test(preview)) {
       record(
         "portal_eo_no_delivery_subtotal_label",
-        !/Delivery subtotal \(for reference\)/i.test(eoPortalText),
-        eoPortalText.slice(0, 400),
+        !/Delivery subtotal \(for reference\)/i.test(preview),
+        preview.slice(0, 400),
       );
       record(
         "portal_eo_shows_included_word",
-        /Included/i.test(eoPortalText),
-        `includedWord=${/Included/i.test(eoPortalText)}`,
+        /Included/i.test(preview),
+        `includedWord=${/Included/i.test(preview)}`,
       );
+      // Fixture with includedPriced>0: money label "Included" appears; dollar amounts only if additional.
+      if (includedPriced > 0) {
+        const moneyLabels = [...preview.matchAll(/\nIncluded\n|· Included|\bIncluded\b/g)];
+        record(
+          "portal_eo_included_priced_shows_included_label",
+          moneyLabels.length >= includedPriced || (preview.match(/Included/g) ?? []).length >= includedPriced,
+          `includedPriced=${includedPriced} includedMentions=${(preview.match(/Included/g) ?? []).length}`,
+        );
+      } else {
+        record("portal_eo_included_priced_shows_included_label", true, "no included-priced lines on fixture");
+      }
     } else {
       record("portal_eo_no_delivery_subtotal_label", true, "empty/not shared — N/A");
       record("portal_eo_shows_included_word", true, "empty/not shared — N/A");
+      record("portal_eo_included_priced_shows_included_label", false, "portal did not render receiving list");
     }
     await page.screenshot({ path: `${OUT}/shots/portal-preview-eo-1280.png`, fullPage: true });
 
