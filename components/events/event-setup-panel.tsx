@@ -144,7 +144,13 @@ export function EventSetupPanel({
   coupleSelectedFloorPlanId?: string | null;
   vendorRecommendations?: EventVendorRecommendation[];
   availableVendors?: Vendor[];
-  vendorAssignments?: { id: string; vendorName: string }[];
+  vendorAssignments?: {
+    id: string;
+    vendorId: string;
+    vendorName: string;
+    vendorCategory: string | null;
+    vendorPhone: string | null;
+  }[];
   hasEventInventory?: boolean;
   eventOrder?: EventOrderReadinessInput | null;
   eventInventory?: EventInventoryWithDetails | null;

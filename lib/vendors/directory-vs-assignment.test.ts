@@ -32,18 +32,20 @@ describe("directory versus assignment", () => {
     assert.match(vendors, /Assigned to this event/);
   });
 
-  it("booked workspace keeps Network directory and assignment separate; event highlights live in Change", () => {
+  it("booked workspace keeps Network, optional highlights, and assignment separate; Change assigns", () => {
     const tabStart = eventDetail.indexOf('{/* ── Vendors');
     const tabEnd = eventDetail.indexOf('{/* ── Event Order');
     const tab = eventDetail.slice(tabStart, tabEnd);
     assert.match(tab, /VenueVendorDirectorySummary/);
+    assert.match(tab, /EventVendorRecommendationsSection/);
     assert.match(tab, /EventVendorsSection/);
-    assert.ok(tab.indexOf("VenueVendorDirectorySummary") < tab.indexOf("EventVendorsSection"));
-    // Event-level optional highlights are edited from Overview Change, not a second management curator.
-    assert.doesNotMatch(tab, /EventVendorRecommendationsSection/);
+    assert.ok(tab.indexOf("VenueVendorDirectorySummary") < tab.indexOf("EventVendorRecommendationsSection"));
+    assert.ok(tab.indexOf("EventVendorRecommendationsSection") < tab.indexOf("EventVendorsSection"));
+    // Change editor manages booking assignments; highlights live on the Vendors tab.
     const setupEditor = readFileSync(resolve(root, "components/events/event-vendors-setup-editor.tsx"), "utf8");
-    assert.match(setupEditor, /recommendVendorAction/);
-    assert.match(setupEditor, /vendors-setup-highlights-path/);
+    assert.match(setupEditor, /assignVendorAction/);
+    assert.match(setupEditor, /vendors-setup-assignments-path/);
+    assert.doesNotMatch(setupEditor, /recommendVendorAction/);
   });
 
   it("pre-booking assign does not notify; booked assign and couple submit still do", () => {

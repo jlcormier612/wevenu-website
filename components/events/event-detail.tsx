@@ -31,6 +31,7 @@ import { EventNotesSection } from "@/components/events/event-notes-section";
 import type { InternalNoteRollupItem } from "@/lib/notes/internal-notes-rollup";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
+import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
@@ -889,7 +890,10 @@ export function EventDetail({
             availableVendors={availableVendors}
             vendorAssignments={(event.vendorAssignments ?? []).map((a) => ({
               id: a.id,
+              vendorId: a.vendorId,
               vendorName: a.vendorName ?? "Vendor",
+              vendorCategory: a.vendorCategory ?? null,
+              vendorPhone: a.vendorPhone ?? null,
             }))}
             hasEventInventory={Boolean(eventInventory)}
             eventOrder={eventOrder ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt, templateId: eventOrder.templateId ?? null } : null}
@@ -1114,12 +1118,29 @@ export function EventDetail({
               <CardTitle className="text-base">Vendor Network</CardTitle>
               <CardDescription>
                 Preferred, recommended, and required classifications come from your Vendor Network.
-                Eligible vendors are available for client discovery by default. There is no second
-                recommendation list to curate on this event.
+                Eligible vendors are available for client discovery by default.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <VenueVendorDirectorySummary vendors={availableVendors} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Optional highlights for this event</CardTitle>
+              <CardDescription>
+                Suggest Vendor Network options for the client to consider. Separate from who is
+                assigned to work this booking.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventVendorRecommendationsSection
+                eventId={event.id}
+                clientName={event.clientName}
+                initialRecommendations={vendorRecommendations}
+                vendorLibrary={availableVendors}
+              />
             </CardContent>
           </Card>
 

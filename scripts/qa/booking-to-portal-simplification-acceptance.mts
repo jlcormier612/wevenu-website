@@ -1668,21 +1668,31 @@ async function main() {
 
       await vendorsChange.click();
       await page.waitForSelector('[data-testid="event-vendors-setup-editor"]', { timeout: 15_000 });
-      const assignText = await page.getByTestId("vendors-setup-assignments-state").innerText();
+      const editorBody = await page.getByTestId("event-vendors-setup-editor").innerText();
       record(
         "change_opens_dedicated_vendors_setup_editor",
         (await page.getByTestId("event-vendors-setup-editor").count()) === 1
-          && (await page.getByTestId("vendors-setup-highlights-path").count()) === 1
-          && /Assigned to this booking/i.test(assignText),
-        assignText.slice(0, 240),
+          && (await page.getByTestId("vendors-setup-assignments-path").count()) === 1
+          && (await page.getByTestId("vendors-setup-add-assignment").count()) === 1
+          && (await page.getByTestId("vendors-setup-open-management").count()) === 0
+          && !/Offer layouts|Vendor Network remains|Edit vendor highlights/i.test(editorBody),
+        editorBody.slice(0, 240),
       );
       record(
-        "vendors_highlights_vs_assignments_state_shown",
-        assignBefore === 0 ? /None yet/i.test(assignText) : !/None yet/i.test(assignText),
+        "vendors_setup_shows_assignment_list_or_empty",
+        assignBefore === 0
+          ? (await page.getByTestId("vendors-setup-no-assignments").count()) === 1
+          : (await page.getByTestId("vendors-setup-assignments-list").count()) === 1,
         `assignBefore=${assignBefore}`,
       );
 
-      const alreadyHighlighted = new Set(recsBefore.map((r) => r.vendor_id));
+      const assignedVendorIds = new Set(
+        ((await admin
+          .from("event_vendor_assignments")
+          .select("vendor_id")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)).data ?? []).map((r) => r.vendor_id as string),
+      );
       const pickVendor = (await admin
         .from("venue_vendor_relationships")
         .select("vendor_id,status,vendors!inner(id,business_name)")
@@ -1690,52 +1700,90 @@ async function main() {
         .in("status", ["active", "invited"])
         .limit(40)).data?.find((row) => {
           const vid = (row as { vendor_id: string }).vendor_id;
-          return !alreadyHighlighted.has(vid);
+          return !assignedVendorIds.has(vid);
         }) as { vendor_id: string; vendors: { business_name: string } | { business_name: string }[] } | undefined;
 
       const vendorName = pickVendor
         ? (Array.isArray(pickVendor.vendors) ? pickVendor.vendors[0]?.business_name : pickVendor.vendors?.business_name)
         : null;
+      let assignedRowId: string | null = null;
       if (pickVendor?.vendor_id && vendorName) {
         await page.getByTestId("vendors-setup-vendor-select").click();
         await page.waitForTimeout(300);
         const opt = page.getByRole("option", { name: new RegExp(vendorName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) });
         if (await opt.count()) await opt.first().click();
         else await page.locator(`[data-value="${pickVendor.vendor_id}"]`).first().click();
-        const note = `QA vendor highlight ${tag}`;
-        await page.getByTestId("vendors-setup-note").fill(note);
-        const addBtn = page.getByTestId("vendors-setup-add-highlight");
+        const addBtn = page.getByTestId("vendors-setup-add-assignment");
         for (let i = 0; i < 20 && !(await addBtn.isEnabled()); i += 1) await page.waitForTimeout(200);
         await addBtn.click();
-        let recsAfter: { id: string; vendor_id: string; note: string | null }[] = [];
-        for (let i = 0; i < 20; i += 1) {
+        let assignsAfter: { id: string; vendor_id: string }[] = [];
+        for (let i = 0; i < 25; i += 1) {
           await page.waitForTimeout(500);
-          recsAfter = (await admin
-            .from("event_vendor_recommendations")
-            .select("id,vendor_id,note")
+          assignsAfter = (await admin
+            .from("event_vendor_assignments")
+            .select("id,vendor_id")
             .eq("event_id", eventId!)
             .eq("venue_id", FANCY)
             .eq("vendor_id", pickVendor.vendor_id)).data ?? [];
-          if (recsAfter.length >= 1) break;
+          if (assignsAfter.length >= 1) break;
         }
-        const assignAfterHighlight = (await admin
-          .from("event_vendor_assignments")
+        assignedRowId = assignsAfter[0]?.id ?? null;
+        const recsAfterAssign = (await admin
+          .from("event_vendor_recommendations")
           .select("id", { count: "exact", head: true })
           .eq("event_id", eventId!)
-          .eq("venue_id", FANCY)).count ?? 0;
+          .eq("venue_id", FANCY)
+          .eq("vendor_id", pickVendor.vendor_id)).count ?? 0;
         record(
-          "vendors_setup_highlight_persists",
-          recsAfter.length === 1,
-          JSON.stringify(recsAfter),
+          "vendors_setup_assignment_persists",
+          assignsAfter.length === 1,
+          JSON.stringify(assignsAfter),
         );
         record(
-          "vendors_setup_did_not_create_assignment",
-          assignAfterHighlight === assignBefore,
-          `before=${assignBefore} after=${assignAfterHighlight}`,
+          "vendors_setup_assignment_did_not_create_highlight",
+          recsAfterAssign === 0,
+          `recsForVendor=${recsAfterAssign}`,
         );
+        // Remove from editor and prove Network relationship remains
+        if (assignedRowId) {
+          const removeBtn = page.getByTestId(`vendors-setup-remove-assignment-${assignedRowId}`);
+          page.once("dialog", (d) => d.accept());
+          if ((await removeBtn.count()) > 0) {
+            await removeBtn.click();
+            let gone = false;
+            for (let i = 0; i < 20; i += 1) {
+              await page.waitForTimeout(400);
+              const { count } = await admin
+                .from("event_vendor_assignments")
+                .select("id", { count: "exact", head: true })
+                .eq("id", assignedRowId);
+              if ((count ?? 0) === 0) { gone = true; break; }
+            }
+            const { count: stillInNetwork } = await admin
+              .from("venue_vendor_relationships")
+              .select("vendor_id", { count: "exact", head: true })
+              .eq("venue_id", FANCY)
+              .eq("vendor_id", pickVendor.vendor_id);
+            record(
+              "vendors_setup_remove_assignment_persists",
+              gone,
+              `assignmentId=${assignedRowId}`,
+            );
+            record(
+              "vendors_setup_remove_keeps_network_relationship",
+              (stillInNetwork ?? 0) >= 1,
+              `network=${stillInNetwork}`,
+            );
+          } else {
+            record("vendors_setup_remove_assignment_persists", false, "remove control missing after add");
+            record("vendors_setup_remove_keeps_network_relationship", false, "skipped");
+          }
+        }
       } else {
-        record("vendors_setup_highlight_persists", true, "skipped — no unused Vendor Network vendor");
-        record("vendors_setup_did_not_create_assignment", true, "skipped");
+        record("vendors_setup_assignment_persists", true, "skipped — no unused Vendor Network vendor");
+        record("vendors_setup_assignment_did_not_create_highlight", true, "skipped");
+        record("vendors_setup_remove_assignment_persists", true, "skipped");
+        record("vendors_setup_remove_keeps_network_relationship", true, "skipped");
       }
 
       await page.screenshot({ path: `${OUT}/03i-vendors-setup-editor-1280.png`, fullPage: true }).catch(() => undefined);
@@ -1746,17 +1794,26 @@ async function main() {
       await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
       await page.getByTestId("event-setup-change-vendors").click();
       await page.waitForSelector('[data-testid="event-vendors-setup-editor"]', { timeout: 15_000 });
-      await page.waitForTimeout(1000);
-      const recsAfterReopen = (await admin
-        .from("event_vendor_recommendations")
+      await page.waitForTimeout(800);
+      const assignAfterReopen = (await admin
+        .from("event_vendor_assignments")
         .select("id", { count: "exact", head: true })
         .eq("event_id", eventId!)
         .eq("venue_id", FANCY)).count ?? 0;
       record(
         "vendors_setup_reopen_idempotent",
-        recsAfterReopen >= recsBefore.length
-          && recsAfterReopen <= recsBefore.length + 1,
-        `before=${recsBefore.length} afterReopen=${recsAfterReopen}`,
+        assignAfterReopen === assignBefore,
+        `assignBefore=${assignBefore} assignAfterReopen=${assignAfterReopen}`,
+      );
+      const recsUnchanged = (await admin
+        .from("event_vendor_recommendations")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)).count ?? 0;
+      record(
+        "vendors_setup_did_not_mutate_highlights",
+        recsUnchanged === recsBefore.length,
+        `before=${recsBefore.length} after=${recsUnchanged}`,
       );
 
       await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
@@ -1765,10 +1822,16 @@ async function main() {
         await page.getByRole("button", { name: /Open Vendors/i }).click();
       });
       await page.waitForTimeout(900);
+      const vendorsBody = await page.locator("body").innerText();
       record(
         "open_vendors_reaches_management_workspace",
         /vendors/i.test(page.url()) || (await page.getByRole("tab", { name: /Vendors/i }).count()) > 0,
         `url=${page.url()}`,
+      );
+      record(
+        "open_vendors_shows_highlights_section",
+        /Optional highlights for this event/i.test(vendorsBody),
+        "highlights live on Vendors tab",
       );
 
       const libVendorsAfter = (await admin
