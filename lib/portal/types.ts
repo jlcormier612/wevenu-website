@@ -190,6 +190,41 @@ export type PortalFloorPlanObject = {
   locked?: boolean;
 };
 
+/** Catalog entry for couple-facing Add furniture (inventory or plan-type fallback). */
+export type PortalFloorPlanCatalogItem = {
+  inventoryItemId?: string;
+  objectType: string;
+  name: string;
+  shape?: string | null;
+  displayShape?: string | null;
+  width?: number | null;
+  length?: number | null;
+  height?: number | null;
+  placeWidth?: number | null;
+  placeHeight?: number | null;
+  color?: string | null;
+  capacity?: number | null;
+  quantityAvailable: number;
+  quantityUsed: number;
+  remaining: number;
+  quantityConfigured: boolean;
+  addable: boolean;
+  unavailableReason?: string | null;
+  categoryName?: string | null;
+};
+
+export type PortalFloorPlanFurnitureCatalog = {
+  planId: string;
+  coupleMayAddTables: boolean;
+  isReady: boolean;
+  roomWidthFt: number | null;
+  roomDepthFt: number | null;
+  measurementUnit?: string | null;
+  inventoryItems: PortalFloorPlanCatalogItem[];
+  planTableTypes: PortalFloorPlanCatalogItem[];
+  coordinateModel?: { unit: string; note: string };
+};
+
 export type PortalFloorPlanDetail = {
   plan: {
     id: string;

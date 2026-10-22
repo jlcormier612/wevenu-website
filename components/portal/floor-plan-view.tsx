@@ -18,6 +18,7 @@ import type {
 } from "@/lib/portal/types";
 
 const SAGE = "#5F8A5B";
+const SEATABLE = new Set(["table_round", "table_rect", "table_oval"]);
 
 function renderObject(obj: PortalFloorPlanObject): React.ReactNode {
   const legacyStyle = OBJECT_STYLE[obj.objectType as ObjectType] ?? OBJECT_STYLE.other;
@@ -28,6 +29,7 @@ function renderObject(obj: PortalFloorPlanObject): React.ReactNode {
   const hh = obj.height / 2;
   const fontSize = Math.max(9, Math.min(13, obj.width / 6));
   const transform = `rotate(${obj.rotation}, ${obj.x}, ${obj.y})`;
+  const showCapacity = SEATABLE.has(obj.objectType) && obj.capacity != null && obj.capacity > 0;
 
   return (
     <g key={obj.id} transform={transform}>
@@ -45,9 +47,15 @@ function renderObject(obj: PortalFloorPlanObject): React.ReactNode {
           fill={fill} stroke={style.stroke} strokeWidth={1.5} />
       )}
       {obj.objectType !== "text_label" && obj.label ? (
-        <text x={obj.x} y={obj.y} textAnchor="middle" dominantBaseline="middle"
+        <text x={obj.x} y={showCapacity ? obj.y - 5 : obj.y} textAnchor="middle" dominantBaseline="middle"
           fontSize={fontSize} fill={style.textFill} fontFamily="sans-serif">
           {obj.label}
+        </text>
+      ) : null}
+      {showCapacity ? (
+        <text x={obj.x} y={obj.label ? obj.y + 9 : obj.y} textAnchor="middle" dominantBaseline="middle"
+          fontSize={Math.max(8, fontSize - 2)} fill={style.textFill} fontFamily="sans-serif" opacity={0.85}>
+          {obj.capacity} seats
         </text>
       ) : null}
       {obj.objectType === "text_label" && (
@@ -75,8 +83,9 @@ export function FloorPlanLayoutSvg({
   backgroundImageOpacity?: number | null;
   objects: PortalFloorPlanObject[];
 }) {
-  const roomW = Number(roomWidthFt) * 12 || 800;
-  const roomH = Number(roomDepthFt) * 12 || 600;
+  const roomConfigured = Number(roomWidthFt) > 0 && Number(roomDepthFt) > 0;
+  const roomW = roomConfigured ? Number(roomWidthFt) * 12 : 800;
+  const roomH = roomConfigured ? Number(roomDepthFt) * 12 : 600;
   let maxX = roomW;
   let maxY = roomH;
   for (const obj of objects) {
@@ -96,10 +105,16 @@ export function FloorPlanLayoutSvg({
         aria-label={`Layout preview: ${planName}`}
       >
         <rect x={0} y={0} width={canvasW} height={canvasH} fill="#F7F5F1" />
+        {roomConfigured && (
+          <rect
+            x={0} y={0} width={roomW} height={roomH}
+            fill="none" stroke="#8A7F72" strokeWidth={2} strokeDasharray="8 6"
+          />
+        )}
         {backgroundImageUrl && (
           <image
             href={backgroundImageUrl}
-            x={0} y={0} width={canvasW} height={canvasH}
+            x={0} y={0} width={roomConfigured ? roomW : canvasW} height={roomConfigured ? roomH : canvasH}
             opacity={Number(backgroundImageOpacity ?? 0.25)}
             preserveAspectRatio="xMidYMid slice"
           />

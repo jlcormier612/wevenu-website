@@ -14,13 +14,29 @@ import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/
 import { OBJECT_STYLE } from "@/lib/floor-plans/constants";
 import type { DisplayShape, ObjectType } from "@/lib/floor-plans/types";
 import type {
+  PortalFloorPlanCatalogItem,
   PortalFloorPlanDetail,
+  PortalFloorPlanFurnitureCatalog,
   PortalFloorPlanObject,
   PortalFloorPlanOfferSummary,
   PortalFloorPlanSummary,
 } from "@/lib/portal/types";
 
 const SAGE = "#5F8A5B";
+const SEATABLE = new Set(["table_round", "table_rect", "table_oval"]);
+
+function formatInches(n: number | null | undefined): string | null {
+  if (n == null || !Number.isFinite(Number(n)) || Number(n) <= 0) return null;
+  return `${Math.round(Number(n))}"`;
+}
+
+function catalogDimsLabel(item: PortalFloorPlanCatalogItem): string {
+  const w = formatInches(item.placeWidth ?? item.width);
+  const h = formatInches(item.placeHeight ?? item.length);
+  if (w && h) return `${w} × ${h}`;
+  if (w) return w;
+  return "Dimensions not set";
+}
 
 function renderObjectStatic(obj: PortalFloorPlanObject): React.ReactNode {
   const legacyStyle = OBJECT_STYLE[obj.objectType as ObjectType] ?? OBJECT_STYLE.other;
@@ -31,6 +47,7 @@ function renderObjectStatic(obj: PortalFloorPlanObject): React.ReactNode {
   const hh = obj.height / 2;
   const fontSize = Math.max(9, Math.min(13, obj.width / 6));
   const transform = `rotate(${obj.rotation}, ${obj.x}, ${obj.y})`;
+  const showCapacity = SEATABLE.has(obj.objectType) && obj.capacity != null && obj.capacity > 0;
 
   return (
     <g key={obj.id} transform={transform}>
@@ -48,9 +65,15 @@ function renderObjectStatic(obj: PortalFloorPlanObject): React.ReactNode {
           fill={fill} stroke={style.stroke} strokeWidth={1.5} />
       )}
       {obj.objectType !== "text_label" && obj.label ? (
-        <text x={obj.x} y={obj.y} textAnchor="middle" dominantBaseline="middle"
+        <text x={obj.x} y={showCapacity ? obj.y - 5 : obj.y} textAnchor="middle" dominantBaseline="middle"
           fontSize={fontSize} fill={style.textFill} fontFamily="sans-serif">
           {obj.label}
+        </text>
+      ) : null}
+      {showCapacity ? (
+        <text x={obj.x} y={obj.label ? obj.y + 9 : obj.y} textAnchor="middle" dominantBaseline="middle"
+          fontSize={Math.max(8, fontSize - 2)} fill={style.textFill} fontFamily="sans-serif" opacity={0.85}>
+          {obj.capacity} seats
         </text>
       ) : null}
       {obj.objectType === "text_label" && (
@@ -141,6 +164,11 @@ function WorkingLayoutCanvas({
   const svgRef = React.useRef<SVGSVGElement | null>(null);
   const [localObjects, setLocalObjects] = React.useState(objects);
   const [moveError, setMoveError] = React.useState<string | null>(null);
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [removing, setRemoving] = React.useState(false);
+  const roomConfigured = Number(roomWidthFt) > 0 && Number(roomDepthFt) > 0;
+  const roomW = roomConfigured ? Number(roomWidthFt) * 12 : 800;
+  const roomH = roomConfigured ? Number(roomDepthFt) * 12 : 600;
   const dragRef = React.useRef<{
     id: string;
     startClientX: number;
@@ -151,11 +179,21 @@ function WorkingLayoutCanvas({
     scaleY: number;
     lastX: number;
     lastY: number;
+    halfW: number;
+    halfH: number;
   } | null>(null);
 
   React.useEffect(() => {
     setLocalObjects(objects);
   }, [objects]);
+
+  function clampToRoom(x: number, y: number, halfW: number, halfH: number) {
+    if (!roomConfigured) return { x, y };
+    return {
+      x: Math.min(roomW - halfW, Math.max(halfW, x)),
+      y: Math.min(roomH - halfH, Math.max(halfH, y)),
+    };
+  }
 
   function clientToSvgScale(svg: SVGSVGElement) {
     const rect = svg.getBoundingClientRect();
@@ -167,6 +205,7 @@ function WorkingLayoutCanvas({
   }
 
   function onPointerDown(e: React.PointerEvent, obj: PortalFloorPlanObject) {
+    setSelectedId(obj.id);
     if (!editable || obj.locked) {
       if (obj.locked) setMoveError("This element is locked by your venue and cannot be moved.");
       return;
@@ -186,6 +225,8 @@ function WorkingLayoutCanvas({
       scaleY,
       lastX: Number(obj.x),
       lastY: Number(obj.y),
+      halfW: Number(obj.width) / 2 || 0,
+      halfH: Number(obj.height) / 2 || 0,
     };
     setMoveError(null);
   }
@@ -195,12 +236,11 @@ function WorkingLayoutCanvas({
     if (!drag) return;
     const dx = (e.clientX - drag.startClientX) * drag.scaleX;
     const dy = (e.clientY - drag.startClientY) * drag.scaleY;
-    const nx = drag.originX + dx;
-    const ny = drag.originY + dy;
-    drag.lastX = nx;
-    drag.lastY = ny;
+    const clamped = clampToRoom(drag.originX + dx, drag.originY + dy, drag.halfW, drag.halfH);
+    drag.lastX = clamped.x;
+    drag.lastY = clamped.y;
     setLocalObjects((prev) =>
-      prev.map((o) => (o.id === drag.id ? { ...o, x: nx, y: ny } : o)),
+      prev.map((o) => (o.id === drag.id ? { ...o, x: clamped.x, y: clamped.y } : o)),
     );
   }
 
@@ -223,7 +263,8 @@ function WorkingLayoutCanvas({
         setMoveError(
           code === "object_locked" ? "This element is locked by your venue."
             : code === "plan_ready" ? "This layout is Ready — ask your venue to Make Changes if you need edits."
-              : "Could not save the move.",
+              : code === "outside_room" ? "That placement is outside the room boundary."
+                : "Could not save the move.",
         );
         setLocalObjects(objects);
         return;
@@ -237,8 +278,49 @@ function WorkingLayoutCanvas({
     }
   }
 
-  const roomW = Number(roomWidthFt) * 12 || 800;
-  const roomH = Number(roomDepthFt) * 12 || 600;
+  async function removeSelected(confirmUnassign = false) {
+    if (!selectedId || !editable) return;
+    const obj = localObjects.find((o) => o.id === selectedId);
+    if (!obj || obj.locked || !SEATABLE.has(obj.objectType)) return;
+    setRemoving(true);
+    setMoveError(null);
+    try {
+      const r = await fetch("/api/portal/floor-plans/remove-object", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, objectId: selectedId, confirmUnassign }),
+      });
+      const d = await r.json() as { ok?: boolean; error?: string; assignedCount?: number };
+      if (d.error === "has_assignments") {
+        const n = d.assignedCount ?? 0;
+        const ok = window.confirm(
+          `This table has ${n} guest${n === 1 ? "" : "s"} assigned. Remove it and return those guests to Unassigned?`,
+        );
+        if (ok) {
+          await removeSelected(true);
+        }
+        return;
+      }
+      if (!r.ok || !d.ok) {
+        setMoveError(
+          d.error === "object_locked" ? "This element is locked by your venue."
+            : d.error === "plan_ready" ? "This layout is Ready — ask your venue to Make Changes if you need edits."
+              : d.error === "type_not_removable" ? "Only seating tables can be removed here."
+                : "Could not remove this element.",
+        );
+        return;
+      }
+      const next = localObjects.filter((o) => o.id !== selectedId);
+      setLocalObjects(next);
+      onObjectsChange(next);
+      setSelectedId(null);
+    } catch {
+      setMoveError("Could not remove this element.");
+    } finally {
+      setRemoving(false);
+    }
+  }
+
   let maxX = roomW;
   let maxY = roomH;
   for (const obj of localObjects) {
@@ -249,6 +331,10 @@ function WorkingLayoutCanvas({
   }
   const canvasW = Math.ceil(maxX);
   const canvasH = Math.ceil(maxY);
+  const selected = localObjects.find((o) => o.id === selectedId) ?? null;
+  const canRemove = Boolean(
+    editable && selected && !selected.locked && SEATABLE.has(selected.objectType),
+  );
 
   return (
     <div className="space-y-2">
@@ -264,10 +350,17 @@ function WorkingLayoutCanvas({
           onPointerLeave={onPointerUp}
         >
           <rect x={0} y={0} width={canvasW} height={canvasH} fill="#F7F5F1" />
+          {roomConfigured && (
+            <rect
+              x={0} y={0} width={roomW} height={roomH}
+              fill="none" stroke="#8A7F72" strokeWidth={2} strokeDasharray="8 6"
+              data-testid="floor-plan-room-boundary"
+            />
+          )}
           {backgroundImageUrl && (
             <image
               href={backgroundImageUrl}
-              x={0} y={0} width={canvasW} height={canvasH}
+              x={0} y={0} width={roomConfigured ? roomW : canvasW} height={roomConfigured ? roomH : canvasH}
               opacity={Number(backgroundImageOpacity ?? 0.25)}
               preserveAspectRatio="xMidYMid slice"
             />
@@ -275,6 +368,7 @@ function WorkingLayoutCanvas({
           {localObjects.map((obj) => {
             const locked = Boolean(obj.locked);
             const canDrag = editable && !locked;
+            const isSelected = obj.id === selectedId;
             return (
               <g
                 key={obj.id}
@@ -282,13 +376,56 @@ function WorkingLayoutCanvas({
                 onPointerDown={(e) => onPointerDown(e, obj)}
                 data-testid={locked ? "floor-plan-object-locked" : "floor-plan-object-movable"}
                 data-object-id={obj.id}
+                data-object-type={obj.objectType}
+                data-capacity={obj.capacity ?? ""}
               >
+                {isSelected ? (
+                  <rect
+                    x={obj.x - obj.width / 2 - 4}
+                    y={obj.y - obj.height / 2 - 4}
+                    width={obj.width + 8}
+                    height={obj.height + 8}
+                    fill="none"
+                    stroke={SAGE}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    rx={4}
+                  />
+                ) : null}
                 {renderObjectStatic(obj)}
               </g>
             );
           })}
         </svg>
       </div>
+      <div className="px-1 flex flex-wrap items-center gap-2 justify-between">
+        <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-room-scale">
+          {roomConfigured
+            ? `Room ${Number(roomWidthFt)} × ${Number(roomDepthFt)} ft · canvas 1 unit = 1 inch`
+            : "Room dimensions not set by venue — layout uses canvas scale (not claimed as feet)."}
+        </p>
+        {canRemove && (
+          <button
+            type="button"
+            disabled={removing}
+            onClick={() => void removeSelected(false)}
+            className="text-[11px] font-semibold text-destructive disabled:opacity-50"
+            data-testid="floor-plan-remove-table"
+          >
+            {removing ? "Removing…" : "Remove selected table"}
+          </button>
+        )}
+      </div>
+      {selected && (
+        <p className="text-[11px] text-muted-foreground px-1" data-testid="floor-plan-selected-meta">
+          {selected.label ?? selected.objectType}
+          {selected.capacity != null ? ` · ${selected.capacity} seats` : ""}
+          {formatInches(selected.width) && formatInches(selected.height)
+            ? ` · ${formatInches(selected.width)} × ${formatInches(selected.height)}`
+            : ""}
+          {selected.locked ? " · Locked by venue" : ""}
+        </p>
+      )}
       {moveError && (
         <p className="text-xs text-destructive px-1" data-testid="floor-plan-move-error">{moveError}</p>
       )}
@@ -475,6 +612,9 @@ export default function FloorPlanSection({ token }: { token: string }) {
   const [reloadTick, setReloadTick] = React.useState(0);
   const [adding, setAdding] = React.useState(false);
   const [addError, setAddError] = React.useState<string | null>(null);
+  const [catalogOpen, setCatalogOpen] = React.useState(false);
+  const [catalog, setCatalog] = React.useState<PortalFloorPlanFurnitureCatalog | null>(null);
+  const [catalogLoading, setCatalogLoading] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -560,10 +700,61 @@ export default function FloorPlanSection({ token }: { token: string }) {
     return () => { cancelled = true; };
   }, [token, selectedId, reloadTick]);
 
-  async function addTable() {
+  function addErrorMessage(code: string): string {
+    switch (code) {
+      case "add_not_permitted":
+        return "Your venue has not allowed adding tables.";
+      case "plan_ready":
+        return "This layout is Ready — ask your venue to Make Changes if you need edits.";
+      case "quantity_exceeded":
+        return "No more of that item are available for this event.";
+      case "quantity_not_configured":
+        return "Your venue has not set how many of this item are available. Ask them to set inventory quantity.";
+      case "outside_room":
+        return "That placement is outside the room boundary.";
+      case "type_not_permitted":
+        return "That furniture type is not permitted for client addition.";
+      case "inventory_not_found":
+        return "That furniture item is not available.";
+      default:
+        return "Could not add that furniture.";
+    }
+  }
+
+  async function openCatalog() {
     if (!selectedId) return;
+    setCatalogOpen(true);
+    setCatalogLoading(true);
+    setAddError(null);
+    try {
+      const r = await fetch(
+        `/api/portal/floor-plans/furniture-catalog?token=${encodeURIComponent(token)}&floorPlanId=${encodeURIComponent(selectedId)}`,
+      );
+      const d = await r.json() as PortalFloorPlanFurnitureCatalog & { error?: string };
+      if (!r.ok || d.error) {
+        setCatalog(null);
+        setAddError(addErrorMessage(d.error ?? "catalog_failed"));
+        return;
+      }
+      setCatalog(d);
+    } catch {
+      setCatalog(null);
+      setAddError("Could not load furniture catalog.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }
+
+  async function addFromCatalog(item: PortalFloorPlanCatalogItem) {
+    if (!selectedId || !item.addable) return;
     setAdding(true);
     setAddError(null);
+    const roomW = Number(detail?.plan?.roomWidthFt) > 0 ? Number(detail?.plan?.roomWidthFt) * 12 : 800;
+    const roomH = Number(detail?.plan?.roomDepthFt) > 0 ? Number(detail?.plan?.roomDepthFt) * 12 : 600;
+    const placeW = Number(item.placeWidth ?? item.width ?? 60);
+    const placeH = Number(item.placeHeight ?? item.length ?? 60);
+    const x = Math.min(roomW - placeW / 2, Math.max(placeW / 2, roomW / 2));
+    const y = Math.min(roomH - placeH / 2, Math.max(placeH / 2, roomH / 2));
     try {
       const r = await fetch("/api/portal/floor-plans/add-table", {
         method: "POST",
@@ -571,24 +762,21 @@ export default function FloorPlanSection({ token }: { token: string }) {
         body: JSON.stringify({
           token,
           floorPlanId: selectedId,
-          objectType: "table_round",
-          x: 220,
-          y: 220,
+          inventoryItemId: item.inventoryItemId ?? undefined,
+          objectType: item.inventoryItemId ? undefined : item.objectType,
+          x,
+          y,
         }),
       });
       const d = await r.json() as { ok?: boolean; error?: string };
       if (!r.ok || !d.ok) {
-        const code = d.error ?? "add_failed";
-        setAddError(
-          code === "add_not_permitted" ? "Your venue has not allowed adding tables."
-            : code === "plan_ready" ? "This layout is Ready — ask your venue to Make Changes if you need edits."
-              : "Could not add a table.",
-        );
+        setAddError(addErrorMessage(d.error ?? "add_failed"));
         return;
       }
+      setCatalogOpen(false);
       setReloadTick((n) => n + 1);
     } catch {
-      setAddError("Could not add a table.");
+      setAddError("Could not add that furniture.");
     } finally {
       setAdding(false);
     }
@@ -700,16 +888,19 @@ export default function FloorPlanSection({ token }: { token: string }) {
                   {mayAddTables && (
                     <button
                       type="button"
-                      disabled={adding}
-                      onClick={() => void addTable()}
+                      disabled={adding || catalogLoading}
+                      onClick={() => void openCatalog()}
                       className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-border text-heading bg-card disabled:opacity-50"
                       data-testid="floor-plan-add-table"
                     >
-                      {adding ? "Adding…" : "Add table"}
+                      {catalogLoading ? "Loading…" : "Add furniture"}
                     </button>
                   )}
                   <p className="text-[11px] text-muted-foreground">
                     {objects.length} element{objects.length === 1 ? "" : "s"}
+                    {objects.filter((o) => SEATABLE.has(o.objectType)).length > 0
+                      ? ` · ${objects.filter((o) => SEATABLE.has(o.objectType)).reduce((s, o) => s + (o.capacity ?? 0), 0)} seats`
+                      : ""}
                   </p>
                 </div>
               </div>
@@ -726,6 +917,127 @@ export default function FloorPlanSection({ token }: { token: string }) {
                   setDetail((prev) => (prev ? { ...prev, objects: next } : prev));
                 }}
               />
+              {catalogOpen && (
+                <div
+                  className="border-t border-border px-4 py-3 space-y-3 bg-[#FAF8F5]"
+                  data-testid="floor-plan-furniture-catalog"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-heading">Venue furniture</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Choose from your venue&apos;s catalog. Quantities and dimensions come from venue inventory —
+                        items without a configured quantity cannot be added.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-[11px] text-muted-foreground"
+                      onClick={() => setCatalogOpen(false)}
+                      data-testid="floor-plan-catalog-close"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  {catalogLoading && (
+                    <p className="text-xs text-muted-foreground">Loading catalog…</p>
+                  )}
+                  {!catalogLoading && catalog && (
+                    <div className="space-y-4">
+                      {(catalog.inventoryItems?.length ?? 0) === 0
+                        && (catalog.planTableTypes?.length ?? 0) === 0 && (
+                        <p className="text-xs text-muted-foreground" data-testid="floor-plan-catalog-empty">
+                          No addable furniture is configured yet. Ask your venue to mark tables available for floor
+                          plans and set inventory quantities.
+                        </p>
+                      )}
+                      {(catalog.inventoryItems ?? []).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                            Inventory
+                          </p>
+                          <ul className="space-y-2">
+                            {catalog.inventoryItems.map((item) => (
+                              <li
+                                key={item.inventoryItemId}
+                                className="rounded-xl border border-border bg-card px-3 py-2 flex items-start justify-between gap-3"
+                                data-testid="floor-plan-catalog-item"
+                                data-addable={item.addable ? "true" : "false"}
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-heading truncate">{item.name}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {item.shape ?? item.objectType}
+                                    {" · "}
+                                    {catalogDimsLabel(item)}
+                                    {item.capacity != null ? ` · ${item.capacity} seats` : ""}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {item.quantityConfigured
+                                      ? `${item.remaining} of ${item.quantityAvailable} remaining`
+                                      : "Quantity not set by venue"}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!item.addable || adding}
+                                  onClick={() => void addFromCatalog(item)}
+                                  className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border border-border disabled:opacity-40"
+                                  style={item.addable ? { background: SAGE, color: "#fff", borderColor: SAGE } : undefined}
+                                  data-testid="floor-plan-catalog-add"
+                                >
+                                  {item.addable ? (adding ? "Adding…" : "Add") : "Unavailable"}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {(catalog.planTableTypes ?? []).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                            Match layout tables
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Add another table like those already on this layout (system safety limit applies when
+                            inventory quantity is not configured).
+                          </p>
+                          <ul className="space-y-2">
+                            {catalog.planTableTypes.map((item) => (
+                              <li
+                                key={item.objectType}
+                                className="rounded-xl border border-border bg-card px-3 py-2 flex items-start justify-between gap-3"
+                                data-testid="floor-plan-catalog-plan-type"
+                                data-addable={item.addable ? "true" : "false"}
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-heading truncate">{item.name}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {catalogDimsLabel(item)}
+                                    {item.capacity != null ? ` · ${item.capacity} seats` : ""}
+                                    {" · "}
+                                    {item.remaining} remaining (cap {item.quantityAvailable})
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!item.addable || adding}
+                                  onClick={() => void addFromCatalog(item)}
+                                  className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border border-border disabled:opacity-40"
+                                  style={item.addable ? { background: SAGE, color: "#fff", borderColor: SAGE } : undefined}
+                                  data-testid="floor-plan-catalog-add-plan-type"
+                                >
+                                  {item.addable ? (adding ? "Adding…" : "Add") : "Unavailable"}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {addError && (
                 <p className="text-xs text-destructive px-4 py-2" data-testid="floor-plan-add-error">{addError}</p>
               )}
