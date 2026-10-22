@@ -1,0 +1,18 @@
+PASS serving_sha — serving=a11547be457ce5323e4d32fb2fda2d6ff7df0d53 expected=a11547be457ce5323e4d32fb2fda2d6ff7df0d53
+PASS invoice_draft_eo_linked — {"id":"4489c869-38fd-4ae1-8cad-cc7043d1d527","status":"draft","event_order_id":"624eceef-5096-4288-b104-62daa3a82d11","event_id":"ebf74f77-2944-474a-b735-48762ecb6842","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080","subtotal":0,"discount_amount":0,"tax_amount":112.06,"total":112.06}
+PASS eo_billable_charges — charges=1793 lines=7
+PASS expected_math — base=1543 tax=96.44 total=1639.44
+PASS defect_shape_stored_only_zero — storedOnlyBase=0
+PASS ui_shows_rate — Tax6.25% applied
+1×
+$96.44
+$96.44
+
+INVOICE ADJUSTMENTS
+
+Add a discount or exclusive tax line on this draft invoice. Rates and amounts are saved on the line so late
+PASS persisted_tax_amount — {"tax":{"id":"13d69969-4826-4dde-bcd3-940c5a3932fa","type":"tax","amount":96.44,"unit_price":96.44,"tax_rate_mode":"percent","tax_rate_value":6.25,"description":"Tax"},"expectedTax":96.44}
+PASS no_duplicate_tax — count=1
+PASS reload_shows_tax_amount — lookFor=$96.44
+PASS recalc_after_discount_removed — {"taxAfter":{"amount":112.06,"tax_rate_value":6.25},"taxNoDisc":112.06}
+PASS duplicate_tax_blocked — count=1

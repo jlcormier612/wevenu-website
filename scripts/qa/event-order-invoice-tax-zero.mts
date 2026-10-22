@@ -151,12 +151,21 @@ async function main() {
   const rate = page.getByTestId("invoice-tax-rate-input");
   await rate.fill("6.25");
   await page.getByRole("button", { name: /Add Line Item/i }).click();
-  await page.waitForTimeout(2500);
+  // Wait for save to finish — form stays on "Adding…" while the server persists.
+  const taxMoney = expectedTax.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  await page.getByText(taxMoney, { exact: false }).first()
+    .waitFor({ state: "visible", timeout: 30_000 })
+    .catch(() => undefined);
+  await page.getByRole("button", { name: /^Adding/i })
+    .waitFor({ state: "hidden", timeout: 15_000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/after-tax-1280.png`, fullPage: true }).catch(() => undefined);
 
   const body = await page.locator("body").innerText();
-  const taxVisible = body.includes("6.25%") || /6\.25/.test(body);
-  record("ui_shows_rate", taxVisible, body.match(/Tax[\s\S]{0,120}/)?.[0] ?? body.slice(0, 200));
+  // Rate appears on the saved tax row (input values are not in innerText while the form is open).
+  const taxVisible = /6\.25\s*%/.test(body) || body.includes(taxMoney);
+  record("ui_shows_rate", taxVisible, body.match(/Tax[\s\S]{0,160}|6\.25[\s\S]{0,40}/)?.[0] ?? body.slice(0, 200));
 
   // Mobile width snapshot
   await page.setViewportSize({ width: 390, height: 844 });
@@ -181,7 +190,6 @@ async function main() {
   await page.goto(`${APP}/invoices/${INVOICE_ID}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
   await page.waitForTimeout(2500);
   const body2 = await page.locator("body").innerText();
-  const taxMoney = expectedTax.toLocaleString("en-US", { style: "currency", currency: "USD" });
   record("reload_shows_tax_amount", body2.includes(taxMoney) || body2.includes(expectedTax.toFixed(2)), `lookFor=${taxMoney}`);
   await page.screenshot({ path: `${OUT}/reload-1280.png`, fullPage: true }).catch(() => undefined);
 

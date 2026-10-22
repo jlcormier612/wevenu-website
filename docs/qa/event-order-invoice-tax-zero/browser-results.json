@@ -1,0 +1,68 @@
+{
+  "expectedSha": "a11547be457ce5323e4d32fb2fda2d6ff7df0d53",
+  "invoiceId": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+  "eoCharges": 1793,
+  "discount": 250,
+  "expectedBase": 1543,
+  "expectedTax": 96.44,
+  "expectedTotal": 1639.44,
+  "passed": 11,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=a11547be457ce5323e4d32fb2fda2d6ff7df0d53 expected=a11547be457ce5323e4d32fb2fda2d6ff7df0d53"
+    },
+    {
+      "name": "invoice_draft_eo_linked",
+      "pass": true,
+      "detail": "{\"id\":\"4489c869-38fd-4ae1-8cad-cc7043d1d527\",\"status\":\"draft\",\"event_order_id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"event_id\":\"ebf74f77-2944-474a-b735-48762ecb6842\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"subtotal\":0,\"discount_amount\":0,\"tax_amount\":112.06,\"total\":112.06}"
+    },
+    {
+      "name": "eo_billable_charges",
+      "pass": true,
+      "detail": "charges=1793 lines=7"
+    },
+    {
+      "name": "expected_math",
+      "pass": true,
+      "detail": "base=1543 tax=96.44 total=1639.44"
+    },
+    {
+      "name": "defect_shape_stored_only_zero",
+      "pass": true,
+      "detail": "storedOnlyBase=0"
+    },
+    {
+      "name": "ui_shows_rate",
+      "pass": true,
+      "detail": "Tax6.25% applied\n1×\n$96.44\n$96.44\n\nINVOICE ADJUSTMENTS\n\nAdd a discount or exclusive tax line on this draft invoice. Rates and amounts are saved on the line so late"
+    },
+    {
+      "name": "persisted_tax_amount",
+      "pass": true,
+      "detail": "{\"tax\":{\"id\":\"13d69969-4826-4dde-bcd3-940c5a3932fa\",\"type\":\"tax\",\"amount\":96.44,\"unit_price\":96.44,\"tax_rate_mode\":\"percent\",\"tax_rate_value\":6.25,\"description\":\"Tax\"},\"expectedTax\":96.44}"
+    },
+    {
+      "name": "no_duplicate_tax",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "reload_shows_tax_amount",
+      "pass": true,
+      "detail": "lookFor=$96.44"
+    },
+    {
+      "name": "recalc_after_discount_removed",
+      "pass": true,
+      "detail": "{\"taxAfter\":{\"amount\":112.06,\"tax_rate_value\":6.25},\"taxNoDisc\":112.06}"
+    },
+    {
+      "name": "duplicate_tax_blocked",
+      "pass": true,
+      "detail": "count=1"
+    }
+  ]
+}
