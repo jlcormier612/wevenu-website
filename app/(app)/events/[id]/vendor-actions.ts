@@ -3,10 +3,15 @@
 import { revalidatePath } from "next/cache";
 
 import { assignVendor, removeVendorAssignment, setVendorAssignmentPayment_, updateVendorAssignment_ } from "@/lib/vendors/service";
-import { addRecommendation, removeRecommendation } from "@/lib/vendor-recommendations/service";
+import {
+  addRecommendation,
+  ensureEventRecommendationsFromNetwork,
+  removeRecommendation,
+  updateRecommendationNote,
+} from "@/lib/vendor-recommendations/service";
 import { dismissRemovalRequest } from "@/lib/vendor-removal-requests/service";
 import type { EventVendorAssignment, VendorActionResult, VendorAssignmentInput } from "@/lib/vendors/types";
-import type { RecommendationActionResult } from "@/lib/vendor-recommendations/types";
+import type { EventVendorRecommendation, RecommendationActionResult } from "@/lib/vendor-recommendations/types";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
@@ -24,6 +29,24 @@ export async function recommendVendorAction(eventId: string, vendorId: string, n
 
 export async function unrecommendVendorAction(recommendationId: string, eventId: string): Promise<RecommendationActionResult> {
   const result = await removeRecommendation(recommendationId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function ensureEventRecommendationsFromNetworkAction(
+  eventId: string,
+): Promise<RecommendationActionResult & { seeded?: number; recommendations?: EventVendorRecommendation[] }> {
+  const result = await ensureEventRecommendationsFromNetwork(eventId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function updateRecommendationNoteAction(
+  recommendationId: string,
+  eventId: string,
+  note: string | null,
+): Promise<RecommendationActionResult> {
+  const result = await updateRecommendationNote(recommendationId, note);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

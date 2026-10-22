@@ -8,6 +8,7 @@ import type { ReadinessSection } from "@/lib/readiness/types";
 
 import {
   applicableSetupSteps,
+  overviewSetupSteps,
   selectOverviewExceptions,
   setupDecisionCounts,
   setupDecisionsComplete,
@@ -51,6 +52,23 @@ describe("event setup state", () => {
       questionnaires: false,
     });
     assert.deepEqual(setupOnly, ["timeline", "floor_plans", "vendors"]);
+  });
+
+  it("Overview setup cards omit Questionnaires while keeping them applicable for profiles", () => {
+    const all = applicableSetupSteps(DEFAULT_PLANNING_CAPABILITIES);
+    assert.ok(all.includes("questionnaires"));
+    assert.deepEqual(overviewSetupSteps(all), [
+      "planning", "timeline", "floor_plans", "vendors", "inventory", "event_order",
+    ]);
+    const panel = readFileSync(resolve("components/events/event-setup-panel.tsx"), "utf8");
+    assert.match(panel, /overviewSetupSteps/);
+    const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
+    const vendors = detail.indexOf('value="vendors"');
+    const inventory = detail.indexOf('value="inventory"');
+    const eventOrder = detail.indexOf('value="event-order"');
+    const questionnaires = detail.indexOf('value="questionnaires"');
+    const documents = detail.indexOf('value="documents"');
+    assert.ok(vendors < inventory && inventory < eventOrder && eventOrder < questionnaires && questionnaires < documents);
   });
 
   it("set up and skip are explicit and do not invent module records", () => {

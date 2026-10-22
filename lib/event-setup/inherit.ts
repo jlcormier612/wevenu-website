@@ -196,8 +196,18 @@ async function applyInheritedTemplates(
     await applyInheritedQuestionnaires(supabase, venueId, eventId, profile);
   }
 
-  // Vendors: Vendor Network classifications are authoritative. Do not copy a
-  // second event-level recommendation list from Setup Profile refs.
+  // Vendors: seed client-facing recommendations from the Vendor Network once
+  // (not from a Setup Profile vendor-id list). Required stays assignment policy.
+  if (caps.vendors && profile.decisions.vendors === "set_up") {
+    try {
+      const { ensureEventRecommendationsFromNetworkForVenue } = await import(
+        "@/lib/vendor-recommendations/ensure-for-venue"
+      );
+      await ensureEventRecommendationsFromNetworkForVenue(supabase, venueId, eventId);
+    } catch (err) {
+      console.error("Setup profile vendor recommendation seed failed:", err);
+    }
+  }
 
   // Inventory / Event Order: when venue-wide enabled and profile Included with a
   // valid starting template, prepare the event-level draft at booking (idempotent).

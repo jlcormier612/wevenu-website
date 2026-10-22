@@ -1,0 +1,92 @@
+{
+  "status": "GREEN",
+  "servingSha": "7df38cd86352efde1c2c9a1acec2e4208f9f4f31",
+  "expectedSha": "7df38cd86352efde1c2c9a1acec2e4208f9f4f31",
+  "eventId": "9c200402-5d76-4851-aa8e-ef3ffd823144",
+  "clientId": "21d9fa35-7a0d-42ce-8697-69a9bb202cde",
+  "passed": 16,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=7df38cd86352efde1c2c9a1acec2e4208f9f4f31 expected=7df38cd86352efde1c2c9a1acec2e4208f9f4f31"
+    },
+    {
+      "name": "network_vendors",
+      "pass": true,
+      "detail": "n=5"
+    },
+    {
+      "name": "fixture",
+      "pass": true,
+      "detail": "event=9c200402-5d76-4851-aa8e-ef3ffd823144 client=21d9fa35-7a0d-42ce-8697-69a9bb202cde"
+    },
+    {
+      "name": "eo_editor_line_count",
+      "pass": true,
+      "detail": "uiLines=7"
+    },
+    {
+      "name": "eo_db_lines",
+      "pass": true,
+      "detail": "dbLines=7 shared=null template=d73d9734-98d9-46a0-b54b-dccadb036150"
+    },
+    {
+      "name": "eo_d02_library_repaired_or_populated",
+      "pass": true,
+      "detail": "before=7 after=7"
+    },
+    {
+      "name": "vendors_editor_open",
+      "pass": true,
+      "detail": "open"
+    },
+    {
+      "name": "vendors_recommendations_path",
+      "pass": true,
+      "detail": "recommendations section"
+    },
+    {
+      "name": "vendors_no_open_in_editor",
+      "pass": true,
+      "detail": "no Open Vendors"
+    },
+    {
+      "name": "vendors_db_assignments",
+      "pass": true,
+      "detail": "assignments=3"
+    },
+    {
+      "name": "vendors_db_recommendations",
+      "pass": true,
+      "detail": "recommendations=1"
+    },
+    {
+      "name": "questionnaire_no_false_unavailable",
+      "pass": true,
+      "detail": "unavailableCount=0"
+    },
+    {
+      "name": "questionnaire_selector_shows_name",
+      "pass": true,
+      "detail": "Client Planning Questionnaire"
+    },
+    {
+      "name": "questionnaire_preview_back",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/events/9c200402-5d76-4851-aa8e-ef3ffd823144/questionnaire-preview?kind=client_planning&from=event"
+    },
+    {
+      "name": "questionnaire_preview_return",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/21d9fa35-7a0d-42ce-8697-69a9bb202cde#questionnaires"
+    },
+    {
+      "name": "no_invoice_side_effect",
+      "pass": true,
+      "detail": "before=38 after=38"
+    }
+  ],
+  "at": "2026-10-22T05:02:14.442Z"
+}

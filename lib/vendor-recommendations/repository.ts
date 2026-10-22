@@ -37,3 +37,57 @@ export async function removeRecommendation(client: DbClient, venueId: string, re
     .delete().eq("id", recommendationId).eq("venue_id", venueId);
   if (error) throw error;
 }
+
+export async function updateRecommendationNote(
+  client: DbClient,
+  venueId: string,
+  recommendationId: string,
+  note: string | null,
+): Promise<void> {
+  const { error } = await client.from("event_vendor_recommendations")
+    .update({ note: note?.trim() || null })
+    .eq("id", recommendationId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Active/invited Network rows used to seed event recommendations (venue-scoped). */
+export async function listNetworkVendorsForRecommendationSeed(
+  client: DbClient,
+  venueId: string,
+): Promise<Array<{ vendorId: string; status: string; preferenceLevel: string; isRequired: boolean }>> {
+  const { data, error } = await client
+    .from("venue_vendor_relationships")
+    .select("vendor_id, status, preference_level, is_required")
+    .eq("venue_id", venueId)
+    .neq("status", "inactive");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    vendorId: r.vendor_id as string,
+    status: (r.status as string) ?? "inactive",
+    preferenceLevel: (r.preference_level as string) ?? "standard",
+    isRequired: r.is_required === true,
+  }));
+}
+
+export async function insertRecommendationsIfMissing(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  vendorIds: readonly string[],
+): Promise<number> {
+  if (vendorIds.length === 0) return 0;
+  const rows = vendorIds.map((vendorId) => ({
+    venue_id: venueId,
+    event_id: eventId,
+    vendor_id: vendorId,
+    note: null as string | null,
+    source: "venue",
+  }));
+  const { data, error } = await client
+    .from("event_vendor_recommendations")
+    .upsert(rows, { onConflict: "event_id,vendor_id", ignoreDuplicates: true })
+    .select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
+}

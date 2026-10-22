@@ -68,10 +68,11 @@ describe("booking-to-portal simplification", () => {
     assert.doesNotMatch(section, /recommendedVendorIds: toggleId/);
   });
 
-  it("booking does not copy event-level vendor recommendations from profile refs", () => {
+  it("booking seeds event recommendations from Vendor Network, not Setup Profile refs", () => {
     const inherit = read("lib/event-setup/inherit.ts");
     assert.doesNotMatch(inherit, /applyInheritedVendorRecommendations/);
-    assert.doesNotMatch(inherit, /addRecommendation/);
-    assert.match(inherit, /Vendor Network classifications are authoritative/);
+    assert.doesNotMatch(inherit, /recommendedVendorIds/);
+    assert.match(inherit, /ensureEventRecommendationsFromNetworkForVenue/);
+    assert.match(inherit, /Vendor Network/);
   });
 });

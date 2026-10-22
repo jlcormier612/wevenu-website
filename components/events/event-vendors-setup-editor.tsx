@@ -13,11 +13,14 @@ import { toast } from "sonner";
 
 import {
   assignVendorAction,
+  ensureEventRecommendationsFromNetworkAction,
   recommendVendorAction,
   removeVendorAssignmentAction,
   unrecommendVendorAction,
+  updateRecommendationNoteAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -65,6 +68,8 @@ export function EventVendorsSetupEditor({
   const [recommendVendorId, setRecommendVendorId] = React.useState("");
   const [pending, startTransition] = React.useTransition();
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [seeding, setSeeding] = React.useState(false);
+  const [noteDrafts, setNoteDrafts] = React.useState<Record<string, string>>({});
 
   const wasOpen = React.useRef(false);
   React.useEffect(() => {
@@ -74,9 +79,27 @@ export function EventVendorsSetupEditor({
       setAssignVendorId("");
       setRecommendVendorId("");
       setBusyId(null);
+      setNoteDrafts(
+        Object.fromEntries(initialRecommendations.map((r) => [r.id, r.note ?? ""])),
+      );
+      // Seed once from Vendor Network when this event has no recommendations yet.
+      setSeeding(true);
+      void (async () => {
+        const result = await ensureEventRecommendationsFromNetworkAction(eventId);
+        setSeeding(false);
+        if (result.ok && result.recommendations && result.recommendations.length > 0) {
+          setRecommendations(result.recommendations);
+          setNoteDrafts(
+            Object.fromEntries(result.recommendations.map((r) => [r.id, r.note ?? ""])),
+          );
+        }
+        if (result.ok && (result.seeded ?? 0) > 0) {
+          router.refresh();
+        }
+      })();
     }
     wasOpen.current = open;
-  }, [open, initialAssignments, initialRecommendations]);
+  }, [open, initialAssignments, initialRecommendations, eventId, router]);
 
   const assignedIds = new Set(assignments.map((a) => a.vendorId));
   const recommendedIds = new Set(recommendations.map((r) => r.vendorId));
@@ -243,7 +266,7 @@ export function EventVendorsSetupEditor({
   }
 
   function removeRecommendation(row: EventVendorRecommendation) {
-    if (!confirm(`Remove ${row.vendorName} from this event's recommendations? They stay in your Vendor Network.`)) {
+    if (!confirm(`Exclude ${row.vendorName} from this event's recommendations? They stay in your Vendor Network.`)) {
       return;
     }
     setBusyId(row.id);
@@ -252,11 +275,30 @@ export function EventVendorsSetupEditor({
       const result = await unrecommendVendorAction(row.id, eventId);
       setBusyId(null);
       if (!result.ok) {
-        toast.error(result.message ?? "Could not remove recommendation.");
+        toast.error(result.message ?? "Could not exclude recommendation.");
         router.refresh();
         return;
       }
-      toast.success("Recommendation removed for this event.");
+      toast.success("Excluded for this event only.");
+      router.refresh();
+    })();
+  }
+
+  function saveRecommendationNote(row: EventVendorRecommendation) {
+    const nextNote = (noteDrafts[row.id] ?? "").trim() || null;
+    if ((row.note ?? null) === nextNote) return;
+    setBusyId(row.id);
+    void (async () => {
+      const result = await updateRecommendationNoteAction(row.id, eventId, nextNote);
+      setBusyId(null);
+      if (!result.ok) {
+        toast.error(result.message ?? "Could not save note.");
+        return;
+      }
+      setRecommendations((prev) =>
+        prev.map((r) => (r.id === row.id ? { ...r, note: nextNote } : r)),
+      );
+      toast.success("Recommendation note saved for this event.");
       router.refresh();
     })();
   }
@@ -381,44 +423,76 @@ export function EventVendorsSetupEditor({
 
           <div className="space-y-3" data-testid="vendors-setup-recommendations-path">
             <p className="text-sm font-medium text-heading">Client-facing recommendations</p>
-            {recommendations.length === 0 ? (
-              <p className="text-sm text-muted-foreground" data-testid="vendors-setup-no-recommendations">
-                No recommendations for this event yet.
+            <p className="text-xs text-muted-foreground">
+              Starts from your Vendor Network standard list for this event. Exclude or edit notes here without changing the Network.
+            </p>
+            {seeding ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-2" data-testid="vendors-setup-seeding">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading inherited recommendations…
               </p>
-            ) : (
+            ) : null}
+            {!seeding && recommendations.length === 0 ? (
+              <p className="text-sm text-muted-foreground" data-testid="vendors-setup-no-recommendations">
+                No client-facing recommendations for this event. Add vendors from your Network below, or mark vendors Preferred / Recommended / Approved in Vendor Network and reopen.
+              </p>
+            ) : null}
+            {recommendations.length > 0 ? (
               <ul className="space-y-2" data-testid="vendors-setup-recommendations-list">
                 {recommendations.map((r) => (
                   <li
                     key={r.id}
-                    className="flex items-start justify-between gap-3 rounded-md border border-border px-3 py-2"
+                    className="space-y-2 rounded-md border border-border px-3 py-2"
                     data-testid={`vendors-setup-recommendation-${r.id}`}
                   >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-heading truncate">{r.vendorName}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {r.vendorCategory ? vendorCategoryLabel(r.vendorCategory) : "Vendor"}
-                      </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-heading truncate">{r.vendorName}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {r.vendorCategory ? vendorCategoryLabel(r.vendorCategory) : "Vendor"}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={pending || seeding || busyId === r.id || r.id.startsWith("optimistic-")}
+                        data-testid={`vendors-setup-remove-recommendation-${r.id}`}
+                        onClick={() => removeRecommendation(r)}
+                      >
+                        {busyId === r.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Trash2 className="h-3.5 w-3.5" />}
+                        Exclude
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={pending || busyId === r.id || r.id.startsWith("optimistic-")}
-                      data-testid={`vendors-setup-remove-recommendation-${r.id}`}
-                      onClick={() => removeRecommendation(r)}
-                    >
-                      {busyId === r.id
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <Trash2 className="h-3.5 w-3.5" />}
-                      Remove
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        className="h-8 text-sm"
+                        placeholder="Event-only note (optional)"
+                        value={noteDrafts[r.id] ?? r.note ?? ""}
+                        disabled={pending || busyId === r.id || r.id.startsWith("optimistic-")}
+                        data-testid={`vendors-setup-recommendation-note-${r.id}`}
+                        onChange={(e) => setNoteDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={pending || busyId === r.id || r.id.startsWith("optimistic-")}
+                        data-testid={`vendors-setup-save-recommendation-note-${r.id}`}
+                        onClick={() => saveRecommendationNote(r)}
+                      >
+                        Save note
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
-            )}
+            ) : null}
 
             <div className="rounded-md border border-dashed border-border p-3 space-y-2">
-              <p className="text-sm font-medium text-heading">Add recommendation</p>
+              <p className="text-sm font-medium text-heading">Add recommendation for this event</p>
               <Select
                 value={recommendVendorId}
                 onValueChange={setRecommendVendorId}

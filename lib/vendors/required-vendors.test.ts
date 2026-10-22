@@ -56,22 +56,22 @@ describe("required vendors are not Setup Profile requiredVendorIds", () => {
     assert.doesNotMatch(bookFn, /from public\.venue_setup_profiles/);
   });
 
-  it("Setup Profile no longer presents the dead team-expects-to-book list", () => {
+  it("Setup Profile defers to Vendor Network without a second recommendation picker", () => {
     assert.doesNotMatch(setupSection, /Vendors your team expects to book/);
-    assert.match(setupSection, /Vendor directory/);
     assert.match(setupSection, /available for client discovery by default/);
-    assert.match(setupSection, /Optional recommendations/);
     assert.match(setupSection, /Required vendors/);
     assert.match(setupSection, /Vendor Network/);
+    assert.match(setupSection, /You do not select a second recommendation list here/);
+    assert.doesNotMatch(setupSection, /Optional recommendations/);
     // Vendors step must not offer a checkbox list that writes requiredVendorIds.
     const vendorsStep = setupSection.slice(setupSection.indexOf('step === "vendors"'));
     assert.doesNotMatch(vendorsStep, /patchRefs\(\{ requiredVendorIds/);
-    assert.match(vendorsStep, /recommendedVendorIds/);
+    assert.doesNotMatch(vendorsStep, /recommendedVendorIds/);
   });
 
-  it("recommended inheritance remains on recommendedVendorIds only", () => {
-    assert.match(inherit, /applyInheritedVendorRecommendations/);
-    assert.match(inherit, /recommendedVendorIds/);
+  it("client-facing recommendations inherit from Vendor Network, not requiredVendorIds", () => {
+    assert.match(inherit, /ensureEventRecommendationsFromNetworkForVenue/);
+    assert.doesNotMatch(inherit, /recommendedVendorIds/);
     assert.doesNotMatch(inherit, /requiredVendorIds/);
     assert.doesNotMatch(inherit, /is_required/);
   });

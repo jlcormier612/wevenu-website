@@ -818,9 +818,9 @@ export function EventDetail({
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="floorplan">Floor Plans</TabsTrigger>
           <TabsTrigger value="vendors">Vendors</TabsTrigger>
-          <TabsTrigger value="questionnaires">Questionnaires</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="event-order">Event Order</TabsTrigger>
+          <TabsTrigger value="questionnaires">Questionnaires</TabsTrigger>
           <TabsTrigger value="documents">
             Documents
             {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}

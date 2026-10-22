@@ -179,6 +179,15 @@ export function applicableSetupSteps(caps: VenuePlanningCapabilities): SetupStep
   });
 }
 
+/**
+ * Overview Event Setup cards / settle decisions — Questionnaires are a separate
+ * workspace (tab + authorized send), not a planning-setup row.
+ * Setup Profiles and book-time inherit still use full applicableSetupSteps.
+ */
+export function overviewSetupSteps(applicable: readonly SetupStepKey[]): SetupStepKey[] {
+  return applicable.filter((step) => step !== "questionnaires");
+}
+
 export function isSetupStepKey(value: string): value is SetupStepKey {
   return (SETUP_STEP_ORDER as readonly string[]).includes(value);
 }

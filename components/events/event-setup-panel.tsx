@@ -42,6 +42,7 @@ import {
 import {
   effectiveDecisionMap,
   effectiveSetupDecision,
+  overviewSetupSteps,
   setupDecisionCounts,
   setupDecisionsComplete,
   setupStepLabel,
@@ -175,12 +176,14 @@ export function EventSetupPanel({
   const [floorPlansEditorOpen, setFloorPlansEditorOpen] = React.useState(false);
   const [vendorsEditorOpen, setVendorsEditorOpen] = React.useState(false);
   const effective = effectiveDecisionMap(state);
-  const decisionsComplete = setupDecisionsComplete(applicableSteps, effective);
-  const counts = setupDecisionCounts(applicableSteps, effective);
+  // Questionnaires stay on their own tab / authorized send — not Overview setup cards.
+  const overviewSteps = overviewSetupSteps(applicableSteps);
+  const decisionsComplete = setupDecisionsComplete(overviewSteps, effective);
+  const counts = setupDecisionCounts(overviewSteps, effective);
   const usingProfile = Boolean(state.usesProfile && state.profileName);
   const inheritedRefs = state.inheritedTemplateRefs ?? {};
 
-  const stepDetails = applicableSteps.map((step) => {
+  const stepDetails = overviewSteps.map((step) => {
     const decision = effectiveSetupDecision(state, step) ?? null;
     return {
       step,

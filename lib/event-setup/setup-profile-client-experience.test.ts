@@ -115,9 +115,10 @@ describe("Vendors: Vendor Network classifications are authoritative", () => {
     assert.doesNotMatch(section, /Optional recommendations/);
     assert.doesNotMatch(section, /Vendors your team expects to book/);
     assert.doesNotMatch(section, /Recommended vendors for the client/);
-    assert.match(inherit, /Vendor Network classifications are authoritative/);
+    assert.match(inherit, /ensureEventRecommendationsFromNetworkForVenue/);
+    assert.match(inherit, /Vendor Network/);
     assert.doesNotMatch(inherit, /applyInheritedVendorRecommendations/);
-    assert.doesNotMatch(inherit, /addRecommendation/);
+    assert.doesNotMatch(inherit, /recommendedVendorIds/);
     assert.doesNotMatch(inherit, /assignVendor/);
   });
 });

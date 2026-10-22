@@ -61,10 +61,13 @@ describe("Vendors setup editor — assignments and recommendations", () => {
   it("manages client-facing recommendations without deleting directory vendors", () => {
     assert.match(editor, /recommendVendorAction/);
     assert.match(editor, /unrecommendVendorAction/);
+    assert.match(editor, /ensureEventRecommendationsFromNetworkAction/);
+    assert.match(editor, /updateRecommendationNoteAction/);
     assert.match(editor, /vendors-setup-recommendations-path/);
     assert.match(editor, /vendors-setup-add-recommendation/);
     assert.match(editor, /vendors-setup-remove-recommendation-/);
-    assert.match(editor, /remain in your Vendor Network/);
+    assert.match(editor, /stay in your Vendor Network/);
+    assert.match(editor, /Exclude/);
     assert.match(panel, /recommendations=\{vendorRecommendations\}/);
   });
 

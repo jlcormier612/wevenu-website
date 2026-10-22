@@ -69,7 +69,7 @@ import {
   canDeleteFloorPlanRows,
   canEditFloorPlans,
 } from "@/lib/floor-plans/authorize";
-import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
+import { getOrEnsureEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
@@ -405,7 +405,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     getVenueWorkspaceDocuments({ eventId, clientId: id }), getPinnedDocumentKeys().then((s) => [...s]),
     questionnairesPromise,
     eventTasksPromise, getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
-    getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getEventRecommendations(eventId),
+    getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getOrEnsureEventRecommendations(eventId),
     getSpaces(), getContractTemplates(), contractsPromise, getTimelineTemplatesForLibrary(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
     getFloorPlanTemplates(), getUsageForEvent(eventId),

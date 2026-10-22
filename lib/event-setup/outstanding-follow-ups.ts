@@ -38,6 +38,11 @@ export function setupStatusBadgeLabel(
     if (status === "shared") return "Released";
     if (status === "draft" || status === "included") return "Included";
   }
+  // Inventory Included areas keep the Included badge while a recoverable draft
+  // is prepared or awaiting Release — same inclusion language as Planning.
+  if (decision === "set_up" && step === "inventory") {
+    if (status === "draft" || status === "included") return "Included";
+  }
   // Portal-facing content uses Released; Shared remains the readiness enum.
   if (status === "shared") return "Released";
   return readinessLabel[status];

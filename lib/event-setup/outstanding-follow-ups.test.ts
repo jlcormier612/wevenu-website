@@ -50,6 +50,12 @@ describe("setupStatusBadgeLabel", () => {
   it("presents Planning draft inclusion as Included, not Draft", () => {
     assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL, "planning"), "Included");
   });
+
+  it("presents Inventory draft inclusion as Included, not Draft", () => {
+    assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL, "inventory"), "Included");
+    assert.equal(setupStatusBadgeLabel("set_up", "included", SETUP_READINESS_LABEL, "inventory"), "Included");
+    assert.equal(setupStatusBadgeLabel("set_up", "needs_action", SETUP_READINESS_LABEL, "inventory"), "Needs action");
+  });
 });
 
 describe("setupStepTemplateLabel", () => {
