@@ -1,0 +1,70 @@
+PASS serving_sha — serving=a11547be457ce5323e4d32fb2fda2d6ff7df0d53 expected=a11547be457ce5323e4d32fb2fda2d6ff7df0d53
+PASS linkage_same_event_order_invoice — {"eo":{"status":"open","shared_at":null},"inv":{"num":"INV-2026-08500C","eo":"f0fa9108-c6b8-4ea6-a071-5fd43db61a51"}}
+PASS delivery_subtotal_2243 — delivery=2243 lines=7
+PASS line_provenance_custom — custom,custom,custom,custom,custom,custom,custom
+PASS fixture_reset_unshared_open — already open/unshared
+PASS portal_empty_before_share — rows=0
+PASS venue_shows_canonical_lines — Delivery subtotal (for reference): $2,243 — amount due is on Invoice / Payments.
+
+Package context
+PASS finalize_control_visible — Finalize
+PASS finalized_persisted — {"status":"finalized","finalized_at":"2026-10-22T22:27:25.379+00:00","shared_at":null,"revision":5}
+PASS share_control_after_finalize — Share with Client
+PASS shared_at_and_snapshot — {"shared_at":"2026-10-22T22:27:38.426+00:00","snapLines":7,"revision":5}
+PASS snapshot_includes_key_lines — Plated Dinner | Day-of Coordination | Beer & Wine | Chiavari Chair | Ceremony Coordination | Arbor | Buffet Dinner
+PASS portal_rpc_returns_shared_lines — rows=7
+PASS client_sees_shared_order — Bindi & Jake
+
+·
+
+Meadowbrook Valley Venue
+
+Oct 24, 2027
+
+Export my data
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Included
+📋
+Order
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+What you're receiving
+Shared
+
+Your Event Order — the delivery list for your event. Not your invoice or contract.
+
+Updated Oct 22, 2026
+
+CATERING
+
+Plated Dinner
+
+×1 person · Additional
+
+Per person
+
+$85.00
+
+Bu
+PASS invoice_linkage_unchanged — {"event_order_id":"f0fa9108-c6b8-4ea6-a071-5fd43db61a51","event_id":"4ed4d7fb-a301-42eb-8dc6-6b76a872f8e8","invoice_number":"INV-2026-08500C"}
+PASS template_unchanged — before=7 after=7
+PASS cross_tenant_no_leak — foreignRows=0
+PASS bogus_token_empty — rows=0
