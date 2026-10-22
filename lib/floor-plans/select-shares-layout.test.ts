@@ -36,6 +36,7 @@ describe("Floor plan select shares layout view (collaboration closure)", () => {
     assert.match(portalSection, /Your working layout/);
     assert.match(portalSection, /furniture is venue-owned|furniture is placed by your venue|view only/i);
     assert.match(portalSection, /floor-plan-seating-next-hint/);
+    assert.match(portalSection, /floor-plan-ready-badge/);
     assert.doesNotMatch(portalSection, /doesn.?t share it automatically/);
     assert.match(portalView, /Your working layout/);
     assert.doesNotMatch(portalView, /doesn.?t share it automatically/);

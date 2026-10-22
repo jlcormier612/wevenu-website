@@ -375,6 +375,9 @@ export default function FloorPlanSection({ token }: { token: string }) {
   const objects = detail?.objects ?? [];
   const hasOffers = offers.length > 0;
   const hasShared = list.length > 0;
+  const selectedSummary = list.find((p) => p.id === selectedId) ?? null;
+  const selectedIsReady = Boolean(plan?.isReady ?? selectedSummary?.isReady);
+  const selectedIsCoupleChoice = Boolean(plan?.isCoupleSelected ?? selectedSummary?.isCoupleSelected);
 
   if (!hasOffers && !hasShared) {
     return (
@@ -407,6 +410,11 @@ export default function FloorPlanSection({ token }: { token: string }) {
               The room layout for your event — view only. Your venue places furniture;
               you assign guests once they open Seating.
             </p>
+            {selectedIsReady && (
+              <p className="text-xs font-medium mt-1" style={{ color: SAGE }} data-testid="floor-plan-ready-badge">
+                Ready for the event
+              </p>
+            )}
           </div>
 
           {list.length > 1 && (
@@ -441,9 +449,9 @@ export default function FloorPlanSection({ token }: { token: string }) {
                 <div>
                   <p className="text-sm font-semibold text-heading">{plan.name}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {plan.isReady
+                    {selectedIsReady
                       ? "Ready for the event — furniture placement is set"
-                      : plan.isCoupleSelected || plan.isOperational
+                      : selectedIsCoupleChoice || plan.isOperational
                         ? "Your selected working layout — furniture is placed by your venue"
                         : "Shared layout — view only"}
                   </p>

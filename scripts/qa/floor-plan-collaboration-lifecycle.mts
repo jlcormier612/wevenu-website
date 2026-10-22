@@ -351,12 +351,13 @@ async function main() {
     record("ready_checkpoint_persists", Boolean(readyPlan?.finalized_at), JSON.stringify(readyPlan));
 
     await page.goto(`${APP}/p/${token}#floor_plans`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(2000);
+    await page.waitForSelector("text=Your working layout", { timeout: 25_000 });
+    await page.waitForSelector("text=Ready for the event", { timeout: 25_000 }).catch(() => undefined);
     const readyBody = await page.locator("body").innerText();
     record(
       "portal_shows_ready_after_refresh",
-      /Ready/i.test(readyBody) && /Your working layout/i.test(readyBody),
-      readyBody.match(/Ready|Your working layout/gi)?.join(" | ") ?? readyBody.slice(0, 200),
+      /Ready for the event/i.test(readyBody) && /Your working layout/i.test(readyBody),
+      readyBody.match(/Ready for the event|Your working layout/gi)?.join(" | ") ?? readyBody.slice(0, 200),
     );
     await page.screenshot({ path: `${OUT}/02-ready-1280.png`, fullPage: true }).catch(() => undefined);
 

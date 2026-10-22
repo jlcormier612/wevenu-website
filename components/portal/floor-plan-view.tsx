@@ -167,6 +167,9 @@ export function FloorPlanPortalView({
   const detail = selectedId ? detailsById[selectedId] ?? null : null;
   const plan = detail?.plan;
   const objects = detail?.objects ?? [];
+  const selectedSummary = list.find((p) => p.id === selectedId) ?? null;
+  const selectedIsReady = Boolean(plan?.isReady ?? selectedSummary?.isReady);
+  const selectedIsCoupleChoice = Boolean(plan?.isCoupleSelected ?? selectedSummary?.isCoupleSelected);
   const offerPreview = previewOfferId ? offerPreviewsById[previewOfferId] ?? null : null;
   const activeOffer = offers.find((o) => o.offerId === previewOfferId) ?? null;
 
@@ -251,6 +254,11 @@ export function FloorPlanPortalView({
               The room layout for your event — view only. Your venue places furniture;
               you assign guests once they open Seating.
             </p>
+            {selectedIsReady && (
+              <p className="text-xs font-medium mt-1" style={{ color: SAGE }} data-testid="floor-plan-ready-badge">
+                Ready for the event
+              </p>
+            )}
           </div>
           {list.length > 1 && (
             <div className="flex flex-wrap gap-2">
