@@ -12,10 +12,12 @@
  * Timeline editor itself now offers.
  */
 
-import { addEntry } from "@/lib/timeline/service";
+import { createClient } from "@/integrations/supabase/server";
 import { resolveEntryTimeFromOffset } from "@/lib/timeline/constants";
+import * as timelineRepo from "@/lib/timeline/repository";
 import type { TimelineActionResult, TimelineAudience } from "@/lib/timeline/types";
 import { getItems } from "@/lib/timeline-templates/service";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 /**
  * Library template items historically stored audience tag "venue" to mean
@@ -35,25 +37,34 @@ export function mapTemplateAudiencesForVenueOwnedApply(
 export async function applyTimelineTemplateToEvent(
   eventId: string, templateId: string, eventStartTime: string | null,
 ): Promise<TimelineActionResult> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
   const items = await getItems(templateId);
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
 
-  for (const item of items) {
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i]!;
     // Prefer explicit clock anchors on the template item; otherwise resolve
     // from minutesOffset. When both are null, entryTime stays empty — starters
     // never invent fake times.
     const entryTime = item.timeOfDay
       ?? resolveEntryTimeFromOffset(item.minutesOffset, eventStartTime)
       ?? "";
-    const result = await addEntry(eventId, {
-      title: item.title,
-      description: item.description ?? "",
-      notes: item.notes ?? "",
-      entryTime,
-      dayOffset: item.dayOffset ?? 0,
-      audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
-    });
-    if (!result.ok) return { ok: false, message: result.message ?? `Could not add "${item.title}".` };
+    try {
+      await timelineRepo.insertEntry(supabase, venue.id, eventId, {
+        title: item.title,
+        description: item.description ?? "",
+        notes: item.notes ?? "",
+        entryTime,
+        dayOffset: item.dayOffset ?? 0,
+        sortOrder: item.sortOrder ?? i,
+        audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : `Could not add "${item.title}".`;
+      return { ok: false, message };
+    }
   }
 
   return { ok: true };
@@ -61,25 +72,54 @@ export async function applyTimelineTemplateToEvent(
 
 /**
  * Event-specific timeline template switch for Overview setup.
- * Removes venue-owned entries on this event, then applies the selected Library
- * template as a fresh event copy. Client-owned entries are preserved.
- * Does not share with the couple and does not mutate the Library template.
+ * Removes venue-owned entries on this event in one query, then applies the
+ * selected Library template as a fresh event copy using one session client.
+ * Client-owned entries are preserved. Does not share with the couple and does
+ * not mutate the Library template.
+ *
+ * Prior implementation deleted/added each row through separate service
+ * round-trips (N+M withVenue calls), which timed out on large templates and
+ * surfaced as a page-load error with the original timeline still showing.
  */
 export async function replaceEventTimelineFromTemplate(
   eventId: string,
   templateId: string,
   eventStartTime: string | null,
 ): Promise<TimelineActionResult> {
-  const { getTimelineEntries, deleteEntry } = await import("@/lib/timeline/service");
-  const existing = await getTimelineEntries(eventId);
-  const venueOwned = existing.filter((e) => e.owner === "venue");
-  for (const entry of venueOwned) {
-    const removed = await deleteEntry(entry.id);
-    if (!removed.ok) {
-      return { ok: false, message: removed.message ?? `Could not remove "${entry.title}" before switching templates.` };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+
+  const items = await getItems(templateId);
+  if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
+
+  const cleared = await timelineRepo.deleteVenueOwnedEntriesForEvent(supabase, venue.id, eventId);
+  if (!cleared.ok) {
+    return { ok: false, message: cleared.message };
+  }
+
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i]!;
+    const entryTime = item.timeOfDay
+      ?? resolveEntryTimeFromOffset(item.minutesOffset, eventStartTime)
+      ?? "";
+    try {
+      await timelineRepo.insertEntry(supabase, venue.id, eventId, {
+        title: item.title,
+        description: item.description ?? "",
+        notes: item.notes ?? "",
+        entryTime,
+        dayOffset: item.dayOffset ?? 0,
+        sortOrder: item.sortOrder ?? i,
+        audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : `Could not add "${item.title}".`;
+      return { ok: false, message };
     }
   }
-  return applyTimelineTemplateToEvent(eventId, templateId, eventStartTime);
+
+  return { ok: true };
 }
 
 export async function applyTimelineTemplateToClient(

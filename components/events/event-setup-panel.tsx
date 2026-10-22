@@ -533,6 +533,7 @@ export function EventSetupPanel({
         applications={playbookApplications}
         templates={playbookTemplates}
         tasks={eventTasks}
+        preferredVenueTemplateId={inheritedRefs.venuePlanningPlaybookTemplateId ?? null}
       />
       <EventTimelineSetupEditor
         open={timelineEditorOpen}

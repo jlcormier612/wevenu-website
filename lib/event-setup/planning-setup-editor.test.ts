@@ -77,10 +77,26 @@ describe("setup editor editing paths and boundaries", () => {
     assert.match(editor, /Customize this event/);
   });
 
+  it("template selection can be canceled without applying", () => {
+    assert.match(editor, /planning-setup-cancel-template/);
+    assert.match(editor, /cancelTemplateSelection/);
+    const venueEditor = readFileSync(resolve("components/events/event-venue-planning-setup-editor.tsx"), "utf8");
+    assert.match(venueEditor, /venue-planning-setup-cancel-template/);
+    assert.match(venueEditor, /cancelTemplateSelection/);
+  });
+
   it("offers client and venue checklist audiences", () => {
     assert.match(editor, /planning-setup-audience-client/);
     assert.match(editor, /planning-setup-audience-venue/);
     assert.match(editor, /EventVenuePlanningSetupEditor/);
+  });
+
+  it("recovers missing venue checklist from inherited preferred template id", () => {
+    assert.match(panel, /preferredVenueTemplateId=\{inheritedRefs\.venuePlanningPlaybookTemplateId/);
+    const venueEditor = readFileSync(resolve("components/events/event-venue-planning-setup-editor.tsx"), "utf8");
+    assert.match(venueEditor, /applyPlaybookAction/);
+    assert.match(venueEditor, /preferredTemplateId/);
+    assert.match(venueEditor, /Configured venue checklist/);
   });
 
   it("does not expose management fulfillment actions", () => {
@@ -130,6 +146,13 @@ describe("Timeline setup editor seams", () => {
     assert.match(timelineEditor, /replaceEventTimelineFromTemplateAction/);
     assert.doesNotMatch(timelineEditor, /shareTimelineWithCouple/);
     assert.match(apply, /replaceEventTimelineFromTemplate/);
-    assert.match(apply, /owner === "venue"/);
+    assert.match(apply, /deleteVenueOwnedEntriesForEvent/);
+  });
+
+  it("template selection can be canceled and apply keeps the editor open", () => {
+    assert.match(timelineEditor, /timeline-setup-cancel-template/);
+    assert.match(timelineEditor, /cancelTemplateSelection/);
+    const applyFn = timelineEditor.slice(timelineEditor.indexOf("function applyTemplate"));
+    assert.doesNotMatch(applyFn.slice(0, 800), /onOpenChange\(false\)/);
   });
 });

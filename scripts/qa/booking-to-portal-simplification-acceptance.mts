@@ -675,6 +675,30 @@ async function main() {
     record("setup_editor_did_not_mutate_library", (libraryHits ?? 0) === 0, `libraryHits=${libraryHits}`);
 
     // Re-open Planning Change → Venue checklist path
+    const { data: venueAppsBefore } = await admin
+      .from("event_playbook_applications")
+      .select("id,template_id,template_name")
+      .eq("event_id", eventId!)
+      .eq("venue_id", FANCY)
+      .eq("kind", "venue");
+    const { count: venueTaskCountBefore } = await admin
+      .from("event_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId!)
+      .eq("venue_id", FANCY)
+      .neq("owner_type", "couple");
+    record(
+      "booking_inherited_venue_checklist_application",
+      (venueAppsBefore?.length ?? 0) === 1
+        && venueAppsBefore![0]!.template_id === "b2808150-67cb-4900-9cf2-eb5c10c3123e",
+      JSON.stringify(venueAppsBefore),
+    );
+    record(
+      "booking_inherited_venue_checklist_tasks",
+      (venueTaskCountBefore ?? 0) >= 7,
+      `venueTasks=${venueTaskCountBefore}`,
+    );
+
     await page.getByTestId("event-setup-change-planning").click();
     await page.waitForSelector('[data-testid="event-planning-setup-editor"]', { timeout: 15_000 });
     await page.getByTestId("planning-setup-audience-venue").click();
@@ -686,6 +710,37 @@ async function main() {
         && (await page.getByTestId("venue-planning-setup-mode-customize").count()) === 1,
       "venue audience + two paths",
     );
+    // Cancel template selection without mutation
+    await page.getByTestId("venue-planning-setup-mode-template").click();
+    await page.waitForSelector('[data-testid="venue-planning-setup-cancel-template"]', { timeout: 5_000 });
+    const venueAppsMid = (await admin
+      .from("event_playbook_applications")
+      .select("id,template_id")
+      .eq("event_id", eventId!)
+      .eq("venue_id", FANCY)
+      .eq("kind", "venue")).data ?? [];
+    await page.getByTestId("venue-planning-setup-cancel-template").click();
+    await page.waitForSelector('[data-testid="venue-planning-setup-customize-path"]', { timeout: 5_000 });
+    const venueAppsAfterCancel = (await admin
+      .from("event_playbook_applications")
+      .select("id,template_id")
+      .eq("event_id", eventId!)
+      .eq("venue_id", FANCY)
+      .eq("kind", "venue")).data ?? [];
+    const emptyShown = await page.getByTestId("venue-planning-setup-empty").count();
+    record(
+      "venue_setup_shows_inherited_checklist_not_empty",
+      emptyShown === 0
+        && (await page.getByTestId("venue-planning-setup-new-title").count()) === 1,
+      `empty=${emptyShown}`,
+    );
+    record(
+      "venue_template_cancel_does_not_mutate",
+      JSON.stringify(venueAppsMid) === JSON.stringify(venueAppsAfterCancel)
+        && venueAppsAfterCancel.length === 1,
+      JSON.stringify({ mid: venueAppsMid, after: venueAppsAfterCancel }),
+    );
+
     await page.getByTestId("venue-planning-setup-mode-customize").click();
     await page.waitForSelector('[data-testid="venue-planning-setup-new-title"]', { timeout: 10_000 });
     const venueTaskTitle = "QA venue-only planning task";
@@ -779,7 +834,64 @@ async function main() {
         (tlAfter ?? 0) === (tlBefore ?? 0) + 1,
         `before=${tlBefore} after=${tlAfter}`,
       );
+
+      // Cancel template selection — no mutation
+      const tlCountBeforeCancel = tlAfter ?? 0;
+      await page.getByTestId("timeline-setup-mode-template").click();
+      await page.waitForSelector('[data-testid="timeline-setup-cancel-template"]', { timeout: 5_000 });
+      await page.getByTestId("timeline-setup-cancel-template").click();
+      await page.waitForSelector('[data-testid="timeline-setup-customize-path"]', { timeout: 5_000 });
+      const { count: tlCountAfterCancel } = await admin
+        .from("timeline_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!);
+      record(
+        "timeline_template_cancel_does_not_mutate",
+        (tlCountAfterCancel ?? 0) === tlCountBeforeCancel,
+        `before=${tlCountBeforeCancel} after=${tlCountAfterCancel}`,
+      );
+
+      // Replace with a different Library template (Reception Only)
+      const altTimelineId = "da912948-fb04-4952-996d-5f735c820330";
+      const { count: altItemCount } = await admin
+        .from("timeline_template_items")
+        .select("id", { count: "exact", head: true })
+        .eq("template_id", altTimelineId);
+      await page.getByTestId("timeline-setup-mode-template").click();
+      await page.waitForSelector('[data-testid="timeline-setup-template-select"]', { timeout: 5_000 });
+      await page.getByTestId("timeline-setup-template-select").click();
+      await page.waitForTimeout(300);
+      const altOpt = page.getByRole("option", { name: /Reception Only Timeline/i });
+      if (await altOpt.count()) await altOpt.first().click();
+      else await page.locator(`[data-value="${altTimelineId}"]`).first().click();
+      page.once("dialog", (d) => d.accept());
+      await page.getByTestId("timeline-setup-apply-template").click();
+      let tlAfterReplace = 0;
+      let stillOnEditor = false;
+      for (let i = 0; i < 40; i += 1) {
+        await page.waitForTimeout(500);
+        stillOnEditor = (await page.getByTestId("event-timeline-setup-editor").count()) === 1;
+        tlAfterReplace = (await admin
+          .from("timeline_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .eq("owner", "venue")).count ?? 0;
+        // Replacement finished when count matches alt template (± client-owned extras none expected)
+        if (tlAfterReplace === (altItemCount ?? -1) && stillOnEditor) break;
+      }
+      const qaCustomStill = (await admin
+        .from("timeline_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!)
+        .eq("title", tlTitle)).count ?? 0;
+      record(
+        "timeline_template_replace_persists",
+        tlAfterReplace === (altItemCount ?? -1) && stillOnEditor && qaCustomStill === 0,
+        JSON.stringify({ tlAfterReplace, altItemCount, stillOnEditor, qaCustomStill }),
+      );
       await page.screenshot({ path: `${OUT}/03e-timeline-setup-editor-1280.png`, fullPage: true });
+      await page.screenshot({ path: `${OUT}/03e2-timeline-template-replaced-1280.png`, fullPage: true });
       await page.getByRole("button", { name: /Back to Overview/i }).click();
       await page.waitForTimeout(500);
       await page.getByTestId("event-setup-open-timeline").click().catch(async () => {

@@ -125,6 +125,16 @@ export function EventTimelineSetupEditor({
     setMode(next);
   }
 
+  /** Leave template selection without applying — restores prior selection, no save. */
+  function cancelTemplateSelection() {
+    setSelectedTemplateId(
+      preferredTemplateId && activeTemplates.some((t) => t.id === preferredTemplateId)
+        ? preferredTemplateId
+        : activeTemplates[0]?.id ?? "",
+    );
+    setMode("customize");
+  }
+
   function applyTemplate() {
     if (!selectedTemplateId) {
       toast.error("Choose a timeline template.");
@@ -151,8 +161,8 @@ export function EventTimelineSetupEditor({
         return;
       }
       toast.success("This event's timeline now uses the selected template. The Library was not changed.");
+      setMode("customize");
       router.refresh();
-      onOpenChange(false);
     });
   }
 
@@ -296,15 +306,27 @@ export function EventTimelineSetupEditor({
               Applying replaces venue-owned items on this event only. Client-owned items stay.
               This does not share the timeline or change the Library template.
             </p>
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending || !selectedTemplateId}
-              data-testid="timeline-setup-apply-template"
-              onClick={applyTemplate}
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending || !selectedTemplateId}
+                data-testid="timeline-setup-apply-template"
+                onClick={applyTemplate}
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                data-testid="timeline-setup-cancel-template"
+                onClick={cancelTemplateSelection}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4" data-testid="timeline-setup-customize-path">

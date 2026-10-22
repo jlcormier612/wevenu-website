@@ -347,6 +347,22 @@ export async function deleteEntry(
   return { ok: true };
 }
 
+/** Bulk-remove venue-owned timeline rows for an event (template replace). Client-owned rows stay. */
+export async function deleteVenueOwnedEntriesForEvent(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<{ ok: true; deleted: number } | { ok: false; message: string }> {
+  const { data, error } = await client.from("timeline_entries")
+    .delete()
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .eq("owner", "venue")
+    .select("id");
+  if (error) {
+    return { ok: false, message: error.message || "Could not clear venue-owned timeline items." };
+  }
+  return { ok: true, deleted: data?.length ?? 0 };
+}
+
 /**
  * Delay recovery — "push everything after this entry back by N minutes."
  * Timeline entries have no duration/dependency model (a deliberate,

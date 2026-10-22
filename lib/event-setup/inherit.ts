@@ -235,6 +235,49 @@ async function applyInheritedInventoryAndEventOrder(
   }
 }
 
+/**
+ * Apply a venue playbook using the booking supabase client (not a fresh
+ * session-bound service call). Session round-trips during inherit silently
+ * skipped venue checklists when getCurrentVenue() failed or returned ok:false
+ * without throwing — leaving Client Planning applied and Venue empty.
+ */
+async function applyVenuePlaybookWithClient(
+  supabase: DbClient,
+  venueId: string,
+  eventId: string,
+  eventDate: string,
+  templateId: string,
+): Promise<void> {
+  const repo = await import("@/lib/playbooks/repository");
+  const template = await repo.getTemplate(supabase, venueId, templateId);
+  if (!template || template.kind !== "venue" || template.isArchived) {
+    console.error(
+      "Setup profile venue playbook apply skipped: template is not an active venue playbook.",
+      templateId,
+    );
+    return;
+  }
+  const { data: venueCapsRow } = await supabase
+    .from("venues")
+    .select(
+      "planning_checklists_enabled, planning_timeline_enabled, planning_floor_plan_enabled, planning_seating_enabled, planning_vendors_enabled, planning_inventory_enabled, planning_event_order_enabled, planning_questionnaires_enabled",
+    )
+    .eq("id", venueId)
+    .maybeSingle();
+  const caps = capabilitiesFromVenueRow(venueCapsRow);
+  const applied = await repo.applyPlaybookToEvent(
+    supabase,
+    venueId,
+    eventId,
+    templateId,
+    eventDate,
+    caps,
+  );
+  if (!applied.ok && applied.reason !== "already_applied") {
+    console.error("Setup profile venue playbook apply did not succeed:", applied);
+  }
+}
+
 async function applyProfileVenuePlaybook(
   supabase: DbClient,
   venueId: string,
@@ -252,16 +295,7 @@ async function applyProfileVenuePlaybook(
       .limit(1);
     if (existing && existing.length > 0) return;
 
-    const { getTemplate, applyPlaybookToEvent } = await import("@/lib/playbooks/service");
-    const template = await getTemplate(templateId);
-    if (!template || template.kind !== "venue" || template.isArchived) {
-      console.error(
-        "Setup profile venue playbook apply skipped: venuePlanningPlaybookTemplateId is not an active venue playbook.",
-        templateId,
-      );
-      return;
-    }
-    await applyPlaybookToEvent(eventId, templateId, eventDate);
+    await applyVenuePlaybookWithClient(supabase, venueId, eventId, eventDate, templateId);
   } catch (err) {
     console.error("Setup profile venue playbook apply failed:", err);
   }
@@ -303,8 +337,7 @@ async function applyDefaultVenuePlaybook(
       ?? rows[0];
     if (!match) return;
 
-    const { applyPlaybookToEvent } = await import("@/lib/playbooks/service");
-    await applyPlaybookToEvent(eventId, match.id, eventDate);
+    await applyVenuePlaybookWithClient(supabase, venueId, eventId, eventDate, match.id);
   } catch (err) {
     console.error("Setup profile venue playbook apply failed:", err);
   }

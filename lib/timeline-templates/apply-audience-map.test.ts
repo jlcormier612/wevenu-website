@@ -19,10 +19,11 @@ describe("Timeline template apply — venue-owned audience mapping", () => {
     assert.equal(mapTemplateAudiencesForVenueOwnedApply(undefined), undefined);
   });
 
-  it("apply paths pass mapped audiences into addEntry / addClientEntry", () => {
+  it("apply paths pass mapped audiences into insertEntry / addClientEntry", () => {
     const src = readFileSync(resolve("lib/timeline-templates/apply.ts"), "utf8");
     assert.match(src, /mapTemplateAudiencesForVenueOwnedApply\(item\.audiences\)/);
-    assert.match(src, /addEntry\(/);
+    assert.match(src, /timelineRepo\.insertEntry\(/);
     assert.match(src, /addClientEntry\(/);
+    assert.match(src, /deleteVenueOwnedEntriesForEvent/);
   });
 });

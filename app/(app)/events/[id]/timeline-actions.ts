@@ -157,10 +157,18 @@ export async function replaceEventTimelineFromTemplateAction(
   templateId: string,
   eventStartTime: string | null,
 ): Promise<TimelineActionResult> {
-  const { replaceEventTimelineFromTemplate } = await import("@/lib/timeline-templates/apply");
-  const result = await replaceEventTimelineFromTemplate(eventId, templateId, eventStartTime);
-  if (result.ok) await revalidateTimelineSurfaces(eventId);
-  return result;
+  try {
+    const { replaceEventTimelineFromTemplate } = await import("@/lib/timeline-templates/apply");
+    const result = await replaceEventTimelineFromTemplate(eventId, templateId, eventStartTime);
+    if (result.ok) await revalidateTimelineSurfaces(eventId);
+    return result;
+  } catch (err) {
+    console.error("replaceEventTimelineFromTemplateAction failed:", err);
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Could not switch the timeline template.",
+    };
+  }
 }
 
 /** Persist Client audience on venue-owned items — portal visibility, no email. */

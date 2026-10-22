@@ -55,6 +55,7 @@ export function EventPlanningSetupEditor({
   applications,
   templates,
   tasks,
+  preferredVenueTemplateId = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -66,6 +67,8 @@ export function EventPlanningSetupEditor({
   applications: EventPlaybookApplication[];
   templates: PlaybookTemplateWithStats[];
   tasks: EventTask[];
+  /** Book-time inherited venue checklist ref — used to recover a missing venue app. */
+  preferredVenueTemplateId?: string | null;
 }) {
   const router = useRouter();
   const clientApp = applications.find((a) => a.kind === "client");
@@ -127,6 +130,11 @@ export function EventPlanningSetupEditor({
       if (!confirm("You selected a different template but have not applied it. Switch anyway?")) return;
     }
     setMode(next);
+  }
+
+  function cancelTemplateSelection() {
+    setSelectedTemplateId(clientApp?.templateId ?? clientTemplates[0]?.id ?? "");
+    setMode("customize");
   }
 
   function applyTemplate() {
@@ -277,6 +285,7 @@ export function EventPlanningSetupEditor({
             applications={applications}
             templates={templates}
             tasks={tasks}
+            preferredTemplateId={preferredVenueTemplateId}
             active={open && audience === "venue"}
           />
         ) : (
@@ -341,15 +350,27 @@ export function EventPlanningSetupEditor({
               Applying a template replaces this event&apos;s current client checklist tasks.
               Customized tasks on this event will be removed. The Library copy stays unchanged.
             </p>
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending || released || !selectedTemplateId}
-              data-testid="planning-setup-apply-template"
-              onClick={applyTemplate}
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending || released || !selectedTemplateId}
+                data-testid="planning-setup-apply-template"
+                onClick={applyTemplate}
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                data-testid="planning-setup-cancel-template"
+                onClick={cancelTemplateSelection}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4" data-testid="planning-setup-customize-path">

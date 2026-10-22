@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import {
   addCustomVenueEventTaskAction,
+  applyPlaybookAction,
   removeVenueEventTaskAction,
   replaceVenuePlaybookAction,
   updateVenueEventTaskFieldsAction,
@@ -48,6 +49,7 @@ export function EventVenuePlanningSetupEditor({
   applications,
   templates,
   tasks,
+  preferredTemplateId = null,
   active,
 }: {
   eventId: string;
@@ -56,14 +58,21 @@ export function EventVenuePlanningSetupEditor({
   applications: EventPlaybookApplication[];
   templates: PlaybookTemplateWithStats[];
   tasks: EventTask[];
+  /** Book-time inherited venue checklist id when no application exists yet. */
+  preferredTemplateId?: string | null;
   /** When false, skip syncing local draft state (parent tab inactive). */
   active: boolean;
 }) {
   const router = useRouter();
   const venueApp = applications.find((a) => a.kind === "venue");
   const venueTemplates = templates.filter((t) => t.kind === "venue" && !t.isArchived);
+  const configuredTemplate =
+    preferredTemplateId && venueTemplates.some((t) => t.id === preferredTemplateId)
+      ? venueTemplates.find((t) => t.id === preferredTemplateId) ?? null
+      : null;
   const preferredId =
     venueApp?.templateId
+    ?? preferredTemplateId
     ?? venueTemplates[0]?.id
     ?? "";
   const [mode, setMode] = React.useState<"template" | "customize">("customize");
@@ -72,15 +81,34 @@ export function EventVenuePlanningSetupEditor({
   const [newTitle, setNewTitle] = React.useState("");
   const [newOffset, setNewOffset] = React.useState("-14");
   const [pending, startTransition] = React.useTransition();
+  const ensureAttempted = React.useRef(false);
 
   React.useEffect(() => {
     if (!active) return;
-    setSelectedTemplateId(venueApp?.templateId ?? venueTemplates[0]?.id ?? "");
+    setSelectedTemplateId(venueApp?.templateId ?? preferredTemplateId ?? venueTemplates[0]?.id ?? "");
     setRows(toDraftRows(tasks));
     setMode("customize");
     setNewTitle("");
     setNewOffset("-14");
-  }, [active, venueApp?.templateId, tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, venueApp?.templateId, preferredTemplateId, tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Idempotent recovery: inherited venue ref present but application missing.
+  React.useEffect(() => {
+    if (!active || venueApp || !preferredTemplateId || ensureAttempted.current || pending) return;
+    ensureAttempted.current = true;
+    startTransition(async () => {
+      const result = await applyPlaybookAction(eventId, preferredTemplateId, eventDate);
+      if (!result.ok) {
+        // Already applied races are fine; other failures stay as empty + Choose template.
+        if (!/already has/i.test(result.message ?? "")) {
+          toast.error(result.message ?? "Could not apply the configured venue checklist.");
+        }
+        return;
+      }
+      toast.success("Venue checklist applied for this event. It stays internal.");
+      router.refresh();
+    });
+  }, [active, venueApp, preferredTemplateId, eventId, eventDate, pending, router]);
 
   const dirtyCustomize = rows.some((r) => r.dirty) || Boolean(newTitle.trim());
   const templateChanged = Boolean(
@@ -96,6 +124,11 @@ export function EventVenuePlanningSetupEditor({
       if (!confirm("You selected a different template but have not applied it. Switch anyway?")) return;
     }
     setMode(next);
+  }
+
+  function cancelTemplateSelection() {
+    setSelectedTemplateId(venueApp?.templateId ?? preferredTemplateId ?? venueTemplates[0]?.id ?? "");
+    setMode("customize");
   }
 
   function applyTemplate() {
@@ -245,22 +278,43 @@ export function EventVenuePlanningSetupEditor({
             Applying a template replaces this event&apos;s current venue checklist tasks.
             Completion history on those tasks will be removed. The Library copy stays unchanged.
           </p>
-          <Button
-            type="button"
-            size="sm"
-            disabled={pending || !selectedTemplateId}
-            data-testid="venue-planning-setup-apply-template"
-            onClick={applyTemplate}
-          >
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending || !selectedTemplateId}
+              data-testid="venue-planning-setup-apply-template"
+              onClick={applyTemplate}
+            >
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              data-testid="venue-planning-setup-cancel-template"
+              onClick={cancelTemplateSelection}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-4" data-testid="venue-planning-setup-customize-path">
           {!venueApp ? (
-            <p className="text-sm text-muted-foreground">
-              No venue checklist is on this event yet. Choose a template first.
-            </p>
+            <div className="space-y-2" data-testid="venue-planning-setup-empty">
+              <p className="text-sm text-muted-foreground">
+                {configuredTemplate
+                  ? `Configured venue checklist "${configuredTemplate.name}" is not on this event yet.`
+                  : "No venue checklist is on this event yet. Choose a template first."}
+              </p>
+              {pending ? (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Applying configured venue checklist…
+                </p>
+              ) : null}
+            </div>
           ) : (
             <>
               <ul className="space-y-3">
