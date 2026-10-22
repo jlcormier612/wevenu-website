@@ -20,6 +20,7 @@ import {
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { compareTimelineEntries } from "@/lib/timeline/constants";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 
@@ -35,7 +36,7 @@ type DraftRow = {
 
 function toDraftRows(entries: TimelineEntry[]): DraftRow[] {
   return [...entries]
-    .sort((a, b) => a.dayOffset - b.dayOffset || a.sortOrder - b.sortOrder || (a.entryTime ?? "").localeCompare(b.entryTime ?? ""))
+    .sort(compareTimelineEntries)
     .map((e) => ({
       id: e.id,
       title: e.title,

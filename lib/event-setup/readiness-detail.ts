@@ -75,42 +75,64 @@ function planningDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const expected = ctx.inheritedRefs.planningPlaybookTemplateId;
   const expectedVenue = ctx.inheritedRefs.venuePlanningPlaybookTemplateId;
   const expectedName = ctx.templateNames.planning;
+  const changeHint =
+    " Use Change for this event to change the client checklist, the venue checklist, or both — changes apply only to this event and do not alter Library templates.";
+  const fulfillmentHint = " Ongoing task work stays in Open Planning.";
+  const releaseHint =
+    " Client checklist release is a separate Overview action; the venue checklist stays internal and is never released to the client portal.";
+
+  function venueStatusSentence(): string {
+    if (venue) {
+      return ` The venue/internal checklist "${venue.templateName}" is also set up for this event and stays internal.`;
+    }
+    if (expectedVenue) {
+      return " A venue/internal checklist is configured in the Setup Profile but is not yet applied on this event — Change for this event can apply it, or Release to client portal recovers it when applicable.";
+    }
+    return " No venue/internal checklist is on this event yet.";
+  }
 
   if (!client) {
+    const venuePart = venueStatusSentence();
     if (expected) {
       return {
         status: "draft",
         summary: expectedName
-          ? `Configured checklist "${expectedName}" is recoverable on Release to client portal. Open Planning to review once present.`
-          : "Configured client checklist is recoverable on Release to client portal. Open Planning to review once present.",
+          ? `Configured client checklist "${expectedName}" is not yet on this event (recoverable on Release to client portal).${venuePart}${changeHint}${releaseHint}${fulfillmentHint}`
+          : `Configured client checklist is not yet on this event (recoverable on Release to client portal).${venuePart}${changeHint}${releaseHint}${fulfillmentHint}`,
         nextAction: "Open Planning",
       };
     }
     return {
       status: "needs_action",
-      summary: "No client planning checklist on this event yet.",
+      summary: `No client planning checklist on this event yet.${venuePart}${changeHint}${releaseHint}${fulfillmentHint}`,
       nextAction: "Open Planning",
     };
   }
 
-  let venueNote = "";
-  if (venue) {
-    venueNote = " Venue-team checklist is on the event and stays internal.";
-  } else if (expectedVenue) {
-    venueNote = " Configured venue checklist was not applied — Release to client portal recovers it.";
-  }
-
+  const venuePart = venueStatusSentence();
   if (!client.releasedAt) {
     return {
       status: "draft",
-      summary: `The client checklist "${client.templateName}" is prepared but has not yet been released to the client. Use Change for this event to customize it, then Release to client portal from Overview when ready.${venueNote}`,
+      summary:
+        (venue
+          ? `Both checklists are set up for this event: client checklist "${client.templateName}" (not released yet) and venue/internal checklist "${venue.templateName}" (internal only).`
+          : `The client checklist "${client.templateName}" is set up for this event but has not yet been released to the client.${venuePart}`)
+        + changeHint
+        + releaseHint
+        + fulfillmentHint,
       nextAction: "Open Planning",
     };
   }
 
   return {
     status: "shared",
-    summary: `The client checklist "${client.templateName}" has been released to the client.${venueNote}`,
+    summary:
+      (venue
+        ? `Both checklists are set up for this event: client checklist "${client.templateName}" has been released to the client; venue/internal checklist "${venue.templateName}" stays internal.`
+        : `The client checklist "${client.templateName}" has been released to the client.${venuePart}`)
+      + changeHint
+      + releaseHint
+      + fulfillmentHint,
     nextAction: "Open Planning",
   };
 }

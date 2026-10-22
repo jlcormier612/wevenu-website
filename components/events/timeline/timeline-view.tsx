@@ -46,6 +46,7 @@ import {
   addClientTimelineEntryAction,
   addClientTimelineSectionAction,
 } from "@/app/(app)/clients/planning-actions";
+import { compareTimelineEntries } from "@/lib/timeline/constants";
 import { TemplatePicker } from "@/components/events/timeline/template-picker";
 import { TimelineEntryForm } from "@/components/events/timeline/timeline-entry-form";
 import { ALL_FILTER, TimelineFilterBar, type TimelineStatusFilter } from "@/components/events/timeline/timeline-filter-bar";
@@ -670,7 +671,8 @@ export function TimelineView({
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(e);
     }
-    for (const [, list] of map) list.sort((a, b) => a.sortOrder - b.sortOrder);
+    // Timed entries must display earliest→latest; sortOrder only ties equal times / untimed.
+    for (const [, list] of map) list.sort(compareTimelineEntries);
     return map;
   }, [entries, sections, dayOffsets, multiDay]);
 

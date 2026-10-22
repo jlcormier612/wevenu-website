@@ -44,12 +44,21 @@ describe("Floor Plans setup editor seams", () => {
     assert.match(editor, /withdrawFloorPlanOfferAction/);
     assert.match(editor, /ensureEventFloorPlanOffersAction/);
     assert.match(editor, /floor-plans-setup-operational-state/);
+    assert.match(editor, /This event&apos;s working layout/);
+    assert.match(editor, /you do not need the Floor Plans workspace to manage offers/);
+    assert.match(editor, /coupleSelectedPlan/);
     assert.doesNotMatch(editor, /createFloorPlanAction/);
     assert.doesNotMatch(editor, /setCoupleShare/);
     assert.doesNotMatch(editor, /setOperationalFloorPlan/);
     assert.doesNotMatch(editor, /prepareAndReleasePortal/);
     assert.doesNotMatch(editor, /Invite client/);
     assert.doesNotMatch(editor, /createInvoice/);
+  });
+
+  it("event-detail passes couple selection into the panel for honest editor state", () => {
+    assert.match(detail, /coupleSelectedFloorPlanId=\{event\.coupleSelectedFloorPlanId/);
+    assert.match(panel, /coupleSelectedFloorPlanId/);
+    assert.match(panel, /coupleSelectedPlan=\{/);
   });
 
   it("ensure recovers offers idempotently without creating operational plans", () => {

@@ -42,7 +42,7 @@ describe("setupReadinessDetail", () => {
       }],
     }));
     assert.equal(detail.status, "draft");
-    assert.match(detail.summary, /has not yet been released/i);
+    assert.match(detail.summary, /has not yet been released|not released yet/i);
     assert.equal(detail.nextAction, "Open Planning");
   });
 
@@ -58,6 +58,86 @@ describe("setupReadinessDetail", () => {
       }],
     }));
     assert.equal(detail.status, "shared");
+  });
+
+  it("when both checklists are persisted, Overview says both are set up and Change can edit either", () => {
+    const detail = setupReadinessDetail(base({
+      playbookApplications: [
+        {
+          eventId: "e1",
+          kind: "client",
+          templateId: "tc",
+          templateName: "Client Wedding",
+          appliedAt: "2026-01-01",
+          releasedAt: null,
+        },
+        {
+          eventId: "e1",
+          kind: "venue",
+          templateId: "tv",
+          templateName: "Venue Ops",
+          appliedAt: "2026-01-01",
+          releasedAt: null,
+        },
+      ],
+    }));
+    assert.equal(detail.status, "draft");
+    assert.match(detail.summary, /Both checklists are set up/i);
+    assert.match(detail.summary, /Client Wedding/);
+    assert.match(detail.summary, /Venue Ops/);
+    assert.match(detail.summary, /Change for this event/);
+    assert.match(detail.summary, /do not alter Library templates/i);
+    assert.match(detail.summary, /release is a separate/i);
+    assert.match(detail.summary, /stays internal|never released/i);
+    assert.match(detail.summary, /Open Planning/);
+    assert.doesNotMatch(detail.summary, /has been released to the client/i);
+  });
+
+  it("client-only persisted checklist does not claim venue is set up", () => {
+    const detail = setupReadinessDetail(base({
+      playbookApplications: [{
+        eventId: "e1",
+        kind: "client",
+        templateId: "tc",
+        templateName: "Client only",
+        appliedAt: "2026-01-01",
+        releasedAt: null,
+      }],
+    }));
+    assert.match(detail.summary, /Client only/);
+    assert.match(detail.summary, /No venue\/internal checklist is on this event yet/i);
+    assert.doesNotMatch(detail.summary, /Both checklists are set up/i);
+  });
+
+  it("venue-only persisted checklist is stated when client is missing", () => {
+    const detail = setupReadinessDetail(base({
+      playbookApplications: [{
+        eventId: "e1",
+        kind: "venue",
+        templateId: "tv",
+        templateName: "Venue only",
+        appliedAt: "2026-01-01",
+        releasedAt: null,
+      }],
+    }));
+    assert.match(detail.summary, /No client planning checklist/i);
+    assert.match(detail.summary, /Venue only/);
+  });
+
+  it("profile venue ref without venue application is not described as set up", () => {
+    const detail = setupReadinessDetail(base({
+      inheritedRefs: { venuePlanningPlaybookTemplateId: "tv-ref" },
+      playbookApplications: [{
+        eventId: "e1",
+        kind: "client",
+        templateId: "tc",
+        templateName: "Client Wedding",
+        appliedAt: "2026-01-01",
+        releasedAt: null,
+      }],
+    }));
+    assert.match(detail.summary, /configured in the Setup Profile but is not yet applied/i);
+    assert.doesNotMatch(detail.summary, /Both checklists are set up/i);
   });
 
   it("keeps vendor directory discoverable from Vendor Network classifications", () => {

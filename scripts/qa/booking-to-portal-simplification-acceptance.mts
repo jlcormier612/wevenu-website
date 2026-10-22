@@ -583,6 +583,15 @@ async function main() {
         /Standard Wedding Setup/i.test(planningCard),
         planningCard.slice(0, 280),
       );
+      record(
+        "planning_overview_describes_both_checklists",
+        /Both checklists are set up/i.test(planningCard)
+          && /Change for this event/i.test(planningCard)
+          && /do not alter Library templates/i.test(planningCard)
+          && /stays internal|never released/i.test(planningCard)
+          && /Open Planning/i.test(planningCard),
+        planningCard.slice(0, 480),
+      );
     }
 
     // Open Planning → management workspace
@@ -890,6 +899,55 @@ async function main() {
         tlAfterReplace === (altItemCount ?? -1) && stillOnEditor && qaCustomStill === 0,
         JSON.stringify({ tlAfterReplace, altItemCount, stillOnEditor, qaCustomStill }),
       );
+
+      // Chronological order after template replace + after editing a time earlier
+      const timedRows = (await admin
+        .from("timeline_entries")
+        .select("id,title,entry_time,day_offset,sort_order")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)
+        .eq("owner", "venue")
+        .not("entry_time", "is", null)
+        .order("day_offset")
+        .order("entry_time")).data ?? [];
+      const timesAsc = timedRows.every((row, i, arr) => {
+        if (i === 0) return true;
+        const prev = arr[i - 1]!;
+        if ((row.day_offset ?? 0) !== (prev.day_offset ?? 0)) return (row.day_offset ?? 0) > (prev.day_offset ?? 0);
+        return String(row.entry_time).slice(0, 5) >= String(prev.entry_time).slice(0, 5);
+      });
+      record(
+        "timeline_db_times_chronological_after_replace",
+        timedRows.length >= 2 && timesAsc,
+        timedRows.slice(0, 8).map((r) => `${r.entry_time}:${r.title}`).join(" | "),
+      );
+      if (timedRows.length >= 2) {
+        const later = timedRows[timedRows.length - 1]!;
+        const earlierTime = String(timedRows[0]!.entry_time).slice(0, 5);
+        // Move the last timed entry to before the first
+        const bumpTo = earlierTime > "00:00"
+          ? `${String(Math.max(0, Number(earlierTime.slice(0, 2)) - 1)).padStart(2, "0")}:00`
+          : "00:00";
+        await admin.from("timeline_entries").update({ entry_time: bumpTo }).eq("id", later.id).eq("venue_id", FANCY);
+        const afterBump = (await admin
+          .from("timeline_entries")
+          .select("id,entry_time,day_offset")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .eq("owner", "venue")
+          .not("entry_time", "is", null)
+          .order("day_offset")
+          .order("entry_time")).data ?? [];
+        const bumpedFirst = afterBump[0]?.id === later.id;
+        record(
+          "timeline_time_edit_earlier_reorders_persist",
+          bumpedFirst,
+          afterBump.slice(0, 6).map((r) => `${r.entry_time}:${r.id.slice(0, 8)}`).join(" | "),
+        );
+      } else {
+        record("timeline_time_edit_earlier_reorders_persist", false, "fewer than 2 timed entries");
+      }
+
       await page.screenshot({ path: `${OUT}/03e-timeline-setup-editor-1280.png`, fullPage: true });
       await page.screenshot({ path: `${OUT}/03e2-timeline-template-replaced-1280.png`, fullPage: true });
       await page.getByRole("button", { name: /Back to Overview/i }).click();
@@ -902,6 +960,20 @@ async function main() {
         "open_timeline_reaches_management_workspace",
         /timeline/i.test(page.url()) || (await page.getByRole("tab", { name: /Timeline/i }).count()) > 0,
         `url=${page.url()}`,
+      );
+      // Browser display order: first timed labels should be ascending within the visible list
+      const displayedTimes = await page.evaluate(() => {
+        const texts = Array.from(document.querySelectorAll("[data-testid='timeline-entry'], [data-timeline-entry], li, article"))
+          .map((el) => el.textContent ?? "")
+          .join("\n");
+        const matches = [...texts.matchAll(/\b([01]?\d|2[0-3]):[0-5]\d\b/g)].map((m) => m[0]!.padStart(5, "0"));
+        return matches.slice(0, 12);
+      });
+      const displayAsc = displayedTimes.length < 2 || displayedTimes.every((t, i, arr) => i === 0 || t >= arr[i - 1]!);
+      record(
+        "timeline_browser_display_chronological",
+        displayAsc,
+        displayedTimes.join(", ") || "no times scraped",
       );
       await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
         await page.locator('[value="overview"]').first().click();
@@ -1232,15 +1304,22 @@ async function main() {
         "change_opens_dedicated_floor_plans_setup_editor",
         (await page.getByTestId("event-floor-plans-setup-editor").count()) === 1
           && (await page.getByTestId("floor-plans-setup-offers-path").count()) === 1
-          && /Operational floor plans/i.test(operationalText),
+          && /working layout/i.test(operationalText),
         operationalText.slice(0, 240),
       );
       record(
         "floor_plans_offers_vs_operational_state_shown",
         opsBefore === 0
-          ? /None yet/i.test(operationalText)
-          : !/None yet/i.test(operationalText),
+          ? /No working layout yet/i.test(operationalText)
+          : !/No working layout yet/i.test(operationalText),
         `opsBefore=${opsBefore} text=${operationalText.slice(0, 160)}`,
+      );
+      record(
+        "floor_plans_editor_keeps_offer_mgmt_in_sheet",
+        /do not need the Floor Plans workspace to manage offers/i.test(
+          (await page.getByTestId("event-floor-plans-setup-editor").innerText()).slice(0, 800),
+        ),
+        "offer copy stays in Change editor",
       );
 
       // Offer an additional library template when one is available

@@ -101,6 +101,7 @@ export function EventSetupPanel({
   floorPlanTemplates = [],
   floorPlanOffers = [],
   operationalFloorPlans = [],
+  coupleSelectedFloorPlanId = null,
   vendorRecommendations = [],
   availableVendors = [],
   vendorAssignments = [],
@@ -140,6 +141,7 @@ export function EventSetupPanel({
   floorPlanTemplates?: FloorPlanTemplate[];
   floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
   operationalFloorPlans?: { id: string; name: string }[];
+  coupleSelectedFloorPlanId?: string | null;
   vendorRecommendations?: EventVendorRecommendation[];
   availableVendors?: Vendor[];
   vendorAssignments?: { id: string; vendorName: string }[];
@@ -577,6 +579,14 @@ export function EventSetupPanel({
         templates={floorPlanTemplates}
         offers={floorPlanOffers}
         operationalPlans={operationalFloorPlans}
+        coupleSelectedPlan={
+          coupleSelectedFloorPlanId
+            ? (operationalFloorPlans.find((p) => p.id === coupleSelectedFloorPlanId) ?? {
+                id: coupleSelectedFloorPlanId,
+                name: "Client-selected layout",
+              })
+            : null
+        }
         onOpenManagement={() => navigateStep("floor_plans")}
       />
       <EventVendorsSetupEditor

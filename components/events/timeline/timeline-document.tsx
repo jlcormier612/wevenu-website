@@ -10,7 +10,7 @@
 import type { EventWithDetails } from "@/lib/events/types";
 import { formatDate } from "@/lib/events/constants";
 import type { StaffMember } from "@/lib/team/types";
-import { formatTime } from "@/lib/timeline/constants";
+import { compareTimelineEntries, formatTime } from "@/lib/timeline/constants";
 import type { TimelineEntry, TimelineSection } from "@/lib/timeline/types";
 import type { Venue } from "@/lib/venue/types";
 
@@ -42,7 +42,7 @@ export function TimelineDocument({
     const key = e.sectionId && groups.has(e.sectionId) ? e.sectionId : UNSECTIONED_KEY;
     groups.get(key)!.push(e);
   }
-  for (const [, list] of groups) list.sort((a, b) => a.sortOrder - b.sortOrder);
+  for (const [, list] of groups) list.sort(compareTimelineEntries);
 
   const sectionList = timelineSectionList(sections, entries);
   const startTime5 = event.startTime?.slice(0, 5) ?? null;

@@ -39,6 +39,7 @@ export function EventFloorPlansSetupEditor({
   templates,
   offers,
   operationalPlans,
+  coupleSelectedPlan = null,
   onOpenManagement,
 }: {
   open: boolean;
@@ -51,6 +52,8 @@ export function EventFloorPlansSetupEditor({
   templates: FloorPlanTemplate[];
   offers: EventFloorPlanOfferWithTemplate[];
   operationalPlans: OperationalPlanSummary[];
+  /** Client's saved layout choice for this event, if any (distinct from offers). */
+  coupleSelectedPlan?: OperationalPlanSummary | null;
   onOpenManagement: () => void;
 }) {
   const router = useRouter();
@@ -172,38 +175,53 @@ export function EventFloorPlansSetupEditor({
           <SheetDescription>
             {eventName}
             {profileName ? ` · from ${profileName}` : ""}
-            . Choose which reusable layouts the client can pick from for this event.
-            Offers are not operational floor plans. Creating or editing layouts stays in Open Floor Plans.
-            This does not release to the client portal.
+            . Add or withdraw which Library layouts this couple can choose from.
+            Offer changes save here — you do not need the Floor Plans workspace to manage offers.
+            This does not release layouts to the client portal by itself.
           </SheetDescription>
         </SheetHeader>
 
         <div
-          className="mb-4 rounded-md border border-border bg-muted/20 px-3 py-3 space-y-1"
+          className="mb-4 rounded-md border border-border bg-muted/20 px-3 py-3 space-y-2"
           data-testid="floor-plans-setup-operational-state"
         >
-          <p className="text-sm font-medium text-heading">Operational floor plans for this booking</p>
-          {operationalPlans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              None yet. Offers can exist without an operational layout. Use Open Floor Plans to create
-              or edit the venue&apos;s working layout for this event.
+          <div>
+            <p className="text-sm font-medium text-heading">This event&apos;s working layout</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              The venue&apos;s editable floor plan for seating and day-of work — separate from offered choices below.
             </p>
+            {operationalPlans.length === 0 ? (
+              <p className="text-sm text-muted-foreground mt-1" data-testid="floor-plans-setup-no-working-layout">
+                No working layout yet. Offers can exist without one. When you are ready to design or seat this
+                event, open the Floor Plans workspace for this booking.
+              </p>
+            ) : (
+              <ul className="text-sm text-muted-foreground list-disc pl-4 mt-1">
+                {operationalPlans.map((p) => (
+                  <li key={p.id}>{p.name}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {coupleSelectedPlan ? (
+            <div data-testid="floor-plans-setup-client-selection">
+              <p className="text-sm font-medium text-heading">Client&apos;s selected layout</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{coupleSelectedPlan.name}</p>
+            </div>
           ) : (
-            <ul className="text-sm text-muted-foreground list-disc pl-4">
-              {operationalPlans.map((p) => (
-                <li key={p.id}>{p.name}</li>
-              ))}
-            </ul>
+            <p className="text-xs text-muted-foreground" data-testid="floor-plans-setup-no-client-selection">
+              The client has not selected a layout yet (or selection is not required until offers are released).
+            </p>
           )}
           <Button
             type="button"
             size="sm"
             variant="outline"
-            className="mt-2"
+            className="mt-1"
             data-testid="floor-plans-setup-open-management"
             onClick={openManagement}
           >
-            Open Floor Plans
+            Open Floor Plans workspace
           </Button>
         </div>
 
@@ -286,37 +304,46 @@ export function EventFloorPlansSetupEditor({
 
           <div className="rounded-md border border-dashed border-border p-3 space-y-2">
             <p className="text-sm font-medium text-heading">Offer another layout for this event</p>
-            <Select
-              value={templateId}
-              onValueChange={setTemplateId}
-              items={availableToOffer.map((t) => ({ value: t.id, label: t.name }))}
-            >
-              <SelectTrigger data-testid="floor-plans-setup-template-select">
-                <SelectValue placeholder="Choose a Library layout" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableToOffer.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              placeholder="Couple label (optional)"
-              value={coupleLabel}
-              disabled={pending}
-              data-testid="floor-plans-setup-couple-label"
-              onChange={(e) => setCoupleLabel(e.target.value)}
-            />
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending || !templateId || availableToOffer.length === 0}
-              data-testid="floor-plans-setup-offer"
-              onClick={offerTemplate}
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}
-              Offer for this event
-            </Button>
+            {availableToOffer.length === 0 ? (
+              <p className="text-sm text-muted-foreground" data-testid="floor-plans-setup-no-library-left">
+                Every active Library layout is already listed above. Withdraw one to offer it again, or add a
+                new layout in the Floor Plans Library first.
+              </p>
+            ) : (
+              <>
+                <Select
+                  value={templateId || undefined}
+                  onValueChange={(v) => setTemplateId(typeof v === "string" ? v : "")}
+                  items={availableToOffer.map((t) => ({ value: t.id, label: t.name }))}
+                >
+                  <SelectTrigger data-testid="floor-plans-setup-template-select">
+                    <SelectValue placeholder="Choose a Library layout" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableToOffer.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Couple label (optional)"
+                  value={coupleLabel}
+                  disabled={pending}
+                  data-testid="floor-plans-setup-couple-label"
+                  onChange={(e) => setCoupleLabel(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={pending || !templateId}
+                  data-testid="floor-plans-setup-offer"
+                  onClick={offerTemplate}
+                >
+                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}
+                  Offer for this event
+                </Button>
+              </>
+            )}
           </div>
         </div>
 

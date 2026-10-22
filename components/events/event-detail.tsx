@@ -884,6 +884,7 @@ export function EventDetail({
             floorPlanTemplates={floorPlanTemplates}
             floorPlanOffers={floorPlanOffers}
             operationalFloorPlans={(event.floorPlans ?? []).map((fp) => ({ id: fp.id, name: fp.name }))}
+            coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId ?? null}
             vendorRecommendations={vendorRecommendations}
             availableVendors={availableVendors}
             vendorAssignments={(event.vendorAssignments ?? []).map((a) => ({
