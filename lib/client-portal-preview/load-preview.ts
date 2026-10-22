@@ -349,16 +349,39 @@ export async function loadClientPortalPreview(
 
   // Read-only — never getOrEnsure (would seed Network → event recommendations).
   const recs = await getEventRecommendations(eventId);
-  const vendorCards: VendorPreviewCard[] = recs.map((r) => ({
-    id: r.id,
-    vendorId: r.vendorId,
-    name: r.vendorName || "Vendor",
-    category: r.vendorCategory ?? null,
-    description: null,
-    photoUrl: null,
-    websiteUrl: null,
-    note: r.note ?? null,
-  }));
+  const vendorIds = [...new Set(recs.map((r) => r.vendorId).filter(Boolean))];
+  const vendorDirectory = new Map<
+    string,
+    { description: string | null; photoUrl: string | null; websiteUrl: string | null; name: string | null; category: string | null }
+  >();
+  if (vendorIds.length > 0) {
+    const { data: vendorRows } = await supabase
+      .from("vendors")
+      .select("id, business_name, category, description, logo_url, website_url")
+      .in("id", vendorIds);
+    for (const v of vendorRows ?? []) {
+      vendorDirectory.set(v.id as string, {
+        name: (v.business_name as string | null) ?? null,
+        category: (v.category as string | null) ?? null,
+        description: (v.description as string | null) ?? null,
+        photoUrl: (v.logo_url as string | null) ?? null,
+        websiteUrl: (v.website_url as string | null) ?? null,
+      });
+    }
+  }
+  const vendorCards: VendorPreviewCard[] = recs.map((r) => {
+    const dir = vendorDirectory.get(r.vendorId);
+    return {
+      id: r.id,
+      vendorId: r.vendorId,
+      name: dir?.name || r.vendorName || "Vendor",
+      category: dir?.category ?? r.vendorCategory ?? null,
+      description: dir?.description ?? null,
+      photoUrl: dir?.photoUrl ?? null,
+      websiteUrl: dir?.websiteUrl ?? null,
+      note: r.note ?? null,
+    };
+  });
   const vendorVisibility: PreviewVisibility =
     vendorCards.length > 0 ? "released" : "not_included";
 
