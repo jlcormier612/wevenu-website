@@ -2,8 +2,9 @@
 
 /**
  * Couple Floor Plan section:
- * - Phase 1: view-only shared event plans (shared_with_couple)
- * - Phase 2: Choose your layout when venue offers templates (no auto-share)
+ * - Choose an offered layout (selection clones an event working plan and shares layout view)
+ * - View the selected / shared working plan (furniture is venue-owned — view only)
+ * - Seating guests is a separate portal section once the venue shares for seating
  */
 
 import * as React from "react";
@@ -298,6 +299,7 @@ export default function FloorPlanSection({ token }: { token: string }) {
         body: await r.json() as {
           floorPlans?: PortalFloorPlanSummary[];
           operationalFloorPlanId?: string | null;
+          coupleSelectedFloorPlanId?: string | null;
           error?: string;
         },
       })),
@@ -318,8 +320,10 @@ export default function FloorPlanSection({ token }: { token: string }) {
           const plans = plansRes.body.floorPlans ?? [];
           setList(plans);
           setOperationalId(plansRes.body.operationalFloorPlanId ?? null);
+          const coupleSelected = plansRes.body.coupleSelectedFloorPlanId ?? null;
           const preferred =
-            (plansRes.body.operationalFloorPlanId
+            (coupleSelected && plans.find((p) => p.id === coupleSelected)?.id)
+            ?? (plansRes.body.operationalFloorPlanId
               && plans.find((p) => p.id === plansRes.body.operationalFloorPlanId)?.id)
             ?? plans[0]?.id
             ?? null;
@@ -396,11 +400,12 @@ export default function FloorPlanSection({ token }: { token: string }) {
       )}
 
       {hasShared && (
-        <section className="space-y-4">
+        <section className="space-y-4" data-testid="floor-plan-working-view">
           <div>
-            <h2 className="text-lg font-semibold text-heading">Floor Plan</h2>
+            <h2 className="text-lg font-semibold text-heading">Your working layout</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Where the physical things are in the room — view only.
+              The room layout for your event — view only. Your venue places furniture;
+              you assign guests once they open Seating.
             </p>
           </div>
 
@@ -419,7 +424,9 @@ export default function FloorPlanSection({ token }: { token: string }) {
                     style={active ? { background: SAGE } : undefined}
                   >
                     {p.name}
-                    {p.isOperational || p.id === operationalId ? " · Operational" : ""}
+                    {p.isCoupleSelected ? " · Your choice" : ""}
+                    {p.isReady ? " · Ready" : ""}
+                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalId) ? " · Operational" : ""}
                   </button>
                 );
               })}
@@ -433,9 +440,13 @@ export default function FloorPlanSection({ token }: { token: string }) {
               <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-heading">{plan.name}</p>
-                  {plan.isOperational && (
-                    <p className="text-[11px] text-muted-foreground">This event&apos;s operational Floor Plan</p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {plan.isReady
+                      ? "Ready for the event — furniture placement is set"
+                      : plan.isCoupleSelected || plan.isOperational
+                        ? "Your selected working layout — furniture is placed by your venue"
+                        : "Shared layout — view only"}
+                  </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground shrink-0">
                   {objects.length} element{objects.length === 1 ? "" : "s"}
@@ -457,12 +468,16 @@ export default function FloorPlanSection({ token }: { token: string }) {
               )}
             </div>
           )}
+
+          <p className="text-xs text-muted-foreground text-center" data-testid="floor-plan-seating-next-hint">
+            To seat guests at tables, open Seating when your venue has shared this plan for seating.
+          </p>
         </section>
       )}
 
       {hasOffers && !hasShared && (
-        <p className="text-xs text-muted-foreground text-center">
-          Your venue will share the Floor Plan view when they&apos;re ready — choosing a layout doesn&apos;t share it automatically.
+        <p className="text-xs text-muted-foreground text-center" data-testid="floor-plan-awaiting-selection-view">
+          Choose a layout above to save your selection. Your working layout will appear here once you choose.
         </p>
       )}
     </div>

@@ -486,12 +486,43 @@ export function FloorPlanWorkspace({
           data-testid="floor-plan-selection-status"
         >
           {coupleSelectedFloorPlanId ? (
-            <p data-testid="floor-plan-client-selected">
-              Client selected:{" "}
-              <span className="font-medium text-foreground">
-                {floorPlans.find((p) => p.id === coupleSelectedFloorPlanId)?.name ?? "Saved layout"}
-              </span>
-            </p>
+            <>
+              <p data-testid="floor-plan-client-selected">
+                Client selected:{" "}
+                <span className="font-medium text-foreground">
+                  {floorPlans.find((p) => p.id === coupleSelectedFloorPlanId)?.name ?? "Saved layout"}
+                </span>
+                {" "}(working layout view is shared with the couple).
+              </p>
+              {(() => {
+                const selected = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);
+                if (!selected) return null;
+                const seatingOpen = selected.clientAccess !== "hidden";
+                const ready = Boolean(selected.finalizedAt);
+                if (!seatingOpen) {
+                  return (
+                    <p data-testid="floor-plan-next-share-seating">
+                      Next: open the working layout, finish arrangement if needed, then{" "}
+                      <span className="font-medium text-foreground">Share for Seating</span> so the couple can assign guests.
+                    </p>
+                  );
+                }
+                if (!ready) {
+                  return (
+                    <p data-testid="floor-plan-next-mark-ready">
+                      Seating is shared. When the layout is print/setup-ready, open it and{" "}
+                      <span className="font-medium text-foreground">Mark as Ready</span>.
+                    </p>
+                  );
+                }
+                return (
+                  <p data-testid="floor-plan-ready-confirmed">
+                    Working layout is <span className="font-medium text-foreground">Ready</span> for the event.
+                    Use Make Changes on the plan if you need to revise.
+                  </p>
+                );
+              })()}
+            </>
           ) : activeOffers.length === 1 ? (
             <p data-testid="floor-plan-sole-offer-working">
               Using the only offered layout as the working layout

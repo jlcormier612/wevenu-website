@@ -165,6 +165,8 @@ export type PortalFloorPlanSummary = {
   id: string;
   name: string;
   isOperational: boolean;
+  isCoupleSelected?: boolean;
+  isReady?: boolean;
   spaceId: string | null;
   createdAt: string;
 };
@@ -192,6 +194,8 @@ export type PortalFloorPlanDetail = {
     name: string;
     spaceId: string | null;
     isOperational: boolean;
+    isCoupleSelected?: boolean;
+    isReady?: boolean;
     backgroundImageUrl: string | null;
     backgroundImageOpacity: number;
     roomWidthFt: number;

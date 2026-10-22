@@ -35,6 +35,8 @@ describe("Floor Plans workspace navigation", () => {
     assert.match(workspace, /floor-plan-client-pending/);
     assert.match(workspace, /coupleSelectedFloorPlanId/);
     assert.match(workspace, /workingPlan/);
+    assert.match(workspace, /floor-plan-next-share-seating/);
+    assert.match(workspace, /floor-plan-next-mark-ready/);
   });
 
   it("booked Floor Plans tab mounts the workspace without leaving the booking", () => {

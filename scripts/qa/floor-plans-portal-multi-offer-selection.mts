@@ -359,7 +359,7 @@ async function main() {
 
       const { data: selectedPlan } = await admin
         .from("floor_plans")
-        .select("id,name,source_template_id,event_id")
+        .select("id,name,source_template_id,event_id,shared_with_couple,client_access")
         .eq("id", planB!)
         .maybeSingle();
       record(
@@ -368,7 +368,23 @@ async function main() {
           && selectedPlan?.event_id === eventId,
         JSON.stringify(selectedPlan),
       );
+      record(
+        "select_shares_layout_view_not_seating",
+        selectedPlan?.shared_with_couple === true
+          && selectedPlan?.client_access === "hidden",
+        JSON.stringify({
+          shared_with_couple: selectedPlan?.shared_with_couple,
+          client_access: selectedPlan?.client_access,
+        }),
+      );
 
+      await page.waitForSelector("text=Your working layout", { timeout: 20_000 }).catch(() => undefined);
+      const afterSelectBody = await page.locator("body").innerText();
+      record(
+        "portal_shows_working_layout_after_select",
+        /Your working layout/i.test(afterSelectBody),
+        afterSelectBody.match(/Your working layout|Your choice|Ready/gi)?.join(" | ") ?? afterSelectBody.slice(0, 240),
+      );
       await page.screenshot({ path: `${OUT}/portal-multi-offer-selected-b-1280.png`, fullPage: true }).catch(() => undefined);
 
       // Reload / fresh navigation — selection sticks
@@ -380,6 +396,11 @@ async function main() {
         "portal_selection_survives_reload",
         /Your choice/i.test(afterReload) && /Layout Option B — Reception Only/i.test(afterReload),
         afterReload.match(/Layout Option B[^\n]*|Your choice/gi)?.join(" | ") ?? afterReload.slice(0, 240),
+      );
+      record(
+        "portal_working_layout_survives_reload",
+        /Your working layout/i.test(afterReload),
+        afterReload.match(/Your working layout[^\n]*/gi)?.join(" | ") ?? afterReload.slice(0, 200),
       );
       await page.screenshot({ path: `${OUT}/portal-multi-offer-reload-1280.png`, fullPage: true }).catch(() => undefined);
 

@@ -244,11 +244,12 @@ export function FloorPlanPortalView({
       )}
 
       {hasShared && (
-        <section className="space-y-4">
+        <section className="space-y-4" data-testid="floor-plan-working-view">
           <div>
-            <h2 className="text-lg font-semibold text-heading">Floor Plan</h2>
+            <h2 className="text-lg font-semibold text-heading">Your working layout</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Where the physical things are in the room — view only.
+              The room layout for your event — view only. Your venue places furniture;
+              you assign guests once they open Seating.
             </p>
           </div>
           {list.length > 1 && (
@@ -266,7 +267,9 @@ export function FloorPlanPortalView({
                     style={active ? { background: SAGE } : undefined}
                   >
                     {p.name}
-                    {p.isOperational || p.id === operationalFloorPlanId ? " · Operational" : ""}
+                    {p.isCoupleSelected ? " · Your choice" : ""}
+                    {p.isReady ? " · Ready" : ""}
+                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalFloorPlanId) ? " · Operational" : ""}
                   </button>
                 );
               })}
@@ -277,9 +280,13 @@ export function FloorPlanPortalView({
               <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-heading">{plan.name}</p>
-                  {plan.isOperational && (
-                    <p className="text-[11px] text-muted-foreground">This event&apos;s operational Floor Plan</p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {plan.isReady
+                      ? "Ready for the event — furniture placement is set"
+                      : plan.isCoupleSelected || plan.isOperational
+                        ? "Your selected working layout — furniture is placed by your venue"
+                        : "Shared layout — view only"}
+                  </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground shrink-0">
                   {objects.length} element{objects.length === 1 ? "" : "s"}
@@ -301,12 +308,15 @@ export function FloorPlanPortalView({
               )}
             </div>
           )}
+          <p className="text-xs text-muted-foreground text-center" data-testid="floor-plan-seating-next-hint">
+            To seat guests at tables, open Seating when your venue has shared this plan for seating.
+          </p>
         </section>
       )}
 
       {hasOffers && !hasShared && (
-        <p className="text-xs text-muted-foreground text-center">
-          Your venue will share the Floor Plan view when they&apos;re ready — choosing a layout doesn&apos;t share it automatically.
+        <p className="text-xs text-muted-foreground text-center" data-testid="floor-plan-awaiting-selection-view">
+          Choose a layout above to save your selection. Your working layout will appear here once you choose.
         </p>
       )}
     </div>
