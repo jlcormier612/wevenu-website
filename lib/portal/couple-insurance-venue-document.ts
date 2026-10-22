@@ -34,8 +34,9 @@ export function shouldRegisterVenueInsuranceDocument(input: {
 
 export type CoupleInsuranceVenueDocumentInsert = {
   venue_id: string;
-  client_id: string;
-  event_id: string | null;
+  /** Exactly one entity column — prefer event when known (documents_one_entity). */
+  client_id?: string | null;
+  event_id?: string | null;
   name: string;
   file_name: string;
   file_size: number | null;
@@ -66,10 +67,13 @@ export function buildCoupleInsuranceVenueDocumentInsert(input: {
   const storagePath = storagePathFromCoupleFileUrl(input.fileUrl);
   if (!storagePath) return null;
   const fileName = storagePath.split("/").pop() || "insurance-proof";
+  // documents_one_entity: set event_id when available, otherwise client_id only.
+  const entity = input.eventId
+    ? { event_id: input.eventId, client_id: null as string | null }
+    : { event_id: null as string | null, client_id: input.clientId };
   return {
     venue_id: input.venueId,
-    client_id: input.clientId,
-    event_id: input.eventId,
+    ...entity,
     name: input.name.trim() || "Event insurance",
     file_name: fileName,
     file_size: input.fileSize,
