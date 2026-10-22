@@ -10,6 +10,7 @@ import {
   normalizeCoupleDocumentSourceType,
   shouldFireInsuranceAutoComplete,
 } from "@/lib/portal/couple-insurance-completion";
+import { ensureCoupleInsuranceVenueDocument } from "@/lib/portal/ensure-couple-insurance-venue-document";
 
 type PortalDoc = {
   id?: string;
@@ -139,6 +140,19 @@ export async function POST(request: Request) {
     // source_type "document" is CHECK-safe on event_tasks (not couple_document).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await triggerAutoComplete(admin as any, ids.venue_id, ids.event_id, COUPLE_INSURANCE_TRIGGER, "document", data.id);
+
+    // Register the same file in venue documents so All Documents can show it.
+    // Does not re-fire triggers (idempotent insert only).
+    await ensureCoupleInsuranceVenueDocument(admin as never, {
+      venueId: ids.venue_id,
+      clientId: ids.client_id,
+      eventId: ids.event_id,
+      coupleDocumentId: data.id,
+      name,
+      fileUrl,
+      fileSize: fileSize ?? null,
+      mimeType: mimeType ?? null,
+    });
 
     const { error: celebrationError } = await admin.from("luv_celebrations").insert({
       venue_id: ids.venue_id,

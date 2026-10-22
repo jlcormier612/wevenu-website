@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -15,6 +16,7 @@ import type {
   WorkspaceVersion,
 } from "@/lib/document-workspace/types";
 import * as contractRepo from "@/lib/contracts/repository";
+import { healSharedCoupleInsuranceVenueDocuments } from "@/lib/portal/ensure-couple-insurance-venue-document";
 
 /** Global Documents (no scope) or a Relationship/Vendor/Event-filtered view — same one RPC, same one shape, per the brief's own "filtered view, not another document system." */
 export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Promise<WorkspaceDocument[]> {
@@ -22,6 +24,30 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
+  // Shared couple insurance lives in couple_documents; heal missing venue
+  // documents rows so All Documents reflects share_with_venue without re-upload.
+  // Admin write after venue session is established — couple_documents is not
+  // writable under venue RLS; registration is still venue-scoped by IDs.
+  if (scope.clientId) {
+    try {
+      const { data: owned } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("id", scope.clientId)
+        .eq("venue_id", venue.id)
+        .maybeSingle<{ id: string }>();
+      if (owned?.id) {
+        await healSharedCoupleInsuranceVenueDocuments(
+          createAdminClient() as never,
+          venue.id,
+          scope.clientId,
+          scope.eventId ?? null,
+        );
+      }
+    } catch (err) {
+      console.error("[getVenueWorkspaceDocuments] couple insurance heal", err);
+    }
+  }
   const { data, error } = await supabase.rpc("get_venue_documents", {
     p_lead_id: scope.leadId ?? null,
     p_client_id: scope.clientId ?? null,
