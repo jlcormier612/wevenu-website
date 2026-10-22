@@ -238,10 +238,13 @@ describe("customer-facing email branding closeout", () => {
     assert.match(brochure, /renderBrandedEmailHtml\(emailBrandFromVenue\(venue\)/);
     assert.match(brochure, /View \$\{escapeHtml\(brochure\.name\)\}/);
 
-    const clientInvite = readFileSync(resolve("lib/client-auth/service.ts"), "utf8");
-    assert.match(clientInvite, /html: renderBrandedEmailHtml\(brand/);
-    assert.match(clientInvite, /Create Your Account/);
+    // Workspace invite HTML lives in the shared builder (preview + send).
+    const clientInvite = readFileSync(resolve("lib/client-auth/client-invite-email.ts"), "utf8");
+    assert.match(clientInvite, /renderBrandedEmailHtml\(brand/);
+    assert.match(clientInvite, /Create Your Account|CLIENT_INVITE_CTA_LABEL/);
     assert.match(clientInvite, /Hello to Cheers is where you'll keep/);
+    const clientInviteService = readFileSync(resolve("lib/client-auth/service.ts"), "utf8");
+    assert.match(clientInviteService, /buildClientInviteEmail/);
 
     const participantInvite = readFileSync(resolve("lib/portal/participant-invite-email.ts"), "utf8");
     assert.match(participantInvite, /renderBrandedEmailHtml/);

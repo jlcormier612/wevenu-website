@@ -40,6 +40,33 @@ describe("buildClientInviteEmail — preview uses the same path as send", () => 
     assert.match(content.text, /Create your account to get started/);
   });
 
+  it("uses explicit email-safe paragraph spacing so preview and clients agree", () => {
+    const content = buildClientInviteEmail({
+      to: "client@example.test",
+      coupleName: "Gina Palo & Rich Dude",
+      venue,
+      acceptUrl: clientInviteAcceptUrl("tok"),
+    });
+    // Greeting is its own paragraph with bottom margin before invitation copy.
+    assert.match(
+      content.html,
+      /<p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1\.55">Hi Gina Palo &amp; Rich Dude,<\/p>/,
+    );
+    assert.match(content.html, /margin:0 0 24px;font-size:15px/);
+    assert.match(
+      content.html,
+      /<p style="margin:0 0 12px;font-size:15px;color:#374151;line-height:1\.55">Create your account to get started\.<\/p>/,
+    );
+    assert.match(content.html, /<p style="margin:0 0 20px"><a href=/);
+    assert.match(content.html, /margin:0 0 8px;color:#6b7280;font-size:12px/);
+    assert.match(content.html, /\/client\/accept\?token=tok/);
+    assert.equal(content.ctaLabel, CLIENT_INVITE_CTA_LABEL);
+    // Copy unchanged — spacing only.
+    assert.match(content.html, /invited you to join your private planning space on Hello to Cheers/);
+    assert.match(content.html, /Terms and Privacy Policy/);
+    assert.doesNotMatch(content.html, /<p>Hi /); // bare <p> without margin would collapse under Tailwind
+  });
+
   it("preview accept URL is a stand-in that never implies a persisted token", () => {
     assert.equal(clientInvitePreviewAcceptUrl(), clientInviteAcceptUrl("preview"));
     const preview = buildClientInviteEmail({

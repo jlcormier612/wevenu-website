@@ -65,14 +65,20 @@ export function buildClientInviteEmail(input: {
     "",
     venueName,
   ].join("\n");
+  // Explicit inline margins — email clients and the in-app preview (Tailwind
+  // preflight zeroes bare <p> margins) must agree on spacing.
+  const bodyP =
+    'margin:0 0 16px;font-size:15px;color:#374151;line-height:1.55';
+  const legalP =
+    'margin:0 0 8px;color:#6b7280;font-size:12px;line-height:1.5';
   const html = renderBrandedEmailHtml(brand, [
-    `<p>Hi ${escapeHtml(coupleName)},</p>`,
-    `<p><strong>${escapeHtml(venueName)}</strong> invited you to join your private planning space on Hello to Cheers.</p>`,
-    `<p>Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.</p>`,
-    `<p>Create your account to get started.</p>`,
-    `<p>${brandButtonHtml(brand, input.acceptUrl, CLIENT_INVITE_CTA_LABEL)}</p>`,
-    `<p style="color:#888;font-size:12px;">By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.</p>`,
-    `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
+    `<p style="${bodyP}">Hi ${escapeHtml(coupleName)},</p>`,
+    `<p style="${bodyP}"><strong>${escapeHtml(venueName)}</strong> invited you to join your private planning space on Hello to Cheers.</p>`,
+    `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.55">Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.</p>`,
+    `<p style="margin:0 0 12px;font-size:15px;color:#374151;line-height:1.55">Create your account to get started.</p>`,
+    `<p style="margin:0 0 20px">${brandButtonHtml(brand, input.acceptUrl, CLIENT_INVITE_CTA_LABEL)}</p>`,
+    `<p style="${legalP}">By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.</p>`,
+    `<p style="margin:0;color:#6b7280;font-size:12px;line-height:1.5">This link is personal to you — please don't share it.</p>`,
   ].join(""));
 
   return {

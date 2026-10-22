@@ -110,7 +110,23 @@ describe("email brand signature", () => {
     assert.doesNotMatch(html, /hello@willow\.test/);
     assert.doesNotMatch(html, /555/);
     // No empty grey name-only footer row when everything is hidden.
-    assert.doesNotMatch(html, /padding-top:20px;text-align:center/);
+    assert.doesNotMatch(html, /padding-top:12px;text-align:center/);
+  });
+
+  it("uses compact card and footer spacing in the shared branded shell", () => {
+    const html = renderBrandedEmailHtml(
+      {
+        name: "Meadowbrook Valley Venue",
+        primaryColor: "#D8A7AA",
+        emailSignature: "Cheers!\nThe Meadowbrook Team",
+        replyContact: "hello@meadowbrook.test",
+      },
+      "<p>Body</p>",
+    );
+    assert.match(html, /padding:28px 32px/);
+    assert.match(html, /padding-top:12px;text-align:center/);
+    assert.match(html, /body style="[^"]*padding:24px 16px/);
+    assert.doesNotMatch(html, /padding:40px;/);
   });
 
   it("never invents a phone placeholder when phone is missing", () => {
