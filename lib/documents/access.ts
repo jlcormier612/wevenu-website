@@ -59,6 +59,21 @@ export function documentFileOriginLabel(input: {
   return "Venue";
 }
 
+/**
+ * Sharing direction for venue Documents detail — not inferred from category alone.
+ * Couple→venue shares must not read as "Shared with couple."
+ */
+export function documentSharingDirectionLabel(input: {
+  originLabel: "Venue" | "Vendor" | "Client";
+  isCoupleVisible: boolean;
+  isVendorVisible: boolean;
+}): string {
+  if (input.originLabel === "Client") return "Shared by couple";
+  if (input.isCoupleVisible) return "Shared with couple";
+  if (input.isVendorVisible) return "Shared with vendors";
+  return "Private";
+}
+
 export function venueIdFromDocumentsPath(storagePath: string): string | null {
   const first = storagePath.split("/").filter(Boolean)[0];
   return first ?? null;

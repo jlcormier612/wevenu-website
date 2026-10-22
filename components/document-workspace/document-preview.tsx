@@ -9,6 +9,7 @@ import { WorkspaceCategoryBadge, WorkspaceStatusBadge } from "@/components/docum
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { downloadFile } from "@/lib/download-file";
+import { documentSharingDirectionLabel } from "@/lib/documents/access";
 import { formatBytes } from "@/lib/documents/constants";
 import {
   downloadContractFinalPdfAction,
@@ -259,7 +260,14 @@ export function DocumentPreviewSheet({
             )}
             {doc.docType === "document" && (
               <>
-                <Row label="Sharing" value={doc.isCoupleVisible ? "Shared with couple" : doc.isVendorVisible ? "Shared with vendors" : "Private"} />
+                <Row
+                  label="Sharing"
+                  value={documentSharingDirectionLabel({
+                    originLabel: doc.originLabel ?? (doc.uploadedByType === "vendor" ? "Vendor" : "Venue"),
+                    isCoupleVisible: doc.isCoupleVisible,
+                    isVendorVisible: doc.isVendorVisible,
+                  })}
+                />
                 {doc.isCompanionUpload && (
                   <p className="text-xs text-muted-foreground">
                     Uploaded file — not the authoritative signed contract or Final PDF. Deleting this file does not change the contract.

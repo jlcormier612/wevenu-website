@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { InvoicePickerForSchedule } from "@/components/payments/invoice-picker-for-schedule";
 import { NewScheduleForm } from "@/components/payments/new-schedule-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
@@ -104,23 +106,51 @@ export default async function NewPaymentPage({ searchParams }: Props) {
   // so Custom hydrates the same saved structure as Booking Journey.
   const seedPresetId = preset?.trim() || prefs.defaultSchedulePresetId;
 
+  const invoiceHref = `/invoices/${invoice.id}`;
+  const eventHref = invoice.eventId ? `/events/${invoice.eventId}?tab=event-order` : null;
+  const clientHref = invoice.clientId ? `/clients/${invoice.clientId}` : null;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payment Plan Builder"
-        description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then preview and create the schedule. Requesting payment is a separate step."
+        description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then preview and create the schedule. Saving creates the plan; sending the invoice and requesting payment stay separate steps on the invoice."
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link href={invoiceHref}>Back to invoice</Link>
+            </Button>
+            {eventHref ? (
+              <Button asChild size="sm" variant="ghost">
+                <Link href={eventHref}>Event Order</Link>
+              </Button>
+            ) : null}
+            {clientHref ? (
+              <Button asChild size="sm" variant="ghost">
+                <Link href={clientHref}>Client</Link>
+              </Button>
+            ) : null}
+          </div>
+        )}
       />
       <Card>
         <CardHeader>
           <CardTitle>Build payment schedule</CardTitle>
           <CardDescription>
-            Invoice {invoice.invoiceNumber} · {formatCurrency(invoice.total)}
+            Invoice {invoice.invoiceNumber}
+            {invoice.displayName ? ` · ${invoice.displayName}` : ""}
+            {" · "}
+            Status {invoice.status}
+            {" · "}
+            Total {formatCurrency(invoice.total)}
             {invoice.eventDate
               ? ` · Event ${invoice.eventDate}`
               : " · Add an Event date on the booking so event-relative due dates can become calendar dates"}
             {executedAt
               ? ` · Contract fully executed ${executedAt}`
               : " · Agreement-relative timing needs a fully executed contract"}
+            {" · "}
+            After create: review and send from the invoice.
           </CardDescription>
         </CardHeader>
         <CardContent>

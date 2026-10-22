@@ -186,7 +186,11 @@ export async function createPaymentSchedule(
         message: "A payment schedule already exists for this invoice. Open it to edit or regenerate instead of creating another.",
       } as CreateScheduleResult;
     }
-    const totalAmount = invoice.total;
+    // Draft EO-linked invoices store total=0 until freeze-on-send; getInvoice
+    // projects billable Event Order lines — same total the Invoice UI and
+    // Payment Plan Builder display. Never reconcile against the stale 0 row.
+    const projected = await getInvoice(input.invoiceId);
+    const totalAmount = projected?.total ?? invoice.total;
     const eventDate = invoice.eventDate;
     const bookingDate = invoice.bookedAt;
     const venueForTz = await getCurrentVenue();
@@ -1133,6 +1137,8 @@ export async function syncPaymentPlanToInvoiceCommitment(invoiceId: string): Pro
   await withVenue(async (supabase, venueId) => {
     const invoice = await repo.getInvoiceSummaryForSchedule(supabase, venueId, invoiceId);
     if (!invoice) return { ok: true } as PaymentActionResult;
+    const projected = await getInvoice(invoiceId);
+    const commitmentTotal = projected?.total ?? invoice.total;
     const { data: scheduleRow } = await supabase.from("payment_schedules")
       .select("id")
       .eq("venue_id", venueId)
@@ -1148,12 +1154,12 @@ export async function syncPaymentPlanToInvoiceCommitment(invoiceId: string): Pro
     const lineSum = pending.reduce((s, l) => s + l.amount, 0);
     const decision = classifyCommitmentReconcile({
       scheduleTotal: lineSum,
-      commitmentTotal: invoice.total,
+      commitmentTotal,
       lineAmounts: pending.map((l) => l.amount),
       hasActivity: scheduleHasPaymentActivity(schedule.lineItems, invoice.status),
     });
-    if (decision.kind === "current" && Math.abs(schedule.totalAmount - invoice.total) > 0.02) {
-      await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, invoice.total);
+    if (decision.kind === "current" && Math.abs(schedule.totalAmount - commitmentTotal) > 0.02) {
+      await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, commitmentTotal);
       return { ok: true } as PaymentActionResult;
     }
     if (decision.kind !== "auto_recalc") return { ok: true } as PaymentActionResult;
@@ -1172,10 +1178,10 @@ export async function syncPaymentPlanToInvoiceCommitment(invoiceId: string): Pro
         obligationKind: line.obligationKind ?? undefined,
       });
     }
-    await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, invoice.total);
+    await repo.updateScheduleTotalAmount(supabase, venueId, schedule.id, commitmentTotal);
     await repo.insertPaymentActivity(
       supabase, venueId, schedule.id, "schedule_recalculated",
-      `Payment plan recalculated for the new commitment of ${invoice.total}.`,
+      `Payment plan recalculated for the new commitment of ${commitmentTotal}.`,
     );
     return { ok: true } as PaymentActionResult;
   });

@@ -110,6 +110,11 @@ describe("couple document origin grouping", () => {
     assert.doesNotMatch(src, />Comments</);
   });
 
+  it("client-origin sharing label uses documentSharingDirectionLabel", () => {
+    const src = readFileSync(resolve("components/document-workspace/document-preview.tsx"), "utf8");
+    assert.match(src, /documentSharingDirectionLabel/);
+  });
+
   it("ensure heal clears is_couple_visible on existing mirrors", () => {
     const src = readFileSync(resolve("lib/portal/ensure-couple-insurance-venue-document.ts"), "utf8");
     assert.match(src, /is_couple_visible: false/);

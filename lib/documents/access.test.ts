@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   canAccessDocumentFile,
   documentFileOriginLabel,
+  documentSharingDirectionLabel,
   isClientMediaPublicUrl,
   isDocumentsPublicUrl,
   storagePathFromClientMediaUrl,
@@ -66,6 +67,50 @@ describe("document file origin label", () => {
       "Venue",
     );
     assert.equal(documentFileOriginLabel({ uploadedByType: "vendor" }), "Vendor");
+  });
+
+  it("sharing direction reflects couple→venue vs venue→couple", () => {
+    assert.equal(
+      documentSharingDirectionLabel({
+        originLabel: "Client",
+        isCoupleVisible: false,
+        isVendorVisible: false,
+      }),
+      "Shared by couple",
+    );
+    assert.equal(
+      documentSharingDirectionLabel({
+        originLabel: "Venue",
+        isCoupleVisible: true,
+        isVendorVisible: false,
+      }),
+      "Shared with couple",
+    );
+    assert.equal(
+      documentSharingDirectionLabel({
+        originLabel: "Venue",
+        isCoupleVisible: false,
+        isVendorVisible: false,
+      }),
+      "Private",
+    );
+  });
+});
+
+describe("client selections empty copy distinguishes Event Order lines", () => {
+  it("empty state does not imply Event Order is empty", () => {
+    const src = readFileSync(resolve("components/client-choices/client-choices-panel.tsx"), "utf8");
+    assert.match(src, /Venue-authored Event Order lines/);
+    assert.match(src, /independent of this panel/);
+  });
+});
+
+describe("payment plan builder navigation", () => {
+  it("new schedule page links back to invoice and event", () => {
+    const src = readFileSync(resolve("app/(app)/payments/new/page.tsx"), "utf8");
+    assert.match(src, /Back to invoice/);
+    assert.match(src, /Event Order/);
+    assert.match(src, /review and send from the invoice/);
   });
 });
 

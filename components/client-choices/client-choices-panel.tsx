@@ -298,7 +298,9 @@ export function ClientChoicesPanel({
       <CardHeader>
         <CardTitle className="text-base">Client selections</CardTitle>
         <CardDescription>
-          Selections from Event Order Templates (menus, add-ons, rentals). Client submits; you finalize into Event Order — not a second invoice.
+          Optional choice packets from Event Order Templates (menus, add-ons, rentals). The Event Order below can already
+          include venue-authored lines — those are not client submissions. Client drafts stay editable until they submit;
+          you finalize submitted choices into Event Order lines (not a second invoice).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -340,7 +342,10 @@ export function ClientChoicesPanel({
         )}
 
         {choices.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No client selections for this event yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No client selections for this event yet. Venue-authored Event Order lines (if any) remain below and are
+            independent of this panel — start selections only when the couple should choose from a template.
+          </p>
         ) : (
           <div className="space-y-3">
             {choices.map((c) => (
