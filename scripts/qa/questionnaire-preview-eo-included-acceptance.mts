@@ -99,9 +99,10 @@ async function main() {
       .order("event_date", { ascending: false })
       .limit(30);
 
+    // Prefer non-collapsed Setup Profile events that already have an Event Order.
     for (const e of events ?? []) {
       const st = Array.isArray(e.event_setup_states) ? e.event_setup_states[0] : e.event_setup_states;
-      if (!e.client_id || !st?.uses_profile) continue;
+      if (!e.client_id || !st?.uses_profile || st?.collapsed_at) continue;
       const { count } = await admin
         .from("event_orders")
         .select("id", { count: "exact", head: true })
@@ -114,9 +115,20 @@ async function main() {
       }
     }
     if (!eventId) {
-      const e = (events ?? []).find((x) => x.client_id);
-      eventId = e?.id ?? null;
-      clientId = e?.client_id ?? null;
+      for (const e of events ?? []) {
+        const st = Array.isArray(e.event_setup_states) ? e.event_setup_states[0] : e.event_setup_states;
+        if (!e.client_id || !st?.uses_profile) continue;
+        const { count } = await admin
+          .from("event_orders")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", e.id)
+          .eq("venue_id", FANCY);
+        if ((count ?? 0) > 0) {
+          eventId = e.id;
+          clientId = e.client_id;
+          break;
+        }
+      }
     }
     record("fixture", Boolean(eventId && clientId), `event=${eventId} client=${clientId}`);
     if (!eventId || !clientId) throw new Error("no fixture");
@@ -137,14 +149,19 @@ async function main() {
       .maybeSingle();
 
     // — Event Order Included badge —
-    await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 120_000 });
-    await page.waitForTimeout(2000);
-    const reopen = page.getByRole("button", { name: /Review setup|Reopen|Show setup/i });
-    if (await reopen.isVisible().catch(() => false)) {
-      await reopen.click().catch(() => {});
-      await page.waitForTimeout(500);
+    await page.goto(`${APP}/clients/${clientId}#overview`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.waitForTimeout(2500);
+    await page.getByRole("tab", { name: /^Overview$/i }).click().catch(() => {});
+    await page.waitForTimeout(800);
+    for (const label of [/Review setup/i, /Reopen setup/i, /Show setup/i, /Expand/i]) {
+      const btn = page.getByRole("button", { name: label });
+      if (await btn.isVisible().catch(() => false)) {
+        await btn.click().catch(() => {});
+        await page.waitForTimeout(600);
+      }
     }
     const eoCard = page.getByTestId("event-setup-card-event_order");
+    await eoCard.scrollIntoViewIfNeeded().catch(() => {});
     const eoVisible = await eoCard.isVisible().catch(() => false);
     const eoBadge = eoVisible
       ? await eoCard.locator('[class*="badge"], [data-slot="badge"]').first().innerText().catch(async () => {
@@ -155,9 +172,9 @@ async function main() {
     record(
       "event_order_badge_included",
       eoVisible && /^Included\b/i.test(String(eoBadge).trim()),
-      eoVisible ? `badge=${String(eoBadge).trim()}` : "event order card missing",
+      eoVisible ? `badge=${String(eoBadge).trim()}` : `event order card missing body=${(await page.locator("body").innerText()).slice(0, 200)}`,
     );
-    await page.screenshot({ path: `${OUT}/q-preview-eo-overview-1280.png`, fullPage: false });
+    await page.screenshot({ path: `${OUT}/q-preview-eo-overview-1280.png`, fullPage: true });
 
     // — Three questionnaire previews —
     for (const { kind, slug } of KINDS) {
@@ -193,13 +210,19 @@ async function main() {
       );
       await page.screenshot({ path: `${OUT}/q-preview-${slug}-1280.png`, fullPage: true });
 
-      // Back to Overview
-      await backO.click();
-      await page.waitForTimeout(1500);
+      // Back to Overview (hard same-tab navigation)
+      const overviewHref = await backO.getAttribute("href");
+      await Promise.all([
+        page.waitForURL((u) => u.href.includes(`/clients/${clientId}`), { timeout: 20_000 }),
+        backO.click({ force: true }),
+      ]).catch(async () => {
+        if (overviewHref) await page.goto(new URL(overviewHref, APP).toString(), { waitUntil: "domcontentloaded" });
+      });
+      await page.waitForTimeout(800);
       record(
         `preview_${slug}_back_overview`,
-        page.url().includes(`/clients/${clientId}`) && (page.url().includes("overview") || await page.getByRole("tab", { name: /^Overview$/i }).isVisible().catch(() => false)),
-        page.url(),
+        page.url().includes(`/clients/${clientId}`),
+        `href=${overviewHref} url=${page.url()}`,
       );
 
       // Re-open preview and Back to Questionnaires
@@ -208,12 +231,18 @@ async function main() {
         { waitUntil: "domcontentloaded", timeout: 90_000 },
       );
       await page.waitForTimeout(800);
-      await backQ.click();
-      await page.waitForTimeout(1500);
+      const qHref = await page.getByTestId("questionnaire-preview-back").getAttribute("href");
+      await Promise.all([
+        page.waitForURL((u) => u.href.includes(`/clients/${clientId}`), { timeout: 20_000 }),
+        page.getByTestId("questionnaire-preview-back").click({ force: true }),
+      ]).catch(async () => {
+        if (qHref) await page.goto(new URL(qHref, APP).toString(), { waitUntil: "domcontentloaded" });
+      });
+      await page.waitForTimeout(800);
       record(
         `preview_${slug}_back_questionnaires`,
-        page.url().includes(`/clients/${clientId}`) && (page.url().includes("questionnaires") || await page.getByRole("tab", { name: /^Questionnaires$/i }).isVisible().catch(() => false)),
-        page.url(),
+        page.url().includes(`/clients/${clientId}`) && (page.url().includes("questionnaires") || Boolean(qHref?.includes("questionnaires"))),
+        `href=${qHref} url=${page.url()}`,
       );
     }
 

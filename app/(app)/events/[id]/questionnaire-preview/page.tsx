@@ -3,7 +3,6 @@
  * Same-tab preview with an explicit return to Questionnaires / Overview.
  * Form rendering matches the pre-navigation implementation (no wrapper theme).
  */
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -69,21 +68,21 @@ export default async function QuestionnairePreviewPage({
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {from !== "library" ? (
-              <Link
+              <a
                 href={overviewHref}
                 data-testid="questionnaire-preview-back-overview"
                 className="inline-flex h-8 items-center rounded-md px-2.5 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
                 Back to Overview
-              </Link>
+              </a>
             ) : null}
-            <Link
+            <a
               href={questionnairesHref}
               data-testid="questionnaire-preview-back"
               className="inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-muted"
             >
               {questionnairesLabel}
-            </Link>
+            </a>
           </div>
         </div>
       </div>

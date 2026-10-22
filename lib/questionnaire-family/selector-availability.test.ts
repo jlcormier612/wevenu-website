@@ -119,6 +119,10 @@ describe("questionnaire category selectors", () => {
     assert.match(preview, /Back to Overview/);
     assert.match(preview, /#overview/);
     assert.match(preview, /Back to Library/);
+    // Same-tab hard anchors (not Next Link / blank).
+    assert.match(preview, /<a\s+href=\{overviewHref\}/);
+    assert.match(preview, /<a\s+href=\{questionnairesHref\}/);
+    assert.doesNotMatch(preview, /from "next\/link"/);
     assert.doesNotMatch(preview, /target="_blank"/);
     assert.doesNotMatch(preview, /window\.open/);
   });
