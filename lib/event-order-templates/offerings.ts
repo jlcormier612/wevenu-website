@@ -87,6 +87,19 @@ export function defaultApplySelections(lines: EventOrderTemplateLine[]): Templat
   }));
 }
 
+/**
+ * Setup Profile / package switch materializes the full package onto the event.
+ * Every offering is copied; `includedByDefault` still drives Included vs Additional
+ * via snapshotTemplateOfferingForEvent — optionals are not treated as committed.
+ */
+export function packageStartingSelections(lines: EventOrderTemplateLine[]): TemplateApplySelection[] {
+  return lines.map((l) => ({
+    lineId: l.id,
+    selected: true,
+    quantity: l.quantity > 0 ? l.quantity : 1,
+  }));
+}
+
 /** Applying a template never mutates a finalized Event Order. */
 export function canApplyTemplateToEventOrder(status: EventOrderStatus | null): boolean {
   if (!status) return true;

@@ -76,20 +76,84 @@ async function insertStarterFromMaster(
   return templateId;
 }
 
+/**
+ * Delivery starters that already exist (sections only, zero offerings) stay
+ * skipped by provision. Fill matching section offerings from the master so
+ * Setup Profile → event apply is not an empty shell. Never duplicates lines,
+ * never mutates venue-customized templates that already have offerings.
+ */
+export async function repairEmptyDeliveryStarterOfferings(
+  client: DbClient,
+  venueId: string,
+  templateId: string,
+): Promise<{ repaired: boolean; linesAdded: number }> {
+  const { data: header } = await client.from("event_order_templates")
+    .select("id, source_master_key")
+    .eq("id", templateId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ id: string; source_master_key: string | null }>();
+  if (!header?.source_master_key) return { repaired: false, linesAdded: 0 };
+  const master = getEventOrderStarterMaster(header.source_master_key);
+  if (!master) return { repaired: false, linesAdded: 0 };
+
+  const { count: lineCount } = await client.from("event_order_template_lines")
+    .select("*", { count: "exact", head: true })
+    .eq("template_id", templateId)
+    .eq("venue_id", venueId);
+  if ((lineCount ?? 0) > 0) return { repaired: false, linesAdded: 0 };
+
+  const { data: sections } = await client.from("event_order_template_sections")
+    .select("id, name")
+    .eq("template_id", templateId)
+    .eq("venue_id", venueId);
+  const sectionByName = new Map(
+    (sections ?? []).map((s: { id: string; name: string }) => [s.name, s.id]),
+  );
+
+  let linesAdded = 0;
+  for (const section of master.sections) {
+    const sectionId = sectionByName.get(section.name);
+    if (!sectionId) continue;
+    let lineOrder = 0;
+    for (const offering of section.offerings ?? []) {
+      const { error: lErr } = await client.from("event_order_template_lines").insert({
+        template_id: templateId,
+        venue_id: venueId,
+        section_id: sectionId,
+        description: offering.name,
+        description_detail: offering.description ?? null,
+        quantity: offering.defaultQuantity ?? 1,
+        unit_price: offering.unitPrice ?? null,
+        pricing_model: offering.pricingModel,
+        unit: offering.unit ?? null,
+        included_by_default: offering.includedByDefault ?? false,
+        sort_order: lineOrder,
+      });
+      if (lErr) throw lErr;
+      lineOrder += 1;
+      linesAdded += 1;
+    }
+  }
+  return { repaired: linesAdded > 0, linesAdded };
+}
+
 export async function provisionEventOrderStarters(
   client: DbClient,
   venueId: string,
-): Promise<{ created: string[]; skipped: string[] }> {
+): Promise<{ created: string[]; skipped: string[]; repaired: string[] }> {
   await archiveLegacyChecklistTemplates(client, venueId);
 
   const created: string[] = [];
   const skipped: string[] = [];
+  const repaired: string[] = [];
 
   for (const master of EVENT_ORDER_STARTER_MASTERS) {
     const { data: byKey } = await client.from("event_order_templates")
       .select("id").eq("venue_id", venueId).eq("source_master_key", master.key).limit(1).maybeSingle();
     if (byKey) {
-      skipped.push(master.key);
+      const result = await repairEmptyDeliveryStarterOfferings(client, venueId, byKey.id);
+      if (result.repaired) repaired.push(master.key);
+      else skipped.push(master.key);
       continue;
     }
 
@@ -103,7 +167,7 @@ export async function provisionEventOrderStarters(
     await insertStarterFromMaster(client, venueId, master, master.name);
     created.push(master.key);
   }
-  return { created, skipped };
+  return { created, skipped, repaired };
 }
 
 export async function seedEventOrderStarters(venueId: string): Promise<void> {
@@ -112,18 +176,20 @@ export async function seedEventOrderStarters(venueId: string): Promise<void> {
 }
 
 export async function ensureEventOrderStartersForCurrentVenue(): Promise<{
-  ok: boolean; created: string[]; skipped: string[]; message?: string;
+  ok: boolean; created: string[]; skipped: string[]; repaired: string[]; message?: string;
 }> {
-  if (!isSupabaseConfigured) return { ok: false, created: [], skipped: [], message: "Backend not configured." };
+  if (!isSupabaseConfigured) {
+    return { ok: false, created: [], skipped: [], repaired: [], message: "Backend not configured." };
+  }
   const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, created: [], skipped: [], message: "No venue found." };
+  if (!venue) return { ok: false, created: [], skipped: [], repaired: [], message: "No venue found." };
   try {
     const result = await provisionEventOrderStarters(await createClient(), venue.id);
     return { ok: true, ...result };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not ensure event order starters.";
     console.error("[ensureEventOrderStartersForCurrentVenue]", message);
-    return { ok: false, created: [], skipped: [], message };
+    return { ok: false, created: [], skipped: [], repaired: [], message };
   }
 }
 

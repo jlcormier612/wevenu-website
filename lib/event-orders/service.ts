@@ -9,10 +9,11 @@ import * as repo from "@/lib/event-orders/repository";
 import {
   applyQuantityForLine,
   canApplyTemplateToEventOrder,
-  defaultApplySelections,
+  packageStartingSelections,
   snapshotTemplateOfferingForEvent,
   type TemplateApplySelection,
 } from "@/lib/event-order-templates/offerings";
+import { repairEmptyDeliveryStarterOfferings } from "@/lib/event-order-templates/provision";
 import * as templatesRepo from "@/lib/event-order-templates/repository";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import type {
@@ -72,6 +73,19 @@ export async function getEventOrderForClient(clientId: string): Promise<EventOrd
   return repo.getEventOrderByClient(await createClient(), venue.id, clientId);
 }
 
+async function loadTemplateReadyForApply(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  templateId: string,
+): Promise<EventOrderTemplateWithDetails | null> {
+  await repairEmptyDeliveryStarterOfferings(supabase, venueId, templateId);
+  return templatesRepo.getTemplateWithDetails(supabase, venueId, templateId);
+}
+
+function lineDedupeKey(description: string, sectionId: string | null): string {
+  return `${sectionId ?? ""}::${description.trim().toLowerCase()}`;
+}
+
 async function copyTemplateSnapshotsIntoOrder(
   supabase: Awaited<ReturnType<typeof createClient>>,
   venueId: string,
@@ -94,14 +108,21 @@ async function copyTemplateSnapshotsIntoOrder(
     existingByName.set(s.name, created.id);
   }
 
-  const resolved = selections ?? defaultApplySelections(template.lines);
+  // Setup / inherit materializes the full package. Explicit Apply-sheet selections
+  // still win when provided. Optionals keep isIncluded=false via snapshot.
+  const resolved = selections ?? packageStartingSelections(template.lines);
   const selected = new Map(resolved.map((s) => [s.lineId, s]));
+  const existingKeys = new Set(
+    (existing?.lines ?? []).map((l) => lineDedupeKey(l.description, l.sectionId)),
+  );
   let copied = 0;
   let lineSort = await repo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
   for (const line of [...template.lines].sort((a, b) => a.sortOrder - b.sortOrder)) {
     const choice = selected.get(line.id);
     if (!choice?.selected) continue;
     const eventSectionId = line.sectionId ? sectionIdMap.get(line.sectionId) ?? null : null;
+    const key = lineDedupeKey(line.description, eventSectionId);
+    if (existingKeys.has(key)) continue;
     const snapshot = snapshotTemplateOfferingForEvent(line, applyQuantityForLine(line, resolved));
     const input = {
       description: snapshot.description,
@@ -121,6 +142,7 @@ async function copyTemplateSnapshotsIntoOrder(
     } else {
       await repo.insertCustomLine(supabase, venueId, eventOrderId, input, lineSort++);
     }
+    existingKeys.add(key);
     copied += 1;
   }
   return copied;
@@ -138,10 +160,34 @@ export async function ensureEventOrder(
 ): Promise<EnsureEventOrderResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const existing = await repo.getEventOrderByEvent(supabase, venueId, eventId);
-    if (existing) return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
+    if (existing) {
+      // Heal empty shells created before delivery-starter offering repair.
+      const healTemplateId = templateId ?? existing.templateId;
+      if (
+        existing.lines.length === 0
+        && healTemplateId
+        && existing.status === "open"
+        && !existing.sharedAt
+      ) {
+        const template = await loadTemplateReadyForApply(supabase, venueId, healTemplateId);
+        if (template && template.lines.length > 0) {
+          const copied = await copyTemplateSnapshotsIntoOrder(
+            supabase, venueId, existing.id, template, selections, existing,
+          );
+          if (copied > 0) {
+            await repo.insertActivity(
+              supabase, venueId, existing.id, "template_applied",
+              `Filled Event Order from package: ${template.name}`,
+              "Recovered missing package offerings for this event. Not an invoice or share.",
+            );
+          }
+        }
+      }
+      return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
+    }
     const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId, templateId);
 
-    const template = templateId ? await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId) : null;
+    const template = templateId ? await loadTemplateReadyForApply(supabase, venueId, templateId) : null;
     if (template) {
       await copyTemplateSnapshotsIntoOrder(supabase, venueId, eventOrderId, template, selections, null);
       await repo.insertActivity(supabase, venueId, eventOrderId, "started", `Event Order started from template: ${template.name}`);
@@ -162,7 +208,7 @@ export async function ensureEventOrderForClient(
     const existing = await repo.getEventOrderByClient(supabase, venueId, clientId);
     if (existing) return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
     const eventOrderId = await repo.insertEventOrderForClient(supabase, venueId, clientId, templateId);
-    const template = templateId ? await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId) : null;
+    const template = templateId ? await loadTemplateReadyForApply(supabase, venueId, templateId) : null;
     if (template) {
       await copyTemplateSnapshotsIntoOrder(supabase, venueId, eventOrderId, template, selections, null);
       await repo.insertActivity(supabase, venueId, eventOrderId, "started", `Event Order started from template: ${template.name}`);
@@ -190,7 +236,7 @@ export async function applyTemplateToEventOrder(
     if (!canApplyTemplateToEventOrder(header.status)) {
       return { ok: false, message: "This Event Order is finalized — reopen it to make changes." } as EventOrderActionResult;
     }
-    const template = await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId);
+    const template = await loadTemplateReadyForApply(supabase, venueId, templateId);
     if (!template) return { ok: false, message: "Template not found." } as EventOrderActionResult;
     const details = await repo.getEventOrderByEvent(supabase, venueId, header.eventId);
     const copied = await copyTemplateSnapshotsIntoOrder(
@@ -240,15 +286,16 @@ export async function replaceEventOrderFromTemplate(
   templateId: string,
 ): Promise<EnsureEventOrderResult | EventOrderActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    const template = await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId);
+    const template = await loadTemplateReadyForApply(supabase, venueId, templateId);
     if (!template || template.isArchived) {
       return { ok: false, message: "Select an active Event Order package." } as EventOrderActionResult;
     }
     let existing = await repo.getEventOrderByEvent(supabase, venueId, eventId);
+    const starting = packageStartingSelections(template.lines);
     if (!existing) {
       const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId, templateId);
       await copyTemplateSnapshotsIntoOrder(
-        supabase, venueId, eventOrderId, template, defaultApplySelections(template.lines), null,
+        supabase, venueId, eventOrderId, template, starting, null,
       );
       await repo.insertActivity(
         supabase, venueId, eventOrderId, "started",
@@ -271,7 +318,7 @@ export async function replaceEventOrderFromTemplate(
     await repo.clearEventOrderContents(supabase, venueId, existing.id);
     await repo.setEventOrderTemplateId(supabase, venueId, existing.id, templateId);
     const copied = await copyTemplateSnapshotsIntoOrder(
-      supabase, venueId, existing.id, template, defaultApplySelections(template.lines), null,
+      supabase, venueId, existing.id, template, starting, null,
     );
     await repo.insertActivity(
       supabase, venueId, existing.id, "template_replaced",

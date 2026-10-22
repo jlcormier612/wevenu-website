@@ -21,8 +21,9 @@ import {
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
-import type { EventOrderLine, EventOrderWithDetails } from "@/lib/event-orders/types";
+import type { EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 
 type DraftRow = {
   id: string;
@@ -30,6 +31,7 @@ type DraftRow = {
   quantity: string;
   unitPrice: string;
   isIncluded: boolean;
+  sectionId: string | null;
   dirty: boolean;
 };
 
@@ -42,8 +44,31 @@ function toDraftRows(lines: EventOrderLine[]): DraftRow[] {
       quantity: String(l.quantity),
       unitPrice: l.unitPrice == null ? "" : String(l.unitPrice),
       isIncluded: l.isIncluded,
+      sectionId: l.sectionId,
       dirty: false,
     }));
+}
+
+function groupDraftRowsBySection(
+  rows: DraftRow[],
+  sections: EventOrderSection[],
+): Array<{ key: string; name: string; rows: DraftRow[] }> {
+  const byId = new Map(sections.map((s) => [s.id, s]));
+  const order = [...sections].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => s.id);
+  const groups: Array<{ key: string; name: string; rows: DraftRow[] }> = [];
+  const used = new Set<string>();
+  for (const sectionId of order) {
+    const sectionRows = rows.filter((r) => r.sectionId === sectionId);
+    if (sectionRows.length === 0) continue;
+    const section = byId.get(sectionId);
+    groups.push({ key: sectionId, name: section?.name ?? "Section", rows: sectionRows });
+    for (const r of sectionRows) used.add(r.id);
+  }
+  const unsectioned = rows.filter((r) => !used.has(r.id));
+  if (unsectioned.length > 0) {
+    groups.push({ key: "general", name: "General", rows: unsectioned });
+  }
+  return groups;
 }
 
 export function EventOrderSetupEditor({
@@ -96,8 +121,10 @@ export function EventOrderSetupEditor({
   }, [open, eventOrder, preferredTemplateId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
-    if (!open || eventOrder || !preferredTemplateId) return;
+    if (!open || !preferredTemplateId) return;
     if (!activeTemplates.some((t) => t.id === preferredTemplateId)) return;
+    // Create missing drafts, or heal empty shells after delivery-starter repair.
+    if (eventOrder && eventOrder.lines.length > 0) return;
     let cancelled = false;
     setEnsuring(true);
     void (async () => {
@@ -332,59 +359,79 @@ export function EventOrderSetupEditor({
               </p>
             ) : (
               <>
-                <ul className="space-y-3">
-                  {rows.map((row) => (
-                    <li key={row.id} className="rounded-md border border-border p-3 space-y-2">
-                      <Input
-                        value={row.description}
-                        aria-label="Event Order line description"
-                        disabled={pending || locked}
-                        onChange={(e) => {
-                          const description = e.target.value;
-                          setRows((prev) =>
-                            prev.map((r) => (r.id === row.id ? { ...r, description, dirty: true } : r)),
-                          );
-                        }}
-                      />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-xs text-muted-foreground">
-                          Qty
-                          <Input
-                            type="number"
-                            className="mt-1 w-20"
-                            value={row.quantity}
-                            disabled={pending || locked}
-                            onChange={(e) => {
-                              const quantity = e.target.value;
-                              setRows((prev) =>
-                                prev.map((r) => (r.id === row.id ? { ...r, quantity, dirty: true } : r)),
-                              );
-                            }}
-                          />
-                        </label>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={pending || locked || !row.dirty}
-                          onClick={() => saveRow(row)}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={pending || locked}
-                          onClick={() => removeRow(row)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Remove
-                        </Button>
-                      </div>
-                    </li>
+                {rows.length === 0 && !ensuring ? (
+                  <p className="text-sm text-muted-foreground" data-testid="event-order-setup-empty">
+                    This event&apos;s Event Order has no lines yet. Apply a package, or add a custom line below.
+                  </p>
+                ) : null}
+                <div className="space-y-4" data-testid="event-order-setup-lines">
+                  {groupDraftRowsBySection(rows, eventOrder?.sections ?? []).map((group) => (
+                    <div key={group.key} className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {group.name}
+                      </p>
+                      <ul className="space-y-3">
+                        {group.rows.map((row) => (
+                          <li key={row.id} className="rounded-md border border-border p-3 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Input
+                                className="min-w-0 flex-1"
+                                value={row.description}
+                                aria-label="Event Order line description"
+                                disabled={pending || locked}
+                                onChange={(e) => {
+                                  const description = e.target.value;
+                                  setRows((prev) =>
+                                    prev.map((r) => (r.id === row.id ? { ...r, description, dirty: true } : r)),
+                                  );
+                                }}
+                              />
+                              <Badge variant={row.isIncluded ? "muted" : "accent"} className="text-[10px]">
+                                {row.isIncluded ? "Included" : "Additional"}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="text-xs text-muted-foreground">
+                                Qty
+                                <Input
+                                  type="number"
+                                  className="mt-1 w-20"
+                                  value={row.quantity}
+                                  disabled={pending || locked}
+                                  onChange={(e) => {
+                                    const quantity = e.target.value;
+                                    setRows((prev) =>
+                                      prev.map((r) => (r.id === row.id ? { ...r, quantity, dirty: true } : r)),
+                                    );
+                                  }}
+                                />
+                              </label>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={pending || locked || !row.dirty}
+                                onClick={() => saveRow(row)}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={pending || locked}
+                                onClick={() => removeRow(row)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Remove
+                              </Button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ))}
-                </ul>
+                </div>
                 <div className="rounded-md border border-dashed border-border p-3 space-y-2">
                   <p className="text-sm font-medium text-heading">Add a custom line for this event</p>
                   <Input

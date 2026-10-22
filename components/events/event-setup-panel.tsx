@@ -371,6 +371,32 @@ export function EventSetupPanel({
           </Button>
         ) : null}
       </div>
+      {clientId ? (
+        <div
+          className="rounded-lg border border-border bg-muted/30 px-3 py-3 space-y-3"
+          data-testid="event-setup-portal-preview"
+        >
+          <div>
+            <h3 className="text-sm font-medium text-heading">Preview client portal</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              See what this couple will see for this event before you release materials or invite them.
+              Read-only — does not release, invite, or send anything.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            data-testid="preview-client-portal"
+            onClick={() => {
+              router.push(`/clients/${clientId}/portal-preview?event=${encodeURIComponent(eventId)}`);
+            }}
+          >
+            Preview client portal
+          </Button>
+        </div>
+      ) : null}
       {clientId && canPrepareRelease ? (
         <div
           className="rounded-lg border border-border bg-muted/30 px-3 py-3 space-y-3"
