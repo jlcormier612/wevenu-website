@@ -1632,10 +1632,9 @@ async function main() {
         `before=${otherEventOffersBefore} after=${otherEventOffersAfter}`,
       );
 
-      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(async () => {
-        await page.locator('[value="overview"]').first().click();
-      });
-      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 });
+      // Open Floor Plans may deep-link into the plan editor — return to client Overview.
+      await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
     } else {
       record("change_opens_dedicated_floor_plans_setup_editor", false, "floor plans Change button missing");
     }
