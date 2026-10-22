@@ -105,6 +105,15 @@ describe("buildDaySheetSchedule", () => {
     assert.equal(after.unscheduled.length, 0);
   });
 
+  it("clearing a time moves an entry from timed to unscheduled", () => {
+    const cleared = buildDaySheetSchedule(
+      [entry({ id: "a", title: "Reception", entryTime: null, sortOrder: 0 })],
+      "2028-06-10",
+    );
+    assert.equal(cleared.timedGroups.length, 0);
+    assert.equal(cleared.unscheduled[0]!.title, "Reception");
+  });
+
   it("day-sheet document uses schedule helper and timeline actions revalidate day-sheet", () => {
     const doc = readFileSync(
       join(process.cwd(), "components/events/day-sheet/day-sheet-document.tsx"),

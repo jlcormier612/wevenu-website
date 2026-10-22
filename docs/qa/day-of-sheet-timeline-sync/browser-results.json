@@ -1,0 +1,221 @@
+{
+  "ok": true,
+  "servingSha": "d8d6fdfbf626980f4772b5ba5ab8d75320790262",
+  "expectedSha": "d8d6fdfbf626980f4772b5ba5ab8d75320790262",
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=d8d6fdfbf626980f4772b5ba5ab8d75320790262 expected=d8d6fdfbf626980f4772b5ba5ab8d75320790262"
+    },
+    {
+      "name": "day_sheet_shows_seeded_timed",
+      "pass": true,
+      "detail": "1:00 PMQA DaySheet 1792638270479 Early | 4:00 PMQA DaySheet 1792638270479 Mid | 7:00 PMQA DaySheet 1792638270479 Late"
+    },
+    {
+      "name": "day_sheet_unscheduled_section",
+      "pass": true,
+      "detail": "QA DaySheet 1792638270479 Untimed"
+    },
+    {
+      "name": "day_sheet_timed_chronological",
+      "pass": true,
+      "detail": "1:00 PMQA DaySheet 1792638270479 Early → 4:00 PMQA DaySheet 1792638270479 Mid → 7:00 PMQA DaySheet 1792638270479 Late"
+    },
+    {
+      "name": "ui_marked_mid_for_removal",
+      "pass": true,
+      "detail": "rows=42"
+    },
+    {
+      "name": "ui_found_seed_rows_for_time_edits",
+      "pass": true,
+      "detail": "early=true untimed=true"
+    },
+    {
+      "name": "persisted_assigned_time_on_formerly_untimed",
+      "pass": true,
+      "detail": "entry_time should be 14:00 after Save all"
+    },
+    {
+      "name": "persisted_cleared_time",
+      "pass": true,
+      "detail": "entry_time should be null after clearing Late"
+    },
+    {
+      "name": "deleted_item_absent_from_day_sheet",
+      "pass": true,
+      "detail": "2:00 PMQA DaySheet 1792638270479 Untimed | 3:00 PMQA DaySheet 1792638270479 New | 8:00 PMQA DaySheet 1792638270479 Early | QA DaySheet 1792638270479 Late"
+    },
+    {
+      "name": "edited_time_reflected",
+      "pass": true,
+      "detail": "8:00 PMQA DaySheet 1792638270479 Early"
+    },
+    {
+      "name": "assigned_time_appears_on_day_sheet",
+      "pass": true,
+      "detail": "timed=2:00 PMQA DaySheet 1792638270479 Untimed | 3:00 PMQA DaySheet 1792638270479 New | 8:00 PMQA DaySheet 1792638270479 Early unscheduled=QA DaySheet 1792638270479 Late"
+    },
+    {
+      "name": "cleared_time_becomes_unscheduled",
+      "pass": true,
+      "detail": "unscheduled=QA DaySheet 1792638270479 Late"
+    },
+    {
+      "name": "new_item_appears_once",
+      "pass": true,
+      "detail": "2:00 PMQA DaySheet 1792638270479 Untimed | 3:00 PMQA DaySheet 1792638270479 New | 8:00 PMQA DaySheet 1792638270479 Early | QA DaySheet 1792638270479 Late"
+    },
+    {
+      "name": "order_after_edit_and_add",
+      "pass": true,
+      "detail": "2:00 PMQA DaySheet 1792638270479 Untimed → 3:00 PMQA DaySheet 1792638270479 New → 8:00 PMQA DaySheet 1792638270479 Early"
+    },
+    {
+      "name": "print_stylesheet_present",
+      "pass": true,
+      "detail": "print media rules on day-sheet page"
+    },
+    {
+      "name": "library_templates_unchanged",
+      "pass": true,
+      "detail": "fingerprint"
+    },
+    {
+      "name": "control_event_timeline_unchanged",
+      "pass": true,
+      "detail": "before=38 after=38"
+    },
+    {
+      "name": "no_comms_side_effects",
+      "pass": true,
+      "detail": "harness did not send invite/questionnaire/invoice/payment/contract"
+    }
+  ],
+  "eventId": "73aed630-ca06-47c4-881a-c9c486e52246",
+  "controlEventId": "8ab4665e-fce8-4aa9-9754-b1cdb1435f1b",
+  "beforeTitles": [
+    "1:00 PMQA DaySheet 1792638270479 Early",
+    "2:00 PMVenue Access / Team Arrival",
+    "4:00 PMQA DaySheet 1792638270479 Mid",
+    "7:00 PMQA DaySheet 1792638270479 Late",
+    "Venue Setup Begins",
+    "Rentals / Inventory Setup",
+    "Vendor Load-In",
+    "Catering Setup",
+    "Bar Setup",
+    "Ceremony Setup",
+    "Reception Setup",
+    "Final Venue Walkthrough",
+    "Guest Arrival",
+    "Ceremony Seating",
+    "Ceremony Begins",
+    "Ceremony Ends",
+    "Family / Wedding Party Photos",
+    "Guest Transition to Cocktail Hour",
+    "Cocktail Hour Begins",
+    "Bar Service Begins",
+    "Passed Appetizers / Cocktail Service",
+    "Couple Photos",
+    "Reception Room Final Check",
+    "Guests Invited to Reception",
+    "Reception Begins",
+    "Grand Entrance",
+    "Welcome / Opening Remarks",
+    "Dinner Service Begins",
+    "Dinner Service Complete",
+    "Toasts / Speeches",
+    "First Dance",
+    "Parent / Family Dances",
+    "Cake Cutting",
+    "Dessert Service",
+    "Open Dancing",
+    "Last Call / Final Service",
+    "Final Guest Departure",
+    "Vendor Load-Out",
+    "Personal Items Collected",
+    "Venue Breakdown",
+    "Event Closeout",
+    "QA DaySheet 1792638270479 Untimed"
+  ],
+  "afterDeleteTitles": [
+    "2:00 PMVenue Access / Team Arrival",
+    "2:00 PMQA DaySheet 1792638270479 Untimed",
+    "3:00 PMQA DaySheet 1792638270479 New",
+    "8:00 PMQA DaySheet 1792638270479 Early",
+    "Venue Setup Begins",
+    "Rentals / Inventory Setup",
+    "Vendor Load-In",
+    "Catering Setup",
+    "Bar Setup",
+    "Ceremony Setup",
+    "Reception Setup",
+    "Final Venue Walkthrough",
+    "Guest Arrival",
+    "Ceremony Seating",
+    "Ceremony Begins",
+    "Ceremony Ends",
+    "Family / Wedding Party Photos",
+    "Guest Transition to Cocktail Hour",
+    "Cocktail Hour Begins",
+    "Bar Service Begins",
+    "Passed Appetizers / Cocktail Service",
+    "Couple Photos",
+    "Reception Room Final Check",
+    "Guests Invited to Reception",
+    "Reception Begins",
+    "Grand Entrance",
+    "Welcome / Opening Remarks",
+    "Dinner Service Begins",
+    "Dinner Service Complete",
+    "Toasts / Speeches",
+    "First Dance",
+    "Parent / Family Dances",
+    "Cake Cutting",
+    "Dessert Service",
+    "Open Dancing",
+    "Last Call / Final Service",
+    "Final Guest Departure",
+    "Vendor Load-Out",
+    "Personal Items Collected",
+    "Venue Breakdown",
+    "Event Closeout",
+    "QA DaySheet 1792638270479 Late"
+  ],
+  "afterEditOrder": [
+    "2:00 PMQA DaySheet 1792638270479 Untimed",
+    "3:00 PMQA DaySheet 1792638270479 New",
+    "8:00 PMQA DaySheet 1792638270479 Early"
+  ],
+  "afterAddTitles": [],
+  "libraryFingerprintBefore": [
+    {
+      "id": "82662eeb-6c98-4f2f-843d-3e5671e16795",
+      "updated_at": "2026-08-17T20:46:07.019343+00:00"
+    },
+    {
+      "id": "a5855821-8c1a-4424-906a-7b2f6cf686c4",
+      "updated_at": "2026-08-17T20:46:06.907588+00:00"
+    },
+    {
+      "id": "da912948-fb04-4952-996d-5f735c820330",
+      "updated_at": "2026-08-17T20:46:06.967472+00:00"
+    }
+  ],
+  "libraryFingerprintAfter": [
+    {
+      "id": "82662eeb-6c98-4f2f-843d-3e5671e16795",
+      "updated_at": "2026-08-17T20:46:07.019343+00:00"
+    },
+    {
+      "id": "a5855821-8c1a-4424-906a-7b2f6cf686c4",
+      "updated_at": "2026-08-17T20:46:06.907588+00:00"
+    },
+    {
+      "id": "da912948-fb04-4952-996d-5f735c820330",
+      "updated_at": "2026-08-17T20:46:06.967472+00:00"
+    }
+  ]
+}

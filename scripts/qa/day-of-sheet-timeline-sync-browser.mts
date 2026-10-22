@@ -129,6 +129,31 @@ async function sheetTitles(page: { locator: (s: string) => { allTextContents: ()
   };
 }
 
+/** Title lives in an <input>, so innerText is unreliable — match by input value. */
+async function findSetupRowByTitle(
+  page: {
+    getByTestId: (s: string) => {
+      count: () => Promise<number>;
+      nth: (i: number) => {
+        locator: (s: string) => { inputValue: () => Promise<string> };
+        getByTestId: (s: string) => {
+          click: () => Promise<void>;
+          fill: (v: string) => Promise<void>;
+        };
+      };
+    };
+  },
+  title: string,
+) {
+  const rows = page.getByTestId("timeline-setup-row");
+  const n = await rows.count();
+  for (let i = 0; i < n; i += 1) {
+    const value = await rows.nth(i).locator('input[aria-label="Timeline item title"]').inputValue();
+    if (value === title) return rows.nth(i);
+  }
+  return null;
+}
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
@@ -155,30 +180,46 @@ try {
 
   await context.addCookies(await cookiesFor(FANCY_EMAIL));
 
-  // Prefer a booked Fancy event with venue timeline rows
-  const { data: events } = await admin
-    .from("events")
-    .select("id, name, client_id")
+  // Prefer a profile-based confirmed/booked Fancy event with Change Timeline UI
+  // (uses_profile + timeline set_up + setup not collapsed) so Save All is reachable.
+  const { data: setupStates } = await admin
+    .from("event_setup_states")
+    .select("event_id, collapsed_at, uses_profile, inherited_decisions, overrides")
     .eq("venue_id", FANCY)
-    .eq("status", "booked")
-    .order("updated_at", { ascending: false })
-    .limit(8);
+    .eq("uses_profile", true)
+    .is("collapsed_at", null)
+    .limit(40);
   let eventId: string | null = null;
-  for (const e of events ?? []) {
+  const candidateIds: string[] = [];
+  for (const s of setupStates ?? []) {
+    const inherited = (s.inherited_decisions ?? {}) as Record<string, string>;
+    const overrides = (s.overrides ?? {}) as Record<string, string>;
+    const timelineDecision = overrides.timeline ?? inherited.timeline;
+    if (timelineDecision !== "set_up") continue;
+    candidateIds.push(s.event_id);
+  }
+  for (const id of candidateIds) {
+    const { data: ev } = await admin
+      .from("events")
+      .select("id, name, client_id, status")
+      .eq("id", id)
+      .in("status", ["confirmed", "booked"])
+      .maybeSingle();
+    if (!ev) continue;
     const { count } = await admin
       .from("timeline_entries")
       .select("id", { count: "exact", head: true })
-      .eq("event_id", e.id)
+      .eq("event_id", ev.id)
       .eq("venue_id", FANCY)
       .eq("owner", "venue");
     if ((count ?? 0) >= 3) {
-      eventId = e.id;
+      eventId = ev.id;
       break;
     }
   }
-  if (!eventId) throw new Error("No Fancy booked event with venue timeline");
+  if (!eventId) throw new Error("No Fancy confirmed/booked event with profile timeline setup UI");
   out.eventId = eventId;
-  out.controlEventId = (events ?? []).find((e) => e.id !== eventId)?.id ?? null;
+  out.controlEventId = candidateIds.find((id) => id !== eventId) ?? null;
 
   const { data: templatesBefore } = await admin
     .from("timeline_templates")
@@ -258,103 +299,99 @@ try {
   );
   await page.screenshot({ path: `${OUT}/01-day-sheet-before-1280.png`, fullPage: true });
 
-  // 2–3. Delete Mid via admin (simulates saved delete) then mutate via UI Save All path
-  // Prefer UI: open timeline setup, mark remove, save all
-  await page.goto(`${APP}/events/${eventId}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
-  const changeTl = page.getByTestId("event-setup-change-timeline");
-  if ((await changeTl.count()) === 0) {
-    // Fall back to client page if event detail lacks setup panel
-    const { data: ev } = await admin.from("events").select("client_id").eq("id", eventId).maybeSingle();
-    if (ev?.client_id) {
-      await page.goto(`${APP}/clients/${ev.client_id}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  // 2–3. Mutate via UI Save All (required for Defect B — no admin time writes)
+  await page.goto(`${APP}/events/${eventId}`, { waitUntil: "networkidle", timeout: 60_000 });
+  await page.waitForTimeout(800);
+  if ((await page.getByTestId("event-setup-change-timeline").count()) === 0) {
+    const showSetup = page.getByRole("button", { name: /Show setup/i });
+    if ((await showSetup.count()) > 0) {
+      await showSetup.click();
+      await page.waitForTimeout(1500);
     }
   }
-  await page.waitForTimeout(600);
-  if ((await page.getByTestId("event-setup-change-timeline").count()) > 0) {
-    await page.getByTestId("event-setup-change-timeline").click();
-    await page.waitForSelector('[data-testid="event-timeline-setup-editor"]', { timeout: 15_000 });
-    await page.getByTestId("timeline-setup-mode-customize").click();
-    await page.waitForTimeout(400);
-    // Mark Mid for removal
-    const rows = page.getByTestId("timeline-setup-row");
-    const n = await rows.count();
-    let marked = false;
-    for (let i = 0; i < n; i += 1) {
-      const text = await rows.nth(i).innerText();
-      if (text.includes(`${MARK} Mid`)) {
-        await rows.nth(i).getByTestId("timeline-setup-mark-remove").click();
-        marked = true;
-        break;
-      }
-    }
-    record("ui_marked_mid_for_removal", marked, `rows=${n}`);
-    // Edit Early → 8:00 PM; assign Untimed → 2:00 PM — then Save all WITHOUT
-    // an explicit blur (regression for missing Day-of Sheet times).
-    for (let i = 0; i < n; i += 1) {
-      const text = await rows.nth(i).innerText();
-      if (text.includes(`${MARK} Early`)) {
-        await rows.nth(i).getByTestId("timeline-setup-row-time").fill("8:00 PM");
-        break;
-      }
-    }
-    for (let i = 0; i < (await rows.count()); i += 1) {
-      const text = await rows.nth(i).innerText();
-      if (text.includes(`${MARK} Untimed`)) {
-        await rows.nth(i).getByTestId("timeline-setup-row-time").fill("2:00 PM");
-        break;
-      }
-    }
-    // Add new item
-    await page.getByTestId("timeline-setup-new-title").fill(`${MARK} New`);
-    await page.getByTestId("timeline-setup-new-time").fill("3:00 PM");
-    await page.getByTestId("timeline-setup-add-item").click();
-    const saveAll = page.getByTestId("timeline-setup-save-all");
-    if ((await saveAll.count()) > 0 && (await saveAll.isEnabled())) {
-      // Click Save while a time field may still be focused — must persist times.
-      await saveAll.click();
-      await page.waitForTimeout(3000);
-    }
-    // Prove DB persisted the newly assigned 2:00 PM before opening the sheet
-    let untimedPersisted = false;
-    for (let i = 0; i < 20; i += 1) {
-      await page.waitForTimeout(300);
-      const { data: urow } = await admin
-        .from("timeline_entries")
-        .select("entry_time,title")
-        .eq("event_id", eventId)
-        .eq("venue_id", FANCY)
-        .eq("title", `${MARK} Untimed`)
-        .maybeSingle();
-      if (urow?.entry_time && String(urow.entry_time).startsWith("14:00")) {
-        untimedPersisted = true;
-        break;
-      }
-    }
-    record(
-      "persisted_assigned_time_on_formerly_untimed",
-      untimedPersisted,
-      "entry_time should be 14:00 after Save all",
-    );
-    await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
-  } else {
-    // Admin fallback if Change Timeline UI unavailable
-    const mid = (await admin.from("timeline_entries").select("id").eq("event_id", eventId).eq("title", `${MARK} Mid`).maybeSingle()).data;
-    if (mid?.id) await admin.from("timeline_entries").delete().eq("id", mid.id);
-    await admin.from("timeline_entries").update({ entry_time: "20:00" }).eq("event_id", eventId).eq("title", `${MARK} Early`);
-    await admin.from("timeline_entries").insert({
-      venue_id: FANCY,
-      event_id: eventId,
-      title: `${MARK} New`,
-      entry_time: "15:00",
-      day_offset: 0,
-      owner: "venue",
-      audiences: ["venue"],
-      sort_order: 0,
-      lock_state: "editable",
-      status: "not_started",
-    });
-    record("ui_marked_mid_for_removal", true, "admin fallback");
+  if ((await page.getByTestId("event-setup-change-timeline").count()) === 0) {
+    throw new Error("event-setup-change-timeline unavailable — cannot exercise Save All race");
   }
+  await page.getByTestId("event-setup-change-timeline").click();
+  await page.waitForSelector('[data-testid="event-timeline-setup-editor"]', { timeout: 15_000 });
+  await page.getByTestId("timeline-setup-mode-customize").click();
+  await page.waitForTimeout(400);
+  // Mark Mid for removal
+  const rowCount = await page.getByTestId("timeline-setup-row").count();
+  const midRow = await findSetupRowByTitle(page, `${MARK} Mid`);
+  if (midRow) await midRow.getByTestId("timeline-setup-mark-remove").click();
+  record("ui_marked_mid_for_removal", Boolean(midRow), `rows=${rowCount}`);
+  // Edit Early → 8:00 PM; assign Untimed → 2:00 PM — then Save all WITHOUT
+  // an explicit blur (regression for missing Day-of Sheet times).
+  const earlyRow = await findSetupRowByTitle(page, `${MARK} Early`);
+  if (earlyRow) await earlyRow.getByTestId("timeline-setup-row-time").fill("8:00 PM");
+  const untimedRow = await findSetupRowByTitle(page, `${MARK} Untimed`);
+  if (untimedRow) await untimedRow.getByTestId("timeline-setup-row-time").fill("2:00 PM");
+  record(
+    "ui_found_seed_rows_for_time_edits",
+    Boolean(earlyRow && untimedRow),
+    `early=${Boolean(earlyRow)} untimed=${Boolean(untimedRow)}`,
+  );
+  // Add new item
+  await page.getByTestId("timeline-setup-new-title").fill(`${MARK} New`);
+  await page.getByTestId("timeline-setup-new-time").fill("3:00 PM");
+  await page.getByTestId("timeline-setup-add-item").click();
+  const saveAll = page.getByTestId("timeline-setup-save-all");
+  if ((await saveAll.count()) > 0 && (await saveAll.isEnabled())) {
+    // Click Save while a time field may still be focused — must persist times.
+    await saveAll.click();
+    await page.waitForTimeout(3000);
+  }
+  // Prove DB persisted the newly assigned 2:00 PM before opening the sheet
+  let untimedPersisted = false;
+  for (let i = 0; i < 20; i += 1) {
+    await page.waitForTimeout(300);
+    const { data: urow } = await admin
+      .from("timeline_entries")
+      .select("entry_time,title")
+      .eq("event_id", eventId)
+      .eq("venue_id", FANCY)
+      .eq("title", `${MARK} Untimed`)
+      .maybeSingle();
+    if (urow?.entry_time && String(urow.entry_time).startsWith("14:00")) {
+      untimedPersisted = true;
+      break;
+    }
+  }
+  record(
+    "persisted_assigned_time_on_formerly_untimed",
+    untimedPersisted,
+    "entry_time should be 14:00 after Save all",
+  );
+
+  // Clear Late time (empty string) and Save All — must become Unscheduled.
+  const lateRow = await findSetupRowByTitle(page, `${MARK} Late`);
+  if (lateRow) await lateRow.getByTestId("timeline-setup-row-time").fill("");
+  if (lateRow && (await saveAll.count()) > 0 && (await saveAll.isEnabled())) {
+    await saveAll.click();
+    await page.waitForTimeout(2500);
+  }
+  let lateCleared = false;
+  for (let i = 0; i < 20; i += 1) {
+    await page.waitForTimeout(250);
+    const { data: lrow } = await admin
+      .from("timeline_entries")
+      .select("entry_time,title")
+      .eq("event_id", eventId)
+      .eq("venue_id", FANCY)
+      .eq("title", `${MARK} Late`)
+      .maybeSingle();
+    if (lrow && (lrow.entry_time == null || lrow.entry_time === "")) {
+      lateCleared = true;
+      break;
+    }
+  }
+  record(
+    "persisted_cleared_time",
+    lateCleared,
+    "entry_time should be null after clearing Late",
+  );
+  await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
 
   // 4–7. Reopen Day-of Sheet — must reflect deletes/edits/adds (cache bust)
   await page.goto(`${APP}/events/${eventId}/day-sheet`, { waitUntil: "networkidle", timeout: 60_000 });
@@ -379,6 +416,12 @@ try {
     `timed=${sheet.timed.filter((t) => t.includes(MARK)).join(" | ")} unscheduled=${sheet.unscheduled.filter((t) => t.includes(MARK)).join(" | ")}`,
   );
   record(
+    "cleared_time_becomes_unscheduled",
+    sheet.unscheduled.some((t) => t.includes(`${MARK} Late`))
+      && !sheet.timed.some((t) => t.includes(`${MARK} Late`)),
+    `unscheduled=${sheet.unscheduled.filter((t) => t.includes(MARK)).join(" | ")}`,
+  );
+  record(
     "new_item_appears_once",
     sheet.all.filter((t) => t.includes(`${MARK} New`)).length === 1
       && sheet.timed.some((t) => t.includes(`${MARK} New`) && /3:00\s*PM/i.test(t)),
@@ -386,13 +429,13 @@ try {
   );
   const afterSeeded = sheet.timed.filter((t) => t.includes(MARK));
   out.afterEditOrder = afterSeeded;
-  // New(15:00) before Late(19:00) before Early(20:00) if edit applied
+  // Untimed(14:00) → New(15:00) → Early(20:00); Late cleared → Unscheduled
+  const untimedI = afterSeeded.findIndex((t) => t.includes("Untimed"));
   const newIdx = afterSeeded.findIndex((t) => t.includes("New"));
-  const lateI = afterSeeded.findIndex((t) => t.includes("Late"));
   const earlyI = afterSeeded.findIndex((t) => t.includes("Early"));
   record(
     "order_after_edit_and_add",
-    newIdx >= 0 && lateI > newIdx && (earlyI < 0 || earlyI > lateI),
+    untimedI >= 0 && newIdx > untimedI && earlyI > newIdx,
     afterSeeded.join(" → "),
   );
   await page.screenshot({ path: `${OUT}/02-day-sheet-after-edits-1280.png`, fullPage: true });
