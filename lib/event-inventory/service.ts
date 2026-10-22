@@ -262,8 +262,10 @@ async function notifyInventoryShared(
     if (!client?.email) return;
     const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
     const sessions = await getPortalSessions(event.clientId);
-    let session = sessions.find((s) => s.accessLevel !== "financial") ?? sessions[0] ?? null;
-    if (!session) session = await createPortalSession(event.clientId, null, "couple");
+    const session =
+      sessions.find((s) => s.accessLevel !== "financial")
+      ?? sessions[0]
+      ?? (await createPortalSession(event.clientId, null, "couple"));
     if (!session) return;
     const { publicAppOrigin } = await import("@/lib/http/public-app-origin");
     const portalUrl = `${publicAppOrigin()}/p/${session.accessToken}#inventory`;
