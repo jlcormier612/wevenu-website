@@ -670,7 +670,7 @@ export function EventDetail({
   }
 
   const bookedTabTriggerClass =
-    "h-auto min-h-9 w-full justify-center whitespace-normal px-1.5 py-1.5 text-center text-xs sm:text-sm";
+    "h-9 w-full justify-center whitespace-nowrap px-1 py-1.5 text-center text-[11px] sm:px-1.5 sm:text-sm";
 
   return (
     <div className="space-y-5">
