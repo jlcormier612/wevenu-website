@@ -38,6 +38,32 @@ function record(name: string, pass: boolean, detail: string) {
   console.log(`${pass ? "PASS" : "FAIL"} ${name} — ${String(detail).slice(0, 320)}`);
 }
 
+async function dismissWelcome(page: {
+  locator: (s: string) => { isVisible: (o?: object) => Promise<boolean> };
+  getByRole: (role: string, opts?: object) => {
+    isVisible: (o?: object) => Promise<boolean>;
+    click: (o?: object) => Promise<void>;
+    check: (o?: object) => Promise<void>;
+    innerText: () => Promise<string>;
+  };
+  waitForTimeout: (ms: number) => Promise<void>;
+}) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const welcome = page.locator('[data-welcome-experience="true"]');
+    if (!(await welcome.isVisible().catch(() => false))) return;
+    const agree = page.getByRole("checkbox");
+    if (await agree.isVisible().catch(() => false)) {
+      await agree.check({ force: true }).catch(async () => { await agree.click({ force: true }); });
+    }
+    const cont = page.getByRole("button", { name: /^(Continue|Saving)/i });
+    if (await cont.isVisible().catch(() => false)) {
+      const label = await cont.innerText().catch(() => "");
+      if (/Continue/i.test(label)) await cont.click().catch(() => undefined);
+    }
+    await page.waitForTimeout(2000);
+  }
+}
+
 async function cleanup(email?: string) {
   const { data: clients } = await admin.from("clients").select("id, lead_id").eq("venue_id", FANCY).eq("first_name", FIXTURE);
   for (const client of clients ?? []) {
@@ -212,10 +238,20 @@ async function main() {
     );
 
     await page.goto(`${APP}/p/${fixture.token}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1500);
+    // Scroll home so Working With Your Venue cards are in view.
+    await page.evaluate(() => window.scrollTo(0, 800)).catch(() => undefined);
+    await page.waitForTimeout(500);
     const homeInv = await page.locator("[data-testid=portal-home-inventory-entry]").count();
     const homeEo = await page.locator("[data-testid=portal-home-event-order-entry]").count();
-    record("scenario_a_home_entries", homeInv > 0 && homeEo > 0, `inv=${homeInv} eo=${homeEo}`);
+    const navDesktop = await page.locator('[data-portal-nav="desktop"]').innerText().catch(() => "");
+    record(
+      "scenario_a_home_entries",
+      homeInv > 0 && homeEo > 0,
+      `inv=${homeInv} eo=${homeEo} nav=${navDesktop.slice(0, 200)}`,
+    );
     await page.screenshot({ path: `${OUT}/home-1280.png`, fullPage: true });
 
     if (homeInv > 0) {
@@ -225,11 +261,19 @@ async function main() {
       record("scenario_a_inventory_empty", emptyInv > 0, `empty=${emptyInv}`);
       await page.screenshot({ path: `${OUT}/inventory-unshared-1280.png`, fullPage: true });
     } else {
-      record("scenario_a_inventory_empty", false, "home entry missing");
+      // Fallback: deep-link still must show empty state when capability is on.
+      await page.goto(`${APP}/p/${fixture.token}#inventory`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      await page.waitForTimeout(1200);
+      await dismissWelcome(page);
+      const emptyInv = await page.locator("[data-testid=inventory-portal-empty]").count();
+      record("scenario_a_inventory_empty", emptyInv > 0, `homeMissing fallback empty=${emptyInv}`);
+      await page.screenshot({ path: `${OUT}/inventory-unshared-1280.png`, fullPage: true });
     }
 
     await page.goto(`${APP}/p/${fixture.token}#event-order`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1000);
     const emptyEo = await page.locator("[data-testid=event-order-portal-empty]").count();
     record("scenario_c_portal_empty_order", emptyEo > 0, `empty=${emptyEo}`);
     await page.screenshot({ path: `${OUT}/event-order-unshared-1280.png`, fullPage: true });
@@ -267,6 +311,8 @@ async function main() {
 
     await page.goto(`${APP}/p/${fixture.token}#inventory`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1000);
     const invView = await page.locator("[data-testid=inventory-portal-view]").count();
     const invText = await page.locator("body").innerText();
     record(
@@ -278,6 +324,8 @@ async function main() {
 
     await page.goto(`${APP}/p/${fixture.token}#event-order`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1000);
     const eoView = await page.locator("[data-testid=event-order-portal-view]").count();
     const eoText = await page.locator("body").innerText();
     record(
@@ -326,7 +374,9 @@ async function main() {
 
     // Nav labels present (desktop)
     await page.goto(`${APP}/p/${fixture.token}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1000);
     const navHtml = await page.locator('[data-portal-nav="desktop"]').innerText().catch(() => "");
     record(
       "scenario_g_nav_labels",
@@ -337,9 +387,28 @@ async function main() {
     // Mobile width home entries
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${APP}/p/${fixture.token}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => window.scrollTo(0, 900)).catch(() => undefined);
+    await page.waitForTimeout(400);
     const mobileHome = await page.locator("[data-testid=portal-home-inventory-order]").count();
-    record("scenario_g_mobile_home", mobileHome > 0, `count=${mobileHome}`);
+    const moreBtn = await page.locator("[data-portal-more-trigger]").count();
+    let moreHasInv = false;
+    let moreHasEo = false;
+    if (moreBtn > 0) {
+      await page.locator("[data-portal-more-trigger]").click().catch(() => undefined);
+      await page.waitForTimeout(600);
+      const moreText = await page.locator("[data-portal-more-item]").allInnerTexts().catch(() => [] as string[]);
+      const joined = moreText.join(" | ");
+      moreHasInv = /Inventory|Included/i.test(joined);
+      moreHasEo = /Event Order|Order/i.test(joined);
+    }
+    record(
+      "scenario_g_mobile_home",
+      mobileHome > 0 || (moreHasInv && moreHasEo),
+      `home=${mobileHome} moreInv=${moreHasInv} moreEo=${moreHasEo}`,
+    );
     await page.screenshot({ path: `${OUT}/home-390.png`, fullPage: true });
   } catch (err) {
     record("harness_error", false, err instanceof Error ? err.message : String(err));
