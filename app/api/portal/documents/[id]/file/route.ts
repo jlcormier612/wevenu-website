@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { canAccessDocumentFile } from "@/lib/documents/access";
 import { getDocumentForAccess } from "@/lib/documents/repository";
-import { createDocumentsSignedUrl } from "@/lib/documents/signed-url";
+import { resolveAuthorizedDocumentFileUrl } from "@/lib/documents/signed-url";
 
 export async function GET(
   request: Request,
@@ -31,7 +31,10 @@ export async function GET(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const url = await createDocumentsSignedUrl(row.storagePath);
+  const url = await resolveAuthorizedDocumentFileUrl({
+    storagePath: row.storagePath,
+    storageUrl: row.storageUrl,
+  });
   if (!url) return NextResponse.json({ error: "unavailable" }, { status: 404 });
   return NextResponse.redirect(url, { status: 302 });
 }

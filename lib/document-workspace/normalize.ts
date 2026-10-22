@@ -5,6 +5,7 @@ import {
   deriveVersionNumber,
   statusLabelForVersion,
 } from "@/lib/contracts/version-lineage";
+import { documentFileOriginLabel } from "@/lib/documents/access";
 
 /** Raw shape returned by get_venue_documents() — one row per producer leg, already jsonb_build_object'd in SQL. */
 export type WorkspaceRawRow = {
@@ -102,6 +103,12 @@ export function normalizeWorkspaceDocument(row: WorkspaceRawRow): WorkspaceDocum
         ? null
         : row.fileUrl;
 
+  const originLabel = documentFileOriginLabel({
+    uploadedByType: row.uploadedByType,
+    // Raw RPC fileUrl is storage_url before authorized rewrite.
+    storageUrl: row.docType === "document" ? row.fileUrl : null,
+  });
+
   return {
     docType: row.docType,
     id: row.id,
@@ -123,6 +130,7 @@ export function normalizeWorkspaceDocument(row: WorkspaceRawRow): WorkspaceDocum
     isCoupleVisible: !!row.isCoupleVisible,
     isVendorVisible: !!row.isVendorVisible,
     uploadedByType: row.uploadedByType,
+    originLabel,
     amount: row.amount ?? null,
     balanceDue: row.balanceDue ?? null,
     invoiceNumber: row.invoiceNumber ?? null,

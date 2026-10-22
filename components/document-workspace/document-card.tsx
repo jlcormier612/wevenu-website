@@ -34,7 +34,7 @@ function DocIcon({ doc }: { doc: WorkspaceDocument }) {
 }
 
 function ownerLabel(doc: WorkspaceDocument): string {
-  return doc.uploadedByType === "vendor" ? "Vendor" : "Venue";
+  return doc.originLabel ?? (doc.uploadedByType === "vendor" ? "Vendor" : "Venue");
 }
 
 function relationshipLabel(doc: WorkspaceDocument): string | null {

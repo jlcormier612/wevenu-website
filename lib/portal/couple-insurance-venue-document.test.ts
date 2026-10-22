@@ -58,7 +58,7 @@ describe("couple insurance → venue documents registration", () => {
     assert.equal(row!.category, "insurance");
     assert.equal(row!.event_id, "e1");
     assert.equal(row!.client_id, null);
-    assert.equal(row!.is_couple_visible, true);
+    assert.equal(row!.is_couple_visible, false);
     assert.equal(row!.uploaded_by_type, "venue");
     assert.equal(row!.notes, coupleInsuranceVenueNotes("cd1"));
     assert.ok(row!.tags.includes("couple-shared-insurance"));

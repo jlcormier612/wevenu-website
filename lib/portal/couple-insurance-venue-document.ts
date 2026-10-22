@@ -46,8 +46,17 @@ export type CoupleInsuranceVenueDocumentInsert = {
   category: "insurance";
   notes: string;
   tags: string[];
+  /**
+   * False: couple already sees the upload via couple_documents.
+   * Re-exposing the venue mirror with is_couple_visible=true duplicated it
+   * under "From your venue" while "Your uploads" still listed the original.
+   */
   is_couple_visible: boolean;
   shared_with_vendors: boolean;
+  /**
+   * DB CHECK allows only venue|vendor. Couple origin is carried by
+   * tags + client-media storage_url (see documentFileOriginLabel).
+   */
   uploaded_by_type: "venue";
 };
 
@@ -83,7 +92,7 @@ export function buildCoupleInsuranceVenueDocumentInsert(input: {
     category: "insurance",
     notes: coupleInsuranceVenueNotes(input.coupleDocumentId),
     tags: [COUPLE_INSURANCE_VENUE_TAG],
-    is_couple_visible: true,
+    is_couple_visible: false,
     shared_with_vendors: false,
     uploaded_by_type: "venue",
   };

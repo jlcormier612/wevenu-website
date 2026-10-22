@@ -179,7 +179,7 @@ export function DocumentPreviewSheet({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Relationship</h3>
             <Row label="Relationship" value={doc.relationshipName} />
             <Row label="Event" value={doc.eventName} />
-            <Row label="Owner" value={doc.uploadedByType === "vendor" ? "Vendor" : "Venue"} />
+            <Row label="Owner" value={doc.originLabel ?? (doc.uploadedByType === "vendor" ? "Vendor" : "Venue")} />
             {doc.nextActionLabel && <Row label="Next" value={doc.nextActionLabel} />}
           </section>
 
@@ -330,11 +330,6 @@ export function DocumentPreviewSheet({
             )}
           </section>
 
-          {/* Comments — future placeholder only, per the brief */}
-          <section className="space-y-2 opacity-50">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Comments</h3>
-            <p className="text-xs text-muted-foreground">Coming soon.</p>
-          </section>
         </div>
       </SheetContent>
     </Sheet>

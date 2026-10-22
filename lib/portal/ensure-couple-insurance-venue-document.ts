@@ -35,26 +35,41 @@ export async function ensureCoupleInsuranceVenueDocument(
 
   const { data: byPath } = await client
     .from("documents")
-    .select("id")
+    .select("id, is_couple_visible, tags")
     .eq("venue_id", input.venueId)
     .eq("storage_path", row.storage_path)
     .order("created_at", { ascending: true })
     .limit(1)
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; is_couple_visible: boolean; tags: string[] | null }>();
   if (byPath?.id) {
+    // Heal presentation: venue mirror must not reappear in portal "From your venue".
+    if (byPath.is_couple_visible) {
+      await client
+        .from("documents")
+        .update({ is_couple_visible: false })
+        .eq("id", byPath.id)
+        .eq("venue_id", input.venueId);
+    }
     return { ok: true, documentId: byPath.id, created: false };
   }
 
   const notes = coupleInsuranceVenueNotes(input.coupleDocumentId);
   const { data: byNotes } = await client
     .from("documents")
-    .select("id")
+    .select("id, is_couple_visible")
     .eq("venue_id", input.venueId)
     .eq("notes", notes)
     .order("created_at", { ascending: true })
     .limit(1)
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; is_couple_visible: boolean }>();
   if (byNotes?.id) {
+    if (byNotes.is_couple_visible) {
+      await client
+        .from("documents")
+        .update({ is_couple_visible: false })
+        .eq("id", byNotes.id)
+        .eq("venue_id", input.venueId);
+    }
     return { ok: true, documentId: byNotes.id, created: false };
   }
 

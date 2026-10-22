@@ -10,7 +10,10 @@ import {
   normalizeCoupleDocumentSourceType,
   shouldFireInsuranceAutoComplete,
 } from "@/lib/portal/couple-insurance-completion";
-import { ensureCoupleInsuranceVenueDocument } from "@/lib/portal/ensure-couple-insurance-venue-document";
+import {
+  ensureCoupleInsuranceVenueDocument,
+  healSharedCoupleInsuranceVenueDocuments,
+} from "@/lib/portal/ensure-couple-insurance-venue-document";
 
 type PortalDoc = {
   id?: string;
@@ -75,6 +78,21 @@ export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
   if (!token) return NextResponse.json({ error: "missing_token" }, { status: 400 });
   const supabase = await createClient();
+
+  // Heal venue-mirror visibility so couple-originated insurance is not listed
+  // again under "From your venue" (couple_documents remains the portal SoT).
+  const admin = createAdminClient();
+  const { data: rawIds } = await admin.rpc("_resolve_portal_ids", { p_token: token });
+  const ids = Array.isArray(rawIds) ? rawIds[0] : rawIds;
+  if (ids?.venue_id && ids?.client_id) {
+    await healSharedCoupleInsuranceVenueDocuments(
+      admin as never,
+      ids.venue_id,
+      ids.client_id,
+      ids.event_id ?? null,
+    ).catch(() => null);
+  }
+
   const { data, error } = await supabase.rpc("get_couple_documents", { p_token: token });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const { isDocumentsPublicUrl } = await import("@/lib/documents/access");

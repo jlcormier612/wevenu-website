@@ -227,13 +227,14 @@ export async function getDocumentForAccess(
   clientId: string | null;
   eventId: string | null;
   storagePath: string;
+  storageUrl: string | null;
   isCoupleVisible: boolean;
   sharedWithVendors: boolean;
   fileName: string;
 } | null> {
   const { data, error } = await client
     .from("documents")
-    .select("id, venue_id, client_id, event_id, storage_path, is_couple_visible, shared_with_vendors, file_name")
+    .select("id, venue_id, client_id, event_id, storage_path, storage_url, is_couple_visible, shared_with_vendors, file_name")
     .eq("id", documentId)
     .maybeSingle<{
       id: string;
@@ -241,6 +242,7 @@ export async function getDocumentForAccess(
       client_id: string | null;
       event_id: string | null;
       storage_path: string;
+      storage_url: string | null;
       is_couple_visible: boolean;
       shared_with_vendors: boolean;
       file_name: string;
@@ -253,6 +255,7 @@ export async function getDocumentForAccess(
     clientId: data.client_id,
     eventId: data.event_id,
     storagePath: data.storage_path,
+    storageUrl: data.storage_url,
     isCoupleVisible: data.is_couple_visible,
     sharedWithVendors: data.shared_with_vendors,
     fileName: data.file_name,

@@ -72,6 +72,11 @@ export type WorkspaceDocument = {
   isCoupleVisible: boolean;
   isVendorVisible: boolean;
   uploadedByType: "venue" | "vendor";
+  /**
+   * Human origin label. Couple-shared insurance mirrors keep uploadedByType=venue
+   * (DB CHECK) but originated as a client upload (client-media / tag).
+   */
+  originLabel?: "Venue" | "Vendor" | "Client";
   /** Type-specific extras the Preview panel's Representation section reads — never rendered generically. */
   amount?: number | null;
   balanceDue?: number | null;

@@ -1,13 +1,22 @@
 /**
- * Authorized retrieval for the generic `documents` bucket.
- * Private bucket + signed URL. Never treat a stored public URL as authority.
+ * Authorized retrieval for document file objects.
+ * Venue uploads live in the private `documents` bucket (signed URL).
+ * Couple portal uploads live in public `client-media`; venue Documents rows
+ * may reference those same objects without copying them.
+ * Never treat a stored public URL as authority — routes still authorize first.
  */
 
 export const DOCUMENTS_BUCKET = "documents";
+export const CLIENT_MEDIA_BUCKET = "client-media";
 
 export function isDocumentsPublicUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   return url.includes("/object/public/documents/") || url.includes("/object/sign/documents/");
+}
+
+export function isClientMediaPublicUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return url.includes("/object/public/client-media/") || url.includes("/object/sign/client-media/");
 }
 
 export function storagePathFromDocumentsUrl(url: string): string | null {
@@ -20,6 +29,34 @@ export function storagePathFromDocumentsUrl(url: string): string | null {
     }
   }
   return null;
+}
+
+export function storagePathFromClientMediaUrl(url: string): string | null {
+  for (const marker of ["/object/public/client-media/", "/object/sign/client-media/"] as const) {
+    const i = url.indexOf(marker);
+    if (i >= 0) {
+      const rest = url.slice(i + marker.length);
+      const path = decodeURIComponent(rest.split("?")[0] ?? "");
+      return path || null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Display origin for a documents-table row.
+ * uploaded_by_type CHECK only allows venue|vendor; couple-originated insurance
+ * mirrors keep uploaded_by_type='venue' but storage_url points at client-media.
+ */
+export function documentFileOriginLabel(input: {
+  uploadedByType: "venue" | "vendor" | string;
+  storageUrl?: string | null;
+  tags?: string[] | null;
+}): "Venue" | "Vendor" | "Client" {
+  if (input.uploadedByType === "vendor") return "Vendor";
+  if (input.tags?.includes("couple-shared-insurance")) return "Client";
+  if (isClientMediaPublicUrl(input.storageUrl ?? null)) return "Client";
+  return "Venue";
 }
 
 export function venueIdFromDocumentsPath(storagePath: string): string | null {

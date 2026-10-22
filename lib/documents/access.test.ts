@@ -3,11 +3,16 @@ import { describe, it } from "node:test";
 
 import {
   canAccessDocumentFile,
+  documentFileOriginLabel,
+  isClientMediaPublicUrl,
   isDocumentsPublicUrl,
+  storagePathFromClientMediaUrl,
   storagePathFromDocumentsUrl,
   venueOwnsDocumentsPath,
 } from "@/lib/documents/access";
 import { parseReplaceDocumentResult, shouldRemoveOrphanUpload } from "@/lib/documents/replace";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const row = {
   id: "doc-1",
@@ -31,8 +36,57 @@ describe("documents storage path helpers", () => {
     );
     assert.equal(isDocumentsPublicUrl("https://x/object/public/documents/a"), true);
     assert.equal(isDocumentsPublicUrl("https://x/object/public/client-media/a"), false);
+    assert.equal(isClientMediaPublicUrl("https://x/object/public/client-media/a"), true);
+    assert.equal(
+      storagePathFromClientMediaUrl(
+        "https://x.supabase.co/storage/v1/object/public/client-media/venue-a/c1/doc.png",
+      ),
+      "venue-a/c1/doc.png",
+    );
     assert.equal(venueOwnsDocumentsPath("venue-a", "venue-a/event/x.pdf"), true);
     assert.equal(venueOwnsDocumentsPath("venue-b", "venue-a/event/x.pdf"), false);
+  });
+});
+
+describe("document file origin label", () => {
+  it("labels couple-shared insurance mirrors as Client despite uploaded_by_type=venue", () => {
+    assert.equal(
+      documentFileOriginLabel({
+        uploadedByType: "venue",
+        storageUrl: "https://x/object/public/client-media/v/c/coi.png",
+        tags: ["couple-shared-insurance"],
+      }),
+      "Client",
+    );
+    assert.equal(
+      documentFileOriginLabel({
+        uploadedByType: "venue",
+        storageUrl: "https://x/object/public/documents/v/e/venue.pdf",
+      }),
+      "Venue",
+    );
+    assert.equal(documentFileOriginLabel({ uploadedByType: "vendor" }), "Vendor");
+  });
+});
+
+describe("document file routes resolve client-media", () => {
+  it("venue/portal/vendor file routes use resolveAuthorizedDocumentFileUrl", () => {
+    for (const rel of [
+      "app/api/documents/[id]/file/route.ts",
+      "app/api/portal/documents/[id]/file/route.ts",
+      "app/api/vendor/documents/[id]/file/route.ts",
+    ]) {
+      const src = readFileSync(resolve(rel), "utf8");
+      assert.match(src, /resolveAuthorizedDocumentFileUrl/);
+      assert.doesNotMatch(src, /createDocumentsSignedUrl\(row\.storagePath\)/);
+    }
+  });
+
+  it("signed-url helper falls back to client-media after documents miss", () => {
+    const src = readFileSync(resolve("lib/documents/signed-url.ts"), "utf8");
+    assert.match(src, /export async function resolveAuthorizedDocumentFileUrl/);
+    assert.match(src, /CLIENT_MEDIA_BUCKET/);
+    assert.match(src, /createDocumentsSignedUrl/);
   });
 });
 
