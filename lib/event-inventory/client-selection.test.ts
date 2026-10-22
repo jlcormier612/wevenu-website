@@ -62,6 +62,8 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(panel, /Share for selection/);
     assert.match(panel, /Confirm selections/);
     assert.match(panel, /Request changes/);
+    assert.match(panel, /runLifecycle/);
+    assert.match(panel, /router\.refresh\(\)/);
   });
 
   it("portal APIs wire save/submit RPCs and return collaboration fields", () => {

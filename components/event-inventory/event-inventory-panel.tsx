@@ -205,6 +205,14 @@ export function EventInventoryPanel({
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
+  /** Server actions revalidate, but this panel is props-driven — refresh so status CTAs update. */
+  function runLifecycle(fn: () => Promise<void>) {
+    startLifecycle(async () => {
+      await fn();
+      router.refresh();
+    });
+  }
+
   if (!eventInventory) {
     return (
       <StartInventory
@@ -251,7 +259,7 @@ export function EventInventoryPanel({
             <div className="flex items-center gap-2">
               {hasUnpushedItems && (
                 <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                  onClick={() => startLifecycle(async () => {
+                  onClick={() => runLifecycle(async () => {
                     const result = await addEventInventoryToEventOrderAction(inv.id, eventId);
                     if (result.ok) {
                       const extra = result.addedTotal > 0 ? ` (${formatMoney(result.addedTotal)} additional)` : " (included — no additional charge)";
@@ -262,7 +270,7 @@ export function EventInventoryPanel({
                 </Button>
               )}
               <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                onClick={() => startLifecycle(async () => {
+                onClick={() => runLifecycle(async () => {
                   const result = await reopenEventInventoryAction(inv.id, eventId);
                   if (!result.ok) toast.error(result.message ?? "Could not reopen.");
                 })}>
@@ -274,7 +282,7 @@ export function EventInventoryPanel({
               {canShare && (
                 <>
                   <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                    onClick={() => startLifecycle(async () => {
+                    onClick={() => runLifecycle(async () => {
                       const result = await shareEventInventoryAction(inv.id, eventId, "view");
                       if (result.ok) toast.success("Shared for viewing (read-only).");
                       else toast.error(result.message ?? "Could not share.");
@@ -283,7 +291,7 @@ export function EventInventoryPanel({
                   </Button>
                   <Button type="button" variant="outline" size="sm" disabled={lifecyclePending || selectableCount === 0}
                     title={selectableCount === 0 ? "Mark additional items as Select first" : undefined}
-                    onClick={() => startLifecycle(async () => {
+                    onClick={() => runLifecycle(async () => {
                       const result = await shareEventInventoryAction(inv.id, eventId, "select");
                       if (result.ok) toast.success("Shared for couple selection.");
                       else toast.error(result.message ?? "Could not share.");
@@ -295,7 +303,7 @@ export function EventInventoryPanel({
               {canConfirm && (
                 <>
                   <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                    onClick={() => startLifecycle(async () => {
+                    onClick={() => runLifecycle(async () => {
                       const note = window.prompt("Note for the couple (optional)") ?? "";
                       const result = await requestInventorySelectionChangesAction(inv.id, eventId, note);
                       if (result.ok) toast.success("Asked the couple for changes.");
@@ -304,7 +312,7 @@ export function EventInventoryPanel({
                     Request changes
                   </Button>
                   <Button type="button" size="sm" disabled={lifecyclePending}
-                    onClick={() => startLifecycle(async () => {
+                    onClick={() => runLifecycle(async () => {
                       const result = await confirmInventorySelectionsAction(inv.id, eventId);
                       if (result.ok) toast.success("Selections confirmed.");
                       else toast.error(result.message ?? "Could not confirm.");
@@ -314,7 +322,7 @@ export function EventInventoryPanel({
                 </>
               )}
               <Button type="button" size="sm" disabled={lifecyclePending || inv.items.length === 0 || inv.status === "submitted"}
-                onClick={() => startLifecycle(async () => {
+                onClick={() => runLifecycle(async () => {
                   const result = await finalizeEventInventoryAction(inv.id, eventId);
                   if (result.ok) toast.success("Event Inventory finalized.");
                   else toast.error(result.message ?? "Could not finalize.");
@@ -340,10 +348,9 @@ export function EventInventoryPanel({
               <ItemRow key={item.id} item={item} eventInventoryId={inv.id} eventId={eventId} catalogItems={catalogItems}
                 editable={!isFinalized && inv.status !== "submitted"}
                 onRemove={() => handleRemove(item)} removing={removingId === item.id}
-                onToggleSelectable={(next) => startLifecycle(async () => {
+                onToggleSelectable={(next) => runLifecycle(async () => {
                   const result = await setInventoryItemClientSelectableAction(inv.id, eventId, item.id, next);
                   if (!result.ok) toast.error(result.message ?? "Could not update selection flag.");
-                  else router.refresh();
                 })}
               />
             ))}
