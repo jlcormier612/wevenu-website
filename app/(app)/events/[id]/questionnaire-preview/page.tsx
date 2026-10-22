@@ -1,6 +1,7 @@
 /**
  * Preview as client — uses the real CoupleFamilyQuestionnaireForm rendering.
- * Same-tab preview with an explicit return to the event Questionnaires workspace.
+ * Same-tab preview with an explicit return to Questionnaires / Overview.
+ * Form rendering matches the pre-navigation implementation (no wrapper theme).
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -45,30 +46,45 @@ export default async function QuestionnairePreviewPage({
   ]);
   if (!event || !venue) notFound();
 
-  const backHref = from === "library"
+  const questionnairesHref = from === "library"
     ? "/library/questionnaire-templates"
     : event.clientId
       ? `/clients/${event.clientId}#questionnaires`
       : `/events/${eventId}#questionnaires`;
-  const backLabel = from === "library" ? "Back to Library" : "Back to Questionnaires";
+  const questionnairesLabel = from === "library" ? "Back to Library" : "Back to Questionnaires";
+  const overviewHref = event.clientId
+    ? `/clients/${event.clientId}#overview`
+    : `/events/${eventId}#overview`;
 
   return (
-    <div className="min-h-screen bg-[#F7F5F1]">
-      <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Preview — not sent
-            </p>
-            <p className="text-sm font-semibold text-heading">{kindLabel(kind)}</p>
+    <>
+      {/* Navigation only — do not wrap the form in a substitute theme/background. */}
+      <div
+        className="sticky top-0 z-20 border-b border-border bg-background"
+        data-testid="questionnaire-preview-nav"
+      >
+        <div className="mx-auto flex max-w-xl flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+            Preview — not sent
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {from !== "library" ? (
+              <Link
+                href={overviewHref}
+                data-testid="questionnaire-preview-back-overview"
+                className="inline-flex h-8 items-center rounded-md px-2.5 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Back to Overview
+              </Link>
+            ) : null}
+            <Link
+              href={questionnairesHref}
+              data-testid="questionnaire-preview-back"
+              className="inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              {questionnairesLabel}
+            </Link>
           </div>
-          <Link
-            href={backHref}
-            data-testid="questionnaire-preview-back"
-            className="inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-muted"
-          >
-            {backLabel}
-          </Link>
         </div>
       </div>
       <CoupleFamilyQuestionnaireForm
@@ -107,6 +123,6 @@ export default async function QuestionnairePreviewPage({
           additional: questionnaire?.additional ?? null,
         }}
       />
-    </div>
+    </>
   );
 }

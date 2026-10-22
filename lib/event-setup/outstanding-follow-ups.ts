@@ -43,6 +43,11 @@ export function setupStatusBadgeLabel(
   if (decision === "set_up" && step === "inventory") {
     if (status === "draft" || status === "included") return "Included";
   }
+  // Event Order Overview card: Included while draft exists / recoverable —
+  // do not surface readiness "Draft" on the setup card (sharing stays separate).
+  if (decision === "set_up" && step === "event_order") {
+    if (status === "draft" || status === "included") return "Included";
+  }
   // Portal-facing content uses Released; Shared remains the readiness enum.
   if (status === "shared") return "Released";
   return readinessLabel[status];

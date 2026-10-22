@@ -56,6 +56,15 @@ describe("setupStatusBadgeLabel", () => {
     assert.equal(setupStatusBadgeLabel("set_up", "included", SETUP_READINESS_LABEL, "inventory"), "Included");
     assert.equal(setupStatusBadgeLabel("set_up", "needs_action", SETUP_READINESS_LABEL, "inventory"), "Needs action");
   });
+
+  it("presents Event Order draft inclusion as Included on Overview, not Draft", () => {
+    assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL, "event_order"), "Included");
+    assert.equal(setupStatusBadgeLabel("set_up", "included", SETUP_READINESS_LABEL, "event_order"), "Included");
+    assert.equal(setupStatusBadgeLabel("set_up", "shared", SETUP_READINESS_LABEL, "event_order"), "Released");
+    assert.equal(setupStatusBadgeLabel("set_up", "needs_action", SETUP_READINESS_LABEL, "event_order"), "Needs action");
+    // Without the Overview step key, readiness Draft label is unchanged elsewhere.
+    assert.equal(setupStatusBadgeLabel("set_up", "draft", SETUP_READINESS_LABEL), "Draft");
+  });
 });
 
 describe("setupStepTemplateLabel", () => {

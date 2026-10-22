@@ -101,14 +101,25 @@ describe("questionnaire category selectors", () => {
     assert.doesNotMatch(panel, /questionnaire-preview[^"]*target="_blank"/);
   });
 
-  it("event questionnaire preview has an explicit return to Questionnaires", () => {
+  it("event questionnaire preview keeps original CoupleFamily form and adds return nav only", () => {
     const preview = readFileSync(
       new URL("../../app/(app)/events/[id]/questionnaire-preview/page.tsx", import.meta.url),
       "utf8",
     );
+    assert.match(preview, /CoupleFamilyQuestionnaireForm/);
+    assert.match(preview, /previewMode/);
+    // Do not wrap the form in a substitute cream/min-h theme shell.
+    assert.doesNotMatch(preview, /bg-\[#F7F5F1\]/);
+    assert.doesNotMatch(preview, /min-h-screen bg-/);
+    assert.match(preview, /Preview — not sent/);
     assert.match(preview, /questionnaire-preview-back/);
     assert.match(preview, /Back to Questionnaires/);
     assert.match(preview, /#questionnaires/);
+    assert.match(preview, /questionnaire-preview-back-overview/);
+    assert.match(preview, /Back to Overview/);
+    assert.match(preview, /#overview/);
     assert.match(preview, /Back to Library/);
+    assert.doesNotMatch(preview, /target="_blank"/);
+    assert.doesNotMatch(preview, /window\.open/);
   });
 });
