@@ -267,7 +267,7 @@ async function notifyInventoryShared(
       ?? sessions[0]
       ?? (await createPortalSession(event.clientId, null, "couple"));
     if (!session) return;
-    const { publicAppOrigin } = await import("@/lib/http/public-app-origin");
+    const { publicAppOrigin } = await import("@/lib/env");
     const portalUrl = `${publicAppOrigin()}/p/${session.accessToken}#inventory`;
     const body =
       mode === "select"
