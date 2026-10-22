@@ -101,74 +101,82 @@ async function main() {
     record("serving_sha", servingSha === EXPECTED_SHA, `serving=${servingSha} expected=${EXPECTED_SHA}`);
     if (servingSha !== EXPECTED_SHA) throw new Error("serving mismatch");
 
-    // Client booking — Planning / tasks
-    await page.goto(`${APP}/clients/${CLIENT}?event=${EVENT}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(2000);
-    // Open Planning tab if present
-    await page.getByRole("link", { name: /^Planning$/i }).click({ timeout: 8_000 }).catch(() => {});
-    await page.getByRole("tab", { name: /Planning/i }).click({ timeout: 5_000 }).catch(() => {});
+    // Client booking workspace — tab hashes: playbook / documents / invoice
+    await page.goto(`${APP}/clients/${CLIENT}?eventId=${EVENT}#playbook`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await page.waitForTimeout(2500);
+    await page.getByRole("tab", { name: /^Planning$/i }).click({ timeout: 10_000 }).catch(() => {});
     await page.waitForTimeout(1500);
     const planningText = await page.locator("main").innerText();
     record(
       "venue_insurance_in_completed",
-      /Purchase event insurance/i.test(planningText)
-        && (/Completed/i.test(planningText) || /complete/i.test(planningText)),
-      planningText.slice(0, 600),
+      /Purchase event insurance/i.test(planningText) && /Completed/i.test(planningText),
+      planningText.slice(0, 1200),
     );
-    // Should not list insurance under Upcoming as incomplete — look for section structure
-    const upcomingBlock = planningText.match(/Upcoming[\s\S]{0,800}?Completed/i)?.[0] ?? "";
+    const upcomingBlock = planningText.match(/Upcoming[\s\S]{0,1500}?Completed/i)?.[0] ?? "";
     record(
       "venue_insurance_not_in_upcoming_block",
       !/Purchase event insurance/i.test(upcomingBlock),
-      upcomingBlock.slice(0, 500) || "no upcoming→completed window",
+      upcomingBlock.slice(0, 700) || "no upcoming→completed window",
     );
     await page.screenshot({ path: `${OUT}/shots/venue-planning-1280.png`, fullPage: true });
 
-    // Documents tab — heal runs on load
-    await page.getByRole("link", { name: /^Documents$/i }).click({ timeout: 8_000 }).catch(() => {});
-    await page.getByRole("tab", { name: /Documents/i }).click({ timeout: 5_000 }).catch(() => {});
+    await page.goto(`${APP}/clients/${CLIENT}?eventId=${EVENT}#documents`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
     await page.waitForTimeout(2500);
+    await page.getByRole("tab", { name: /^Documents$/i }).click({ timeout: 10_000 }).catch(() => {});
+    await page.waitForTimeout(1500);
     const docsText = await page.locator("main").innerText();
     record(
       "venue_documents_shows_insurance",
-      /insurance|Event insurance|couple event insurance|Essential Wedding/i.test(docsText),
-      docsText.slice(0, 700),
+      /Essential Wedding|category.*insurance|Insurance|couple event insurance/i.test(docsText),
+      docsText.slice(0, 1200),
     );
     await page.screenshot({ path: `${OUT}/shots/venue-documents-1280.png`, fullPage: true });
 
-    // Payments
-    await page.getByRole("link", { name: /^Payments$/i }).click({ timeout: 8_000 }).catch(() => {});
-    await page.getByRole("tab", { name: /Payments|Invoices/i }).click({ timeout: 5_000 }).catch(() => {});
+    await page.goto(`${APP}/clients/${CLIENT}?eventId=${EVENT}#invoice`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await page.waitForTimeout(2500);
+    await page.getByRole("tab", { name: /^Payments$/i }).click({ timeout: 10_000 }).catch(() => {});
     await page.waitForTimeout(1500);
     const payText = await page.locator("main").innerText();
     record(
       "venue_payments_show_schedule",
-      /Initial Payment|Planning Payment|Final Payment|3,?750/i.test(payText),
-      payText.slice(0, 500),
+      /Initial Payment|Planning Payment|Final Payment|3,?750|Payment schedule/i.test(payText),
+      payText.slice(0, 800),
     );
     await page.screenshot({ path: `${OUT}/shots/venue-payments-1280.png`, fullPage: true });
 
     const { count: docsAfter } = await admin.from("documents").select("id", { count: "exact", head: true })
       .eq("venue_id", VENUE).eq("event_id", EVENT).eq("category", "insurance");
     const { data: insDocs } = await admin.from("documents")
-      .select("id,name,category,storage_url,notes")
+      .select("id,name,category,storage_url,notes,event_id")
       .eq("venue_id", VENUE)
       .eq("category", "insurance")
-      .or(`event_id.eq.${EVENT},client_id.eq.${CLIENT}`);
+      .eq("event_id", EVENT);
     record(
       "db_insurance_document_registered",
       (docsAfter ?? 0) >= 1 || (insDocs ?? []).length >= 1,
       JSON.stringify({ docsBefore, docsAfter, insDocs }),
     );
 
-    // Idempotent heal — reload documents, count must not grow beyond 1 for same file
-    await page.reload({ waitUntil: "domcontentloaded" });
+    // Idempotent heal — reload booking documents; still a single insurance row
+    await page.goto(`${APP}/clients/${CLIENT}?eventId=${EVENT}#documents`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
     await page.waitForTimeout(2000);
     const { count: docsAfterReload } = await admin.from("documents").select("id", { count: "exact", head: true })
-      .eq("venue_id", VENUE).eq("category", "insurance").eq("client_id", CLIENT);
+      .eq("venue_id", VENUE).eq("category", "insurance").eq("event_id", EVENT);
     record(
       "db_no_duplicate_insurance_docs",
-      (docsAfterReload ?? 0) <= 1,
+      (docsAfterReload ?? 0) === 1,
       `count=${docsAfterReload}`,
     );
 
