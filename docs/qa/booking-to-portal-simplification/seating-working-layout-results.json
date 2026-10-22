@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "working_plan_and_table",
+      "pass": true,
+      "detail": "plan=3cd0befe-2d94-4672-a238-28aee4dde2f0 table=C1"
+    },
+    {
+      "name": "create_guest",
+      "pass": true,
+      "detail": "0d81e2b5-efa9-4f6a-bae7-217f0df75fd7"
+    },
+    {
+      "name": "assign_seat",
+      "pass": true,
+      "detail": "{\"id\":\"a78e28f2-dd08-427d-b8d5-7ed494a3b8ae\",\"floor_plan_id\":\"3cd0befe-2d94-4672-a238-28aee4dde2f0\",\"guest_id\":\"0d81e2b5-efa9-4f6a-bae7-217f0df75fd7\",\"table_object_id\":\"a80cee79-b6dc-431e-958d-2cfd869910a8\"}"
+    },
+    {
+      "name": "working_layout_editor_loads",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContrac"
+    },
+    {
+      "name": "editor_has_no_offer_panel",
+      "pass": true,
+      "detail": "offer panel check"
+    },
+    {
+      "name": "seating_page_loads_working_plan",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContrac"
+    },
+    {
+      "name": "seat_persists_on_working_layout",
+      "pass": true,
+      "detail": "[{\"id\":\"a78e28f2-dd08-427d-b8d5-7ed494a3b8ae\",\"floor_plan_id\":\"3cd0befe-2d94-4672-a238-28aee4dde2f0\",\"guest_id\":\"0d81e2b5-efa9-4f6a-bae7-217f0df75fd7\"}]"
+    },
+    {
+      "name": "cleanup",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "name": "library_template_untouched",
+      "pass": true,
+      "detail": "templateObjects=36"
+    }
+  ]
+}

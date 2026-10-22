@@ -1,16 +1,16 @@
 {
   "workflow": "booking-to-portal-simplification",
   "status": "GREEN",
-  "expectedSha": "b910759d66a2ca1566a23e746ed5c38cb98a25b9",
-  "servingSha": "b910759d66a2ca1566a23e746ed5c38cb98a25b9",
+  "expectedSha": "c0266abdb6d88acfbe04b4064239bf399bdb5c2c",
+  "servingSha": "c0266abdb6d88acfbe04b4064239bf399bdb5c2c",
   "ids": {
-    "leadId": "8f98c9f5-5306-43d8-8efa-fdb0fe5bc089",
-    "clientId": "1595732a-3405-4e1c-a10a-6aebe3827a42",
-    "eventId": "485eb921-9225-421d-9f92-4a6578571d45",
+    "leadId": "da7aaa1a-793d-45e5-9238-3fb64b5e7f85",
+    "clientId": "1d57fcd0-0255-46dd-9849-117f0149ce28",
+    "eventId": "2ca692f9-83de-41db-99e3-1ac5e63dc981",
     "profileId": "b2c5bb44-cdea-4b1a-9aca-995c04fea327",
-    "tag": "B2P-1792635697551-6e63"
+    "tag": "B2P-1792639587334-2cdb"
   },
-  "passed": 105,
+  "passed": 107,
   "failed": 0,
   "checks": [
     {
@@ -26,7 +26,7 @@
     {
       "name": "serving_sha",
       "pass": true,
-      "detail": "serving=b910759d66a2ca1566a23e746ed5c38cb98a25b9 expected=b910759d66a2ca1566a23e746ed5c38cb98a25b9"
+      "detail": "serving=c0266abdb6d88acfbe04b4064239bf399bdb5c2c expected=c0266abdb6d88acfbe04b4064239bf399bdb5c2c"
     },
     {
       "name": "settings_lists_full_capability_set",
@@ -66,7 +66,7 @@
     {
       "name": "booked_client_and_event",
       "pass": true,
-      "detail": "{\"clientId\":\"1595732a-3405-4e1c-a10a-6aebe3827a42\",\"eventId\":\"485eb921-9225-421d-9f92-4a6578571d45\"}"
+      "detail": "{\"clientId\":\"1d57fcd0-0255-46dd-9849-117f0149ce28\",\"eventId\":\"2ca692f9-83de-41db-99e3-1ac5e63dc981\"}"
     },
     {
       "name": "setup_snapshot_inherited",
@@ -76,22 +76,22 @@
     {
       "name": "booking_prepared_inventory_draft",
       "pass": true,
-      "detail": "[{\"id\":\"61efecad-de7b-404a-8a7e-76b8502de049\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"dad24b4a-cad6-4968-a9c6-2c0db6cf89c8\",\"status\":\"draft\",\"template_id\":\"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330\",\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_event_order_draft",
       "pass": true,
-      "detail": "[{\"id\":\"592d69de-1459-46be-a381-2e250b663725\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
+      "detail": "[{\"id\":\"fbd59539-f45b-4e8c-aaec-d8d58146b390\",\"status\":\"open\",\"template_id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"shared_at\":null,\"finalized_at\":null}]"
     },
     {
       "name": "booking_prepared_client_checklist",
       "pass": true,
-      "detail": "{\"id\":\"bba6f76e-41bf-4b51-9bc8-d8ea2308cdbb\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
+      "detail": "{\"id\":\"540ddebd-40d2-4d80-9c23-b773731c5dbf\",\"kind\":\"client\",\"released_at\":null,\"template_id\":\"7a1766d4-f1cd-4882-a8ed-19a54aba68ea\"}"
     },
     {
       "name": "booking_prepared_venue_checklist",
       "pass": true,
-      "detail": "{\"venuePb\":{\"id\":\"6b706a4f-4e03-4fa1-a623-3e7519277b9f\",\"kind\":\"venue\",\"released_at\":\"2026-10-22T02:21:54.941+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"},\"expected\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+      "detail": "{\"venuePb\":{\"id\":\"999f78b3-96eb-4800-adfb-ed5a69cda748\",\"kind\":\"venue\",\"released_at\":\"2026-10-22T03:26:50.321+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"},\"expected\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
     },
     {
       "name": "booking_prepared_timeline",
@@ -101,7 +101,7 @@
     {
       "name": "booking_prepared_floor_plan_offers",
       "pass": true,
-      "detail": "{\"offers\":[{\"id\":\"79f0d8db-9154-4a29-910a-d01a7103cc7a\",\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"is_offered\":true}],\"offersErr\":null}"
+      "detail": "{\"offers\":[{\"id\":\"7a67148a-24c1-4cbb-9c63-6d2bbca2b6b3\",\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\",\"is_offered\":true}],\"offersErr\":null}"
     },
     {
       "name": "booking_no_invoice",
@@ -176,12 +176,12 @@
     {
       "name": "open_planning_reaches_management_workspace",
       "pass": true,
-      "detail": "taskList=1 url=https://app.sandbox.hellotocheers.com/clients/1595732a-3405-4e1c-a10a-6aebe3827a42#planning-task-list"
+      "detail": "taskList=1 url=https://app.sandbox.hellotocheers.com/clients/1d57fcd0-0255-46dd-9849-117f0149ce28#planning-task-list"
     },
     {
       "name": "management_workspace_keeps_fulfillment_actions",
       "pass": true,
-      "detail": "UPCOMING (15)\n\nComplete your questionnaire\n\nPlanning\n·\nClient\n·\nClient completes\n·\n90 days before · Feb 14\n\nAuto-completes on trigger\n\nCreate Request\nWaive\n\nPurchase event insurance\n\nDocument\n·\nClient\n·\nClient completes\n·\n60 days before · Mar 16\n\nAuto-completes on trigger\n\nCreate"
+      "detail": "UPCOMING (15)\n\nComplete your questionnaire\n\nPlanning\n·\nClient\n·\nClient completes\n·\n90 days before · Dec 15\n\nAuto-completes on trigger\n\nCreate Request\nWaive\n\nPurchase event insurance\n\nDocument\n·\nClient\n·\nClient completes\n·\n60 days before · Jan 14\n\nAuto-completes on trigger\n\nCreate"
     },
     {
       "name": "change_opens_dedicated_planning_setup_editor",
@@ -196,7 +196,7 @@
     {
       "name": "setup_editor_add_task_persists",
       "pass": true,
-      "detail": "[{\"id\":\"49fd61e4-327c-47f1-bded-01f10b598628\",\"title\":\"QA event-only planning task\",\"template_task_id\":null,\"owner_type\":\"couple\"}]"
+      "detail": "[{\"id\":\"c0d3844b-c085-47ef-b70e-42070b61b637\",\"title\":\"QA event-only planning task\",\"template_task_id\":null,\"owner_type\":\"couple\"}]"
     },
     {
       "name": "setup_editor_did_not_mutate_library",
@@ -206,7 +206,7 @@
     {
       "name": "booking_inherited_venue_checklist_application",
       "pass": true,
-      "detail": "[{\"id\":\"6b706a4f-4e03-4fa1-a623-3e7519277b9f\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\",\"template_name\":\"Standard Wedding — Venue Planning\"}]"
+      "detail": "[{\"id\":\"999f78b3-96eb-4800-adfb-ed5a69cda748\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\",\"template_name\":\"Standard Wedding — Venue Planning\"}]"
     },
     {
       "name": "booking_inherited_venue_checklist_tasks",
@@ -226,12 +226,12 @@
     {
       "name": "venue_template_cancel_does_not_mutate",
       "pass": true,
-      "detail": "{\"mid\":[{\"id\":\"6b706a4f-4e03-4fa1-a623-3e7519277b9f\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}],\"after\":[{\"id\":\"6b706a4f-4e03-4fa1-a623-3e7519277b9f\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}]}"
+      "detail": "{\"mid\":[{\"id\":\"999f78b3-96eb-4800-adfb-ed5a69cda748\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}],\"after\":[{\"id\":\"999f78b3-96eb-4800-adfb-ed5a69cda748\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}]}"
     },
     {
       "name": "setup_editor_venue_add_task_persists",
       "pass": true,
-      "detail": "[{\"id\":\"43b0b952-8d05-4563-8d27-106090e045a6\",\"title\":\"QA venue-only planning task\",\"template_task_id\":null,\"owner_type\":\"coordinator\"}]"
+      "detail": "[{\"id\":\"ecbe2d68-d9bb-4a88-bf5f-65403be19ae3\",\"title\":\"QA venue-only planning task\",\"template_task_id\":null,\"owner_type\":\"coordinator\"}]"
     },
     {
       "name": "setup_editor_venue_did_not_mutate_library",
@@ -246,7 +246,7 @@
     {
       "name": "timeline_setup_add_item_persists",
       "pass": true,
-      "detail": "[{\"id\":\"2352ef9d-8a68-4b03-ac88-bd8410413ee5\",\"title\":\"QA event-only timeline item\",\"owner\":\"venue\"}]"
+      "detail": "[{\"id\":\"db14dac3-b688-48ed-84ff-2043e249e569\",\"title\":\"QA event-only timeline item\",\"owner\":\"venue\"}]"
     },
     {
       "name": "timeline_setup_did_not_duplicate_on_add",
@@ -281,7 +281,7 @@
     {
       "name": "open_timeline_reaches_management_workspace",
       "pass": true,
-      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1595732a-3405-4e1c-a10a-6aebe3827a42#timeline"
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1d57fcd0-0255-46dd-9849-117f0149ce28#timeline"
     },
     {
       "name": "timeline_browser_display_chronological",
@@ -301,7 +301,7 @@
     {
       "name": "inventory_setup_customize_persists",
       "pass": true,
-      "detail": "items=[{\"id\":\"80a1a444-d2cc-4805-995b-61d2e02c9eb8\",\"name\":\"QA event-only inventory B2P-1792635697551-6e63\"}]"
+      "detail": "items=[{\"id\":\"d85e0c68-82cd-4e2b-9010-5b90b506f3f7\",\"name\":\"QA event-only inventory B2P-1792639587334-2cdb\"}]"
     },
     {
       "name": "inventory_setup_template_replace_safe",
@@ -311,7 +311,7 @@
     {
       "name": "open_inventory_reaches_management_workspace",
       "pass": true,
-      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1595732a-3405-4e1c-a10a-6aebe3827a42#inventory"
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1d57fcd0-0255-46dd-9849-117f0149ce28#inventory"
     },
     {
       "name": "inventory_library_template_unchanged",
@@ -326,7 +326,7 @@
     {
       "name": "event_order_setup_customize_persists",
       "pass": true,
-      "detail": "lines=[{\"id\":\"f3618e2f-ba31-41de-9723-ea052c422e26\",\"description\":\"QA event-only EO line B2P-1792635697551-6e63\"}] status=open"
+      "detail": "lines=[{\"id\":\"e8f838ec-5dcb-459f-baf1-66e9742f49d3\",\"description\":\"QA event-only EO line B2P-1792639587334-2cdb\"}] status=open"
     },
     {
       "name": "event_order_setup_package_replace_safe",
@@ -336,7 +336,7 @@
     {
       "name": "open_event_order_reaches_management_workspace",
       "pass": true,
-      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1595732a-3405-4e1c-a10a-6aebe3827a42#event-order"
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1d57fcd0-0255-46dd-9849-117f0149ce28#event-order"
     },
     {
       "name": "event_order_library_package_unchanged",
@@ -346,37 +346,37 @@
     {
       "name": "change_opens_dedicated_floor_plans_setup_editor",
       "pass": true,
-      "detail": "This event's working layout\n\nThe venue's editable floor plan for seating and day-of work — separate from offered choices below.\n\nNo working layout yet. Offers can exist without one. When you are ready to design or seat this event, open the "
+      "detail": "The client has not selected a layout yet. A working layout (Barn-master-floorplan) is ready for venue prep."
     },
     {
-      "name": "floor_plans_offers_vs_operational_state_shown",
+      "name": "floor_plans_setup_shows_client_selection_truthfully",
       "pass": true,
-      "detail": "opsBefore=0 text=This event's working layout\n\nThe venue's editable floor plan for seating and day-of work — separate from offered choices below.\n\nNo working layout yet. Offers c"
+      "detail": "The client has not selected a layout yet. A working layout (Barn-master-floorplan) is ready for venue prep."
     },
     {
       "name": "floor_plans_editor_keeps_offer_mgmt_in_sheet",
       "pass": true,
-      "detail": "offer copy stays in Change editor"
+      "detail": "offer mgmt in Change; no redundant Open management section"
     },
     {
       "name": "floor_plans_setup_offer_persists",
       "pass": true,
-      "detail": "[{\"id\":\"4aa1ed97-d438-456f-8e23-ccd7695d1de3\",\"couple_label\":\"QA floor offer B2P-1792635697551-6e63\",\"is_offered\":true,\"floor_plan_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\"}]"
+      "detail": "[{\"id\":\"fbb576fb-9906-4a18-8317-8ec7130439c7\",\"couple_label\":\"QA floor offer B2P-1792639587334-2cdb\",\"is_offered\":true,\"floor_plan_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\"}]"
     },
     {
-      "name": "floor_plans_setup_did_not_create_operational_plan",
+      "name": "floor_plans_offer_initializes_working_layout",
       "pass": true,
-      "detail": "opsBefore=0 opsAfter=0"
+      "detail": "opsBefore=1 opsAfter=1 operational=3cd0befe-2d94-4672-a238-28aee4dde2f0"
     },
     {
       "name": "floor_plans_setup_withdraw_persists",
       "pass": true,
-      "detail": "{\"id\":\"4aa1ed97-d438-456f-8e23-ccd7695d1de3\",\"is_offered\":false}"
+      "detail": "{\"id\":\"fbb576fb-9906-4a18-8317-8ec7130439c7\",\"is_offered\":false}"
     },
     {
       "name": "floor_plans_setup_withdraw_survives_reload",
       "pass": true,
-      "detail": "{\"id\":\"4aa1ed97-d438-456f-8e23-ccd7695d1de3\",\"is_offered\":false}"
+      "detail": "{\"id\":\"fbb576fb-9906-4a18-8317-8ec7130439c7\",\"is_offered\":false}"
     },
     {
       "name": "floor_plans_setup_reopen_idempotent",
@@ -384,9 +384,14 @@
       "detail": "before=1 afterReopen=2"
     },
     {
-      "name": "open_floor_plans_reaches_management_workspace",
+      "name": "open_floor_plans_opens_working_layout_editor",
       "pass": true,
-      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1595732a-3405-4e1c-a10a-6aebe3827a42#floorplan"
+      "detail": "url=https://app.sandbox.hellotocheers.com/events/2ca692f9-83de-41db-99e3-1ac5e63dc981/floor-plans/3cd0befe-2d94-4672-a238-28aee4dde2f0 operational=3cd0befe-2d94-4672-a238-28aee4dde2f0"
+    },
+    {
+      "name": "open_floor_plans_hides_offer_layouts_panel",
+      "pass": true,
+      "detail": "offer panel absent"
     },
     {
       "name": "floor_plans_library_templates_unchanged",
@@ -396,7 +401,7 @@
     {
       "name": "floor_plans_other_events_offers_unchanged",
       "pass": true,
-      "detail": "before=49 after=49"
+      "detail": "before=53 after=53"
     },
     {
       "name": "change_opens_dedicated_vendors_setup_editor",
@@ -411,7 +416,7 @@
     {
       "name": "vendors_setup_highlight_persists",
       "pass": true,
-      "detail": "[{\"id\":\"491d07aa-da7c-4840-8ee0-447e53be4c74\",\"vendor_id\":\"e5ed92aa-82a4-46c7-b6c2-36a90db714e1\",\"note\":\"QA vendor highlight B2P-1792635697551-6e63\"}]"
+      "detail": "[{\"id\":\"3bf786a2-8bcc-47d1-b7b0-dbd91d7a7ed5\",\"vendor_id\":\"e5ed92aa-82a4-46c7-b6c2-36a90db714e1\",\"note\":\"QA vendor highlight B2P-1792639587334-2cdb\"}]"
     },
     {
       "name": "vendors_setup_did_not_create_assignment",
@@ -426,7 +431,7 @@
     {
       "name": "open_vendors_reaches_management_workspace",
       "pass": true,
-      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1595732a-3405-4e1c-a10a-6aebe3827a42#vendors"
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/1d57fcd0-0255-46dd-9849-117f0149ce28#vendors"
     },
     {
       "name": "vendors_library_relationships_unchanged",
@@ -436,7 +441,7 @@
     {
       "name": "vendors_other_events_highlights_unchanged",
       "pass": true,
-      "detail": "before=12 after=12"
+      "detail": "before=13 after=13"
     },
     {
       "name": "vendors_setup_did_not_invite",
@@ -449,19 +454,24 @@
       "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nRe"
     },
     {
+      "name": "floor_plans_working_layout_on_this_event",
+      "pass": true,
+      "detail": "{\"offerCount\":1,\"operational\":\"3cd0befe-2d94-4672-a238-28aee4dde2f0\",\"plans\":1,\"coupleSelected\":null}"
+    },
+    {
       "name": "floor_plans_working_layout_stage_present_on_venue",
       "pass": true,
-      "detail": "{\"sample\":[{\"id\":\"33917722-36bc-4902-bd51-6f756a30184f\",\"event_id\":\"b16f8c7a-5754-4354-9ce3-ac6e25085525\",\"name\":\"Ceremony\",\"source_template_id\":null},{\"id\":\"3666169c-5a0f-4707-a3a1-6521d4ba964c\",\"event_id\":\"b16f8c7a-5754-4354-9ce3-ac6e25085525\",\"name\":\"Reception\",\"source_template_id\":null},{\"id\":\"44238472-3c60-474f-8bfa-5b3e106a2362\",\"event_id\":\"6781cc37-e162-4427-8431-3d8b45ab01d0\",\"name\":\"workspace-prebook-plan\",\"source_template_id\":null}],\"thisEvent\":0,\"note\":\"This booking has offers only; working layouts exist on other Fancy events\"}"
+      "detail": "{\"sample\":[{\"id\":\"33917722-36bc-4902-bd51-6f756a30184f\",\"event_id\":\"b16f8c7a-5754-4354-9ce3-ac6e25085525\",\"name\":\"Ceremony\",\"source_template_id\":null},{\"id\":\"3666169c-5a0f-4707-a3a1-6521d4ba964c\",\"event_id\":\"b16f8c7a-5754-4354-9ce3-ac6e25085525\",\"name\":\"Reception\",\"source_template_id\":null},{\"id\":\"44238472-3c60-474f-8bfa-5b3e106a2362\",\"event_id\":\"6781cc37-e162-4427-8431-3d8b45ab01d0\",\"name\":\"workspace-prebook-plan\",\"source_template_id\":null}],\"thisEvent\":1}"
     },
     {
       "name": "floor_plans_seating_assignments_scoped_to_event",
       "pass": true,
-      "detail": "{\"seatEventId\":\"b16f8c7a-5754-4354-9ce3-ac6e25085525\",\"seatCount\":0,\"foreignPlan\":null}"
+      "detail": "{\"floorPlanId\":\"3cd0befe-2d94-4672-a238-28aee4dde2f0\",\"eventId\":\"2ca692f9-83de-41db-99e3-1ac5e63dc981\",\"seatCount\":0,\"sameEventOtherPlanSeats\":0,\"note\":\"No seat rows on this working layout yet — scope contract verified via floor_plan_id FK\"}"
     },
     {
       "name": "floor_plans_client_selection_column_present",
       "pass": true,
-      "detail": "{\"id\":\"485eb921-9225-421d-9f92-4a6578571d45\",\"couple_selected_floor_plan_id\":null}"
+      "detail": "{\"id\":\"2ca692f9-83de-41db-99e3-1ac5e63dc981\",\"couple_selected_floor_plan_id\":null}"
     },
     {
       "name": "prepare_release_button_present",
@@ -471,12 +481,12 @@
     {
       "name": "prepare_released_client_planning",
       "pass": true,
-      "detail": "{\"id\":\"bba6f76e-41bf-4b51-9bc8-d8ea2308cdbb\",\"kind\":\"client\",\"released_at\":\"2026-10-22T02:25:05.09+00:00\"}"
+      "detail": "{\"id\":\"540ddebd-40d2-4d80-9c23-b773731c5dbf\",\"kind\":\"client\",\"released_at\":\"2026-10-22T03:28:57.656+00:00\"}"
     },
     {
       "name": "prepare_kept_venue_checklist_internal",
       "pass": true,
-      "detail": "{\"id\":\"6b706a4f-4e03-4fa1-a623-3e7519277b9f\",\"kind\":\"venue\",\"released_at\":\"2026-10-22T02:21:54.941+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
+      "detail": "{\"id\":\"999f78b3-96eb-4800-adfb-ed5a69cda748\",\"kind\":\"venue\",\"released_at\":\"2026-10-22T03:26:50.321+00:00\",\"template_id\":\"b2808150-67cb-4900-9cf2-eb5c10c3123e\"}"
     },
     {
       "name": "prepare_did_not_invite",
@@ -501,12 +511,12 @@
     {
       "name": "venue_inventory_grew_by_one",
       "pass": true,
-      "detail": "before=39 after=40"
+      "detail": "before=41 after=42"
     },
     {
       "name": "venue_eo_grew_by_one",
       "pass": true,
-      "detail": "before=42 after=43"
+      "detail": "before=44 after=45"
     },
     {
       "name": "profile_unchanged",
@@ -526,7 +536,7 @@
     {
       "name": "invite_created_separately",
       "pass": true,
-      "detail": "[{\"id\":\"654d4e80-f545-458f-941a-f032471220f1\",\"status\":\"pending\",\"email\":\"b2p-invite-1792635697551@hellotocheers-test.invalid\"}]"
+      "detail": "[{\"id\":\"dc49acab-a9f5-40b0-ad42-56db386a8dcf\",\"status\":\"pending\",\"email\":\"b2p-invite-1792639587334@hellotocheers-test.invalid\"}]"
     },
     {
       "name": "invite_did_not_send_questionnaires",
@@ -539,5 +549,5 @@
       "detail": "invoices=0"
     }
   ],
-  "at": "2026-10-22T02:26:00.088Z"
+  "at": "2026-10-22T03:29:12.383Z"
 }
