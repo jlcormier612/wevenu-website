@@ -1,0 +1,16 @@
+PASS serving_sha — serving=cb25fb817efff630bf0d5faf7da1c59adfc56a76 expected=cb25fb817efff630bf0d5faf7da1c59adfc56a76
+PASS found_booked_event_with_offers — eventId=5cd0be77-ec99-48c6-a86b-7235b3a65f76
+PASS offer_editor_open — Edit floor-plan offers for this event
+
+QOP 63189-a27d & Portal Partner · from Standard Wedding Setup. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establis
+PASS offer_editor_omits_client_selection_status — Edit floor-plan offers for this event
+
+QOP 63189-a27d & Portal Partner · from Standard Wedding Setup. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one
+PASS offer_editor_still_lists_offers — offerRows=1
+{
+  "passed": 5,
+  "failed": 0,
+  "servingSha": "cb25fb817efff630bf0d5faf7da1c59adfc56a76",
+  "eventId": "5cd0be77-ec99-48c6-a86b-7235b3a65f76",
+  "status": "GREEN"
+}

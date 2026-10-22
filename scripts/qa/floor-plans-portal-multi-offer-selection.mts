@@ -161,7 +161,7 @@ async function main() {
     const { data: lead, error: leadErr } = await admin.from("leads").insert({
       venue_id: FANCY, relationship_id: relId, first_name: FIXTURE, last_name: "Proof",
       email, event_type: "wedding", event_date: eventDate, guest_count: 80,
-      status: "active", sales_stage: "booked", assigned_staff_id: JEN,
+      status: "active", sales_stage: "proposal_sent", assigned_staff_id: JEN,
       planned_event_space_id: SPACE,
     }).select("id").single();
     if (leadErr || !lead) throw leadErr ?? new Error("lead");
@@ -494,7 +494,12 @@ async function main() {
       await browser.close();
     }
   } catch (err) {
-    record("harness_error", false, err instanceof Error ? err.message : String(err));
+    const detail = err instanceof Error
+      ? err.message
+      : (typeof err === "object" && err && "message" in err
+        ? String((err as { message: unknown }).message)
+        : JSON.stringify(err));
+    record("harness_error", false, detail);
   } finally {
     // Keep fixture for evidence unless GREEN — still clean disposable auth user
     await cleanup(email).catch(() => undefined);

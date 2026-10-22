@@ -1,0 +1,95 @@
+{
+  "workflow": "floor-plans-portal-multi-offer-selection",
+  "status": "GREEN",
+  "expectedSha": "cb25fb817efff630bf0d5faf7da1c59adfc56a76",
+  "servingSha": "cb25fb817efff630bf0d5faf7da1c59adfc56a76",
+  "ids": {
+    "eventId": "fbf0f14d-2e07-4b3e-9933-72724b437863",
+    "clientId": "38f7d367-ef67-4828-a852-30e1bd463bca",
+    "offerA": "dc92c2de-204a-4030-a4d2-bd55ce5a1253",
+    "offerB": "c83b2d83-4415-42c5-941a-2dd4ff7f48e4",
+    "planA": "40defae3-1135-4427-b9a6-f4db044f44e6",
+    "planB": "8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25",
+    "seatMarkerId": "44a58b8f-f702-41e0-9152-fb405359661f",
+    "tag": "PortalFloorSelect-1792643278674-3bbf"
+  },
+  "passed": 15,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=cb25fb817efff630bf0d5faf7da1c59adfc56a76 expected=cb25fb817efff630bf0d5faf7da1c59adfc56a76"
+    },
+    {
+      "name": "fixture_two_offers_and_working_layout_a",
+      "pass": true,
+      "detail": "{\"offerA\":\"dc92c2de-204a-4030-a4d2-bd55ce5a1253\",\"offerB\":\"c83b2d83-4415-42c5-941a-2dd4ff7f48e4\",\"planA\":\"40defae3-1135-4427-b9a6-f4db044f44e6\",\"seatMarkerId\":\"44a58b8f-f702-41e0-9152-fb405359661f\"}"
+    },
+    {
+      "name": "portal_shows_two_layout_options",
+      "pass": true,
+      "detail": "Layout Option A — Barn | Layout Option B — Reception Only | Layout Option A — Barn"
+    },
+    {
+      "name": "portal_select_second_persists_db",
+      "pass": true,
+      "detail": "{\"planA\":\"40defae3-1135-4427-b9a6-f4db044f44e6\",\"planB\":\"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25\"}"
+    },
+    {
+      "name": "operational_matches_couple_selection",
+      "pass": true,
+      "detail": "{\"couple_selected_floor_plan_id\":\"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25\",\"operational_floor_plan_id\":\"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25\"}"
+    },
+    {
+      "name": "selected_layout_is_real_plan_for_template_b",
+      "pass": true,
+      "detail": "{\"id\":\"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25\",\"name\":\"Layout Option B — Reception Only\",\"source_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\",\"event_id\":\"fbf0f14d-2e07-4b3e-9933-72724b437863\"}"
+    },
+    {
+      "name": "portal_selection_survives_reload",
+      "pass": true,
+      "detail": "Layout Option B — Reception Only | Your choice | Layout Option B — Reception Only"
+    },
+    {
+      "name": "repeat_select_no_duplicate_b_plans",
+      "pass": true,
+      "detail": "[{\"id\":\"8c9cc9a0-65ab-425b-ba82-45fdb3ee4f25\"}]"
+    },
+    {
+      "name": "prior_working_layout_and_seating_retained",
+      "pass": true,
+      "detail": "{\"planAStill\":1,\"seatMarkerId\":\"44a58b8f-f702-41e0-9152-fb405359661f\",\"seatStill\":true}"
+    },
+    {
+      "name": "event_has_exactly_two_plans_after_select",
+      "pass": true,
+      "detail": "eventPlans=2"
+    },
+    {
+      "name": "other_booking_offers_unchanged",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "library_templates_unchanged",
+      "pass": true,
+      "detail": "tpl 3->3 obj 89->89"
+    },
+    {
+      "name": "no_invitation_side_effect",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "name": "no_questionnaire_send_side_effect",
+      "pass": true,
+      "detail": "sent=0"
+    },
+    {
+      "name": "no_invoice_side_effect",
+      "pass": true,
+      "detail": "invoices=0"
+    }
+  ]
+}

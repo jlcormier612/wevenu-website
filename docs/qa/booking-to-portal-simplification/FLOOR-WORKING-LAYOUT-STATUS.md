@@ -1,75 +1,69 @@
 # Floor Plans — Working layout + operational workspace — STATUS
 
-**Verdict: GREEN** (working-layout lifecycle on Sandbox) with noted collaboration gaps below.
+**Verdict: GREEN** for venue working-layout lifecycle **and** client portal multi-offer selection.
 
 Production untouched. Unrelated dirty tree preserved.
 
-## SHAs
+## SHAs (current closure)
 
 | Item | Value |
 | --- | --- |
-| Product commit | `c0266abdb6d88acfbe04b4064239bf399bdb5c2c` |
-| Harness nav fix | `06108a0f` (acceptance only; serving remains product tip) |
-| Deploy | [39715674640](https://github.com/jlcormier612/wevenu-website/actions/runs/39715674640) success |
-| Serving `dpl=` | `c0266abdb6d88acfbe04b4064239bf399bdb5c2c` (exact match) |
-| Portal select migration | `20261422000000_floor_plan_select_sets_operational.sql` applied via [39716485320](https://github.com/jlcormier612/wevenu-website/actions/runs/39716485320) |
+| Product (portal gap + offer-editor UX) | `cb25fb817efff630bf0d5faf7da1c59adfc56a76` |
+| Deploy | [39721780746](https://github.com/jlcormier612/wevenu-website/actions/runs/39721780746) success |
+| Serving `dpl=` | exact match `cb25fb81…` |
+| Prior working-layout product | `c0266abd` (still the lifecycle foundation) |
 
-## Root cause
+## Prior venue working-layout GREEN (unchanged)
 
-Prior design treated **offers ≠ operational plans** as intentional. Event Setup created `event_floor_plan_offers` only; the Floor Plans tab showed “Offer layouts to couple” and “No floor plans for this booking yet,” forcing a redundant Apply Template step. Locked product decision: offers must initialize the working layout, and the Floor Plans tab must open that layout.
+Product `c0266abd` — offer → working layout → operational tab. See earlier sections / `seating-working-layout-results.json`.
 
-## Fix (minimal)
-
-1. `ensureWorkingLayoutForEvent` — idempotent clone/reuse from sole or preferred offer; reconcile `operational_floor_plan_id` to `couple_selected_floor_plan_id` when set; never deletes prior plans.
-2. Wired into offer upsert/ensure, inherit, prepare-release, and `ensureWorkingFloorPlanAction`.
-3. Floor Plans tab — removed offer panel; opens/ensures working layout editor; truthful selection status copy.
-4. Setup Change editor — removed redundant “Open Floor Plans workspace” section; offers still managed here.
-5. Portal RPC — selection also sets `operational_floor_plan_id`.
-
-## Tests
+## Gap closed: portal multi-offer selection
 
 ```text
-npx tsx --test \
-  lib/floor-plans/ensure-working-layout.test.ts \
-  lib/floor-plan-offers/selection.test.ts \
-  lib/event-setup/floor-plans-setup-editor.test.ts \
-  lib/event-setup/readiness-detail.test.ts
-→ 37/37 pass
-
-EXPECTED_SHA=c0266abdb6d88acfbe04b4064239bf399bdb5c2c \
-  npx tsx scripts/qa/booking-to-portal-simplification-acceptance.mts
-→ browser-results.json: GREEN, passed=107, failed=0
+EXPECTED_SHA=cb25fb817efff630bf0d5faf7da1c59adfc56a76 \
+  npx tsx scripts/qa/floor-plans-portal-multi-offer-selection.mts
+→ portal-multi-offer-selection-results.json GREEN passed=15 failed=0
 ```
 
-## Demonstrated end-to-end (this fixture)
+Exercised on serving SHA:
 
-- Booking with profile floor offers → working `floor_plans` row + `operational_floor_plan_id` set.
-- Change editor shows truthful “client has not selected” while naming the ready working layout.
-- Offering another layout persists; working pointer remains; Library + other events unchanged.
-- **Open Floor Plans** deep-links to `/events/{id}/floor-plans/{operationalId}` (editable editor).
-- Offer-management chrome (“Offer layouts to couple”) absent from that workspace.
-- Withdraw offer persists; reopen idempotent.
-- Fixture: `eventId=2ca692f9-83de-41db-99e3-1ac5e63dc981`, operational=`3cd0befe-2d94-4672-a238-28aee4dde2f0`.
+1. Two distinct active offers (A Barn, B Reception Only)
+2. Portal “Choose your layout” shows both
+3. Client selects **second** option (B)
+4. DB: `couple_selected_floor_plan_id` = `operational_floor_plan_id` = plan B (`source_template_id` = Reception Only)
+5. Reload: “Your choice” remains on B
+6. Repeat select: no duplicate B clones
+7. Prior plan A + seat assignment retained
+8. Event plan count = 2; Library templates/objects unchanged; other booking offers unchanged
+9. No invitation / questionnaire send / invoice side effects
 
-## Seating on working layout (follow-up DB + browser)
+Screenshots:
+
+- `portal-multi-offer-chooser-1280.png`
+- `portal-multi-offer-selected-b-1280.png`
+- `portal-multi-offer-reload-1280.png`
+
+## UX: offer editor omits client-selection status
+
+Removed the non-actionable “The client has not selected a layout yet…” block from **Edit floor-plan offers for this event**. Offer list + withdraw/offer remain.
 
 ```text
-docs/qa/booking-to-portal-simplification/seating-working-layout-results.json
-→ 9/9 PASS
+npx tsx --test lib/event-setup/floor-plans-setup-editor.test.ts → 12/12
+
+EXPECTED_SHA=cb25fb81… npx tsx scripts/qa/floor-plans-offer-editor-ux-browser.mts
+→ floor-offer-editor-ux-results.json GREEN passed=5 failed=0
 ```
 
-Created `couple_guests` + `guest_seat_assignments` on operational plan `3cd0befe…` / table C1; seating page and plan editor loaded without offer panel; seat row persisted; cleaned up; Library template object count unchanged (36).
+Screenshot: `03h-floor-plans-setup-editor-no-selection-status-1280.png`
 
 ## Remaining limitations
 
-1. **Portal multi-offer client select UI** — migration applied (`select_portal_floor_plan_offer` sets operational); this pass used a sole active offer and did not drive the portal chooser. Venue-side reconcile path is covered by `ensureWorkingLayoutForEvent` + unit wiring.
-2. Collaboration remains existing Share Floor Plan / Share for Seating / vendor share — no new features invented.
+- Collaboration remains existing Share Floor Plan / Share for Seating / vendor share — no new features invented.
+- Full booking-to-portal acceptance booking step remains date-occupancy flaky on Fancy Barn; portal multi-offer and offer-editor UX were verified with dedicated harnesses against the exact serving SHA.
 
 ## Evidence paths
 
-- `docs/qa/booking-to-portal-simplification/browser-results.json` (107/107)
-- `docs/qa/booking-to-portal-simplification/floor-working-layout-acceptance.log`
-- `docs/qa/booking-to-portal-simplification/seating-working-layout-results.json`
-- `docs/qa/booking-to-portal-simplification/03h-floor-plans-setup-editor-1280.png`
-- `docs/qa/booking-to-portal-simplification/04-working-layout-editor-1280.png`
-- `docs/qa/booking-to-portal-simplification/05-seating-working-layout-1280.png`
+- `portal-multi-offer-selection-results.json` / `portal-multi-offer-selection.log`
+- `floor-offer-editor-ux-results.json` / `floor-offer-editor-ux-browser.log`
+- `seating-working-layout-results.json` (prior)
+- Screenshots listed above
