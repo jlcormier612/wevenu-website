@@ -10,7 +10,16 @@
  * workflow-implementation.md for the full architecture.
  */
 
-export type EventInventoryStatus = "draft" | "shared" | "finalized";
+export type EventInventoryStatus =
+  | "draft"
+  | "shared"
+  | "submitted"
+  | "changes_requested"
+  | "confirmed"
+  | "finalized";
+
+/** view = couple read-only when shared; select = couple drafts/submits quantities. */
+export type EventInventoryCollaborationMode = "view" | "select";
 
 export type EventInventory = {
   id: string;
@@ -18,6 +27,7 @@ export type EventInventory = {
   eventId: string;
   templateId: string | null;
   status: EventInventoryStatus;
+  collaborationMode: EventInventoryCollaborationMode;
   finalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +47,12 @@ export type EventInventoryItem = {
   isIncluded: boolean;
   notes: string | null;
   sortOrder: number;
+  /** When true (select mode), couple may choose 0..maxQuantity. */
+  clientSelectable: boolean;
+  /** Cap for couple selection; null → use quantity. */
+  maxQuantity: number | null;
+  clientDraftQuantity: number | null;
+  clientSubmittedQuantity: number | null;
   /** D8 — set once this item has actually been pushed into the Event Order; null = still eligible. Per-item, not a single all-time flag on the Event Inventory as a whole, so items added after a first push remain reachable. */
   addedToEventOrderAt: string | null;
   createdAt: string;

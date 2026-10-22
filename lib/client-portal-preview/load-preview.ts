@@ -246,11 +246,13 @@ export async function loadClientPortalPreview(
 
   const inventory = await getEventInventory(eventId);
   const invReleased =
-    inventory != null && (inventory.status === "shared" || inventory.status === "finalized");
+    inventory != null &&
+    ["shared", "submitted", "changes_requested", "confirmed", "finalized"].includes(inventory.status);
   const mapInv = (inv: NonNullable<typeof inventory>): PortalInventoryViewModel => ({
     id: inv.id,
     status: inv.status,
     finalizedAt: inv.finalizedAt ?? null,
+    collaborationMode: inv.collaborationMode ?? "view",
     items: (inv.items ?? []).map((i) => ({
       id: i.id,
       name: i.name,
@@ -259,6 +261,10 @@ export async function loadClientPortalPreview(
       unitPrice: i.unitPrice ?? null,
       isIncluded: i.isIncluded,
       notes: i.notes ?? null,
+      clientSelectable: i.clientSelectable,
+      maxQuantity: i.maxQuantity,
+      clientDraftQuantity: i.clientDraftQuantity,
+      clientSubmittedQuantity: i.clientSubmittedQuantity,
     })),
   });
 

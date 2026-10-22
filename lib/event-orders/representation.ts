@@ -191,13 +191,27 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
         const text = [`Hi ${client.firstName},`, "", bodyText, "", portalUrl, "", venue.name ?? ""].join("\n");
         const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
         const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
-        await sendEmail({
+        const emailResult = await sendEmail({
           to: client.email,
           subject: `${venue.name ?? "Your venue"}: Event Order for ${event.name}`,
           text,
           html: wrapConversationMessageHtml(emailBrandFromVenue(venue), text),
           replyTo: venue.email ?? undefined,
         });
+        try {
+          const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
+          await recordExternalClientOutbound(supabase, {
+            venueId: venue.id,
+            channel: "email",
+            body: text,
+            clientId: event.clientId,
+            providerId: emailResult.ok ? emailResult.id ?? null : null,
+            status: emailResult.ok ? "accepted" : "failed",
+            failureReason: emailResult.ok ? null : emailResult.message,
+            sourceType: "event_order_shared",
+            sourceId: eventOrderId,
+          });
+        } catch { /* non-blocking history write */ }
       }
     } catch { /* non-blocking — the share itself already succeeded above */ }
   }

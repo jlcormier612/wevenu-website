@@ -44,6 +44,7 @@ describe("Inventory & Event Order portal discoverability", () => {
   it("keeps server sharing boundaries for portal reads", () => {
     assert.match(invApi, /get_event_inventory_for_portal/);
     assert.match(eoApi, /get_event_order_for_portal/);
+    // Foundation RPC started as shared|finalized; selection migration widens visibility.
     assert.match(invPortalRpc, /ei\.status in \('shared', 'finalized'\)/);
     assert.match(eoPortalRpc, /eo\.shared_at is not null/);
     assert.match(eoShare, /insertShareSnapshot/);
@@ -52,14 +53,17 @@ describe("Inventory & Event Order portal discoverability", () => {
     assert.match(invService, /"shared"/);
   });
 
-  it("client views are read-only and distinguish empty vs shared", () => {
+  it("client views distinguish empty vs shared; EO stays read-only; inventory select is gated", () => {
     assert.match(invView, /inventory-portal-empty/);
     assert.match(invView, /Not shared yet/);
     assert.match(invView, /read-only/);
     assert.match(eoView, /event-order-portal-empty/);
     assert.match(eoView, /Not shared yet/);
-    assert.doesNotMatch(invView, /onSave|contentEditable|type="submit"/);
     assert.doesNotMatch(eoView, /onSave|contentEditable|type="submit"/);
+    // Inventory select mode uses Save draft / Submit selections when token + select mode.
+    assert.match(invView, /inventory-save-draft/);
+    assert.match(invView, /inventory-submit/);
+    assert.match(invView, /canEdit/);
   });
 
   it("planning capabilities still gate inventory and event_order sections", () => {

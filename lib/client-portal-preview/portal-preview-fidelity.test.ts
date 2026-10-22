@@ -31,9 +31,10 @@ describe("Client portal preview fidelity", () => {
   it("Inventory portal section and preview share InventoryPortalView", () => {
     assert.match(invSection, /InventoryPortalView/);
     assert.match(preview, /InventoryPortalView/);
-    assert.match(invView, /Nothing to show yet/);
+    assert.match(invView, /Not shared yet/);
     assert.match(invView, /Included/);
     assert.match(invView, /Additional cost/);
+    assert.match(invView, /collaborationMode/);
   });
 
   it("Floor Plans preview only presents shared plans + offers (not unshared operational alone)", () => {

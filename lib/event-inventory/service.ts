@@ -32,6 +32,12 @@ async function assertNotFinalized(
   if (inv.status === "finalized") {
     return { ok: false, message: "This Event Inventory is finalized — reopen it to make changes.", reason: "finalized" };
   }
+  if (inv.status === "submitted") {
+    return {
+      ok: false,
+      message: "The couple’s submission is under review — confirm or request changes before editing items.",
+    };
+  }
   return null;
 }
 
@@ -115,15 +121,184 @@ export async function replaceEventInventoryFromTemplate(
   return result as EnsureEventInventoryResult | EventInventoryActionResult;
 }
 
-export async function shareEventInventory(eventInventoryId: string): Promise<EventInventoryActionResult> {
+export async function shareEventInventory(
+  eventInventoryId: string,
+  opts?: { collaborationMode?: "view" | "select" },
+): Promise<EventInventoryActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);
     if (!inv) return { ok: false, message: "Event Inventory not found." } as EventInventoryActionResult;
+    if (inv.status === "finalized") {
+      return { ok: false, message: "Reopen this inventory before sharing again." } as EventInventoryActionResult;
+    }
+    const mode = opts?.collaborationMode ?? inv.collaborationMode ?? "view";
+    if (mode === "select") {
+      const details = await repo.getEventInventoryByEvent(supabase, venueId, inv.eventId);
+      const selectable = (details?.items ?? []).filter((i) => i.clientSelectable);
+      if (selectable.length === 0) {
+        return {
+          ok: false,
+          message: "Mark at least one additional item as “Couple can select” before sharing for selection.",
+        } as EventInventoryActionResult;
+      }
+    }
+    await repo.setCollaborationMode(supabase, venueId, eventInventoryId, mode);
     await repo.setStatus(supabase, venueId, eventInventoryId, "shared");
-    await repo.insertActivity(supabase, venueId, eventInventoryId, "shared", "Shared with client — visible in their portal (read-only)");
+    await repo.insertActivity(
+      supabase,
+      venueId,
+      eventInventoryId,
+      "shared",
+      mode === "select"
+        ? "Shared for couple selection"
+        : "Shared with client — visible in their portal (read-only)",
+    );
+    await notifyInventoryShared(supabase, venueId, inv.eventId, mode);
     return { ok: true } as EventInventoryActionResult;
   });
   return result as EventInventoryActionResult;
+}
+
+export async function setInventoryItemClientSelectable(
+  eventInventoryId: string,
+  itemId: string,
+  clientSelectable: boolean,
+  maxQuantity?: number | null,
+): Promise<EventInventoryActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);
+    if (!inv) return { ok: false, message: "Event Inventory not found." } as EventInventoryActionResult;
+    const details = await repo.getEventInventoryByEvent(supabase, venueId, inv.eventId);
+    if (!details || details.id !== eventInventoryId) {
+      return { ok: false, message: "Event Inventory not found." } as EventInventoryActionResult;
+    }
+    if (inv.status === "finalized") {
+      return { ok: false, message: "This Event Inventory is finalized — reopen it to make changes." } as EventInventoryActionResult;
+    }
+    const item = details.items.find((i) => i.id === itemId);
+    if (!item) return { ok: false, message: "Item not found." } as EventInventoryActionResult;
+    if (clientSelectable && item.isIncluded) {
+      return {
+        ok: false,
+        message: "Included items stay informational — only additional items can be offered for selection.",
+      } as EventInventoryActionResult;
+    }
+    const max = maxQuantity == null || maxQuantity <= 0 ? item.quantity : maxQuantity;
+    await repo.setItemClientSelectable(supabase, venueId, itemId, clientSelectable, clientSelectable ? max : null);
+    return { ok: true } as EventInventoryActionResult;
+  });
+  return result as EventInventoryActionResult;
+}
+
+export async function requestInventorySelectionChanges(
+  eventInventoryId: string,
+  note?: string,
+): Promise<EventInventoryActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);
+    if (!inv) return { ok: false, message: "Event Inventory not found." } as EventInventoryActionResult;
+    if (inv.status !== "submitted") {
+      return { ok: false, message: "Request changes is available after the couple submits." } as EventInventoryActionResult;
+    }
+    await repo.setStatus(supabase, venueId, eventInventoryId, "changes_requested");
+    await repo.insertActivity(
+      supabase,
+      venueId,
+      eventInventoryId,
+      "changes_requested",
+      "Changes requested",
+      note?.trim() || undefined,
+    );
+    return { ok: true } as EventInventoryActionResult;
+  });
+  return result as EventInventoryActionResult;
+}
+
+/**
+ * Venue confirms couple-submitted quantities onto authoritative item rows.
+ * Does not create an invoice — use Finalize + Add to Event Order as today.
+ */
+export async function confirmInventorySelections(
+  eventInventoryId: string,
+): Promise<EventInventoryActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);
+    if (!inv) return { ok: false, message: "Event Inventory not found." } as EventInventoryActionResult;
+    if (inv.collaborationMode !== "select") {
+      return { ok: false, message: "This inventory was not shared for selection." } as EventInventoryActionResult;
+    }
+    if (inv.status !== "submitted" && inv.status !== "confirmed") {
+      return { ok: false, message: "Confirm is available after the couple submits." } as EventInventoryActionResult;
+    }
+    const applied = await repo.applySubmittedQuantities(supabase, venueId, eventInventoryId);
+    await repo.setStatus(supabase, venueId, eventInventoryId, "confirmed");
+    await repo.insertActivity(
+      supabase,
+      venueId,
+      eventInventoryId,
+      "confirmed",
+      "Confirmed couple inventory selections",
+      `Updated ${applied.updated} item(s); removed ${applied.removed} declined item(s).`,
+    );
+    return { ok: true } as EventInventoryActionResult;
+  });
+  return result as EventInventoryActionResult;
+}
+
+async function notifyInventoryShared(
+  supabase: Awaited<ReturnType<typeof import("@/integrations/supabase/server").createClient>>,
+  venueId: string,
+  eventId: string,
+  mode: "view" | "select",
+): Promise<void> {
+  try {
+    const { getEvent } = await import("@/lib/events/service");
+    const { getClient } = await import("@/lib/clients/service");
+    const { getCurrentVenue } = await import("@/lib/venue/service");
+    const venue = await getCurrentVenue();
+    const event = await getEvent(eventId);
+    if (!venue || !event?.clientId) return;
+    const client = await getClient(event.clientId);
+    if (!client?.email) return;
+    const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
+    const sessions = await getPortalSessions(event.clientId);
+    let session = sessions.find((s) => s.accessLevel !== "financial") ?? sessions[0] ?? null;
+    if (!session) session = await createPortalSession(event.clientId, null, "couple");
+    if (!session) return;
+    const { publicAppOrigin } = await import("@/lib/http/public-app-origin");
+    const portalUrl = `${publicAppOrigin()}/p/${session.accessToken}#inventory`;
+    const body =
+      mode === "select"
+        ? `We've shared inventory choices for ${event.name}. Please review and submit your selections.\n\n${portalUrl}`
+        : `We've shared what's included for ${event.name}.\n\n${portalUrl}`;
+    const { sendEmail } = await import("@/lib/email/send");
+    const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
+    const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
+    const emailResult = await sendEmail({
+      to: client.email,
+      subject: `${venue.name ?? "Your venue"}: Inventory for ${event.name}`,
+      text: [`Hi ${client.firstName},`, "", body, "", venue.name ?? ""].join("\n"),
+      html: wrapConversationMessageHtml(
+        emailBrandFromVenue(venue),
+        [`Hi ${client.firstName},`, "", body, "", venue.name ?? ""].join("\n"),
+      ),
+      replyTo: venue.email ?? undefined,
+    });
+    const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
+    await recordExternalClientOutbound(supabase, {
+      venueId,
+      channel: "email",
+      body,
+      clientId: event.clientId,
+      providerId: emailResult.ok ? emailResult.id ?? null : null,
+      status: emailResult.ok ? "accepted" : "failed",
+      failureReason: emailResult.ok ? null : emailResult.message,
+      sourceType: "event_inventory_shared",
+      sourceId: eventId,
+    });
+  } catch {
+    /* non-blocking */
+  }
 }
 
 /**
@@ -146,6 +321,12 @@ export async function finalizeEventInventory(eventInventoryId: string): Promise<
     const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);
     if (!inv) return { ok: false, message: "Event Inventory not found." } as EventInventoryActionResult;
     if (inv.status === "finalized") return { ok: false, message: "Already finalized." } as EventInventoryActionResult;
+    if (inv.status === "submitted") {
+      return {
+        ok: false,
+        message: "Confirm or request changes on the couple’s submission before finalizing.",
+      } as EventInventoryActionResult;
+    }
     await repo.setStatus(supabase, venueId, eventInventoryId, "finalized");
     await repo.insertActivity(supabase, venueId, eventInventoryId, "finalized", "Event Inventory finalized — agreed values are now locked");
     // Same non-blocking, best-effort pattern questionnaire submission uses

@@ -1,6 +1,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import type {
-  EventInventory, EventInventoryActivity, EventInventoryItem, EventInventoryWithDetails,
+  EventInventory, EventInventoryActivity, EventInventoryCollaborationMode, EventInventoryItem,
+  EventInventoryStatus, EventInventoryWithDetails,
   InventoryItemInput, InventoryTemplate, InventoryTemplateItem, InventoryTemplateWithItems,
 } from "@/lib/event-inventory/types";
 
@@ -8,13 +9,18 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type InventoryRow = {
   id: string; venue_id: string; event_id: string; template_id: string | null;
-  status: "draft" | "shared" | "finalized"; finalized_at: string | null;
+  status: EventInventoryStatus; collaboration_mode?: string | null;
+  finalized_at: string | null;
   created_at: string; updated_at: string;
 };
 type ItemRow = {
   id: string; event_inventory_id: string; venue_id: string; inventory_item_id: string | null;
   name: string; category: string | null; quantity: number; unit_price: number | null;
   is_included: boolean; notes: string | null; sort_order: number;
+  client_selectable?: boolean | null;
+  max_quantity?: number | null;
+  client_draft_quantity?: number | null;
+  client_submitted_quantity?: number | null;
   added_to_event_order_at: string | null; created_at: string; updated_at: string;
 };
 type ActivityRow = {
@@ -34,13 +40,19 @@ type TemplateItemRow = {
 
 const mapInventory = (r: InventoryRow): EventInventory => ({
   id: r.id, venueId: r.venue_id, eventId: r.event_id, templateId: r.template_id,
-  status: r.status, finalizedAt: r.finalized_at, createdAt: r.created_at, updatedAt: r.updated_at,
+  status: r.status,
+  collaborationMode: r.collaboration_mode === "select" ? "select" : "view",
+  finalizedAt: r.finalized_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapItem = (r: ItemRow): EventInventoryItem => ({
   id: r.id, eventInventoryId: r.event_inventory_id, venueId: r.venue_id, inventoryItemId: r.inventory_item_id,
   name: r.name, category: r.category, quantity: Number(r.quantity),
   unitPrice: r.unit_price == null ? null : Number(r.unit_price),
   isIncluded: r.is_included, notes: r.notes, sortOrder: r.sort_order,
+  clientSelectable: !!r.client_selectable,
+  maxQuantity: r.max_quantity == null ? null : Number(r.max_quantity),
+  clientDraftQuantity: r.client_draft_quantity == null ? null : Number(r.client_draft_quantity),
+  clientSubmittedQuantity: r.client_submitted_quantity == null ? null : Number(r.client_submitted_quantity),
   addedToEventOrderAt: r.added_to_event_order_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapActivity = (r: ActivityRow): EventInventoryActivity => ({
@@ -96,13 +108,81 @@ export async function insertEventInventory(client: DbClient, venueId: string, ev
   return data.id;
 }
 
-export async function setStatus(client: DbClient, venueId: string, id: string, status: "draft" | "shared" | "finalized"): Promise<void> {
+export async function setStatus(client: DbClient, venueId: string, id: string, status: EventInventoryStatus): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (status === "finalized") patch.finalized_at = new Date().toISOString();
   if (status === "draft") patch.finalized_at = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_inventory") as any).update(patch).eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+export async function setCollaborationMode(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  mode: EventInventoryCollaborationMode,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_inventory") as any)
+    .update({ collaboration_mode: mode })
+    .eq("id", id)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function setItemClientSelectable(
+  client: DbClient,
+  venueId: string,
+  itemId: string,
+  clientSelectable: boolean,
+  maxQuantity: number | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_inventory_items") as any)
+    .update({
+      client_selectable: clientSelectable,
+      max_quantity: maxQuantity,
+    })
+    .eq("id", itemId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Apply couple-submitted quantities onto authoritative quantity; drop zeros. */
+export async function applySubmittedQuantities(
+  client: DbClient,
+  venueId: string,
+  eventInventoryId: string,
+): Promise<{ updated: number; removed: number }> {
+  const { data: items, error } = await client.from("event_inventory_items")
+    .select("id, client_selectable, client_submitted_quantity, quantity")
+    .eq("event_inventory_id", eventInventoryId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+  let updated = 0;
+  let removed = 0;
+  for (const row of items ?? []) {
+    if (!row.client_selectable) continue;
+    const qty = row.client_submitted_quantity == null ? null : Number(row.client_submitted_quantity);
+    if (qty == null) continue;
+    if (qty <= 0) {
+      await removeItem(client, venueId, row.id as string);
+      removed += 1;
+      continue;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: upErr } = await (client.from("event_inventory_items") as any)
+      .update({
+        quantity: qty,
+        client_draft_quantity: null,
+      })
+      .eq("id", row.id)
+      .eq("venue_id", venueId);
+    if (upErr) throw upErr;
+    updated += 1;
+  }
+  return { updated, removed };
 }
 
 // ---- items ------------------------------------------------------------------------

@@ -3,13 +3,15 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  addItem, addTemplateItem, addToEventOrder, createTemplate, deleteTemplate,
+  addItem, addTemplateItem, addToEventOrder, confirmInventorySelections, createTemplate, deleteTemplate,
   ensureEventInventory, finalizeEventInventory, getTemplate, removeItem, removeTemplateItem,
-  reopenEventInventory, replaceEventInventoryFromTemplate, sendInventoryTemplate, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
+  reopenEventInventory, replaceEventInventoryFromTemplate, requestInventorySelectionChanges,
+  sendInventoryTemplate, setInventoryItemClientSelectable, setTemplateArchived, shareEventInventory,
+  updateItem, updateTemplateItem,
 } from "@/lib/event-inventory/service";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
-  EventInventoryActionResult, InventoryItemInput, InventoryTemplateWithItems,
+  EventInventoryActionResult, EventInventoryCollaborationMode, InventoryItemInput, InventoryTemplateWithItems,
 } from "@/lib/event-inventory/types";
 
 function revalidateEvent(eventId: string) {
@@ -32,8 +34,43 @@ export async function replaceEventInventoryFromTemplateAction(
   return result;
 }
 
-export async function shareEventInventoryAction(eventInventoryId: string, eventId: string): Promise<EventInventoryActionResult> {
-  const result = await shareEventInventory(eventInventoryId);
+export async function shareEventInventoryAction(
+  eventInventoryId: string,
+  eventId: string,
+  collaborationMode: EventInventoryCollaborationMode = "view",
+): Promise<EventInventoryActionResult> {
+  const result = await shareEventInventory(eventInventoryId, { collaborationMode });
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function setInventoryItemClientSelectableAction(
+  eventInventoryId: string,
+  eventId: string,
+  itemId: string,
+  clientSelectable: boolean,
+  maxQuantity?: number | null,
+): Promise<EventInventoryActionResult> {
+  const result = await setInventoryItemClientSelectable(eventInventoryId, itemId, clientSelectable, maxQuantity);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function confirmInventorySelectionsAction(
+  eventInventoryId: string,
+  eventId: string,
+): Promise<EventInventoryActionResult> {
+  const result = await confirmInventorySelections(eventInventoryId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function requestInventorySelectionChangesAction(
+  eventInventoryId: string,
+  eventId: string,
+  note?: string,
+): Promise<EventInventoryActionResult> {
+  const result = await requestInventorySelectionChanges(eventInventoryId, note);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }
