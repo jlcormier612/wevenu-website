@@ -1,31 +1,26 @@
 /**
- * Staff read-only client portal preview — same event-scoped materials the
- * couple will see, without portal token auth, release, invite, or mutation.
+ * Staff read-only client portal preview — portal-faithful payloads.
+ * Does not invite, release, share, ensure recommendations, or mutate.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getEventOrder } from "@/lib/event-orders/service";
+import type { EventOrderSharePayload } from "@/lib/event-orders/types";
 import { getEvent } from "@/lib/events/service";
 import { getFloorPlan, getFloorPlansByEvent } from "@/lib/floor-plans/service";
 import { getEventInventory } from "@/lib/event-inventory/service";
 import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
+import { getObjects as getTemplateObjects, getTemplate } from "@/lib/floor-plan-templates/service";
+import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getCurrentVenue } from "@/lib/venue/service";
-import type { PortalFloorPlanObject } from "@/lib/portal/types";
+import type { PortalEventOrderViewModel } from "@/components/portal/event-order-view";
+import type { PortalInventoryViewModel } from "@/components/portal/inventory-view";
+import type { FloorPlanPortalViewModel } from "@/components/portal/floor-plan-view";
+import type { PlanningTaskPreviewItem } from "@/components/portal/planning-tasks-view";
+import type { VendorPreviewCard } from "@/components/portal/vendors-preview-view";
+import type { PortalFloorPlanDetail, PortalFloorPlanObject } from "@/lib/portal/types";
 
 export type PreviewVisibility = "released" | "draft" | "not_included";
-
-export type PortalPreviewEventOrderLine = {
-  id: string;
-  description: string;
-  quantity: number;
-  amount: number;
-  sectionId: string | null;
-  sectionName: string | null;
-  isIncluded: boolean;
-  unit: string | null;
-  unitPrice: number | null;
-  notes: string | null;
-};
 
 export type PortalPreviewData = {
   eventId: string;
@@ -36,38 +31,64 @@ export type PortalPreviewData = {
   returnHref: string;
   planning: {
     visibility: PreviewVisibility;
-    tasks: Array<{ id: string; title: string; status: string }>;
+    released: boolean;
+    tasks: PlanningTaskPreviewItem[];
   };
   eventOrder: {
     visibility: PreviewVisibility;
-    sharedAt: string | null;
-    lines: PortalPreviewEventOrderLine[];
+    clientVisible: PortalEventOrderViewModel | null;
+    staffDraft: PortalEventOrderViewModel | null;
   };
   inventory: {
     visibility: PreviewVisibility;
-    items: Array<{ id: string; name: string; quantity: number; isIncluded: boolean }>;
+    clientVisible: PortalInventoryViewModel | null;
+    staffDraft: PortalInventoryViewModel | null;
   };
   floorPlans: {
     visibility: PreviewVisibility;
-    operationalFloorPlanId: string | null;
-    coupleSelectedFloorPlanId: string | null;
-    offerCount: number;
-    plan: {
-      id: string;
-      name: string;
-      roomWidthFt: number;
-      roomDepthFt: number;
-      backgroundImageUrl: string | null;
-      backgroundImageOpacity: number | null;
-      objects: PortalFloorPlanObject[];
-      sharedWithCouple: boolean;
-    } | null;
+    view: FloorPlanPortalViewModel;
   };
   vendors: {
     visibility: PreviewVisibility;
-    highlights: Array<{ id: string; name: string; category: string | null }>;
+    recommendations: VendorPreviewCard[];
   };
 };
+
+function toPortalObjects(
+  objects: Array<{
+    id: string;
+    objectType: string;
+    label: string | null;
+    capacity?: number | null;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    sortOrder?: number;
+    color: string | null;
+    notes?: string | null;
+    displayShape: string | null;
+    inventoryItemId?: string | null;
+  }>,
+): PortalFloorPlanObject[] {
+  return objects.map((o, i) => ({
+    id: o.id,
+    objectType: o.objectType,
+    label: o.label,
+    capacity: o.capacity ?? null,
+    x: o.x,
+    y: o.y,
+    width: o.width,
+    height: o.height,
+    rotation: o.rotation,
+    sortOrder: o.sortOrder ?? i,
+    color: o.color,
+    notes: o.notes ?? null,
+    displayShape: o.displayShape,
+    inventoryItemId: o.inventoryItemId ?? null,
+  }));
+}
 
 export async function loadClientPortalPreview(
   clientId: string,
@@ -110,35 +131,113 @@ export async function loadClientPortalPreview(
     .eq("kind", "client")
     .maybeSingle<{ id: string; released_at: string | null }>();
 
-  const { data: coupleTasks } = await supabase
+  const { data: coupleTaskRows } = await supabase
     .from("event_tasks")
-    .select("id, title, status")
+    .select(
+      "id, title, description, status, due_date, days_offset, due_date_locked, milestone_name, is_required",
+    )
     .eq("event_id", eventId)
     .eq("venue_id", venue.id)
     .eq("owner_type", "couple")
+    .in("visibility", ["client_visible", "client_owned"])
     .order("sort_order", { ascending: true })
     .limit(80);
 
+  const planningReleased = Boolean(clientApp?.released_at);
   const planningVisibility: PreviewVisibility = !clientApp
     ? "not_included"
-    : clientApp.released_at
+    : planningReleased
       ? "released"
       : "draft";
 
-  const eventOrder = await getEventOrder(eventId);
-  const sectionNameById = new Map((eventOrder?.sections ?? []).map((s) => [s.id, s.name]));
-  const eoLines: PortalPreviewEventOrderLine[] = (eventOrder?.lines ?? []).map((l) => ({
-    id: l.id,
-    description: l.description,
-    quantity: l.quantity,
-    amount: l.amount,
-    sectionId: l.sectionId,
-    sectionName: l.sectionId ? sectionNameById.get(l.sectionId) ?? null : null,
-    isIncluded: l.isIncluded,
-    unit: l.unit,
-    unitPrice: l.unitPrice,
-    notes: l.notes,
+  const planningTasks: PlanningTaskPreviewItem[] = (coupleTaskRows ?? []).map((t) => ({
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    status: t.status,
+    dueDate: t.due_date,
+    daysOffset: t.days_offset,
+    dueDateLocked: Boolean(t.due_date_locked),
+    milestoneName: t.milestone_name,
+    isRequired: Boolean(t.is_required),
   }));
+
+  const eventOrder = await getEventOrder(eventId);
+  let clientEo: PortalEventOrderViewModel | null = null;
+  let staffEoDraft: PortalEventOrderViewModel | null = null;
+
+  if (eventOrder?.sharedAt) {
+    const { data: snap } = await supabase
+      .from("event_order_share_snapshots")
+      .select("revision, shared_at, payload")
+      .eq("event_order_id", eventOrder.id)
+      .order("shared_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ revision: number; shared_at: string; payload: EventOrderSharePayload }>();
+
+    if (snap?.payload) {
+      const sectionNameById = new Map(snap.payload.sections.map((s) => [s.id, s.name]));
+      clientEo = {
+        id: eventOrder.id,
+        status: eventOrder.status,
+        revision: snap.revision,
+        sharedAt: snap.shared_at,
+        lines: snap.payload.lines.map((l) => ({
+          id: l.id,
+          description: l.description,
+          quantity: l.quantity,
+          amount: l.amount,
+          sectionId: l.sectionId,
+          sectionName: l.sectionId ? sectionNameById.get(l.sectionId) ?? null : null,
+          isIncluded: l.isIncluded,
+          unit: l.unit,
+          unitPrice: l.unitPrice,
+          notes: l.notes,
+        })),
+      };
+    } else {
+      const sectionNameById = new Map((eventOrder.sections ?? []).map((s) => [s.id, s.name]));
+      clientEo = {
+        id: eventOrder.id,
+        status: eventOrder.status,
+        revision: eventOrder.revision,
+        sharedAt: eventOrder.sharedAt,
+        lines: (eventOrder.lines ?? []).map((l) => ({
+          id: l.id,
+          description: l.description,
+          quantity: l.quantity,
+          amount: l.amount,
+          sectionId: l.sectionId,
+          sectionName: l.sectionId ? sectionNameById.get(l.sectionId) ?? null : null,
+          isIncluded: l.isIncluded,
+          unit: l.unit,
+          unitPrice: l.unitPrice,
+          notes: l.notes,
+        })),
+      };
+    }
+  } else if (eventOrder) {
+    const sectionNameById = new Map((eventOrder.sections ?? []).map((s) => [s.id, s.name]));
+    staffEoDraft = {
+      id: eventOrder.id,
+      status: eventOrder.status,
+      revision: eventOrder.revision,
+      sharedAt: null,
+      lines: (eventOrder.lines ?? []).map((l) => ({
+        id: l.id,
+        description: l.description,
+        quantity: l.quantity,
+        amount: l.amount,
+        sectionId: l.sectionId,
+        sectionName: l.sectionId ? sectionNameById.get(l.sectionId) ?? null : null,
+        isIncluded: l.isIncluded,
+        unit: l.unit,
+        unitPrice: l.unitPrice,
+        notes: l.notes,
+      })),
+    };
+  }
+
   const eoVisibility: PreviewVisibility = !eventOrder
     ? "not_included"
     : eventOrder.sharedAt
@@ -146,47 +245,122 @@ export async function loadClientPortalPreview(
       : "draft";
 
   const inventory = await getEventInventory(eventId);
+  const invReleased =
+    inventory != null && (inventory.status === "shared" || inventory.status === "finalized");
+  const mapInv = (inv: NonNullable<typeof inventory>): PortalInventoryViewModel => ({
+    id: inv.id,
+    status: inv.status,
+    finalizedAt: inv.finalizedAt ?? null,
+    items: (inv.items ?? []).map((i) => ({
+      id: i.id,
+      name: i.name,
+      category: i.category ?? null,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice ?? null,
+      isIncluded: i.isIncluded,
+      notes: i.notes ?? null,
+    })),
+  });
+
   const invVisibility: PreviewVisibility = !inventory
     ? "not_included"
-    : inventory.status === "shared" || inventory.status === "finalized"
+    : invReleased
       ? "released"
       : "draft";
 
   const plans = await getFloorPlansByEvent(eventId);
   const offers = await getEventFloorPlanOffers(eventId);
+  const sharedPlans = plans.filter((p) => p.sharedWithCouple);
   const operationalId = event.operationalFloorPlanId ?? null;
-  const coupleSelectedId = event.coupleSelectedFloorPlanId ?? null;
-  const workingId = operationalId
-    ?? coupleSelectedId
-    ?? plans.find((p) => p.sharedWithCouple)?.id
-    ?? plans[0]?.id
-    ?? null;
-  const workingDetail = workingId ? await getFloorPlan(workingId) : null;
-  const sharedAny = plans.some((p) => p.sharedWithCouple) || (offers?.length ?? 0) > 0;
-  const fpVisibility: PreviewVisibility = workingDetail
-    ? (workingDetail.sharedWithCouple || sharedAny ? "released" : "draft")
-    : offers.length > 0
-      ? "draft"
-      : "not_included";
 
-  const { data: highlights } = await supabase
-    .from("event_vendor_recommendations")
-    .select("id, vendor_id, vendors(name, category)")
-    .eq("event_id", eventId)
-    .eq("venue_id", venue.id)
-    .limit(40);
+  const detailsById: FloorPlanPortalViewModel["detailsById"] = {};
+  for (const p of sharedPlans) {
+    const detail = await getFloorPlan(p.id);
+    if (!detail) continue;
+    detailsById[p.id] = {
+      plan: {
+        id: detail.id,
+        name: detail.name,
+        roomWidthFt: Number(detail.roomWidthFt) || 0,
+        roomDepthFt: Number(detail.roomDepthFt) || 0,
+        backgroundImageUrl: detail.backgroundImageUrl ?? null,
+        backgroundImageOpacity: Number(detail.backgroundImageOpacity ?? 0.25),
+        notes: detail.notes ?? null,
+        isOperational: operationalId === detail.id,
+        spaceId: detail.spaceId ?? null,
+        measurementUnit: detail.measurementUnit ?? "ft",
+      },
+      objects: toPortalObjects(detail.objects ?? []),
+    } satisfies PortalFloorPlanDetail;
+  }
 
-  const vendorRows = (highlights ?? []).map((row: {
-    id: string;
-    vendors: { name: string; category: string | null } | { name: string; category: string | null }[] | null;
-  }) => {
-    const v = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
-    return {
-      id: row.id,
-      name: v?.name ?? "Vendor",
-      category: v?.category ?? null,
+  const offerPreviewsById: NonNullable<FloorPlanPortalViewModel["offerPreviewsById"]> = {};
+  const offered = offers.filter((o) => o.isOffered !== false);
+  for (const o of offered) {
+    const template = await getTemplate(o.floorPlanTemplateId);
+    if (!template) continue;
+    const objs = await getTemplateObjects(o.floorPlanTemplateId);
+    offerPreviewsById[o.id] = {
+      name: o.coupleLabel?.trim() || o.templateName || template.name,
+      roomWidthFt: Number(template.roomWidthFt) || 0,
+      roomDepthFt: Number(template.roomDepthFt) || 0,
+      backgroundImageUrl: template.backgroundImageUrl ?? null,
+      backgroundImageOpacity: Number(template.backgroundImageOpacity ?? 0.25),
+      objects: toPortalObjects(objs),
     };
-  });
+  }
+
+  const fpVisibility: PreviewVisibility =
+    sharedPlans.length > 0
+      ? "released"
+      : offered.length > 0
+        ? "draft"
+        : "not_included";
+
+  const floorView: FloorPlanPortalViewModel = {
+    list: sharedPlans.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isOperational: operationalId === p.id,
+      spaceId: p.spaceId ?? null,
+      createdAt: p.createdAt,
+    })),
+    offers: offered.map((o) => ({
+      offerId: o.id,
+      templateId: o.floorPlanTemplateId,
+      name: o.coupleLabel?.trim() || o.templateName,
+      blurb: o.coupleBlurb ?? null,
+      spaceId: o.templateSpaceId ?? null,
+      sortOrder: o.sortOrder,
+      objectCount: o.objectCount ?? 0,
+      isCurrentSelection: Boolean(
+        event.coupleSelectedFloorPlanId
+        && sharedPlans.some(
+          (p) => p.id === event.coupleSelectedFloorPlanId && p.sourceTemplateId === o.floorPlanTemplateId,
+        ),
+      ),
+      roomWidthFt: Number(offerPreviewsById[o.id]?.roomWidthFt ?? 0),
+      roomDepthFt: Number(offerPreviewsById[o.id]?.roomDepthFt ?? 0),
+    })),
+    operationalFloorPlanId: operationalId,
+    detailsById,
+    offerPreviewsById,
+  };
+
+  // Read-only — never getOrEnsure (would seed Network → event recommendations).
+  const recs = await getEventRecommendations(eventId);
+  const vendorCards: VendorPreviewCard[] = recs.map((r) => ({
+    id: r.id,
+    vendorId: r.vendorId,
+    name: r.vendorName || "Vendor",
+    category: r.vendorCategory ?? null,
+    description: null,
+    photoUrl: null,
+    websiteUrl: null,
+    note: r.note ?? null,
+  }));
+  const vendorVisibility: PreviewVisibility =
+    vendorCards.length > 0 ? "released" : "not_included";
 
   return {
     eventId,
@@ -197,62 +371,26 @@ export async function loadClientPortalPreview(
     returnHref: `/clients/${clientId}`,
     planning: {
       visibility: planningVisibility,
-      tasks: (coupleTasks ?? []).map((t) => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-      })),
+      released: planningReleased,
+      tasks: planningTasks,
     },
     eventOrder: {
       visibility: eoVisibility,
-      sharedAt: eventOrder?.sharedAt ?? null,
-      lines: eoLines,
+      clientVisible: clientEo,
+      staffDraft: staffEoDraft,
     },
     inventory: {
       visibility: invVisibility,
-      items: (inventory?.items ?? []).map((i) => ({
-        id: i.id,
-        name: i.name,
-        quantity: i.quantity,
-        isIncluded: i.isIncluded,
-      })),
+      clientVisible: invReleased && inventory ? mapInv(inventory) : null,
+      staffDraft: !invReleased && inventory ? mapInv(inventory) : null,
     },
     floorPlans: {
       visibility: fpVisibility,
-      operationalFloorPlanId: operationalId,
-      coupleSelectedFloorPlanId: coupleSelectedId,
-      offerCount: offers.length,
-      plan: workingDetail
-        ? {
-            id: workingDetail.id,
-            name: workingDetail.name,
-            roomWidthFt: Number(workingDetail.roomWidthFt) || 0,
-            roomDepthFt: Number(workingDetail.roomDepthFt) || 0,
-            backgroundImageUrl: workingDetail.backgroundImageUrl ?? null,
-            backgroundImageOpacity: workingDetail.backgroundImageOpacity ?? null,
-            sharedWithCouple: workingDetail.sharedWithCouple,
-            objects: (workingDetail.objects ?? []).map((o): PortalFloorPlanObject => ({
-              id: o.id,
-              objectType: o.objectType,
-              label: o.label,
-              capacity: o.capacity ?? null,
-              x: o.x,
-              y: o.y,
-              width: o.width,
-              height: o.height,
-              rotation: o.rotation,
-              sortOrder: o.sortOrder,
-              color: o.color,
-              notes: o.notes ?? null,
-              displayShape: o.displayShape,
-              inventoryItemId: o.inventoryItemId ?? null,
-            })),
-          }
-        : null,
+      view: floorView,
     },
     vendors: {
-      visibility: vendorRows.length > 0 ? "draft" : "not_included",
-      highlights: vendorRows,
+      visibility: vendorVisibility,
+      recommendations: vendorCards,
     },
   };
 }

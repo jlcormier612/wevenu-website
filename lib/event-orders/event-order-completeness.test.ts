@@ -141,6 +141,18 @@ describe("Client portal preview seams", () => {
     assert.doesNotMatch(preview, /prepareAndRelease|inviteClient|createInvoice/);
     assert.doesNotMatch(loader, /releasePlaybookApplication|shareEventOrderWithClient|ensureWorkingLayoutForEvent/);
     assert.doesNotMatch(loader, /from\("event_order_templates"\)\.update|from\("event_orders"\)\.update/);
+    assert.doesNotMatch(loader, /getOrEnsureEventRecommendations/);
     assert.match(page, /Does not use a portal invite token/);
+  });
+
+  it("preview mounts shared portal presentation views (not a parallel mockup list)", () => {
+    assert.match(preview, /EventOrderPortalView/);
+    assert.match(preview, /InventoryPortalView/);
+    assert.match(preview, /FloorPlanPortalView/);
+    assert.match(preview, /PlanningTasksPortalView/);
+    assert.match(preview, /VendorsPortalPreviewView/);
+    assert.match(loader, /event_order_share_snapshots/);
+    assert.match(loader, /sharedWithCouple/);
+    assert.match(loader, /owner_type", "couple"/);
   });
 });
