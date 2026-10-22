@@ -45,7 +45,11 @@ import type { ShareTimelineWithCoupleResult } from "@/lib/timeline/service";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
-  revalidatePath(`/clients/${eventId}`);
+  // Day-of Sheet + Timeline print are separate RSC routes — parent
+  // revalidatePath does not invalidate them. Without these, deletes/edits
+  // leave a stale preview until a hard redeploy or unrelated mutation.
+  revalidatePath(`/events/${eventId}/day-sheet`);
+  revalidatePath(`/events/${eventId}/timeline-print`);
 }
 
 /**
@@ -72,8 +76,24 @@ async function revalidateVendorEventTimelines(eventId: string) {
   }
 }
 
+async function revalidateClientWorkspace(eventId: string) {
+  try {
+    const { createClient } = await import("@/integrations/supabase/server");
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("events")
+      .select("client_id")
+      .eq("id", eventId)
+      .maybeSingle<{ client_id: string | null }>();
+    if (data?.client_id) revalidatePath(`/clients/${data.client_id}`);
+  } catch {
+    // Non-blocking.
+  }
+}
+
 async function revalidateTimelineSurfaces(eventId: string) {
   revalidateEvent(eventId);
+  await revalidateClientWorkspace(eventId);
   await revalidateVendorEventTimelines(eventId);
 }
 

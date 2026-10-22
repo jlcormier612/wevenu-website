@@ -9,11 +9,13 @@
 import type { EventWithDetails } from "@/lib/events/types";
 import { formatDate, formatTime } from "@/lib/events/constants";
 import { buildDaySheetHeaderSummary } from "@/lib/events/day-sheet-header-summary";
+import { buildDaySheetSchedule } from "@/lib/events/day-sheet-schedule";
 import { resolvePrintBrandColors } from "@/lib/collateral/print-brand";
 import type { Venue } from "@/lib/venue/types";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { Questionnaire } from "@/lib/events/questionnaire";
 import { INTERNAL_NOTES_LABEL } from "@/lib/notes/internal-notes-copy";
+import type { TimelineEntry } from "@/lib/timeline/types";
 
 function formatVendorTime(hhmm: string): string {
   const [h, m] = hhmm.split(":");
@@ -80,6 +82,50 @@ export function DaySheetDocument({
     event.teardownTime ? `Teardown ${formatTime(event.teardownTime)}` : null,
   ].filter(Boolean);
 
+  // Current saved event Timeline only — never Library templates.
+  const schedule = buildDaySheetSchedule(
+    event.timeline,
+    event.eventDate,
+    event.eventEndDate,
+  );
+
+  function renderTimedRow(entry: TimelineEntry) {
+    const isStart = entry.entryTime === startTime5 && (entry.dayOffset ?? 0) === 0;
+    return (
+      <div key={entry.id} className="flex gap-5" data-testid="day-sheet-timed-entry">
+        <div className="w-20 shrink-0 text-right">
+          <span
+            className={`text-xs font-semibold ${isStart ? "" : "text-gray-400"}`}
+            style={isStart ? { color: brand.accent } : undefined}
+          >
+            {entry.entryTime ? formatTime(entry.entryTime) : ""}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1 pb-1.5 border-b border-gray-50">
+          <p
+            className={`leading-snug ${isStart ? "font-semibold text-gray-900" : "text-gray-700"}`}
+          >
+            {isStart && (
+              <span
+                className="mr-1.5 text-xs font-bold"
+                style={{ color: brand.accent }}
+                aria-hidden
+              >
+                ★
+              </span>
+            )}
+            {entry.title}
+          </p>
+          {entry.description && (
+            <p className="mt-0.5 text-xs text-gray-400 italic">
+              {entry.description}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white font-sans text-sm text-gray-800">
       {/* ── Header bar ─────────────────────────────────────────────────── */}
@@ -128,50 +174,47 @@ export function DaySheetDocument({
         )}
       </div>
 
-      {/* ── Timeline ────────────────────────────────────────────────────── */}
-      {event.timeline.length > 0 && (
-        <div className="px-10 pt-6 pb-2">
+      {/* ── Schedule (timed, current saved event Timeline) ─────────────── */}
+      {schedule.timedGroups.some((g) => g.entries.length > 0) && (
+        <div className="px-10 pt-6 pb-2" data-testid="day-sheet-schedule">
           <Rule />
           <SectionLabel>Schedule</SectionLabel>
-          <div className="space-y-2.5">
-            {event.timeline.map((entry) => {
-              const isStart = entry.entryTime === startTime5;
-              return (
-                <div key={entry.id} className="flex gap-5">
-                  {/* Time column */}
-                  <div className="w-20 shrink-0 text-right">
-                    <span
-                      className={`text-xs font-semibold ${isStart ? "" : "text-gray-400"}`}
-                      style={isStart ? { color: brand.accent } : undefined}
-                    >
-                      {entry.entryTime ? formatTime(entry.entryTime) : ""}
-                    </span>
-                  </div>
-                  {/* Content column */}
-                  <div className="min-w-0 flex-1 pb-1.5 border-b border-gray-50">
-                    <p
-                      className={`leading-snug ${isStart ? "font-semibold text-gray-900" : "text-gray-700"}`}
-                    >
-                      {isStart && (
-                        <span
-                          className="mr-1.5 text-xs font-bold"
-                          style={{ color: brand.accent }}
-                          aria-hidden
-                        >
-                          ★
-                        </span>
-                      )}
-                      {entry.title}
-                    </p>
-                    {entry.description && (
-                      <p className="mt-0.5 text-xs text-gray-400 italic">
-                        {entry.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="space-y-4">
+            {schedule.timedGroups.map((group) => (
+              <div key={`day-${group.dayOffset}`} className="space-y-2.5">
+                {group.dayLabel ? (
+                  <p className="text-[11px] font-semibold text-gray-500" data-testid="day-sheet-day-label">
+                    {group.dayLabel}
+                  </p>
+                ) : null}
+                {group.entries.map((entry) => renderTimedRow(entry))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Unscheduled (untimed — no fabricated clock times) ──────────── */}
+      {schedule.unscheduled.length > 0 && (
+        <div className="px-10 pt-6 pb-2" data-testid="day-sheet-unscheduled">
+          <Rule />
+          <SectionLabel>Unscheduled items</SectionLabel>
+          <p className="mb-3 text-xs text-gray-400">
+            These items are on this event&apos;s timeline without a set time.
+          </p>
+          <div className="space-y-2">
+            {schedule.unscheduled.map((entry) => (
+              <div
+                key={entry.id}
+                className="min-w-0 pb-1.5 border-b border-gray-50"
+                data-testid="day-sheet-unscheduled-entry"
+              >
+                <p className="leading-snug text-gray-700">{entry.title}</p>
+                {entry.description && (
+                  <p className="mt-0.5 text-xs text-gray-400 italic">{entry.description}</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
