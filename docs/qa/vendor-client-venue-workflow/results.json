@@ -1,13 +1,13 @@
 {
   "verdict": "GREEN",
-  "expectedSha": "0cbc2df7b5cd1f9cd3375e9eb23ccfa42ff59393",
+  "expectedSha": "3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0",
   "passed": 17,
   "failed": 0,
   "checks": [
     {
       "name": "serving_sha",
       "pass": true,
-      "detail": "serving=0cbc2df7b5cd1f9cd3375e9eb23ccfa42ff59393 expected=0cbc2df7b5cd1f9cd3375e9eb23ccfa42ff59393"
+      "detail": "serving=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0 expected=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0"
     },
     {
       "name": "rpc_optional_vs_required_split",
@@ -37,17 +37,17 @@
     {
       "name": "private_pick_persists_without_selected_at",
       "pass": true,
-      "detail": "{\"id\":\"f71e0fa4-a6c9-4387-880f-548df220f4b3\",\"picked_at\":\"2026-10-22T20:53:14.765523+00:00\",\"selected_at\":null,\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\"}"
+      "detail": "{\"id\":\"e7105f32-9d19-425e-9836-17bbafafca18\",\"picked_at\":\"2026-10-22T21:16:09.896012+00:00\",\"selected_at\":null,\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\"}"
     },
     {
       "name": "inquiry_to_claimed_vendor_persists",
       "pass": true,
-      "detail": "{\"ok\":true,\"created\":true,\"messageId\":\"841a60f3-9a25-403f-a3e8-25e0c73d9776\",\"conversationId\":\"286b293e-f813-4c9c-a720-6fe5bdd26540\"}"
+      "detail": "{\"ok\":true,\"created\":true,\"messageId\":\"18a9edca-5262-45d6-99c8-bda8961bfac0\",\"conversationId\":\"91c6628e-66c7-4f5d-bcc5-d18b49b2b47f\"}"
     },
     {
       "name": "inquiry_message_row_exists",
       "pass": true,
-      "detail": "{\"rows\":[{\"id\":\"841a60f3-9a25-403f-a3e8-25e0c73d9776\",\"body\":\"Sandbox QA — are you available for our date?\",\"sender_type\":\"lead_or_client\",\"conversation_id\":\"286b293e-f813-4c9c-a720-6fe5bdd26540\"}]}"
+      "detail": "{\"rows\":[{\"id\":\"18a9edca-5262-45d6-99c8-bda8961bfac0\",\"body\":\"Sandbox QA — are you available for our date?\",\"sender_type\":\"lead_or_client\",\"conversation_id\":\"91c6628e-66c7-4f5d-bcc5-d18b49b2b47f\"}]}"
     },
     {
       "name": "anon_cannot_read_inquiry_conversation_directly",
@@ -62,27 +62,27 @@
     {
       "name": "submit_vendor_list_ok",
       "pass": true,
-      "detail": "{\"ok\":true,\"eventId\":\"ea7933ba-ddb2-49d3-973c-2b76a674e42d\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":true,\"submissionId\":\"ca66049d-0401-4eaa-8c32-cead8e04c15f\",\"newlyAssigned\":[{\"vendorId\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"assignmentId\":\"2cec203d-c0a1-4561-b149-4347d2a9b7e2\"}],\"selectedCount\":1,\"removalRequests\":[{\"vendorId\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\",\"requestId\":\"fe5aa7b2-0b84-46a3-838a-d11d782d9a8b\",\"assignmentId\":\"3ae7f13a-67b5-4327-9400-dffa56ad4616\"}]}"
+      "detail": "{\"ok\":true,\"eventId\":\"d5df9827-b2f5-43a7-97f9-f969d473d820\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":true,\"submissionId\":\"3b5eb64e-c822-4ec5-a500-5aef4f31c77c\",\"newlyAssigned\":[{\"vendorId\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"assignmentId\":\"7ced8f96-7bc3-427a-8974-43c7e9c1bf5b\"}],\"selectedCount\":1,\"removalRequests\":[{\"vendorId\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\",\"requestId\":\"bbfd3864-2e22-46e5-a4c8-20c526e8ac06\",\"assignmentId\":\"3c3dbe4b-b07f-4e74-8939-62bebdc8858c\"}]}"
     },
     {
       "name": "submit_sets_selected_at",
       "pass": true,
-      "detail": "{\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"picked_at\":\"2026-10-22T20:53:14.765523+00:00\",\"selected_at\":\"2026-10-22T20:53:17.976757+00:00\"}"
+      "detail": "{\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"picked_at\":\"2026-10-22T21:16:09.896012+00:00\",\"selected_at\":\"2026-10-22T21:16:13.116435+00:00\"}"
     },
     {
       "name": "event_assignments_include_required_and_submitted",
       "pass": true,
-      "detail": "[{\"id\":\"2cec203d-c0a1-4561-b149-4347d2a9b7e2\",\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\"},{\"id\":\"3ae7f13a-67b5-4327-9400-dffa56ad4616\",\"vendor_id\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\"}]"
+      "detail": "[{\"id\":\"7ced8f96-7bc3-427a-8974-43c7e9c1bf5b\",\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\"},{\"id\":\"3c3dbe4b-b07f-4e74-8939-62bebdc8858c\",\"vendor_id\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\"}]"
     },
     {
       "name": "resubmit_idempotent_no_duplicate_harah_assignment",
       "pass": true,
-      "detail": "{\"assignCount\":1,\"submit2\":{\"ok\":true,\"eventId\":\"ea7933ba-ddb2-49d3-973c-2b76a674e42d\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":false,\"submissionId\":\"86135400-9925-42c9-b035-c65bca058a55\",\"newlyAssigned\":[],\"selectedCount\":1,\"removalRequests\":[{\"vendorId\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\",\"requestId\":\"fe5aa7b2-0b84-46a3-838a-d11d782d9a8b\",\"assignmentId\":\"3ae7f13a-67b5-4327-9400-dffa56ad4616\"}]}}"
+      "detail": "{\"assignCount\":1,\"submit2\":{\"ok\":true,\"eventId\":\"d5df9827-b2f5-43a7-97f9-f969d473d820\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":false,\"submissionId\":\"d96f31de-7fa5-4de7-987e-e9eeb8421a6f\",\"newlyAssigned\":[],\"selectedCount\":1,\"removalRequests\":[{\"vendorId\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\",\"requestId\":\"bbfd3864-2e22-46e5-a4c8-20c526e8ac06\",\"assignmentId\":\"3c3dbe4b-b07f-4e74-8939-62bebdc8858c\"}]}}"
     },
     {
       "name": "venue_can_see_submitted_selections",
       "pass": true,
-      "detail": "[{\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"selected_at\":\"2026-10-22T20:53:17.976757+00:00\"}]"
+      "detail": "[{\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"selected_at\":\"2026-10-22T21:16:13.116435+00:00\"}]"
     },
     {
       "name": "portal_shows_chosen_after_submit",
@@ -90,5 +90,5 @@
       "detail": "On your team | Harah's Hair· booked | Harah's Hair | On your team"
     }
   ],
-  "at": "2026-10-22T20:53:23.154Z"
+  "at": "2026-10-22T21:16:17.923Z"
 }

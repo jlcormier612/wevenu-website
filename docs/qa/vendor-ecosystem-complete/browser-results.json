@@ -1,0 +1,149 @@
+{
+  "verdict": "GREEN",
+  "expectedSha": "3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0",
+  "passed": 28,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0 expected=3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0"
+    },
+    {
+      "name": "venue_network_lists_active_relationships",
+      "pass": true,
+      "detail": "[{\"vendor_id\":\"e5ed92aa-82a4-46c7-b6c2-36a90db714e1\",\"status\":\"active\",\"preference_level\":\"recommended\",\"is_required\":false,\"vendors\":{\"is_claimed\":false,\"business_name\":\"Flora's Flowers\"}},{\"vendor_id\":\"a35f82fa-f63d-41e3-aad5-73c3eb90e971\",\"status\":\"active\",\"preference_level\":\"preferred\",\"is_required\":false,\"vendors\":{\"is_claimed\":true,\"business_name\":\"Baker's Dozen\"}},{\"vendor_id\":\"891899a8-8521-4be0-9dfa-3bcba3077c54\",\"status\":\"active\",\"preference_level\":\"preferred\",\"is_required\":true,\"vendors\":{\"is_claimed\":true,\"business_name\":\"Cuppity Cakes\"}},{\"vendor_id\":\"ec1d6f35-ebf7-4d3d-bda5-d011522d6e9d\",\"status\":\"active\",\"preference_level\":\"preferred\",\"is_required\":false,\"vendors\":{\"is_claimed\":true,\"business_name\":\"Sweet Dreams Desserts\"}},{\"vendor_id\":\"db841877-0a40-43e5-b860-dde755dfadf2\",\"status\":\"active\",\"preference_level\":\"recommended\",\"is_required\":false,\"vendors\":{\"is_claimed\":fals"
+    },
+    {
+      "name": "uninvited_vendor_has_no_invitation_yet",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "invitation_preview_and_claim_token_resolve",
+      "pass": true,
+      "detail": "{\"preview\":{\"email\":\"vendor-invite-1792704062739@hellotocheers-test.invalid\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"vendorId\":\"f20bc414-1b65-49ce-9a97-34cfa9d5e3b0\",\"venueName\":\"Jen's Fancy Venue\",\"vendorName\":\"VendorEcosystem Photo 1b21\",\"invitationId\":\"bed49a9d-3dc4-456e-a2dc-79f48fbb8c04\"},\"byToken\":{\"id\":\"f20bc414-1b65-49ce-9a97-34cfa9d5e3b0\",\"category\":\"photography\",\"venueName\":\"Jen's Fancy Venue\",\"businessName\":\"VendorEcosystem Photo 1b21\"}}"
+    },
+    {
+      "name": "invalid_claim_token_rejected",
+      "pass": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "invitation_resend_idempotent",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "invite_accept_page_renders_for_valid_token",
+      "pass": true,
+      "detail": "Claim | claim | Sign in | create | claim | Claim | Sign in | claim"
+    },
+    {
+      "name": "invite_accept_page_rejects_invalid_token",
+      "pass": true,
+      "detail": "Link invalid or expired\n\nThis invitation link has already been used, expired, or is no longer valid. Ask your venue contact to send a new invitation."
+    },
+    {
+      "name": "vendor_profile_description_persists",
+      "pass": true,
+      "detail": "{\"before\":\"Truly beautiful gourmet and high end cak\",\"after\":\"Eco profile 9-1b21\"}"
+    },
+    {
+      "name": "vendor_availability_persists",
+      "pass": true,
+      "detail": "{\"availRow\":{\"id\":\"9bd23ea2-c142-411b-b92b-b750cc5b0d1d\",\"date\":\"2075-12-04\",\"is_blocked\":false,\"note\":\"Eco available 1b21\"}}"
+    },
+    {
+      "name": "anon_cannot_mutate_vendor_profile",
+      "pass": true,
+      "detail": "{\"success\":true,\"error\":null,\"data\":[],\"count\":null,\"status\":200,\"statusText\":\"OK\"}"
+    },
+    {
+      "name": "vendor_portal_profile_reachable",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/vendor/profile body=Profile | Profile | Profile | Business | Business | profile | Profile"
+    },
+    {
+      "name": "vendor_portal_availability_reachable",
+      "pass": true,
+      "detail": "Availability | Availability | availability | Blocked | blocked"
+    },
+    {
+      "name": "unclaimed_inquiry_rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"vendor_unclaimed\"}"
+    },
+    {
+      "name": "claimed_inquiry_creates_conversation",
+      "pass": true,
+      "detail": "{\"ok\":true,\"created\":true,\"messageId\":\"394072d0-71c1-4c7b-9a99-62a00cce4ff9\",\"conversationId\":\"8506c600-4bb3-4b78-836c-cc94cda36806\"}"
+    },
+    {
+      "name": "vendor_reply_persists_in_conversation",
+      "pass": true,
+      "detail": "{\"msgs\":[{\"id\":\"394072d0-71c1-4c7b-9a99-62a00cce4ff9\",\"body\":\"Sandbox ecosystem inquiry 1792704062739-1b21\",\"sender_type\":\"lead_or_client\",\"channel\":\"portal\"},{\"id\":\"2b50b65a-9ba7-4d6f-b5bd-65edcb794263\",\"body\":\"Vendor reply ecosystem 1792704062739-1b21\",\"sender_type\":\"vendor\",\"channel\":\"portal\"}]}"
+    },
+    {
+      "name": "internal_note_not_leaked_to_couple_api",
+      "pass": true,
+      "detail": "{\"coupleView\":{\"messages\":[{\"id\":\"394072d0-71c1-4c7b-9a99-62a00cce4ff9\",\"body\":\"Sandbox ecosystem inquiry 1792704062739-1b21\",\"sentAt\":\"2026-10-22T21:21:18.593368+00:00\",\"senderType\":\"lead_or_client\",\"attachments\":[]},{\"id\":\"2b50b65a-9ba7-4d6f-b5bd-65edcb794263\",\"body\":\"Vendor reply ecosystem 1792704062739-1b21\",\"sentAt\":\"2026-10-22T21:21:18.669+00:00\",\"senderType\":\"vendor\",\"attachments\":[]}],\"vendorName\":\"Harah's Hair\",\"conversationId\":\"8506c600-4bb3-4b78-836c-cc94cda36806\",\"conversationKind\":\""
+    },
+    {
+      "name": "private_pick_before_submit",
+      "pass": true,
+      "detail": "{\"picked_at\":\"2026-10-22T21:21:18.907+00:00\",\"selected_at\":null}"
+    },
+    {
+      "name": "submit_creates_event_assignment",
+      "pass": true,
+      "detail": "{\"submit\":{\"ok\":true,\"eventId\":\"65b10d76-1ae9-43cc-be31-852df93a8d6c\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":true,\"submissionId\":\"e9275f61-1f64-434f-8231-f4cbe42c7d0d\",\"newlyAssigned\":[{\"vendorId\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"assignmentId\":\"501f37a6-3c8d-4b66-9833-0b7f698babc6\"}],\"selectedCount\":1,\"removalRequests\":[]},\"assign\":{\"id\":\"501f37a6-3c8d-4b66-9833-0b7f698babc6\",\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\"}}"
+    },
+    {
+      "name": "submit_idempotent",
+      "pass": true,
+      "detail": "{\"assignCount\":1,\"submit2\":{\"ok\":true,\"eventId\":\"65b10d76-1ae9-43cc-be31-852df93a8d6c\",\"venueId\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\",\"celebrated\":false,\"submissionId\":\"4ad10100-d994-444e-9a3d-acfb675d3456\",\"newlyAssigned\":[],\"selectedCount\":1,\"removalRequests\":[]}}"
+    },
+    {
+      "name": "assigned_vendor_linked_to_event",
+      "pass": true,
+      "detail": "{\"id\":\"501f37a6-3c8d-4b66-9833-0b7f698babc6\",\"event_id\":\"65b10d76-1ae9-43cc-be31-852df93a8d6c\",\"vendor_id\":\"42a8d273-f738-4f3c-bdcd-f2a5a237e1b3\",\"share_couple_email\":false,\"share_couple_phone\":false}"
+    },
+    {
+      "name": "vendor_owned_event_task_created",
+      "pass": true,
+      "detail": "{\"task\":{\"id\":\"c4848478-2649-4d5a-ac0e-8031f2695a77\",\"visibility\":\"vendor_owned\",\"owner_type\":\"vendor\"}}"
+    },
+    {
+      "name": "documents_support_shared_with_vendors",
+      "pass": true,
+      "detail": "sample={\"id\":\"3db97a51-88ff-4046-a14e-338b9dcaf1ad\",\"shared_with_vendors\":false} err="
+    },
+    {
+      "name": "client_portal_vendors_section_loads",
+      "pass": true,
+      "detail": "Vendor | ask | Vendor | vendor"
+    },
+    {
+      "name": "anon_cannot_list_other_venue_relationships",
+      "pass": true,
+      "detail": "{\"success\":true,\"error\":null,\"data\":[],\"count\":null,\"status\":200,\"statusText\":\"OK\"}"
+    },
+    {
+      "name": "anon_cannot_read_event_assignment",
+      "pass": true,
+      "detail": "{\"success\":true,\"error\":null,\"data\":null,\"count\":null,\"status\":200,\"statusText\":\"OK\"}"
+    },
+    {
+      "name": "venue_vendors_directory_loads",
+      "pass": true,
+      "detail": "Vendors | Vendors | Vendors | required | Vendors | Add Vendor | Required | Preferred | Preferred | Required | Recommended | Preferred | Preferred | Recommended | Recommended"
+    },
+    {
+      "name": "notification_records_present_or_table_reachable",
+      "pass": true,
+      "detail": "vendor_notifications=[{\"id\":\"63e2edd7-7d75-4543-9ac5-7e27de5acad5\",\"title\":\"New task shared with you\",\"created_at\":\"2026-10-22T21:21:19.497403+00:00\"},{\"id\":\"37acc395-d973-48ea-bbb4-7fb03a272fdf\",\"title\":\"You've been selected for an event\",\"created_at\":\"2026-10-22T21:21:19.074724+00:00\"}]"
+    }
+  ],
+  "at": "2026-10-22T21:21:40.477Z"
+}

@@ -8,9 +8,9 @@ Production untouched. Unrelated dirty tree preserved.
 
 | Item | Value |
 | --- | --- |
-| SHA | `0cbc2df7b5cd1f9cd3375e9eb23ccfa42ff59393` |
-| Deploy | [39851502751](https://github.com/jlcormier612/wevenu-website/actions/runs/39851502751) success |
-| Serving `dpl=` | exact match |
+| Original product SHA | `0cbc2df7b5cd1f9cd3375e9eb23ccfa42ff59393` |
+| Original deploy | [39851502751](https://github.com/jlcormier612/wevenu-website/actions/runs/39851502751) success |
+| Re-verified serving `dpl=` (2026-10-22) | `3dbc2a45fbcc0fd9fa430884a3c9cc82d46d52d0` (includes `0cbc2df7`) |
 
 ## Root causes fixed
 
