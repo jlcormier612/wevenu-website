@@ -1,0 +1,50 @@
+PASS serving_sha — serving=afbd0dff516dbda3057dc056475ea96b0c9adcc5 expected=afbd0dff516dbda3057dc056475ea96b0c9adcc5
+PASS fixture_event — event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be score=8
+PASS preview_loaded — Hello to Cheers
+PASS preview_banner_safety — safety note
+PASS preview_back_link — portal-preview-back
+PASS tab_event-order_section — portal-preview-event-order
+PASS tab_floor-plans_section — portal-preview-floor-plans
+PASS tab_planning_section — portal-preview-planning
+PASS tab_inventory_section — portal-preview-inventory
+PASS tab_vendors_section — portal-preview-vendors
+PASS eo_uses_portal_view — empty=true view=true
+PASS inventory_uses_portal_view — empty=true view=true
+PASS floor_uses_portal_view — empty=false view=true
+PASS floor_no_mutating_choose — Preview — not yet released
+
+Layout offers are visible for choosing; shared Floor Plan view appears after the venue shares a plan.
+
+Choose your layout
+
+Your venue has shared a few ways to arrange the s
+PASS planning_uses_portal_view — empty=false view=true
+PASS planning_no_venue_task_leak — none
+PASS planning_shows_couple_task_when_present — Complete your questionnaire
+PASS vendors_uses_portal_view — empty=false view=true
+PASS vendors_show_when_configured — shown=Flora's Flowers|Harah's Hair|Sweet Dreams Desserts empty=false
+PASS narrow_screenshots — 390px all tabs
+PASS return_to_booking — href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be
+PASS portal_session_insert_for_compare — ppfid_1792684556995_b02387
+PASS couple_portal_event_order_loaded — B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend
+PASS couple_portal_floor_plans_loaded — B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend
+PASS couple_portal_planning_loaded — B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend
+PASS couple_portal_inventory_loaded — B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend
+PASS couple_portal_vendors_loaded — B2P & Portal · Jen's Fancy Venue Jul 17, 2060 Export my data 🏠 Home ✅ Tasks 9+ 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vend
+PASS eo_side_by_side_shared_lines — EO not shared — draft overlay expected in preview only
+PASS no_invoice_mutation — b=38 a=38
+PASS no_invite_mutation — b=1 a=1
+PASS no_notification_log_mutation — b=3477 a=3477
+PASS no_eo_share_mutation — b={"id":"624eceef-5096-4288-b104-62daa3a82d11","shared_at":null,"revision":0,"status":"open"} a={"id":"624eceef-5096-4288-b104-62daa3a82d11","shared_at":null,"revision":0,"status":"open"}
+PASS no_inventory_status_mutation — b=null a=null
+PASS no_recs_seed_mutation — b=5 a=5
+PASS no_task_mutation — b=18 a=18
+PASS library_templates_intact — b=2 a=2
+PASS portal_sessions_only_qa_insert — delta=1 (0=no insert path, 1=qa compare token)
+{
+  "status": "GREEN",
+  "passed": 37,
+  "failed": 0,
+  "servingSha": "afbd0dff516dbda3057dc056475ea96b0c9adcc5",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842"
+}

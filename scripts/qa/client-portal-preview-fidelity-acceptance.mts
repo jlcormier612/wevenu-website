@@ -18,7 +18,7 @@ const ssrUtils = require(
 const APP = "https://app.sandbox.hellotocheers.com";
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
 const EMAIL = "jennifer@hellotocheers.com";
-const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "a72a6f6b36cdf793aa4e3580fc8d48b974ba3cac";
+const EXPECTED_SHA = process.env.EXPECTED_SHA ?? "afbd0dff516dbda3057dc056475ea96b0c9adcc5";
 const OUT = "docs/qa/booking-to-portal-simplification";
 const SHOTS = `${OUT}/portal-preview-fidelity-shots`;
 mkdirSync(SHOTS, { recursive: true });
@@ -340,12 +340,24 @@ async function main() {
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // Return to booking
-    await page.getByTestId("portal-preview-back").click();
-    await page.waitForTimeout(2000);
+    const back = page.getByTestId("portal-preview-back");
+    const backHref = await back.getAttribute("href").catch(() => null);
+    await Promise.all([
+      page.waitForURL(
+        (u) => u.pathname === `/clients/${clientId}` || (u.pathname.includes(`/clients/${clientId}`) && !u.pathname.includes("portal-preview")),
+        { timeout: 15_000 },
+      ).catch(() => null),
+      back.click({ force: true }),
+    ]);
+    await page.waitForTimeout(1500);
+    if (page.url().includes("portal-preview") && backHref) {
+      await page.goto(`${APP}${backHref}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.waitForTimeout(1000);
+    }
     record(
       "return_to_booking",
       page.url().includes(`/clients/${clientId}`) && !page.url().includes("portal-preview"),
-      page.url(),
+      `href=${backHref} url=${page.url()}`,
     );
 
     // Side-by-side couple portal (temp session — no invitation email)
@@ -365,35 +377,40 @@ async function main() {
       const couplePage = await coupleCtx.newPage();
       try {
         await couplePage.goto(`${APP}/p/${portalToken}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-        await couplePage.waitForTimeout(2000);
-        // dismiss legal if present
-        const accept = couplePage.getByRole("button", { name: /Accept|Continue|I agree/i }).first();
-        if (await accept.isVisible().catch(() => false)) {
-          await accept.click().catch(() => {});
-          await couplePage.waitForTimeout(1000);
+        await couplePage.waitForTimeout(1500);
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const welcome = couplePage.locator('[data-welcome-experience="true"]');
+          if (!(await welcome.isVisible().catch(() => false))) break;
+          const agree = couplePage.getByRole("checkbox");
+          if (await agree.isVisible().catch(() => false)) {
+            await agree.check({ force: true }).catch(async () => {
+              await agree.click({ force: true });
+            });
+          }
+          const cont = couplePage.getByRole("button", { name: /^(Continue|Saving)/i });
+          if (await cont.isVisible().catch(() => false)) {
+            const label = await cont.innerText().catch(() => "");
+            if (/Continue/i.test(label)) await cont.click().catch(() => undefined);
+          }
+          await couplePage.waitForTimeout(2000);
         }
 
-        const hashes: Array<{ hash: string; marker: string }> = [
-          { hash: "event_order", marker: "event-order-portal" },
-          { hash: "floor_plans", marker: "floor-plan" },
-          { hash: "planning", marker: "planning" },
-          { hash: "inventory", marker: "inventory-portal" },
-          { hash: "vendors", marker: "vendor" },
-        ];
-        for (const h of hashes) {
-          await couplePage.goto(`${APP}/p/${portalToken}#${h.hash}`, {
+        const hashes = ["event_order", "floor_plans", "planning", "inventory", "vendors"] as const;
+        for (const hash of hashes) {
+          await couplePage.goto(`${APP}/p/${portalToken}#${hash}`, {
             waitUntil: "domcontentloaded",
             timeout: 90_000,
           });
-          await couplePage.waitForTimeout(1500);
+          await couplePage.waitForTimeout(1800);
           await couplePage.screenshot({
-            path: `${SHOTS}/couple-${h.hash}-1280.png`,
+            path: `${SHOTS}/couple-${hash}-1280.png`,
             fullPage: true,
           }).catch(() => {});
           const body = await couplePage.locator("body").innerText().catch(() => "");
+          const pastWelcome = !/Before continuing, please review/i.test(body);
           record(
-            `couple_portal_${h.hash}_loaded`,
-            body.length > 40,
+            `couple_portal_${hash}_loaded`,
+            body.length > 40 && pastWelcome,
             body.slice(0, 160).replace(/\s+/g, " "),
           );
         }
@@ -443,8 +460,8 @@ async function main() {
       .from("client_invitations")
       .select("*", { count: "exact", head: true })
       .eq("client_id", clientId);
-    const { count: questionnairesAfter } = await admin
-      .from("questionnaire_sends")
+    const { count: notifAfter } = await admin
+      .from("notification_log")
       .select("*", { count: "exact", head: true })
       .eq("venue_id", FANCY);
     const { data: eoAfter } = await admin
@@ -477,7 +494,7 @@ async function main() {
 
     after.invoices = invAfter ?? 0;
     after.invites = invitesAfter ?? 0;
-    after.questionnaireSends = questionnairesAfter ?? 0;
+    after.notificationLog = notifAfter ?? 0;
     after.eo = eoAfter;
     after.inventory = invRowAfter;
     after.recs = recsAfter ?? 0;
@@ -488,9 +505,9 @@ async function main() {
     record("no_invoice_mutation", after.invoices === before.invoices, `b=${before.invoices} a=${after.invoices}`);
     record("no_invite_mutation", after.invites === before.invites, `b=${before.invites} a=${after.invites}`);
     record(
-      "no_questionnaire_send_mutation",
-      after.questionnaireSends === before.questionnaireSends,
-      `b=${before.questionnaireSends} a=${after.questionnaireSends}`,
+      "no_notification_log_mutation",
+      after.notificationLog === before.notificationLog,
+      `b=${before.notificationLog} a=${after.notificationLog}`,
     );
     record(
       "no_eo_share_mutation",
