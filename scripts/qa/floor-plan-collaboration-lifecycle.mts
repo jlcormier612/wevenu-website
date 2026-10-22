@@ -350,14 +350,29 @@ async function main() {
     const { data: readyPlan } = await admin.from("floor_plans").select("finalized_at").eq("id", planId!).single();
     record("ready_checkpoint_persists", Boolean(readyPlan?.finalized_at), JSON.stringify(readyPlan));
 
-    await page.goto(`${APP}/p/${token}#floor_plans`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    const listRpc = await anon.rpc("get_portal_floor_plans", { p_token: token });
+    const readyFromApi = (listRpc.data as {
+      floorPlans?: Array<{ id: string; isReady?: boolean }>;
+    } | null)?.floorPlans?.some((p) => p.id === planId && p.isReady === true) ?? false;
+    record(
+      "portal_api_reports_ready",
+      readyFromApi,
+      JSON.stringify(listRpc.data),
+    );
+
+    await page.goto(`${APP}/p/${token}#floor_plans`, { waitUntil: "networkidle", timeout: 90_000 }).catch(async () => {
+      await page.goto(`${APP}/p/${token}#floor_plans`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    });
     await page.waitForSelector("text=Your working layout", { timeout: 25_000 });
-    await page.waitForSelector("text=Ready for the event", { timeout: 25_000 }).catch(() => undefined);
+    await page.waitForSelector('[data-testid="floor-plan-ready-badge"]', { timeout: 30_000 }).catch(() => undefined);
+    await page.locator('[data-testid="floor-plan-working-view"]').scrollIntoViewIfNeeded().catch(() => undefined);
+    await page.waitForTimeout(1500);
     const readyBody = await page.locator("body").innerText();
     record(
       "portal_shows_ready_after_refresh",
       /Ready for the event/i.test(readyBody) && /Your working layout/i.test(readyBody),
-      readyBody.match(/Ready for the event|Your working layout/gi)?.join(" | ") ?? readyBody.slice(0, 200),
+      readyBody.match(/Ready for the event|Your working layout/gi)?.join(" | ")
+        ?? `apiReady=${readyFromApi}; ${readyBody.slice(0, 240)}`,
     );
     await page.screenshot({ path: `${OUT}/02-ready-1280.png`, fullPage: true }).catch(() => undefined);
 

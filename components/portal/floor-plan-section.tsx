@@ -376,8 +376,13 @@ export default function FloorPlanSection({ token }: { token: string }) {
   const hasOffers = offers.length > 0;
   const hasShared = list.length > 0;
   const selectedSummary = list.find((p) => p.id === selectedId) ?? null;
-  const selectedIsReady = Boolean(plan?.isReady ?? selectedSummary?.isReady);
   const selectedIsCoupleChoice = Boolean(plan?.isCoupleSelected ?? selectedSummary?.isCoupleSelected);
+  // Prefer selected plan; fall back to any shared plan marked Ready (list loads before detail).
+  const selectedIsReady = Boolean(
+    plan?.isReady
+      ?? selectedSummary?.isReady
+      ?? list.some((p) => p.isReady),
+  );
 
   if (!hasOffers && !hasShared) {
     return (
