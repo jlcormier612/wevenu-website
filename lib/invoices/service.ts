@@ -126,7 +126,8 @@ export async function getInvoice(id: string): Promise<InvoiceWithLineItems | nul
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  const invoice = await repo.getInvoice(await createClient(), venue.id, id);
+  const c = await createClient();
+  const invoice = await repo.getInvoice(c, venue.id, id);
   if (!invoice) return null;
 
   // Phase 3a: a draft Invoice linked to an Event Order is a live
@@ -139,7 +140,17 @@ export async function getInvoice(id: string): Promise<InvoiceWithLineItems | nul
     const eventOrder = await getEventOrder(invoice.eventId ?? "");
     if (eventOrder) {
       const projectedLines = projectEventOrderLines(eventOrder.lines);
-      const lineItems = [...projectedLines, ...invoice.lineItems];
+      const additionalRollupLines = projectedLines.map((l) => ({ type: l.type, amount: l.amount }));
+      // Keep persisted percent-tax amounts aligned with the live EO base so
+      // UI, stored tax rows, and totals agree after EO charge edits.
+      const refreshed = await repo.refreshPercentTaxLines(c, venue.id, id, additionalRollupLines);
+      let storedLines = invoice.lineItems;
+      if (refreshed > 0) {
+        await repo.afterLineItemMutation(c, venue.id, id, additionalRollupLines);
+        const reloaded = await repo.getInvoice(c, venue.id, id);
+        storedLines = reloaded?.lineItems ?? invoice.lineItems;
+      }
+      const lineItems = [...projectedLines, ...storedLines];
       const { subtotal, discountAmount, taxAmount, total } = computeInvoiceTotals(lineItems);
       // Whatever's already been paid against this invoice (rare but
       // possible while still draft — Phase 1's retainer flow doesn't
@@ -239,12 +250,41 @@ export async function assertInvoiceEditable(c: Awaited<ReturnType<typeof createC
   return null;
 }
 
+/** Live EO charge projections for draft Event-Order-linked invoices (not stored until freeze). */
+async function additionalRollupLinesForInvoice(
+  c: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  invoiceId: string,
+): Promise<repo.TaxRollupLine[] | undefined> {
+  const invoice = await repo.getInvoice(c, venueId, invoiceId);
+  if (!invoice || invoice.status !== "draft" || !invoice.eventOrderId) return undefined;
+  const eventOrder = await getEventOrder(invoice.eventId ?? "");
+  if (!eventOrder) return undefined;
+  return projectEventOrderLines(eventOrder.lines).map((l) => ({
+    type: l.type,
+    amount: l.amount,
+  }));
+}
+
 export async function addLineItem(invoiceId: string, input: InvoiceLineItemInput): Promise<AddLineItemResult> {
   if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };
+  if (input.type === "tax" && !String(input.taxRatePercent ?? "").trim() && !(parseFloat(input.unitPrice.replace(/[$,]/g, "")) > 0)) {
+    return { ok: false, errors: { taxRatePercent: "Enter a tax rate percent." } };
+  }
   const result = await withVenue(async (c, venueId) => {
     const guard = await assertInvoiceEditable(c, venueId, invoiceId);
     if (guard) return guard as AddLineItemResult;
-    const item = await repo.addLineItem(c, venueId, invoiceId, input);
+    if (input.type === "tax" && input.taxRatePercent) {
+      const existing = await repo.getInvoice(c, venueId, invoiceId);
+      if (existing?.lineItems.some((l) => l.type === "tax" && l.taxRateMode === "percent")) {
+        return {
+          ok: false,
+          message: "This invoice already has a percent tax line. Remove it before adding another.",
+        } as AddLineItemResult;
+      }
+    }
+    const additionalRollupLines = await additionalRollupLinesForInvoice(c, venueId, invoiceId);
+    const item = await repo.addLineItem(c, venueId, invoiceId, input, { additionalRollupLines });
     await repo.insertActivity(c, venueId, invoiceId, "line_item_added", `Line item added: ${input.description.trim()}`);
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
     const { syncPaymentPlanToInvoiceCommitment } = await import("@/lib/payments/service");
@@ -260,6 +300,8 @@ export async function removeLineItem(invoiceId: string, itemId: string): Promise
     if (guard) return guard;
     const outcome = await repo.removeLineItem(c, venueId, invoiceId, itemId);
     if (!outcome.ok) return { ok: false, message: outcome.message } as InvoiceActionResult;
+    const additionalRollupLines = await additionalRollupLinesForInvoice(c, venueId, invoiceId);
+    await repo.afterLineItemMutation(c, venueId, invoiceId, additionalRollupLines);
     await repo.insertActivity(c, venueId, invoiceId, "line_item_removed", "Line item removed");
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
     const { syncPaymentPlanToInvoiceCommitment } = await import("@/lib/payments/service");

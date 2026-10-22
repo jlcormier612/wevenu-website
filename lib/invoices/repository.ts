@@ -1,5 +1,10 @@
 import { createClient } from "@/integrations/supabase/server";
 import { computeInvoiceTotals, deriveRevenueCategory, generateInvoiceNumber } from "@/lib/invoices/constants";
+import {
+  exclusiveTaxAmountFromRollup,
+  percentDiscountAmountFromRollup,
+  type TaxRollupLine,
+} from "@/lib/invoices/exclusive-tax";
 import { computeInvoiceBalanceDue } from "@/lib/payments/invoice-balance";
 import type {
   AddLineItemResult,
@@ -12,6 +17,8 @@ import type {
   InvoiceStatus,
   InvoiceWithLineItems,
 } from "@/lib/invoices/types";
+
+export type { TaxRollupLine };
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -292,37 +299,46 @@ export async function insertActivity(client: DbClient, venueId: string, invoiceI
   await client.from("invoice_activities").insert({ venue_id: venueId, invoice_id: invoiceId, type, title, description: description ?? null });
 }
 
-export async function addLineItem(client: DbClient, venueId: string, invoiceId: string, input: InvoiceLineItemInput): Promise<InvoiceLineItem> {
+/**
+ * Optional live Event Order charge projections for draft EO-linked invoices.
+ * Stored invoice_line_items alone omit those charges until freeze-on-send, which
+ * previously produced $0 percent tax / percent discount on EO drafts.
+ */
+export type AddLineItemOptions = {
+  additionalRollupLines?: TaxRollupLine[];
+};
+
+export async function addLineItem(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  input: InvoiceLineItemInput,
+  opts?: AddLineItemOptions,
+): Promise<InvoiceLineItem> {
   const isDiscount = input.type === "discount";
   const qty = parseFloat(input.quantity) || 1;
   let price = parseFloat(input.unitPrice.replace(/[$,]/g, "")) || 0;
   let taxRateMode: "percent" | "fixed" | null = null;
   let taxRateValue: number | null = null;
 
+  const { data: storedLines } = await client.from("invoice_line_items")
+    .select("type, amount").eq("invoice_id", invoiceId);
+  const rollup: TaxRollupLine[] = [
+    ...(opts?.additionalRollupLines ?? []),
+    ...((storedLines ?? []) as TaxRollupLine[]),
+  ];
+
   // Percentage discounts: freeze dollar amount from current charge subtotal at add time.
   if (isDiscount && input.discountType === "percent" && input.discountValue) {
-    const pct = parseFloat(input.discountValue) || 0;
-    const { data: lines } = await client.from("invoice_line_items")
-      .select("type, amount").eq("invoice_id", invoiceId);
-    const { subtotal } = computeInvoiceTotals(
-      (lines ?? []) as { type: InvoiceLineItem["type"]; amount: number }[],
-    );
-    price = parseFloat(((subtotal * pct) / 100).toFixed(2));
+    price = percentDiscountAmountFromRollup(rollup, input.discountValue);
   }
 
-  // Tax with percent: exclusive tax on (subtotal − discounts). Persist applied rate.
+  // Tax with percent: exclusive tax on (charges − discounts). Persist applied rate.
   if (input.type === "tax" && input.taxRatePercent) {
-    const pct = parseFloat(input.taxRatePercent) || 0;
-    const { data: lines } = await client.from("invoice_line_items")
-      .select("type, amount").eq("invoice_id", invoiceId);
-    const { subtotal, discountAmount } = computeInvoiceTotals(
-      (lines ?? []) as { type: InvoiceLineItem["type"]; amount: number }[],
-    );
-    const { taxableBaseFromRollups } = await import("@/lib/invoices/financial-terms");
-    const base = taxableBaseFromRollups(subtotal, discountAmount);
-    price = parseFloat(((base * pct) / 100).toFixed(2));
+    const computed = exclusiveTaxAmountFromRollup(rollup, input.taxRatePercent);
+    price = computed.taxAmount;
     taxRateMode = "percent";
-    taxRateValue = pct;
+    taxRateValue = computed.taxRatePercent;
   } else if (input.type === "tax" && price > 0) {
     taxRateMode = "fixed";
     taxRateValue = price;
@@ -362,8 +378,61 @@ export async function addLineItem(client: DbClient, venueId: string, invoiceId: 
     })
     .select().single<LineItemRow>();
   if (error) throw error;
+  await refreshPercentTaxLines(client, venueId, invoiceId, opts?.additionalRollupLines);
   await recomputeInvoiceTotals(client, venueId, invoiceId);
-  return mapItem(data);
+  // Re-read so callers see refreshed percent-tax amounts when this insert
+  // was a tax line (or when refresh adjusted siblings only — same row).
+  const { data: fresh } = await client.from("invoice_line_items")
+    .select("*").eq("id", data.id).maybeSingle<LineItemRow>();
+  return mapItem(fresh ?? data);
+}
+
+/**
+ * Keep draft percent-tax lines aligned with the current charge/discount base.
+ * Does not invent tax lines. Idempotent: no write when amounts already match.
+ */
+export async function refreshPercentTaxLines(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  additionalRollupLines?: TaxRollupLine[],
+): Promise<number> {
+  const { data: rows } = await client.from("invoice_line_items")
+    .select("id, type, amount, quantity, unit_price, tax_rate_mode, tax_rate_value")
+    .eq("invoice_id", invoiceId)
+    .eq("venue_id", venueId);
+  const all = (rows ?? []) as Array<{
+    id: string;
+    type: InvoiceLineItem["type"];
+    amount: number;
+    quantity: number;
+    unit_price: number;
+    tax_rate_mode: "percent" | "fixed" | null;
+    tax_rate_value: number | string | null;
+  }>;
+  const taxRows = all.filter((r) => r.type === "tax" && r.tax_rate_mode === "percent" && r.tax_rate_value != null);
+  if (taxRows.length === 0) return 0;
+
+  const baseRollup: TaxRollupLine[] = [
+    ...(additionalRollupLines ?? []),
+    ...all.filter((r) => r.type !== "tax").map((r) => ({ type: r.type, amount: Number(r.amount) })),
+  ];
+
+  let updated = 0;
+  for (const tax of taxRows) {
+    const computed = exclusiveTaxAmountFromRollup(baseRollup, tax.tax_rate_value);
+    const qty = Number(tax.quantity) || 1;
+    const nextUnit = computed.taxAmount;
+    const nextAmount = parseFloat((qty * nextUnit).toFixed(2));
+    if (Number(tax.unit_price) === nextUnit && Number(tax.amount) === nextAmount) continue;
+    const { error } = await client.from("invoice_line_items")
+      .update({ unit_price: nextUnit, amount: nextAmount })
+      .eq("id", tax.id)
+      .eq("venue_id", venueId);
+    if (error) throw error;
+    updated += 1;
+  }
+  return updated;
 }
 
 /**
@@ -382,8 +451,18 @@ export async function removeLineItem(client: DbClient, venueId: string, invoiceI
   if (!data || data.length === 0) {
     return { ok: false, message: "Only an Owner or Manager can remove an invoice line item." };
   }
-  await recomputeInvoiceTotals(client, venueId, invoiceId);
   return { ok: true };
+}
+
+/** After remove: refresh percent tax (caller supplies EO projections when draft-linked). */
+export async function afterLineItemMutation(
+  client: DbClient,
+  venueId: string,
+  invoiceId: string,
+  additionalRollupLines?: TaxRollupLine[],
+): Promise<void> {
+  await refreshPercentTaxLines(client, venueId, invoiceId, additionalRollupLines);
+  await recomputeInvoiceTotals(client, venueId, invoiceId);
 }
 
 export async function updateInvoiceStatus(
