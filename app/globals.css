@@ -493,7 +493,9 @@ html:has(.htc-staff) [data-slot="table"] {
   --success: var(--soft-sage);
   --success-foreground: var(--forest-sage);
   --warning: var(--taupe-dark);
-  --warning-foreground: var(--forest-sage);
+  /* True White — forest-sage on Heritage Sage cards fails WCAG AA (~1.3:1);
+     dashboard "Follow up" and other warning labels must stay legible in dark. */
+  --warning-foreground: var(--true-white);
   --info: var(--soft-sage);
   --info-foreground: var(--forest-sage);
   --border: color-mix(in oklch, var(--true-white) 28%, transparent);
