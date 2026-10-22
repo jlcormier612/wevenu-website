@@ -37,9 +37,10 @@ export function InventoryPortalView({
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center" data-testid="inventory-portal-empty">
         <div className="text-4xl mb-3">🪑</div>
-        <p className="text-sm font-medium text-heading">Nothing to show yet</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Your venue will share what&apos;s included in your event here once it&apos;s ready.
+        <p className="text-sm font-medium text-heading">Not shared yet</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+          This is your event&apos;s inventory — what your venue is including for this celebration.
+          It appears here after they share it. This is not a request form and not your Event Order.
         </p>
       </div>
     );
@@ -52,7 +53,12 @@ export function InventoryPortalView({
   return (
     <div className="max-w-xl mx-auto px-4 py-8 space-y-6" data-testid="inventory-portal-view">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-heading">What&apos;s included in your event</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-heading">What&apos;s included in your event</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Event inventory from your venue — read-only. For the delivery list, open Event Order.
+          </p>
+        </div>
         {staffPreviewLabel ? (
           <Badge variant="secondary">{staffPreviewLabel}</Badge>
         ) : (

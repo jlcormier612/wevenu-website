@@ -29,6 +29,7 @@ describe("M-01 client portal mobile nav", () => {
       "timeline",
       "documents",
       "floor_plans",
+      "inventory",
       "event-order",
       "choices",
       "payments",

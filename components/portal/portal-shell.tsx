@@ -2015,6 +2015,37 @@ function WorkingWithYourVenue({
   planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
+  const showInventory = isPortalSectionEnabledByCapabilities("inventory", planningCapabilities);
+  const showEventOrder = isPortalSectionEnabledByCapabilities("event-order", planningCapabilities);
+  const [inventoryReady, setInventoryReady] = React.useState<boolean | null>(null);
+  const [eventOrderReady, setEventOrderReady] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    if (!showInventory && !showEventOrder) return;
+    let cancelled = false;
+    if (showInventory) {
+      fetch(`/api/portal/inventory?token=${encodeURIComponent(token)}`)
+        .then((r) => r.json())
+        .then((d: { inventory?: unknown }) => {
+          if (!cancelled) setInventoryReady(!!d?.inventory);
+        })
+        .catch(() => {
+          if (!cancelled) setInventoryReady(false);
+        });
+    }
+    if (showEventOrder) {
+      fetch(`/api/portal/event-order?token=${encodeURIComponent(token)}`)
+        .then((r) => r.json())
+        .then((d: { eventOrder?: unknown }) => {
+          if (!cancelled) setEventOrderReady(!!d?.eventOrder);
+        })
+        .catch(() => {
+          if (!cancelled) setEventOrderReady(false);
+        });
+    }
+    return () => { cancelled = true; };
+  }, [token, showInventory, showEventOrder]);
+
   return (
     <div className="space-y-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Working With Your Venue</p>
@@ -2027,6 +2058,53 @@ function WorkingWithYourVenue({
           )}
         </div>
       </div>
+      {(showInventory || showEventOrder) && (
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+          data-testid="portal-home-inventory-order"
+        >
+          {showInventory && (
+            <button
+              type="button"
+              onClick={() => onNavigate("inventory")}
+              data-testid="portal-home-inventory-entry"
+              className="rounded-2xl border bg-card px-4 py-3 text-left hover:shadow-sm transition-shadow"
+              style={{ borderColor: "#E8E3DC" }}
+            >
+              <p className="text-sm font-semibold text-heading">Inventory</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                What {venueName} is including for your event
+                {inventoryReady === true ? " — ready to review"
+                  : inventoryReady === false ? " — waiting on your venue"
+                    : ""}
+              </p>
+              <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
+                Open Inventory →
+              </p>
+            </button>
+          )}
+          {showEventOrder && (
+            <button
+              type="button"
+              onClick={() => onNavigate("event-order")}
+              data-testid="portal-home-event-order-entry"
+              className="rounded-2xl border bg-card px-4 py-3 text-left hover:shadow-sm transition-shadow"
+              style={{ borderColor: "#E8E3DC" }}
+            >
+              <p className="text-sm font-semibold text-heading">Event Order</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Your event&apos;s delivery list from {venueName}
+                {eventOrderReady === true ? " — shared with you"
+                  : eventOrderReady === false ? " — not shared yet"
+                    : ""}
+              </p>
+              <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
+                Open Event Order →
+              </p>
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-0.5">
         <button type="button" onClick={() => onNavigate("guide")}
           className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
@@ -4580,6 +4658,12 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "timeline",    icon: "🕒", label: "Timeline",          available: true, group: "venue" },
   { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
   { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
+  // Inventory = event-specific offerings the venue shared (not master catalog).
+  // Always listed when the venue planning capability is on; empty state when unshared.
+  { id: "inventory",   icon: "🪑", label: "Inventory",         shortLabel: "Included", available: true, group: "venue" },
+  // Event Order stays visible when capability is on so clients can find the
+  // destination even before share — empty state explains not-yet-shared.
+  // Sharing boundary remains server-side (shared_at / snapshot).
   { id: "event-order", icon: "📋", label: "Event Order",       shortLabel: "Order",    available: true, group: "venue" },
   { id: "choices",     icon: "✅", label: "Your Choices",      shortLabel: "Choices",  available: true, group: "venue" },
   { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
@@ -4621,6 +4705,7 @@ export function PortalShell({
   /** Messages nav badge — unread venue messages. */
   const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
   const [hasSharedEventOrder, setHasSharedEventOrder] = React.useState(false);
+  const [hasSharedInventory, setHasSharedInventory] = React.useState(false);
   const [hasClientChoices, setHasClientChoices] = React.useState(false);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
@@ -4644,7 +4729,6 @@ export function PortalShell({
       available:
         item.available
         && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities)
-        && (item.id !== "event-order" || hasSharedEventOrder)
         && (item.id !== "choices" || hasClientChoices),
     }))
     .filter((item) => item.available);
@@ -4658,6 +4742,14 @@ export function PortalShell({
       })
       .catch(() => {
         if (!cancelled) setHasSharedEventOrder(false);
+      });
+    fetch(`/api/portal/inventory?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d: { inventory?: unknown }) => {
+        if (!cancelled) setHasSharedInventory(!!d?.inventory);
+      })
+      .catch(() => {
+        if (!cancelled) setHasSharedInventory(false);
       });
     fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`)
       .then((r) => r.json())
@@ -5010,7 +5102,9 @@ export function PortalShell({
                 item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
                   : item.id === "payments" ? paymentsOverdueCount
                     : item.id === "messages" ? messagesUnreadCount
-                      : 0;
+                      : item.id === "inventory" && hasSharedInventory ? 1
+                        : item.id === "event-order" && hasSharedEventOrder ? 1
+                          : 0;
               const badgeTitle =
                 item.id === "tasks"
                   ? (badge === 1 ? "1 open task" : `${badge} open tasks`)
@@ -5018,7 +5112,11 @@ export function PortalShell({
                     ? (badge === 1 ? "1 overdue payment" : `${badge} overdue payments`)
                     : item.id === "messages"
                       ? (badge === 1 ? "1 unread message" : `${badge} unread messages`)
-                      : "";
+                      : item.id === "inventory" && hasSharedInventory
+                        ? "Shared inventory ready"
+                        : item.id === "event-order" && hasSharedEventOrder
+                          ? "Shared event order ready"
+                          : "";
               const badgeAria =
                 badge > 0 ? `${item.label}, ${badgeTitle}` : undefined;
               return (
