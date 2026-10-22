@@ -289,9 +289,9 @@ export function FloorPlanPortalView({
                 <div>
                   <p className="text-sm font-semibold text-heading">{plan.name}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {plan.isReady
+                    {selectedIsReady
                       ? "Ready for the event — furniture placement is set"
-                      : plan.isCoupleSelected || plan.isOperational
+                      : selectedIsCoupleChoice || plan.isOperational
                         ? "Your selected working layout — furniture is placed by your venue"
                         : "Shared layout — view only"}
                   </p>
