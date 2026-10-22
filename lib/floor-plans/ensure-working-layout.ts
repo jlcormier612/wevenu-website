@@ -7,7 +7,9 @@
  * - Client portal selection → couple_selected_floor_plan_id wins; reconcile operational to that plan.
  * - Never delete existing floor_plans or seating; retarget pointers only.
  * - Idempotent: repeated calls do not create duplicate clones for the same source template.
- * - Do not set couple_selected on automatic venue init (avoids false "client selected" UI).
+ * - Sole eligible offer: set couple_selected, share layout, and enable seating
+ *   so the couple skips the chooser and can seat guests without a second venue action.
+ * - Multiple offers: do not set couple_selected (couple must choose).
  */
 import type { createClient } from "@/integrations/supabase/server";
 
@@ -206,17 +208,35 @@ export async function ensureWorkingLayoutForEvent(
     created = true;
   }
 
+  const soleOffer = offeredTemplateIds.length === 1;
+  const eventPatch: {
+    operational_floor_plan_id: string;
+    couple_selected_floor_plan_id?: string;
+  } = { operational_floor_plan_id: floorPlanId };
+  if (soleOffer) {
+    eventPatch.couple_selected_floor_plan_id = floorPlanId;
+  }
+
   await supabase
     .from("events")
-    .update({ operational_floor_plan_id: floorPlanId })
+    .update(eventPatch)
     .eq("id", eventId)
     .eq("venue_id", venueId);
+
+  if (soleOffer && floorPlanId) {
+    await supabase
+      .from("floor_plans")
+      .update({ shared_with_couple: true, client_access: "view" })
+      .eq("id", floorPlanId)
+      .eq("venue_id", venueId)
+      .eq("event_id", eventId);
+  }
 
   return {
     ok: true,
     floorPlanId,
     created,
     retargetedOperational: true,
-    reason: offeredTemplateIds.length === 1 ? "sole_offer" : "preferred_offer",
+    reason: soleOffer ? "sole_offer" : "preferred_offer",
   };
 }

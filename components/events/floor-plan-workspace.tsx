@@ -57,11 +57,9 @@ function spaceName(spaces: VenueSpace[], spaceId: string | null): string | null 
 }
 
 /**
- * Seating Experience — each floor plan with clientAccess != 'hidden' is
- * independently seatable. This toggle is the only UI that sets seating
- * share — sharing here makes this plan's tables available to the couple's
- * Seating experience. Independent of Share Floor Plan (layout view —
- * shared_with_couple). Sharing one plan does not replace another.
+ * Seating access toggle. Layout assignment/selection opens seating
+ * automatically (client_access=view). This control remains as an override
+ * to pause or re-enable seating — not a required post-selection step.
  */
 function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
   const router = useRouter();
@@ -87,13 +85,13 @@ function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: Floor
           className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
             shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
           }`}>
-          {pending ? "…" : shared ? "Shared for Seating" : "Share for Seating"}
+          {pending ? "…" : shared ? "Seating open" : "Seating paused"}
         </button>
       } />
       <TooltipContent>
         {shared
-          ? "Couple can assign guests to tables on this plan. Click to disable seating access."
-          : "Enable Seating for this plan. Independent of Share Floor Plan (layout view)."}
+          ? "Couple can assign guests to tables. Click to pause seating access."
+          : "Seating is paused. Assignment and selection open seating automatically; use this only to re-enable."}
       </TooltipContent>
     </Tooltip>
   );
@@ -502,15 +500,14 @@ export function FloorPlanWorkspace({
                 if (!seatingOpen) {
                   return (
                     <p data-testid="floor-plan-next-share-seating">
-                      Next: open the working layout, finish arrangement if needed, then{" "}
-                      <span className="font-medium text-foreground">Share for Seating</span> so the couple can assign guests.
+                      Seating was paused on this layout. Re-open seating from the plan card if the couple should assign guests again.
                     </p>
                   );
                 }
                 if (!ready) {
                   return (
                     <p data-testid="floor-plan-next-mark-ready">
-                      Seating is shared. When the layout is print/setup-ready, open it and{" "}
+                      Layout and seating are available to the couple. When the arrangement is print/setup-ready, open it and{" "}
                       <span className="font-medium text-foreground">Mark as Ready</span>.
                     </p>
                   );
@@ -518,15 +515,15 @@ export function FloorPlanWorkspace({
                 return (
                   <p data-testid="floor-plan-ready-confirmed">
                     Working layout is <span className="font-medium text-foreground">Ready</span> for the event.
-                    Use Make Changes on the plan if you need to revise.
+                    Couple edits are locked until you Make Changes.
                   </p>
                 );
               })()}
             </>
           ) : activeOffers.length === 1 ? (
             <p data-testid="floor-plan-sole-offer-working">
-              Using the only offered layout as the working layout
-              {workingPlan ? ` (${workingPlan.name})` : ""}. The client has not separately confirmed a choice.
+              Sole offered layout is assigned as the working layout
+              {workingPlan ? ` (${workingPlan.name})` : ""}. Layout and seating open automatically for the couple.
             </p>
           ) : activeOffers.length > 1 ? (
             <p data-testid="floor-plan-client-pending">

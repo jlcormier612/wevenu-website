@@ -155,10 +155,10 @@ export function FloorPlanPortalView({
     return (
       <div className="text-center py-16 text-muted-foreground" data-testid="floor-plan-portal-empty">
         <div className="text-3xl mb-3">🗺️</div>
-        <p className="text-sm font-medium text-heading">No Floor Plan shared yet</p>
+        <p className="text-sm font-medium text-heading">Waiting on a layout from your venue</p>
         <p className="text-xs mt-1 max-w-sm mx-auto">
-          When your venue shares a layout, you&apos;ll see the room and all physical elements here —
-          separate from seating guests at tables.
+          Your venue has not offered a floor plan for this event yet. Once they do, your working layout
+          and seating will open here automatically.
         </p>
       </div>
     );
@@ -168,8 +168,12 @@ export function FloorPlanPortalView({
   const plan = detail?.plan;
   const objects = detail?.objects ?? [];
   const selectedSummary = list.find((p) => p.id === selectedId) ?? null;
-  const selectedIsReady = Boolean(plan?.isReady ?? selectedSummary?.isReady);
   const selectedIsCoupleChoice = Boolean(plan?.isCoupleSelected ?? selectedSummary?.isCoupleSelected);
+  const selectedIsReady = Boolean(
+    plan?.isReady
+      ?? selectedSummary?.isReady
+      ?? list.some((p) => p.isReady),
+  );
   const offerPreview = previewOfferId ? offerPreviewsById[previewOfferId] ?? null : null;
   const activeOffer = offers.find((o) => o.offerId === previewOfferId) ?? null;
 
@@ -249,10 +253,11 @@ export function FloorPlanPortalView({
       {hasShared && (
         <section className="space-y-4" data-testid="floor-plan-working-view">
           <div>
-            <h2 className="text-lg font-semibold text-heading">Your working layout</h2>
+            <h2 className="text-lg font-semibold text-heading">Your Floor Plan</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              The room layout for your event — view only. Your venue places furniture;
-              you assign guests once they open Seating.
+              {selectedIsReady
+                ? "This layout is Ready for the event. Furniture placement is locked."
+                : "Arrange unlocked furniture and seat guests in Seating."}
             </p>
             {selectedIsReady && (
               <p className="text-xs font-medium mt-1" style={{ color: SAGE }} data-testid="floor-plan-ready-badge">
@@ -292,8 +297,8 @@ export function FloorPlanPortalView({
                     {selectedIsReady
                       ? "Ready for the event — furniture placement is set"
                       : selectedIsCoupleChoice || plan.isOperational
-                        ? "Your selected working layout — furniture is placed by your venue"
-                        : "Shared layout — view only"}
+                        ? "Your working layout — drag unlocked items to rearrange"
+                        : "Shared layout"}
                   </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground shrink-0">
@@ -317,7 +322,7 @@ export function FloorPlanPortalView({
             </div>
           )}
           <p className="text-xs text-muted-foreground text-center" data-testid="floor-plan-seating-next-hint">
-            To seat guests at tables, open Seating when your venue has shared this plan for seating.
+            Seating is available now — open Seating to assign guests to tables.
           </p>
         </section>
       )}

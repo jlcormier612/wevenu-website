@@ -55,8 +55,8 @@ export function venueSeatingSituationCopy(
       };
     case "no_shared_for_seating":
       return {
-        title: "Floor plan exists, but seating has not been shared yet",
-        body: "Use Share for Seating on a floor plan so the client can start assigning guests. The venue does not get seating authority from that alone.",
+        title: "Floor plan exists, but seating is not open yet",
+        body: "Seating opens automatically when a layout is assigned or selected. If it was paused, re-open seating on the floor plan so the client can assign guests.",
       };
     case "choose_plan":
       return {

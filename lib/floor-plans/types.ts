@@ -19,8 +19,11 @@ export type ObjectType =
   | "text_label"
   | "other";
 
-// Share for Seating uses view | hidden. The reserved 'edit' value was never
-// written by application code and is retired.
+// Seating access uses view | hidden. After layout assignment/selection,
+// client_access is set to view automatically (couple can seat guests).
+// Element move/add permissions use floor_plan_objects.locked and
+// floor_plans.couple_may_add_tables — not a client_access='edit' value
+// (that reserved value was retired).
 export type FloorPlanClientAccess = "view" | "hidden";
 
 // Display-only — canvas units are always inches internally (an Inventory

@@ -369,21 +369,21 @@ async function main() {
         JSON.stringify(selectedPlan),
       );
       record(
-        "select_shares_layout_view_not_seating",
+        "select_shares_layout_and_seating",
         selectedPlan?.shared_with_couple === true
-          && selectedPlan?.client_access === "hidden",
+          && selectedPlan?.client_access === "view",
         JSON.stringify({
           shared_with_couple: selectedPlan?.shared_with_couple,
           client_access: selectedPlan?.client_access,
         }),
       );
 
-      await page.waitForSelector("text=Your working layout", { timeout: 20_000 }).catch(() => undefined);
+      await page.waitForSelector("text=Your Floor Plan", { timeout: 20_000 }).catch(() => undefined);
       const afterSelectBody = await page.locator("body").innerText();
       record(
         "portal_shows_working_layout_after_select",
-        /Your working layout/i.test(afterSelectBody),
-        afterSelectBody.match(/Your working layout|Your choice|Ready/gi)?.join(" | ") ?? afterSelectBody.slice(0, 240),
+        /Your Floor Plan/i.test(afterSelectBody),
+        afterSelectBody.match(/Your Floor Plan|Your choice|Ready|Seating is available/gi)?.join(" | ") ?? afterSelectBody.slice(0, 240),
       );
       await page.screenshot({ path: `${OUT}/portal-multi-offer-selected-b-1280.png`, fullPage: true }).catch(() => undefined);
 

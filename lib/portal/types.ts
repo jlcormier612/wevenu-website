@@ -186,6 +186,8 @@ export type PortalFloorPlanObject = {
   notes: string | null;
   displayShape: string | null;
   inventoryItemId: string | null;
+  /** Venue-locked elements cannot be moved or deleted by the couple. */
+  locked?: boolean;
 };
 
 export type PortalFloorPlanDetail = {
@@ -196,6 +198,8 @@ export type PortalFloorPlanDetail = {
     isOperational: boolean;
     isCoupleSelected?: boolean;
     isReady?: boolean;
+    /** When true, couple may add table objects on this working plan. */
+    coupleMayAddTables?: boolean;
     backgroundImageUrl: string | null;
     backgroundImageOpacity: number;
     roomWidthFt: number;

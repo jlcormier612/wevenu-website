@@ -1,6 +1,6 @@
 /**
  * Sandbox: floor-plan collaboration lifecycle after layout selection.
- * Proves: select → layout view shared → seating share → seat assignment → Ready.
+ * Proves: select → layout+seating shared → seat assignment → Ready.
  * Fancy only. No Production. No real invites/emails/payments.
  */
 import { createRequire } from "node:module";
@@ -233,20 +233,20 @@ async function main() {
       .eq("id", planId!)
       .maybeSingle();
     record(
-      "working_copy_shared_for_layout_not_seating",
+      "working_copy_shared_layout_and_seating",
       planRow?.shared_with_couple === true
-        && planRow?.client_access === "hidden"
+        && planRow?.client_access === "view"
         && planRow?.source_template_id === TPL
         && planRow?.event_id === eventId,
       JSON.stringify(planRow),
     );
 
-    await page.waitForSelector("text=Your working layout", { timeout: 25_000 });
+    await page.waitForSelector("text=Your Floor Plan", { timeout: 25_000 });
     const bodyAfterSelect = await page.locator("body").innerText();
     record(
       "portal_shows_working_layout",
-      /Your working layout/i.test(bodyAfterSelect),
-      bodyAfterSelect.match(/Your working layout|Your choice|view only/gi)?.join(" | ") ?? bodyAfterSelect.slice(0, 200),
+      /Your Floor Plan/i.test(bodyAfterSelect),
+      bodyAfterSelect.match(/Your Floor Plan|Your choice|Seating is available/gi)?.join(" | ") ?? bodyAfterSelect.slice(0, 200),
     );
     await page.screenshot({ path: `${OUT}/01-after-select-1280.png`, fullPage: true }).catch(() => undefined);
 
@@ -279,14 +279,13 @@ async function main() {
     }
     record("working_plan_has_table_objects", Boolean(tableObjectId), JSON.stringify(tables?.slice(0, 3)));
 
-    await admin.from("floor_plans").update({ client_access: "view" }).eq("id", planId!).eq("venue_id", FANCY);
     const { data: afterSeatShare } = await admin
       .from("floor_plans")
       .select("client_access,shared_with_couple")
       .eq("id", planId!)
       .single();
     record(
-      "venue_share_for_seating",
+      "seating_open_automatically_after_select",
       afterSeatShare?.client_access === "view" && afterSeatShare?.shared_with_couple === true,
       JSON.stringify(afterSeatShare),
     );
@@ -365,7 +364,7 @@ async function main() {
     await page.goto(readyUrl, { waitUntil: "networkidle", timeout: 90_000 }).catch(async () => {
       await page.goto(readyUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
     });
-    await page.waitForSelector("text=Your working layout", { timeout: 25_000 });
+    await page.waitForSelector("text=Your Floor Plan", { timeout: 25_000 });
     const browserList = await page.evaluate(async (t) => {
       const r = await fetch(`/api/portal/floor-plans?token=${encodeURIComponent(t)}`);
       return r.json();
@@ -380,11 +379,11 @@ async function main() {
     await page.locator('[data-testid="floor-plan-working-view"]').scrollIntoViewIfNeeded().catch(() => undefined);
     await page.waitForTimeout(1500);
     const readyBody = await page.locator("body").innerText();
-    const readyUi = /Ready for the event/i.test(readyBody) && /Your working layout/i.test(readyBody);
+    const readyUi = /Ready for the event/i.test(readyBody) && /Your Floor Plan/i.test(readyBody);
     record(
       "portal_shows_ready_after_refresh",
       readyUi,
-      readyBody.match(/Ready for the event|Your working layout/gi)?.join(" | ")
+      readyBody.match(/Ready for the event|Your Floor Plan/gi)?.join(" | ")
         ?? `apiReady=${readyFromApi}; ${readyBody.slice(0, 240)}`,
     );
     await page.screenshot({ path: `${OUT}/02-ready-1280.png`, fullPage: true }).catch(() => undefined);
