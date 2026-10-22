@@ -1,0 +1,56 @@
+Waiting for deploy 39727906815 (a9bd5903cf1baae14a72b0e2e0898d7b837c552d)…
+poll=1 in_progress|
+poll=2 in_progress|
+poll=3 in_progress|
+poll=4 in_progress|
+poll=5 in_progress|
+poll=6 in_progress|
+poll=7 in_progress|
+poll=8 in_progress|
+poll=9 in_progress|
+poll=10 in_progress|
+poll=11 in_progress|
+poll=12 in_progress|
+poll=13 in_progress|
+poll=14 in_progress|
+poll=15 in_progress|
+poll=16 in_progress|
+poll=17 in_progress|
+poll=18 in_progress|
+poll=19 in_progress|
+poll=20 queued|
+poll=21 completed|success
+final_deploy=completed|success
+Waiting for serving SHA a9bd5903…
+serving_poll=1 a9bd5903cf1baae14a72b0e2e0898d7b837c552d
+SERVING_MATCH a9bd5903cf1baae14a72b0e2e0898d7b837c552d
+PASS serving_sha — serving=a9bd5903cf1baae14a72b0e2e0898d7b837c552d expected=a9bd5903cf1baae14a72b0e2e0898d7b837c552d
+PASS network_eligible — n=5
+PASS fixture — event=5cd0be77-ec99-48c6-a86b-7235b3a65f76 client=e4a6a755-a0d2-4e3c-b5f0-9f099355545a other=480628b3-e7a7-48a0-9c84-25b14bd93a26
+FAIL inventory_badge_included — Inventory
+
+Included
+Standard Wedding Setup
+Change for this event
+Don't include for this event
+
+Event inventory draft is prepared for this event. Not shared with the couple and not an invoice.
+
+Open In
+PASS questionnaires_absent_from_setup — setupCards=0
+PASS questionnaires_nav_order — tabs=Overview | Planning | Timeline | Floor Plans | Vendors | Inventory | Event Order | Questionnaires | Documents | Payments | Conversation | Activity | Internal notes
+PASS questionnaires_tab_opens — https://app.sandbox.hellotocheers.com/clients/e4a6a755-a0d2-4e3c-b5f0-9f099355545a#questionnaires
+PASS vendors_inherited_full_list — eventRecs=5 eligibleNetwork=5
+PASS vendors_source_vs_event — covered=5/5 eventRecs=5
+PASS vendors_editor_shows_list — listVisible=true
+PASS vendors_exclude_event_only — excluded=e5ed92aa-82a4-46c7-b6c2-36a90db714e1 remaining=4
+PASS vendors_network_untouched — status=active pref=recommended
+PASS vendors_other_event_unchanged — before=0 after=0
+PASS vendors_assignments_independent — assignments=2
+PASS no_invoice_side_effect — before=38 after=38
+{
+  "status": "NOT_GREEN",
+  "passed": 14,
+  "failed": 1,
+  "servingSha": "a9bd5903cf1baae14a72b0e2e0898d7b837c552d"
+}

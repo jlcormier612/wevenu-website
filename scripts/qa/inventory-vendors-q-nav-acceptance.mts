@@ -152,11 +152,18 @@ async function main() {
     // — Inventory Included —
     const invCard = page.getByTestId("event-setup-card-inventory");
     const invVisible = await invCard.isVisible().catch(() => false);
-    const invText = invVisible ? (await invCard.innerText()) : "";
+    // Badge only — summary copy may say "inventory draft is prepared".
+    const invBadge = invVisible
+      ? (await invCard.locator('[class*="badge"], [data-slot="badge"]').first().innerText().catch(async () => {
+        const t = await invCard.innerText();
+        const m = t.match(/\b(Included|Draft|Needs action|Not included|Unavailable|Released)\b/);
+        return m?.[1] ?? t.slice(0, 80);
+      }))
+      : "";
     record(
       "inventory_badge_included",
-      invVisible && /Included/i.test(invText) && !/\bDraft\b/i.test(invText),
-      invVisible ? invText.slice(0, 200) : "inventory card missing",
+      invVisible && /^Included\b/i.test(invBadge.trim()),
+      invVisible ? `badge=${invBadge.trim()}` : "inventory card missing",
     );
     await page.screenshot({ path: `${OUT}/inv-vend-q-inventory-card-1280.png`, fullPage: false });
 
