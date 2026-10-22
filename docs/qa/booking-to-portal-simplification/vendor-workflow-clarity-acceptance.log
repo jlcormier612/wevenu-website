@@ -1,0 +1,28 @@
+PASS serving_sha — serving=5c236121d110c8f7d36bac180d8d30deaac9e05d expected=5c236121d110c8f7d36bac180d8d30deaac9e05d
+PASS fixture — event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be score=12
+PASS overview_no_selected_pending_wording — 2 vendors assigned to this event. 5 highlighted vendors not yet chosen by the couple. Vendor Network classifications remain authoritative for discovery. Manage optional highlights with Change for this event; the assigned roster is under Ope
+PASS overview_uses_assigned_language — 2 vendors assigned to this event. 5 highlighted vendors not yet chosen by the couple. Vendor Network classifications remain authoritative for discovery. Manage optional highlights with Change for this event; the assigned roster is under Ope
+PASS overview_uses_highlight_language — 2 vendors assigned to this event. 5 highlighted vendors not yet chosen by the couple. Vendor Network classifications remain authoritative for discovery. Manage optional highlights with Change for this event; the assigned roster is under Ope
+PASS highlights_section_visible — event-vendor-highlights
+PASS highlights_help_explains_chosen_and_assigned — These are optional suggestions shown to the couple. “Chosen by B2P 96736-9a50 & Portal Partner” means the couple submitted that vendor; assigned vendors appear under Assigned to This Event. Removing a
+PASS chosen_group_hidden_when_empty — ok
+PASS not_submitted_group_visible — db=5
+PASS preview_not_roster_badge — Recommendations — not the assigned roster
+PASS preview_copy_not_roster — Recommendations — not the assigned roster
+Recommended for you
+
+Optional highlights from Jen's Fancy Venue. Preview is view-only and does not show the assigned roster or whether the couple has submitte
+PASS browse_recs_unchanged — fingerprint
+PASS browse_assigns_unchanged — fingerprint
+PASS remove_highlight_deletes_rec_only — removed=45551c95-fa8f-41d3-a2e4-a68ef53203eb
+PASS remove_highlight_keeps_assignments — assignments intact
+PASS network_unchanged — b=10 a=10
+PASS no_invite_side_effect — b=1 a=1
+PASS no_notification_side_effect — b=3483 a=3483
+{
+  "status": "GREEN",
+  "passed": 18,
+  "failed": 0,
+  "servingSha": "5c236121d110c8f7d36bac180d8d30deaac9e05d",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842"
+}

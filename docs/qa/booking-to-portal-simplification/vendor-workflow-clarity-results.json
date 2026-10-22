@@ -1,0 +1,113 @@
+{
+  "status": "GREEN",
+  "servingSha": "5c236121d110c8f7d36bac180d8d30deaac9e05d",
+  "expectedSha": "5c236121d110c8f7d36bac180d8d30deaac9e05d",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+  "before": {
+    "recs": "04e62289-714b-43b6-a8f6-7e1ba0893deb:null|076731c3-f223-40ab-9e1c-a99ff222ec1d:null|45551c95-fa8f-41d3-a2e4-a68ef53203eb:null|9626e952-086c-4187-9d5e-d2c3b2f5b38a:null|f979341c-7f06-4646-b966-7a397fb5f948:null",
+    "assigns": "2538b7de-e214-4885-ae5b-96cde28bbdfb|e64369d9-762e-490a-a98a-076400de3039",
+    "network": 10,
+    "invites": 1,
+    "notif": 3483
+  },
+  "after": {
+    "recsBrowse": "04e62289-714b-43b6-a8f6-7e1ba0893deb:null|076731c3-f223-40ab-9e1c-a99ff222ec1d:null|45551c95-fa8f-41d3-a2e4-a68ef53203eb:null|9626e952-086c-4187-9d5e-d2c3b2f5b38a:null|f979341c-7f06-4646-b966-7a397fb5f948:null",
+    "assignsBrowse": "2538b7de-e214-4885-ae5b-96cde28bbdfb|e64369d9-762e-490a-a98a-076400de3039"
+  },
+  "passed": 18,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=5c236121d110c8f7d36bac180d8d30deaac9e05d expected=5c236121d110c8f7d36bac180d8d30deaac9e05d"
+    },
+    {
+      "name": "fixture",
+      "pass": true,
+      "detail": "event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be score=12"
+    },
+    {
+      "name": "overview_no_selected_pending_wording",
+      "pass": true,
+      "detail": "2 vendors assigned to this event. 5 highlighted vendors not yet chosen by the couple. Vendor Network classifications remain authoritative for discovery. Manage optional highlights with Change for this event; the assigned roster is under Ope"
+    },
+    {
+      "name": "overview_uses_assigned_language",
+      "pass": true,
+      "detail": "2 vendors assigned to this event. 5 highlighted vendors not yet chosen by the couple. Vendor Network classifications remain authoritative for discovery. Manage optional highlights with Change for this event; the assigned roster is under Ope"
+    },
+    {
+      "name": "overview_uses_highlight_language",
+      "pass": true,
+      "detail": "2 vendors assigned to this event. 5 highlighted vendors not yet chosen by the couple. Vendor Network classifications remain authoritative for discovery. Manage optional highlights with Change for this event; the assigned roster is under Ope"
+    },
+    {
+      "name": "highlights_section_visible",
+      "pass": true,
+      "detail": "event-vendor-highlights"
+    },
+    {
+      "name": "highlights_help_explains_chosen_and_assigned",
+      "pass": true,
+      "detail": "These are optional suggestions shown to the couple. “Chosen by B2P 96736-9a50 & Portal Partner” means the couple submitted that vendor; assigned vendors appear under Assigned to This Event. Removing a"
+    },
+    {
+      "name": "chosen_group_hidden_when_empty",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "not_submitted_group_visible",
+      "pass": true,
+      "detail": "db=5"
+    },
+    {
+      "name": "preview_not_roster_badge",
+      "pass": true,
+      "detail": "Recommendations — not the assigned roster"
+    },
+    {
+      "name": "preview_copy_not_roster",
+      "pass": true,
+      "detail": "Recommendations — not the assigned roster\nRecommended for you\n\nOptional highlights from Jen's Fancy Venue. Preview is view-only and does not show the assigned roster or whether the couple has submitte"
+    },
+    {
+      "name": "browse_recs_unchanged",
+      "pass": true,
+      "detail": "fingerprint"
+    },
+    {
+      "name": "browse_assigns_unchanged",
+      "pass": true,
+      "detail": "fingerprint"
+    },
+    {
+      "name": "remove_highlight_deletes_rec_only",
+      "pass": true,
+      "detail": "removed=45551c95-fa8f-41d3-a2e4-a68ef53203eb"
+    },
+    {
+      "name": "remove_highlight_keeps_assignments",
+      "pass": true,
+      "detail": "assignments intact"
+    },
+    {
+      "name": "network_unchanged",
+      "pass": true,
+      "detail": "b=10 a=10"
+    },
+    {
+      "name": "no_invite_side_effect",
+      "pass": true,
+      "detail": "b=1 a=1"
+    },
+    {
+      "name": "no_notification_side_effect",
+      "pass": true,
+      "detail": "b=3483 a=3483"
+    }
+  ],
+  "at": "2026-10-22T16:59:21.911Z"
+}
