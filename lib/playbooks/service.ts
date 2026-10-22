@@ -347,7 +347,12 @@ export async function replaceClientPlaybookOnEvent(
 export async function addCustomClientEventTask(
   eventId: string,
   eventDate: string,
-  input: { title: string; daysOffset: number; description?: string | null },
+  input: {
+    title: string;
+    daysOffset: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
 ): Promise<PlaybookActionResult & { taskId?: string }> {
   const result = await withVenue(async (c, venueId) => {
     try {
@@ -380,7 +385,12 @@ export async function updateClientEventTaskFields(
   eventId: string,
   eventDate: string,
   taskId: string,
-  input: { title?: string; daysOffset?: number; description?: string | null },
+  input: {
+    title?: string;
+    daysOffset?: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
 ): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     try {

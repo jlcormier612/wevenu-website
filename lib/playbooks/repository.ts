@@ -1112,7 +1112,13 @@ export async function addCustomClientEventTask(
   venueId: string,
   eventId: string,
   eventDate: string,
-  input: { title: string; daysOffset: number; description?: string | null },
+  input: {
+    title: string;
+    daysOffset: number;
+    description?: string | null;
+    /** Attach the event questionnaire portal action (does not send). */
+    attachQuestionnaire?: boolean;
+  },
 ): Promise<{ ok: true; taskId: string } | { ok: false; reason: "not_found" | "already_released" }> {
   const gate = await requireDraftClientApplication(client, venueId, eventId);
   if (!gate.ok) return gate;
@@ -1123,6 +1129,7 @@ export async function addCustomClientEventTask(
   const existing = await getEventTasks(client, venueId, eventId);
   const clientTasks = existing.filter((t) => t.ownerType === "couple");
   const sortOrder = clientTasks.reduce((max, t) => Math.max(max, t.sortOrder), 0) + 1;
+  const attachQuestionnaire = Boolean(input.attachQuestionnaire);
   const { data: inserted, error } = await client.from("event_tasks")
     .insert({
       venue_id: venueId,
@@ -1138,7 +1145,7 @@ export async function addCustomClientEventTask(
       category: "planning",
       milestone_name: "Planning",
       milestone_kind: null,
-      auto_complete_trigger: null,
+      auto_complete_trigger: attachQuestionnaire ? "questionnaire_submitted" : null,
       depends_on_event_task_id: null,
       is_required: false,
       sort_order: sortOrder,
@@ -1147,8 +1154,8 @@ export async function addCustomClientEventTask(
       escalation_after_days: null,
       notify_on_assign: false,
       notify_on_complete: false,
-      action_type: null,
-      action_label: null,
+      action_type: attachQuestionnaire ? "questionnaire" : null,
+      action_label: attachQuestionnaire ? "Open Questionnaire" : null,
     })
     .select("id")
     .single<{ id: string }>();
@@ -1193,7 +1200,13 @@ export async function updateClientEventTaskFields(
   eventId: string,
   eventDate: string,
   taskId: string,
-  input: { title?: string; daysOffset?: number; description?: string | null },
+  input: {
+    title?: string;
+    daysOffset?: number;
+    description?: string | null;
+    /** Set/clear questionnaire portal attachment (does not send). */
+    attachQuestionnaire?: boolean;
+  },
 ): Promise<{ ok: true } | { ok: false; reason: "not_found" | "already_released" | "wrong_task" }> {
   const gate = await requireDraftClientApplication(client, venueId, eventId);
   if (!gate.ok) return gate;
@@ -1226,6 +1239,17 @@ export async function updateClientEventTaskFields(
     patch.due_date = offsetDate(eventDate, daysOffset);
     patch.due_date_locked = false;
     patch.due_date_rule_kind = "relative_to_event";
+  }
+  if (input.attachQuestionnaire !== undefined) {
+    if (input.attachQuestionnaire) {
+      patch.action_type = "questionnaire";
+      patch.action_label = "Open Questionnaire";
+      patch.auto_complete_trigger = "questionnaire_submitted";
+    } else {
+      patch.action_type = null;
+      patch.action_label = null;
+      patch.auto_complete_trigger = null;
+    }
   }
   if (Object.keys(patch).length === 0) return { ok: true };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

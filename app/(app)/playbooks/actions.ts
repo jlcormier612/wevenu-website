@@ -327,7 +327,12 @@ export async function replaceClientPlaybookAction(
 export async function addCustomClientEventTaskAction(
   eventId: string,
   eventDate: string,
-  input: { title: string; daysOffset: number; description?: string | null },
+  input: {
+    title: string;
+    daysOffset: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
 ): Promise<PlaybookActionResult & { taskId?: string }> {
   const result = await addCustomClientEventTask(eventId, eventDate, input);
   if (result.ok) revalidatePath(`/events/${eventId}`);
@@ -347,7 +352,12 @@ export async function updateClientEventTaskFieldsAction(
   eventId: string,
   eventDate: string,
   taskId: string,
-  input: { title?: string; daysOffset?: number; description?: string | null },
+  input: {
+    title?: string;
+    daysOffset?: number;
+    description?: string | null;
+    attachQuestionnaire?: boolean;
+  },
 ): Promise<PlaybookActionResult> {
   const result = await updateClientEventTaskFields(eventId, eventDate, taskId, input);
   if (result.ok) revalidatePath(`/events/${eventId}`);

@@ -28,6 +28,7 @@ type DraftRow = {
   title: string;
   daysOffset: number;
   description: string;
+  attachQuestionnaire: boolean;
   dirty: boolean;
 };
 
@@ -40,6 +41,9 @@ function toDraftRows(tasks: EventTask[]): DraftRow[] {
       title: t.title,
       daysOffset: t.daysOffset,
       description: t.description ?? "",
+      attachQuestionnaire:
+        t.actionType === "questionnaire"
+        || t.autoCompleteTrigger === "questionnaire_submitted",
       dirty: false,
     }));
 }
@@ -81,6 +85,7 @@ export function EventPlanningSetupEditor({
   const [rows, setRows] = React.useState<DraftRow[]>(() => toDraftRows(tasks));
   const [newTitle, setNewTitle] = React.useState("");
   const [newOffset, setNewOffset] = React.useState("-30");
+  const [newAttachQuestionnaire, setNewAttachQuestionnaire] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
 
   React.useEffect(() => {
@@ -91,9 +96,10 @@ export function EventPlanningSetupEditor({
     setMode("customize");
     setNewTitle("");
     setNewOffset("-30");
+    setNewAttachQuestionnaire(false);
   }, [open, clientApp?.templateId, tasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const dirtyCustomize = rows.some((r) => r.dirty) || Boolean(newTitle.trim());
+  const dirtyCustomize = rows.some((r) => r.dirty) || Boolean(newTitle.trim()) || newAttachQuestionnaire;
   const templateChanged = Boolean(
     selectedTemplateId && clientApp?.templateId && selectedTemplateId !== clientApp.templateId,
   );
@@ -177,6 +183,7 @@ export function EventPlanningSetupEditor({
         title: row.title,
         daysOffset: row.daysOffset,
         description: row.description,
+        attachQuestionnaire: row.attachQuestionnaire,
       });
       if (!result.ok) {
         toast.error(result.message);
@@ -225,12 +232,14 @@ export function EventPlanningSetupEditor({
       const result = await addCustomClientEventTaskAction(eventId, eventDate, {
         title,
         daysOffset,
+        attachQuestionnaire: newAttachQuestionnaire,
       });
       if (!result.ok) {
         toast.error(result.message);
         return;
       }
       setNewTitle("");
+      setNewAttachQuestionnaire(false);
       toast.success("Task added to this event.");
       router.refresh();
     });
@@ -394,6 +403,24 @@ export function EventPlanningSetupEditor({
                           );
                         }}
                       />
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          className="rounded border-border"
+                          checked={row.attachQuestionnaire}
+                          disabled={pending || released}
+                          data-testid={`planning-setup-task-questionnaire-${row.id}`}
+                          onChange={(e) => {
+                            const attachQuestionnaire = e.target.checked;
+                            setRows((prev) =>
+                              prev.map((r) =>
+                                r.id === row.id ? { ...r, attachQuestionnaire, dirty: true } : r,
+                              ),
+                            );
+                          }}
+                        />
+                        Attach questionnaire (client opens form; does not send)
+                      </label>
                       <div className="flex flex-wrap items-center gap-2">
                         <label className="text-xs text-muted-foreground">
                           Days from event
@@ -442,6 +469,17 @@ export function EventPlanningSetupEditor({
                     data-testid="planning-setup-new-title"
                     onChange={(e) => setNewTitle(e.target.value)}
                   />
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      checked={newAttachQuestionnaire}
+                      disabled={pending || released}
+                      data-testid="planning-setup-new-questionnaire"
+                      onChange={(e) => setNewAttachQuestionnaire(e.target.checked)}
+                    />
+                    Attach questionnaire (client opens form; does not send)
+                  </label>
                   <div className="flex flex-wrap items-end gap-2">
                     <label className="text-xs text-muted-foreground">
                       Days from event

@@ -55,6 +55,14 @@ describe("PLAN-02/03 planning capabilities", () => {
       capabilityRequiredByTask({ autoCompleteTrigger: "timeline_created", actionType: null }),
       "timeline",
     );
+    assert.equal(
+      capabilityRequiredByTask({ autoCompleteTrigger: "questionnaire_submitted", actionType: null }),
+      "questionnaires",
+    );
+    assert.equal(
+      capabilityRequiredByTask({ autoCompleteTrigger: null, actionType: "questionnaire" }),
+      "questionnaires",
+    );
   });
 
   it("filters starter tasks when capabilities are disabled (does not make remaining tasks optional)", () => {
@@ -67,7 +75,7 @@ describe("PLAN-02/03 planning capabilities", () => {
       })),
       ALL_OFF,
     );
-    assert.ok(!clientFiltered.some((t) => /vendor|seating|timeline/i.test(t.title)));
+    assert.ok(!clientFiltered.some((t) => /vendor|seating|timeline|questionnaire/i.test(t.title)));
     const seatingRequired = STANDARD_CLIENT_PLANNING_TASKS.find((t) =>
       t.autoCompleteTrigger === "seating_submitted",
     );

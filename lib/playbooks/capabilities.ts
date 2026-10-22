@@ -120,12 +120,14 @@ const TRIGGER_TO_CAPABILITY: Record<string, PlanningCapabilityId> = {
   floor_plan_created: "floor_plan",
   seating_submitted: "seating",
   vendor_selected: "vendors",
+  questionnaire_submitted: "questionnaires",
 };
 
 const ACTION_TO_CAPABILITY: Partial<Record<TaskActionType, PlanningCapabilityId>> = {
   timeline: "timeline",
   floor_plan: "floor_plan",
   vendor_library: "vendors",
+  questionnaire: "questionnaires",
 };
 
 export function capabilityRequiredByTask(task: {
