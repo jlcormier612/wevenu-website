@@ -288,7 +288,7 @@ html.dark:has(.htc-staff) {
   --border: color-mix(in oklch, var(--true-white) 28%, transparent);
   --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --primary: var(--soft-sage);
-  --primary-foreground: var(--forest-sage);
+  --primary-foreground: color-mix(in oklch, var(--forest-sage) 62%, black);
   --ring: var(--soft-sage);
 
   --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
@@ -481,7 +481,9 @@ html:has(.htc-staff) [data-slot="table"] {
   --popover: var(--heritage-sage);
   --popover-foreground: var(--true-white);
   --primary: var(--soft-sage);
-  --primary-foreground: var(--forest-sage);
+  /* Forest on soft-sage is ~4.21:1 — below AA for normal button labels.
+     Mix toward black so primary actions clear 4.5:1 without leaving the palette. */
+  --primary-foreground: color-mix(in oklch, var(--forest-sage) 62%, black);
   --secondary: var(--heritage-sage);
   --secondary-foreground: var(--true-white);
   --muted: var(--heritage-sage);

@@ -269,12 +269,11 @@ function PickButton({
         onToggle(!isPicked);
       }}
       disabled={toggling}
-      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-60 ${
+      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-100 disabled:bg-muted disabled:text-muted-foreground ${
         isPicked
           ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
-          : "text-white hover:opacity-90"
+          : "bg-[var(--venue-primary)] text-primary-foreground hover:opacity-90"
       }`}
-      style={isPicked ? undefined : { background: "var(--venue-primary)" }}
     >
       {toggling ? "Saving…" : isPicked ? "Unpick" : "Pick"}
     </button>
@@ -683,12 +682,11 @@ function VendorDetail({
                     type="button"
                     onClick={() => onToggle(!isPicked)}
                     disabled={toggling}
-                    className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors disabled:opacity-60 ${
+                    className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors disabled:opacity-100 disabled:bg-muted disabled:text-muted-foreground ${
                       isPicked
                         ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
-                        : "text-white hover:opacity-90"
+                        : "bg-[var(--venue-primary)] text-primary-foreground hover:opacity-90"
                     }`}
-                    style={isPicked ? undefined : { background: "var(--venue-primary)" }}
                   >
                     {toggling ? "Saving…" : isPicked ? "Unpick" : "Select vendor"}
                   </button>
@@ -729,8 +727,23 @@ function SubmitBar({
             This submits your list to the venue and notifies the vendors you picked — continue?
           </p>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={submitting} onClick={onBack}>Back</Button>
-            <Button type="button" size="sm" disabled={submitting} onClick={onSubmit}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={submitting}
+              onClick={onBack}
+              className="disabled:opacity-100 disabled:bg-muted disabled:text-muted-foreground"
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={submitting}
+              onClick={onSubmit}
+              className="disabled:opacity-100 disabled:bg-primary/40 disabled:text-primary-foreground"
+            >
               {submitting ? "Submitting…" : "Submit to Venue"}
             </Button>
           </div>
