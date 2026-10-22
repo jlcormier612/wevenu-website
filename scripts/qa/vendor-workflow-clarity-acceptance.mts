@@ -134,17 +134,19 @@ async function main() {
     await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2800);
 
+    await page.getByRole("tab", { name: /^Overview$/i }).click().catch(() => {});
+    await page.waitForTimeout(1200);
+    // Live Overview Vendors card = Event Setup vendors row (not BookingOverviewSummary).
+    const setupVendors = page.getByTestId("event-setup-card-vendors");
+    await setupVendors.scrollIntoViewIfNeeded().catch(() => {});
+    await page.waitForTimeout(500);
     const overview = page.getByTestId("overview-vendors-tile");
-    // Overview may be behind Overview tab
-    if (!(await overview.isVisible().catch(() => false))) {
-      await page.getByRole("tab", { name: /^Overview$/i }).click().catch(() => {});
-      await page.waitForTimeout(1500);
-    }
     await overview.scrollIntoViewIfNeeded().catch(() => {});
-    const overviewText = await overview.innerText().catch(() => "");
+    const overviewText = ((await overview.innerText().catch(() => ""))
+      || (await setupVendors.innerText().catch(() => ""))).trim();
     record(
       "overview_no_selected_pending_wording",
-      !/vendors selected|recommendations pending/i.test(overviewText),
+      overviewText.length > 0 && !/vendors selected|recommendations pending/i.test(overviewText),
       overviewText.slice(0, 240),
     );
     record(

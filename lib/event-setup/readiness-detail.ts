@@ -10,6 +10,7 @@
 import type { EventPlaybookApplication } from "@/lib/playbooks/types";
 import type { SetupTemplateRefs } from "@/lib/event-setup/template-refs";
 import type { SetupDecision, SetupStepKey } from "@/lib/event-setup/state";
+import { overviewVendorSummaryLines } from "@/lib/vendors/overview-vendor-copy";
 
 export type SetupReadinessStatus =
   | "included"
@@ -49,6 +50,10 @@ export type SetupReadinessContext = {
   timelineItemCount: number;
   questionnaires: QuestionnaireReadinessInput[];
   vendorRecommendationCount: number;
+  /** Operational event_vendor_assignments — not the same as couple selections. */
+  vendorAssignmentCount?: number;
+  /** Recommendation rows with selectedAt (couple submitted that highlight). */
+  vendorSubmittedHighlightCount?: number;
   floorPlanOfferCount: number;
   /** Operational floor_plans rows for this booking — distinct from offers. */
   operationalFloorPlanCount?: number;
@@ -199,16 +204,24 @@ function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
 }
 
 function vendorsDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
-  const rec = ctx.vendorRecommendationCount;
+  const highlightCount = ctx.vendorRecommendationCount;
+  const assignmentCount = ctx.vendorAssignmentCount ?? 0;
+  const submittedHighlightCount = Math.min(
+    ctx.vendorSubmittedHighlightCount ?? 0,
+    highlightCount,
+  );
+  const clarity = overviewVendorSummaryLines({
+    assignmentCount,
+    highlightCount,
+    submittedHighlightCount,
+  }).join(" ");
   return {
     status: "included",
     summary:
-      `Vendor Network classifications (preferred, recommended, required) are authoritative. ` +
-      `Eligible vendors are available for client discovery by default. ` +
-      (rec > 0
-        ? `${rec} optional highlight${rec === 1 ? "" : "s"} on this event (Change for this event). `
-        : "Optional event highlights are managed with Change for this event. ") +
-      "Assignments stay under Open Vendors. Required vendors keep their existing assignment behavior.",
+      `${clarity} ` +
+      `Vendor Network classifications remain authoritative for discovery. ` +
+      `Manage optional highlights with Change for this event; the assigned roster is under Open Vendors. ` +
+      `Required vendors keep their existing assignment behavior.`,
     nextAction: "Open Vendors",
   };
 }

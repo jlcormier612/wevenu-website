@@ -70,6 +70,8 @@ describe("partitionRecommendationsByCoupleSubmission", () => {
 
 describe("vendor workflow clarity UI seams", () => {
   const overview = readFileSync(resolve("components/events/booking-overview-summary.tsx"), "utf8");
+  const readiness = readFileSync(resolve("lib/event-setup/readiness-detail.ts"), "utf8");
+  const setupPanel = readFileSync(resolve("components/events/event-setup-panel.tsx"), "utf8");
   const highlights = readFileSync(
     resolve("components/events/vendors/event-vendor-recommendations-section.tsx"),
     "utf8",
@@ -79,8 +81,13 @@ describe("vendor workflow clarity UI seams", () => {
   const removeAction = readFileSync(resolve("app/(app)/events/[id]/vendor-actions.ts"), "utf8");
 
   it("Overview uses overviewVendorSummaryLines helper", () => {
+    // Live Overview Vendors card = Event Setup vendors row (BookingOverviewSummary is unmounted).
+    assert.match(readiness, /overviewVendorSummaryLines/);
+    assert.match(setupPanel, /overview-vendors-tile/);
+    assert.match(setupPanel, /vendorAssignmentCount/);
     assert.match(overview, /overviewVendorSummaryLines/);
     assert.doesNotMatch(overview, /vendors selected|recommendations pending/i);
+    assert.doesNotMatch(readiness, /vendors selected|recommendations pending/i);
   });
 
   it("highlights section groups by selectedAt and explains remove ≠ unassign", () => {

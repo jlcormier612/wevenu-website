@@ -144,11 +144,28 @@ describe("setupReadinessDetail", () => {
     const detail = setupReadinessDetail(base({
       step: "vendors",
       vendorRecommendationCount: 0,
+      vendorAssignmentCount: 0,
+      vendorSubmittedHighlightCount: 0,
     }));
     assert.equal(detail.status, "included");
-    assert.match(detail.summary, /available for client discovery by default/i);
+    assert.match(detail.summary, /No vendors highlighted for this event yet/i);
     assert.match(detail.summary, /Vendor Network classifications/i);
     assert.match(detail.summary, /Change for this event/i);
+    assert.match(detail.summary, /assigned/i);
+    assert.doesNotMatch(detail.summary, /vendors selected|recommendations pending/i);
+  });
+
+  it("labels Overview vendors by assignments and unsubmitted highlights", () => {
+    const detail = setupReadinessDetail(base({
+      step: "vendors",
+      vendorRecommendationCount: 3,
+      vendorAssignmentCount: 2,
+      vendorSubmittedHighlightCount: 1,
+    }));
+    assert.equal(detail.status, "included");
+    assert.match(detail.summary, /2 vendors assigned to this event/i);
+    assert.match(detail.summary, /2 highlighted vendors not yet chosen by the couple/i);
+    assert.doesNotMatch(detail.summary, /approv/i);
   });
 
   it("treats questionnaire drafts as authorized-send only, not portal blockers", () => {
@@ -227,6 +244,7 @@ describe("setupReadinessDetail", () => {
     }));
     assert.equal(detail.status, "included");
     assert.match(detail.summary, /Vendor Network classifications/i);
+    assert.match(detail.summary, /No vendors highlighted for this event yet/i);
   });
 
   it("floor-plan offers without working layouts remain Included with init copy", () => {

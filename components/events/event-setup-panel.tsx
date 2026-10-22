@@ -196,7 +196,12 @@ export function EventSetupPanel({
         hasTimeline,
         timelineItemCount,
         questionnaires,
-        vendorRecommendationCount,
+        vendorRecommendationCount:
+          vendorRecommendations.length > 0
+            ? vendorRecommendations.length
+            : vendorRecommendationCount,
+        vendorAssignmentCount: vendorAssignments.length,
+        vendorSubmittedHighlightCount: vendorRecommendations.filter((r) => Boolean(r.selectedAt)).length,
         floorPlanOfferCount,
         operationalFloorPlanCount,
         preferredFloorPlanName,
@@ -533,7 +538,12 @@ export function EventSetupPanel({
                   </div>
                 ) : null}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">{detail.summary}</p>
+              <p
+                className="mt-2 text-xs text-muted-foreground"
+                data-testid={step === "vendors" ? "overview-vendors-tile" : undefined}
+              >
+                {detail.summary}
+              </p>
               {decision === "set_up" ? (
                 <div className="mt-3">
                   <SetupEditorLink
