@@ -206,19 +206,39 @@ async function main() {
       for (let i = 0; i < 60 && !(await submit.isEnabled()); i += 1) await page.waitForTimeout(500);
     }
     if (!(await submit.isEnabled())) throw new Error("booking-confirm-submit stayed disabled");
-    await submit.click();
-    await page.waitForURL(/\/(events|clients)\//, { timeout: 90_000 }).catch(() => undefined);
-    await page.waitForTimeout(2000);
+    await submit.click({ timeout: 15_000 });
+    try {
+      await page.waitForURL(/\/(clients|events)\//, { timeout: 90_000 });
+    } catch {
+      for (let i = 0; i < 30 && !clientId; i += 1) {
+        await page.waitForTimeout(1_000);
+        const { data: early } = await admin.from("clients").select("id").eq("lead_id", leadId).maybeSingle();
+        if (early?.id) {
+          clientId = early.id;
+          break;
+        }
+      }
+      if (clientId) {
+        await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      } else {
+        await page.screenshot({ path: `${OUT}/02-booking-nav-timeout.png`, fullPage: true }).catch(() => undefined);
+        throw new Error(`booking navigation failed url=${page.url()}`);
+      }
+    }
 
-    const { data: rel } = await admin
-      .from("relationships")
-      .select("id,client_id,event_id")
-      .eq("venue_id", FANCY)
-      .eq("lead_id", leadId)
-      .maybeSingle();
-    eventId = (rel as { event_id?: string } | null)?.event_id ?? null;
-    clientId = (rel as { client_id?: string } | null)?.client_id ?? null;
-    record("booking_created_event", Boolean(eventId), `eventId=${eventId}`);
+    const { data: client } = await admin.from("clients").select("id").eq("lead_id", leadId).maybeSingle();
+    clientId = client?.id ?? clientId ?? null;
+    const { data: event } = clientId
+      ? await admin
+          .from("events")
+          .select("id,booked_at,name")
+          .eq("client_id", clientId)
+          .eq("venue_id", FANCY)
+          .not("booked_at", "is", null)
+          .maybeSingle()
+      : { data: null };
+    eventId = event?.id ?? null;
+    record("booking_created_event", Boolean(eventId && clientId), JSON.stringify({ eventId, clientId }));
     if (!eventId) throw new Error("no event after booking");
 
     await page.goto(`${APP}/events/${eventId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });

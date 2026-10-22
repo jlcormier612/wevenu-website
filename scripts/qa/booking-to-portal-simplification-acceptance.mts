@@ -674,6 +674,52 @@ async function main() {
         && customTasks[0]!.owner_type === "couple",
       JSON.stringify(customTasks),
     );
+
+    // Questionnaire attach on a second client task (does not send)
+    const qTaskTitle = "QA questionnaire-attached planning task";
+    const qAttach = page.getByTestId("planning-setup-new-questionnaire");
+    record(
+      "planning_questionnaire_attach_control_present",
+      (await qAttach.count()) === 1,
+      `count=${await qAttach.count()}`,
+    );
+    if ((await qAttach.count()) === 1) {
+      await page.getByTestId("planning-setup-new-title").fill(qTaskTitle);
+      await qAttach.check();
+      await clientAddBtn.click();
+      let qTasks: { id: string; action_type: string | null; auto_complete_trigger: string | null }[] = [];
+      for (let i = 0; i < 20; i += 1) {
+        await page.waitForTimeout(500);
+        qTasks = (await admin
+          .from("event_tasks")
+          .select("id,action_type,auto_complete_trigger")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .eq("title", qTaskTitle)).data ?? [];
+        if (qTasks.length >= 1) break;
+      }
+      record(
+        "planning_task_questionnaire_attached",
+        qTasks.length === 1
+          && qTasks[0]!.action_type === "questionnaire"
+          && qTasks[0]!.auto_complete_trigger === "questionnaire_submitted",
+        JSON.stringify(qTasks),
+      );
+      const { data: qRows } = await admin
+        .from("event_questionnaires")
+        .select("id,status")
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY);
+      record(
+        "questionnaire_attach_did_not_send",
+        !(qRows ?? []).some((q) => q.status === "sent"),
+        JSON.stringify(qRows ?? []),
+      );
+    } else {
+      record("planning_task_questionnaire_attached", false, "attach control missing");
+      record("questionnaire_attach_did_not_send", false, "skipped");
+    }
+
     await page.screenshot({ path: `${OUT}/03c-planning-setup-editor-1280.png`, fullPage: true });
     await page.getByRole("button", { name: /Back to Overview/i }).click();
     await page.waitForTimeout(500);
