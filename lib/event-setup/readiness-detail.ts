@@ -167,8 +167,8 @@ function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const operational = ctx.operationalFloorPlanCount ?? 0;
   const operationalNote =
     operational === 0
-      ? " No operational floor plan for this booking yet — that is separate from offers and is managed under Open Floor Plans."
-      : ` ${operational} operational floor plan${operational === 1 ? "" : "s"} on this booking (venue working layout — not the same as offered layouts).`;
+      ? " Working layout initializes from offered layouts when you save offers or open Floor Plans."
+      : ` ${operational} working layout${operational === 1 ? "" : "s"} on this booking (Open Floor Plans edits the operational plan).`;
 
   if (ctx.floorPlanOfferCount === 0) {
     if (ctx.inheritedRefs.defaultFloorPlanTemplateId || (ctx.inheritedRefs.floorPlanTemplateIds?.length ?? 0) > 0) {

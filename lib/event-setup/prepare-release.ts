@@ -222,6 +222,14 @@ export async function prepareAndReleasePortal(
           console.error("prepareAndReleasePortal floor-plan offers failed:", err);
         }
       }
+      try {
+        const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+        await ensureWorkingLayoutForEvent(supabase, venue.id, eventId, {
+          preferredTemplateId: preferred,
+        });
+      } catch (err) {
+        console.error("prepareAndReleasePortal working floor plan failed:", err);
+      }
     }
   }
 

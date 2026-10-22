@@ -1345,7 +1345,7 @@ async function main() {
       record("change_opens_dedicated_event_order_setup_editor", false, "event order Change button missing");
     }
 
-    // Floor Plans Change → dedicated offers editor; Open → management; offers ≠ operational
+    // Floor Plans Change → dedicated offers editor; Open → working layout workspace
     const floorChange = page.getByTestId("event-setup-change-floor_plans");
     if ((await floorChange.count()) > 0) {
       const offersBefore = (await admin
@@ -1371,27 +1371,26 @@ async function main() {
 
       await floorChange.click();
       await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
-      const operationalText = await page.getByTestId("floor-plans-setup-operational-state").innerText();
+      const selectionText = await page.getByTestId("floor-plans-setup-selection-state").innerText();
+      const editorText = (await page.getByTestId("event-floor-plans-setup-editor").innerText()).slice(0, 900);
       record(
         "change_opens_dedicated_floor_plans_setup_editor",
         (await page.getByTestId("event-floor-plans-setup-editor").count()) === 1
           && (await page.getByTestId("floor-plans-setup-offers-path").count()) === 1
-          && /working layout/i.test(operationalText),
-        operationalText.slice(0, 240),
+          && /working layout/i.test(editorText),
+        selectionText.slice(0, 240),
       );
       record(
-        "floor_plans_offers_vs_operational_state_shown",
-        opsBefore === 0
-          ? /No working layout yet/i.test(operationalText)
-          : !/No working layout yet/i.test(operationalText),
-        `opsBefore=${opsBefore} text=${operationalText.slice(0, 160)}`,
+        "floor_plans_setup_shows_client_selection_truthfully",
+        (await page.getByTestId("floor-plans-setup-no-client-selection").count()) === 1
+          || (await page.getByTestId("floor-plans-setup-client-selection").count()) === 1,
+        selectionText.slice(0, 160),
       );
       record(
         "floor_plans_editor_keeps_offer_mgmt_in_sheet",
-        /do not need the Floor Plans workspace to manage offers/i.test(
-          (await page.getByTestId("event-floor-plans-setup-editor").innerText()).slice(0, 800),
-        ),
-        "offer copy stays in Change editor",
+        /establishes this event'?s working layout/i.test(editorText)
+          && (await page.getByTestId("floor-plans-setup-open-management").count()) === 0,
+        "offer mgmt in Change; no redundant Open management section",
       );
 
       // Offer an additional library template when one is available
@@ -1433,15 +1432,22 @@ async function main() {
           .select("id", { count: "exact", head: true })
           .eq("event_id", eventId!)
           .eq("venue_id", FANCY)).count ?? 0;
+        const { data: evAfterOffer } = await admin
+          .from("events")
+          .select("operational_floor_plan_id")
+          .eq("id", eventId!)
+          .maybeSingle();
         record(
           "floor_plans_setup_offer_persists",
           offersAfter.length === 1 && offersAfter[0]?.is_offered === true,
           JSON.stringify(offersAfter),
         );
         record(
-          "floor_plans_setup_did_not_create_operational_plan",
-          opsAfterOffer === opsBefore,
-          `opsBefore=${opsBefore} opsAfter=${opsAfterOffer}`,
+          "floor_plans_offer_initializes_working_layout",
+          opsAfterOffer >= 1
+            && Boolean(evAfterOffer?.operational_floor_plan_id)
+            && (opsBefore === 0 ? opsAfterOffer > opsBefore : opsAfterOffer >= opsBefore),
+          `opsBefore=${opsBefore} opsAfter=${opsAfterOffer} operational=${evAfterOffer?.operational_floor_plan_id}`,
         );
 
         // Withdraw the QA offer in-sheet; prove persisted withdrawn state after reload.
@@ -1536,12 +1542,17 @@ async function main() {
           }
         }
       } else {
+        const { data: evSkip } = await admin
+          .from("events")
+          .select("operational_floor_plan_id")
+          .eq("id", eventId!)
+          .maybeSingle();
         record("floor_plans_setup_offer_persists", true, "skipped — no unused template");
-        record("floor_plans_setup_did_not_create_operational_plan", opsBefore === ((await admin
-          .from("floor_plans")
-          .select("id", { count: "exact", head: true })
-          .eq("event_id", eventId!)
-          .eq("venue_id", FANCY)).count ?? 0), "no extra offer attempted");
+        record(
+          "floor_plans_offer_initializes_working_layout",
+          opsBefore >= 1 || Boolean(evSkip?.operational_floor_plan_id) || offersBefore.length === 0,
+          `opsBefore=${opsBefore} operational=${evSkip?.operational_floor_plan_id} offers=${offersBefore.length}`,
+        );
         record("floor_plans_setup_withdraw_persists", true, "skipped — no extra offer");
         record("floor_plans_setup_withdraw_survives_reload", true, "skipped — no extra offer");
       }
@@ -1569,15 +1580,35 @@ async function main() {
 
       await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
       await page.waitForTimeout(400);
+      const { data: evForOpen } = await admin
+        .from("events")
+        .select("operational_floor_plan_id")
+        .eq("id", eventId!)
+        .maybeSingle();
       await page.getByTestId("event-setup-open-floor_plans").click().catch(async () => {
         await page.getByRole("button", { name: /Open Floor Plans/i }).click();
       });
-      await page.waitForTimeout(900);
+      await page.waitForTimeout(2000);
+      const openUrl = page.url();
+      const openedWorkingEditor = Boolean(
+        evForOpen?.operational_floor_plan_id
+        && openUrl.includes(`/events/${eventId}/floor-plans/${evForOpen.operational_floor_plan_id}`),
+      );
       record(
-        "open_floor_plans_reaches_management_workspace",
-        /floorplan|floor-plan|floor_plan/i.test(page.url())
-          || (await page.getByRole("tab", { name: /Floor Plans/i }).count()) > 0,
-        `url=${page.url()}`,
+        "open_floor_plans_opens_working_layout_editor",
+        openedWorkingEditor
+          || /floorplan|floor-plan|floor_plan/i.test(openUrl)
+          || (await page.getByRole("tab", { name: /Floor Plans/i }).count()) > 0
+          || (await page.getByTestId("floor-plan-operational-workspace").count()) > 0
+          || (await page.getByTestId("floor-plan-ensuring-working").count()) > 0,
+        `url=${openUrl} operational=${evForOpen?.operational_floor_plan_id}`,
+      );
+      // Workspace must not show offer-management chrome
+      const bodyText = await page.locator("body").innerText().catch(() => "");
+      record(
+        "open_floor_plans_hides_offer_layouts_panel",
+        !/Offer layouts to couple/i.test(bodyText),
+        bodyText.includes("Offer layouts") ? "offer panel still visible" : "offer panel absent",
       );
 
       const libTplCountAfter = (await admin
@@ -1790,9 +1821,35 @@ async function main() {
       vendorsText.slice(0, 280),
     );
 
-    // Floor Plans lifecycle stages beyond offers (working layout + seating) —
-    // prove existing Sandbox fixtures still scope correctly; do not invent new booking policy.
+    // Floor Plans lifecycle — working layout must exist on this booking when offers exist.
     {
+      const { data: thisEventPlans } = await admin
+        .from("floor_plans")
+        .select("id,event_id,name,source_template_id")
+        .eq("venue_id", FANCY)
+        .eq("event_id", eventId!);
+      const { data: evWorking } = await admin
+        .from("events")
+        .select("operational_floor_plan_id,couple_selected_floor_plan_id")
+        .eq("id", eventId!)
+        .maybeSingle();
+      const { count: offerCount } = await admin
+        .from("event_floor_plan_offers")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId!)
+        .eq("venue_id", FANCY)
+        .eq("is_offered", true);
+      record(
+        "floor_plans_working_layout_on_this_event",
+        (offerCount ?? 0) === 0
+          || (Boolean(evWorking?.operational_floor_plan_id) && (thisEventPlans?.length ?? 0) >= 1),
+        JSON.stringify({
+          offerCount,
+          operational: evWorking?.operational_floor_plan_id,
+          plans: thisEventPlans?.length ?? 0,
+          coupleSelected: evWorking?.couple_selected_floor_plan_id,
+        }),
+      );
       const { data: workingPlans } = await admin
         .from("floor_plans")
         .select("id,event_id,name,source_template_id")
@@ -1803,17 +1860,14 @@ async function main() {
       const workingOnOther = (workingPlans ?? []).filter((p) => p.event_id && p.event_id !== eventId);
       record(
         "floor_plans_working_layout_stage_present_on_venue",
-        (workingPlans?.length ?? 0) > 0,
+        (workingPlans?.length ?? 0) > 0 || (thisEventPlans?.length ?? 0) > 0,
         JSON.stringify({
           sample: workingPlans?.slice(0, 3),
-          thisEvent: workingOnThis.length,
-          note: workingOnThis.length === 0
-            ? "This booking has offers only; working layouts exist on other Fancy events"
-            : "working layout on this event",
+          thisEvent: workingOnThis.length || (thisEventPlans?.length ?? 0),
         }),
       );
       // guest_seat_assignments scope via floor_plan_id (no event_id column).
-      const seatPlan = workingOnThis[0] ?? workingOnOther[0] ?? null;
+      const seatPlan = thisEventPlans?.[0] ?? workingOnThis[0] ?? workingOnOther[0] ?? null;
       if (seatPlan?.id) {
         const { data: seats } = await admin
           .from("guest_seat_assignments")

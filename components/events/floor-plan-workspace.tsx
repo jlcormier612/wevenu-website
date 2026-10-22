@@ -1,16 +1,11 @@
 "use client";
 
 /**
- * Booking → Floor Plans. A booking may hold many floor plans (Ceremony,
- * Reception, Cocktail Hour, Rain Backup, ...) — this is the workspace the
- * venue lands on first, a card grid, not immediately the editor (Booking
- * Floor Plan Workspace task). Opening a card reuses the existing Floor Plan
- * editor unmodified, now scoped to that one plan's own id.
+ * Booking → Floor Plans operational workspace.
  *
- * "+ New Floor Plan" only ever creates a booking-specific layout — Apply
- * Template, Duplicate Existing Floor Plan, or Blank. Templates themselves
- * are built elsewhere (the Floor Plan Template Library); this flow only
- * ever reads from them, never rebuilds them.
+ * Opens the event's working (operational) layout for editing and seating.
+ * Offer management lives on Event Setup → Change for this event — not here.
+ * When a working layout exists, this tab deep-links into that plan's editor.
  */
 
 import * as React from "react";
@@ -25,14 +20,12 @@ import {
   createFloorPlanAction,
   deleteFloorPlanAction,
   duplicateFloorPlanAction,
+  ensureWorkingFloorPlanAction,
   renameFloorPlanAction,
   setClientAccessAction,
   setCoupleShareAction,
   setOperationalFloorPlanAction,
   setVendorAccessAction,
-  updateFloorPlanOfferAction,
-  upsertFloorPlanOfferAction,
-  withdrawFloorPlanOfferAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import {
   applyClientFloorPlanTemplateAction,
@@ -282,142 +275,6 @@ function FloorPlanCard({
   );
 }
 
-/** Phase 2 — offer venue templates to the couple for this event (chooser source). */
-function OfferLayoutsPanel({
-  eventId, templates, offers,
-}: {
-  eventId: string;
-  templates: FloorPlanTemplate[];
-  offers: EventFloorPlanOfferWithTemplate[];
-}) {
-  const router = useRouter();
-  const [pending, startTransition] = React.useTransition();
-  const [templateId, setTemplateId] = React.useState("");
-  const [coupleLabel, setCoupleLabel] = React.useState("");
-  const [coupleBlurb, setCoupleBlurb] = React.useState("");
-
-  const offeredTemplateIds = new Set(offers.filter((o) => o.isOffered).map((o) => o.floorPlanTemplateId));
-  const availableTemplates = templates.filter((t) => !t.isArchived && !offeredTemplateIds.has(t.id));
-
-  function handleOffer() {
-    if (!templateId) return;
-    startTransition(async () => {
-      const result = await upsertFloorPlanOfferAction(eventId, {
-        templateId,
-        isOffered: true,
-        coupleLabel: coupleLabel.trim() || null,
-        coupleBlurb: coupleBlurb.trim() || null,
-        sortOrder: offers.length,
-      });
-      if (result.ok) {
-        setTemplateId("");
-        setCoupleLabel("");
-        setCoupleBlurb("");
-        toast.success("Layout offered to couple.");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not offer layout.");
-      }
-    });
-  }
-
-  function handleWithdraw(offerId: string) {
-    startTransition(async () => {
-      const result = await withdrawFloorPlanOfferAction(eventId, offerId);
-      if (result.ok) {
-        toast.success("Removed from couple chooser. Selection and event plan kept.");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not withdraw offer.");
-      }
-    });
-  }
-
-  function handleReenable(offerId: string) {
-    startTransition(async () => {
-      const result = await updateFloorPlanOfferAction(eventId, offerId, { isOffered: true });
-      if (result.ok) {
-        toast.success("Layout offered again.");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not update offer.");
-      }
-    });
-  }
-
-  return (
-    <div className="space-y-3 rounded-sm border border-border bg-muted/15 p-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Offer layouts to couple</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Choose which venue templates appear in &ldquo;Choose your layout.&rdquo; Does not share a Floor Plan or set operational.
-        </p>
-      </div>
-
-      {offers.length > 0 && (
-        <ul className="space-y-2">
-          {offers.map((o) => (
-            <li key={o.id} className="flex items-start justify-between gap-3 rounded-sm border border-border bg-card px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-heading truncate">
-                  {o.coupleLabel?.trim() || o.templateName}
-                  {!o.isOffered && (
-                    <span className="ml-2 text-[10px] font-medium text-muted-foreground">(withdrawn)</span>
-                  )}
-                </p>
-                {o.coupleBlurb?.trim() && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{o.coupleBlurb}</p>
-                )}
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Template: {o.templateName} · {o.objectCount} elements
-                </p>
-              </div>
-              <div className="shrink-0">
-                {o.isOffered ? (
-                  <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => handleWithdraw(o.id)}>
-                    Withdraw
-                  </Button>
-                ) : (
-                  <Button type="button" variant="outline" size="sm" disabled={pending || o.templateArchived} onClick={() => handleReenable(o.id)}>
-                    Offer again
-                  </Button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label className="text-xs">Template</Label>
-          <Select
-            value={templateId}
-            onValueChange={setTemplateId}
-            items={availableTemplates.map((t) => ({ value: t.id, label: t.name }))}
-          >
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose a template to offer" /></SelectTrigger>
-            <SelectContent>
-              {availableTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Couple label (optional)</Label>
-          <Input className="h-9 text-sm" value={coupleLabel} onChange={(e) => setCoupleLabel(e.target.value)} placeholder="e.g. Barn — seated dinner" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Couple blurb (optional)</Label>
-          <Input className="h-9 text-sm" value={coupleBlurb} onChange={(e) => setCoupleBlurb(e.target.value)} placeholder="What makes this layout different" />
-        </div>
-      </div>
-      <Button type="button" size="sm" disabled={pending || !templateId} onClick={handleOffer}>
-        {pending ? "Saving…" : "Offer layout"}
-      </Button>
-    </div>
-  );
-}
-
 export function FloorPlanWorkspace({
   eventId, planningClientId = null, floorPlans, templates, offers = [], spaces, eventSpaceId,
   operationalFloorPlanId = null, coupleSelectedFloorPlanId = null, inventoryUsage = [],
@@ -430,9 +287,9 @@ export function FloorPlanWorkspace({
   offers?: EventFloorPlanOfferWithTemplate[];
   spaces: VenueSpace[];
   eventSpaceId: string | null;
-  /** Phase 1 — durable SoR pointer from events.operational_floor_plan_id. */
+  /** Durable SoR pointer from events.operational_floor_plan_id (working layout). */
   operationalFloorPlanId?: string | null;
-  /** Phase 2 — couple-selected event plan (independent of operational). */
+  /** Client's confirmed layout choice — may match operational after portal select. */
   coupleSelectedFloorPlanId?: string | null;
   /** Reporting only (Inventory Foundation task) — never blocks or reserves anything. */
   inventoryUsage?: InventoryUsage[];
@@ -450,6 +307,8 @@ export function FloorPlanWorkspace({
   const [sourcePlanId, setSourcePlanId] = React.useState("");
   const [pending, startTransition] = React.useTransition();
   const [busyPlanId, setBusyPlanId] = React.useState<string | null>(null);
+  const [ensuring, setEnsuring] = React.useState(false);
+  const ensureAttempted = React.useRef(false);
 
   function reset() {
     setMethod("blank"); setName(""); setSpaceId(eventSpaceId ?? NO_SPACE); setTemplateIds([]); setSourcePlanId("");
@@ -579,25 +438,78 @@ export function FloorPlanWorkspace({
         : "Create Floor Plan";
   const preBooking = Boolean(planningClientId) && !eventId;
 
-  // Each shared plan is independently seatable (keyed by floor_plan_id).
-  // Sharing multiple plans does not replace one with another — the couple
-  // picks which plan they are working on when more than one is shared.
   const sharedPlans = floorPlans.filter((p) => p.clientAccess !== "hidden");
+  const activeOffers = offers.filter((o) => o.isOffered);
+  const workingPlan =
+    (operationalFloorPlanId && floorPlans.find((p) => p.id === operationalFloorPlanId))
+    || null;
+  const otherPlans = floorPlans.filter((p) => p.id !== workingPlan?.id);
+
+  // Open working layout immediately; initialize from offers when missing.
+  React.useEffect(() => {
+    if (preBooking || !eventId || !canEdit) return;
+    if (operationalFloorPlanId) {
+      router.replace(`/events/${eventId}/floor-plans/${operationalFloorPlanId}`);
+      return;
+    }
+    if (ensureAttempted.current) return;
+    if (activeOffers.length === 0) return;
+    ensureAttempted.current = true;
+    setEnsuring(true);
+    void (async () => {
+      const result = await ensureWorkingFloorPlanAction(eventId, null);
+      setEnsuring(false);
+      if (result.ok && "floorPlanId" in result && result.floorPlanId) {
+        router.replace(`/events/${eventId}/floor-plans/${result.floorPlanId}`);
+        return;
+      }
+      router.refresh();
+    })();
+  }, [preBooking, eventId, canEdit, operationalFloorPlanId, activeOffers.length, router]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="floor-plan-operational-workspace">
       <p className="text-sm text-muted-foreground">
         {preBooking
-          ? "Sketch the room for this client. Sharing a plan, offering layouts to the couple, and choosing the plan for the day wait until this relationship is Booked."
+          ? "Sketch the room for this client. Sharing a plan and client layout choice wait until this relationship is Booked."
           : (
             <>
-              Build the venue&apos;s working layouts for this booking — Ceremony, Reception, rain backup, and more.
-              Mark one as <span className="font-medium text-foreground">Operational</span> for day-of setup;
-              the couple&apos;s chosen layout (if they pick from offered templates) stays separate and never
-              silently becomes operational.
+              This tab opens the event&apos;s <span className="font-medium text-foreground">working layout</span> for
+              arrangement and seating. Offer which Library layouts the client can choose from under Event setup
+              → Change for this event.
             </>
           )}
       </p>
+
+      {!preBooking && (
+        <div
+          className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground space-y-1"
+          data-testid="floor-plan-selection-status"
+        >
+          {coupleSelectedFloorPlanId ? (
+            <p data-testid="floor-plan-client-selected">
+              Client selected:{" "}
+              <span className="font-medium text-foreground">
+                {floorPlans.find((p) => p.id === coupleSelectedFloorPlanId)?.name ?? "Saved layout"}
+              </span>
+            </p>
+          ) : activeOffers.length === 1 ? (
+            <p data-testid="floor-plan-sole-offer-working">
+              Using the only offered layout as the working layout
+              {workingPlan ? ` (${workingPlan.name})` : ""}. The client has not separately confirmed a choice.
+            </p>
+          ) : activeOffers.length > 1 ? (
+            <p data-testid="floor-plan-client-pending">
+              Client has not selected a layout yet. Working layout
+              {workingPlan ? ` is ${workingPlan.name}` : " will initialize from the preferred offer"} for venue prep.
+            </p>
+          ) : (
+            <p data-testid="floor-plan-no-offers-status">
+              No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         {!preBooking && sharedPlans.length > 0 && (
@@ -606,7 +518,9 @@ export function FloorPlanWorkspace({
           </Button>
         )}
         {canEdit ? (
-          <Button type="button" onClick={() => { reset(); setOpen(true); }}>+ New Floor Plan</Button>
+          <Button type="button" variant="outline" onClick={() => { reset(); setOpen(true); }}>
+            + Additional layout
+          </Button>
         ) : null}
       </div>
       {!canEdit && (
@@ -615,7 +529,11 @@ export function FloorPlanWorkspace({
         </p>
       )}
 
-      {canEdit && !preBooking && <OfferLayoutsPanel eventId={eventId} templates={templates} offers={offers} />}
+      {ensuring ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="floor-plan-ensuring-working">
+          <Loader2 className="h-4 w-4 animate-spin" /> Opening this event&apos;s working layout…
+        </p>
+      ) : null}
 
       {sharedPlans.length > 1 && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground">
@@ -625,20 +543,64 @@ export function FloorPlanWorkspace({
         </div>
       )}
 
-      {floorPlans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border py-12 px-4 text-center">
-          <p className="text-sm font-medium text-heading">No floor plans for this booking yet</p>
+      {!ensuring && !workingPlan && floorPlans.length === 0 ? (
+        <div
+          className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border py-12 px-4 text-center"
+          data-testid="floor-plan-empty-no-working"
+        >
+          <p className="text-sm font-medium text-heading">No working layout for this event yet</p>
           <p className="max-w-md text-xs text-muted-foreground">
-            Apply a reusable template from your Library, duplicate another plan on this booking, or start blank.
-            Original floor-plan files you import in Migration Center land as Documents and can back a layout here.
+            {activeOffers.length > 0
+              ? "A working layout should initialize from the offered layouts. Refresh, or open Event setup → Change for this event if it does not appear."
+              : "Offer a Library layout under Event setup → Change for this event. That establishes the working layout so you can edit and assign seats here."}
           </p>
           {canEdit && (
-            <Button type="button" size="sm" className="mt-2" onClick={() => { reset(); setOpen(true); }}>
-              + New Floor Plan
+            <Button type="button" size="sm" className="mt-2" variant="outline" onClick={() => { reset(); setOpen(true); }}>
+              + Additional layout
             </Button>
           )}
         </div>
-      ) : (
+      ) : !ensuring && workingPlan ? (
+        <div className="space-y-3" data-testid="floor-plan-working-card">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Working layout</p>
+          <FloorPlanCard
+            eventId={eventId}
+            planningClientId={planningClientId}
+            plan={workingPlan}
+            spaces={spaces}
+            busy={busyPlanId === workingPlan.id}
+            isOperational
+            isCoupleSelected={coupleSelectedFloorPlanId === workingPlan.id}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            onRename={() => handleRenamePlan(workingPlan)}
+            onDelete={() => handleDeletePlan(workingPlan)}
+          />
+          {otherPlans.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Other layouts on this event</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {otherPlans.map((plan) => (
+                  <FloorPlanCard
+                    key={plan.id}
+                    eventId={eventId}
+                    planningClientId={planningClientId}
+                    plan={plan}
+                    spaces={spaces}
+                    busy={busyPlanId === plan.id}
+                    isOperational={operationalFloorPlanId === plan.id}
+                    isCoupleSelected={coupleSelectedFloorPlanId === plan.id}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onRename={() => handleRenamePlan(plan)}
+                    onDelete={() => handleDeletePlan(plan)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : !ensuring && floorPlans.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {floorPlans.map((plan) => (
             <FloorPlanCard
@@ -653,7 +615,7 @@ export function FloorPlanWorkspace({
             />
           ))}
         </div>
-      )}
+      ) : null}
 
       {inventoryUsage.length > 0 && (
         <div className="space-y-2 rounded-sm border border-border bg-muted/20 p-4">

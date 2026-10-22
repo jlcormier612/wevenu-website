@@ -40,7 +40,7 @@ export function EventFloorPlansSetupEditor({
   offers,
   operationalPlans,
   coupleSelectedPlan = null,
-  onOpenManagement,
+  onOpenManagement: _onOpenManagement,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,8 +54,10 @@ export function EventFloorPlansSetupEditor({
   operationalPlans: OperationalPlanSummary[];
   /** Client's saved layout choice for this event, if any (distinct from offers). */
   coupleSelectedPlan?: OperationalPlanSummary | null;
+  /** Kept for panel wiring; Open Floor Plans lives on the Overview card. */
   onOpenManagement: () => void;
 }) {
+  void _onOpenManagement;
   const router = useRouter();
   const activeTemplates = templates.filter((t) => !t.isArchived);
   const offeredTemplateIds = new Set(offers.filter((o) => o.isOffered).map((o) => o.floorPlanTemplateId));
@@ -158,11 +160,6 @@ export function EventFloorPlansSetupEditor({
     });
   }
 
-  function openManagement() {
-    onOpenChange(false);
-    onOpenManagement();
-  }
-
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) requestClose(); else onOpenChange(true); }}>
       <SheetContent
@@ -176,33 +173,16 @@ export function EventFloorPlansSetupEditor({
             {eventName}
             {profileName ? ` · from ${profileName}` : ""}
             . Add or withdraw which Library layouts this couple can choose from.
-            Offer changes save here — you do not need the Floor Plans workspace to manage offers.
+            Offering a layout also establishes this event&apos;s working layout when one is missing —
+            Open Floor Plans then opens that layout for editing and seating.
             This does not release layouts to the client portal by itself.
           </SheetDescription>
         </SheetHeader>
 
         <div
           className="mb-4 rounded-md border border-border bg-muted/20 px-3 py-3 space-y-2"
-          data-testid="floor-plans-setup-operational-state"
+          data-testid="floor-plans-setup-selection-state"
         >
-          <div>
-            <p className="text-sm font-medium text-heading">This event&apos;s working layout</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              The venue&apos;s editable floor plan for seating and day-of work — separate from offered choices below.
-            </p>
-            {operationalPlans.length === 0 ? (
-              <p className="text-sm text-muted-foreground mt-1" data-testid="floor-plans-setup-no-working-layout">
-                No working layout yet. Offers can exist without one. When you are ready to design or seat this
-                event, open the Floor Plans workspace for this booking.
-              </p>
-            ) : (
-              <ul className="text-sm text-muted-foreground list-disc pl-4 mt-1">
-                {operationalPlans.map((p) => (
-                  <li key={p.id}>{p.name}</li>
-                ))}
-              </ul>
-            )}
-          </div>
           {coupleSelectedPlan ? (
             <div data-testid="floor-plans-setup-client-selection">
               <p className="text-sm font-medium text-heading">Client&apos;s selected layout</p>
@@ -210,19 +190,12 @@ export function EventFloorPlansSetupEditor({
             </div>
           ) : (
             <p className="text-xs text-muted-foreground" data-testid="floor-plans-setup-no-client-selection">
-              The client has not selected a layout yet (or selection is not required until offers are released).
+              The client has not selected a layout yet
+              {operationalPlans.length > 0
+                ? `. A working layout (${operationalPlans.map((p) => p.name).join(", ")}) is ready for venue prep.`
+                : " (or selection is not required until offers are released)."}
             </p>
           )}
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="mt-1"
-            data-testid="floor-plans-setup-open-management"
-            onClick={openManagement}
-          >
-            Open Floor Plans workspace
-          </Button>
         </div>
 
         {ensuring ? (

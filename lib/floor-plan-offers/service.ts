@@ -45,6 +45,10 @@ export async function upsertEventFloorPlanOffer(
   if (!input.templateId) return { ok: false, message: "Template is required." };
   const result = await withVenueEditor(async (supabase, venueId) => {
     const offerId = await repo.upsertOffer(supabase, venueId, eventId, input);
+    const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+    await ensureWorkingLayoutForEvent(supabase, venueId, eventId, {
+      preferredTemplateId: input.templateId,
+    });
     return { ok: true as const, offerId };
   });
   return result as { ok: true; offerId: string } | FloorPlanActionResult;
@@ -53,7 +57,8 @@ export async function upsertEventFloorPlanOffer(
 /**
  * Overview setup — recover event floor-plan offers from configured template ids.
  * Idempotent: if any offer rows already exist for the event, returns without
- * creating more. Does not create operational floor_plans rows, share, or release.
+ * creating more offers. After offers exist, ensures a working (operational)
+ * layout is initialized from the sole/preferred offer when missing.
  */
 export async function ensureEventFloorPlanOffers(
   eventId: string,
@@ -67,21 +72,26 @@ export async function ensureEventFloorPlanOffers(
   }
   const result = await withVenueEditor(async (supabase, venueId) => {
     const existing = await repo.listOffersForEvent(supabase, venueId, eventId);
-    if (existing.length > 0) {
-      return { ok: true as const, created: 0 };
+    let created = 0;
+    if (existing.length === 0) {
+      const ordered = [
+        ...(preferredId && selected.has(preferredId) ? [preferredId] : []),
+        ...[...selected].filter((id) => id !== preferredId),
+      ];
+      for (let i = 0; i < ordered.length; i += 1) {
+        await repo.upsertOffer(supabase, venueId, eventId, {
+          templateId: ordered[i]!,
+          sortOrder: i,
+          isOffered: true,
+        });
+      }
+      created = ordered.length;
     }
-    const ordered = [
-      ...(preferredId && selected.has(preferredId) ? [preferredId] : []),
-      ...[...selected].filter((id) => id !== preferredId),
-    ];
-    for (let i = 0; i < ordered.length; i += 1) {
-      await repo.upsertOffer(supabase, venueId, eventId, {
-        templateId: ordered[i]!,
-        sortOrder: i,
-        isOffered: true,
-      });
-    }
-    return { ok: true as const, created: ordered.length };
+    const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+    await ensureWorkingLayoutForEvent(supabase, venueId, eventId, {
+      preferredTemplateId: preferredId,
+    });
+    return { ok: true as const, created };
   });
   return result as { ok: true; created: number } | FloorPlanActionResult;
 }

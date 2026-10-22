@@ -362,20 +362,24 @@ async function applyInheritedFloorPlanOffers(
       .eq("event_id", eventId)
       .eq("venue_id", venueId)
       .limit(1);
-    if (existing && existing.length > 0) return;
-
-    const { upsertOffer } = await import("@/lib/floor-plan-offers/repository");
-    const ordered = [
-      ...(preferred ? [preferred] : []),
-      ...[...selected].filter((id) => id !== preferred),
-    ];
-    for (let i = 0; i < ordered.length; i += 1) {
-      await upsertOffer(supabase, venueId, eventId, {
-        templateId: ordered[i]!,
-        sortOrder: i,
-        isOffered: true,
-      });
+    if (!existing || existing.length === 0) {
+      const { upsertOffer } = await import("@/lib/floor-plan-offers/repository");
+      const ordered = [
+        ...(preferred ? [preferred] : []),
+        ...[...selected].filter((id) => id !== preferred),
+      ];
+      for (let i = 0; i < ordered.length; i += 1) {
+        await upsertOffer(supabase, venueId, eventId, {
+          templateId: ordered[i]!,
+          sortOrder: i,
+          isOffered: true,
+        });
+      }
     }
+    const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+    await ensureWorkingLayoutForEvent(supabase, venueId, eventId, {
+      preferredTemplateId: preferred,
+    });
   } catch (err) {
     console.error("Setup profile floor-plan offers apply failed:", err);
   }

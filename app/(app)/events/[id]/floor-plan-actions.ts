@@ -216,7 +216,7 @@ export async function upsertFloorPlanOfferAction(
   return result;
 }
 
-/** Overview setup — recover offers from profile template ids (no operational plans). */
+/** Overview setup — recover offers from profile template ids and init working layout. */
 export async function ensureEventFloorPlanOffersAction(
   eventId: string,
   templateIds: string[],
@@ -226,6 +226,45 @@ export async function ensureEventFloorPlanOffersAction(
   const result = await ensureEventFloorPlanOffers(eventId, templateIds, preferredId);
   if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
   return result;
+}
+
+/**
+ * Initialize or reconcile the event's working (operational) layout from offers
+ * or the client's confirmed selection. Idempotent — does not duplicate clones.
+ */
+export async function ensureWorkingFloorPlanAction(
+  eventId: string,
+  preferredTemplateId: string | null = null,
+): Promise<
+  | { ok: true; floorPlanId: string | null; created: boolean; reason: string }
+  | FloorPlanActionResult
+> {
+  if (!eventId) return { ok: false, message: "Event is required." };
+  const { createClient } = await import("@/integrations/supabase/server");
+  const { getCurrentVenue, getCurrentUserRole } = await import("@/lib/venue/service");
+  const { canEditFloorPlans, FLOOR_PLAN_EDIT_DENIED } = await import("@/lib/floor-plans/authorize");
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const role = await getCurrentUserRole();
+  if (!canEditFloorPlans(role)) return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+  const supabase = await createClient();
+  const { ensureWorkingLayoutForEvent } = await import("@/lib/floor-plans/ensure-working-layout");
+  const result = await ensureWorkingLayoutForEvent(supabase, venue.id, eventId, {
+    preferredTemplateId,
+  });
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+    if (result.floorPlanId) {
+      revalidatePath(`/events/${eventId}/floor-plans/${result.floorPlanId}`);
+    }
+  }
+  return {
+    ok: true,
+    floorPlanId: result.floorPlanId,
+    created: result.created,
+    reason: result.reason,
+  };
 }
 
 /** Phase 2 — update offer metadata / re-enable. */

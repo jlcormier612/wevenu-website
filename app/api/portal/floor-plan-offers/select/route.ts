@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 
 /**
- * Phase 2 — couple selects an offered layout.
- * Clones or reuses event plan; never mutates template; never sets shared_with_couple or operational.
+ * Couple selects an offered layout.
+ * Clones or reuses the event plan; never mutates the Library template.
+ * Sets couple_selected_floor_plan_id and operational_floor_plan_id to that plan
+ * (does not delete prior plans or seating on other plans).
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { token?: string; offerId?: string } | null;

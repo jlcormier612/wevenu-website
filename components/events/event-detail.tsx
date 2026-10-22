@@ -1072,8 +1072,8 @@ export function EventDetail({
             <CardHeader>
               <CardTitle className="text-base">Floor Plans</CardTitle>
               <CardDescription>
-                Manage available layouts and the event&apos;s current selection, using the existing
-                client-selection rules.
+                Working layout for this event — arrange the space and assign seats. Offer layouts
+                to the client from Event setup.
               </CardDescription>
             </CardHeader>
             <CardContent>

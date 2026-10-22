@@ -1,5 +1,5 @@
 /**
- * Floor Plans event-specific setup editor — offers ≠ operational plans; Change ≠ Open.
+ * Floor Plans event-specific setup editor — offers establish working layout; Change ≠ Open.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -14,6 +14,7 @@ const actions = readFileSync(resolve("app/(app)/events/[id]/floor-plan-actions.t
 const service = readFileSync(resolve("lib/floor-plan-offers/service.ts"), "utf8");
 const prepare = readFileSync(resolve("lib/event-setup/prepare-release.ts"), "utf8");
 const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
+const workspace = readFileSync(resolve("components/events/floor-plan-workspace.tsx"), "utf8");
 
 describe("Floor Plans Change vs Open destinations", () => {
   it("Change opens the dedicated floor-plans setup editor, not the management tab", () => {
@@ -24,7 +25,7 @@ describe("Floor Plans Change vs Open destinations", () => {
     assert.doesNotMatch(changeFn.slice(0, 1400), /navigateStep\("floor_plans"\)/);
   });
 
-  it("Open Floor Plans still navigates to the management workspace", () => {
+  it("Open Floor Plans still navigates to the operational workspace", () => {
     assert.match(panel, /Open Floor Plans/);
     assert.match(panel, /step === "floor_plans" \? "floorplan"/);
     assert.match(panel, /onOpenManagement=\{\(\) => navigateStep\("floor_plans"\)\}/);
@@ -39,14 +40,14 @@ describe("Floor Plans Change vs Open destinations", () => {
 });
 
 describe("Floor Plans setup editor seams", () => {
-  it("edits offers only — no operational create/share/release/invoice", () => {
+  it("edits offers and shows truthful client selection — no share/release/invoice", () => {
     assert.match(editor, /upsertFloorPlanOfferAction/);
     assert.match(editor, /withdrawFloorPlanOfferAction/);
     assert.match(editor, /ensureEventFloorPlanOffersAction/);
-    assert.match(editor, /floor-plans-setup-operational-state/);
-    assert.match(editor, /This event&apos;s working layout/);
-    assert.match(editor, /you do not need the Floor Plans workspace to manage offers/);
+    assert.match(editor, /floor-plans-setup-selection-state/);
+    assert.match(editor, /establishes this event&apos;s working layout/);
     assert.match(editor, /coupleSelectedPlan/);
+    assert.doesNotMatch(editor, /floor-plans-setup-open-management/);
     assert.doesNotMatch(editor, /createFloorPlanAction/);
     assert.doesNotMatch(editor, /setCoupleShare/);
     assert.doesNotMatch(editor, /setOperationalFloorPlan/);
@@ -61,22 +62,28 @@ describe("Floor Plans setup editor seams", () => {
     assert.match(panel, /coupleSelectedPlan=\{/);
   });
 
-  it("ensure recovers offers idempotently without creating operational plans", () => {
+  it("ensure recovers offers and initializes working layout", () => {
     assert.match(service, /export async function ensureEventFloorPlanOffers/);
-    assert.match(service, /if \(existing\.length > 0\)/);
-    assert.match(service, /Does not create operational floor_plans/);
+    assert.match(service, /ensureWorkingLayoutForEvent/);
     assert.match(actions, /ensureEventFloorPlanOffersAction/);
-    assert.doesNotMatch(service, /from\("floor_plans"\)/);
+    assert.match(actions, /ensureWorkingFloorPlanAction/);
   });
 
-  it("panel does not call ensure; release still recovers offers separately", () => {
+  it("operational workspace does not host offer management", () => {
+    assert.doesNotMatch(workspace, /Offer layouts to couple/);
+    assert.match(workspace, /ensureWorkingFloorPlanAction/);
+    assert.match(workspace, /floor-plan-operational-workspace/);
+  });
+
+  it("panel does not call ensure; release recovers offers and working layout", () => {
     assert.doesNotMatch(panel, /ensureEventFloorPlanOffersAction/);
     assert.match(prepare, /event_floor_plan_offers/);
     assert.match(prepare, /upsertOffer/);
+    assert.match(prepare, /ensureWorkingLayoutForEvent/);
   });
 });
 
-describe("Floor Plans readiness distinguishes offers from operational plans", () => {
+describe("Floor Plans readiness — offers and working layouts", () => {
   const base = {
     step: "floor_plans" as const,
     decision: "set_up" as const,
@@ -92,7 +99,7 @@ describe("Floor Plans readiness distinguishes offers from operational plans", ()
     templateNames: { planning: null, timeline: null, inventory: null, eventOrder: null },
   };
 
-  it("offers present with no operational plan is Included, not broken", () => {
+  it("offers present with no working layout yet remains Included with init copy", () => {
     const detailRow = setupReadinessDetail({
       ...base,
       floorPlanOfferCount: 2,
@@ -101,18 +108,17 @@ describe("Floor Plans readiness distinguishes offers from operational plans", ()
     });
     assert.equal(detailRow.status, "included");
     assert.match(detailRow.summary, /2 layouts offered/i);
-    assert.match(detailRow.summary, /No operational floor plan/i);
-    assert.match(detailRow.summary, /separate from offers/i);
+    assert.match(detailRow.summary, /Working layout initializes/i);
   });
 
-  it("operational plans are reported separately when present", () => {
+  it("working layouts are reported when present", () => {
     const detailRow = setupReadinessDetail({
       ...base,
       floorPlanOfferCount: 1,
       operationalFloorPlanCount: 1,
     });
     assert.equal(detailRow.status, "included");
-    assert.match(detailRow.summary, /1 operational floor plan/i);
+    assert.match(detailRow.summary, /1 working layout/i);
   });
 
   it("configured refs with no offers yet are recoverable Draft, not Unavailable", () => {
