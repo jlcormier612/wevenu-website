@@ -588,7 +588,19 @@ export function QuestionnaireFamilyPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="rounded-md border border-border bg-muted/20 px-3 py-2.5 text-sm"
+        data-testid="questionnaire-delivery-guidance"
+      >
+        <p className="font-medium text-heading">Questionnaire delivery</p>
+        <p className="mt-1 text-muted-foreground leading-relaxed">
+          You can request questionnaire information through planning tasks or automated messages where
+          supported. If you&apos;ve already requested the same information through one of those
+          workflows, you don&apos;t need to send a separate questionnaire request here. Use this
+          section when you need to send a questionnaire directly.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2" data-testid="questionnaire-kind-tabs">
         {KINDS.map((k) => {
           const q = byKind[k];
           const status = q?.status ?? "draft";
@@ -599,6 +611,7 @@ export function QuestionnaireFamilyPanel({
               type="button"
               onClick={() => setActive(k)}
               className={`rounded-full border px-3 py-1.5 text-xs ${selected ? "border-primary bg-primary/10 font-medium" : "border-border"}`}
+              data-testid={`questionnaire-kind-tab-${k}`}
             >
               {kindLabel(k)}
               {status === "complete" ? " · Complete"
