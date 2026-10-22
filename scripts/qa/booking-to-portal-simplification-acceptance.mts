@@ -75,10 +75,10 @@ async function cookies() {
 
 function uniqueFarEventDate(seed: number): string {
   // Avoid colliding with prior QA bookings on Fancy Barn (month 1–12, day 1–28).
-  // Wide year band — prior runs saturated 2036–2038.
+  // Wide year band — prior runs saturated 2036–2059.
   const month = ((seed >>> 8) % 12) + 1;
   const day = (seed % 28) + 1;
-  const year = 2040 + (Math.abs(seed) % 20);
+  const year = 2060 + (Math.abs(seed) % 40);
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
@@ -371,7 +371,17 @@ async function main() {
       const dialogText = await dialog.innerText().catch(() => "");
       throw new Error(`booking-confirm-submit stayed disabled date=${eventDate} dialog=${dialogText.slice(0, 500)}`);
     }
-    await submit.click({ timeout: 15_000 });
+    try {
+      await submit.click({ timeout: 15_000 });
+    } catch {
+      // Occupancy probe can flip enabled→disabled between check and click; force once after re-check.
+      for (let i = 0; i < 30 && !(await submit.isEnabled()); i += 1) await page.waitForTimeout(500);
+      if (!(await submit.isEnabled())) {
+        await page.screenshot({ path: `${OUT}/02-booking-submit-disabled.png`, fullPage: true });
+        throw new Error(`booking-confirm-submit disabled at click date=${eventDate}`);
+      }
+      await submit.click({ force: true, timeout: 15_000 });
+    }
     try {
       await page.waitForURL(/\/(clients|events)\//, { timeout: 90_000 });
     } catch (err) {
