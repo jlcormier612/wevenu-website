@@ -1,6 +1,6 @@
 # Inventory & Event Orders — Portal Discoverability
 
-**Verdict: IN PROGRESS** — discoverability implemented; awaiting Sandbox deploy + browser A–G.
+**Verdict: NOT GREEN** — discoverability committed (`15417fc0`); Sandbox deploy dispatched; browser A–G pending serving SHA.
 
 Production untouched. Unrelated dirty tree preserved.
 
@@ -28,6 +28,14 @@ Production untouched. Unrelated dirty tree preserved.
 - Empty states clarify not-yet-shared vs shared content.
 - Sharing still server-enforced.
 
+## SHAs / runs
+
+| Item | Value |
+| --- | --- |
+| Product | `15417fc02ed34adc048e2e38eb09190f7a9c8b42` |
+| Deploy | [39859692017](https://github.com/jlcormier612/wevenu-website/actions/runs/39859692017) |
+| Serving | pending (was `3dbc2a45…`) |
+
 ## Verification
 
 ```text
@@ -35,5 +43,6 @@ npx tsx --test lib/portal/inventory-event-order-discoverability.test.ts \
   lib/portal/mobile-nav-readiness.test.ts
 → 10/10 pass (local)
 
-EXPECTED_SHA=<sha> npx tsx scripts/qa/inventory-event-order-portal-discoverability.mts
+EXPECTED_SHA=15417fc02ed34adc048e2e38eb09190f7a9c8b42 \
+  npx tsx scripts/qa/inventory-event-order-portal-discoverability.mts
 ```
