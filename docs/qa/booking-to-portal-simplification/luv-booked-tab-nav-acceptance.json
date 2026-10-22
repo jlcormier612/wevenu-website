@@ -1,0 +1,258 @@
+{
+  "at": "2026-10-22T15:26:54.429Z",
+  "expectedProduct": "2262f82cb7a572a09475c6152116c47ed4a070a8",
+  "servingSha": "2262f82cb7a572a09475c6152116c47ed4a070a8",
+  "shaMatch": true,
+  "quiet": {
+    "clientId": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+    "row1": [
+      "Overview",
+      "Planning",
+      "Timeline",
+      "Floor Plans",
+      "Vendors",
+      "Inventory",
+      "Event Order"
+    ],
+    "row2": [
+      "Questionnaires",
+      "Documents",
+      "Payments",
+      "Conversation",
+      "Activity",
+      "Internal notes",
+      "Luv"
+    ],
+    "geometry": {
+      "row1Top": 617.59375,
+      "row2Top": 672.71875,
+      "rowGap": 6.375,
+      "row1Width": 931.5,
+      "row2Width": 931.5,
+      "tabs1": [
+        {
+          "label": "Overview",
+          "top": 622.84375,
+          "left": 311.25,
+          "width": 129.75
+        },
+        {
+          "label": "Planning",
+          "top": 622.84375,
+          "left": 443.125,
+          "width": 129.75
+        },
+        {
+          "label": "Timeline",
+          "top": 622.84375,
+          "left": 575,
+          "width": 129.75
+        },
+        {
+          "label": "Floor Plans",
+          "top": 622.84375,
+          "left": 706.875,
+          "width": 129.75
+        },
+        {
+          "label": "Vendors",
+          "top": 622.84375,
+          "left": 838.75,
+          "width": 129.75
+        },
+        {
+          "label": "Inventory",
+          "top": 622.84375,
+          "left": 970.625,
+          "width": 129.75
+        },
+        {
+          "label": "Event Order",
+          "top": 622.84375,
+          "left": 1102.5,
+          "width": 129.75
+        }
+      ],
+      "tabs2": [
+        {
+          "label": "Questionnaires",
+          "top": 677.96875,
+          "left": 311.25,
+          "width": 129.75
+        },
+        {
+          "label": "Documents",
+          "top": 677.96875,
+          "left": 443.125,
+          "width": 129.75
+        },
+        {
+          "label": "Payments",
+          "top": 677.96875,
+          "left": 575,
+          "width": 129.75
+        },
+        {
+          "label": "Conversation",
+          "top": 677.96875,
+          "left": 706.875,
+          "width": 129.75
+        },
+        {
+          "label": "Activity",
+          "top": 677.96875,
+          "left": 838.75,
+          "width": 129.75
+        },
+        {
+          "label": "Internal notes",
+          "top": 677.96875,
+          "left": 970.625,
+          "width": 129.75
+        },
+        {
+          "label": "Luv",
+          "top": 677.96875,
+          "left": 1102.5,
+          "width": 129.75
+        }
+      ],
+      "row1Aligned": true,
+      "row2Aligned": true,
+      "noThirdAccidental": true
+    },
+    "hasLuvTab": true,
+    "draftCtaVisible": true,
+    "emptyStateHint": true,
+    "luvPanelSnippet": "Luv\nYour venue assistant can help draft a follow-up. You review, edit, and send it yourself.\n\nThere's nothing Luv needs to flag for this booking right now.\n\nAsk Luv to draft a follow-up\n\nLuv will draft a personalized follow-up using your pr"
+  },
+  "eligible": {
+    "clientId": "b650c86f-d46e-4af7-ba4b-a7f5382a6266",
+    "overviewLuvNoticed": true,
+    "draftCtaVisible": true,
+    "draftGenerated": true,
+    "draftPersistedPendingReview": true,
+    "noSendAttempted": true
+  },
+  "narrow900": {
+    "geometry": {
+      "row1Top": 857.9375,
+      "row2Top": 913.0625,
+      "rowGap": 6.375,
+      "row1Width": 849,
+      "row2Width": 849,
+      "tabs1": [
+        {
+          "label": "Overview",
+          "top": 863.1875,
+          "left": 30.75,
+          "width": 117.953125
+        },
+        {
+          "label": "Planning",
+          "top": 863.1875,
+          "left": 150.828125,
+          "width": 117.96875
+        },
+        {
+          "label": "Timeline",
+          "top": 863.1875,
+          "left": 270.921875,
+          "width": 117.96875
+        },
+        {
+          "label": "Floor Plans",
+          "top": 863.1875,
+          "left": 391.015625,
+          "width": 117.953125
+        },
+        {
+          "label": "Vendors",
+          "top": 863.1875,
+          "left": 511.09375,
+          "width": 117.96875
+        },
+        {
+          "label": "Inventory",
+          "top": 863.1875,
+          "left": 631.1875,
+          "width": 117.96875
+        },
+        {
+          "label": "Event Order",
+          "top": 863.1875,
+          "left": 751.28125,
+          "width": 117.96875
+        }
+      ],
+      "tabs2": [
+        {
+          "label": "Questionnaires",
+          "top": 918.3125,
+          "left": 30.75,
+          "width": 117.953125
+        },
+        {
+          "label": "Documents",
+          "top": 918.3125,
+          "left": 150.828125,
+          "width": 117.96875
+        },
+        {
+          "label": "Payments",
+          "top": 918.3125,
+          "left": 270.921875,
+          "width": 117.96875
+        },
+        {
+          "label": "Conversation",
+          "top": 918.3125,
+          "left": 391.015625,
+          "width": 117.953125
+        },
+        {
+          "label": "Activity",
+          "top": 918.3125,
+          "left": 511.09375,
+          "width": 117.96875
+        },
+        {
+          "label": "Internal notes",
+          "top": 918.3125,
+          "left": 631.1875,
+          "width": 117.96875
+        },
+        {
+          "label": "Luv",
+          "top": 918.3125,
+          "left": 751.28125,
+          "width": 117.96875
+        }
+      ],
+      "row1Aligned": true,
+      "row2Aligned": true,
+      "noThirdAccidental": true
+    }
+  },
+  "lead": {
+    "leadId": "ab37d13c-5802-4b51-b4b8-31972da26393",
+    "hasLuvTab": true,
+    "tabs": [
+      "Overview",
+      "Conversation",
+      "Internal notes",
+      "Tasks",
+      "Activity",
+      "Documents",
+      "Luv"
+    ]
+  },
+  "acceptance": {
+    "orderOk": true,
+    "twoRows": true,
+    "luvOnQuiet": true,
+    "luvOnEligible": true,
+    "leadIntact": true,
+    "shaOk": true
+  }
+}
