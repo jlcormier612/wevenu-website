@@ -77,6 +77,12 @@ describe("Vendors setup editor — assignment management", () => {
     assert.match(editor, /assignedIds\.has\(vendorId\)/);
   });
 
+  it("does not resync assignments from props while the sheet stays open", () => {
+    assert.match(editor, /wasOpen/);
+    assert.match(editor, /open && !wasOpen\.current/);
+    assert.match(editor, /local state wins/);
+  });
+
   it("optional highlights remain on the Vendors workspace tab", () => {
     assert.match(highlightsTab, /recommendVendorAction/);
     assert.match(highlightsTab, /unrecommendVendorAction/);
