@@ -34,8 +34,15 @@ import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
+import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
+import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-observations-panel";
+import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
+import type { LuvDraft } from "@/lib/luv/drafts";
+import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
+import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
 import type { LuvObservation } from "@/lib/luv/types";
+import type { Lead } from "@/lib/leads/types";
 import { VenueVendorDirectorySummary } from "@/components/events/vendors/venue-vendor-directory-summary";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
@@ -430,6 +437,11 @@ export function EventDetail({
   photoUrl = null,
   venueTimezone = null,
   contextualObservations = [],
+  luvLead = null,
+  luvDrafts = [],
+  followUpDraftCapable = true,
+  followUpDraftIneligibleReason = null,
+  followUpProactiveRecommended = true,
   eventSetup = { decisions: {}, collapsedAt: null },
   applicableSetupSteps = [],
 }: {
@@ -523,6 +535,12 @@ export function EventDetail({
   photoUrl?: string | null;
   venueTimezone?: string | null;
   contextualObservations?: LuvObservation[];
+  /** Originating lead — booked Luv drafting reuses the Lead Luv lifecycle. */
+  luvLead?: Lead | null;
+  luvDrafts?: LuvDraft[];
+  followUpDraftCapable?: boolean;
+  followUpDraftIneligibleReason?: string | null;
+  followUpProactiveRecommended?: boolean;
   eventSetup?: EventSetupState;
   applicableSetupSteps?: SetupStepKey[];
 }) {
@@ -533,6 +551,11 @@ export function EventDetail({
   const [returnDraftError, setReturnDraftError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState(openSetupPayments ? "invoice" : "overview");
   const [setupPaymentsOpen, setSetupPaymentsOpen] = React.useState(openSetupPayments);
+  const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
+  const [activeLuvDraftId, setActiveLuvDraftId] = React.useState<string | null>(null);
+  const [completedLuvDraftId, setCompletedLuvDraftId] = React.useState<string | null>(null);
+  const [luvDraftRequest, setLuvDraftRequest] = React.useState(0);
+  const draftCapable = followUpDraftCapable;
   // Soft-nav / searchParam arrival: openSetupPayments is a prop, not only mount state.
   // Contract "Set up payments" and ?setupPayments=1 must open Payments even when
   // EventDetail was already mounted on another tab (e.g. Documents → contract → back).
@@ -620,6 +643,34 @@ export function EventDetail({
       else toast.error(result.message ?? "Could not update status.");
     });
   }
+
+  function handleUseLuvDraft(draftId: string, subject: string | null, body: string) {
+    setActiveLuvDraftId(draftId);
+    setMessagePrefill({ subject: subject ?? "", body });
+    setActiveTab("messages");
+    window.location.hash = "messages";
+  }
+
+  async function handleLuvDraftSendSuccess() {
+    if (!activeLuvDraftId || !luvLead) return;
+    const id = activeLuvDraftId;
+    setActiveLuvDraftId(null);
+    await updateDraftStatusAction(
+      id,
+      luvLead.id,
+      draftStatusAfterSuccessfulSend(),
+      luvLead.linkedClientId ?? event.clientId,
+    );
+    setCompletedLuvDraftId(id);
+  }
+
+  async function handleAuthoritativeConversationSendSuccess() {
+    await handleLuvDraftSendSuccess();
+    router.refresh();
+  }
+
+  const bookedTabTriggerClass =
+    "h-auto min-h-9 w-full justify-center whitespace-normal px-1.5 py-1.5 text-center text-xs sm:text-sm";
 
   return (
     <div className="space-y-5">
@@ -811,41 +862,76 @@ export function EventDetail({
           2026-07-10 — rather than just landing on the event and leaving the
           coordinator to find the right tab themselves. */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as string); window.location.hash = v as string; }}>
-        {/* Event preparation workspaces live on this page; Overview reviews and releases. */}
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="playbook">Planning</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="floorplan">Floor Plans</TabsTrigger>
-          <TabsTrigger value="vendors">Vendors</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="event-order">Event Order</TabsTrigger>
-          <TabsTrigger value="questionnaires">Questionnaires</TabsTrigger>
-          <TabsTrigger value="documents">
-            Documents
-            {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="invoice">
-            Payments
-            {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="messages">Conversation</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="notes">
-            {INTERNAL_NOTES_LABEL}
-            {internalNoteItems.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{internalNoteItems.length}</span>
-            )}
-          </TabsTrigger>
+        {/* Two deliberate rows of seven — fixed semantic grouping, not wrap. */}
+        <div className="space-y-1.5" data-testid="booked-workspace-tab-nav">
+          <div className="w-full overflow-x-auto">
+            <TabsList
+              data-testid="booked-tab-row-1"
+              className="grid h-auto w-full min-w-[40rem] grid-cols-7 gap-0.5"
+            >
+              <TabsTrigger value="overview" className={bookedTabTriggerClass}>Overview</TabsTrigger>
+              <TabsTrigger value="playbook" className={bookedTabTriggerClass}>Planning</TabsTrigger>
+              <TabsTrigger value="timeline" className={bookedTabTriggerClass}>Timeline</TabsTrigger>
+              <TabsTrigger value="floorplan" className={bookedTabTriggerClass}>Floor Plans</TabsTrigger>
+              <TabsTrigger value="vendors" className={bookedTabTriggerClass}>Vendors</TabsTrigger>
+              <TabsTrigger value="inventory" className={bookedTabTriggerClass}>Inventory</TabsTrigger>
+              <TabsTrigger value="event-order" className={bookedTabTriggerClass}>Event Order</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="w-full overflow-x-auto">
+            <TabsList
+              data-testid="booked-tab-row-2"
+              className="grid h-auto w-full min-w-[40rem] grid-cols-7 gap-0.5"
+            >
+              <TabsTrigger value="questionnaires" className={bookedTabTriggerClass}>Questionnaires</TabsTrigger>
+              <TabsTrigger value="documents" className={bookedTabTriggerClass}>
+                Documents
+                {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="invoice" className={bookedTabTriggerClass}>
+                Payments
+                {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="messages" className={bookedTabTriggerClass}>Conversation</TabsTrigger>
+              <TabsTrigger value="activity" className={bookedTabTriggerClass}>Activity</TabsTrigger>
+              <TabsTrigger value="notes" className={bookedTabTriggerClass}>
+                {INTERNAL_NOTES_LABEL}
+                {internalNoteItems.length > 0 && (
+                  <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{internalNoteItems.length}</span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="luv" className={`${bookedTabTriggerClass} gap-1`}>
+                <LuvHeart size={12} /> Luv
+              </TabsTrigger>
+            </TabsList>
+          </div>
           {daysUntil(event.eventDate) < 0 && (
-            <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            <div className="w-full overflow-x-auto">
+              <TabsList className="inline-flex h-auto w-auto min-w-0">
+                <TabsTrigger value="feedback" className={bookedTabTriggerClass}>Feedback</TabsTrigger>
+              </TabsList>
+            </div>
           )}
-        </TabsList>
+        </div>
 
         {/* ── Overview ──────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-4">
           <div id="requests-summary-card" />
-          <ContextualLuvObservationsPanel observations={contextualObservations} />
+          <ContextualLuvObservationsPanel
+            observations={contextualObservations}
+            currentPath={event.clientId ? `/clients/${event.clientId}` : undefined}
+            onSameRecordDraft={
+              luvLead
+                ? () => {
+                    setActiveTab("luv");
+                    window.location.hash = "luv";
+                    setLuvDraftRequest((n) => n + 1);
+                  }
+                : undefined
+            }
+            sameRecordDraftEligible={draftCapable}
+            sameRecordDraftIneligibleReason={followUpDraftIneligibleReason ?? undefined}
+          />
           <EventSetupPanel
             eventId={event.id}
             clientId={event.clientId}
@@ -1313,6 +1399,9 @@ export function EventDetail({
             conversationId={conversationId}
             leadId={originatingLeadId}
             clientId={event.clientId}
+            initialBody={messagePrefill?.body}
+            initialSubject={messagePrefill?.subject}
+            onAuthoritativeSendSuccess={handleAuthoritativeConversationSendSuccess}
           />
         </TabsContent>
 
@@ -1340,6 +1429,48 @@ export function EventDetail({
             </CardHeader>
             <CardContent>
               <EventNotesSection eventId={event.id} items={internalNoteItems} venueTimezone={venueTimezone} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Luv — same drafting surface as Lead, booked client/event context ── */}
+        <TabsContent value="luv">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-1.5">
+                <LuvHeart size={14} /> Luv
+              </CardTitle>
+              <CardDescription>
+                {luvLead
+                  ? luvPanelDescription({
+                      draftCapable,
+                      proactiveRecommended: followUpProactiveRecommended,
+                      capabilityBlockReason: followUpDraftIneligibleReason,
+                    })
+                  : "Luv drafting needs the originating lead link for this booking."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ContextualLuvObservationsPanel
+                observations={contextualObservations}
+                emptyHint="There's nothing Luv needs to flag for this booking right now."
+              />
+              {luvLead ? (
+                <LuvDraftPanel
+                  lead={luvLead}
+                  initialDrafts={luvDrafts}
+                  onUseDraft={handleUseLuvDraft}
+                  completedDraftId={completedLuvDraftId}
+                  followUpDraftEligible={draftCapable}
+                  followUpDraftIneligibleReason={followUpDraftIneligibleReason}
+                  externalDraftRequest={luvDraftRequest}
+                  showContextualObservations={false}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Ask Luv to draft is unavailable until this booking is linked to its original lead.
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

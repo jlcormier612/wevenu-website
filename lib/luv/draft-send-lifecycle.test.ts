@@ -115,7 +115,12 @@ describe("Luv→Messages send wiring contracts", () => {
 
   it("authoritative send success completes the Luv draft; click alone does not", () => {
     assert.match(detail, /updateDraftStatusAction\(id, lead\.id, draftStatusAfterSuccessfulSend\(\)\)/);
-    assert.match(detail, /onAuthoritativeSendSuccess=\{handleLuvDraftSendSuccess\}/);
+    assert.match(detail, /async function handleLuvDraftSendSuccess/);
+    assert.match(
+      detail,
+      /onAuthoritativeSendSuccess=\{handleAuthoritativeConversationSendSuccess\}/,
+    );
+    assert.match(detail, /await handleLuvDraftSendSuccess\(\)/);
     assert.match(detail, /draftStatusAfterSuccessfulSend \} from "@\/lib\/luv\/draft-status"/);
     assert.doesNotMatch(detail, /draftStatusAfterSuccessfulSend[^;]*from "@\/lib\/luv\/drafts"/);
     // "Send this →" must not call updateDraftStatusAction inline
@@ -132,8 +137,8 @@ describe("Luv→Messages send wiring contracts", () => {
   });
 
   it("Copy still marks accepted; Discard permanently deletes", () => {
-    assert.match(panel, /updateDraftStatusAction\(draft\.id, leadId, "accepted"\)/);
-    assert.match(panel, /deleteDraftAction\(draft\.id, leadId\)/);
-    assert.doesNotMatch(panel, /updateDraftStatusAction\(draft\.id, leadId, "discarded"\)/);
+    assert.match(panel, /updateDraftStatusAction\(draft\.id, leadId, "accepted"(?:, linkedClientId)?\)/);
+    assert.match(panel, /deleteDraftAction\(draft\.id, leadId(?:, linkedClientId)?\)/);
+    assert.doesNotMatch(panel, /updateDraftStatusAction\(draft\.id, leadId, "discarded"/);
   });
 });

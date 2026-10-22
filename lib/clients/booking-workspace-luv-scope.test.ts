@@ -31,9 +31,25 @@ describe("Client Workspace Luv — initial-render scope", () => {
   });
 
   it("EventDetail still renders the L3 panel from those observations", () => {
-    assert.match(eventDetail, /ContextualLuvObservationsPanel observations=\{contextualObservations\}/);
+    assert.match(eventDetail, /ContextualLuvObservationsPanel[\s\S]*?observations=\{contextualObservations\}/);
     assert.match(panel, /Luv noticed/);
     assert.match(panel, /obs\.message/);
+  });
+
+  it("booked workspace has a dedicated Luv tab that reuses LuvDraftPanel", () => {
+    assert.match(eventDetail, /TabsTrigger value="luv"/);
+    assert.match(eventDetail, /LuvDraftPanel/);
+  });
+
+  it("Overview L3 hard-vanishes when quiet (secondary fragment — no emptyHint on Overview mount)", () => {
+    const overview = eventDetail.slice(
+      eventDetail.indexOf('TabsContent value="overview"'),
+      eventDetail.indexOf('TabsContent value="playbook"'),
+    );
+    assert.match(overview, /ContextualLuvObservationsPanel/);
+    assert.doesNotMatch(overview, /emptyHint=/);
+    assert.match(panel, /if \(observations\.length === 0\)/);
+    assert.match(panel, /if \(!emptyHint\) return null/);
   });
 
   it("record helper scopes the shared engine then still filters for the record", () => {

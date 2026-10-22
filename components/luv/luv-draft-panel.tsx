@@ -40,12 +40,14 @@ const DUSTY_ROSE = "#D8A7AA";
 function DraftCard({
   draft,
   leadId,
+  linkedClientId,
   onDiscard,
   onAccepted,
   onUseDraft,
 }: {
   draft: LuvDraft;
   leadId: string;
+  linkedClientId?: string | null;
   onDiscard: (id: string) => void;
   onAccepted: (id: string) => void;
   /** Bridge into Messages — does NOT mark complete until send succeeds. */
@@ -62,13 +64,13 @@ function DraftCard({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     // Mark as accepted when copied — they're using it
-    await updateDraftStatusAction(draft.id, leadId, "accepted");
+    await updateDraftStatusAction(draft.id, leadId, "accepted", linkedClientId);
     onAccepted(draft.id);
   }
 
   function handleDiscard() {
     startDiscard(async () => {
-      const result = await deleteDraftAction(draft.id, leadId);
+      const result = await deleteDraftAction(draft.id, leadId, linkedClientId);
       const next = applyDiscardResult([draft], draft.id, result);
       if (next.error) {
         toast.error(next.error);
@@ -141,15 +143,20 @@ function DraftCard({
 }
 
 function PastDraftRow({
-  draft, leadId, onRestore,
-}: { draft: LuvDraft; leadId: string; onRestore: (d: LuvDraft) => void }) {
+  draft, leadId, linkedClientId, onRestore,
+}: {
+  draft: LuvDraft;
+  leadId: string;
+  linkedClientId?: string | null;
+  onRestore: (d: LuvDraft) => void;
+}) {
   const [expanded, setExpanded] = React.useState(false);
   const [restoring, startRestore] = React.useTransition();
   const date = new Date(draft.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
   function handleRestore() {
     startRestore(async () => {
-      await updateDraftStatusAction(draft.id, leadId, "accepted");
+      await updateDraftStatusAction(draft.id, leadId, "accepted", linkedClientId);
       onRestore({ ...draft, status: "pending_review" });
     });
   }
@@ -344,6 +351,7 @@ export function LuvDraftPanel({
               key={draft.id}
               draft={draft}
               leadId={lead.id}
+              linkedClientId={lead.linkedClientId}
               onDiscard={handleDiscard}
               onAccepted={handleAccepted}
               onUseDraft={onUseDraft}
@@ -360,7 +368,13 @@ export function LuvDraftPanel({
             Draft history ({pastDrafts.length})
           </p>
           {pastDrafts.map((draft) => (
-            <PastDraftRow key={draft.id} draft={draft} leadId={lead.id} onRestore={handleRestore} />
+            <PastDraftRow
+              key={draft.id}
+              draft={draft}
+              leadId={lead.id}
+              linkedClientId={lead.linkedClientId}
+              onRestore={handleRestore}
+            />
           ))}
         </div>
       )}

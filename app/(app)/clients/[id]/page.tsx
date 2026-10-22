@@ -87,6 +87,9 @@ import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/
 import { getRelationshipPhotoForVenue } from "@/lib/relationship-photos/service";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
 import { getContextualObservationsForRecord } from "@/lib/luv/contextual-record";
+import { getDraftsForLead } from "@/lib/luv/drafts";
+import { loadLeadFollowUpPresentation } from "@/lib/luv/follow-up-presentation";
+import { getLead } from "@/lib/leads/service";
 import { loadEventSetup } from "@/lib/event-setup/service";
 import { applicableSetupSteps } from "@/lib/event-setup/state";
 import { capabilitiesFromVenue } from "@/lib/playbooks/capabilities";
@@ -358,6 +361,39 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
         : Promise.resolve([]),
   );
 
+  // Booked Luv tab reuses the originating lead's drafting lifecycle (same engine as Lead Luv).
+  const luvLeadBundlePromise = client.leadId
+    ? (async () => {
+        const lead = await getLead(client.leadId!);
+        if (!lead) {
+          return {
+            luvLead: null,
+            luvDrafts: [],
+            followUpDraftCapable: false,
+            followUpDraftIneligibleReason: "This booking has no linked lead for Luv drafting.",
+            followUpProactiveRecommended: false,
+          };
+        }
+        const [luvDrafts, followUpPresentation] = await Promise.all([
+          getDraftsForLead(lead.id),
+          loadLeadFollowUpPresentation(lead),
+        ]);
+        return {
+          luvLead: lead,
+          luvDrafts,
+          followUpDraftCapable: followUpPresentation.draftCapable,
+          followUpDraftIneligibleReason: followUpPresentation.draftIneligibleReason,
+          followUpProactiveRecommended: followUpPresentation.proactiveRecommended,
+        };
+      })()
+    : Promise.resolve({
+        luvLead: null,
+        luvDrafts: [] as Awaited<ReturnType<typeof getDraftsForLead>>,
+        followUpDraftCapable: false,
+        followUpDraftIneligibleReason: "This booking has no linked lead for Luv drafting.",
+        followUpProactiveRecommended: false,
+      });
+
   // Lead extras own their createClient — no serial createClient ahead of the batch.
   // Contact email/phone/partnerEmail come from cached getClient (duplicate clients
   // select removed).
@@ -400,6 +436,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules,
     eventRequests, photo, leadExtras, conversationBundle,
     invoiceLineMarkers, activityLists, requestsById, taskContacts, teamMembers, clientChoicesRaw, contextualObservations,
+    luvLeadBundle,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), eventInvoicesPromise, getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
     getVenueWorkspaceDocuments({ eventId, clientId: id }), getPinnedDocumentKeys().then((s) => [...s]),
@@ -455,6 +492,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     // clientChoicesListPromise is started above; only the dependent raw payload is awaited here.
     clientChoicesRawPromise,
     contextualObservationsPromise,
+    luvLeadBundlePromise,
   ]);
   if (!event) notFound();
   const floorPlanCanEdit = canEditFloorPlans(staffRole);
@@ -703,6 +741,11 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       photoUrl={photo?.displayedPhotoUrl ?? null}
       venueTimezone={venue?.timezone ?? null}
       contextualObservations={contextualObservations}
+      luvLead={luvLeadBundle.luvLead}
+      luvDrafts={luvLeadBundle.luvDrafts}
+      followUpDraftCapable={luvLeadBundle.followUpDraftCapable}
+      followUpDraftIneligibleReason={luvLeadBundle.followUpDraftIneligibleReason}
+      followUpProactiveRecommended={luvLeadBundle.followUpProactiveRecommended}
       eventSetup={eventSetup}
       applicableSetupSteps={setupSteps}
     />
