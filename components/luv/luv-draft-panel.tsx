@@ -201,7 +201,7 @@ export function LuvDraftPanel({
    */
   showContextualObservations = true,
 }: {
-  lead: Lead;
+  lead: Lead & { linkedClientId?: string | null };
   initialDrafts: LuvDraft[];
   /** Opens Messages with this draft; completion happens only after send succeeds. */
   onUseDraft?: (draftId: string, subject: string | null, body: string) => void;

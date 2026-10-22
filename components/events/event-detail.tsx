@@ -42,7 +42,7 @@ import type { LuvDraft } from "@/lib/luv/drafts";
 import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
 import { luvPanelDescription } from "@/lib/luv/luv-panel-copy";
 import type { LuvObservation } from "@/lib/luv/types";
-import type { Lead } from "@/lib/leads/types";
+import type { LeadWithDetails } from "@/lib/leads/types";
 import { VenueVendorDirectorySummary } from "@/components/events/vendors/venue-vendor-directory-summary";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
@@ -536,7 +536,7 @@ export function EventDetail({
   venueTimezone?: string | null;
   contextualObservations?: LuvObservation[];
   /** Originating lead — booked Luv drafting reuses the Lead Luv lifecycle. */
-  luvLead?: Lead | null;
+  luvLead?: LeadWithDetails | null;
   luvDrafts?: LuvDraft[];
   followUpDraftCapable?: boolean;
   followUpDraftIneligibleReason?: string | null;

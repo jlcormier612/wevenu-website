@@ -10,7 +10,7 @@ import {
 import type { LuvDraft } from "@/lib/luv/drafts";
 import type { Lead } from "@/lib/leads/types";
 
-function revalidateLuvDraftSurfaces(lead: Pick<Lead, "id" | "linkedClientId">) {
+function revalidateLuvDraftSurfaces(lead: { id: string; linkedClientId?: string | null }) {
   revalidatePath(`/leads/${lead.id}`);
   if (lead.linkedClientId) revalidatePath(`/clients/${lead.linkedClientId}`);
 }
