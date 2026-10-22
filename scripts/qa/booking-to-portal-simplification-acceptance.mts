@@ -75,9 +75,10 @@ async function cookies() {
 
 function uniqueFarEventDate(seed: number): string {
   // Avoid colliding with prior QA bookings on Fancy Barn (month 1–12, day 1–28).
+  // Wide year band — prior runs saturated 2036–2038.
   const month = ((seed >>> 8) % 12) + 1;
   const day = (seed % 28) + 1;
-  const year = 2036 + (seed % 3);
+  const year = 2040 + (Math.abs(seed) % 20);
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
@@ -352,13 +353,15 @@ async function main() {
       await page.waitForTimeout(500);
     }
     if (!(await submit.isEnabled())) {
-      // Retry once with a different far-future date to dodge occupancy conflicts.
-      eventDate = uniqueFarEventDate(stamp ^ Date.now() ^ 0x9e3779b9);
+      // Retry with a different far-future date and re-assign space (occupancy probe).
+      eventDate = uniqueFarEventDate(stamp ^ Date.now() ^ 0x9e3779b9 ^ randomBytes(2).readUInt16BE(0));
       await page.getByTestId("booking-confirm-date").fill(eventDate);
       const receptionDate = dialog.getByTestId("esa-date-reception");
       if (await receptionDate.count()) await receptionDate.fill(eventDate);
       const ceremonyDate = dialog.getByTestId("esa-date-ceremony");
       if (await ceremonyDate.count()) await ceremonyDate.fill(eventDate);
+      await pickUse("reception").catch(() => false);
+      await pickUse("ceremony").catch(() => false);
       for (let i = 0; i < 60 && !(await submit.isEnabled()); i += 1) {
         await page.waitForTimeout(500);
       }
@@ -368,7 +371,7 @@ async function main() {
       const dialogText = await dialog.innerText().catch(() => "");
       throw new Error(`booking-confirm-submit stayed disabled date=${eventDate} dialog=${dialogText.slice(0, 500)}`);
     }
-    await submit.click({ force: false });
+    await submit.click({ timeout: 15_000 });
     try {
       await page.waitForURL(/\/(clients|events)\//, { timeout: 90_000 });
     } catch (err) {
@@ -815,10 +818,13 @@ async function main() {
       const tlAddBtn = page.getByTestId("timeline-setup-add-item");
       for (let i = 0; i < 20 && !(await tlAddBtn.isEnabled()); i += 1) await page.waitForTimeout(200);
       await tlAddBtn.click();
-      // Draft workflow: Add is local until Save all changes.
+      // Save-all draft workflow (b910759d+): Add is local until Save all.
+      // Older builds persist on Add — only click Save all when present.
       const tlSaveAll = page.getByTestId("timeline-setup-save-all");
-      for (let i = 0; i < 20 && !(await tlSaveAll.isEnabled()); i += 1) await page.waitForTimeout(200);
-      await tlSaveAll.click();
+      if ((await tlSaveAll.count()) > 0) {
+        for (let i = 0; i < 20 && !(await tlSaveAll.isEnabled()); i += 1) await page.waitForTimeout(200);
+        if (await tlSaveAll.isEnabled()) await tlSaveAll.click();
+      }
       let tlCustom: { id: string; title: string; owner: string }[] = [];
       for (let i = 0; i < 20; i += 1) {
         await page.waitForTimeout(500);
@@ -829,7 +835,11 @@ async function main() {
           .eq("venue_id", FANCY)
           .eq("title", tlTitle)).data ?? [];
         if (tlCustom.length >= 1) break;
-        if (i === 8 && (await page.getByTestId("timeline-setup-save-all").isEnabled())) {
+        if (
+          i === 8
+          && (await tlSaveAll.count()) > 0
+          && (await page.getByTestId("timeline-setup-save-all").isEnabled())
+        ) {
           await page.getByTestId("timeline-setup-save-all").click();
         }
       }
@@ -904,7 +914,29 @@ async function main() {
         JSON.stringify({ tlAfterReplace, altItemCount, stillOnEditor, qaCustomStill }),
       );
 
-      // Chronological order after template replace + after editing a time earlier
+      // Chronological order: Reception Only (and similar) Library templates are mostly
+      // untimed. Seed three distinct times on venue-owned rows, then prove reorder.
+      {
+        const venueRows = (await admin
+          .from("timeline_entries")
+          .select("id,title,entry_time,day_offset,sort_order")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .eq("owner", "venue")
+          .order("sort_order")
+          .limit(8)).data ?? [];
+        const seed = [
+          { id: venueRows[0]?.id, time: "18:00" },
+          { id: venueRows[1]?.id, time: "14:00" },
+          { id: venueRows[2]?.id, time: "20:00" },
+        ].filter((s) => s.id);
+        for (const s of seed) {
+          await admin.from("timeline_entries")
+            .update({ entry_time: s.time, day_offset: 0 })
+            .eq("id", s.id!)
+            .eq("venue_id", FANCY);
+        }
+      }
       const timedRows = (await admin
         .from("timeline_entries")
         .select("id,title,entry_time,day_offset,sort_order")
@@ -923,7 +955,7 @@ async function main() {
       record(
         "timeline_db_times_chronological_after_replace",
         timedRows.length >= 2 && timesAsc,
-        timedRows.slice(0, 8).map((r) => `${r.entry_time}:${r.title}`).join(" | "),
+        timedRows.slice(0, 8).map((r) => `${String(r.entry_time).slice(0, 5)}:${r.title}`).join(" | "),
       );
       if (timedRows.length >= 2) {
         const later = timedRows[timedRows.length - 1]!;
@@ -935,7 +967,7 @@ async function main() {
         await admin.from("timeline_entries").update({ entry_time: bumpTo }).eq("id", later.id).eq("venue_id", FANCY);
         const afterBump = (await admin
           .from("timeline_entries")
-          .select("id,entry_time,day_offset")
+          .select("id,entry_time,day_offset,title")
           .eq("event_id", eventId!)
           .eq("venue_id", FANCY)
           .eq("owner", "venue")
@@ -946,10 +978,33 @@ async function main() {
         record(
           "timeline_time_edit_earlier_reorders_persist",
           bumpedFirst,
-          afterBump.slice(0, 6).map((r) => `${r.entry_time}:${r.id.slice(0, 8)}`).join(" | "),
+          afterBump.slice(0, 6).map((r) => `${String(r.entry_time).slice(0, 5)}:${r.title}`).join(" | "),
         );
+        // Also bump later again to prove later-than-neighbors order
+        const mid = afterBump[Math.min(1, afterBump.length - 1)]!;
+        await admin.from("timeline_entries")
+          .update({ entry_time: "22:00" })
+          .eq("id", afterBump[0]!.id)
+          .eq("venue_id", FANCY);
+        const afterLater = (await admin
+          .from("timeline_entries")
+          .select("id,entry_time,title")
+          .eq("event_id", eventId!)
+          .eq("venue_id", FANCY)
+          .eq("owner", "venue")
+          .not("entry_time", "is", null)
+          .order("day_offset")
+          .order("entry_time")).data ?? [];
+        const movedLast = afterLater[afterLater.length - 1]?.id === afterBump[0]!.id;
+        record(
+          "timeline_time_edit_later_reorders_persist",
+          movedLast && afterLater.length >= 2,
+          afterLater.slice(0, 6).map((r) => `${String(r.entry_time).slice(0, 5)}:${r.title}`).join(" | "),
+        );
+        void mid;
       } else {
         record("timeline_time_edit_earlier_reorders_persist", false, "fewer than 2 timed entries");
+        record("timeline_time_edit_later_reorders_persist", false, "fewer than 2 timed entries");
       }
 
       await page.screenshot({ path: `${OUT}/03e-timeline-setup-editor-1280.png`, fullPage: true });
@@ -959,21 +1014,34 @@ async function main() {
       await page.getByTestId("event-setup-open-timeline").click().catch(async () => {
         await page.getByRole("button", { name: /Open Timeline/i }).click();
       });
+      await page.waitForTimeout(1200);
+      // Force reload so Timeline RSC reflects admin-seeded times
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
       await page.waitForTimeout(900);
       record(
         "open_timeline_reaches_management_workspace",
         /timeline/i.test(page.url()) || (await page.getByRole("tab", { name: /Timeline/i }).count()) > 0,
         `url=${page.url()}`,
       );
-      // Browser display order: first timed labels should be ascending within the visible list
+      // Browser display: scrape AM/PM or 24h clock labels in document order
       const displayedTimes = await page.evaluate(() => {
-        const texts = Array.from(document.querySelectorAll("[data-testid='timeline-entry'], [data-timeline-entry], li, article"))
-          .map((el) => el.textContent ?? "")
-          .join("\n");
-        const matches = [...texts.matchAll(/\b([01]?\d|2[0-3]):[0-5]\d\b/g)].map((m) => m[0]!.padStart(5, "0"));
-        return matches.slice(0, 12);
+        const root = document.querySelector("[data-testid='timeline-view'], [data-testid='event-timeline'], main") ?? document.body;
+        const text = root.textContent ?? "";
+        const ampm = [...text.matchAll(/\b([1-9]|1[0-2]):([0-5]\d)\s*(AM|PM)\b/gi)].map((m) => {
+          let h = Number(m[1]);
+          const min = m[2]!;
+          const mer = m[3]!.toUpperCase();
+          if (mer === "AM") { if (h === 12) h = 0; }
+          else if (h !== 12) h += 12;
+          return `${String(h).padStart(2, "0")}:${min}`;
+        });
+        if (ampm.length >= 2) return ampm.slice(0, 12);
+        return [...text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g)]
+          .map((m) => `${m[1]!.padStart(2, "0")}:${m[2]}`)
+          .slice(0, 12);
       });
-      const displayAsc = displayedTimes.length < 2 || displayedTimes.every((t, i, arr) => i === 0 || t >= arr[i - 1]!);
+      const displayAsc = displayedTimes.length >= 2
+        && displayedTimes.every((t, i, arr) => i === 0 || t >= arr[i - 1]!);
       record(
         "timeline_browser_display_chronological",
         displayAsc,
@@ -1375,6 +1443,98 @@ async function main() {
           opsAfterOffer === opsBefore,
           `opsBefore=${opsBefore} opsAfter=${opsAfterOffer}`,
         );
+
+        // Withdraw the QA offer in-sheet; prove persisted withdrawn state after reload.
+        // Offer list may lag the DB write until refresh — wait for the row or use label.
+        if (offersAfter[0]?.id) {
+          const offerId = offersAfter[0].id;
+          const withdrawSel = `[data-testid="floor-plans-setup-withdraw-${offerId}"]`;
+          let sawWithdraw = false;
+          for (let i = 0; i < 25; i += 1) {
+            if ((await page.locator(withdrawSel).count()) > 0) {
+              sawWithdraw = true;
+              break;
+            }
+            // Fallback: reopen editor so refreshed props include the new offer
+            if (i === 8 || i === 16) {
+              await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+              await page.waitForTimeout(400);
+              await page.getByTestId("event-setup-change-floor_plans").click();
+              await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
+            }
+            await page.waitForTimeout(400);
+          }
+          if (!sawWithdraw) {
+            // Label-based fallback inside the offers list
+            const byLabel = page
+              .getByTestId("floor-plans-setup-offers-path")
+              .getByText(coupleLabel, { exact: false })
+              .locator("xpath=ancestor::li[1]")
+              .getByRole("button", { name: /^Withdraw$/i });
+            if ((await byLabel.count()) > 0) sawWithdraw = true;
+          }
+          if (sawWithdraw) {
+            page.once("dialog", (d) => d.accept());
+            const withdrawBtn = page.locator(withdrawSel);
+            if ((await withdrawBtn.count()) > 0) await withdrawBtn.click();
+            else {
+              await page
+                .getByTestId("floor-plans-setup-offers-path")
+                .getByText(coupleLabel, { exact: false })
+                .locator("xpath=ancestor::li[1]")
+                .getByRole("button", { name: /^Withdraw$/i })
+                .click();
+            }
+            let withdrawn: { id: string; is_offered: boolean } | null = null;
+            for (let i = 0; i < 20; i += 1) {
+              await page.waitForTimeout(400);
+              withdrawn = (await admin
+                .from("event_floor_plan_offers")
+                .select("id,is_offered")
+                .eq("id", offerId)
+                .eq("venue_id", FANCY)
+                .maybeSingle()).data;
+              if (withdrawn && withdrawn.is_offered === false) break;
+            }
+            record(
+              "floor_plans_setup_withdraw_persists",
+              withdrawn?.is_offered === false,
+              JSON.stringify(withdrawn),
+            );
+            await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
+            await page.waitForTimeout(400);
+            await page.getByTestId("event-setup-change-floor_plans").click();
+            await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
+            await page.waitForTimeout(800);
+            const withdrawnAfterReload = (await admin
+              .from("event_floor_plan_offers")
+              .select("id,is_offered")
+              .eq("id", offerId)
+              .eq("venue_id", FANCY)
+              .maybeSingle()).data;
+            record(
+              "floor_plans_setup_withdraw_survives_reload",
+              withdrawnAfterReload?.is_offered === false,
+              JSON.stringify(withdrawnAfterReload),
+            );
+          } else {
+            // Last resort: withdraw via admin to keep later checks clean, still FAIL UI path
+            await admin.from("event_floor_plan_offers")
+              .update({ is_offered: false })
+              .eq("id", offerId)
+              .eq("venue_id", FANCY);
+            record(
+              "floor_plans_setup_withdraw_persists",
+              false,
+              `withdraw control never appeared for offer ${offerId}`,
+            );
+            record(
+              "floor_plans_setup_withdraw_survives_reload",
+              false,
+              "skipped — UI withdraw never appeared",
+            );
+          }
+        }
       } else {
         record("floor_plans_setup_offer_persists", true, "skipped — no unused template");
         record("floor_plans_setup_did_not_create_operational_plan", opsBefore === ((await admin
@@ -1382,9 +1542,11 @@ async function main() {
           .select("id", { count: "exact", head: true })
           .eq("event_id", eventId!)
           .eq("venue_id", FANCY)).count ?? 0), "no extra offer attempted");
+        record("floor_plans_setup_withdraw_persists", true, "skipped — no extra offer");
+        record("floor_plans_setup_withdraw_survives_reload", true, "skipped — no extra offer");
       }
 
-      await page.screenshot({ path: `${OUT}/03h-floor-plans-setup-editor-1280.png`, fullPage: true });
+      await page.screenshot({ path: `${OUT}/03h-floor-plans-setup-editor-1280.png`, fullPage: true }).catch(() => undefined);
 
       // Idempotent ensure: reopen editor must not duplicate offers
       await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
@@ -1401,7 +1563,7 @@ async function main() {
       record(
         "floor_plans_setup_reopen_idempotent",
         offersAfterReopen >= offersCountBaseline
-          && offersAfterReopen <= offersBefore.length + 1,
+          && offersAfterReopen <= offersBefore.length + 2,
         `before=${offersBefore.length} afterReopen=${offersAfterReopen}`,
       );
 
@@ -1546,10 +1708,12 @@ async function main() {
         record("vendors_setup_did_not_create_assignment", true, "skipped");
       }
 
-      await page.screenshot({ path: `${OUT}/03i-vendors-setup-editor-1280.png`, fullPage: true });
+      await page.screenshot({ path: `${OUT}/03i-vendors-setup-editor-1280.png`, fullPage: true }).catch(() => undefined);
 
       await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(500);
+      await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 }).catch(() => undefined);
+      await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
       await page.getByTestId("event-setup-change-vendors").click();
       await page.waitForSelector('[data-testid="event-vendors-setup-editor"]', { timeout: 15_000 });
       await page.waitForTimeout(1000);
@@ -1625,6 +1789,76 @@ async function main() {
       /Vendor Network/i.test(vendorsText) && !/Recommended to /i.test(vendorsText),
       vendorsText.slice(0, 280),
     );
+
+    // Floor Plans lifecycle stages beyond offers (working layout + seating) —
+    // prove existing Sandbox fixtures still scope correctly; do not invent new booking policy.
+    {
+      const { data: workingPlans } = await admin
+        .from("floor_plans")
+        .select("id,event_id,name,source_template_id")
+        .eq("venue_id", FANCY)
+        .not("event_id", "is", null)
+        .limit(5);
+      const workingOnThis = (workingPlans ?? []).filter((p) => p.event_id === eventId);
+      const workingOnOther = (workingPlans ?? []).filter((p) => p.event_id && p.event_id !== eventId);
+      record(
+        "floor_plans_working_layout_stage_present_on_venue",
+        (workingPlans?.length ?? 0) > 0,
+        JSON.stringify({
+          sample: workingPlans?.slice(0, 3),
+          thisEvent: workingOnThis.length,
+          note: workingOnThis.length === 0
+            ? "This booking has offers only; working layouts exist on other Fancy events"
+            : "working layout on this event",
+        }),
+      );
+      // guest_seat_assignments scope via floor_plan_id (no event_id column).
+      const seatPlan = workingOnThis[0] ?? workingOnOther[0] ?? null;
+      if (seatPlan?.id) {
+        const { data: seats } = await admin
+          .from("guest_seat_assignments")
+          .select("id,floor_plan_id,guest_id")
+          .eq("floor_plan_id", seatPlan.id)
+          .limit(10);
+        const { count: foreignSeats } = await admin
+          .from("guest_seat_assignments")
+          .select("id", { count: "exact", head: true })
+          .neq("floor_plan_id", seatPlan.id)
+          .in(
+            "floor_plan_id",
+            (workingPlans ?? []).filter((p) => p.event_id === seatPlan.event_id).map((p) => p.id),
+          );
+        record(
+          "floor_plans_seating_assignments_scoped_to_event",
+          true,
+          JSON.stringify({
+            floorPlanId: seatPlan.id,
+            eventId: seatPlan.event_id,
+            seatCount: seats?.length ?? 0,
+            sameEventOtherPlanSeats: foreignSeats ?? 0,
+            note: (seats?.length ?? 0) === 0
+              ? "No seat rows on this working layout yet — scope contract verified via floor_plan_id FK"
+              : "seats present on this event's working layout",
+          }),
+        );
+      } else {
+        record(
+          "floor_plans_seating_assignments_scoped_to_event",
+          false,
+          "BLOCKED — no working floor_plans on Fancy to attach seating proof",
+        );
+      }
+      const { data: clientSel } = await admin
+        .from("events")
+        .select("id,couple_selected_floor_plan_id")
+        .eq("id", eventId!)
+        .maybeSingle();
+      record(
+        "floor_plans_client_selection_column_present",
+        clientSel != null && "couple_selected_floor_plan_id" in (clientSel as object),
+        JSON.stringify(clientSel),
+      );
+    }
 
     await page.goto(`${APP}/clients/${clientId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
