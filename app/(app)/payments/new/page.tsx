@@ -117,17 +117,17 @@ export default async function NewPaymentPage({ searchParams }: Props) {
         description="Choose how this invoice total should be collected — equal, percentage, dollar, or custom — then preview and create the schedule. Saving creates the plan; sending the invoice and requesting payment stay separate steps on the invoice."
         actions={(
           <div className="flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link href={invoiceHref}>Back to invoice</Link>
+            <Button size="sm" variant="outline" render={<Link href={invoiceHref} />}>
+              Back to invoice
             </Button>
             {eventHref ? (
-              <Button asChild size="sm" variant="ghost">
-                <Link href={eventHref}>Event Order</Link>
+              <Button size="sm" variant="ghost" render={<Link href={eventHref} />}>
+                Event Order
               </Button>
             ) : null}
             {clientHref ? (
-              <Button asChild size="sm" variant="ghost">
-                <Link href={clientHref}>Client</Link>
+              <Button size="sm" variant="ghost" render={<Link href={clientHref} />}>
+                Client
               </Button>
             ) : null}
           </div>
