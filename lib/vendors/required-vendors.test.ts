@@ -113,8 +113,17 @@ describe("client portal distinguishes required from recommended", () => {
     assert.match(portal, /Required for your event/);
     assert.match(portal, /if \(rec\.isRequired\)/);
     assert.match(portal, /!viewingRec\.isRequired/);
+    assert.match(portal, /optionalRecommendations/);
+    assert.match(portal, /optionalDirectory/);
     assert.match(portal, /filter\(\(r\) => !r\.isRequired\)/);
     assert.match(portal, /Recommended for You/);
+  });
+
+  it("tab counts use optional lists so required vendors are not double-counted", () => {
+    assert.match(portal, /Recommended for You\{optionalRecommendations\.length > 0 &&/);
+    assert.match(portal, /Approved vendors\{optionalDirectory\.length > 0 &&/);
+    assert.doesNotMatch(portal, /Recommended for You\{recommendations\.length > 0 &&/);
+    assert.doesNotMatch(portal, /Approved vendors\{directory\.length > 0 &&/);
   });
 
   it("In-house chip remains available via ProcessChips", () => {

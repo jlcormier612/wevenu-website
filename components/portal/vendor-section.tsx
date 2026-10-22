@@ -255,7 +255,9 @@ function PickButton({
   }
   if (!onToggle) return null;
   const dateStatus = rec.dateAvailability?.status;
-  if ((dateStatus === "unavailable" || dateStatus === "not_confirmed") && !isPicked && !isSubmitted) {
+  // Unavailable blocks new picks. "Not confirmed" is informational only —
+  // couples may still privately pick while asking about the date.
+  if (dateStatus === "unavailable" && !isPicked && !isSubmitted) {
     return null;
   }
 
@@ -659,35 +661,40 @@ function VendorDetail({
               <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
                 Unavailable for your event date
               </p>
-            ) : rec.dateAvailability?.status === "not_confirmed" ? (
-              canMessageInApp && onContactVendor && !showComposer ? (
-                <button
-                  type="button"
-                  onClick={() => setShowComposer(true)}
-                  className="w-full text-xs font-semibold py-2.5 px-3 rounded-xl border border-border text-foreground hover:bg-muted"
-                >
-                  Ask about availability
-                </button>
-              ) : !canMessageInApp ? (
-                <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
-                  Ask about availability using the contact details above
-                </p>
-              ) : null
-            ) : onToggle ? (
-              <button
-                type="button"
-                onClick={() => onToggle(!isPicked)}
-                disabled={toggling}
-                className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors disabled:opacity-60 ${
-                  isPicked
-                    ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
-                    : "text-white hover:opacity-90"
-                }`}
-                style={isPicked ? undefined : { background: "var(--venue-primary)" }}
-              >
-                {toggling ? "Saving…" : isPicked ? "Unpick" : "Select vendor"}
-              </button>
-            ) : null}
+            ) : (
+              <div className="flex flex-col gap-2">
+                {rec.dateAvailability?.status === "not_confirmed" && !isPicked && !isSubmitted ? (
+                  canMessageInApp && onContactVendor && !showComposer ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowComposer(true)}
+                      className="w-full text-xs font-semibold py-2.5 px-3 rounded-xl border border-border text-foreground hover:bg-muted"
+                    >
+                      Ask about availability
+                    </button>
+                  ) : !canMessageInApp ? (
+                    <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
+                      Ask about availability using the contact details above. You can still pick this vendor privately.
+                    </p>
+                  ) : null
+                ) : null}
+                {onToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => onToggle(!isPicked)}
+                    disabled={toggling}
+                    className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors disabled:opacity-60 ${
+                      isPicked
+                        ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
+                        : "text-white hover:opacity-90"
+                    }`}
+                    style={isPicked ? undefined : { background: "var(--venue-primary)" }}
+                  >
+                    {toggling ? "Saving…" : isPicked ? "Unpick" : "Select vendor"}
+                  </button>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1001,6 +1008,11 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
     ? requiredFromDir.map((v) => ({ ...v, note: null }))
     : requiredFromRecs;
 
+  // Tab counts must match cards rendered under each tab (required vendors live
+  // in the separate "Required for Your Event" section, not in these lists).
+  const optionalRecommendations = recommendations.filter((r) => !r.isRequired);
+  const optionalDirectory = directory.filter((v) => !v.isRequired);
+
   const teamVendors = directory.filter((v) => !v.isRequired && (v.isAssigned || v.selectedAt));
   // Prefer assignment list; fall back to selected from recommendations when directory empty.
   const teamFromRecs = recommendations.filter((r) => !r.isRequired && (r.isAssigned || r.selectedAt));
@@ -1185,30 +1197,30 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
       <div className="flex items-center gap-1 border-b border-border">
         <button type="button" onClick={() => setTab("recommended")}
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "recommended" ? "border-[var(--venue-primary)] text-[var(--venue-primary)]" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-          Recommended for You{recommendations.length > 0 && ` (${recommendations.length})`}
+          Recommended for You{optionalRecommendations.length > 0 && ` (${optionalRecommendations.length})`}
         </button>
         <button type="button" onClick={() => setTab("directory")}
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "directory" ? "border-[var(--venue-primary)] text-[var(--venue-primary)]" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-          Approved vendors{directory.length > 0 && ` (${directory.length})`}
+          Approved vendors{optionalDirectory.length > 0 && ` (${optionalDirectory.length})`}
         </button>
       </div>
 
       {tab === "recommended" && (
         <div className="space-y-5">
           {submitBar}
-          {!recommendations.length ? (
+          {!optionalRecommendations.length ? (
             <div className="py-16 text-center space-y-3 max-w-sm mx-auto px-4">
               <p className="text-3xl">🤝</p>
               <p className="font-semibold text-heading">No vendors recommended yet</p>
               <p className="text-sm text-muted-foreground">Your venue will add recommendations here — or browse their approved vendors.</p>
-              {directory.length > 0 && (
+              {optionalDirectory.length > 0 && (
                 <button type="button" onClick={() => setTab("directory")} className="text-sm font-medium text-[var(--venue-primary)] hover:underline">
-                  Browse all {directory.length} approved vendors →
+                  Browse all {optionalDirectory.length} approved vendors →
                 </button>
               )}
             </div>
           ) : (
-            groupByCategory(recommendations.filter((r) => !r.isRequired)).map(([category, recs]) => (
+            groupByCategory(optionalRecommendations).map(([category, recs]) => (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
@@ -1243,7 +1255,7 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
           <div className="py-12 text-center">
             <p className="text-sm text-muted-foreground">Loading {venueName}&apos;s vendors…</p>
           </div>
-        ) : !directory.length ? (
+        ) : !optionalDirectory.length ? (
           <div className="py-16 text-center space-y-2 max-w-sm mx-auto px-4">
             <p className="text-3xl">🤝</p>
             <p className="font-semibold text-heading">No vendors listed yet</p>
@@ -1252,7 +1264,7 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         ) : (
           <div className="space-y-5">
             {submitBar}
-            {groupByCategory(directory.filter((v) => !v.isRequired)).map(([category, vendors]) => (
+            {groupByCategory(optionalDirectory).map(([category, vendors]) => (
               <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
