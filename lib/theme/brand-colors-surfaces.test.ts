@@ -162,9 +162,12 @@ describe("Brand Colors — PDF brochure Secondary does not regress; Neutral/Acce
 describe("Brand Colors — invoice Accent/Neutral do not regress; Secondary is consumed", () => {
   const src = readFileSync(resolve(ROOT, "components/invoices/invoice-print-document.tsx"), "utf8");
 
-  it("keeps Accent amounts and Neutral section backgrounds", () => {
+  it("keeps Neutral section backgrounds and contrast-safe Accent amounts", () => {
     assert.match(src, /background:\s*neutralColor/);
-    assert.match(src, /color:\s*accentColor/);
+    assert.match(src, /resolvePrintBrandInk/);
+    assert.match(src, /accentOnNeutral/);
+    assert.match(src, /accentOnWhite/);
+    assert.doesNotMatch(src, /color:\s*accentColor\b/);
   });
 
   it("renders Secondary on the Charges section head", () => {
