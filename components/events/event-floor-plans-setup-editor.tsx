@@ -38,8 +38,8 @@ export function EventFloorPlansSetupEditor({
   configuredTemplateIds,
   templates,
   offers,
-  operationalPlans,
-  coupleSelectedPlan = null,
+  operationalPlans: _operationalPlans,
+  coupleSelectedPlan: _coupleSelectedPlan = null,
   onOpenManagement: _onOpenManagement,
 }: {
   open: boolean;
@@ -51,13 +51,16 @@ export function EventFloorPlansSetupEditor({
   configuredTemplateIds: string[];
   templates: FloorPlanTemplate[];
   offers: EventFloorPlanOfferWithTemplate[];
+  /** Kept for panel wiring; client selection status lives outside this offer editor. */
   operationalPlans: OperationalPlanSummary[];
-  /** Client's saved layout choice for this event, if any (distinct from offers). */
+  /** Kept for panel wiring; not shown in the offer editor. */
   coupleSelectedPlan?: OperationalPlanSummary | null;
   /** Kept for panel wiring; Open Floor Plans lives on the Overview card. */
   onOpenManagement: () => void;
 }) {
   void _onOpenManagement;
+  void _operationalPlans;
+  void _coupleSelectedPlan;
   const router = useRouter();
   const activeTemplates = templates.filter((t) => !t.isArchived);
   const offeredTemplateIds = new Set(offers.filter((o) => o.isOffered).map((o) => o.floorPlanTemplateId));
@@ -178,25 +181,6 @@ export function EventFloorPlansSetupEditor({
             This does not release layouts to the client portal by itself.
           </SheetDescription>
         </SheetHeader>
-
-        <div
-          className="mb-4 rounded-md border border-border bg-muted/20 px-3 py-3 space-y-2"
-          data-testid="floor-plans-setup-selection-state"
-        >
-          {coupleSelectedPlan ? (
-            <div data-testid="floor-plans-setup-client-selection">
-              <p className="text-sm font-medium text-heading">Client&apos;s selected layout</p>
-              <p className="text-sm text-muted-foreground mt-0.5">{coupleSelectedPlan.name}</p>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground" data-testid="floor-plans-setup-no-client-selection">
-              The client has not selected a layout yet
-              {operationalPlans.length > 0
-                ? `. A working layout (${operationalPlans.map((p) => p.name).join(", ")}) is ready for venue prep.`
-                : " (or selection is not required until offers are released)."}
-            </p>
-          )}
-        </div>
 
         {ensuring ? (
           <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">

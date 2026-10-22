@@ -1427,20 +1427,20 @@ async function main() {
 
       await floorChange.click();
       await page.waitForSelector('[data-testid="event-floor-plans-setup-editor"]', { timeout: 15_000 });
-      const selectionText = await page.getByTestId("floor-plans-setup-selection-state").innerText();
       const editorText = (await page.getByTestId("event-floor-plans-setup-editor").innerText()).slice(0, 900);
       record(
         "change_opens_dedicated_floor_plans_setup_editor",
         (await page.getByTestId("event-floor-plans-setup-editor").count()) === 1
           && (await page.getByTestId("floor-plans-setup-offers-path").count()) === 1
           && /working layout/i.test(editorText),
-        selectionText.slice(0, 240),
+        editorText.slice(0, 240),
       );
       record(
-        "floor_plans_setup_shows_client_selection_truthfully",
-        (await page.getByTestId("floor-plans-setup-no-client-selection").count()) === 1
-          || (await page.getByTestId("floor-plans-setup-client-selection").count()) === 1,
-        selectionText.slice(0, 160),
+        "floor_plans_setup_omits_client_selection_status",
+        (await page.getByTestId("floor-plans-setup-selection-state").count()) === 0
+          && (await page.getByTestId("floor-plans-setup-no-client-selection").count()) === 0
+          && !/The client has not selected a layout yet/i.test(editorText),
+        editorText.slice(0, 160),
       );
       record(
         "floor_plans_editor_keeps_offer_mgmt_in_sheet",

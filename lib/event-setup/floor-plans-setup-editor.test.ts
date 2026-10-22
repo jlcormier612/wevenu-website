@@ -40,13 +40,15 @@ describe("Floor Plans Change vs Open destinations", () => {
 });
 
 describe("Floor Plans setup editor seams", () => {
-  it("edits offers and shows truthful client selection — no share/release/invoice", () => {
+  it("edits offers — no client-selection status block, share/release/invoice", () => {
     assert.match(editor, /upsertFloorPlanOfferAction/);
     assert.match(editor, /withdrawFloorPlanOfferAction/);
     assert.match(editor, /ensureEventFloorPlanOffersAction/);
-    assert.match(editor, /floor-plans-setup-selection-state/);
+    assert.match(editor, /floor-plans-setup-offers-path/);
     assert.match(editor, /establishes this event&apos;s working layout/);
-    assert.match(editor, /coupleSelectedPlan/);
+    assert.doesNotMatch(editor, /floor-plans-setup-selection-state/);
+    assert.doesNotMatch(editor, /floor-plans-setup-no-client-selection/);
+    assert.doesNotMatch(editor, /The client has not selected a layout yet/);
     assert.doesNotMatch(editor, /floor-plans-setup-open-management/);
     assert.doesNotMatch(editor, /createFloorPlanAction/);
     assert.doesNotMatch(editor, /setCoupleShare/);
@@ -56,10 +58,12 @@ describe("Floor Plans setup editor seams", () => {
     assert.doesNotMatch(editor, /createInvoice/);
   });
 
-  it("event-detail passes couple selection into the panel for honest editor state", () => {
+  it("panel may still pass couple selection props; offer editor does not render them", () => {
     assert.match(detail, /coupleSelectedFloorPlanId=\{event\.coupleSelectedFloorPlanId/);
     assert.match(panel, /coupleSelectedFloorPlanId/);
     assert.match(panel, /coupleSelectedPlan=\{/);
+    assert.match(editor, /coupleSelectedPlan:/);
+    assert.doesNotMatch(editor, /Client&apos;s selected layout/);
   });
 
   it("ensure recovers offers and initializes working layout", () => {
