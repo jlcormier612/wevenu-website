@@ -1,0 +1,114 @@
+Waiting for deploy 39729805523 (abbada77f1a55c198f29b182307102a064e69073)…
+poll=1 in_progress|
+poll=2 in_progress|
+poll=3 in_progress|
+poll=4 in_progress|
+poll=5 in_progress|
+poll=6 in_progress|
+poll=7 queued|
+poll=8 in_progress|
+poll=9 in_progress|
+poll=10 in_progress|
+poll=11 in_progress|
+poll=12 in_progress|
+poll=13 in_progress|
+poll=14 in_progress|
+poll=15 in_progress|
+poll=16 in_progress|
+poll=17 in_progress|
+poll=18 in_progress|
+poll=19 in_progress|
+poll=20 in_progress|
+poll=21 in_progress|
+poll=22 completed|success
+final_deploy=completed|success
+Waiting for serving SHA abbada77…
+serving_poll=1 abbada77f1a55c198f29b182307102a064e69073
+SERVING_MATCH abbada77f1a55c198f29b182307102a064e69073
+PASS serving_sha — serving=abbada77f1a55c198f29b182307102a064e69073 expected=abbada77f1a55c198f29b182307102a064e69073
+PASS fixture — event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be
+FAIL event_order_badge_included — event order card missing
+PASS preview_client-planning_shell — mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)
+FAIL preview_client-planning_back_overview — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=client_planning&from=event
+FAIL preview_client-planning_back_questionnaires — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=client_planning&from=event
+PASS preview_final-details_shell — mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)
+FAIL preview_final-details_back_overview — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=final_details&from=event
+FAIL preview_final-details_back_questionnaires — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=final_details&from=event
+PASS preview_post-event_shell — mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)
+FAIL preview_post-event_back_overview — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=post_event_feedback&from=event
+FAIL preview_post-event_back_questionnaires — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=post_event_feedback&from=event
+PASS questionnaire_persistence_unchanged — before=1 after=1
+PASS event_order_state_unchanged — before=open/null after=open/null
+PASS no_invoice_side_effect — before=38 after=38
+{
+  "status": "NOT_GREEN",
+  "passed": 8,
+  "failed": 7,
+  "servingSha": "abbada77f1a55c198f29b182307102a064e69073"
+}
+Waiting for deploy 39729805523 (abbada77f1a55c198f29b182307102a064e69073)…
+poll=1 completed|success
+final_deploy=completed|success
+Waiting for serving SHA abbada77…
+serving_poll=1 abbada77f1a55c198f29b182307102a064e69073
+SERVING_MATCH abbada77f1a55c198f29b182307102a064e69073
+PASS serving_sha — serving=abbada77f1a55c198f29b182307102a064e69073 expected=abbada77f1a55c198f29b182307102a064e69073
+PASS fixture — event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be
+PASS event_order_badge_included — badge=Included
+FAIL harness_error — page.goto: net::ERR_ABORTED at https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=client_planning&from=event
+Call log:
+  - navigating to "https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/qu
+Waiting for deploy 39730706358 (592a69b513685876d3efe3cab708d6af822632da)…
+{
+  "status": "NOT_GREEN",
+  "passed": 3,
+  "failed": 1,
+  "servingSha": "abbada77f1a55c198f29b182307102a064e69073"
+}
+poll=1 in_progress|
+poll=2 in_progress|
+poll=3 in_progress|
+poll=4 in_progress|
+poll=5 in_progress|
+poll=6 in_progress|
+poll=7 in_progress|
+poll=8 in_progress|
+poll=9 in_progress|
+poll=10 in_progress|
+poll=11 in_progress|
+poll=12 in_progress|
+poll=13 in_progress|
+poll=14 in_progress|
+poll=15 in_progress|
+poll=16 in_progress|
+poll=17 in_progress|
+poll=18 in_progress|
+poll=19 in_progress|
+poll=20 in_progress|
+poll=21 in_progress|
+poll=22 completed|success
+final_deploy=completed|success
+Waiting for serving SHA 592a69b5…
+serving_poll=1 592a69b513685876d3efe3cab708d6af822632da
+SERVING_MATCH 592a69b513685876d3efe3cab708d6af822632da
+PASS serving_sha — serving=592a69b513685876d3efe3cab708d6af822632da expected=592a69b513685876d3efe3cab708d6af822632da
+PASS fixture — event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be
+PASS event_order_badge_included — badge=Included
+PASS preview_client-planning_shell — mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)
+PASS preview_client-planning_back_overview — href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview
+PASS preview_client-planning_back_questionnaires — href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires
+PASS preview_final-details_shell — mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)
+PASS preview_final-details_back_overview — href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview
+PASS preview_final-details_back_questionnaires — href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires
+PASS preview_post-event_shell — mark=true h1=true cream=0 luminance=0.355 color=rgb(79, 95, 79)
+PASS preview_post-event_back_overview — href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#overview
+PASS preview_post-event_back_questionnaires — href=/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires
+PASS questionnaire_persistence_unchanged — before=1 after=1
+PASS event_order_state_unchanged — before=open/null after=open/null
+PASS no_invoice_side_effect — before=38 after=38
+{
+  "status": "GREEN",
+  "passed": 15,
+  "failed": 0,
+  "servingSha": "592a69b513685876d3efe3cab708d6af822632da"
+}
