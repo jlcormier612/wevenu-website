@@ -98,8 +98,12 @@ export function EventTimelineSetupEditor({
       : activeTemplates[0]?.id ?? "",
   );
   const [rows, setRows] = React.useState<DraftRow[]>(() => toDraftRows(entries));
+  const rowsRef = React.useRef(rows);
+  rowsRef.current = rows;
   const [newTitle, setNewTitle] = React.useState("");
   const [newTime, setNewTime] = React.useState("");
+  const newTimeRef = React.useRef(newTime);
+  newTimeRef.current = newTime;
   const [newDayOffset, setNewDayOffset] = React.useState("0");
   const [pending, startTransition] = React.useTransition();
   const [batchError, setBatchError] = React.useState<string | null>(null);
@@ -206,15 +210,20 @@ export function EventTimelineSetupEditor({
       return;
     }
     if (saveInFlight.current) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.tagName === "INPUT") {
+      active.blur();
+    }
+    const latest = rowsRef.current.find((r) => r.id === row.id) ?? row;
     startTransition(async () => {
       saveInFlight.current = true;
       setBatchError(null);
       try {
-        const result = await updateEntryAction(row.id, eventId, {
-          title: row.title,
-          description: row.description,
-          entryTime: row.entryTime,
-          dayOffset: row.dayOffset,
+        const result = await updateEntryAction(latest.id, eventId, {
+          title: latest.title,
+          description: latest.description,
+          entryTime: latest.entryTime,
+          dayOffset: latest.dayOffset,
         });
         if (!result.ok) {
           const msg = result.message ?? "Could not save timeline item.";
@@ -278,9 +287,16 @@ export function EventTimelineSetupEditor({
   function saveAllChanges() {
     if (saveInFlight.current || pending) return;
 
+    // Ensure any focused TimeAmPmInput commits into draft state before we
+    // read rows (blur → flushSync onChange re-renders; rowsRef picks it up).
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.tagName === "INPUT") {
+      active.blur();
+    }
+
     // Flush the add-row fields into the draft if the user typed a title
     // but did not click Add item yet.
-    let working = rows;
+    let working = rowsRef.current;
     const pendingTitle = newTitle.trim();
     if (pendingTitle) {
       const dayOffset = Number.parseInt(newDayOffset, 10);
@@ -291,7 +307,7 @@ export function EventTimelineSetupEditor({
       const flushed: DraftRow = {
         id: nextTempId(),
         title: pendingTitle,
-        entryTime: newTime,
+        entryTime: newTimeRef.current,
         dayOffset,
         description: "",
         dirty: true,
@@ -299,7 +315,7 @@ export function EventTimelineSetupEditor({
         isNew: true,
         owner: "venue",
       };
-      working = sortDraftRows([...rows, flushed]);
+      working = sortDraftRows([...working, flushed]);
       setRows(working);
       setNewTitle("");
       setNewTime("");

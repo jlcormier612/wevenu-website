@@ -25,12 +25,32 @@ export type DaySheetSchedule = {
   unscheduled: TimelineEntry[];
 };
 
+/** Normalize RPC/DB time ("14:00:00" or "14:00") to HH:MM, or "" if absent. */
+export function normalizeDaySheetEntryTime(raw: string | null | undefined): string {
+  if (raw == null) return "";
+  const s = String(raw).trim();
+  if (!s) return "";
+  // Postgres time / timestamptz fragments → HH:MM
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return "";
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (!Number.isFinite(h) || h < 0 || h > 23 || !Number.isFinite(min) || min < 0 || min > 59) {
+    return "";
+  }
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
 export function buildDaySheetSchedule(
   entries: TimelineEntry[],
   eventDate: string,
   eventEndDate?: string | null,
 ): DaySheetSchedule {
-  const sorted = [...entries].sort(compareTimelineEntries);
+  const normalized = entries.map((e) => ({
+    ...e,
+    entryTime: normalizeDaySheetEntryTime(e.entryTime) || null,
+  }));
+  const sorted = [...normalized].sort(compareTimelineEntries);
   const timed = sorted.filter((e) => Boolean(e.entryTime));
   const unscheduled = sorted.filter((e) => !e.entryTime);
 

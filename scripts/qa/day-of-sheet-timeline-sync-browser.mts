@@ -288,26 +288,53 @@ try {
       }
     }
     record("ui_marked_mid_for_removal", marked, `rows=${n}`);
-    // Edit Early time later via TimeAmPmInput
+    // Edit Early → 8:00 PM; assign Untimed → 2:00 PM — then Save all WITHOUT
+    // an explicit blur (regression for missing Day-of Sheet times).
     for (let i = 0; i < n; i += 1) {
       const text = await rows.nth(i).innerText();
       if (text.includes(`${MARK} Early`)) {
-        const time = rows.nth(i).getByTestId("timeline-setup-row-time");
-        await time.fill("20:00");
-        await time.blur();
+        await rows.nth(i).getByTestId("timeline-setup-row-time").fill("8:00 PM");
+        break;
+      }
+    }
+    for (let i = 0; i < (await rows.count()); i += 1) {
+      const text = await rows.nth(i).innerText();
+      if (text.includes(`${MARK} Untimed`)) {
+        await rows.nth(i).getByTestId("timeline-setup-row-time").fill("2:00 PM");
         break;
       }
     }
     // Add new item
     await page.getByTestId("timeline-setup-new-title").fill(`${MARK} New`);
-    await page.getByTestId("timeline-setup-new-time").fill("15:00");
-    await page.getByTestId("timeline-setup-new-time").blur();
+    await page.getByTestId("timeline-setup-new-time").fill("3:00 PM");
     await page.getByTestId("timeline-setup-add-item").click();
     const saveAll = page.getByTestId("timeline-setup-save-all");
     if ((await saveAll.count()) > 0 && (await saveAll.isEnabled())) {
+      // Click Save while a time field may still be focused — must persist times.
       await saveAll.click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(3000);
     }
+    // Prove DB persisted the newly assigned 2:00 PM before opening the sheet
+    let untimedPersisted = false;
+    for (let i = 0; i < 20; i += 1) {
+      await page.waitForTimeout(300);
+      const { data: urow } = await admin
+        .from("timeline_entries")
+        .select("entry_time,title")
+        .eq("event_id", eventId)
+        .eq("venue_id", FANCY)
+        .eq("title", `${MARK} Untimed`)
+        .maybeSingle();
+      if (urow?.entry_time && String(urow.entry_time).startsWith("14:00")) {
+        untimedPersisted = true;
+        break;
+      }
+    }
+    record(
+      "persisted_assigned_time_on_formerly_untimed",
+      untimedPersisted,
+      "entry_time should be 14:00 after Save all",
+    );
     await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
   } else {
     // Admin fallback if Change Timeline UI unavailable
@@ -342,13 +369,19 @@ try {
   );
   record(
     "edited_time_reflected",
-    sheet.timed.some((t) => /20:00|8:00\s*PM/i.test(t) && t.includes("Early"))
-      || sheet.timed.some((t) => t.includes(`${MARK} Early`) && /8:00\s*PM|20:00/i.test(t)),
+    sheet.timed.some((t) => t.includes(`${MARK} Early`) && /8:00\s*PM/i.test(t)),
     sheet.timed.filter((t) => t.includes("Early")).join(" | "),
   );
   record(
+    "assigned_time_appears_on_day_sheet",
+    sheet.timed.some((t) => t.includes(`${MARK} Untimed`) && /2:00\s*PM/i.test(t))
+      && !sheet.unscheduled.some((t) => t.includes(`${MARK} Untimed`)),
+    `timed=${sheet.timed.filter((t) => t.includes(MARK)).join(" | ")} unscheduled=${sheet.unscheduled.filter((t) => t.includes(MARK)).join(" | ")}`,
+  );
+  record(
     "new_item_appears_once",
-    sheet.all.filter((t) => t.includes(`${MARK} New`)).length === 1,
+    sheet.all.filter((t) => t.includes(`${MARK} New`)).length === 1
+      && sheet.timed.some((t) => t.includes(`${MARK} New`) && /3:00\s*PM/i.test(t)),
     sheet.all.filter((t) => t.includes(MARK)).join(" | "),
   );
   const afterSeeded = sheet.timed.filter((t) => t.includes(MARK));

@@ -3,7 +3,10 @@ import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { buildDaySheetSchedule } from "@/lib/events/day-sheet-schedule";
+import {
+  buildDaySheetSchedule,
+  normalizeDaySheetEntryTime,
+} from "@/lib/events/day-sheet-schedule";
 import type { TimelineEntry } from "@/lib/timeline/types";
 
 function entry(
@@ -74,6 +77,32 @@ describe("buildDaySheetSchedule", () => {
     assert.equal(schedule.timedGroups.length, 0);
     assert.equal(schedule.unscheduled.length, 1);
     assert.equal(schedule.unscheduled[0]!.entryTime, null);
+  });
+
+  it("normalizes Postgres HH:MM:SS times into the timed schedule", () => {
+    assert.equal(normalizeDaySheetEntryTime("14:00:00"), "14:00");
+    assert.equal(normalizeDaySheetEntryTime("6:30:00"), "06:30");
+    const schedule = buildDaySheetSchedule(
+      [entry({ id: "t", title: "Venue Access", entryTime: "14:00:00", sortOrder: 0 })],
+      "2028-06-10",
+    );
+    assert.equal(schedule.timedGroups[0]!.entries[0]!.entryTime, "14:00");
+    assert.equal(schedule.unscheduled.length, 0);
+  });
+
+  it("assigning a time moves an entry from unscheduled to timed", () => {
+    const before = buildDaySheetSchedule(
+      [entry({ id: "a", title: "Reception", entryTime: null, sortOrder: 0 })],
+      "2028-06-10",
+    );
+    assert.equal(before.unscheduled.length, 1);
+    assert.equal(before.timedGroups.length, 0);
+    const after = buildDaySheetSchedule(
+      [entry({ id: "a", title: "Reception", entryTime: "18:00", sortOrder: 0 })],
+      "2028-06-10",
+    );
+    assert.equal(after.timedGroups[0]!.entries[0]!.entryTime, "18:00");
+    assert.equal(after.unscheduled.length, 0);
   });
 
   it("day-sheet document uses schedule helper and timeline actions revalidate day-sheet", () => {
