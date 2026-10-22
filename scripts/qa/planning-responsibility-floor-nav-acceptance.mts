@@ -211,8 +211,10 @@ async function main() {
       `attr=${listedAttr} db=${taskRows?.length}`,
     );
 
+    await list.scrollIntoViewIfNeeded().catch(() => undefined);
     await page.screenshot({ path: `${SHOTS}/planning-responsibility-1280.png`, fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
+    await list.scrollIntoViewIfNeeded().catch(() => undefined);
     await page.screenshot({ path: `${SHOTS}/planning-responsibility-390.png`, fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
 

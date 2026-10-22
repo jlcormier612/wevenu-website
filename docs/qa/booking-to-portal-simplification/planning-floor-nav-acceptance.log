@@ -1,0 +1,32 @@
+PASS serving_sha — serving=7d2b60b07e51904b777eac00198a3ed38adee9fd expected=7d2b60b07e51904b777eac00198a3ed38adee9fd
+PASS fixture — event=ebf74f77-2944-474a-b735-48762ecb6842 client=b4e2764b-be33-4579-89e3-0c8e4a6dd5be score=10
+PASS planning_list_visible — planning-task-list
+PASS client_section_visible — dbCouple=10
+PASS client_task_in_client_section — Complete your questionnaire
+PASS couple_not_in_venue_section — ok
+PASS venue_section_visible — dbVenue=7
+PASS venue_task_in_venue_section — Build timeline
+PASS vendor_section_visible — dbVendor=1
+PASS planning_total_matches_db — attr=18 db=18
+PASS floor_tab_no_auto_designer_redirect — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#floorplan
+PASS floor_workspace_visible — floor-plan-operational-workspace
+PASS floor_selection_status_visible — Using the only offered layout as the working layout (Barn-master-floorplan). The client has not separately confirmed a choice.
+PASS floor_no_false_client_selection — no couple_selected
+PASS designer_opened_explicitly — https://app.sandbox.hellotocheers.com/events/ebf74f77-2944-474a-b735-48762ecb6842/floor-plans/18c943fb-9762-4383-948a-e0f82fa4f89f
+PASS designer_back_label — Back to Floor Plans
+PASS designer_back_to_booking_floor — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#playbook#floorplan
+PASS no_redirect_loop_after_back — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#playbook#floorplan
+PASS tasks_unchanged — fingerprint
+PASS selection_unchanged — b=null a=null
+PASS operational_stable_or_ensured — b=18c943fb-9762-4383-948a-e0f82fa4f89f a=18c943fb-9762-4383-948a-e0f82fa4f89f plans 1->1
+PASS no_plan_duplication — b=1 a=1
+PASS offers_unchanged — b=2 a=2
+PASS no_invoice_side_effect — b=38 a=38
+PASS no_invite_side_effect — b=1 a=1
+{
+  "status": "GREEN",
+  "passed": 25,
+  "failed": 0,
+  "servingSha": "7d2b60b07e51904b777eac00198a3ed38adee9fd",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842"
+}
