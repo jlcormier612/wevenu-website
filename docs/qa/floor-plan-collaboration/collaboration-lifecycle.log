@@ -1,0 +1,17 @@
+PASS serving_sha — serving=5f4eb7ed81a78908ae529922298c22587498fa65 expected=5f4eb7ed81a78908ae529922298c22587498fa65
+PASS selection_persists — b42658e7-c5ab-4e98-a56d-0febf568e4bc
+PASS working_copy_shared_for_layout_not_seating — {"id":"b42658e7-c5ab-4e98-a56d-0febf568e4bc","shared_with_couple":true,"client_access":"hidden","source_template_id":"026fb633-2dce-4c73-87c8-144bb29a0318","finalized_at":null,"event_id":"2a3b38f8-5098-454e-a628-f2b58200912e"}
+PASS portal_shows_working_layout — Your choice | view only | Your working layout | view only
+PASS template_objects_unchanged — before=17 after=17
+PASS working_plan_has_table_objects — [{"id":"8507a2ed-a52c-483e-88ed-3caecc46e266","capacity":2,"object_type":"table_rect"},{"id":"320c84ba-069f-47c7-aa73-3215fc5a98be","capacity":8,"object_type":"table_round"},{"id":"f31028f0-488b-4571-8501-0c8219bd8ed7","capacity":8,"object_type":"table_round"}]
+PASS venue_share_for_seating — {"client_access":"view","shared_with_couple":true}
+PASS seating_assign_via_portal_rpc — true
+PASS seating_linked_to_working_plan_table — [{"id":"097bc5a5-9fd1-4705-b01d-7f88eb0f7fe8","guest_id":"5ed7ac23-afff-4e2c-acc8-afcbce3364de","table_object_id":"8507a2ed-a52c-483e-88ed-3caecc46e266","floor_plan_id":"b42658e7-c5ab-4e98-a56d-0febf568e4bc"}]
+PASS reposition_table_keeps_guest_assignment — {"beforeObj":{"x":360,"y":90},"seatsAfterMove":[{"id":"097bc5a5-9fd1-4705-b01d-7f88eb0f7fe8","table_object_id":"8507a2ed-a52c-483e-88ed-3caecc46e266"}]}
+PASS ready_checkpoint_persists — {"finalized_at":"2026-10-22T20:38:29.653+00:00"}
+PASS portal_api_reports_ready — {"floorPlans":[{"id":"b42658e7-c5ab-4e98-a56d-0febf568e4bc","name":"Collab Layout","isReady":true,"spaceId":null,"createdAt":"2026-10-22T20:38:27.70718+00:00","isOperational":true,"isCoupleSelected":true}],"operationalFloorPlanId":"b42658e7-c5ab-4e98-a56d-0febf568e4bc","coupleSel
+PASS browser_portal_list_reports_ready — [{"id":"b42658e7-c5ab-4e98-a56d-0febf568e4bc","name":"Collab Layout","isReady":true,"spaceId":null,"createdAt":"2026-10-22T20:38:27.70718+00:00","isOperational":true,"isCoupleSelected":true}]
+PASS portal_shows_ready_after_refresh — Your working layout | Ready for the event | Ready for the event
+PASS anon_cannot_read_floor_plan_directly — null
+
+GREEN passed=15 failed=0

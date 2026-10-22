@@ -360,17 +360,30 @@ async function main() {
       JSON.stringify(listRpc.data),
     );
 
-    await page.goto(`${APP}/p/${token}#floor_plans`, { waitUntil: "networkidle", timeout: 90_000 }).catch(async () => {
-      await page.goto(`${APP}/p/${token}#floor_plans`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    // Cache-bust: same /p/{token}#floor_plans URL can restore pre-Ready React state.
+    const readyUrl = `${APP}/p/${token}?ready=${Date.now()}#floor_plans`;
+    await page.goto(readyUrl, { waitUntil: "networkidle", timeout: 90_000 }).catch(async () => {
+      await page.goto(readyUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
     });
     await page.waitForSelector("text=Your working layout", { timeout: 25_000 });
+    const browserList = await page.evaluate(async (t) => {
+      const r = await fetch(`/api/portal/floor-plans?token=${encodeURIComponent(t)}`);
+      return r.json();
+    }, token);
+    record(
+      "browser_portal_list_reports_ready",
+      Array.isArray(browserList?.floorPlans)
+        && browserList.floorPlans.some((p: { id: string; isReady?: boolean }) => p.id === planId && p.isReady === true),
+      JSON.stringify(browserList?.floorPlans ?? browserList).slice(0, 500),
+    );
     await page.waitForSelector('[data-testid="floor-plan-ready-badge"]', { timeout: 30_000 }).catch(() => undefined);
     await page.locator('[data-testid="floor-plan-working-view"]').scrollIntoViewIfNeeded().catch(() => undefined);
     await page.waitForTimeout(1500);
     const readyBody = await page.locator("body").innerText();
+    const readyUi = /Ready for the event/i.test(readyBody) && /Your working layout/i.test(readyBody);
     record(
       "portal_shows_ready_after_refresh",
-      /Ready for the event/i.test(readyBody) && /Your working layout/i.test(readyBody),
+      readyUi,
       readyBody.match(/Ready for the event|Your working layout/gi)?.join(" | ")
         ?? `apiReady=${readyFromApi}; ${readyBody.slice(0, 240)}`,
     );
