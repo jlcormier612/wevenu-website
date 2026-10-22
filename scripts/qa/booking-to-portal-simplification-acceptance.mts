@@ -1683,19 +1683,22 @@ async function main() {
       document.querySelector('[data-testid="client-workspace-invite"]')?.scrollIntoView({ block: "center" });
       document.getElementById("event-setup")?.scrollIntoView({ block: "end" });
     });
-    await page.waitForTimeout(1000);
     const inviteSection = page.getByTestId("client-workspace-invite");
     await inviteSection.waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
     const inviteEmail = `b2p-invite-${stamp}@hellotocheers-test.invalid`;
     const emailInput = page.getByTestId("client-invite-email");
-    for (let i = 0; i < 15 && !(await emailInput.count()); i += 1) {
-      await page.waitForTimeout(400);
+    const openInvite = page.getByTestId("open-client-invite-preview");
+    const inviteByRole = page.getByRole("button", { name: /^Invite client$/i });
+    // PortalLinkWidget can still be spinning after setup settles — poll for controls
+    for (let i = 0; i < 40; i += 1) {
+      if ((await emailInput.count()) > 0 || (await openInvite.count()) > 0 || (await inviteByRole.count()) > 0) {
+        break;
+      }
+      await page.waitForTimeout(500);
     }
     if (await emailInput.count()) {
       await emailInput.fill(inviteEmail);
     }
-    const openInvite = page.getByTestId("open-client-invite-preview");
-    const inviteByRole = page.getByRole("button", { name: /^Invite client$/i });
     const invitePresent = (await openInvite.count()) > 0 || (await inviteByRole.count()) > 0;
     record(
       "invite_button_present_after_prepare",

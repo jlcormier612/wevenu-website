@@ -1,6 +1,6 @@
 PASS profile_configured_inventory_eo — {"invRef":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","eoRef":"d73d9734-98d9-46a0-b54b-dccadb036150"}
 PASS profile_configured_both_planning_checklists — {"clientPbRef":"7a1766d4-f1cd-4882-a8ed-19a54aba68ea","venuePbRef":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
-PASS serving_sha — serving=0ed74ba57d25d482d9377beb3331191c43d4d055 expected=0ed74ba57d25d482d9377beb3331191c43d4d055
+PASS serving_sha — serving=cb44fc21d843013119f42b13677faf782fdb3530 expected=cb44fc21d843013119f42b13677faf782fdb3530
 PASS settings_lists_full_capability_set — Planning checklists, Floor plans, Floor Plans, Seating arrangements, Floor plans, Vendor Network, Vendor Network, Vendor Network, Inventory, inventory, inventory, Inventory, Event Order, Event Order, Event Order, Event Order, Questionnaires
 PASS settings_keeps_floor_and_seating_distinct — floor plans vs seating copy
 PASS profile_list_shows_standard_wedding — OVERVIEW
@@ -36,14 +36,14 @@ PASS profile_explains_auto_prepare — source copy includes both Planning checkl
 PASS profile_vendor_network_authoritative — source copy (unit + shipped UI)
 PASS profile_list_shows_both_checklists — Client checklist: Standard Wedding — Client Planning · Venue checklist: Standard Wedding — Venue Planning · Timeline: Standard Wedding Day Timeline
 PASS profile_ui_both_planning_selects — client=true venue=true
-PASS booked_client_and_event — {"clientId":"d3a11705-531d-47ac-8a07-6725d589f2b9","eventId":"4b5395e4-1858-4f5b-b276-96225291747f"}
+PASS booked_client_and_event — {"clientId":"54eabb8a-47c9-43e8-983e-23fdf4bce73b","eventId":"bb3cb6bd-fb3a-4583-925a-8c747b106ce7"}
 PASS setup_snapshot_inherited — {"uses_profile":true,"profile_id":"b2c5bb44-cdea-4b1a-9aca-995c04fea327","inherited_template_refs":{"requiredVendorIds":[],"timelineTemplateId":"a5855821-8c1a-4424-906a-7b2f6cf686c4","inventoryTemplateId":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a3
-PASS booking_prepared_inventory_draft — [{"id":"ea4a3e51-f817-431d-8bb9-3622ce1e31f9","status":"draft","template_id":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","finalized_at":null}]
-PASS booking_prepared_event_order_draft — [{"id":"03067e6c-2118-47dc-bc80-d830bd8d1ebc","status":"open","template_id":"d73d9734-98d9-46a0-b54b-dccadb036150","shared_at":null,"finalized_at":null}]
-PASS booking_prepared_client_checklist — {"id":"348afd55-70eb-4a50-8f1f-fc0c56147cda","kind":"client","released_at":null,"template_id":"7a1766d4-f1cd-4882-a8ed-19a54aba68ea"}
-PASS booking_prepared_venue_checklist — {"venuePb":{"id":"5341fb30-3fa4-4467-9029-610227f170c8","kind":"venue","released_at":"2026-10-22T00:11:35.915+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"},"expected":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
+PASS booking_prepared_inventory_draft — [{"id":"cab874d5-4587-403d-8fcf-902c9ed44053","status":"draft","template_id":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","finalized_at":null}]
+PASS booking_prepared_event_order_draft — [{"id":"23f5dbe8-27ea-4138-9cb2-b739ef42700d","status":"open","template_id":"d73d9734-98d9-46a0-b54b-dccadb036150","shared_at":null,"finalized_at":null}]
+PASS booking_prepared_client_checklist — {"id":"66660a9d-7a73-463d-b99b-5b818776e637","kind":"client","released_at":null,"template_id":"7a1766d4-f1cd-4882-a8ed-19a54aba68ea"}
+PASS booking_prepared_venue_checklist — {"venuePb":{"id":"3398aa8f-5677-436c-addc-148a69fa8a59","kind":"venue","released_at":"2026-10-22T00:38:27.226+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"},"expected":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
 PASS booking_prepared_timeline — entries=38 ref=a5855821-8c1a-4424-906a-7b2f6cf686c4
-PASS booking_prepared_floor_plan_offers — {"offers":[{"id":"f1f558f9-e250-4d4a-8325-0457be3a220f","floor_plan_template_id":"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3","is_offered":true}],"offersErr":null}
+PASS booking_prepared_floor_plan_offers — {"offers":[{"id":"10bb0668-ce37-4827-bfb3-e2ba54d40e51","floor_plan_template_id":"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3","is_offered":true}],"offersErr":null}
 PASS booking_no_invoice — invoices=0
 PASS booking_no_questionnaire_sent — sent=0
 PASS booking_no_invitation — invites=0
@@ -79,7 +79,7 @@ Change for this event
 Don't include for this event
 
 The client checklist "Standard Wedding — Client Planning" is prepared but has not yet been released to the client. Use Change for this event to cu
-PASS open_planning_reaches_management_workspace — taskList=1 url=https://app.sandbox.hellotocheers.com/clients/d3a11705-531d-47ac-8a07-6725d589f2b9#planning-task-list
+PASS open_planning_reaches_management_workspace — taskList=1 url=https://app.sandbox.hellotocheers.com/clients/54eabb8a-47c9-43e8-983e-23fdf4bce73b#planning-task-list
 PASS management_workspace_keeps_fulfillment_actions — UPCOMING (15)
 
 Complete your questionnaire
@@ -90,7 +90,7 @@ Client
 ·
 Client completes
 ·
-90 days before · Feb 17
+90 days before · Aug 25
 
 Auto-completes on trigger
 
@@ -105,28 +105,34 @@ Client
 ·
 Client completes
 ·
-60 days before · M
+60 days before · S
 PASS change_opens_dedicated_planning_setup_editor — editor=1
 PASS setup_editor_has_two_paths_only — template + customize; no waive/request
-PASS setup_editor_add_task_persists — [{"id":"99cb52b7-ed79-4d4c-8b30-0d626b3a6bc1","title":"QA event-only planning task","template_task_id":null,"owner_type":"couple"}]
+PASS setup_editor_add_task_persists — [{"id":"2191d4d3-499a-4e84-a909-5cc61d4b063e","title":"QA event-only planning task","template_task_id":null,"owner_type":"couple"}]
 PASS setup_editor_did_not_mutate_library — libraryHits=0
+PASS booking_inherited_venue_checklist_application — [{"id":"3398aa8f-5677-436c-addc-148a69fa8a59","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e","template_name":"Standard Wedding — Venue Planning"}]
+PASS booking_inherited_venue_checklist_tasks — venueTasks=7
 PASS setup_editor_has_venue_audience — venue audience + two paths
-PASS setup_editor_venue_add_task_persists — [{"id":"14880f39-13c2-4fa2-83c9-33fcac07073c","title":"QA venue-only planning task","template_task_id":null,"owner_type":"coordinator"}]
+PASS venue_setup_shows_inherited_checklist_not_empty — empty=0
+PASS venue_template_cancel_does_not_mutate — {"mid":[{"id":"3398aa8f-5677-436c-addc-148a69fa8a59","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}],"after":[{"id":"3398aa8f-5677-436c-addc-148a69fa8a59","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}]}
+PASS setup_editor_venue_add_task_persists — [{"id":"32ccd5a5-2532-46a0-b18c-f2040ddacce7","title":"QA venue-only planning task","template_task_id":null,"owner_type":"coordinator"}]
 PASS setup_editor_venue_did_not_mutate_library — libraryHits=0
 PASS change_opens_dedicated_timeline_setup_editor — timeline editor + two paths
-PASS timeline_setup_add_item_persists — [{"id":"679e3c7e-9379-440b-be42-88ad17dc619e","title":"QA event-only timeline item","owner":"venue"}]
+PASS timeline_setup_add_item_persists — [{"id":"7e29b953-39c8-4c97-aae1-d812cf13e97a","title":"QA event-only timeline item","owner":"venue"}]
 PASS timeline_setup_did_not_duplicate_on_add — before=39 after=40
-PASS open_timeline_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/d3a11705-531d-47ac-8a07-6725d589f2b9#timeline
+PASS timeline_template_cancel_does_not_mutate — before=40 after=40
+PASS timeline_template_replace_persists — {"tlAfterReplace":28,"altItemCount":28,"stillOnEditor":true,"qaCustomStill":0}
+PASS open_timeline_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/54eabb8a-47c9-43e8-983e-23fdf4bce73b#timeline
 PASS change_hidden_for_areas_without_setup_editor — Questionnaires Change hidden until later phases
 PASS change_opens_dedicated_inventory_setup_editor — inventory setup editor visible
-PASS inventory_setup_customize_persists — items=[{"id":"e0bc2bcb-b525-4a47-9be4-bce7c69a8ef8","name":"QA event-only inventory B2P-1792627851423-3514"}]
+PASS inventory_setup_customize_persists — items=[{"id":"5a1e5118-d568-4b02-bd41-f2d94f99cf97","name":"QA event-only inventory B2P-1792629481859-388f"}]
 PASS inventory_setup_template_replace_safe — template=9a2c583a-4b4b-4b45-b970-6ae876355138 status=draft drafts=1
-PASS open_inventory_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/d3a11705-531d-47ac-8a07-6725d589f2b9#inventory
+PASS open_inventory_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/54eabb8a-47c9-43e8-983e-23fdf4bce73b#inventory
 PASS inventory_library_template_unchanged — before=32 after=32
 PASS change_opens_dedicated_event_order_setup_editor — event order setup editor visible
-PASS event_order_setup_customize_persists — lines=[{"id":"98a7e972-93f8-4712-bb81-1ef52e62857f","description":"QA event-only EO line B2P-1792627851423-3514"}] status=open
+PASS event_order_setup_customize_persists — lines=[{"id":"81874888-2bb5-4167-867c-70e7d26760b8","description":"QA event-only EO line B2P-1792629481859-388f"}] status=open
 PASS event_order_setup_package_replace_safe — wanted=99585da2-587c-4b7a-9e59-5e9db5d4d998 template=99585da2-587c-4b7a-9e59-5e9db5d4d998 drafts=1
-PASS open_event_order_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/d3a11705-531d-47ac-8a07-6725d589f2b9#event-order
+PASS open_event_order_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/54eabb8a-47c9-43e8-983e-23fdf4bce73b#event-order
 PASS event_order_library_package_unchanged — before=0 after=0
 PASS change_opens_dedicated_floor_plans_setup_editor — Operational floor plans for this booking
 
@@ -136,24 +142,24 @@ Open Floor Plans
 PASS floor_plans_offers_vs_operational_state_shown — opsBefore=0 text=Operational floor plans for this booking
 
 None yet. Offers can exist without an operational layout. Use Open Floor Plans to create or edit the venue's working l
-PASS floor_plans_setup_offer_persists — [{"id":"9dfc5ba7-36a3-4b33-a594-c2d5be57d519","couple_label":"QA floor offer B2P-1792627851423-3514","is_offered":true,"floor_plan_template_id":"026fb633-2dce-4c73-87c8-144bb29a0318"}]
+PASS floor_plans_setup_offer_persists — [{"id":"9381b17c-6812-4bbe-8644-9f0a4aca44b0","couple_label":"QA floor offer B2P-1792629481859-388f","is_offered":true,"floor_plan_template_id":"026fb633-2dce-4c73-87c8-144bb29a0318"}]
 PASS floor_plans_setup_did_not_create_operational_plan — opsBefore=0 opsAfter=0
 PASS floor_plans_setup_reopen_idempotent — before=1 afterReopen=2
-PASS open_floor_plans_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/d3a11705-531d-47ac-8a07-6725d589f2b9#floorplan
+PASS open_floor_plans_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/54eabb8a-47c9-43e8-983e-23fdf4bce73b#floorplan
 PASS floor_plans_library_templates_unchanged — before=3 after=3
-PASS floor_plans_other_events_offers_unchanged — before=39 after=39
+PASS floor_plans_other_events_offers_unchanged — before=43 after=43
 PASS change_opens_dedicated_vendors_setup_editor — Assigned to this booking
 
 Cuppity Cakes
 Baker's Dozen
 Open Vendors
 PASS vendors_highlights_vs_assignments_state_shown — assignBefore=2
-PASS vendors_setup_highlight_persists — [{"id":"b2c9831e-94d3-4836-be5f-eb7a2a582128","vendor_id":"e5ed92aa-82a4-46c7-b6c2-36a90db714e1","note":"QA vendor highlight B2P-1792627851423-3514"}]
+PASS vendors_setup_highlight_persists — [{"id":"8b9349ba-3477-4804-89a5-c323ff0e1952","vendor_id":"e5ed92aa-82a4-46c7-b6c2-36a90db714e1","note":"QA vendor highlight B2P-1792629481859-388f"}]
 PASS vendors_setup_did_not_create_assignment — before=2 after=2
 PASS vendors_setup_reopen_idempotent — before=0 afterReopen=1
-PASS open_vendors_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/d3a11705-531d-47ac-8a07-6725d589f2b9#vendors
+PASS open_vendors_reaches_management_workspace — url=https://app.sandbox.hellotocheers.com/clients/54eabb8a-47c9-43e8-983e-23fdf4bce73b#vendors
 PASS vendors_library_relationships_unchanged — before=10 after=10
-PASS vendors_other_events_highlights_unchanged — before=7 after=7
+PASS vendors_other_events_highlights_unchanged — before=9 after=9
 PASS vendors_setup_did_not_invite — before=0 after=0
 PASS vendors_tab_uses_vendor_network — OVERVIEW
 
@@ -196,25 +202,25 @@ Requests
 
 YOUR VENUE
 PASS prepare_release_button_present — count=1
-PASS prepare_released_client_planning — {"id":"348afd55-70eb-4a50-8f1f-fc0c56147cda","kind":"client","released_at":"2026-10-22T00:14:06.737+00:00"}
-PASS prepare_kept_venue_checklist_internal — {"id":"5341fb30-3fa4-4467-9029-610227f170c8","kind":"venue","released_at":"2026-10-22T00:11:35.915+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
+PASS prepare_released_client_planning — {"id":"66660a9d-7a73-463d-b99b-5b818776e637","kind":"client","released_at":"2026-10-22T00:40:25.933+00:00"}
+PASS prepare_kept_venue_checklist_internal — {"id":"3398aa8f-5677-436c-addc-148a69fa8a59","kind":"venue","released_at":"2026-10-22T00:38:27.226+00:00","template_id":"b2808150-67cb-4900-9cf2-eb5c10c3123e"}
 PASS prepare_did_not_invite — invites=0
 PASS prepare_did_not_send_questionnaires — sent=0
 PASS prepare_did_not_create_invoice — invoices=0
 PASS prepare_idempotent_no_duplicate_drafts — inv=1 eo=1
-PASS venue_inventory_grew_by_one — before=34 after=35
-PASS venue_eo_grew_by_one — before=37 after=38
+PASS venue_inventory_grew_by_one — before=36 after=37
+PASS venue_eo_grew_by_one — before=39 after=40
 PASS profile_unchanged — {"requiredVendorIds":[],"timelineTemplateId":"a5855821-8c1a-4424-906a-7b2f6cf686c4","inventoryTemplateId":"0f7cb5d2-f2ef-4e47-bf25-309f8b60a330","timelineTemplateIds":[],"eventOrderTemplateId":"d73d9734-98d9-46a0-b54b-dccadb036150","floorPl
 PASS prepare_release_code_boundaries — prepare-release side-effect boundaries
 PASS invite_button_present_after_prepare — testid=1 role=1 section=1
-PASS invite_created_separately — [{"id":"3bdddacb-7307-406b-a5ab-5fbb4074ef99","status":"pending","email":"b2p-invite-1792627851423@hellotocheers-test.invalid"}]
+PASS invite_created_separately — [{"id":"1077c2ac-fb62-474f-afa5-848f43480e57","status":"pending","email":"b2p-invite-1792629481859@hellotocheers-test.invalid"}]
 PASS invite_did_not_send_questionnaires — sent=0
 PASS invite_did_not_create_invoice — invoices=0
 {
-  "passed": 88,
+  "passed": 94,
   "failed": 0,
-  "servingSha": "0ed74ba57d25d482d9377beb3331191c43d4d055",
-  "leadId": "b1cb6367-a51f-48f6-9225-0fa165b409a5",
-  "clientId": "d3a11705-531d-47ac-8a07-6725d589f2b9",
-  "eventId": "4b5395e4-1858-4f5b-b276-96225291747f"
+  "servingSha": "cb44fc21d843013119f42b13677faf782fdb3530",
+  "leadId": "d7a65a99-5b33-4d82-8960-bf281c46ae68",
+  "clientId": "54eabb8a-47c9-43e8-983e-23fdf4bce73b",
+  "eventId": "bb3cb6bd-fb3a-4583-925a-8c747b106ce7"
 }
