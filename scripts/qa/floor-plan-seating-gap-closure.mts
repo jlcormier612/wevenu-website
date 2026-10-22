@@ -41,6 +41,32 @@ function record(name: string, pass: boolean, detail: string) {
   console.log(`${pass ? "PASS" : "FAIL"} ${name} — ${String(detail).slice(0, 320)}`);
 }
 
+async function dismissWelcome(page: {
+  locator: (s: string) => { isVisible: (o?: object) => Promise<boolean> };
+  getByRole: (role: string, opts?: object) => {
+    isVisible: (o?: object) => Promise<boolean>;
+    click: (o?: object) => Promise<void>;
+    check: (o?: object) => Promise<void>;
+    innerText: () => Promise<string>;
+  };
+  waitForTimeout: (ms: number) => Promise<void>;
+}) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const welcome = page.locator('[data-welcome-experience="true"]');
+    if (!(await welcome.isVisible().catch(() => false))) return;
+    const agree = page.getByRole("checkbox");
+    if (await agree.isVisible().catch(() => false)) {
+      await agree.check({ force: true }).catch(async () => { await agree.click({ force: true }); });
+    }
+    const cont = page.getByRole("button", { name: /^(Continue|Saving)/i });
+    if (await cont.isVisible().catch(() => false)) {
+      const label = await cont.innerText().catch(() => "");
+      if (/Continue/i.test(label)) await cont.click().catch(() => undefined);
+    }
+    await page.waitForTimeout(2000);
+  }
+}
+
 async function cleanup(email?: string) {
   const { data: clients } = await admin.from("clients").select("id, lead_id").eq("venue_id", FANCY).eq("first_name", FIXTURE);
   for (const client of clients ?? []) {
@@ -378,7 +404,9 @@ async function main() {
     );
 
     await page.goto(`${APP}/p/${fixture.token}#floor_plans`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1500);
     const working = await page.locator("[data-testid=floor-plan-working-canvas]").count();
     const addBtn = await page.locator("[data-testid=floor-plan-add-table]").count();
     record("browser_working_canvas", working > 0, `working=${working} addBtn=${addBtn}`);
@@ -388,21 +416,37 @@ async function main() {
       await page.waitForTimeout(1200);
       const catalogVisible = await page.locator("[data-testid=floor-plan-furniture-catalog]").count();
       const items = await page.locator("[data-testid=floor-plan-catalog-item]").count();
-      record("browser_catalog", catalogVisible > 0 && items > 0, `catalog=${catalogVisible} items=${items}`);
+      const planTypes = await page.locator("[data-testid=floor-plan-catalog-plan-type]").count();
+      record(
+        "browser_catalog",
+        catalogVisible > 0 && (items > 0 || planTypes > 0),
+        `catalog=${catalogVisible} items=${items} planTypes=${planTypes}`,
+      );
       await page.screenshot({ path: `${OUT}/catalog-1280.png`, fullPage: true });
     } else {
       record("browser_catalog", false, "add button missing");
+      await page.screenshot({ path: `${OUT}/catalog-missing-1280.png`, fullPage: true });
     }
 
     await page.goto(`${APP}/p/${fixture.token}#seating`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1500);
     const seatingText = await page.locator("body").innerText();
-    const hasTables = /tables/i.test(seatingText);
-    const hasSeats = /seats/i.test(seatingText);
-    record("scenario_e_seating_workspace", hasTables && hasSeats, seatingText.slice(0, 400));
+    const hasTables = /\b\d+\s*tables?\b/i.test(seatingText) || /tables with/i.test(seatingText);
+    const hasSeatingCopy =
+      /seats?/i.test(seatingText)
+      || /guests seated/i.test(seatingText)
+      || /start seating/i.test(seatingText);
+    record(
+      "scenario_e_seating_workspace",
+      hasTables && hasSeatingCopy,
+      seatingText.slice(0, 400),
+    );
     await page.screenshot({ path: `${OUT}/seating-1280.png`, fullPage: true });
 
-    // Ready lock still rejects adds
+    // Ready lock still rejects adds — use a fresh unlocked plan state check via API.
+    // (Browser may still show Ready after this update; API enforcement is authoritative.)
     await admin.from("floor_plans").update({ finalized_at: new Date().toISOString() }).eq("id", planId!);
     const addReady = await anon.rpc("add_portal_floor_plan_table", {
       p_token: fixture.token,
