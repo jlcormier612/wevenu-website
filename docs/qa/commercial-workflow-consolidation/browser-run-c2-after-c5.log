@@ -1,0 +1,55 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41
+PASS Hub: five commercial areas present — hub cards
+PASS Hub: Packages ≠ Event Order Templates — distinction copy
+PASS Hub: Inventory Templates Use/Send language — inv tmpl hub
+PASS Hub: no Choices Templates card — absent
+PASS Available Inventory editable catalog — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+28
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+4
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+13
+
+T
+PASS Available Inventory: catalog ≠ share/EO — boundary copy
+PASS Offerings catalog accessible — offerings
+PASS Offerings: catalog ≠ client selection — boundary
+PASS Inventory Templates: Use does not share — Use language
+PASS Inventory Templates: Send shares — Send language
+PASS Inventory Templates: Use/Send actions retained — actions
+PASS Event Order Templates accessible — page
+PASS EO Templates: Distinct from sales Packages — packages distinction
+PASS EO Templates: Send gated copy — send gate
+PASS Packages distinct from EO — packages page
+PASS Packages: not Event Order authoring — boundary
+PASS C1 regression: commercial workspace intro — status strip
+PASS EO → Invoice handoff language intact — finance nav
+PASS Hub @390 still shows Packages ≠ EO — 390
+ALL PASS 20/20

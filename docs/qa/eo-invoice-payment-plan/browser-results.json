@@ -1,0 +1,67 @@
+{
+  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "servingSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "invoiceId": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "passed": 11,
+  "failed": 0,
+  "green": true,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "serving=c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb4155d6dc68b1853f1581d244e03cba"
+    },
+    {
+      "name": "db_eo_linked_invoice",
+      "pass": true,
+      "detail": "{\"id\":\"4489c869-38fd-4ae1-8cad-cc7043d1d527\",\"invoice_number\":\"INV-2026-4489C8\",\"total\":133.31,\"status\":\"draft\",\"event_order_id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"event_id\":\"ebf74f77-2944-474a-b735-48762ecb6842\"}"
+    },
+    {
+      "name": "db_share_did_not_require_invoice_row_semantics",
+      "pass": true,
+      "detail": "finalize/share and invoice remain distinct rows"
+    },
+    {
+      "name": "eo_tab_invoice_link_shows_open_invoice",
+      "pass": true,
+      "detail": "Amount due lives on\nEvent & Inventory Selections INV-2026-4489C8\nDraft\nOpen Invoice\nCreate Payment Plan\n\nEvent Order is not an invoice. The payment plan total always follows this invoice."
+    },
+    {
+      "name": "invoice_ui_loads_eo_linked_draft",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+    },
+    {
+      "name": "builder_shows_orientation",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nPayment Plan Builder\n\nChoose how this"
+    },
+    {
+      "name": "builder_no_zero_mismatch_banner",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "preview_no_zero_total_error",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "create_without_zero_mismatch",
+      "pass": true,
+      "detail": "Payment Plan Builder"
+    },
+    {
+      "name": "no_duplicate_schedules",
+      "pass": true,
+      "detail": "before=0 after=1"
+    },
+    {
+      "name": "nav_back_to_invoice",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/invoices/4489c869-38fd-4ae1-8cad-cc7043d1d527"
+    }
+  ],
+  "at": "2026-10-23T06:12:53.732Z"
+}

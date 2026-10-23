@@ -1,0 +1,128 @@
+{
+  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "passed": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
+    },
+    {
+      "name": "DB: EO shared/finalized without inventing invoice-from-share rule",
+      "pass": true,
+      "detail": "eo=624eceef-5096-4288-b104-62daa3a82d11 status=finalized shared_at=2026-10-23T00:26:09.17+00:00 linkedInvoices=1"
+    },
+    {
+      "name": "DB: EO-linked invoice is a distinct persisted record when present",
+      "pass": true,
+      "detail": "[{\"id\":\"4489c869-38fd-4ae1-8cad-cc7043d1d527\",\"status\":\"draft\",\"number\":\"INV-2026-4489C8\"}]"
+    },
+    {
+      "name": "DB freeze: sent EO invoice has frozen lines + revision marker",
+      "pass": true,
+      "detail": "{\"status\":\"sent\",\"freezeRev\":1,\"eoRev\":1,\"frozen\":1}"
+    },
+    {
+      "name": "C3/C4 strip still present",
+      "pass": true,
+      "detail": "strip"
+    },
+    {
+      "name": "Checklist invoiced step present",
+      "pass": true,
+      "detail": "complete"
+    },
+    {
+      "name": "Invoice chip matches persisted EO-linked status",
+      "pass": true,
+      "detail": "chip=Invoice\n· Draft db=draft"
+    },
+    {
+      "name": "Checklist invoiced complete when EO-linked invoice exists",
+      "pass": true,
+      "detail": "state=complete"
+    },
+    {
+      "name": "EO invoice handoff block present",
+      "pass": true,
+      "detail": "Amount due lives on\nEvent & Inventory Selections INV-2026-4489C8\nDraft\nOpen Invoice\nOpen Payment Plan\n\nEvent Order is not an invoice. The payment plan total always follows this invoice."
+    },
+    {
+      "name": "Create vs linked: Open Invoice shown (no second Create when linked)",
+      "pass": true,
+      "detail": "Amount due lives on\nEvent & Inventory Selections INV-2026-4489C8\nDraft\nOpen Invoice\nOpen Payment Plan\n\nEvent Order is not an invoice. The payment plan total always follows this invoice."
+    },
+    {
+      "name": "Payment plan attaches to invoice (Create or Open plan control)",
+      "pass": true,
+      "detail": "Amount due lives on\nEvent & Inventory Selections INV-2026-4489C8\nDraft\nOpen Invoice\nOpen Payment Plan\n\nEvent Order is not an invoice. The payment plan total always follows this invoice."
+    },
+    {
+      "name": "Invoice detail opens for EO-linked draft",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+    },
+    {
+      "name": "Invoice detail has no accidental auto-send in this session",
+      "pass": true,
+      "detail": "read-only open"
+    },
+    {
+      "name": "Payment plan builder requires invoiceId (Invoice → Plan)",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/payments/new?invoiceId=4489c869-38fd-4ae1-8cad-cc7043d1d527"
+    },
+    {
+      "name": "Builder does not claim Event Order is the payment plan source",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+    },
+    {
+      "name": "Sent EO invoice page loads (freeze already applied)",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+    },
+    {
+      "name": "Sent invoice shows frozen line description from DB",
+      "pass": true,
+      "detail": "desc=Plated dinner service"
+    },
+    {
+      "name": "Strip has no Create Invoice / Send invoice controls",
+      "pass": true,
+      "detail": "navigation only"
+    },
+    {
+      "name": "Finance checklist visible at 390",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "No duplicate invoices/schedules/frozen lines from C5 navigation",
+      "pass": true,
+      "detail": "inv 1->1 sched 1->1 frozen 1->1"
+    }
+  ],
+  "persisted": {
+    "eventOrderId": "624eceef-5096-4288-b104-62daa3a82d11",
+    "eventOrderStatus": "finalized",
+    "sharedAt": "2026-10-23T00:26:09.17+00:00",
+    "linkedInvoices": [
+      {
+        "id": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+        "invoice_number": "INV-2026-4489C8",
+        "status": "draft",
+        "total": 133.31,
+        "event_order_id": "624eceef-5096-4288-b104-62daa3a82d11"
+      }
+    ],
+    "sentFreeze": {
+      "invoiceId": "56f8ea63-aec4-4b8f-a964-ed4491be1794",
+      "status": "sent",
+      "revisionAtFreeze": 1,
+      "frozenLineCount": 1
+    }
+  },
+  "at": "2026-10-23T06:13:23.873Z"
+}

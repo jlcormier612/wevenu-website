@@ -106,7 +106,7 @@
     {
       "name": "E Portal inventory reachable",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors"
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading…\n"
     },
     {
       "name": "E Portal event-order reachable",
@@ -140,5 +140,5 @@
     "eventOrderSharedAt": "2026-10-23T00:26:09.17+00:00",
     "choiceCount": 1
   },
-  "at": "2026-10-23T05:59:28.800Z"
+  "at": "2026-10-23T06:10:09.225Z"
 }

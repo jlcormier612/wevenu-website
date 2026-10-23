@@ -185,6 +185,80 @@ describe("buildCommercialStatusChips", () => {
   });
 });
 
+describe("C5 finance handoff status mapping", () => {
+  it("does not mark invoiced from Event Order share alone", () => {
+    const steps = buildCommercialProgressSteps({
+      eventInventory: null,
+      clientChoices: [],
+      eventOrder: { status: "finalized", sharedAt: "2026-01-01" },
+      invoices: [],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+      showInventory: false,
+    });
+    assert.equal(steps.find((s) => s.id === "invoiced")?.state, "current");
+    assert.equal(
+      buildCommercialStatusChips({
+        eventInventory: null,
+        clientChoices: [],
+        eventOrder: { status: "finalized", sharedAt: "2026-01-01" },
+        invoices: [],
+        eventOrderId: "eo-1",
+        linkedScheduleId: null,
+        showInventory: false,
+      }).find((c) => c.id === "invoice")?.status,
+      "Not created",
+    );
+  });
+
+  it("maps linked draft invoice without inventing sent or payment-plan", () => {
+    const input = {
+      eventInventory: null as null,
+      clientChoices: [] as [],
+      eventOrder: { status: "finalized" as const, sharedAt: "2026-01-01" },
+      invoices: [{ id: "inv-1", status: "draft" as const, eventOrderId: "eo-1" }],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+      showInventory: false,
+    };
+    const chips = buildCommercialStatusChips(input);
+    assert.equal(chips.find((c) => c.id === "invoice")?.status, "Draft");
+    assert.equal(chips.find((c) => c.id === "payment_plan")?.status, "Not created");
+    assert.equal(buildCommercialProgressSteps(input).find((s) => s.id === "invoiced")?.state, "complete");
+    assert.match(buildCommercialNextAction(input)?.label ?? "", /send freezes|Open invoice/i);
+  });
+
+  it("maps sent invoice and existing payment plan from authoritative ids only", () => {
+    const chips = buildCommercialStatusChips({
+      eventInventory: null,
+      clientChoices: [],
+      eventOrder: { status: "finalized", sharedAt: "2026-01-01" },
+      invoices: [{ id: "inv-1", status: "sent", eventOrderId: "eo-1" }],
+      eventOrderId: "eo-1",
+      linkedScheduleId: "sched-1",
+      showInventory: false,
+    });
+    assert.equal(chips.find((c) => c.id === "invoice")?.status, "Sent");
+    assert.equal(chips.find((c) => c.id === "payment_plan")?.status, "Created");
+    assert.deepEqual(chips.find((c) => c.id === "payment_plan")?.nav, {
+      kind: "href",
+      href: "/payments/sched-1",
+    });
+    assert.equal(
+      buildCommercialNextAction({
+        eventInventory: null,
+        clientChoices: [],
+        eventOrder: { status: "finalized", sharedAt: "2026-01-01" },
+        invoices: [{ id: "inv-1", status: "sent", eventOrderId: "eo-1" }],
+        eventOrderId: "eo-1",
+        linkedScheduleId: "sched-1",
+        showInventory: false,
+      }),
+      null,
+    );
+  });
+});
+
 describe("C4 commercial progress checklist", () => {
   it("maps Path A open EO to draft complete and finalized current (not shared/invoiced)", () => {
     const steps = buildCommercialProgressSteps({
