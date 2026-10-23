@@ -1,0 +1,28 @@
+PASS serving-sha — expected=57ab96ab1fc5 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:57ab96ab1fc598e5168c7739b6cfec9d3ca1ab1f
+PASS serving-digest-present — sha256:1eeefa372dde08e9d692473bdb9e8130cebb9e0e744a89a34bb3f5ccc2150abc
+PASS dashboard-light-muted — muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad=
+PASS dashboard-dark-muted — muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad=
+PASS planning-light-muted — muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad=
+PASS light-category-hue-diversity — labels=19 uniqueColors=5 sample=[{"text":"Planning","color":"rgb(79, 95, 79)","surface":"rgb(255, 255, 255)","backdrop":"rgb(248, 247, 244)","fontSize":"14.875px"},{"text":"Document","color":"rgb(74, 67, 58)","surface":"rgb(255, 255, 255)","backdrop":"rgb(248, 247, 244)","fontSize":"14.875px"},{"text":"Planning","color":"rgb(79, 95, 79)","surface":"rgb(255, 255, 255)","backdrop":"rgb(248, 247, 244)","fontSize":"14.875px"},{"text":"Planning","color":"rgb(79, 95, 79)","surface":"rgb(255, 255, 255)
+PASS light-category-aa — pass=19 fail=0 skipped=0
+PASS light-task-meta-not-10px — minPx=14.875 sample=[{"t":"Planning","fs":"14.875px"},{"t":"Client","fs":"14.875px"},{"t":"12315 days before · Oct 29","fs":"14.875px"},{"t":"Document","fs":"14.875px"}]
+PASS planning-dark-muted — muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad=
+PASS dark-category-hue-diversity — labels=19 uniqueColors=5 sample=[{"text":"Planning","color":"rgb(234, 236, 234)","surface":"rgb(93, 111, 93)","backdrop":"rgb(79, 95, 79)","fontSize":"14.875px"},{"text":"Document","color":"rgb(239, 238, 234)","surface":"rgb(93, 111, 93)","backdrop":"rgb(79, 95, 79)","fontSize":"14.875px"},{"text":"Planning","color":"rgb(234, 236, 234)","surface":"rgb(93, 111, 93)","backdrop":"rgb(79, 95, 79)","fontSize":"14.875px"},{"text":"Planning","color":"rgb(234, 236, 234)","surface":"rgb(93, 111, 93)","ba
+PASS dark-category-aa — pass=19 fail=0 skipped=0
+PASS dark-task-meta-not-10px — minPx=14.875 sample=[{"t":"Planning","fs":"14.875px"},{"t":"Client","fs":"14.875px"},{"t":"12315 days before · Oct 29","fs":"14.875px"},{"t":"Document","fs":"14.875px"}]
+PASS inventory-light-muted — muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad=
+PASS inventory-dark-muted — muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad=
+PASS event-order-light-muted — muted=color-mix(in oklch, #4f5f4f 80%, transparent) mixPct=80 soft=true mutedRgb=oklch(0.466934 0.0321873 145.003 / 0.8) aaPass=0 aaFail=0 bad=
+PASS event-order-dark-muted — muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad=
+PASS light-timeline-time-prominence — no-clock-sample sample=[{"t":"OverviewDashboardYour RelationshipsLeads","fs":"17px","fw":"400"},{"t":"Jen's Fancy VenueSearch⌘K99+Jjennifer@he","fs":"17px","fw":"400"}]
+PASS dark-timeline-time-prominence — no-clock-sample sample=[{"t":"OverviewDashboardYour RelationshipsLeads","fs":"17px","fw":"400"},{"t":"Jen's Fancy VenueSearch⌘K99+Jjennifer@he","fs":"17px","fw":"400"}]
+PASS couple-eyebrow-not-10px — minPx=17 sample=[{"t":"B2P & Portal·Jen's Fancy VenueJul 17, 20","fs":"17px","color":"rgb(255, 255, 255)"},{"t":"B2P & Portal·Jen's Fancy VenueJul 17, 20","fs":"17px","color":"rgb(255, 255, 255)"},{"t":"Add your photoJen's Fancy VenueB2P & Por","fs":"17px","color":"rgb(255, 255, 255)"}]
+PASS couple-home-muted — muted=color-mix(in oklch, #fff 86%, transparent) mixPct=86 soft=true mutedRgb=oklch(0.999994 0.0000497986 none / 0.86) aaPass=0 aaFail=0 bad=
+PASS vendor-shot — https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor
+PASS email-venue-cta-pale.html-no-cool-gray-footer — coolGrayHits=0 forestHits=3
+PASS email-venue-cta-heritage.html-no-cool-gray-footer — coolGrayHits=0 forestHits=3
+PASS email-venue-branded-shell.html-no-cool-gray-footer — coolGrayHits=0 forestHits=4
+PASS email-team-invite.html-no-cool-gray-footer — coolGrayHits=0 forestHits=5
+
+25 pass / 0 fail → docs/qa/product-contrast-audit/visual-recovery-browser-results.json
+digest=sha256:1eeefa372dde08e9d692473bdb9e8130cebb9e0e744a89a34bb3f5ccc2150abc
