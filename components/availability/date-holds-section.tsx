@@ -20,10 +20,13 @@ import { venueCalendarDateFromValue } from "@/lib/venue/timezone";
 import { defaultHoldSpaceIdsFromPreferences } from "@/lib/availability/hold-occupancy";
 import {
   activeHolds as selectActiveHolds,
+  canReactivateHold,
+  currentProtectionSummary,
   historicalHoldLabel,
   historicalHolds as selectHistoricalHolds,
   holdDateRangeLabel,
   holdWindowLabel,
+  isActiveHold,
   placeHoldCtaLabel,
   shouldShowPlaceHoldCta,
 } from "@/lib/availability/hold-presentation";
@@ -107,6 +110,12 @@ export function DateHoldsSection({
   const desiredDefault = defaultHoldDateFromDesiredEventDate(desiredEventDate);
   const activeHolds = selectActiveHolds(holds);
   const pastHolds = selectHistoricalHolds(holds);
+  const protection = currentProtectionSummary({
+    eventDate: desiredEventDate,
+    holds,
+  });
+  const editingHold = editingHoldId ? holds.find((h) => h.id === editingHoldId) : null;
+  const editingIsReactivation = Boolean(editingHold && !isActiveHold(editingHold) && canReactivateHold(editingHold));
   const showPlaceHold = shouldShowPlaceHoldCta(holds);
   const placeCtaLabel = placeHoldCtaLabel(desiredDefault, activeHolds.length > 0);
   const prefDefaults = defaultHoldSpaceIdsFromPreferences(spacePreferences);
@@ -234,12 +243,21 @@ export function DateHoldsSection({
       };
       const result = await updateHoldAction(editingHoldId, input);
       if (result.ok) {
-        toast.success("Hold updated.");
+        const wasReactivating = editingHold && !isActiveHold(editingHold);
+        toast.success(wasReactivating ? "Hold reactivated — date is protected." : "Hold updated.");
         const names = spaceIds
           .map((id) => formSpaces.find((s) => s.id === id)?.name ?? spaces.find((s) => s.id === id)?.name)
           .filter((n): n is string => !!n);
+        // Optimistic: mirror server reactivation (status → active + new expiresAt).
+        const nextExpires =
+          expiresAt.trim() === ""
+            ? null
+            : expiresAt.includes("T")
+              ? expiresAt
+              : `${expiresAt}T23:59:59.999Z`;
         setHolds((p) => p.map((h) => h.id !== editingHoldId ? h : {
           ...h,
+          status: "active" as const,
           spaceId: spaceIds.length === 1 ? spaceIds[0]! : null,
           spaceIds,
           title: holdTitle.trim(),
@@ -247,7 +265,7 @@ export function DateHoldsSection({
           endDate: resolvedEnd,
           startTime: startTime || null,
           endTime: endTime || null,
-          expiresAt: expiresAt || h.expiresAt,
+          expiresAt: nextExpires,
           preferenceId: preferenceId || null,
           spaceName: names.length === 1 ? names[0]! : names.length > 1 ? names.join(", ") : null,
           spaceNames: names,
@@ -289,6 +307,38 @@ export function DateHoldsSection({
       className={compact ? "contents" : "space-y-3"}
       data-testid={compact ? "date-hold-compact" : undefined}
     >
+      {/* Current protection truth — always visible before active/history lists */}
+      {!showForm ? (
+        <div
+          className={
+            protection.protected
+              ? compact
+                ? "basis-full w-full rounded-md border border-warning/30 bg-warning/5 px-2 py-1.5"
+                : "rounded-lg border border-warning/30 bg-warning/5 px-3 py-2"
+              : compact
+                ? "basis-full w-full rounded-md border border-border bg-muted/40 px-2 py-1.5"
+                : "rounded-lg border border-border bg-muted/40 px-3 py-2"
+          }
+          data-testid="date-hold-protection-banner"
+          data-protected={protection.protected ? "true" : "false"}
+        >
+          <p
+            className={
+              protection.protected
+                ? "text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground"
+                : "text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+            }
+            data-testid="date-hold-protection-headline"
+          >
+            {protection.headline}
+          </p>
+          {protection.detail ? (
+            <p className="mt-0.5 text-xs text-muted-foreground" data-testid="date-hold-protection-detail">
+              {protection.detail}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {compact ? (
         <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap">
           <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span>
@@ -306,7 +356,7 @@ export function DateHoldsSection({
                   <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground dark:text-foreground" />
                   <div className="flex min-w-0 flex-nowrap items-center gap-x-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground">
-                      Held
+                      Hold active
                     </p>
                     <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
                       {holdDateRangeLabel(hold)}
@@ -410,7 +460,7 @@ export function DateHoldsSection({
               <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground dark:text-foreground" />
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground">
-                  Held
+                  Hold active
                 </p>
                 <p className="text-sm font-medium text-foreground" data-testid="date-hold-range-label">
                   {holdDateRangeLabel(hold)}
@@ -463,15 +513,32 @@ export function DateHoldsSection({
         </div>
       )}
 
-      {/* Historical holds — released / expired / converted; not active */}
+      {/* Historical holds — released / expired / converted; not current protection */}
       {pastHolds.length > 0 && (
         <div className={compact ? "basis-full space-y-1" : "space-y-1"} data-testid="date-hold-history">
+          <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Hold history (not current protection)
+          </p>
           {pastHolds.map((hold) => (
             <div
               key={hold.id}
-              className="px-1 py-0.5 text-xs text-muted-foreground"
+              className="flex flex-wrap items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground"
+              data-testid="date-hold-history-row"
             >
-              {historicalHoldLabel(hold)}
+              <span>{historicalHoldLabel(hold)}</span>
+              {canReactivateHold(hold) ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 text-xs"
+                  disabled={addPending}
+                  onClick={() => openEdit(hold)}
+                  data-testid="date-hold-reactivate"
+                >
+                  Reactivate…
+                </Button>
+              ) : null}
             </div>
           ))}
         </div>
@@ -645,14 +712,18 @@ export function DateHoldsSection({
           <div className="space-y-1">
             <h3 className="text-sm font-semibold text-heading">
               {formMode === "edit"
-                ? "You're editing this Hold."
+                ? editingIsReactivation
+                  ? "You're reactivating this Hold."
+                  : "You're editing this Hold."
                 : activeHolds.length > 0
                   ? "You're placing another Hold."
                   : "You're placing a Hold on this date."}
             </h3>
             <p className="text-sm text-muted-foreground">
               {formMode === "edit"
-                ? "Saving updates this hold. It does not create a new one."
+                ? editingIsReactivation
+                  ? "Saving with a future auto-release date (or none) reactivates this hold and protects the date again. It does not create a new hold."
+                  : "Saving updates this hold. It does not create a new one."
                 : activeHolds.length > 0
                   ? "This creates a new hold. Existing holds stay as they are."
                   : "Whether this Hold prevents booking is controlled by your availability settings."}
@@ -673,8 +744,12 @@ export function DateHoldsSection({
               data-testid={formMode === "edit" ? "date-hold-save" : "date-hold-place-submit"}
             >
               {addPending
-                ? (formMode === "edit" ? "Saving…" : "Placing…")
-                : (formMode === "edit" ? "Save hold" : "Place Hold")}
+                ? (formMode === "edit"
+                  ? (editingIsReactivation ? "Reactivating…" : "Saving…")
+                  : "Placing…")
+                : (formMode === "edit"
+                  ? (editingIsReactivation ? "Reactivate hold" : "Save hold")
+                  : "Place Hold")}
             </Button>
           </div>
         </div>

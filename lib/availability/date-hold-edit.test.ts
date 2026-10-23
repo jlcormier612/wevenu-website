@@ -314,10 +314,13 @@ describe("P — persistence / identity", () => {
     assert.doesNotMatch(releaseFn, /insertHold/);
   });
 
-  it("P5. non-active hold cannot be updated", () => {
+  it("P5. converted holds stay locked; expired/released may be reactivated", () => {
     const updateFn = SERVICE.slice(SERVICE.indexOf("export async function updateHold"));
-    assert.match(updateFn, /existing\.status !== "active"/);
-    assert.match(updateFn, /Only an active hold can be edited/);
+    assert.match(updateFn, /existing\.status === "converted"/);
+    assert.match(updateFn, /A converted hold cannot be edited/);
+    assert.match(updateFn, /reactivat/);
+    assert.match(updateFn, /updateHoldStatus\(supabase, venueId, holdId, "active"\)/);
+    assert.match(updateFn, /Set a future auto-release date/);
   });
 
   it("P6. wrong venue / wrong lead cannot be updated", () => {
@@ -394,14 +397,17 @@ describe("U — Date Hold overview UI", () => {
     assert.doesNotMatch(closeFn, /updateHoldAction|createHoldAction|releaseHoldAction/);
   });
 
-  it("U5. historical rows have no Edit", () => {
+  it("U5. historical rows offer Reactivate (not Release); Edit stays on active only", () => {
     const history = SECTION.slice(
       SECTION.indexOf("date-hold-history"),
       SECTION.indexOf("Place hold / Place another hold"),
     );
     assert.doesNotMatch(history, /date-hold-edit/);
-    assert.doesNotMatch(history, /openEdit/);
     assert.doesNotMatch(history, /Release hold/);
+    assert.match(history, /date-hold-reactivate/);
+    assert.match(history, /canReactivateHold\(hold\)/);
+    assert.match(history, /openEdit\(hold\)/);
+    assert.match(history, /Hold history \(not current protection\)/);
   });
 
   it("U6. Place another hold still inserts; Edit updates", () => {

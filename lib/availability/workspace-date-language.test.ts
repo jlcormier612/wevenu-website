@@ -29,7 +29,10 @@ describe("workspace date language", () => {
   it("active hold on the displayed date", () => {
     const opts = { eventDate: DATE, booked: false, holds: [hold()], leadId: "lead-1", nowMs: NOW };
     assert.equal(workspaceDateKind(opts), "held");
-    assert.match(workspaceDateText(opts), /^Date held: Dec 18, 2027\. This date is held but not yet booked\.$/);
+    assert.match(
+      workspaceDateText(opts),
+      /^Date protected — hold active: Dec 18, 2027\. This date is reserved but not yet booked\.$/,
+    );
   });
 
   it("hold on a different date stays a preference", () => {
@@ -75,7 +78,7 @@ describe("workspace date language", () => {
       nowMs: NOW,
     });
     assert.match(text, /Preferred date: Dec 18, 2027/);
-    assert.doesNotMatch(text, /Date held/);
+    assert.doesNotMatch(text, /Date protected|Date held/);
   });
 
   it("another lead's hold does not change this date", () => {

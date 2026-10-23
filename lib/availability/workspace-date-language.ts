@@ -45,7 +45,9 @@ export function workspaceDateText(opts: {
   const kind = workspaceDateKind(opts);
   const label = formatDate(opts.eventDate);
   if (kind === "booked") return `Event date: ${label}.`;
-  if (kind === "held") return `Date held: ${label}. This date is held but not yet booked.`;
+  if (kind === "held") {
+    return `Date protected — hold active: ${label}. This date is reserved but not yet booked.`;
+  }
   if (kind === "preferred") return `Preferred date: ${label}. This is a preference, not a reservation.`;
   return "No preferred date yet. A preferred date does not reserve a date.";
 }

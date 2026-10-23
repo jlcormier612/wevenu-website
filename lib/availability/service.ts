@@ -310,8 +310,14 @@ export async function updateHold(holdId: string, input: DateHoldUpdateInput): Pr
     const existing = await repo.getHold(supabase, venueId, holdId);
     if (!existing) return { ok: false, message: "Hold not found." } as AvailabilityActionResult;
     const { holdProtectsAvailability } = await import("@/lib/availability/hold-occupancy");
-    if (existing.status !== "active" || !holdProtectsAvailability(existing)) {
-      return { ok: false, message: "Only an active hold can be edited." } as AvailabilityActionResult;
+    const currentlyProtects = existing.status === "active" && holdProtectsAvailability(existing);
+    // Converted holds stay historical. Expired / released / elapsed-active rows
+    // may be reactivated by saving a configuration that will protect again.
+    if (existing.status === "converted") {
+      return { ok: false, message: "A converted hold cannot be edited. Place a new hold if needed." } as AvailabilityActionResult;
+    }
+    if (!currentlyProtects && existing.status !== "expired" && existing.status !== "released" && existing.status !== "active") {
+      return { ok: false, message: "Only an active or reactivatable hold can be edited." } as AvailabilityActionResult;
     }
     if ((existing.leadId || "") !== (input.leadId || "")) {
       return { ok: false, message: "That hold does not belong to this lead." } as AvailabilityActionResult;
@@ -323,9 +329,22 @@ export async function updateHold(holdId: string, input: DateHoldUpdateInput): Pr
       ...input,
       endDate,
     });
+    if (!currentlyProtects) {
+      const expires = resolved.expiresAt?.trim() || null;
+      const willProtect = !expires || Date.parse(expires) > Date.now();
+      if (!willProtect) {
+        return {
+          ok: false,
+          message: "Set a future auto-release date (or clear it) to reactivate this hold.",
+        } as AvailabilityActionResult;
+      }
+    }
     const asserted = await assertHoldPlacement(supabase, venueId, resolved, { excludeHoldId: holdId });
     if (!asserted.ok) return asserted;
     await repo.updateHold(supabase, venueId, holdId, resolved);
+    if (!currentlyProtects) {
+      await repo.updateHoldStatus(supabase, venueId, holdId, "active");
+    }
     return { ok: true } as AvailabilityActionResult;
   });
   return result as AvailabilityActionResult;

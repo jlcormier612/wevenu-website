@@ -5,7 +5,7 @@
  * Elapsed rows present as Expired even if a lazy status write has not landed yet.
  */
 import { formatDate } from "@/lib/availability/constants";
-import { holdProtectsAvailability } from "@/lib/availability/hold-occupancy";
+import { holdCoversDate, holdProtectsAvailability } from "@/lib/availability/hold-occupancy";
 import { formatTime } from "@/lib/events/constants";
 import type { DateHold, HoldStatus } from "@/lib/availability/types";
 
@@ -67,11 +67,60 @@ export function historicalHoldLabel(hold: Pick<DateHold, "holdDate" | "endDate" 
   const elapsedActive = hold.status === "active" && !holdProtectsAvailability(hold);
   const status =
     elapsedActive || hold.status === "expired"
-      ? "Expired"
+      ? "Expired (no longer protecting)"
       : hold.status === "released"
-        ? "Released"
+        ? "Released (no longer protecting)"
         : hold.status === "converted"
-          ? "Converted"
+          ? "Converted to booking"
           : hold.status;
   return `${holdDateRangeLabel(hold)} — ${status}`;
+}
+
+/** Whether a past hold may be reactivated by editing (not converted). */
+export function canReactivateHold(hold: { status: HoldStatus; expiresAt?: string | null }): boolean {
+  if (hold.status === "converted") return false;
+  if (hold.status === "expired" || hold.status === "released") return true;
+  // Elapsed active row still in DB before expire job lands
+  return hold.status === "active" && !holdProtectsAvailability(hold);
+}
+
+export function currentProtectionSummary(opts: {
+  eventDate?: string | null;
+  holds: readonly DateHold[];
+  nowMs?: number;
+}): {
+  protected: boolean;
+  headline: string;
+  detail: string | null;
+} {
+  const active = activeHolds(opts.holds);
+  const date = opts.eventDate?.trim() || null;
+  const covering = date
+    ? active.filter((h) => holdCoversDate(h, date))
+    : active;
+  if (covering.length === 0) {
+    return {
+      protected: false,
+      headline: "DATE NOT CURRENTLY PROTECTED",
+      detail: date
+        ? "No active hold is protecting this event date right now. Past holds below are history only."
+        : "No active hold is protecting a date right now.",
+    };
+  }
+  const primary = covering[0]!;
+  const release = primary.expiresAt
+    ? `Auto-release ${formatDate(primary.expiresAt.slice(0, 10))}`
+    : "No auto-release date";
+  const scope = primary.spaceNames?.length
+    ? primary.spaceNames.join(", ")
+    : primary.spaceName
+      ? primary.spaceName
+      : primary.spaceIds.length === 0
+        ? "Whole venue"
+        : "Selected spaces";
+  return {
+    protected: true,
+    headline: "DATE PROTECTED — HOLD ACTIVE",
+    detail: `Event/hold dates: ${holdDateRangeLabel(primary)} · ${scope} · ${release}`,
+  };
 }
