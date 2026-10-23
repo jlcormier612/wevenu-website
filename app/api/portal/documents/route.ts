@@ -14,6 +14,7 @@ import {
   ensureCoupleInsuranceVenueDocument,
   healSharedCoupleInsuranceVenueDocuments,
 } from "@/lib/portal/ensure-couple-insurance-venue-document";
+import { mergeSharedEventOrderIntoCoupleDocuments } from "@/lib/portal/couple-documents-event-order";
 
 type PortalDoc = {
   id?: string;
@@ -102,7 +103,30 @@ export async function GET(request: Request) {
     if (doc.docType === "contract" || doc.docType === "invoice") return doc;
     return { ...doc, fileUrl: `/api/portal/documents/${doc.id}/file?token=${encodeURIComponent(token)}` };
   });
-  const filled = await withFilledSignedContractContent(documents);
+
+  // P2-D: shared final Event Order is discoverable in Documents (portal RPC
+  // already requires shared_at — drafts never appear).
+  const { data: eoRows } = await supabase.rpc("get_event_order_for_portal", { p_token: token });
+  const eoList = (eoRows ?? []) as Array<{
+    id: string;
+    shared_at: string | null;
+    client_agreed_at?: string | null;
+    revision?: number | null;
+  }>;
+  const eoHead = eoList[0];
+  const withEventOrder = mergeSharedEventOrderIntoCoupleDocuments(
+    documents,
+    eoHead?.id && eoHead.shared_at
+      ? {
+          id: eoHead.id,
+          sharedAt: eoHead.shared_at,
+          clientAgreedAt: eoHead.client_agreed_at ?? null,
+          revision: eoHead.revision ?? null,
+        }
+      : null,
+  );
+
+  const filled = await withFilledSignedContractContent(withEventOrder);
   return NextResponse.json({ ...payload, documents: filled });
 }
 

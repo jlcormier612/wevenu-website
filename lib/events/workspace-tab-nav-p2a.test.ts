@@ -93,11 +93,15 @@ describe("P2-A setup copy and couple portal gating", () => {
     assert.doesNotMatch(setup, /Inventory and Event Order tabs/);
   });
 
-  it("couple portal hides Inventory/Order nav until shared (keeps active shared entries)", () => {
-    assert.match(portal, /item\.id !== "inventory" \|\| hasSharedInventory/);
-    assert.match(portal, /item\.id !== "event-order" \|\| hasSharedEventOrder/);
-    assert.match(portal, /P2-A: hide passive Inventory\/Order/);
-    // Sections remain mountable for direct links / home entries when shared.
+  it("couple portal P2-D Documents-first: hide passive Inventory/Order; keep deep-link mounts", () => {
+    // P2-D superseded P2-A share-only Order tabs with lifecycle-aware helpers.
+    assert.match(portal, /coupleInventoryNavVisible/);
+    assert.match(portal, /coupleEventOrderNavVisible/);
+    assert.match(portal, /coupleChoicesNavVisible/);
+    assert.match(portal, /item\.id !== "inventory" \|\| showInventoryNav/);
+    assert.match(portal, /item\.id !== "event-order" \|\| showEventOrderNav/);
+    assert.match(portal, /Documents-first|P2-D/);
+    // Sections remain mountable for email / task deep links when nav is hidden.
     assert.match(portal, /activeSection === "inventory"/);
     assert.match(portal, /activeSection === "event-order"/);
     assert.match(portal, /activeSection === "choices"/);

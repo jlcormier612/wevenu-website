@@ -14,7 +14,8 @@ import { portalFocusElementId } from "@/lib/portal/workspace-routing";
 
 type DocType =
   | "contract" | "invoice" | "upload" | "planning_guide"
-  | "brochure" | "receipt" | "package" | "insurance" | "floor_plan" | "menu" | "permit" | "other";
+  | "brochure" | "receipt" | "package" | "insurance" | "floor_plan" | "menu" | "permit"
+  | "event_order" | "client_choices" | "other";
 
 type LineItem = { id: string; description: string; quantity: number; unitPrice: number; amount: number; type: string };
 
@@ -37,6 +38,8 @@ type CoupleDocument = {
   vendorName?: string | null;
   shareWithVenue?: boolean;
   createdAt: string;
+  clientAgreedAt?: string | null;
+  portalSection?: string | null;
 };
 
 type PaidLineItem = { id: string; label: string; amount: number; paidAt: string; paidAmount: number | null; paymentMethod: string | null; scheduleTitle: string };
@@ -60,6 +63,8 @@ const DOC_META: Record<DocType, { emoji: string; label: string; color: string }>
   floor_plan:     { emoji: "🗺️", label: "Floor Plan",     color: "bg-teal-50 text-teal-700 border-teal-100" },
   menu:           { emoji: "🍽️", label: "Menu",           color: "bg-orange-50 text-orange-700 border-orange-100" },
   permit:         { emoji: "📜", label: "Permit",         color: "bg-gray-50 text-gray-600 border-gray-100" },
+  event_order:    { emoji: "📦", label: "Event Order",    color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+  client_choices: { emoji: "✅", label: "Selections",     color: "bg-violet-50 text-violet-700 border-violet-100" },
   other:          { emoji: "📁", label: "File",           color: "bg-gray-50 text-gray-600 border-gray-100" },
 };
 
@@ -196,6 +201,43 @@ function InvoiceCard({ doc, schedule }: { doc: CoupleDocument; schedule?: Portal
         </div>
       )}
     </div>
+  );
+}
+
+// ── Event Order card — shared final order; opens existing portal section ─────
+
+function EventOrderCard({
+  doc,
+  onNavigate,
+}: {
+  doc: CoupleDocument;
+  onNavigate?: (s: "questionnaire" | "event-order") => void;
+}) {
+  const agreed = Boolean(doc.clientAgreedAt) || doc.status === "agreed";
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate?.("event-order")}
+      data-testid="portal-documents-event-order"
+      className="w-full text-left flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 transition-opacity hover:opacity-90"
+    >
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-emerald-50 text-emerald-700 border-emerald-100 shrink-0">📦</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-heading truncate">{doc.name || "Event Order"}</span>
+          <Badge className={`text-[10px] px-1.5 py-0 border ${agreed ? "bg-green-50 text-green-700 border-green-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+            {agreed ? "Reviewed" : "Shared"}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+          <span>Event Order</span>
+          <span>· Shared {fmtDate(doc.createdAt)}</span>
+        </div>
+      </div>
+      <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">
+        {agreed ? "Open →" : "Review →"}
+      </span>
+    </button>
   );
 }
 
@@ -426,7 +468,13 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function CoupleDocumentsSection({ token, onNavigate }: { token: string; onNavigate?: (s: "questionnaire") => void }) {
+export default function CoupleDocumentsSection({
+  token,
+  onNavigate,
+}: {
+  token: string;
+  onNavigate?: (s: "questionnaire" | "event-order") => void;
+}) {
   const [documents, setDocuments] = useState<CoupleDocument[]>([]);
   const [receipts, setReceipts] = useState<PaidLineItem[]>([]);
   const [schedules, setSchedules] = useState<PortalSchedule[]>([]);
@@ -484,7 +532,14 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
 
   const contracts = documents.filter((d) => d.docType === "contract");
   const invoices = documents.filter((d) => d.docType === "invoice");
-  const venueShared = documents.filter((d) => d.uploadedBy === "venue" && d.docType !== "contract" && d.docType !== "invoice");
+  const eventOrders = documents.filter((d) => d.docType === "event_order");
+  const venueShared = documents.filter(
+    (d) =>
+      d.uploadedBy === "venue"
+      && d.docType !== "contract"
+      && d.docType !== "invoice"
+      && d.docType !== "event_order",
+  );
   const vendorShared = documents.filter((d) => d.uploadedBy === "vendor" && d.docType !== "contract" && d.docType !== "invoice");
   const coupleUploaded = documents.filter((d) => d.uploadedBy === "couple");
 
@@ -497,7 +552,7 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
         <div>
           <h2 className="text-sm font-semibold text-heading">Documents</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Contracts, invoices, receipts, and anything your venue or vendors share — all in one place.
+            Contracts, invoices, your Event Order, receipts, and anything your venue or vendors share — all in one place.
           </p>
         </div>
         <UploadRow token={token} onDone={load} />
@@ -523,6 +578,17 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Contracts</h3>
           <div className="space-y-2">{contracts.map((doc) => <ContractCard key={doc.id} doc={doc} />)}</div>
+        </section>
+      )}
+
+      {eventOrders.length > 0 && (
+        <section className="space-y-3" data-testid="portal-documents-event-orders">
+          <h3 className="text-sm font-semibold text-heading">Event Order</h3>
+          <div className="space-y-2">
+            {eventOrders.map((doc) => (
+              <EventOrderCard key={doc.id} doc={doc} onNavigate={onNavigate} />
+            ))}
+          </div>
         </section>
       )}
 

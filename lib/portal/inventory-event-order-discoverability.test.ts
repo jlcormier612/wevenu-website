@@ -20,34 +20,42 @@ const invPortalRpc = readFileSync(
   "utf8",
 );
 
-describe("Inventory & Event Order portal discoverability", () => {
-  it("lists Inventory and Event Order in venue nav without requiring prior share", () => {
+describe("Inventory & Event Order portal discoverability (P2-D Documents-first)", () => {
+  it("keeps Inventory and Event Order as mountable sections with capability labels", () => {
     assert.match(shell, /id: "inventory"/);
     assert.match(shell, /id: "event-order"/);
     assert.match(shell, /label: "Inventory"/);
     assert.match(shell, /shortLabel: "Inventory"/);
     assert.match(shell, /label: "Event Order"/);
-    // Mobile tab must not rebrand Inventory as "Included" (package vs paid mix).
     assert.doesNotMatch(shell, /shortLabel: "Included"/);
-    // Previous gap: Event Order nav was gated on hasSharedEventOrder — must not return.
+  });
+
+  it("gates nav with P2-D helpers — not permanent share-only Order tabs", () => {
+    assert.match(shell, /coupleChoicesNavVisible/);
+    assert.match(shell, /coupleInventoryNavVisible/);
+    assert.match(shell, /coupleEventOrderNavVisible/);
+    assert.match(shell, /item\.id !== "event-order" \|\| showEventOrderNav/);
+    assert.match(shell, /item\.id !== "inventory" \|\| showInventoryNav/);
+    assert.match(shell, /item\.id !== "choices" \|\| showChoicesNav/);
+    // Pre-P2-D permanent "shared ⇒ always show Order tab" gate must stay gone.
     assert.doesNotMatch(
       shell,
       /item\.id !== "event-order" \|\| hasSharedEventOrder/,
     );
   });
 
-  it("exposes Home Working-with-venue entry points for Inventory and Event Order", () => {
+  it("home entries stay for active inventory / acceptance; Documents for shared final EO", () => {
     assert.match(shell, /portal-home-inventory-order/);
     assert.match(shell, /portal-home-inventory-entry/);
     assert.match(shell, /portal-home-event-order-entry/);
+    assert.match(shell, /portal-home-event-order-docs-entry/);
     assert.match(shell, /Open Inventory/);
-    assert.match(shell, /Open Event Order/);
+    assert.match(shell, /Open Documents/);
   });
 
   it("keeps server sharing boundaries for portal reads", () => {
     assert.match(invApi, /get_event_inventory_for_portal/);
     assert.match(eoApi, /get_event_order_for_portal/);
-    // Foundation RPC started as shared|finalized; selection migration widens visibility.
     assert.match(invPortalRpc, /ei\.status in \('shared', 'finalized'\)/);
     assert.match(eoPortalRpc, /eo\.shared_at is not null/);
     assert.match(eoShare, /insertShareSnapshot/);
@@ -63,7 +71,6 @@ describe("Inventory & Event Order portal discoverability", () => {
     assert.match(eoView, /event-order-portal-empty/);
     assert.match(eoView, /Not shared yet/);
     assert.doesNotMatch(eoView, /onSave|contentEditable|type="submit"/);
-    // Inventory select mode uses Save draft / Submit selections when token + select mode.
     assert.match(invView, /inventory-save-draft/);
     assert.match(invView, /inventory-submit/);
     assert.match(invView, /canEdit/);
@@ -74,5 +81,12 @@ describe("Inventory & Event Order portal discoverability", () => {
     assert.match(caps, /case "event-order"/);
     assert.match(caps, /return caps\.inventory/);
     assert.match(caps, /return caps\.eventOrder/);
+  });
+
+  it("deep links still mount sections when nav is hidden", () => {
+    assert.match(shell, /activeSection === "inventory"/);
+    assert.match(shell, /activeSection === "event-order"/);
+    assert.match(shell, /activeSection === "choices"/);
+    assert.match(shell, /Documents-first|P2-D/);
   });
 });

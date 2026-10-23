@@ -106,6 +106,11 @@ import { homeLaunchHeading, homeLaunchPrompt } from "@/lib/event-experience";
 import { resolveLuvHomeSuggestion } from "@/lib/portal/luv-suggestions";
 import { resolveHomeMemories } from "@/lib/portal/memories";
 import {
+  coupleChoicesNavVisible,
+  coupleEventOrderNavVisible,
+  coupleInventoryNavVisible,
+} from "@/lib/portal/couple-nav-visibility";
+import {
   formatPortalHash,
   parsePortalHash,
   portalFocusElementId,
@@ -2015,36 +2020,58 @@ function WorkingWithYourVenue({
   planningCapabilities?: import("@/lib/playbooks/capabilities").VenuePlanningCapabilities;
   onNavigate: (s: PortalSection) => void;
 }) {
-  const showInventory = isPortalSectionEnabledByCapabilities("inventory", planningCapabilities);
-  const showEventOrder = isPortalSectionEnabledByCapabilities("event-order", planningCapabilities);
-  const [inventoryReady, setInventoryReady] = React.useState<boolean | null>(null);
-  const [eventOrderReady, setEventOrderReady] = React.useState<boolean | null>(null);
+  const invCap = isPortalSectionEnabledByCapabilities("inventory", planningCapabilities);
+  const eoCap = isPortalSectionEnabledByCapabilities("event-order", planningCapabilities);
+  const [showInventoryHome, setShowInventoryHome] = React.useState(false);
+  const [showSharedOrderDocs, setShowSharedOrderDocs] = React.useState(false);
+  const [showOrderAcceptHome, setShowOrderAcceptHome] = React.useState(false);
 
   React.useEffect(() => {
-    if (!showInventory && !showEventOrder) return;
+    if (!invCap && !eoCap) return;
     let cancelled = false;
-    if (showInventory) {
+    if (invCap) {
       fetch(`/api/portal/inventory?token=${encodeURIComponent(token)}`)
         .then((r) => r.json())
-        .then((d: { inventory?: unknown }) => {
-          if (!cancelled) setInventoryReady(!!d?.inventory);
+        .then((d: { inventory?: { status?: string } | null }) => {
+          if (cancelled) return;
+          setShowInventoryHome(
+            coupleInventoryNavVisible({
+              hasInventory: Boolean(d?.inventory),
+              status: d?.inventory?.status ?? null,
+            }),
+          );
         })
         .catch(() => {
-          if (!cancelled) setInventoryReady(false);
+          if (!cancelled) setShowInventoryHome(false);
         });
     }
-    if (showEventOrder) {
+    if (eoCap) {
       fetch(`/api/portal/event-order?token=${encodeURIComponent(token)}`)
         .then((r) => r.json())
-        .then((d: { eventOrder?: unknown }) => {
-          if (!cancelled) setEventOrderReady(!!d?.eventOrder);
+        .then((d: {
+          eventOrder?: { clientAgreedAt?: string | null } | null;
+        }) => {
+          if (cancelled) return;
+          const shared = Boolean(d?.eventOrder);
+          setShowSharedOrderDocs(shared);
+          setShowOrderAcceptHome(
+            coupleEventOrderNavVisible({
+              shared,
+              clientAgreedAt: d?.eventOrder?.clientAgreedAt ?? null,
+            }),
+          );
         })
         .catch(() => {
-          if (!cancelled) setEventOrderReady(false);
+          if (!cancelled) {
+            setShowSharedOrderDocs(false);
+            setShowOrderAcceptHome(false);
+          }
         });
     }
     return () => { cancelled = true; };
-  }, [token, showInventory, showEventOrder]);
+  }, [token, invCap, eoCap]);
+
+  const showHomeRow = showInventoryHome || showSharedOrderDocs || showOrderAcceptHome;
 
   return (
     <div className="space-y-3">
@@ -2058,12 +2085,12 @@ function WorkingWithYourVenue({
           )}
         </div>
       </div>
-      {(showInventory || showEventOrder) && (
+      {showHomeRow && (
         <div
           className="grid grid-cols-1 sm:grid-cols-2 gap-3"
           data-testid="portal-home-inventory-order"
         >
-          {showInventory && (
+          {showInventoryHome && (
             <button
               type="button"
               onClick={() => onNavigate("inventory")}
@@ -2073,17 +2100,14 @@ function WorkingWithYourVenue({
             >
               <p className="text-sm font-semibold text-heading">Inventory</p>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                Items {venueName} listed for your event — package items and add-ons
-                {inventoryReady === true ? " — ready to review"
-                  : inventoryReady === false ? " — waiting on your venue"
-                    : ""}
+                Items {venueName} listed for your event — review or submit your selections
               </p>
               <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
                 Open Inventory →
               </p>
             </button>
           )}
-          {showEventOrder && (
+          {showOrderAcceptHome && (
             <button
               type="button"
               onClick={() => onNavigate("event-order")}
@@ -2093,13 +2117,27 @@ function WorkingWithYourVenue({
             >
               <p className="text-sm font-semibold text-heading">Event Order</p>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                Your event&apos;s delivery list from {venueName}
-                {eventOrderReady === true ? " — shared with you"
-                  : eventOrderReady === false ? " — not shared yet"
-                    : ""}
+                Review what you&apos;re receiving from {venueName} — acceptance is optional
               </p>
               <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
-                Open Event Order →
+                Review Event Order →
+              </p>
+            </button>
+          )}
+          {showSharedOrderDocs && !showOrderAcceptHome && (
+            <button
+              type="button"
+              onClick={() => onNavigate("documents")}
+              data-testid="portal-home-event-order-docs-entry"
+              className="rounded-2xl border bg-card px-4 py-3 text-left hover:shadow-sm transition-shadow"
+              style={{ borderColor: "#E8E3DC" }}
+            >
+              <p className="text-sm font-semibold text-heading">Event Order</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                Your shared Event Order is in Documents with your contracts and invoices
+              </p>
+              <p className="text-[11px] font-semibold mt-2" style={{ color: SAGE }}>
+                Open Documents →
               </p>
             </button>
           )}
@@ -4658,12 +4696,9 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "timeline",    icon: "🕒", label: "Timeline",          available: true, group: "venue" },
   { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
   { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
-  // Inventory = event-specific offerings the venue shared (not master catalog).
-  // Always listed when the venue planning capability is on; empty state when unshared.
+  // Inventory / Event Order / Choices: capability-on in NAV_ITEMS; P2-D filters
+  // passive discovery (Documents-first). Deep links still mount sections.
   { id: "inventory",   icon: "🪑", label: "Inventory",         shortLabel: "Inventory", available: true, group: "venue" },
-  // Event Order stays visible when capability is on so clients can find the
-  // destination even before share — empty state explains not-yet-shared.
-  // Sharing boundary remains server-side (shared_at / snapshot).
   { id: "event-order", icon: "📋", label: "Event Order",       shortLabel: "Order",    available: true, group: "venue" },
   { id: "choices",     icon: "✅", label: "Your Choices",      shortLabel: "Choices",  available: true, group: "venue" },
   { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
@@ -4704,9 +4739,10 @@ export function PortalShell({
   const [paymentsOverdueCount, setPaymentsOverdueCount] = React.useState(0);
   /** Messages nav badge — unread venue messages. */
   const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
-  const [hasSharedEventOrder, setHasSharedEventOrder] = React.useState(false);
-  const [hasSharedInventory, setHasSharedInventory] = React.useState(false);
-  const [hasClientChoices, setHasClientChoices] = React.useState(false);
+  /** P2-D — nav visibility (Documents-first). Sections stay mountable via deep links. */
+  const [showEventOrderNav, setShowEventOrderNav] = React.useState(false);
+  const [showInventoryNav, setShowInventoryNav] = React.useState(false);
+  const [showChoicesNav, setShowChoicesNav] = React.useState(false);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
@@ -4729,11 +4765,12 @@ export function PortalShell({
       available:
         item.available
         && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities)
-        && (item.id !== "choices" || hasClientChoices)
-        // P2-A: hide passive Inventory/Order until shared. Active shared requests
-        // keep their nav entries. Full Docs-first removal is deferred (P2-D).
-        && (item.id !== "inventory" || hasSharedInventory)
-        && (item.id !== "event-order" || hasSharedEventOrder),
+        // P2-D Documents-first: Choices only while couple must act; Inventory while
+        // client-facing collaboration is active; Event Order nav only while shared
+        // acceptance is still open. Deep links / Documents still open sections.
+        && (item.id !== "choices" || showChoicesNav)
+        && (item.id !== "inventory" || showInventoryNav)
+        && (item.id !== "event-order" || showEventOrderNav),
     }))
     .filter((item) => item.available);
 
@@ -4741,27 +4778,45 @@ export function PortalShell({
     let cancelled = false;
     fetch(`/api/portal/event-order?token=${encodeURIComponent(token)}`)
       .then((r) => r.json())
-      .then((d: { eventOrder?: unknown }) => {
-        if (!cancelled) setHasSharedEventOrder(!!d?.eventOrder);
+      .then((d: {
+        eventOrder?: { clientAgreedAt?: string | null } | null;
+      }) => {
+        if (cancelled) return;
+        const shared = Boolean(d?.eventOrder);
+        setShowEventOrderNav(
+          coupleEventOrderNavVisible({
+            shared,
+            clientAgreedAt: d?.eventOrder?.clientAgreedAt ?? null,
+          }),
+        );
       })
       .catch(() => {
-        if (!cancelled) setHasSharedEventOrder(false);
+        if (!cancelled) setShowEventOrderNav(false);
       });
     fetch(`/api/portal/inventory?token=${encodeURIComponent(token)}`)
       .then((r) => r.json())
-      .then((d: { inventory?: unknown }) => {
-        if (!cancelled) setHasSharedInventory(!!d?.inventory);
+      .then((d: { inventory?: { status?: string } | null }) => {
+        if (cancelled) return;
+        const inv = d?.inventory ?? null;
+        setShowInventoryNav(
+          coupleInventoryNavVisible({
+            hasInventory: Boolean(inv),
+            status: inv?.status ?? null,
+          }),
+        );
       })
       .catch(() => {
-        if (!cancelled) setHasSharedInventory(false);
+        if (!cancelled) setShowInventoryNav(false);
       });
     fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`)
       .then((r) => r.json())
-      .then((d: { choices?: unknown[] }) => {
-        if (!cancelled) setHasClientChoices(Array.isArray(d?.choices) && d.choices.length > 0);
+      .then((d: { choices?: Array<{ status: string }> }) => {
+        if (cancelled) return;
+        const list = Array.isArray(d?.choices) ? d.choices : [];
+        setShowChoicesNav(coupleChoicesNavVisible(list));
       })
       .catch(() => {
-        if (!cancelled) setHasClientChoices(false);
+        if (!cancelled) setShowChoicesNav(false);
       });
     return () => { cancelled = true; };
   }, [token]);
@@ -5106,9 +5161,10 @@ export function PortalShell({
                 item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
                   : item.id === "payments" ? paymentsOverdueCount
                     : item.id === "messages" ? messagesUnreadCount
-                      : item.id === "inventory" && hasSharedInventory ? 1
-                        : item.id === "event-order" && hasSharedEventOrder ? 1
-                          : 0;
+                      : item.id === "inventory" && showInventoryNav ? 1
+                        : item.id === "event-order" && showEventOrderNav ? 1
+                          : item.id === "choices" && showChoicesNav ? 1
+                            : 0;
               const badgeTitle =
                 item.id === "tasks"
                   ? (badge === 1 ? "1 open task" : `${badge} open tasks`)
@@ -5116,11 +5172,13 @@ export function PortalShell({
                     ? (badge === 1 ? "1 overdue payment" : `${badge} overdue payments`)
                     : item.id === "messages"
                       ? (badge === 1 ? "1 unread message" : `${badge} unread messages`)
-                      : item.id === "inventory" && hasSharedInventory
-                        ? "Shared inventory ready"
-                        : item.id === "event-order" && hasSharedEventOrder
-                          ? "Shared event order ready"
-                          : "";
+                      : item.id === "inventory" && showInventoryNav
+                        ? "Inventory needs your attention"
+                        : item.id === "event-order" && showEventOrderNav
+                          ? "Event Order waiting for your review"
+                          : item.id === "choices" && showChoicesNav
+                            ? "Selections waiting for you"
+                            : "";
               const badgeAria =
                 badge > 0 ? `${item.label}, ${badgeTitle}` : undefined;
               return (
