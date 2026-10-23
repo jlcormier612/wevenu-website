@@ -10,6 +10,7 @@ import { FloorPlanPortalView } from "@/components/portal/floor-plan-view";
 import { PlanningTasksPortalView } from "@/components/portal/planning-tasks-view";
 import { VendorsPortalPreviewView } from "@/components/portal/vendors-preview-view";
 import type { PortalPreviewData, PreviewVisibility } from "@/lib/client-portal-preview/load-preview";
+import { PUBLIC_FORM_LIGHT_VARS } from "@/lib/theme/public-form-surface";
 
 function visibilityBadge(visibility: PreviewVisibility): {
   label: string;
@@ -25,8 +26,24 @@ export function ClientPortalPreview({ data }: { data: PortalPreviewData }) {
     "planning" | "event-order" | "floor-plans" | "inventory" | "vendors"
   >("event-order");
 
+  // Staff app may be in dark mode; couple portal is always a light surface.
+  // Hardcoding cream without re-pinning light tokens made text-heading /
+  // muted-foreground resolve to dark-theme white → illegible on cream.
+  const previewSurfaceStyle = {
+    ...PUBLIC_FORM_LIGHT_VARS,
+    color: "var(--foreground)",
+    colorScheme: "light",
+    backgroundColor: "var(--natural-cream)",
+  } as React.CSSProperties;
+
   return (
-    <div className="min-h-screen bg-[#F7F5F1]" data-testid="client-portal-preview">
+    <div
+      className="min-h-screen text-foreground"
+      style={previewSurfaceStyle}
+      data-theme-lock="light"
+      data-testid="client-portal-preview"
+    >
+      {/* Venue-side framing only — outside the simulated couple page chrome */}
       <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div>

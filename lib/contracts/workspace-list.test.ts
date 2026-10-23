@@ -291,9 +291,12 @@ describe("Slice 3A — template metadata vs detail content", () => {
     assert.match(editTemplatePage, /getTemplate\(id\)/);
   });
 
-  it("Documents tab only consumes template names (metadata-safe)", () => {
-    assert.match(bookingDocsSrc, /contractTemplates\.map\(\(t\) => t\.name\)/);
+  it("Documents tab no longer lists reusable contract templates", () => {
+    assert.doesNotMatch(bookingDocsSrc, /Send a Contract/);
+    assert.doesNotMatch(bookingDocsSrc, /<CardTitle className="text-base">Templates<\/CardTitle>/);
     assert.doesNotMatch(bookingDocsSrc, /t\.content|template\.content/);
+    // Prop retained for call-site compatibility but unused for listing.
+    assert.match(bookingDocsSrc, /contractTemplates: _contractTemplates/);
   });
 });
 

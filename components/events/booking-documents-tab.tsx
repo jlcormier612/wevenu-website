@@ -9,16 +9,17 @@ import { toast } from "sonner";
 
 import { sendContractAction } from "@/app/(app)/contracts/actions";
 import { StarterPolicyPlaceholderDialog } from "@/components/contracts/starter-policy-placeholder-dialog";
-import { sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
 import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Contract, ContractTemplate } from "@/lib/contracts/types";
 import type { Document, DocumentEntityType } from "@/lib/documents/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
+import {
+  isReturnedQuestionnaireDocumentStatus,
+} from "@/lib/document-workspace/questionnaire-document-status";
 import { questionnaireStatusLabel } from "@/lib/events/questionnaire-constants";
 
 function formatSentDate(iso: string | null): string {
@@ -26,76 +27,15 @@ function formatSentDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// ---- Templates — reusable, sendable starting points, not yet tied to this booking ----
-
-function TemplatesSection({
-  contractTemplates, questionnaire, eventId, coupleEmail, coupleName, eventName,
-}: {
-  contractTemplates: ContractTemplate[];
-  questionnaire: Questionnaire | null;
-  eventId: string;
-  coupleEmail: string | null;
-  coupleName: string | null;
-  eventName: string;
-}) {
-  const router = useRouter();
-  const [sendingQuestionnaire, startSendQuestionnaire] = React.useTransition();
-
-  function handleSendQuestionnaire() {
-    if (!coupleEmail) { toast.error("This client has no email address on file."); return; }
-    startSendQuestionnaire(async () => {
-      const result = await sendQuestionnaireAction(eventId, coupleEmail, coupleName ?? "", eventName);
-      if (result.ok) { toast.success("Final details form sent."); router.refresh(); }
-      else toast.error(result.message ?? "Could not send.");
-    });
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Templates</CardTitle>
-        <CardDescription>Reusable templates your venue can send for this booking.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-          <div>
-            <p className="text-sm font-medium text-foreground">Contract</p>
-            <p className="text-xs text-muted-foreground">
-              {contractTemplates.length > 0
-                ? `${contractTemplates.length} template${contractTemplates.length === 1 ? "" : "s"} available: ${contractTemplates.map((t) => t.name).join(", ")}`
-                : "No contract templates yet."}
-            </p>
-          </div>
-          <Button size="sm" variant="outline" render={<Link href="/contracts/new" />}>Send a Contract</Button>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-          <div>
-            <p className="text-sm font-medium text-foreground">Questionnaire</p>
-            <p className="text-xs text-muted-foreground">Final details — guest count, timing, music, special requests.</p>
-          </div>
-          {questionnaire?.status && questionnaire.status !== "draft" ? (
-            <Badge variant="muted" className="text-[10px]">Already sent</Badge>
-          ) : (
-            <Button size="sm" variant="outline" disabled={sendingQuestionnaire} onClick={handleSendQuestionnaire}>
-              {sendingQuestionnaire ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send Questionnaire"}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---- Sent / Requested — documents with a real lifecycle (status, sent, completed) ----
-
-function SentRequestedSection({
+/**
+ * Event-specific contracts only — not reusable templates.
+ * Send/resend stays on the contract record when it already exists for this booking.
+ */
+function EventContractsSection({
   contracts,
-  questionnaire,
   returnTo,
 }: {
   contracts: Contract[];
-  questionnaire: Questionnaire | null;
   returnTo?: string;
 }) {
   const router = useRouter();
@@ -123,64 +63,47 @@ function SentRequestedSection({
     });
   }
 
-  const hasAnything = contracts.length > 0 || (questionnaire && questionnaire.status !== "draft");
   const contractHref = (id: string) =>
     returnTo
       ? `/contracts/${id}?returnTo=${encodeURIComponent(returnTo)}`
       : `/contracts/${id}`;
 
+  if (contracts.length === 0) return null;
+
   return (
     <>
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Sent / Requested</CardTitle>
-        <CardDescription>Documents already sent to this booking, and where things stand.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {!hasAnything && <p className="py-4 text-center text-sm text-muted-foreground">Nothing sent yet.</p>}
-
-        {contracts.map((c) => (
-          <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">{c.title}</p>
-              <p className="text-xs text-muted-foreground">
-                {c.executionOrigin === "external"
-                  ? `Signed outside HTC${c.signedAt ? ` · ${formatSentDate(c.signedAt)}` : ""}`
-                  : `Sent ${formatSentDate(c.sentAt)}${c.signedAt ? ` · Signed ${formatSentDate(c.signedAt)}` : ""}`}
-              </p>
+      <Card data-testid="booking-documents-contracts">
+        <CardHeader>
+          <CardTitle className="text-base">Contracts</CardTitle>
+          <CardDescription>
+            Agreements created for this booking — not reusable templates from the Library.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {contracts.map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">{c.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {c.executionOrigin === "external"
+                    ? `Signed outside HTC${c.signedAt ? ` · ${formatSentDate(c.signedAt)}` : ""}`
+                    : `Sent ${formatSentDate(c.sentAt)}${c.signedAt ? ` · Signed ${formatSentDate(c.signedAt)}` : ""}`}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <ContractStatusBadge status={c.status} executionOrigin={c.executionOrigin} />
+                {c.status === "draft" ? (
+                  <Button size="sm" variant="outline" disabled={sendingContract} onClick={() => handleSendContract(c.id)}>
+                    {sendingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="ghost" render={<Link href={contractHref(c.id)} />}>View</Button>
+                )}
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <ContractStatusBadge status={c.status} executionOrigin={c.executionOrigin} />
-              {c.status === "draft" ? (
-                <Button size="sm" variant="outline" disabled={sendingContract} onClick={() => handleSendContract(c.id)}>
-                  {sendingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
-                </Button>
-              ) : (
-                <Button size="sm" variant="ghost" render={<Link href={contractHref(c.id)} />}>View</Button>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {questionnaire && questionnaire.status !== "draft" && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-            <div>
-              <p className="text-sm font-medium text-foreground">Questionnaire</p>
-              <p className="text-xs text-muted-foreground">
-                Sent {formatSentDate(questionnaire.sentAt)}
-                {questionnaire.submittedAt && ` · Submitted ${formatSentDate(questionnaire.submittedAt)}`}
-              </p>
-            </div>
-            <Badge variant={
-              questionnaire.status === "complete" || questionnaire.status === "submitted" || questionnaire.status === "resubmitted"
-                ? "success" : "default"
-            } className="text-[10px]">
-              {questionnaireStatusLabel(questionnaire.status)}
-            </Badge>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          ))}
+        </CardContent>
+      </Card>
       <StarterPolicyPlaceholderDialog
         open={placeholderWarningId !== null}
         pending={sendingContract}
@@ -193,13 +116,60 @@ function SentRequestedSection({
   );
 }
 
-// ---- Main -----------------------------------------------------------------------
+/**
+ * Returned questionnaires only — blank templates and send actions live on the
+ * Questionnaires tab / Library, not here.
+ */
+function ReturnedQuestionnairesSection({
+  questionnaire,
+  reviewHref,
+}: {
+  questionnaire: Questionnaire | null;
+  reviewHref: string;
+}) {
+  if (!questionnaire || !isReturnedQuestionnaireDocumentStatus(questionnaire.status)) {
+    return null;
+  }
+
+  return (
+    <Card data-testid="booking-documents-returned-questionnaire">
+      <CardHeader>
+        <CardTitle className="text-base">Returned questionnaires</CardTitle>
+        <CardDescription>
+          Completed responses for this booking. Send and review stay on the Questionnaires workflow.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+          <div>
+            <p className="text-sm font-medium text-foreground">Questionnaire</p>
+            <p className="text-xs text-muted-foreground">
+              {questionnaire.submittedAt
+                ? `Submitted ${formatSentDate(questionnaire.submittedAt)}`
+                : questionnaireStatusLabel(questionnaire.status)}
+              {" · "}
+              {questionnaireStatusLabel(questionnaire.status)}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            render={<Link href={reviewHref} />}
+            data-testid="booking-documents-view-questionnaire"
+          >
+            View answers
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function BookingDocumentsTab({
   entityType, entityId, venueId,
   workspaceDocuments = [], pinnedDocumentKeys = [],
-  contractTemplates, contracts, questionnaire,
-  eventId, eventName, coupleEmail, coupleName,
+  contractTemplates: _contractTemplates, contracts, questionnaire,
+  eventId, eventName: _eventName, coupleEmail: _coupleEmail, coupleName: _coupleName,
   returnTo,
 }: {
   entityType: DocumentEntityType;
@@ -209,6 +179,7 @@ export function BookingDocumentsTab({
   vendorDocuments?: (Document & { vendorName: string | null })[];
   workspaceDocuments?: WorkspaceDocument[];
   pinnedDocumentKeys?: string[];
+  /** @deprecated Templates are not event documents — kept for call-site compatibility. */
   contractTemplates: ContractTemplate[];
   contracts: Contract[];
   questionnaire: Questionnaire | null;
@@ -219,17 +190,28 @@ export function BookingDocumentsTab({
   /** Client Workspace path for Contract Detail back navigation. */
   returnTo?: string;
 }) {
+  void _contractTemplates;
+  void _eventName;
+  void _coupleEmail;
+  void _coupleName;
+
+  const artifactDocuments = workspaceDocuments.filter(
+    (d) =>
+      d.docType !== "questionnaire"
+      || isReturnedQuestionnaireDocumentStatus(d.rawStatus),
+  );
+
   return (
-    <div className="space-y-4">
-      <TemplatesSection
-        contractTemplates={contractTemplates} questionnaire={questionnaire}
-        eventId={eventId} coupleEmail={coupleEmail} coupleName={coupleName} eventName={eventName}
+    <div className="space-y-4" data-testid="booking-documents-tab">
+      <EventContractsSection contracts={contracts} returnTo={returnTo} />
+      <ReturnedQuestionnairesSection
+        questionnaire={questionnaire}
+        reviewHref={`${returnTo ?? `/events/${eventId}`}#questionnaires`}
       />
-      <SentRequestedSection contracts={contracts} questionnaire={questionnaire} returnTo={returnTo} />
       <DocumentWorkspace
         title="Documents"
-        description="Every file for this booking — uploaded by your venue, the client, or shared by vendors — in one place. Anything a Planning task links to already appears here, the same file, not a copy."
-        documents={workspaceDocuments}
+        description="Files and completed records for this booking — uploaded by your venue, the client, or shared by vendors. Reusable templates and send actions live in Library and the Questionnaires / Contracts workflows. A questionnaire appears here only after the couple returns it."
+        documents={artifactDocuments}
         initialPinnedKeys={pinnedDocumentKeys}
         uploadTarget={{ entityType, entityId, venueId }}
         returnTo={returnTo}

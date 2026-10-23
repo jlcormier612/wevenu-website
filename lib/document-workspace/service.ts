@@ -79,7 +79,18 @@ export async function getVenueWorkspaceDocuments(scope: WorkspaceScope = {}): Pr
   }
   // Titles come from questionnaire-family kindLabel — not the legacy RPC hardcode.
   const rows = applyQuestionnaireWorkspaceNames(rawRows, kindById);
-  const docs = rows.map(normalizeWorkspaceDocument);
+  const { isReturnedQuestionnaireDocumentStatus } = await import(
+    "@/lib/document-workspace/questionnaire-document-status"
+  );
+  // Documents = event artifacts. Sent/in_progress questionnaires stay on the
+  // Questionnaires workflow until the couple returns answers.
+  const docs = rows
+    .map(normalizeWorkspaceDocument)
+    .filter(
+      (d) =>
+        d.docType !== "questionnaire"
+        || isReturnedQuestionnaireDocumentStatus(d.rawStatus),
+    );
 
   const contractIds = docs.filter((d) => d.docType === "contract").map((d) => d.id);
   if (contractIds.length === 0) return docs;

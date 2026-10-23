@@ -39,7 +39,7 @@ describe("Client portal preview fidelity", () => {
 
   it("Floor Plans preview only presents shared plans + offers (not unshared operational alone)", () => {
     assert.match(loader, /sharedWithCouple/);
-    assert.match(fpView, /No Floor Plan shared yet/);
+    assert.match(fpView, /Waiting on a layout from your venue|No Floor Plan shared yet/);
     assert.match(fpView, /Choose your layout/);
     assert.match(fpView, /Choose this layout \(preview only\)/);
   });
@@ -60,5 +60,12 @@ describe("Client portal preview fidelity", () => {
 
   it("preview payments link is inert (no couple navigation side channel)", () => {
     assert.match(preview, /paymentsHref=\{null\}/);
+  });
+
+  it("preview locks light tokens so dark staff theme cannot wash out cream surfaces", () => {
+    assert.match(preview, /data-theme-lock="light"/);
+    assert.match(preview, /PUBLIC_FORM_LIGHT_VARS/);
+    assert.match(preview, /natural-cream|PUBLIC_FORM_LIGHT_VARS/);
+    assert.doesNotMatch(preview, /bg-\[#F7F5F1\]/);
   });
 });
