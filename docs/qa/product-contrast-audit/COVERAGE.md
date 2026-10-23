@@ -20,9 +20,12 @@ Total discovered `page.tsx` + `route.ts` paths under `app/`: **~412** (includes 
 | Component | States | Gate |
 | --- | --- | --- |
 | `components/ui/button.tsx` | default, outline, secondary, ghost, destructive; hover/focus tokens in source | `lib/theme/shared-contrast-regression.test.ts` |
-| `components/ui/badge.tsx` | default, success, warning, destructive soft fills | same |
-| Theme tokens | `--destructive-foreground`, primary/secondary pairs, amber banner | same + existing portal/vendor contrast tests |
+| `components/ui/badge.tsx` | default, success, warning, destructive soft fills (**light + dark**; dark soft destructive uses white on darkened dusty) | same |
+| Payment status badges | `PaymentStatusBadge`, `ScheduleStatusBadge` (“Needs Attention” → destructive) | same — asserts shared Badge wiring + dark AA pair |
+| Theme tokens | `--destructive-foreground` (solid buttons stay black), primary/secondary pairs, amber banner | same + existing portal/vendor contrast tests |
 | Assignment withdrawal banner | light amber + dark amber; dismiss/remove | shared + `vendor-assignment-fee-and-removal.test.ts` |
+
+**Coverage gap closed (2026-10-22):** Prior gate only asserted light soft destructive (black on dusty/25 over white) and pinned `--destructive-foreground: black` in dark for solid buttons — it never evaluated soft badge ink on dark surfaces, so Payments “Needs Attention” dark text was missed.
 
 ## Interaction states
 

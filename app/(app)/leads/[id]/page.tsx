@@ -69,10 +69,13 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
 
   const page = await withTimeout(
     (async () => {
+      // Share one getSpaces() promise — preferences previously called getSpaces
+      // again inside getLeadSpacePreferences, doubling the spaces round trip.
+      const spacesPromise = getSpaces();
       const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, luvDrafts, tourAppointments, packages, activeTemplate, venue, spacePreferences] = await Promise.all([
         getLead(id),
         getHolds({ leadId: id }),
-        getSpaces(),
+        spacesPromise,
         getCapacityRules(),
         getDocuments("lead", id),
         getVenueWorkspaceDocuments({ leadId: id }),
@@ -82,7 +85,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
         getPackagesWithItems(true),
         getActiveTemplate(),
         getCurrentVenue(),
-        getLeadSpacePreferences(id),
+        spacesPromise.then((loadedSpaces) => getLeadSpacePreferences(id, loadedSpaces)),
       ]);
       if (!lead) return null;
       if (lead.mergedIntoLeadId) {

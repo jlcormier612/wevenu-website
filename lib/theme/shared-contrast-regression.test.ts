@@ -45,6 +45,20 @@ describe("shared contrast regression — palette pairs", () => {
     assertAA(BLACK, mixOntoWhite(DUSTY_ROSE, 0.25), "destructive badge soft");
   });
 
+  it("destructive soft badge dark: white on dusty@65% over black meets AA (Needs Attention)", () => {
+    // Mirrors badge CVA dark: color-mix(destructive 65%, black) + text-white.
+    const n = parseInt(DUSTY_ROSE.slice(1), 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    const o = 0.65;
+    const bg = `#${[r, g, b].map((c) => Math.round(c * o).toString(16).padStart(2, "0")).join("")}`;
+    assertAA(WHITE, bg, "destructive badge dark Needs Attention");
+    // Soft /25 over dark heritage with black was AA-legal but illegible in product;
+    // darkened dusty + white is the dark-mode contract for Needs Attention.
+    assert.ok((contrastRatio(WHITE, mixOntoWhite(DUSTY_ROSE, 0.25)) ?? 0) < 4.5);
+  });
+
   it("pale dusty-rose as text on white fails AA (banned pattern)", () => {
     const ratio = contrastRatio(DUSTY_ROSE, WHITE) ?? 0;
     assert.ok(ratio < 4.5, "dusty-as-text must remain a known fail so badge stays fixed");
@@ -75,21 +89,36 @@ describe("shared contrast regression — source contracts", () => {
 
   it("Badge destructive does not use pale text-destructive on soft fill", () => {
     const badge = readFileSync(join(ROOT, "components/ui/badge.tsx"), "utf8");
-    assert.match(badge, /destructive:\s*"bg-destructive\/25 text-destructive-foreground"/);
-    assert.doesNotMatch(badge, /destructive:\s*"bg-destructive\/15 text-destructive"/);
+    assert.match(badge, /bg-destructive\/25 text-destructive-foreground/);
+    assert.match(badge, /dark:text-white/);
+    assert.match(badge, /color-mix\(in_oklch,var\(--destructive\)_65%,black\)/);
+    assert.doesNotMatch(badge, /bg-destructive\/15 text-destructive"/);
     assert.match(badge, /default:\s*"bg-primary\/15 text-foreground"/);
   });
 
-  it("globals pin destructive-foreground to black in light and dark", () => {
+  it("Payment ScheduleStatusBadge Needs Attention uses shared destructive Badge", () => {
+    const paymentBadge = readFileSync(
+      join(ROOT, "components/payments/payment-status-badge.tsx"),
+      "utf8",
+    );
+    assert.match(paymentBadge, /Needs Attention/);
+    assert.match(paymentBadge, /variant:\s*"destructive"/);
+    assert.match(paymentBadge, /ScheduleStatusBadge/);
+  });
+
+  it("globals pin destructive-foreground to black for solid buttons; soft badges override in dark", () => {
     const css = readFileSync(join(ROOT, "app/globals.css"), "utf8");
     const light = css.slice(0, css.indexOf(".dark {"));
     const dark = css.slice(css.indexOf(".dark {"));
     assert.match(light, /--destructive-foreground:\s*var\(--black\)/);
+    // Solid destructive buttons still need black on dusty-rose in dark.
     assert.match(dark, /--destructive-foreground:\s*var\(--black\)/);
     assert.doesNotMatch(
       light.slice(light.indexOf("--destructive:")),
       /--destructive-foreground:\s*var\(--forest-sage\)/,
     );
+    const badge = readFileSync(join(ROOT, "components/ui/badge.tsx"), "utf8");
+    assert.match(badge, /dark:text-white/);
   });
 
   it("assignment withdrawal banner is theme-aware and pins readable button ink", () => {

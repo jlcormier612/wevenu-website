@@ -15,7 +15,10 @@ const badgeVariants = cva(
         outline:     "border border-border text-muted-foreground",
         success:     "bg-success/15 text-foreground",
         warning:     "bg-warning/20 text-warning-foreground",
-        destructive: "bg-destructive/25 text-destructive-foreground",
+        // Light: black ink on soft dusty wash. Dark: white on darkened dusty
+        // (soft /25 over heritage fails white AA; ~65% dusty on black clears 4.5:1).
+        destructive:
+          "bg-destructive/25 text-destructive-foreground dark:bg-[color-mix(in_oklch,var(--destructive)_65%,black)] dark:text-white",
         muted:       "bg-muted text-muted-foreground",
       },
     },

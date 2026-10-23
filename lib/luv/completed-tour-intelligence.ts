@@ -58,8 +58,11 @@ export type CompletedTourDecision =
       observation: LuvObservation;
     };
 
+/** Courtesy closers — not questions and not a reason to invent a reply obligation. */
 const THANKS_ONLY =
   /^(thanks|thank you|thx|ty|appreciate it|appreciated)([!.\s]*)?$/i;
+const THANKS_COURTESY =
+  /^(thanks|thank you|thx|ty)\b[\s\S]{0,80}\b(for having us|for today|for the (tour|visit|time)|so much|again)\b[!.,\s]*$/i;
 const FAMILY_PAUSE =
   /\b(parents?|mom|dad|family|fiancé|fiance|partner)\b/i;
 const PRICING_REQUEST =
@@ -94,7 +97,20 @@ export function looksLikeExplicitRequest(text: string): boolean {
 }
 
 export function looksLikeThanksOnly(text: string): boolean {
-  return THANKS_ONLY.test(text.trim());
+  const t = text.trim();
+  if (!t) return false;
+  if (THANKS_ONLY.test(t) || THANKS_COURTESY.test(t)) return true;
+  // Multi-sentence courtesy with no question mark and no question-start clause.
+  if (!t.includes("?") && !QUESTION_START.test(t)) {
+    const first = t.split(/[.!]/)[0]?.trim() ?? "";
+    if (THANKS_ONLY.test(first) || THANKS_COURTESY.test(first) || /^(thanks|thank you)\b/i.test(first)) {
+      const rest = t.slice(first.length).replace(/^[\s.!,]+/, "");
+      if (!rest || /^(we had a (great|lovely)|it was (great|lovely)|talk soon|see you)\b/i.test(rest)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function looksLikeWaitingOnOthers(text: string): boolean {
@@ -135,7 +151,16 @@ function topicFromExcerpt(excerpt: string): string {
   if (/\bsaturday\b/.test(lower) && /\bsetup\b/.test(lower)) return "Saturday setup";
   if (PRICING_REQUEST.test(lower)) return "pricing or package details";
   if (FAMILY_PAUSE.test(lower)) return "talking with their family";
-  const clause = excerpt.split(/[.!?]/)[0]?.trim() || excerpt;
+  // Prefer the clause that looks like the actual question — never a courtesy opener.
+  const clauses = excerpt
+    .split(/(?<=[.!?])\s+/)
+    .map((c) => c.trim())
+    .filter(Boolean);
+  const questionish =
+    clauses.find((c) => c.includes("?") || QUESTION_START.test(c))
+    ?? clauses.find((c) => !looksLikeThanksOnly(c) && !/^(thanks|thank you)\b/i.test(c))
+    ?? excerpt;
+  const clause = questionish.replace(/[?!.]+$/, "").trim() || excerpt;
   return clause.length > 60 ? `${clause.slice(0, 57)}…` : clause;
 }
 
@@ -158,8 +183,9 @@ export function isCompactInsightTopic(topic: string): boolean {
 }
 
 /**
- * Natural, non-accusatory unresolved-question copy for completed-tour Noticed.
- * Does not claim neglect from a missing written reply alone; invites review.
+ * Natural unresolved-question copy for completed-tour Noticed.
+ * Lead with the useful observation; offer a draft. Do not narrate DB state
+ * ("on the thread") or repeat "go inspect the conversation" in headline + detail.
  */
 export function unresolvedQuestionInsightCopy(topic: string): {
   message: string;
@@ -167,12 +193,11 @@ export function unresolvedQuestionInsightCopy(topic: string): {
   ctaLabel: string;
 } {
   const message = isCompactInsightTopic(topic)
-    ? `After the tour, they asked about ${topic}. Check the conversation to see whether anything still needs a response.`
-    : "After the tour, they asked a question that may still need attention. Check the conversation to see whether a reply is still useful.";
+    ? `After the tour, they asked about ${topic}.`
+    : "After the tour, they asked something that may still be open.";
   return {
     message,
-    detail:
-      "A written reply is not on the thread yet — confirm in the conversation before deciding next steps.",
+    detail: "I can draft a reply if you'd like to follow up.",
     ctaLabel: "Draft a reply",
   };
 }
@@ -244,6 +269,11 @@ export function evaluateCompletedTour(input: CompletedTourEvalInput): CompletedT
   const openText = open?.body?.trim() || "";
   const excerpt = shareableCustomerExcerpt(openText);
 
+  // Courtesy-only messages are not unanswered questions — silence.
+  if (open && looksLikeThanksOnly(openText)) {
+    return { mode: "silence", purpose: "none" };
+  }
+
   if (open && excerpt && looksLikeCustomerQuestion(openText)) {
     // Completed-tour evaluation only runs after status=completed. An
     // early-arrival / same-day attendance ask is resolved by that visit —
@@ -252,7 +282,9 @@ export function evaluateCompletedTour(input: CompletedTourEvalInput): CompletedT
     if (looksLikeTourAttendanceRequest(openText)) {
       return { mode: "silence", purpose: "none" };
     }
-    const topic = topicFromExcerpt(excerpt);
+    // Topic from the full inbound text so a courtesy opener cannot steal the
+    // subject when a real question follows in a later sentence.
+    const topic = topicFromExcerpt(openText);
     const copy = unresolvedQuestionInsightCopy(topic);
     return {
       mode: "actionable",

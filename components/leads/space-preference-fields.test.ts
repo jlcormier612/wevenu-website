@@ -15,6 +15,13 @@ const naMigration = readFileSync(
 );
 
 describe("space preference applicability UI", () => {
+  it("keeps controls interactive while saving (no global disable on pending)", () => {
+    assert.match(fields, /space-pref-saving/);
+    assert.match(fields, /disabled=\{false\}/);
+    assert.doesNotMatch(fields, /disabled=\{pending\}/);
+    assert.match(fields, /saveGen/);
+  });
+
   it("missing rows start as not_applicable, not synthesized undecided", () => {
     assert.match(fields, /missingPref/);
     assert.match(fields, /preferenceKind: "not_applicable"/);

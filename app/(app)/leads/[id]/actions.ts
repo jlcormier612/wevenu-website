@@ -104,7 +104,10 @@ export async function saveLeadSpacePreferencesAction(
   inputs: LeadSpacePreferenceInput[],
 ): Promise<LeadActionResult> {
   const result = await saveLeadSpacePreferences(leadId, inputs);
-  if (result.ok) revalidateLead(leadId);
+  // Prefer narrow revalidation: full revalidateLead (dashboard/tasks/tours/list)
+  // remounted the lead workspace on every checkbox/select change and made Space
+  // Preferences feel unusably slow. Client state already mirrors the save.
+  if (result.ok) revalidatePath(`/leads/${leadId}`);
   return result;
 }
 

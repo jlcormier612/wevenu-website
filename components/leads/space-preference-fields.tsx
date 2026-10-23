@@ -116,6 +116,9 @@ export function LeadSpacePreferenceFields({
   );
   const [pending, startTransition] = React.useTransition();
   const relevantKey = relevant.map((use) => use.key).join(",");
+  // Keep controls interactive while a save is in flight — disabling every
+  // checkbox/select on each change was the dominant "slow dropdown" feel.
+  const saveGen = React.useRef(0);
 
   React.useEffect(() => {
     setPrefs(relevant.map((use) => initial.find((p) => p.useKey === use.key) ?? missingPref(use.key)));
@@ -160,8 +163,11 @@ export function LeadSpacePreferenceFields({
       weddingFamily: profile.isWeddingSpecific,
       relevantUseKeys: allowedUseKeys,
     }));
+    const gen = ++saveGen.current;
     startTransition(async () => {
       const result = await saveLeadSpacePreferencesAction(leadId, next);
+      // Ignore stale responses when the user changed prefs again mid-flight.
+      if (gen !== saveGen.current) return;
       if (!result.ok) {
         toast.error(result.message ?? "Could not save space preferences.");
         return;
@@ -180,6 +186,7 @@ export function LeadSpacePreferenceFields({
         </p>
         <p className="text-xs text-muted-foreground">
           Which parts of the event are taking place at your venue?
+          {pending ? <span className="ml-2 text-muted-foreground" data-testid="space-pref-saving">Saving…</span> : null}
         </p>
       </div>
       <div
@@ -202,7 +209,6 @@ export function LeadSpacePreferenceFields({
                   type="checkbox"
                   className="size-4 shrink-0 rounded border-border"
                   checked={applicable}
-                  disabled={pending}
                   data-testid={`space-pref-applicable-${use.key}`}
                   onChange={(e) => {
                     const checked = e.target.checked;
@@ -238,7 +244,7 @@ export function LeadSpacePreferenceFields({
                     value={value}
                     spaces={spacesEligibleForUse(spaces, use.key)}
                     allowExternal={allowsExternalLocation(use.key, profile)}
-                    disabled={pending}
+                    disabled={false}
                     onChange={(nextPref) => {
                       const next = relevant.map((u) =>
                         u.key === nextPref.useKey

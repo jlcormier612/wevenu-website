@@ -13,6 +13,7 @@ import {
   type LeadSpacePreferenceInput,
 } from "@/lib/leads/space-preferences";
 import type { LeadActionResult } from "@/lib/leads/types";
+import type { VenueSpace } from "@/lib/availability/types";
 import { getSpaces } from "@/lib/availability/service";
 import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -75,7 +76,11 @@ async function resolveLeadExperienceType(
   return { eventType: lead.event_type, leadFound: true };
 }
 
-export async function getLeadSpacePreferences(leadId: string): Promise<LeadEventSpacePreference[]> {
+export async function getLeadSpacePreferences(
+  leadId: string,
+  /** When the page already loaded spaces, reuse them — avoid a second getSpaces round trip. */
+  spacesAlreadyLoaded?: VenueSpace[],
+): Promise<LeadEventSpacePreference[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
@@ -88,7 +93,7 @@ export async function getLeadSpacePreferences(leadId: string): Promise<LeadEvent
     .eq("venue_id", venue.id)
     .eq("lead_id", leadId);
   if (error) throw error;
-  const spaces = await getSpaces();
+  const spaces = spacesAlreadyLoaded ?? await getSpaces();
   const allowed = new Set(relevantUsesForExperience(spaces, profile).map((use) => use.key));
   return ((data ?? []) as PreferenceRow[])
     .map((row) => mapRow(row, profile))
@@ -133,20 +138,28 @@ export async function saveLeadSpacePreferences(
   for (const value of values) {
     if (seen.has(value.useKey)) return { ok: false, message: "Only one preference per space use." };
     seen.add(value.useKey);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("lead_event_space_preferences") as any).upsert(
-      {
-        venue_id: venue.id,
-        lead_id: leadId,
-        use_key: value.useKey,
-        preference_kind: value.preferenceKind,
-        space_id: value.spaceId,
-        external_location: value.externalLocation,
-        scheduled_date: value.scheduledDate,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "lead_id,use_key" },
-    );
+  }
+  const nowIso = new Date().toISOString();
+  // Parallel upserts — sequential round-trips per use key dominated save latency.
+  const upsertResults = await Promise.all(
+    values.map((value) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from("lead_event_space_preferences") as any).upsert(
+        {
+          venue_id: venue.id,
+          lead_id: leadId,
+          use_key: value.useKey,
+          preference_kind: value.preferenceKind,
+          space_id: value.spaceId,
+          external_location: value.externalLocation,
+          scheduled_date: value.scheduledDate,
+          updated_at: nowIso,
+        },
+        { onConflict: "lead_id,use_key" },
+      ),
+    ),
+  );
+  for (const { error } of upsertResults) {
     if (error) throw error;
   }
 

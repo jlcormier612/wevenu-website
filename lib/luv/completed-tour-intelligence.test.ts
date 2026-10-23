@@ -79,7 +79,7 @@ describe("completed tour — different contexts, different outcomes", () => {
     if (a.mode !== "actionable") return;
     assert.equal(a.purpose, "unresolved_question");
     assert.match(a.observation.message, /Saturday setup/);
-    assert.match(a.observation.message, /Check the conversation/);
+    assert.doesNotMatch(a.observation.message, /Check the conversation|on the thread/i);
     assert.match(a.observation.recommendation?.label ?? "", /Draft a reply/i);
     assert.doesNotMatch(a.observation.message, /follow up while it's fresh/);
     assert.doesNotMatch(a.observation.message, /don't see an answer recorded|still unanswered/i);
@@ -402,7 +402,7 @@ describe("completed tour — early-arrival / attendance request reconciliation",
     assert.equal(otherLead.mode, "actionable");
     if (otherLead.mode !== "actionable") return;
     assert.equal(otherLead.purpose, "unresolved_question");
-    assert.match(otherLead.observation.message, /Check the conversation|asked a question/i);
+    assert.match(otherLead.observation.message, /After the tour|asked/i);
     assert.doesNotMatch(otherLead.observation.message, /come in tonight/i);
   });
 
@@ -455,14 +455,13 @@ describe("completed tour — Noticed writing quality", () => {
     if (decision.mode !== "actionable") return;
     assert.doesNotMatch(decision.observation.message, /asked about What time/i);
     assert.doesNotMatch(decision.observation.message, /asked about Can /i);
-    assert.match(decision.observation.message, /Check the conversation/);
     assert.doesNotMatch(
       `${decision.observation.message} ${decision.observation.detail ?? ""}`,
-      /don't see an answer recorded|still unanswered|not a generic thank-you/i,
+      /on the thread|confirm in the conversation|Check the conversation|don't see an answer recorded|still unanswered/i,
     );
   });
 
-  it("compact known topics stay specific without accusatory repetition", () => {
+  it("compact known topics stay specific without robotic repetition", () => {
     const decision = evaluateCompletedTour(base({
       messages: [
         msg({
@@ -479,10 +478,11 @@ describe("completed tour — Noticed writing quality", () => {
       (decision.observation.message.match(/Saturday setup/g) ?? []).length,
       1,
     );
-    assert.match(decision.observation.detail ?? "", /confirm in the conversation/i);
+    assert.doesNotMatch(decision.observation.detail ?? "", /confirm in the conversation|on the thread/i);
+    assert.match(decision.observation.detail ?? "", /draft a reply/i);
   });
 
-  it("missing written reply alone does not claim neglect or force a reply instruction", () => {
+  it("missing written reply alone does not claim neglect or narrate database state", () => {
     const decision = evaluateCompletedTour(base({
       messages: [
         msg({
@@ -495,7 +495,76 @@ describe("completed tour — Noticed writing quality", () => {
     assert.equal(decision.mode, "actionable");
     if (decision.mode !== "actionable") return;
     assert.doesNotMatch(decision.observation.message, /neglected|failed to|you should have/i);
-    assert.match(decision.observation.message, /may still need|Check the conversation/i);
+    assert.doesNotMatch(
+      `${decision.observation.message} ${decision.observation.detail ?? ""}`,
+      /on the thread|confirm in the conversation|Check the conversation/i,
+    );
     assert.match(decision.observation.recommendation?.label ?? "", /^Draft a reply$/);
+  });
+
+  it("Case A — courtesy Thanks for having us is silence (not asked-about)", () => {
+    const decision = evaluateCompletedTour(base({
+      messages: [
+        msg({
+          sentAt: "2026-10-02T16:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "Thanks for having us.",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "silence");
+    assert.doesNotMatch(JSON.stringify(decision), /asked about Thanks/i);
+    assert.doesNotMatch(JSON.stringify(decision), /on the thread/i);
+  });
+
+  it("Case A2 — courtesy opener before a real question uses the question topic", () => {
+    const decision = evaluateCompletedTour(base({
+      messages: [
+        msg({
+          sentAt: "2026-10-02T16:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "Thanks for having us. Can you do Saturday setup for the ceremony?",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "actionable");
+    if (decision.mode !== "actionable") return;
+    assert.doesNotMatch(decision.observation.message, /asked about Thanks/i);
+    assert.match(decision.observation.message, /Saturday setup/);
+  });
+
+  it("Case B — genuine unanswered question is natural and actionable", () => {
+    const decision = evaluateCompletedTour(base({
+      messages: [
+        msg({
+          sentAt: "2026-10-02T16:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "Do you allow sparklers for the exit?",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "actionable");
+    if (decision.mode !== "actionable") return;
+    assert.match(decision.observation.message, /After the tour/i);
+    assert.doesNotMatch(decision.observation.message, /Check the conversation/i);
+    assert.match(decision.observation.recommendation?.label ?? "", /Draft a reply/);
+  });
+
+  it("Case C — venue reply suppresses awaiting-response card", () => {
+    const decision = evaluateCompletedTour(base({
+      messages: [
+        msg({
+          sentAt: "2026-10-02T16:00:00.000Z",
+          senderType: "lead_or_client",
+          body: "Do you allow sparklers for the exit?",
+        }),
+        msg({
+          sentAt: "2026-10-02T17:00:00.000Z",
+          senderType: "venue_staff",
+          body: "Yes — sparklers are welcome outdoors.",
+        }),
+      ],
+    }));
+    assert.equal(decision.mode, "silence");
   });
 });
