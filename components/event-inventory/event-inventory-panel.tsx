@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { eventInventoryListPriceLabel } from "@/lib/event-inventory/list-display";
 import type { EventInventoryItem, EventInventoryStatus, EventInventoryWithDetails, InventoryTemplate } from "@/lib/event-inventory/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 
@@ -69,10 +70,21 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
         {item.addedToEventOrderAt && <p className="mt-0.5 text-xs text-success">✓ In the Event Order</p>}
       </div>
       <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
-      <span className="text-right w-24 font-medium text-foreground">
-        {item.isIncluded || item.unitPrice == null
-          ? <span className="font-normal text-muted-foreground">—</span>
-          : formatMoney(item.unitPrice)}
+      <span className="text-right w-24 font-medium text-foreground" data-testid="inventory-item-unit-price">
+        {(() => {
+          const { price, inclusionHint } = eventInventoryListPriceLabel(item);
+          if (price == null) {
+            return <span className="font-normal text-muted-foreground">—</span>;
+          }
+          return (
+            <span className="inline-flex flex-col items-end leading-tight">
+              <span>{price}</span>
+              {inclusionHint ? (
+                <span className="text-[10px] font-normal text-muted-foreground">{inclusionHint}</span>
+              ) : null}
+            </span>
+          );
+        })()}
       </span>
       <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">
         {item.isIncluded ? "Included" : "Additional"}

@@ -2,10 +2,9 @@
 
 import * as React from "react";
 
-import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
-
-import { Pencil } from "lucide-react";
 
 import {
   addEventInventoryItemAction, updateEventInventoryItemAction,
@@ -35,6 +34,7 @@ export function ItemSheet({
   catalogItems: InventoryItem[];
   existingItem?: EventInventoryItem;
 }) {
+  const router = useRouter();
   const isEdit = !!existingItem;
   const [open, setOpen] = React.useState(false);
   const [catalogItemId, setCatalogItemId] = React.useState(existingItem?.inventoryItemId ?? "");
@@ -46,6 +46,13 @@ export function ItemSheet({
   const [notes, setNotes] = React.useState(existingItem?.notes ?? "");
   const [error, setError] = React.useState("");
   const [pending, startTransition] = React.useTransition();
+
+  // Keep local form fields in sync when the parent refreshes after save.
+  React.useEffect(() => {
+    if (!open) return;
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset reads latest existingItem
+  }, [existingItem?.id, existingItem?.updatedAt, existingItem?.unitPrice, existingItem?.isIncluded, open]);
 
   function reset() {
     setCatalogItemId(existingItem?.inventoryItemId ?? ""); setName(existingItem?.name ?? "");
@@ -68,13 +75,27 @@ export function ItemSheet({
     startTransition(async () => {
       if (isEdit && existingItem) {
         const result = await updateEventInventoryItemAction(eventInventoryId, eventId, existingItem.id, input, existingItem.updatedAt);
-        if (result.ok) { toast.success("Item updated."); setOpen(false); }
-        else if (result.reason === "stale") { toast.error(result.message ?? "Someone else updated this item — refresh and try again.", { duration: 6000 }); setOpen(false); }
-        else { setError(result.message ?? "Could not update item."); }
+        if (result.ok) {
+          toast.success("Item updated.");
+          setOpen(false);
+          router.refresh();
+        } else if (result.reason === "stale") {
+          toast.error(result.message ?? "Someone else updated this item — refresh and try again.", { duration: 6000 });
+          setOpen(false);
+          router.refresh();
+        } else {
+          setError(result.message ?? "Could not update item.");
+        }
       } else {
         const result = await addEventInventoryItemAction(eventInventoryId, eventId, input);
-        if (result.ok) { toast.success("Item added."); setOpen(false); reset(); }
-        else { setError(result.message ?? "Could not add item."); }
+        if (result.ok) {
+          toast.success("Item added.");
+          setOpen(false);
+          reset();
+          router.refresh();
+        } else {
+          setError(result.message ?? "Could not add item.");
+        }
       }
     });
   }
@@ -128,12 +149,26 @@ export function ItemSheet({
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-heading">Price each</Label>
-              <Input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} placeholder="Included at no charge" />
+              <Input
+                value={unitPrice}
+                onChange={(e) => setUnitPrice(e.target.value)}
+                placeholder="Optional"
+                inputMode="decimal"
+                data-testid="inventory-item-price-input"
+              />
             </div>
           </div>
+          <p className="text-[11px] text-muted-foreground -mt-2">
+            Optional configured price for this event item. Separate from whether it is included in the package (no extra charge) or billed as additional.
+          </p>
 
           <div className="flex items-center gap-2">
-            <Checkbox id="is-included" checked={isIncluded} onCheckedChange={(v) => setIsIncluded(v === true)} />
+            <Checkbox
+              id="is-included"
+              checked={isIncluded}
+              onCheckedChange={(v) => setIsIncluded(v === true)}
+              data-testid="inventory-item-included-checkbox"
+            />
             <Label htmlFor="is-included" className="text-sm font-normal text-foreground cursor-pointer">
               Included in the base package (not an extra cost)
             </Label>
