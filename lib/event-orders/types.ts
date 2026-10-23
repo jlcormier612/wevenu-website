@@ -19,6 +19,10 @@ export type EventOrder = {
   finalizedAt: string | null;
   /** Set by share; never cleared by reopen. Client sees last share snapshot until re-share. */
   sharedAt: string | null;
+  /** Client acceptance of the shared snapshot — distinct from venue finalize/share. */
+  clientAgreedAt: string | null;
+  clientAgreedName: string | null;
+  clientAgreedRevision: number | null;
   templateId: string | null;
   createdAt: string;
   updatedAt: string;

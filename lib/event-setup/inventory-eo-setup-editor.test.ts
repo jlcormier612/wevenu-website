@@ -18,38 +18,24 @@ const eoRepo = readFileSync(resolve("lib/event-orders/repository.ts"), "utf8");
 const prepare = readFileSync(resolve("lib/event-setup/prepare-release.ts"), "utf8");
 const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
 
-describe("Inventory + Event Order Change vs Open destinations", () => {
-  it("SETUP_EDITOR_STEPS includes inventory and event_order", () => {
-    assert.match(panel, /"inventory", "event_order", "floor_plans", "vendors"/);
+describe("Inventory + Event Order removed from Setup destinations", () => {
+  it("SETUP_EDITOR_STEPS is planning-only (no inventory / event_order)", () => {
+    assert.match(panel, /"planning", "timeline", "floor_plans", "vendors"/);
+    assert.doesNotMatch(panel, /"inventory", "event_order"/);
+    assert.doesNotMatch(panel, /EventInventorySetupEditor/);
+    assert.doesNotMatch(panel, /EventOrderSetupEditor/);
   });
 
-  it("Change for inventory opens the dedicated inventory setup editor", () => {
-    assert.match(panel, /setInventoryEditorOpen\(true\)/);
-    assert.match(panel, /EventInventorySetupEditor/);
+  it("standalone setup editor components still exist for commercial tooling reuse", () => {
     assert.match(invEditor, /data-testid="event-inventory-setup-editor"/);
-    const changeFn = panel.slice(panel.indexOf("function changeForEvent"));
-    assert.doesNotMatch(changeFn.slice(0, 900), /navigateStep\("inventory"\)/);
-  });
-
-  it("Change for Event Order opens the dedicated Event Order setup editor", () => {
-    assert.match(panel, /setEventOrderEditorOpen\(true\)/);
-    assert.match(panel, /EventOrderSetupEditor/);
     assert.match(eoEditor, /data-testid="event-order-setup-editor"/);
   });
 
-  it("Open Inventory / Open Event Order still navigate to management tabs", () => {
-    assert.match(panel, /Open Inventory/);
-    assert.match(panel, /Open Event Order/);
-    assert.match(panel, /step === "inventory" \? "inventory"/);
-    assert.match(panel, /step === "event_order" \? "event-order"/);
-    assert.match(panel, /data-testid=\{`event-setup-open-\$\{step\}`\}/);
-  });
-
-  it("event-detail passes inventory and Event Order details into the setup panel", () => {
-    assert.match(detail, /eventInventory=\{eventInventory\}/);
-    assert.match(detail, /inventoryTemplates=\{inventoryTemplates\}/);
-    assert.match(detail, /eventOrderDetails=\{eventOrder\}/);
-    assert.match(detail, /eventOrderTemplates=\{eventOrderTemplates\}/);
+  it("event commercial tabs remain on event-detail", () => {
+    assert.match(detail, /TabsContent value="inventory"/);
+    assert.match(detail, /TabsContent value="event-order"/);
+    assert.match(detail, /EventInventoryPanel/);
+    assert.match(detail, /EventOrderPanel/);
   });
 });
 
@@ -125,10 +111,11 @@ describe("Event Order setup editor seams", () => {
     assert.match(eoActions, /replaceEventOrderFromTemplateAction/);
   });
 
-  it("panel does not call ensureEventOrderAction; release path stays separate", () => {
+  it("panel and release path never ensure Inventory/Event Order drafts", () => {
     assert.doesNotMatch(panel, /ensureEventOrderAction/);
-    assert.match(prepare, /ensureEventOrder/);
-    assert.match(prepare, /ensureEventInventory/);
+    assert.doesNotMatch(panel, /ensureEventInventoryAction/);
+    assert.doesNotMatch(prepare, /ensureEventOrder/);
+    assert.doesNotMatch(prepare, /ensureEventInventory/);
     assert.doesNotMatch(prepare, /shareEventInventory/);
     assert.doesNotMatch(prepare, /finalizeEventOrder/);
     assert.doesNotMatch(prepare, /createInvoice/);

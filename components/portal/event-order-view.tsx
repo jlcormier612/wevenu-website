@@ -1,8 +1,11 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   eventOrderPortalAdditionalReferenceTotal,
   eventOrderPortalLineMoneyLabel,
@@ -26,6 +29,9 @@ export type PortalEventOrderViewModel = {
   status: string;
   revision: number;
   sharedAt: string | null;
+  clientAgreedAt?: string | null;
+  clientAgreedName?: string | null;
+  clientAgreedRevision?: number | null;
   lines: PortalEventOrderLineView[];
 };
 
@@ -36,19 +42,33 @@ function formatMoney(n: number): string {
 /**
  * Couple-facing Event Order presentation (shared snapshot shape).
  * Used by the portal section and staff client-portal preview.
+ * Accept is optional — preview mode omits token.
  */
 export function EventOrderPortalView({
   data,
   paymentsHref,
   staffPreviewLabel,
+  token,
+  onAccepted,
 }: {
   data: PortalEventOrderViewModel | null;
   /** When set, show payments deep-link. Preview mode passes null (inert). */
   paymentsHref?: string | null;
   /** Staff-only label when showing unreleased draft with portal chrome. */
   staffPreviewLabel?: string | null;
+  /** Portal token — enables Accept. Omit in staff preview. */
+  token?: string | null;
+  onAccepted?: (next: PortalEventOrderViewModel) => void;
 }) {
-  if (!data) {
+  const [name, setName] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [local, setLocal] = React.useState(data);
+  React.useEffect(() => {
+    setLocal(data);
+  }, [data]);
+
+  if (!local) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center" data-testid="event-order-portal-empty">
         <p className="text-sm font-medium text-heading">Not shared yet</p>
@@ -59,8 +79,45 @@ export function EventOrderPortalView({
     );
   }
 
-  const additionalReferenceTotal = eventOrderPortalAdditionalReferenceTotal(data.lines);
-  const sectionKeys = [...new Set(data.lines.map((l) => l.sectionId))];
+  const additionalReferenceTotal = eventOrderPortalAdditionalReferenceTotal(local.lines);
+  const sectionKeys = [...new Set(local.lines.map((l) => l.sectionId))];
+  const agreed = Boolean(local.clientAgreedAt);
+  const canAccept = Boolean(token) && !agreed && !staffPreviewLabel;
+
+  async function accept() {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/portal/event-order/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, agreedName: name }),
+      });
+      const body = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        clientAgreedAt?: string | null;
+        clientAgreedRevision?: number | null;
+      };
+      if (!res.ok || !body.ok) {
+        setError(body.message ?? "Could not accept.");
+        return;
+      }
+      const next: PortalEventOrderViewModel = {
+        ...local!,
+        clientAgreedAt: body.clientAgreedAt ?? new Date().toISOString(),
+        clientAgreedName: name.trim(),
+        clientAgreedRevision: body.clientAgreedRevision ?? local!.revision,
+      };
+      setLocal(next);
+      onAccepted?.(next);
+    } catch {
+      setError("Could not accept. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="max-w-xl mx-auto px-4 py-8 space-y-6" data-testid="event-order-portal-view">
@@ -69,25 +126,42 @@ export function EventOrderPortalView({
           <h2 className="text-lg font-semibold text-heading">What you&apos;re receiving</h2>
           {staffPreviewLabel ? (
             <Badge variant="secondary">{staffPreviewLabel}</Badge>
+          ) : agreed ? (
+            <Badge variant="success" data-testid="event-order-agreed-badge">Agreed</Badge>
           ) : (
             <Badge variant="success">Shared</Badge>
           )}
         </div>
         <p className="text-sm text-muted-foreground">
           Your Event Order — the delivery list for your event. Not your invoice or contract.
+          {canAccept
+            ? " Review the details below, then accept to confirm agreement with your venue."
+            : null}
         </p>
-        {data.sharedAt && (
+        {local.sharedAt && (
           <p className="text-xs text-muted-foreground">
-            Updated {new Date(data.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            Updated {new Date(local.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </p>
         )}
+        {agreed && local.clientAgreedAt ? (
+          <p className="text-xs text-muted-foreground" data-testid="event-order-agreed-meta">
+            Accepted
+            {local.clientAgreedName ? ` by ${local.clientAgreedName}` : ""}
+            {" · "}
+            {new Date(local.clientAgreedAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </p>
+        ) : null}
       </div>
 
-      {data.lines.length === 0 ? (
+      {local.lines.length === 0 ? (
         <p className="text-sm text-muted-foreground">No delivery items on this shared Event Order.</p>
       ) : (
         sectionKeys.map((sectionId) => {
-          const lines = data.lines.filter((l) => l.sectionId === sectionId);
+          const lines = local.lines.filter((l) => l.sectionId === sectionId);
           const sectionName = lines[0]?.sectionName;
           return (
             <div key={sectionId ?? "general"} className="space-y-2">
@@ -133,6 +207,43 @@ export function EventOrderPortalView({
           )}
         </div>
       )}
+
+      {canAccept ? (
+        <div
+          className="rounded-xl border border-border bg-card px-4 py-4 space-y-3"
+          data-testid="event-order-accept-panel"
+        >
+          <div>
+            <h3 className="text-sm font-medium text-heading">Accept this Event Order</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Sharing means your venue sent this for review. Accepting records your agreement.
+              It does not create an invoice by itself.
+            </p>
+          </div>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium text-heading">Your name</span>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Full name"
+              data-testid="event-order-accept-name"
+              disabled={busy}
+            />
+          </label>
+          {error ? (
+            <p className="text-xs text-destructive" data-testid="event-order-accept-error">{error}</p>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            disabled={busy || name.trim().length < 2}
+            onClick={() => void accept()}
+            data-testid="event-order-accept-submit"
+          >
+            {busy ? "Accepting…" : "Accept Event Order"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

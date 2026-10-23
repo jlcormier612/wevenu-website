@@ -33,6 +33,8 @@ export type CommercialStatusInput = {
   eventOrder: {
     status: EventOrderStatus;
     sharedAt: string | null;
+    /** Client acceptance — share alone does not mean agreed. */
+    clientAgreedAt?: string | null;
   } | null;
   /** All event invoices; EO-linked preferred for finance chips. */
   invoices: ReadonlyArray<Pick<Invoice, "id" | "status" | "eventOrderId">>;
@@ -127,9 +129,11 @@ export function buildCommercialStatusChips(input: CommercialStatusInput): Commer
 
   let eoStatus = "Not started";
   if (input.eventOrder) {
-    // Share requires finalize in product — still distinguish sharedAt from finalize alone.
-    if (input.eventOrder.sharedAt) {
-      eoStatus = "Shared";
+    // Share ≠ agreement. Client accept is the agreement signal.
+    if (input.eventOrder.clientAgreedAt) {
+      eoStatus = "Agreed";
+    } else if (input.eventOrder.sharedAt) {
+      eoStatus = "Shared — awaiting client accept";
     } else if (input.eventOrder.status === "finalized") {
       eoStatus = "Finalized — not shared";
     } else {
@@ -270,12 +274,12 @@ export function buildCommercialProgressSteps(
       || (input.eventInventory && INV_CLIENT_FACING.has(input.eventInventory.status))
       || input.clientChoices.some((c) => CHOICES_CLIENT_FACING.has(c.status)),
   );
-  const eoFinalized = input.eventOrder?.status === "finalized";
+  const eoAgreed = Boolean(input.eventOrder?.clientAgreedAt);
   const invoiced = Boolean(linked);
 
   const draftComplete = hasDraftArtifact;
   const sharedComplete = sharedOrSelections;
-  const finalizedComplete = Boolean(eoFinalized);
+  const agreedComplete = eoAgreed;
   const invoicedComplete = invoiced;
 
   // Current mirrors the next authoritative step (deep-link only) — not a gate.
@@ -288,10 +292,9 @@ export function buildCommercialProgressSteps(
     || choiceNeedsVenueOrClient(choice)
   ) {
     cursor = "engagement";
-  } else if (input.eventOrder?.status === "open") {
+  } else if (!eoAgreed) {
+    // Finalize + share + client accept are the agreement path.
     cursor = "order_agreed";
-  } else if (input.eventOrder?.status === "finalized" && !input.eventOrder.sharedAt) {
-    cursor = "engagement";
   } else if (!invoicedComplete) {
     cursor = "invoiced";
   }
@@ -333,11 +336,11 @@ export function buildCommercialProgressSteps(
     },
     {
       id: "order_agreed",
-      label: "Finalized",
-      state: stateFor("order_agreed", finalizedComplete),
-      detail: finalizedComplete
-        ? "Event Order is finalized (sharing is separate)."
-        : "Finalize the Event Order when deliverables are agreed — not implied by template apply or client submit.",
+      label: "Agreed",
+      state: stateFor("order_agreed", agreedComplete),
+      detail: agreedComplete
+        ? "Client accepted the shared Event Order (finalize and share alone do not equal agreement)."
+        : "Finalize and share the Event Order, then the client accepts in the portal — share is not agreement.",
       nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
     },
     {

@@ -108,26 +108,7 @@ export function profileHardConfigGaps(
       message: "Questionnaires are Included but no questionnaire templates are selected to prepare as drafts.",
     });
   }
-  if (include("inventory") && decisions.inventory === "set_up" && !hasId(refs.inventoryTemplateId)) {
-    gaps.push({
-      step: "inventory",
-      severity: "hard",
-      message:
-        "Inventory is Included but no starting inventory template is selected. Choose a template, or mark Not included.",
-    });
-  }
-  if (
-    include("event_order")
-    && decisions.event_order === "set_up"
-    && !hasId(refs.eventOrderTemplateId)
-  ) {
-    gaps.push({
-      step: "event_order",
-      severity: "hard",
-      message:
-        "Event Order is Included but no starting Event Order template is selected. Choose a template, or mark Not included.",
-    });
-  }
+  // Inventory / Event Order are not Setup steps — never hard-gap profile config for them.
   return gaps;
 }
 
@@ -158,14 +139,14 @@ export function profileIsHonestlyConfigured(
   return profileHardConfigGaps(decisions, refs, applicable).length === 0;
 }
 
-/** True when an Included Inventory/Event Order step still lacks its starting template. */
+/**
+ * Legacy helper — Inventory/Event Order are no longer Setup steps.
+ * Always false so older UI call sites do not invent commercial gaps.
+ */
 export function profileTemplateRefIncomplete(
-  step: "inventory" | "event_order",
-  decisions: SetupDecisions,
-  refs: SetupTemplateRefs,
+  _step: "inventory" | "event_order",
+  _decisions: SetupDecisions,
+  _refs: SetupTemplateRefs,
 ): boolean {
-  if (step === "inventory") {
-    return decisions.inventory === "set_up" && !hasId(refs.inventoryTemplateId);
-  }
-  return decisions.event_order === "set_up" && !hasId(refs.eventOrderTemplateId);
+  return false;
 }

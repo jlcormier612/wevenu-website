@@ -169,10 +169,15 @@ export function setupStepCapability(step: SetupStepKey): PlanningCapabilityId | 
   }
 }
 
-/** Venue capability off means the step is not offered. On does not mean this event must use it. */
+/**
+ * Steps offered by Setup Profiles / Event Setup for the venue's enabled
+ * capabilities. Commercial Inventory / Event Order capabilities remain
+ * venue-wide for their own workspaces but are never Setup steps.
+ */
 export function applicableSetupSteps(caps: VenuePlanningCapabilities): SetupStepKey[] {
   return SETUP_STEP_ORDER.filter((step) => {
     if (step === "portal") return false;
+    if (isCommercialSetupStep(step)) return false;
     const capability = setupStepCapability(step);
     if (!capability) return true;
     return isCapabilityEnabled(caps, capability);
@@ -180,12 +185,33 @@ export function applicableSetupSteps(caps: VenuePlanningCapabilities): SetupStep
 }
 
 /**
- * Overview Event Setup cards / settle decisions — Questionnaires are a separate
- * workspace (tab + authorized send), not a planning-setup row.
- * Setup Profiles and book-time inherit still use full applicableSetupSteps.
+ * Commercial steps that remain valid SetupStepKey values for historical
+ * snapshots / parsing, but are never part of the Setup experience.
+ * Inventory and Event Order run only from the event commercial workspace.
+ */
+export const COMMERCIAL_SETUP_STEPS = ["inventory", "event_order"] as const;
+
+export function isCommercialSetupStep(step: SetupStepKey): boolean {
+  return step === "inventory" || step === "event_order";
+}
+
+/**
+ * Setup Profile + Event Setup experience — planning, timeline, floor plans,
+ * vendors only. Questionnaires stay a separate authorized-send workspace.
+ * Inventory / Event Order are commercial and must not appear here.
+ */
+export function setupExperienceSteps(applicable: readonly SetupStepKey[]): SetupStepKey[] {
+  return applicable.filter(
+    (step) => step !== "questionnaires" && !isCommercialSetupStep(step),
+  );
+}
+
+/**
+ * Overview Event Setup cards / settle decisions — same as setup experience
+ * (no questionnaires, no commercial Inventory/Event Order rows).
  */
 export function overviewSetupSteps(applicable: readonly SetupStepKey[]): SetupStepKey[] {
-  return applicable.filter((step) => step !== "questionnaires");
+  return setupExperienceSteps(applicable);
 }
 
 export function isSetupStepKey(value: string): value is SetupStepKey {

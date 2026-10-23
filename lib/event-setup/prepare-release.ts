@@ -1,10 +1,10 @@
 /**
  * Prepare and release portal — one venue action after optional event edits.
  *
- * Ensures applicable event-level drafts exist, releases client-facing planning,
- * and shares the timeline when present. Does NOT invite, send questionnaires,
- * create invoices, or share inventory/Event Order (those stay draft until
- * separately shared).
+ * Releases client-facing planning and shares the timeline when present.
+ * Does NOT invite, send questionnaires, create invoices, or create/share
+ * inventory/Event Order. Commercial drafts are initiated only from the
+ * event commercial workspace / Library, never from Setup release.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -43,36 +43,6 @@ export async function prepareAndReleasePortal(
     .maybeSingle();
   const setup = setupRow ? eventSetupFromColumns(setupRow as never) : null;
   const refs = parseTemplateRefs(setup?.inheritedTemplateRefs ?? {});
-
-  // Ensure Inventory / Event Order drafts when venue-wide enabled and Included.
-  const inventoryDecision = setup ? effectiveSetupDecision(setup, "inventory") : null;
-  const eventOrderDecision = setup ? effectiveSetupDecision(setup, "event_order") : null;
-
-  if (caps.inventory && inventoryDecision === "set_up" && refs.inventoryTemplateId) {
-    try {
-      const { ensureEventInventory } = await import("@/lib/event-inventory/service");
-      const ensured = await ensureEventInventory(eventId, refs.inventoryTemplateId);
-      if (!ensured.ok) {
-        return { ok: false, message: ensured.message ?? "Could not prepare inventory draft." };
-      }
-    } catch (err) {
-      console.error("prepareAndReleasePortal inventory failed:", err);
-      return { ok: false, message: "Could not prepare inventory draft." };
-    }
-  }
-
-  if (caps.eventOrder && eventOrderDecision === "set_up" && refs.eventOrderTemplateId) {
-    try {
-      const { ensureEventOrder } = await import("@/lib/event-orders/service");
-      const ensured = await ensureEventOrder(eventId, refs.eventOrderTemplateId);
-      if (!ensured.ok) {
-        return { ok: false, message: ensured.message ?? "Could not prepare Event Order draft." };
-      }
-    } catch (err) {
-      console.error("prepareAndReleasePortal event order failed:", err);
-      return { ok: false, message: "Could not prepare Event Order draft." };
-    }
-  }
 
   // Release client planning when a draft exists (idempotent if already released).
   let releasedPlanning = false;
@@ -251,6 +221,6 @@ export async function prepareAndReleasePortal(
     releasedPlanning,
     sharedTimeline,
     message:
-      "Portal content is prepared and released for this event. Questionnaires are not sent by this action — staff send them with an authorized send when ready. Inventory and Event Order stay unshared drafts until you act on those event tabs. Invite the client separately when you are ready — this did not send an invitation or create an invoice.",
+      "Portal content is prepared and released for this event. Questionnaires are not sent by this action — staff send them with an authorized send when ready. Inventory selection and Event Order are commercial workflows — initiate them from the event Inventory and Event Order tabs (not Setup). Invite the client separately when you are ready — this did not send an invitation or create an invoice.",
   };
 }

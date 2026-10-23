@@ -20,7 +20,6 @@ import {
 import {
   profileConfigGaps,
   profileHardGapSummary,
-  profileTemplateRefIncomplete,
 } from "@/lib/event-setup/profile-config-gaps";
 import type { SetupProfileUsedForOption } from "@/lib/event-setup/setup-profile-event-types";
 import {
@@ -352,19 +351,18 @@ export function SetupProfilesSection({
           <fieldset className="space-y-3">
             <legend className="text-sm font-medium text-heading">What to include for this event type</legend>
             <p className="text-xs text-muted-foreground">
-              Mark each area Included when it should be part of the normal starting experience for this event type.
-              Defaults below are what gets ready for the client or your team — you can still change them on the event.
+              Mark each area Included when it should be part of the normal starting experience for this event type
+              (planning, timeline, vendors, floor plans). Inventory and Event Order are commercial workflows —
+              configure templates in Library and run them from the event commercial tabs, not here.
             </p>
             <ul className="space-y-3">
               {decisionSteps.map((step) => {
                 const included = draft.decisions[step] === "set_up";
                 const incompleteRef =
-                  ((step === "inventory" || step === "event_order")
-                    && profileTemplateRefIncomplete(step, draft.decisions, draft.refs))
-                  || (step === "planning"
+                  step === "planning"
                     && draft.decisions.planning === "set_up"
                     && (!draft.refs.planningPlaybookTemplateId
-                      || !draft.refs.venuePlanningPlaybookTemplateId));
+                      || !draft.refs.venuePlanningPlaybookTemplateId);
                 return (
                   <li key={step} className="rounded-lg border border-border px-3 py-3 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -666,81 +664,6 @@ function CapabilityDefaults({
       </div>
     );
   }
-  if (step === "inventory") {
-    const selected = inventoryTemplates.find((option) => option.id === refs.inventoryTemplateId);
-    const incomplete = !refs.inventoryTemplateId;
-    return (
-      <div className="space-y-1 text-sm" data-testid="setup-profile-inventory">
-        <label className="block space-y-1">
-          <span className="font-medium text-heading">Starting inventory template</span>
-          <select
-            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-            value={refs.inventoryTemplateId ?? ""}
-            onChange={(event) => patchRefs({ inventoryTemplateId: event.target.value || null })}
-            aria-invalid={incomplete}
-          >
-            <option value="">Select a starting inventory template…</option>
-            {inventoryTemplates.map((option) => (
-              <option key={option.id} value={option.id}>{option.name}</option>
-            ))}
-          </select>
-        </label>
-        {incomplete ? (
-          <p className="text-xs text-amber-800">
-            Included but not configured — select a template, or mark Inventory Not included.
-            Saving this profile never creates an inventory draft on existing events.
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Configured starting point: {selected?.name}. When a client is booked with this profile,
-            the event inventory draft is prepared automatically from this inventory template. It is not shared
-            with the couple and does not create invoices. Share, selection, and Event Order handoff happen on
-            the event Inventory tab — not from this Setup Profile. Saving the profile does not change existing events.
-          </p>
-        )}
-        {inventoryTemplates.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No inventory templates in your library yet.</p>
-        ) : null}
-      </div>
-    );
-  }
-  if (step === "event_order") {
-    const selected = eventOrderTemplates.find((option) => option.id === refs.eventOrderTemplateId);
-    const incomplete = !refs.eventOrderTemplateId;
-    return (
-      <div className="space-y-1 text-sm" data-testid="setup-profile-event-order">
-        <label className="block space-y-1">
-          <span className="font-medium text-heading">Starting Event Order template</span>
-          <select
-            className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-            value={refs.eventOrderTemplateId ?? ""}
-            onChange={(event) => patchRefs({ eventOrderTemplateId: event.target.value || null })}
-            aria-invalid={incomplete}
-          >
-            <option value="">Select a starting Event Order template…</option>
-            {eventOrderTemplates.map((option) => (
-              <option key={option.id} value={option.id}>{option.name}</option>
-            ))}
-          </select>
-        </label>
-        {incomplete ? (
-          <p className="text-xs text-amber-800">
-            Included but not configured — select an Event Order template, or mark Event Order Not included
-            (for events that use a sales Package only). Saving this profile never creates an Event Order draft on existing events.
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Configured starting point: {selected?.name}. When a client is booked with this profile,
-            the Event Order draft is prepared automatically from this Event Order template. It is not shared,
-            not an invoice, and not a payment plan. Finalize, Share, client choices, and invoice handoff happen on
-            the event Event Order tab — not from this Setup Profile. Saving the profile does not change existing events.
-          </p>
-        )}
-        {eventOrderTemplates.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No Event Order templates in your library yet.</p>
-        ) : null}
-      </div>
-    );
-  }
+  // Inventory / Event Order are commercial — not Setup Profile steps.
   return null;
 }

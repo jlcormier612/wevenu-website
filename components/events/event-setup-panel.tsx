@@ -12,8 +12,6 @@ import {
   reopenEventSetupAction,
 } from "@/app/(app)/events/[id]/setup-actions";
 import { EventFloorPlansSetupEditor } from "@/components/events/event-floor-plans-setup-editor";
-import { EventInventorySetupEditor } from "@/components/events/event-inventory-setup-editor";
-import { EventOrderSetupEditor } from "@/components/events/event-order-setup-editor";
 import { EventPlanningSetupEditor } from "@/components/events/event-planning-setup-editor";
 import { EventTimelineSetupEditor } from "@/components/events/event-timeline-setup-editor";
 import { EventVendorsSetupEditor } from "@/components/events/event-vendors-setup-editor";
@@ -60,7 +58,7 @@ import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 
 /** Areas with a dedicated event-specific setup editor (Change ≠ Open). */
 const SETUP_EDITOR_STEPS = new Set<SetupStepKey>([
-  "planning", "timeline", "inventory", "event_order", "floor_plans", "vendors",
+  "planning", "timeline", "floor_plans", "vendors",
 ]);
 
 function readinessBadgeVariant(
@@ -171,8 +169,6 @@ export function EventSetupPanel({
   const [pending, startTransition] = React.useTransition();
   const [planningEditorOpen, setPlanningEditorOpen] = React.useState(false);
   const [timelineEditorOpen, setTimelineEditorOpen] = React.useState(false);
-  const [inventoryEditorOpen, setInventoryEditorOpen] = React.useState(false);
-  const [eventOrderEditorOpen, setEventOrderEditorOpen] = React.useState(false);
   const [floorPlansEditorOpen, setFloorPlansEditorOpen] = React.useState(false);
   const [vendorsEditorOpen, setVendorsEditorOpen] = React.useState(false);
   const effective = effectiveDecisionMap(state);
@@ -248,14 +244,6 @@ export function EventSetupPanel({
     }
     if (step === "timeline") {
       setTimelineEditorOpen(true);
-      return;
-    }
-    if (step === "inventory") {
-      setInventoryEditorOpen(true);
-      return;
-    }
-    if (step === "event_order") {
-      setEventOrderEditorOpen(true);
       return;
     }
     if (step === "floor_plans") {
@@ -352,11 +340,10 @@ export function EventSetupPanel({
             <>
               <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Review your event&apos;s standard setup, make any event-specific changes, and release
+                Review planning, timeline, vendors, and floor plans for this event, then release
                 the prepared experience to the client portal. Invite the client separately when
                 you&apos;re ready. Questionnaires use authorized send when staff choose — not an automated schedule.
-                Inventory and Event Order rows here are readiness for portal release — share, client choices,
-                finalize, and invoice run from the event Inventory and Event Order tabs.
+                Inventory selection and Event Order are commercial workflows on their own event tabs — not part of Setup.
               </p>
             </>
           ) : (
@@ -418,8 +405,8 @@ export function EventSetupPanel({
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {portalReleased
-                ? "The prepared experience is released. You can still manage every area from its workspace tab. Re-running release is safe: it does not invite the client, send questionnaires, share Inventory or the Event Order, or create invoices."
-                : "One action for the reviewed setup: ensures included Inventory and Event Order drafts, releases Client Planning, applies and shares the timeline when present, and keeps floor-plan options ready. Does not invite the client, send questionnaires, share Inventory or the Event Order with the couple, or create invoices — those stay on the event Inventory and Event Order tabs."}
+                ? "The prepared experience is released. You can still manage every area from its workspace tab. Re-running release is safe: it does not invite the client, send questionnaires, start Inventory or Event Order commercial work, or create invoices."
+                : "One action for the reviewed setup: releases Client Planning, applies and shares the timeline when present, and keeps floor-plan options ready. Does not invite the client, send questionnaires, create Inventory or Event Order drafts, share commercial materials, or create invoices — initiate those from the event Inventory and Event Order tabs."}
             </p>
           </div>
           <Button
@@ -551,12 +538,6 @@ export function EventSetupPanel({
                   <SetupEditorLink
                     step={step}
                     onOpen={() => navigateStep(step)}
-                    onOpenSetupProfiles={
-                      (step === "inventory" && !hasEventInventory && !inheritedRefs.inventoryTemplateId)
-                      || (step === "event_order" && !eventOrder && !inheritedRefs.eventOrderTemplateId)
-                        ? openSetupProfiles
-                        : undefined
-                    }
                   />
                 </div>
               ) : null}
@@ -594,26 +575,6 @@ export function EventSetupPanel({
         preferredTemplateId={inheritedRefs.timelineTemplateId ?? null}
         templates={timelineTemplates}
         entries={timelineEntries}
-      />
-      <EventInventorySetupEditor
-        open={inventoryEditorOpen}
-        onOpenChange={setInventoryEditorOpen}
-        eventId={eventId}
-        eventName={eventName}
-        profileName={state.profileName ?? null}
-        preferredTemplateId={inheritedRefs.inventoryTemplateId ?? null}
-        templates={inventoryTemplates}
-        eventInventory={eventInventory}
-      />
-      <EventOrderSetupEditor
-        open={eventOrderEditorOpen}
-        onOpenChange={setEventOrderEditorOpen}
-        eventId={eventId}
-        eventName={eventName}
-        profileName={state.profileName ?? null}
-        preferredTemplateId={inheritedRefs.eventOrderTemplateId ?? null}
-        templates={eventOrderTemplates}
-        eventOrder={eventOrderDetails}
       />
       <EventFloorPlansSetupEditor
         open={floorPlansEditorOpen}
@@ -708,10 +669,7 @@ function SetupEditorLink({
       : step === "timeline" ? "Open Timeline"
         : step === "floor_plans" ? "Open Floor Plans"
           : step === "vendors" ? "Open Vendors"
-            : step === "questionnaires" ? "Open Questionnaires"
-              : step === "inventory" ? "Open Inventory"
-                : step === "event_order" ? "Open Event Order"
-                  : null;
+            : null;
   if (!label) return null;
   return (
     <Button

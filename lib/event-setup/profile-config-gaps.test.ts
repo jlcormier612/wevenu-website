@@ -83,36 +83,20 @@ describe("profileHardConfigGaps", () => {
     );
   });
 
-  it("treats Included Inventory without a starting inventory template as a hard gap", () => {
-    const decisions: SetupDecisions = { inventory: "set_up" };
-    const gaps = profileHardConfigGaps(decisions, emptyRefs);
-    assert.equal(gaps.length, 1);
-    assert.equal(gaps[0]!.step, "inventory");
-    assert.equal(gaps[0]!.severity, "hard");
-    assert.match(gaps[0]!.message, /no starting inventory template/i);
-    assert.equal(profileTemplateRefIncomplete("inventory", decisions, emptyRefs), true);
-    assert.equal(profileTemplateRefIncomplete("inventory", decisions, { inventoryTemplateId: "inv-1" }), false);
+  it("never hard-gaps Inventory/Event Order (commercial, not Setup)", () => {
+    const decisions: SetupDecisions = { inventory: "set_up", event_order: "set_up" };
+    assert.equal(profileHardConfigGaps(decisions, emptyRefs).length, 0);
+    assert.equal(profileTemplateRefIncomplete("inventory", decisions, emptyRefs), false);
+    assert.equal(profileTemplateRefIncomplete("event_order", decisions, emptyRefs), false);
   });
 
-  it("treats Included Event Order without a starting Event Order template as a hard gap", () => {
-    const decisions: SetupDecisions = { event_order: "set_up" };
-    const gaps = profileHardConfigGaps(decisions, emptyRefs);
-    assert.equal(gaps.length, 1);
-    assert.equal(gaps[0]!.step, "event_order");
-    assert.equal(gaps[0]!.severity, "hard");
-    assert.match(gaps[0]!.message, /no starting Event Order template/i);
-    assert.equal(profileTemplateRefIncomplete("event_order", decisions, emptyRefs), true);
-  });
-
-  it("does not require templates when Inventory or Event Order is Not included", () => {
+  it("does not require commercial templates on Setup Profiles", () => {
     const decisions: SetupDecisions = {
       inventory: "skipped",
       event_order: "skipped",
     };
     assert.equal(profileHardConfigGaps(decisions, emptyRefs).length, 0);
     assert.equal(profileIsHonestlyConfigured(decisions, emptyRefs), true);
-    assert.equal(profileTemplateRefIncomplete("inventory", decisions, emptyRefs), false);
-    assert.equal(profileTemplateRefIncomplete("event_order", decisions, emptyRefs), false);
   });
 
   it("ignores Included steps that are not applicable under venue-wide settings", () => {
@@ -128,15 +112,14 @@ describe("profileHardConfigGaps", () => {
 });
 
 describe("profileSoftConfigGaps", () => {
-  it("no longer soft-codes Inventory/Event Order incomplete refs", () => {
+  it("no longer soft- or hard-codes Inventory/Event Order incomplete refs", () => {
     const decisions: SetupDecisions = {
       inventory: "set_up",
       event_order: "set_up",
     };
     assert.deepEqual(profileSoftConfigGaps(decisions, emptyRefs), []);
-    const hard = profileHardConfigGaps(decisions, emptyRefs);
-    assert.equal(hard.length, 2);
-    assert.equal(profileConfigGaps(decisions, emptyRefs).length, 2);
+    assert.equal(profileHardConfigGaps(decisions, emptyRefs).length, 0);
+    assert.equal(profileConfigGaps(decisions, emptyRefs).length, 0);
   });
 });
 
@@ -161,21 +144,15 @@ describe("profileHardGapSummary", () => {
 });
 
 describe("profile UI and save seams for Inventory/Event Order honesty", () => {
-  it("blocks incomplete Inventory/Event Order on save and shows incomplete UI copy", () => {
+  it("Setup Profile UI excludes Inventory/Event Order template configuration", () => {
     const section = read("components/settings/setup-profiles-section.tsx");
     const profiles = read("lib/event-setup/profiles.ts");
-    assert.match(section, /Needs template/);
-    assert.match(section, /Included but not configured/);
-    assert.match(section, /inventory draft is prepared automatically/);
-    assert.match(section, /Event Order draft is prepared automatically/);
-    assert.match(section, /does not create invoices/);
-    assert.match(section, /not an invoice/);
-    assert.match(section, /Select a starting inventory template/);
-    assert.match(section, /Select a starting Event Order template/);
+    assert.doesNotMatch(section, /Starting inventory template/);
+    assert.doesNotMatch(section, /Starting Event Order template/);
+    assert.doesNotMatch(section, /inventory draft is prepared automatically/);
+    assert.doesNotMatch(section, /Event Order draft is prepared automatically/);
+    assert.match(section, /commercial workflows/);
     assert.doesNotMatch(section, /setup-profile-soft-gaps/);
-    assert.match(profiles, /inventory_templates/);
-    assert.match(profiles, /event_order_templates/);
-    assert.match(profiles, /not available for this venue/);
     assert.match(profiles, /profileHardConfigGaps/);
     assert.doesNotMatch(profiles, /\.from\("event_setup_states"\)/);
     assert.doesNotMatch(profiles, /\.from\("event_inventory"\)/);

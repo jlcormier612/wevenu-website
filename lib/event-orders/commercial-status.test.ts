@@ -73,7 +73,7 @@ describe("buildCommercialStatusChips", () => {
       linkedScheduleId: null,
       showInventory: false,
     });
-    assert.equal(shared.find((c) => c.id === "event_order")?.status, "Shared");
+    assert.equal(shared.find((c) => c.id === "event_order")?.status, "Shared — awaiting client accept");
   });
 
   it("does not infer invoice from Event Order share alone", () => {
@@ -190,13 +190,15 @@ describe("C5 finance handoff status mapping", () => {
     const steps = buildCommercialProgressSteps({
       eventInventory: null,
       clientChoices: [],
-      eventOrder: { status: "finalized", sharedAt: "2026-01-01" },
+      eventOrder: { status: "finalized", sharedAt: "2026-01-01", clientAgreedAt: null },
       invoices: [],
       eventOrderId: "eo-1",
       linkedScheduleId: null,
       showInventory: false,
     });
-    assert.equal(steps.find((s) => s.id === "invoiced")?.state, "current");
+    // Share alone does not complete agreement or invent an invoice.
+    assert.equal(steps.find((s) => s.id === "order_agreed")?.state, "current");
+    assert.equal(steps.find((s) => s.id === "invoiced")?.state, "upcoming");
     assert.equal(
       buildCommercialStatusChips({
         eventInventory: null,
@@ -260,7 +262,7 @@ describe("C5 finance handoff status mapping", () => {
 });
 
 describe("C4 commercial progress checklist", () => {
-  it("maps Path A open EO to draft complete and finalized current (not shared/invoiced)", () => {
+  it("maps Path A open EO to draft complete and agreement current (not invoiced)", () => {
     const steps = buildCommercialProgressSteps({
       eventInventory: null,
       clientChoices: [],
@@ -273,6 +275,7 @@ describe("C4 commercial progress checklist", () => {
     assert.equal(steps.find((s) => s.id === "draft")?.state, "complete");
     assert.equal(steps.find((s) => s.id === "engagement")?.state, "upcoming");
     assert.equal(steps.find((s) => s.id === "order_agreed")?.state, "current");
+    assert.equal(steps.find((s) => s.id === "order_agreed")?.label, "Agreed");
     assert.equal(steps.find((s) => s.id === "invoiced")?.state, "upcoming");
     assert.deepEqual(
       buildCommercialNextAction({
@@ -288,7 +291,7 @@ describe("C4 commercial progress checklist", () => {
     );
   });
 
-  it("does not treat finalize as share or share as invoiced", () => {
+  it("does not treat finalize or share as client agreement or invoiced", () => {
     const finalizedOnly = buildCommercialProgressSteps({
       eventInventory: null,
       clientChoices: [],
@@ -298,21 +301,37 @@ describe("C4 commercial progress checklist", () => {
       linkedScheduleId: null,
       showInventory: false,
     });
-    assert.equal(finalizedOnly.find((s) => s.id === "order_agreed")?.state, "complete");
-    assert.equal(finalizedOnly.find((s) => s.id === "engagement")?.state, "current");
+    assert.equal(finalizedOnly.find((s) => s.id === "order_agreed")?.state, "current");
     assert.equal(finalizedOnly.find((s) => s.id === "invoiced")?.state, "upcoming");
 
-    const sharedNoInvoice = buildCommercialProgressSteps({
+    const sharedNoAccept = buildCommercialProgressSteps({
       eventInventory: null,
       clientChoices: [],
-      eventOrder: { status: "finalized", sharedAt: "2026-01-01" },
+      eventOrder: { status: "finalized", sharedAt: "2026-01-01", clientAgreedAt: null },
       invoices: [],
       eventOrderId: "eo-1",
       linkedScheduleId: null,
       showInventory: false,
     });
-    assert.equal(sharedNoInvoice.find((s) => s.id === "engagement")?.state, "complete");
-    assert.equal(sharedNoInvoice.find((s) => s.id === "invoiced")?.state, "current");
+    assert.equal(sharedNoAccept.find((s) => s.id === "engagement")?.state, "complete");
+    assert.equal(sharedNoAccept.find((s) => s.id === "order_agreed")?.state, "current");
+    assert.equal(sharedNoAccept.find((s) => s.id === "invoiced")?.state, "upcoming");
+
+    const agreedNoInvoice = buildCommercialProgressSteps({
+      eventInventory: null,
+      clientChoices: [],
+      eventOrder: {
+        status: "finalized",
+        sharedAt: "2026-01-01",
+        clientAgreedAt: "2026-01-02",
+      },
+      invoices: [],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+      showInventory: false,
+    });
+    assert.equal(agreedNoInvoice.find((s) => s.id === "order_agreed")?.state, "complete");
+    assert.equal(agreedNoInvoice.find((s) => s.id === "invoiced")?.state, "current");
   });
 
   it("keeps inventory submission distinct from venue confirmation in next action", () => {

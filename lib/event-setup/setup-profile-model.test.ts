@@ -125,8 +125,8 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(section, /Preferred, recommended, and required classifications/);
     assert.match(section, /Required vendors keep their existing Vendor Network/);
     assert.match(section, /Questionnaires for this event type/);
-    assert.match(section, /Starting inventory template/);
-    assert.match(section, /Starting Event Order template/);
+    assert.doesNotMatch(section, /Starting inventory template/);
+    assert.doesNotMatch(section, /Starting Event Order template/);
     assert.match(section, /CapabilityDefaults/);
     assert.doesNotMatch(section, /sm:grid-cols-2[\s\S]*Planning checklist[\s\S]*Timeline template/);
   });
@@ -173,15 +173,15 @@ describe("automatic inheritance applies client-experience presets", () => {
     assert.match(inherit, /ensureEventRecommendationsFromNetworkForVenue/);
   });
 
-  it("does not auto-assign required vendors or share/invoice at booking; inventory/EO drafts are ensured", () => {
+  it("does not auto-assign vendors, share/invoice, or create Inventory/EO drafts at booking", () => {
     assert.doesNotMatch(inherit, /assignVendor/);
     assert.doesNotMatch(inherit, /from\("event_vendor_assignments"\)/);
     assert.doesNotMatch(inherit, /startOrApplyEventOrderTemplate/);
     assert.doesNotMatch(inherit, /sendQuestionnaireToCouple/);
     assert.doesNotMatch(inherit, /shareEventInventory/);
     assert.doesNotMatch(inherit, /createInvoice/);
-    assert.match(inherit, /ensureEventInventory/);
-    assert.match(inherit, /ensureEventOrder/);
+    assert.doesNotMatch(inherit, /ensureEventInventory/);
+    assert.doesNotMatch(inherit, /ensureEventOrder/);
     assert.match(inherit, /applyProfileVenuePlaybook/);
     assert.match(inherit, /venuePlanningPlaybookTemplateId/);
     assert.match(inherit, /applyDefaultVenuePlaybook/);
@@ -289,9 +289,9 @@ describe("book-time reference snapshot", () => {
   });
 
   it("profile edits do not rewrite an existing snapshot; overrides stay authoritative", () => {
-    const first = withProfileOverride(snapshotInheritedSetup(profile()), STEPS, "inventory", "skipped");
+    const first = withProfileOverride(snapshotInheritedSetup(profile()), STEPS, "timeline", "skipped");
     assert.equal(first.inheritedTemplateRefs?.inventoryTemplateId, "inv-1");
-    assert.equal(first.overrides?.inventory, "skipped");
+    assert.equal(first.overrides?.timeline, "skipped");
     const edited = profile({
       templateRefs: { ...profile().templateRefs, inventoryTemplateId: "inv-NEW" },
       decisions: { ...profile().decisions, questionnaires: "set_up" },
@@ -301,8 +301,8 @@ describe("book-time reference snapshot", () => {
     const future = snapshotInheritedSetup(edited);
     assert.equal(future.inheritedTemplateRefs?.inventoryTemplateId, "inv-NEW");
     const reassigned = reassignInheritedSetup(first, edited);
-    assert.equal(reassigned.overrides?.inventory, "skipped");
-    assert.equal(effectiveSetupDecision(reassigned, "inventory"), "skipped");
+    assert.equal(reassigned.overrides?.timeline, "skipped");
+    assert.equal(effectiveSetupDecision(reassigned, "timeline"), "skipped");
     const profiles = read("lib/event-setup/profiles.ts");
     assert.doesNotMatch(profiles, /\.from\("event_setup_states"\)/);
     const loaded = eventSetupFromColumns({
@@ -316,6 +316,6 @@ describe("book-time reference snapshot", () => {
       overrides: first.overrides,
     });
     assert.equal(loaded.inheritedTemplateRefs?.inventoryTemplateId, "inv-1");
-    assert.equal(effectiveSetupDecision(loaded, "inventory"), "skipped");
+    assert.equal(effectiveSetupDecision(loaded, "timeline"), "skipped");
   });
 });

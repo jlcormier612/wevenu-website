@@ -209,40 +209,8 @@ async function applyInheritedTemplates(
     }
   }
 
-  // Inventory / Event Order: when venue-wide enabled and profile Included with a
-  // valid starting template, prepare the event-level draft at booking (idempotent).
-  await applyInheritedInventoryAndEventOrder(eventId, profile, caps);
-}
-
-async function applyInheritedInventoryAndEventOrder(
-  eventId: string,
-  profile: VenueSetupProfile,
-  caps: VenuePlanningCapabilities,
-): Promise<void> {
-  if (
-    caps.inventory
-    && profile.decisions.inventory === "set_up"
-    && profile.templateRefs.inventoryTemplateId
-  ) {
-    try {
-      const { ensureEventInventory } = await import("@/lib/event-inventory/service");
-      await ensureEventInventory(eventId, profile.templateRefs.inventoryTemplateId);
-    } catch (err) {
-      console.error("Setup profile inventory ensure failed:", err);
-    }
-  }
-  if (
-    caps.eventOrder
-    && profile.decisions.event_order === "set_up"
-    && profile.templateRefs.eventOrderTemplateId
-  ) {
-    try {
-      const { ensureEventOrder } = await import("@/lib/event-orders/service");
-      await ensureEventOrder(eventId, profile.templateRefs.eventOrderTemplateId);
-    } catch (err) {
-      console.error("Setup profile Event Order ensure failed:", err);
-    }
-  }
+  // Inventory / Event Order are commercial — never auto-created from Setup
+  // Profile booking inherit. Venue initiates from Library / event commercial workspace.
 }
 
 /**

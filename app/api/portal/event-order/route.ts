@@ -14,6 +14,8 @@ export async function GET(request: Request) {
 
   const rows = (data ?? []) as Array<{
     id: string; status: string; revision: number; shared_at: string | null;
+    client_agreed_at?: string | null; client_agreed_name?: string | null;
+    client_agreed_revision?: number | null;
     section_id: string | null; section_name: string | null;
     line_id: string | null; line_description: string | null; line_quantity: number | null;
     line_amount: number | null; line_sort_order: number | null;
@@ -43,6 +45,9 @@ export async function GET(request: Request) {
       status: rows[0].status,
       revision: rows[0].revision,
       sharedAt: rows[0].shared_at,
+      clientAgreedAt: rows[0].client_agreed_at ?? null,
+      clientAgreedName: rows[0].client_agreed_name ?? null,
+      clientAgreedRevision: rows[0].client_agreed_revision ?? null,
       lines,
     },
   });

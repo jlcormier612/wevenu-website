@@ -1,6 +1,5 @@
 /**
- * C1 commercial consolidation — navigation & terminology contracts.
- * Copy-only: no schema, no lifecycle, no merge of selection runtimes.
+ * Commercial terminology — Setup excludes Inventory/EO; commercial home stays on event tabs.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -11,32 +10,26 @@ function read(path: string): string {
 }
 
 describe("C1 commercial terminology and entry points", () => {
-  it("Setup Profiles label Event Order and Inventory starting refs as templates, not packages/offerings", () => {
+  it("Setup Profiles no longer embed Inventory/Event Order starting templates", () => {
     const section = read("components/settings/setup-profiles-section.tsx");
-    assert.match(section, /Starting inventory template/);
-    assert.match(section, /Starting Event Order template/);
-    assert.match(section, /Select a starting inventory template/);
-    assert.match(section, /Select a starting Event Order template/);
+    assert.doesNotMatch(section, /Starting inventory template/);
+    assert.doesNotMatch(section, /Starting Event Order template/);
     assert.doesNotMatch(section, /Starting inventory offering/);
     assert.doesNotMatch(section, /Starting event-order package/);
-    assert.doesNotMatch(section, /Select a starting package…/);
-    assert.doesNotMatch(section, /Select a starting offering…/);
-    assert.match(section, /event Inventory tab/);
-    assert.match(section, /event Event Order tab/);
+    assert.match(section, /commercial workflows/);
   });
 
-  it("Overview Setup treats Inventory/Event Order as readiness deep links into event tabs", () => {
+  it("Overview Setup does not list Inventory/Event Order as setup rows", () => {
     const panel = read("components/events/event-setup-panel.tsx");
-    assert.match(panel, /Inventory and Event Order rows here are readiness/);
-    assert.match(panel, /event Inventory and Event Order tabs/);
-    assert.match(panel, /Open Inventory/);
-    assert.match(panel, /Open Event Order/);
-    assert.match(panel, /data-testid=\{`event-setup-open-\$\{step\}`\}/);
+    assert.match(panel, /commercial workflows on their own event tabs/);
+    assert.doesNotMatch(panel, /Open Inventory/);
+    assert.doesNotMatch(panel, /Open Event Order/);
+    assert.doesNotMatch(panel, /EventInventorySetupEditor/);
+    assert.doesNotMatch(panel, /EventOrderSetupEditor/);
   });
 
   it("Event Order tab presents the commercial workspace without replacing panels", () => {
     const detail = read("components/events/event-detail.tsx");
-    // C3: status strip supersedes the C1 static intro; same commercial home.
     assert.match(detail, /EventCommercialStatusStrip|event-commercial-status-strip/);
     assert.match(detail, /ClientChoicesPanel/);
     assert.match(detail, /EventOrderPanel/);

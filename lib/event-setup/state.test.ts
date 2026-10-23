@@ -32,18 +32,20 @@ function section(partial: Partial<ReadinessSection> & Pick<ReadinessSection, "ke
 const empty: EventSetupState = { decisions: {}, collapsedAt: null };
 
 describe("event setup state", () => {
-  it("offers every step when capabilities are on, and omits disabled ones", () => {
+  it("offers planning Setup steps when capabilities are on; never Inventory/Event Order", () => {
     const all = applicableSetupSteps(DEFAULT_PLANNING_CAPABILITIES);
     assert.deepEqual(all, [
-      "planning", "timeline", "floor_plans", "vendors", "questionnaires", "inventory", "event_order",
+      "planning", "timeline", "floor_plans", "vendors", "questionnaires",
     ]);
+    assert.equal(all.includes("inventory"), false);
+    assert.equal(all.includes("event_order"), false);
     const limited = applicableSetupSteps({
       ...DEFAULT_PLANNING_CAPABILITIES,
       timeline: false,
       floorPlan: false,
       vendors: false,
     });
-    assert.deepEqual(limited, ["planning", "questionnaires", "inventory", "event_order"]);
+    assert.deepEqual(limited, ["planning", "questionnaires"]);
     const setupOnly = applicableSetupSteps({
       ...DEFAULT_PLANNING_CAPABILITIES,
       checklists: false,
@@ -54,11 +56,11 @@ describe("event setup state", () => {
     assert.deepEqual(setupOnly, ["timeline", "floor_plans", "vendors"]);
   });
 
-  it("Overview setup cards omit Questionnaires while keeping them applicable for profiles", () => {
+  it("Overview setup cards omit Questionnaires and commercial Inventory/Event Order", () => {
     const all = applicableSetupSteps(DEFAULT_PLANNING_CAPABILITIES);
     assert.ok(all.includes("questionnaires"));
     assert.deepEqual(overviewSetupSteps(all), [
-      "planning", "timeline", "floor_plans", "vendors", "inventory", "event_order",
+      "planning", "timeline", "floor_plans", "vendors",
     ]);
     const panel = readFileSync(resolve("components/events/event-setup-panel.tsx"), "utf8");
     assert.match(panel, /overviewSetupSteps/);

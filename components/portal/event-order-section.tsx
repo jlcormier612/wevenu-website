@@ -8,8 +8,8 @@ import {
 } from "@/components/portal/event-order-view";
 
 /**
- * Client-facing Event Order — last shared snapshot only (read-only).
- * Not an invoice, contract, or checklist.
+ * Client-facing Event Order — last shared snapshot + optional accept.
+ * Not an invoice, contract, or checklist. Share ≠ agreement.
  */
 export function EventOrderPortalSection({ token }: { token: string }) {
   const [data, setData] = useState<PortalEventOrderViewModel | null | undefined>(undefined);
@@ -25,5 +25,12 @@ export function EventOrderPortalSection({ token }: { token: string }) {
     return <div className="flex items-center justify-center h-64 text-gray-400"><div className="animate-pulse">Loading…</div></div>;
   }
 
-  return <EventOrderPortalView data={data} paymentsHref="#payments" />;
+  return (
+    <EventOrderPortalView
+      data={data}
+      paymentsHref="#payments"
+      token={token}
+      onAccepted={setData}
+    />
+  );
 }

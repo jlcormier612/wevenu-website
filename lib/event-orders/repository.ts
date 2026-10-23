@@ -10,7 +10,9 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type OrderRow = {
   id: string; venue_id: string; event_id: string | null; client_id?: string | null; status: "open" | "finalized";
-  revision: number; finalized_at: string | null; shared_at: string | null; template_id: string | null;
+  revision: number; finalized_at: string | null; shared_at: string | null;
+  client_agreed_at?: string | null; client_agreed_name?: string | null; client_agreed_revision?: number | null;
+  template_id: string | null;
   created_at: string; updated_at: string;
 };
 type SectionRow = {
@@ -33,7 +35,11 @@ type ActivityRow = {
 
 const mapOrder = (r: OrderRow): EventOrder => ({
   id: r.id, venueId: r.venue_id, eventId: r.event_id ?? "", clientId: r.client_id ?? null, status: r.status,
-  revision: r.revision, finalizedAt: r.finalized_at, sharedAt: r.shared_at, templateId: r.template_id,
+  revision: r.revision, finalizedAt: r.finalized_at, sharedAt: r.shared_at,
+  clientAgreedAt: r.client_agreed_at ?? null,
+  clientAgreedName: r.client_agreed_name ?? null,
+  clientAgreedRevision: r.client_agreed_revision ?? null,
+  templateId: r.template_id,
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapSection = (r: SectionRow): EventOrderSection => ({
@@ -151,9 +157,16 @@ export async function finalizeEventOrder(client: DbClient, venueId: string, even
 }
 
 export async function reopenEventOrder(client: DbClient, venueId: string, eventOrderId: string): Promise<void> {
+  // Clears client agreement — a new share + accept is required after amendment.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_orders") as any)
-    .update({ status: "open", finalized_at: null })
+    .update({
+      status: "open",
+      finalized_at: null,
+      client_agreed_at: null,
+      client_agreed_name: null,
+      client_agreed_revision: null,
+    })
     .eq("id", eventOrderId).eq("venue_id", venueId);
   if (error) throw error;
 }
