@@ -32,9 +32,13 @@ describe("Client portal preview fidelity", () => {
     assert.match(invSection, /InventoryPortalView/);
     assert.match(preview, /InventoryPortalView/);
     assert.match(invView, /Not shared yet/);
-    assert.match(invView, /Included/);
-    assert.match(invView, /Additional cost/);
+    assert.match(invView, /has not shared this event&apos;s inventory yet/);
+    assert.match(invView, /Included — no extra charge/);
+    assert.match(invView, /Additional fee/);
+    assert.match(invView, /package-included items and available add-ons/);
     assert.match(invView, /collaborationMode/);
+    assert.doesNotMatch(invView, /What.?s included in your event/);
+    assert.doesNotMatch(invView, /what your venue is including for this celebration/);
   });
 
   it("Floor Plans preview only presents shared plans + offers (not unshared operational alone)", () => {

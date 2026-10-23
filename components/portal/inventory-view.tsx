@@ -56,6 +56,9 @@ const STATUS_COPY: Record<string, { label: string; hint: string }> = {
   },
 };
 
+const INVENTORY_INTRO =
+  "View the items your venue has listed for your event, including package-included items and available add-ons.";
+
 /**
  * Couple-facing Inventory presentation. Shared by portal section and staff preview.
  * Select mode adds draft/submit controls; view mode stays read-only.
@@ -95,8 +98,9 @@ export function InventoryPortalView({
         <div className="text-4xl mb-3">🪑</div>
         <p className="text-sm font-medium text-heading">Not shared yet</p>
         <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-          This is your event&apos;s inventory — what your venue is including for this celebration.
-          It appears here after they share it. This is not a request form and not your Event Order.
+          Your venue has not shared this event&apos;s inventory yet. When they do, you&apos;ll see
+          package-included items and any available add-ons here. This is not a request form and not
+          your Event Order.
         </p>
       </div>
     );
@@ -110,7 +114,7 @@ export function InventoryPortalView({
   const statusMeta = STATUS_COPY[data.status] ?? {
     label: data.status === "finalized" ? "Finalized" : "In progress",
     hint: selectMode
-      ? "Review what’s included and any optional extras your venue offered."
+      ? "Review package-included items and any optional extras your venue offered."
       : "Event inventory from your venue — read-only. For the delivery list, open Event Order.",
   };
 
@@ -198,9 +202,12 @@ export function InventoryPortalView({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-heading">
-            {selectMode ? "Your inventory choices" : "What’s included in your event"}
+            {selectMode ? "Your inventory choices" : "Inventory"}
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{statusMeta.hint}</p>
+          <p className="text-xs text-muted-foreground mt-0.5" data-testid="inventory-portal-intro">
+            {INVENTORY_INTRO}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{statusMeta.hint}</p>
         </div>
         {staffPreviewLabel ? (
           <Badge variant="secondary">{staffPreviewLabel}</Badge>
@@ -221,14 +228,21 @@ export function InventoryPortalView({
 
       {included.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Included</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Package-included
+          </p>
           <div className="rounded-xl border border-border bg-card divide-y divide-border">
             {included.map((item) => (
               <div key={item.id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm text-foreground">{item.name}</p>
                   {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Included in your package — no extra charge</p>
+                  <p
+                    className="text-[11px] text-muted-foreground mt-0.5"
+                    data-testid="inventory-item-included-label"
+                  >
+                    Included — no extra charge
+                  </p>
                 </div>
                 <span className="text-xs text-muted-foreground">×{item.quantity}</span>
               </div>
@@ -240,7 +254,7 @@ export function InventoryPortalView({
       {additional.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {selectMode ? "Optional / additional" : "Additional cost"}
+            {selectMode ? "Optional / additional" : "Additional fee"}
           </p>
           <div className="rounded-xl border border-border bg-card divide-y divide-border">
             {additional.map((item) => {
@@ -251,11 +265,15 @@ export function InventoryPortalView({
                   <div className="min-w-0">
                     <p className="text-sm text-foreground">{item.name}</p>
                     {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
-                    {item.clientSelectable && (
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Optional · up to ×{max}
-                      </p>
-                    )}
+                    <p
+                      className="text-[11px] text-muted-foreground mt-0.5"
+                      data-testid="inventory-item-additional-label"
+                    >
+                      {item.unitPrice != null
+                        ? `Additional fee — ${formatMoney(item.unitPrice)} each`
+                        : "Additional fee — price set by your venue"}
+                      {item.clientSelectable ? ` · optional · up to ×${max}` : null}
+                    </p>
                   </div>
                   <div className="text-right shrink-0 space-y-1">
                     <p className="text-sm font-medium text-foreground">

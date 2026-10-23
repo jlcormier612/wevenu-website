@@ -134,7 +134,7 @@ const TRIGGER_WORKSPACE: Record<
   // D5A — fires when the venue finalizes the Event Inventory (see
   // lib/event-inventory/service.ts finalizeEventInventory); read-only for
   // the couple, so there's nothing to "do" beyond looking.
-  inventory_finalized: { section: "inventory", actionLabel: "Review what's included", focus: null },
+  inventory_finalized: { section: "inventory", actionLabel: "Review inventory", focus: null },
   // D5C — fires when the venue shares the Event Order (see
   // lib/event-orders/representation.ts shareEventOrderWithClient);
   // read-only for the couple, same shape as inventory_finalized above.

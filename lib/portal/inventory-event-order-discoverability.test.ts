@@ -25,7 +25,10 @@ describe("Inventory & Event Order portal discoverability", () => {
     assert.match(shell, /id: "inventory"/);
     assert.match(shell, /id: "event-order"/);
     assert.match(shell, /label: "Inventory"/);
+    assert.match(shell, /shortLabel: "Inventory"/);
     assert.match(shell, /label: "Event Order"/);
+    // Mobile tab must not rebrand Inventory as "Included" (package vs paid mix).
+    assert.doesNotMatch(shell, /shortLabel: "Included"/);
     // Previous gap: Event Order nav was gated on hasSharedEventOrder — must not return.
     assert.doesNotMatch(
       shell,

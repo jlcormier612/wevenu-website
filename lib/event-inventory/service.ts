@@ -272,7 +272,7 @@ async function notifyInventoryShared(
     const body =
       mode === "select"
         ? `We've shared inventory choices for ${event.name}. Please review and submit your selections.\n\n${portalUrl}`
-        : `We've shared what's included for ${event.name}.\n\n${portalUrl}`;
+        : `We've shared your event inventory for ${event.name}.\n\n${portalUrl}`;
     const { sendEmail } = await import("@/lib/email/send");
     const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
     const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");

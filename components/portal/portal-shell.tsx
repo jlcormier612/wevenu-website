@@ -2073,7 +2073,7 @@ function WorkingWithYourVenue({
             >
               <p className="text-sm font-semibold text-heading">Inventory</p>
               <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                What {venueName} is including for your event
+                Items {venueName} listed for your event — package items and add-ons
                 {inventoryReady === true ? " — ready to review"
                   : inventoryReady === false ? " — waiting on your venue"
                     : ""}
@@ -4660,7 +4660,7 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
   // Inventory = event-specific offerings the venue shared (not master catalog).
   // Always listed when the venue planning capability is on; empty state when unshared.
-  { id: "inventory",   icon: "🪑", label: "Inventory",         shortLabel: "Included", available: true, group: "venue" },
+  { id: "inventory",   icon: "🪑", label: "Inventory",         shortLabel: "Inventory", available: true, group: "venue" },
   // Event Order stays visible when capability is on so clients can find the
   // destination even before share — empty state explains not-yet-shared.
   // Sharing boundary remains server-side (shared_at / snapshot).

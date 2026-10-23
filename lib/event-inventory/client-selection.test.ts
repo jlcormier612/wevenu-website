@@ -73,7 +73,9 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(portalSubmit, /submit_event_inventory_selections_for_portal/);
     assert.match(portalView, /inventory-save-draft/);
     assert.match(portalView, /inventory-submit/);
-    assert.match(portalView, /Included in your package/);
+    assert.match(portalView, /Included — no extra charge/);
+    assert.match(portalView, /Additional fee/);
+    assert.match(portalView, /inventory-portal-intro/);
   });
 
   it("EO handoff still treats included items as non-billable", () => {
