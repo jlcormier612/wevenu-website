@@ -418,8 +418,8 @@ export function EventSetupPanel({
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {portalReleased
-                ? "The prepared experience is released. You can still manage every area from its workspace tab. Re-running release is safe and does not invite the client or send questionnaires."
-                : "One action for the reviewed setup: ensures included Inventory and Event Order drafts, releases Client Planning, applies and shares the timeline when present, and keeps floor-plan options ready. Does not invite the client, send questionnaires, or create invoices."}
+                ? "The prepared experience is released. You can still manage every area from its workspace tab. Re-running release is safe: it does not invite the client, send questionnaires, share Inventory or the Event Order, or create invoices."
+                : "One action for the reviewed setup: ensures included Inventory and Event Order drafts, releases Client Planning, applies and shares the timeline when present, and keeps floor-plan options ready. Does not invite the client, send questionnaires, share Inventory or the Event Order with the couple, or create invoices — those stay on the event Inventory and Event Order tabs."}
             </p>
           </div>
           <Button

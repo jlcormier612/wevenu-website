@@ -251,6 +251,6 @@ export async function prepareAndReleasePortal(
     releasedPlanning,
     sharedTimeline,
     message:
-      "Portal content is prepared and released for this event. Questionnaires are not sent by this action — staff send them with an authorized send when ready. Invite the client separately when you are ready — this did not send an invitation.",
+      "Portal content is prepared and released for this event. Questionnaires are not sent by this action — staff send them with an authorized send when ready. Inventory and Event Order stay unshared drafts until you act on those event tabs. Invite the client separately when you are ready — this did not send an invitation or create an invoice.",
   };
 }
