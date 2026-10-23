@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-23T15:22:57.842Z",
+  "eventOrder": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-23T00:26:09.17+00:00",
+    "revision": 3,
+    "client_agreed_at": null,
+    "client_agreed_name": null,
+    "client_agreed_revision": null
+  },
+  "acceptProbe": {
+    "ok": false,
+    "message": "Portal session not found."
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "expectedSha": "e1c84abf22d32e4718c255e1f695488df9df3754",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e1c84abf22d32e4718c255e1f695488df9df3754",
+  "passed": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e1c84abf22d32e4718c255e1f695488df9df3754 expected=e1c84abf22d3"
+    },
+    {
+      "name": "DB: agreement columns readable",
+      "pass": true,
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"shared_at\":\"2026-10-23T00:26:09.17+00:00\",\"client_agreed_at\":null,\"client_agreed_revision\":null,\"revision\":3}"
+    },
+    {
+      "name": "Setup Profiles: no Inventory/EO starting template UI",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp "
+    },
+    {
+      "name": "Event Setup: no Open Inventory / Open Event Order",
+      "pass": true,
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview planning, timeline, vendors, and floor plans for this event, then release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an automated schedule. Inventory selection"
+    },
+    {
+      "name": "Event Setup: commercial copy present",
+      "pass": true,
+      "detail": "copy"
+    },
+    {
+      "name": "Commercial strip still on Event Order tab",
+      "pass": true,
+      "detail": "strip"
+    },
+    {
+      "name": "Timeline tab intact",
+      "pass": true,
+      "detail": "timeline"
+    },
+    {
+      "name": "Portal Event Order section loads",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n6\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nWhat you're receivi"
+    },
+    {
+      "name": "Portal shows accept panel or agreed badge when EO shared",
+      "pass": true,
+      "detail": "accept=1 agreedBadge=0 shared=2026-10-23T00:26:09.17+00:00"
+    },
+    {
+      "name": "Client accept persists agreement",
+      "pass": true,
+      "detail": "{\"client_agreed_at\":\"2026-10-23T15:23:42.520035+00:00\",\"client_agreed_name\":\"Overhaul Accept QA\",\"client_agreed_revision\":3}"
+    },
+    {
+      "name": "Portal home still has Inventory entry (commercial, not setup checklist)",
+      "pass": true,
+      "detail": "home"
+    }
+  ],
+  "at": "2026-10-23T15:23:46.703Z"
+}
