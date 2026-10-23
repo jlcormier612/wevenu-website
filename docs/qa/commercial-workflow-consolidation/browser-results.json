@@ -1,0 +1,118 @@
+{
+  "expectedSha": "c75bc0faee8f23b69621c4568adf001a59c20fc8",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c75bc0faee8f23b69621c4568adf001a59c20fc8",
+  "passed": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c75bc0faee8f23b69621c4568adf001a59c20fc8 expected=c75bc0faee8f"
+    },
+    {
+      "name": "A Setup Profiles: Event Order template label",
+      "pass": true,
+      "detail": "Starting Event Order template\nSelect a starting Event Order template…\nCeremony + Reception\nWedding Reception\n\nConfigured starting point: Ceremony + Reception. When a client is booked with this profile, the Event Order draft is prepared automatically from this Event Order template. It is not shared, "
+    },
+    {
+      "name": "A Setup Profiles: inventory template label",
+      "pass": true,
+      "detail": "Starting inventory template\nSelect a starting inventory template…\nStandard Wedding — Ceremony + Reception\nStandard Wedding — Reception Only\nTemplatesMethodology Empty Inventory\n\nConfigured starting point: Standard Wedding — Ceremony + Reception. When a client is booked with this profile, the event i"
+    },
+    {
+      "name": "A Setup Profiles: no starting package option",
+      "pass": true,
+      "detail": "old package option absent"
+    },
+    {
+      "name": "A Setup Profiles: no starting offering option",
+      "pass": true,
+      "detail": "old offering option absent"
+    },
+    {
+      "name": "D Library: Packages distinct from Event Order Templates",
+      "pass": true,
+      "detail": "Packages card copy present"
+    },
+    {
+      "name": "D Inventory Templates: apply ≠ share copy",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp "
+    },
+    {
+      "name": "B Overview: readiness narrative for Inventory/EO",
+      "pass": true,
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an automated schedule. Inventory and Event Order rows here are readiness for portal release — share, client choices, finalize, and invoice run from the event Inventory and Event Order tabs.\n\n0 need a decision · 6 included "
+    },
+    {
+      "name": "B Open Inventory navigates to inventory tab",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#inventory"
+    },
+    {
+      "name": "B Open Event Order reaches commercial workspace",
+      "pass": true,
+      "detail": "intro=1 url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order"
+    },
+    {
+      "name": "C Commercial workspace intro present",
+      "pass": true,
+      "detail": "Commercial workspace\n\nRun this event's commercial workflow here: optional client choices, the Event Order (agreed deliverables), then invoice and payment plan from the Event Order / Payments tab. Inventory selection lives on the Inventory tab. Setup Profile defaults prepare drafts only — they do not send selections or create invoices."
+    },
+    {
+      "name": "C Intro: Inventory tab + no invoice from setup",
+      "pass": true,
+      "detail": "Commercial workspace\n\nRun this event's commercial workflow here: optional client choices, the Event Order (agreed deliverables), then invoice and payment plan from the Event Order / Payments tab. Inventory selection lives on the Inventory tab. Setup Profile defaults prepare drafts only — they do not"
+    },
+    {
+      "name": "C Client selections panel present (choices runtime)",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "C Event Order panel present",
+      "pass": true,
+      "detail": "count=3"
+    },
+    {
+      "name": "C Inventory tab available",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+    },
+    {
+      "name": "C Inventory tab remains separate from Event Order",
+      "pass": true,
+      "detail": "inventory workspace without commercial EO intro"
+    },
+    {
+      "name": "E Payments tab intact",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+    },
+    {
+      "name": "E Event Order retains invoice / payment language",
+      "pass": true,
+      "detail": "finance handoff copy/controls visible without sending"
+    },
+    {
+      "name": "E Portal section inventory reachable",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n📋\nOrder\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading…\nJen's Fancy Venue\n💗"
+    },
+    {
+      "name": "E Portal section event-order reachable",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendors\nWhat you're recei"
+    },
+    {
+      "name": "E Portal section choices reachable",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSel"
+    },
+    {
+      "name": "C Commercial intro visible at 390",
+      "pass": true,
+      "detail": "390 viewport"
+    }
+  ],
+  "at": "2026-10-23T04:19:43.912Z"
+}
