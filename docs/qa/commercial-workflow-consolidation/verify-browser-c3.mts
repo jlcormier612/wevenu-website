@@ -234,11 +234,10 @@ async function main() {
   await page.waitForTimeout(1200);
   const invTabActive =
     (await page.getByRole("tab", { name: /^Inventory$/i }).getAttribute("data-state")) === "active";
-  const invPanel = await page.locator("body").innerText();
   record(
     "B Open Inventory reaches Inventory tab",
-    invTabActive || /Event Inventory/i.test(invPanel),
-    `url=${page.url()} active=${invTabActive}`,
+    invTabActive,
+    `url=${page.url()} active=${invTabActive} hash=${await page.evaluate(() => location.hash)}`,
   );
   await page.screenshot({ path: `${OUT}/shots-c3/B-open-inventory-1280.png`, fullPage: true });
 
@@ -256,19 +255,22 @@ async function main() {
   );
   await page.getByTestId("commercial-anchor-choices").click();
   await page.waitForTimeout(900);
+  const stripStill = (await page.getByTestId("event-commercial-status-strip").count()) > 0;
   const choicesVisible = await page.getByTestId("event-order-choices").isVisible().catch(() => false);
   const choicesText = (await page.getByTestId("event-order-choices").innerText().catch(() => "")) || "";
   record(
     "C Choices anchor scrolls to client_choices panel",
-    choicesVisible && /Client selections|Choices|selection/i.test(choicesText),
-    choicesText.slice(0, 220) || `visible=${choicesVisible}`,
+    stripStill && choicesVisible && /Client selections|Choices|selection/i.test(choicesText),
+    `strip=${stripStill} hash=${await page.evaluate(() => location.hash)} ${choicesText.slice(0, 200) || `visible=${choicesVisible}`}`,
   );
   await page.getByTestId("commercial-anchor-order").click();
   await page.waitForTimeout(900);
   record(
     "C Event Order anchor reaches order panel",
-    await page.getByTestId("event-order-order").isVisible().catch(() => false),
-    "order anchor",
+    stripStill
+      && (await page.getByTestId("event-order-order").isVisible().catch(() => false))
+      && (await page.getByTestId("event-commercial-status-strip").count()) > 0,
+    `hash=${await page.evaluate(() => location.hash)}`,
   );
   await page.screenshot({ path: `${OUT}/shots-c3/C-choices-anchor-1280.png`, fullPage: true });
 

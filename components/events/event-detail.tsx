@@ -606,6 +606,20 @@ export function EventDetail({
         });
         return;
       }
+      // C3 commercial workspace anchors stay on the event-order tab (do not treat as tab ids).
+      if (
+        raw === "event-order-choices"
+        || raw === "event-order-order"
+        || raw === "event-order-invoice"
+      ) {
+        setActiveTab("event-order");
+        requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
+        });
+        return;
+      }
       const tab = raw === "team" ? "overview" : raw;
       if (tab) setActiveTab(tab);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…

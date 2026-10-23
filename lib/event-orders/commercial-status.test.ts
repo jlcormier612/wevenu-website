@@ -201,6 +201,9 @@ describe("C3 strip seams — no duplicate authoritative actions", () => {
     assert.match(detail, /EventCommercialStatusStrip/);
     assert.match(detail, /id="event-order-choices"/);
     assert.match(detail, /id="event-order-order"/);
+    // Anchor hashes must not be treated as tab ids by syncFromHash.
+    assert.match(detail, /raw === "event-order-choices"/);
+    assert.match(detail, /setActiveTab\("event-order"\)/);
     const invoiceLink = readFileSync(
       resolve("components/event-orders/event-order-invoice-link.tsx"),
       "utf8",
