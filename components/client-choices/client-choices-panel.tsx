@@ -140,16 +140,16 @@ function ChoicesRow({
               data-testid="choices-send-to-client"
               onClick={() => startTransition(async () => {
                 const r = await sendClientChoicesAction(eventId, row.id);
-                if (!r.ok) toast.error(r.message ?? "Could not send.");
+                if (!r.ok) toast.error(r.message ?? "Could not open in portal.");
                 else {
                   toast.success(
-                    "Opened for the couple in their portal. Active proposed-order email delivery is a later step.",
+                    "Available in the couple’s portal (task created). No email was sent.",
                   );
                   router.refresh();
                 }
               })}
             >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send to Client"}
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Make available in portal"}
             </Button>
           ) : null}
           {needsReview ? (
@@ -217,16 +217,16 @@ function ChoicesRow({
               disabled={pending}
               onClick={() => startTransition(async () => {
                 const r = await sendClientChoicesAction(eventId, row.id);
-                if (!r.ok) toast.error(r.message ?? "Could not re-send.");
+                if (!r.ok) toast.error(r.message ?? "Could not record reminder.");
                 else {
                   toast.success(
-                    "Reminder recorded in the portal. Active email delivery is a later step.",
+                    "Portal reminder recorded. No email was sent.",
                   );
                   router.refresh();
                 }
               })}
             >
-              Re-send
+              Remind in portal
             </Button>
           ) : null}
         </div>
@@ -406,6 +406,7 @@ export function ClientChoicesPanel({
   choices,
   financialImpact = null,
   hasEventOrder = false,
+  showFinancialImpact = true,
 }: {
   eventId: string;
   /** Selectable Event Order Templates (preferred authoring source). */
@@ -414,6 +415,8 @@ export function ClientChoicesPanel({
   financialImpact?: SelectionsFinancialImpact | null;
   /** True when this event already has an Event Order (Create vs Update CTA). */
   hasEventOrder?: boolean;
+  /** False when the Event Order panel already owns the invoice handoff. */
+  showFinancialImpact?: boolean;
 }) {
   const router = useRouter();
   const [templateId, setTemplateId] = React.useState(eventOrderTemplates[0]?.id ?? "");
@@ -422,13 +425,12 @@ export function ClientChoicesPanel({
   return (
     <Card className="mb-4" data-testid="client-choices-panel">
       <CardHeader>
-        <CardTitle className="text-base">Build proposed order — client selections</CardTitle>
+        <CardTitle className="text-base">Client selections</CardTitle>
         <CardDescription>
-          Combine selectable packets (menus, add-ons, rentals) with the fixed and included lines on the
-          Event Order below. This is one commercial path — not a second invoice or inventory workflow.
-          After the couple submits, use Create Event Order (or Update Event Order from selections) to
-          apply their picks. Included/free options stay informational. Sending opens the portal task;
-          proposed-order email delivery is a later step.
+          Selectable packets (menus, add-ons, rentals) for the couple. Fixed and included lines are
+          authored on the Event Order. After they submit, use Create Event Order (or Update Event
+          Order from selections). Making a packet available opens their portal task — it does not
+          send email. Inventory is operational and separate.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -487,7 +489,9 @@ export function ClientChoicesPanel({
                 hasEventOrder={hasEventOrder}
               />
             ))}
-            {financialImpact && choices.some((c) => c.status === "finalized") ? (
+            {showFinancialImpact
+              && financialImpact
+              && choices.some((c) => c.status === "finalized") ? (
               <FinancialImpact eventId={eventId} impact={financialImpact} />
             ) : null}
           </div>
