@@ -1,0 +1,22 @@
+PASS serving-sha — expected=591b2493db49 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:591b2493db49eba1d1806edfbdfd5c3dda66fd68
+PASS row1-labels — Planning Overview
+Planning Tasks
+Timeline
+Floor Plans
+Vendors
+PASS row2-labels — Documents
+Payments
+1
+Conversation
+Activity
+Internal notes
+1
+Luv
+PASS questionnaires-card — present
+PASS inventory-eo-card — present
+PASS card-opens-event-order — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order
+PASS deep-link-event-order-choices — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order-choices
+PASS deep-link-questionnaires — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires
+PASS couple-nav-inventory-order-gated — navHasInventory=true navHasOrder=true (shared fixtures may still show; passive-only hide is the P2-A contract)
+
+9 pass / 0 fail
