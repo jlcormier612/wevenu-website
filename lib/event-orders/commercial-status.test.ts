@@ -378,16 +378,23 @@ describe("C3/C4 strip seams — no duplicate authoritative actions", () => {
     assert.match(src, /onNavigate/);
   });
 
-  it("event-order tab id remains event-order with commercial strip and anchors", () => {
+  it("event-order stays hash-addressable TabsContent with commercial anchors (P2-A: no Order tab trigger)", () => {
     const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
     assert.match(detail, /TabsContent value="event-order"/);
-    assert.match(detail, /TabsTrigger value="event-order"/);
-    assert.match(detail, /EventCommercialStatusStrip/);
-    assert.match(detail, /id="event-order-choices"/);
-    assert.match(detail, /id="event-order-order"/);
+    // P2-A removed Inventory/Event Order from tab rows — entry is the workspace card.
+    assert.doesNotMatch(detail, /TabsTrigger value="event-order"/);
+    assert.match(detail, /data-testid="event-inventory-event-order-card"/);
+    assert.match(detail, /data-testid="open-event-order-card"/);
+    assert.match(detail, /EventCommercialWorkflow/);
     // Anchor hashes must not be treated as tab ids by syncFromHash.
     assert.match(detail, /raw === "event-order-choices"/);
     assert.match(detail, /setActiveTab\("event-order"\)/);
+    const workflow = readFileSync(
+      resolve("components/event-orders/event-commercial-workflow.tsx"),
+      "utf8",
+    );
+    assert.match(workflow, /id="event-order-choices"/);
+    assert.match(workflow, /id="event-order-order"/);
     const invoiceLink = readFileSync(
       resolve("components/event-orders/event-order-invoice-link.tsx"),
       "utf8",
