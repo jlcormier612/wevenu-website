@@ -191,7 +191,7 @@ export function commercialChoicesDisplayKey(
 /** C4 checklist milestones — AUDIT: draft → shared/selections → finalized → invoiced */
 export type CommercialProgressStepId =
   | "draft"
-  | "shared_selections"
+  | "engagement"
   | "finalized"
   | "invoiced";
 
@@ -287,11 +287,11 @@ export function buildCommercialProgressSteps(
     invNeedsVenueOrClient(input)
     || choiceNeedsVenueOrClient(choice)
   ) {
-    cursor = "shared_selections";
+    cursor = "engagement";
   } else if (input.eventOrder?.status === "open") {
     cursor = "finalized";
   } else if (input.eventOrder?.status === "finalized" && !input.eventOrder.sharedAt) {
-    cursor = "shared_selections";
+    cursor = "engagement";
   } else if (!invoicedComplete) {
     cursor = "invoiced";
   }
@@ -319,9 +319,9 @@ export function buildCommercialProgressSteps(
       nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
     },
     {
-      id: "shared_selections",
+      id: "engagement",
       label: "Shared / selections",
-      state: stateFor("shared_selections", sharedComplete),
+      state: stateFor("engagement", sharedComplete),
       detail: sharedComplete
         ? `Client engagement started. ${selectionNote}`
         : `Not shared and no client selection in flight. ${selectionNote}`,

@@ -197,7 +197,7 @@ describe("C4 commercial progress checklist", () => {
       showInventory: false,
     });
     assert.equal(steps.find((s) => s.id === "draft")?.state, "complete");
-    assert.equal(steps.find((s) => s.id === "shared_selections")?.state, "upcoming");
+    assert.equal(steps.find((s) => s.id === "engagement")?.state, "upcoming");
     assert.equal(steps.find((s) => s.id === "finalized")?.state, "current");
     assert.equal(steps.find((s) => s.id === "invoiced")?.state, "upcoming");
     assert.deepEqual(
@@ -225,7 +225,7 @@ describe("C4 commercial progress checklist", () => {
       showInventory: false,
     });
     assert.equal(finalizedOnly.find((s) => s.id === "finalized")?.state, "complete");
-    assert.equal(finalizedOnly.find((s) => s.id === "shared_selections")?.state, "current");
+    assert.equal(finalizedOnly.find((s) => s.id === "engagement")?.state, "current");
     assert.equal(finalizedOnly.find((s) => s.id === "invoiced")?.state, "upcoming");
 
     const sharedNoInvoice = buildCommercialProgressSteps({
@@ -237,7 +237,7 @@ describe("C4 commercial progress checklist", () => {
       linkedScheduleId: null,
       showInventory: false,
     });
-    assert.equal(sharedNoInvoice.find((s) => s.id === "shared_selections")?.state, "complete");
+    assert.equal(sharedNoInvoice.find((s) => s.id === "engagement")?.state, "complete");
     assert.equal(sharedNoInvoice.find((s) => s.id === "invoiced")?.state, "current");
   });
 

@@ -143,7 +143,7 @@ async function main() {
   await page.waitForTimeout(1800);
   const checklist = page.getByTestId("event-commercial-progress-checklist");
   record("Checklist present", (await checklist.count()) > 0, "progress checklist");
-  for (const id of ["draft", "shared_selections", "finalized", "invoiced"] as const) {
+  for (const id of ["draft", "engagement", "finalized", "invoiced"] as const) {
     record(
       `Checklist step ${id}`,
       (await page.getByTestId(`commercial-progress-${id}`).count()) > 0,
@@ -203,11 +203,11 @@ async function main() {
   );
   if (eoRow?.status === "finalized" && eoRow.shared_at) {
     const finalizedStep = await page.getByTestId("commercial-progress-finalized").getAttribute("data-state");
-    const sharedStep = await page.getByTestId("commercial-progress-shared_selections").getAttribute("data-state");
+    const engagementStep = await page.getByTestId("commercial-progress-engagement").getAttribute("data-state");
     record(
       "A Checklist reflects finalized+shared EO from DB",
-      finalizedStep === "complete" && sharedStep === "complete",
-      `finalized=${finalizedStep} shared_selections=${sharedStep}`,
+      finalizedStep === "complete" && engagementStep === "complete",
+      `finalized=${finalizedStep} engagement=${engagementStep}`,
     );
   } else {
     record("A Checklist reflects finalized+shared EO from DB", true, "fixture not finalized+shared — skipped assert");
