@@ -7,7 +7,8 @@
 | Role | SHA |
 | --- | --- |
 | Product (serving) | `e1c84abf22d32e4718c255e1f695488df9df3754` |
-| Closure / migration repair (pushed) | `be5723ef202f942579dd3e2946456b7ff5cf1604` |
+| Migration repair | `be5723ef202f942579dd3e2946456b7ff5cf1604` |
+| Evidence / status closure (pushed) | `5a3efbae185f917fbc1129fc41d6b8aca9658f9c` |
 
 ---
 
