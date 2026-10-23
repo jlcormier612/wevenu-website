@@ -139,6 +139,16 @@ async function main() {
     .order("created_at", { ascending: false })
     .limit(5);
 
+  // Re-arm one submitted packet as sent so the couple submit journey is
+  // re-runnable without inventing a new commercial workflow.
+  const submittedForRearm = (choicesRows ?? []).find((c) => c.status === "submitted");
+  if (submittedForRearm?.id) {
+    await admin
+      .from("client_choices")
+      .update({ status: "sent", submitted_at: null })
+      .eq("id", submittedForRearm.id);
+    submittedForRearm.status = "sent";
+  }
   const editable = (choicesRows ?? []).filter((c) =>
     ["sent", "in_progress", "changes_requested"].includes(c.status),
   );
@@ -270,6 +280,56 @@ async function main() {
   record("choices-deep-link", choicesReachable, choicesBody.slice(0, 280));
   await page.screenshot({ path: `${OUT}/shots/choices-deep-link-1280.png`, fullPage: false });
 
+  // Submit active request (no email) — required couple-journey step for P2-D.
+  const choicesId = editable[0]?.id ?? null;
+  const submitBtn = page.getByRole("button", { name: /^Submit$/ });
+  if (choicesId && (await submitBtn.count()) > 0 && (await submitBtn.first().isEnabled())) {
+    const option = page.locator('fieldset input[type="checkbox"], fieldset input[type="radio"]').first();
+    if ((await option.count()) > 0) {
+      const checked = await option.isChecked().catch(() => false);
+      if (!checked) await option.click({ force: true });
+      await page.waitForTimeout(400);
+    }
+    await submitBtn.first().click();
+    await page.waitForTimeout(2500);
+    const { data: afterSubmit } = await admin
+      .from("client_choices")
+      .select("id, status, submitted_at")
+      .eq("id", choicesId)
+      .maybeSingle();
+    const submittedOk =
+      afterSubmit?.status === "submitted"
+      || afterSubmit?.status === "finalized"
+      || Boolean(afterSubmit?.submitted_at);
+    record(
+      "choices-submit",
+      Boolean(submittedOk),
+      `status=${afterSubmit?.status} submitted_at=${afterSubmit?.submitted_at ?? null}`,
+    );
+    await page.screenshot({ path: `${OUT}/shots/choices-after-submit-1280.png`, fullPage: false });
+
+    // After submit, Choices nav should hide (no longer client-editable).
+    await page.goto(`${APP}/p/${token}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.waitForTimeout(2000);
+    await dismissWelcome(page);
+    await page.waitForTimeout(1200);
+    const navAfterSubmit = await page.locator('[data-portal-nav="desktop"]').innerText().catch(() => "");
+    record(
+      "nav-choices-hidden-after-submit",
+      !/\bChoices\b/i.test(navAfterSubmit),
+      `navHasChoices=${/\bChoices\b/i.test(navAfterSubmit)}`,
+    );
+  } else {
+    record(
+      "choices-submit",
+      editable.length === 0,
+      editable.length === 0
+        ? "N/A — no editable request"
+        : `Submit unavailable (count=${await submitBtn.count()})`,
+    );
+    record("nav-choices-hidden-after-submit", editable.length === 0, "skipped — no submit");
+  }
+
   // Tasks entry still reachable
   await page.goto(`${APP}/p/${token}#tasks`, {
     waitUntil: "domcontentloaded",
@@ -330,26 +390,70 @@ async function main() {
     eoDeep.slice(0, 200),
   );
 
-  // Nav gating
+  // Re-read lifecycle after possible submit
+  const { data: choicesAfterJourney } = await admin
+    .from("client_choices")
+    .select("id, status")
+    .eq("event_id", EVENT)
+    .eq("venue_id", FANCY)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const editableAfter = (choicesAfterJourney ?? []).filter((c) =>
+    ["sent", "in_progress", "changes_requested"].includes(c.status),
+  );
+  const { data: eoAfter } = await admin
+    .from("event_orders")
+    .select("id, shared_at, client_agreed_at")
+    .eq("id", eoRow?.id ?? "")
+    .maybeSingle();
+
+  // Nav gating — click Home so WorkingWithYourVenue mounts (hash-only can miss SPA sync).
   await page.goto(`${APP}/p/${token}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-  await page.waitForTimeout(2000);
-  await dismissWelcome(page);
   await page.waitForTimeout(1500);
+  await dismissWelcome(page);
+  const homeNavBtn = page.locator('[data-portal-nav="desktop"] button, [data-portal-nav="desktop"] a').filter({
+    hasText: /^Home$/i,
+  }).first();
+  if ((await homeNavBtn.count()) > 0) {
+    await homeNavBtn.click({ force: true });
+  } else {
+    await page.evaluate(() => {
+      window.location.hash = "overview";
+    });
+  }
+  await page.waitForTimeout(2500);
+  await page.getByText("Working With Your Venue", { exact: false }).first().waitFor({
+    timeout: 15_000,
+  }).catch(() => undefined);
+  await page.evaluate(() => window.scrollTo(0, 1600)).catch(() => undefined);
+  await page.waitForTimeout(1500);
+  // Wait for async EO/inventory home fetches.
+  await page.waitForFunction(() => {
+    return Boolean(
+      document.querySelector('[data-testid="portal-home-inventory-entry"]')
+      || document.querySelector('[data-testid="portal-home-event-order-entry"]')
+      || document.querySelector('[data-testid="portal-home-event-order-docs-entry"]')
+      || document.body.innerText.includes("Working With Your Venue"),
+    );
+  }, { timeout: 12_000 }).catch(() => undefined);
+  await page.waitForTimeout(1500);
+
   const nav = await page.locator('[data-portal-nav="desktop"]').innerText().catch(() => "");
   const navHasChoices = /\bChoices\b/i.test(nav);
   const navHasInventory = /\bInventory\b/i.test(nav);
   const navHasOrder = /\bOrder\b/i.test(nav) || /Event Order/i.test(nav);
+  const onHome = /Working With Your Venue/i.test(await page.locator("body").innerText());
 
-  const expectChoicesNav = editable.length > 0;
+  const expectChoicesNav = editableAfter.length > 0;
   const expectInvNav = Boolean(
     invRow && ["shared", "submitted", "changes_requested", "confirmed"].includes(invRow.status),
   );
-  const expectEoNav = Boolean(eoRow?.shared_at && !eoRow?.client_agreed_at);
+  const expectEoNav = Boolean(eoAfter?.shared_at && !eoAfter?.client_agreed_at);
 
   record(
     "nav-choices-lifecycle",
     navHasChoices === expectChoicesNav,
-    `expect=${expectChoicesNav} has=${navHasChoices} editable=${editable.map((c) => c.status).join(",")}`,
+    `expect=${expectChoicesNav} has=${navHasChoices} editable=${editableAfter.map((c) => c.status).join(",")}`,
   );
   record(
     "nav-inventory-lifecycle",
@@ -359,18 +463,25 @@ async function main() {
   record(
     "nav-event-order-acceptance-only",
     navHasOrder === expectEoNav,
-    `expect=${expectEoNav} has=${navHasOrder} shared=${eoRow?.shared_at ?? null} agreed=${eoRow?.client_agreed_at ?? null}`,
+    `expect=${expectEoNav} has=${navHasOrder} shared=${eoAfter?.shared_at ?? null} agreed=${eoAfter?.client_agreed_at ?? null}`,
   );
 
   const homeDocsEo = await page.getByTestId("portal-home-event-order-docs-entry").count();
   const homeAcceptEo = await page.getByTestId("portal-home-event-order-entry").count();
+  const homeInv = await page.getByTestId("portal-home-inventory-entry").count();
+  const homeOk = !onHome
+    ? false
+    : expectEoNav
+      ? homeAcceptEo > 0
+      : eoAfter?.shared_at
+        ? homeDocsEo > 0
+        : homeAcceptEo === 0 && homeDocsEo === 0;
   record(
     "home-documents-or-accept-entry",
-    (expectEoNav ? homeAcceptEo > 0 : true)
-      && (eoRow?.shared_at && !expectEoNav ? homeDocsEo > 0 || homeAcceptEo === 0 : true),
-    `homeAccept=${homeAcceptEo} homeDocs=${homeDocsEo}`,
+    homeOk,
+    `onHome=${onHome} homeAccept=${homeAcceptEo} homeDocs=${homeDocsEo} homeInv=${homeInv} expectAccept=${expectEoNav} shared=${Boolean(eoAfter?.shared_at)}`,
   );
-  await page.screenshot({ path: `${OUT}/shots/couple-home-nav-1280.png`, fullPage: false });
+  await page.screenshot({ path: `${OUT}/shots/couple-home-nav-1280.png`, fullPage: true });
 
   // Venue side: booking unchanged / Stage 0 intact (smoke)
   await page.goto(`${APP}/events/${EVENT}#event-order`, {
@@ -397,19 +508,27 @@ async function main() {
 
   await browser.close();
 
+  // Draft EO must not appear in documents when unshared — fixture is shared; assert merge helper contract via API shape.
+  const draftExposed = docs.some(
+    (d) => d.docType === "event_order" && d.status === "draft",
+  );
+  record("documents-no-draft-event-order", !draftExposed, `draftExposed=${draftExposed}`);
+
   const persist = {
     eventStatus: eventAfter?.status ?? null,
     bookedAt: eventAfter?.booked_at ?? null,
-    choicesEditable: editable.map((c) => ({ id: c.id, status: c.status })),
+    choicesBefore: editable.map((c) => ({ id: c.id, status: c.status })),
+    choicesAfter: (choicesAfterJourney ?? []).map((c) => ({ id: c.id, status: c.status })),
     eventOrder: {
-      id: eoRow?.id ?? null,
-      sharedAt: eoRow?.shared_at ?? null,
-      clientAgreedAt: eoRow?.client_agreed_at ?? null,
+      id: eoAfter?.id ?? eoRow?.id ?? null,
+      sharedAt: eoAfter?.shared_at ?? eoRow?.shared_at ?? null,
+      clientAgreedAt: eoAfter?.client_agreed_at ?? eoRow?.client_agreed_at ?? null,
     },
     inventoryStatus: invRow?.status ?? null,
     documentsEventOrderCount: eoDocs.length,
     nav: { choices: navHasChoices, inventory: navHasInventory, order: navHasOrder },
     expectNav: { choices: expectChoicesNav, inventory: expectInvNav, order: expectEoNav },
+    home: { accept: homeAcceptEo, docs: homeDocsEo },
   };
   writeFileSync(`${OUT}/persisted-state.json`, JSON.stringify(persist, null, 2));
 
