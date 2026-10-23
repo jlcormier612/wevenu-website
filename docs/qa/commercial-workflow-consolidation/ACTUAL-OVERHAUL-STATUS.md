@@ -9,7 +9,7 @@
 | Product (serving Sandbox) | `c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd` |
 | Overhaul product baseline (still in history) | `e1c84abf22d32e4718c255e1f695488df9df3754` |
 | Migration repair (applied earlier; not re-run) | `be5723ef` / file `20261422800000_event_order_client_agreement.sql` |
-| Complete E2E evidence commit | *(this push)* |
+| Complete E2E evidence commit | `92141f4cadd3e7855b8606e502eb217fb9c97c71` |
 
 ---
 
