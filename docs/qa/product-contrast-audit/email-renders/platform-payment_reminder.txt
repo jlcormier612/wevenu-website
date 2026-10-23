@@ -1,0 +1,7 @@
+Hi Alex,
+
+We weren't able to process the latest payment for Fancy's Hello to Cheers subscription.
+
+Please update your payment method from the billing email Stripe sent, or reply and we'll help.
+
+No action needed if you've already updated your card — thank you.

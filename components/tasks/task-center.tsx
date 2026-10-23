@@ -24,7 +24,7 @@ import { setTaskCompletedAction } from "@/app/(app)/leads/[id]/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { categoryColor, categoryLabel, formatEventRelativeDue } from "@/lib/playbooks/constants";
+import { categoryLabel, categoryLabelStyle, formatEventRelativeDue } from "@/lib/playbooks/constants";
 import {
   matchEventsForFind,
   UPCOMING_DO_PREVIEW,
@@ -136,7 +136,9 @@ function DoTaskItem({
             </span>
           )}
           <span aria-hidden>·</span>
-          <span style={{ color: categoryColor(task.category as import("@/lib/playbooks/types").TaskCategory) }}>
+          <span {...(isLeadTask
+            ? {}
+            : categoryLabelStyle(task.category as import("@/lib/playbooks/types").TaskCategory))}>
             {isLeadTask ? "Lead" : categoryLabel(task.category as import("@/lib/playbooks/types").TaskCategory)}
           </span>
           <span aria-hidden>·</span>

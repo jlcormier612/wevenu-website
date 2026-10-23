@@ -23,7 +23,9 @@ Total discovered `page.tsx` + `route.ts` paths under `app/`: **~412** (includes 
 | `components/ui/button.tsx` | default, outline, secondary, ghost, destructive; hover/focus tokens in source | `lib/theme/shared-contrast-regression.test.ts` |
 | `components/ui/badge.tsx` | default, success, warning, destructive soft fills (**light + dark**; dark soft destructive uses white on darkened dusty) | same |
 | Payment status badges | `PaymentStatusBadge`, `ScheduleStatusBadge` (“Needs Attention” → destructive) | same — asserts shared Badge wiring + dark AA pair |
-| Theme tokens | `--destructive-foreground` (solid buttons stay black), primary/secondary pairs, amber banner | same + existing portal/vendor contrast tests |
+| Theme tokens | `--destructive-foreground` (solid buttons stay black), primary/secondary pairs, amber banner; **`--muted-foreground` 92%** light/dark | same + existing portal/vendor contrast tests + `contrast-anchors.test.ts` |
+| Task category labels | All `TASK_CATEGORIES` light + dark label inks on white/cream/soft-sage and forest/heritage | `lib/playbooks/category-label-contrast.test.ts` + `verify-task-category-labels.mts` |
+| Email shells / footers / CTAs | `EMAIL_INK`, no `#9ca3af`, `inkOn` on venue CTAs; platform registry render | `lib/email/email-shell-contrast.test.ts` + `scripts/qa/render-customer-email-contrast.mts` |
 | Assignment withdrawal banner | light amber + dark amber; dismiss/remove | shared + `vendor-assignment-fee-and-removal.test.ts` |
 | Public auth Wordmark | `AuthBrandFrame` light lock + primary asset on warm linen/taupe page | `components/auth/auth-brand-frame.test.ts` + `lib/theme/contrast-anchors.test.ts` + `docs/qa/client-invite-logo-contrast/` browser |
 
@@ -48,10 +50,16 @@ Automated source/ratio tests cover resting token pairs. Hover/focus/disabled rel
 
 ```bash
 npx tsx --test \
+  lib/playbooks/category-label-contrast.test.ts \
+  lib/email/email-shell-contrast.test.ts \
+  lib/theme/contrast-anchors.test.ts \
   lib/theme/shared-contrast-regression.test.ts \
   lib/portal/vendor-selection-contrast.test.ts \
   lib/portal/client-portal-contrast.test.ts \
   lib/vendors/vendor-preferred-dark-contrast.test.ts \
   lib/dashboard-system/follow-up-dark-contrast.test.ts \
   lib/vendors/vendor-assignment-fee-and-removal.test.ts
+
+npx tsx scripts/qa/render-customer-email-contrast.mts
+EXPECTED_SHA=<serving> npx tsx docs/qa/product-contrast-audit/verify-task-category-labels.mts
 ```

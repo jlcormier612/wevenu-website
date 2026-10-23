@@ -6,6 +6,7 @@ import { htcEmailCtaAnchorHtml } from "@/lib/email/htc-cta";
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
 import { ACCESS_TITLE_LABELS } from "@/lib/authorization/access-copy";
 import type { AccessTitle } from "@/lib/authorization/types";
+import { EMAIL_INK } from "@/lib/email/contrast-safe";
 
 function accessLabel(accessTitleLabel?: string | AccessTitle): string | null {
   if (!accessTitleLabel) return null;
@@ -38,7 +39,7 @@ export function buildTeamInviteHtml({
     <tr>
       <td style="background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb">
         ${htcEmailLogoHeaderHtml()}
-        <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#6b7280">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:${EMAIL_INK.muted}">
           Team invitation
         </p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#111827;line-height:1.3">
@@ -50,15 +51,15 @@ export function buildTeamInviteHtml({
         </p>
         ${titleLine}
         ${htcEmailCtaAnchorHtml(escapeHtml(acceptUrl), "Accept Invitation →")}
-        <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
+        <p style="margin:32px 0 0;font-size:13px;color:${EMAIL_INK.footer};line-height:1.5">
           If you weren't expecting this invitation, you can safely ignore it.<br>
-          <a href="${acceptUrl}" style="color:#9ca3af;word-break:break-all">${acceptUrl}</a>
+          <a href="${acceptUrl}" style="color:${EMAIL_INK.footer};word-break:break-all">${acceptUrl}</a>
         </p>
       </td>
     </tr>
     <tr>
       <td style="padding-top:20px;text-align:center">
-        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Hello to Cheers</p>
+        <p style="font-size:12px;color:${EMAIL_INK.footer};margin:0">Powered by Hello to Cheers</p>
       </td>
     </tr>
   </table>
@@ -112,7 +113,7 @@ export function buildOwnerInviteHtml({
     <tr>
       <td style="background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb">
         ${htcEmailLogoHeaderHtml()}
-        <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#6b7280">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:${EMAIL_INK.muted}">
           Owner invitation
         </p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#111827;line-height:1.3">
@@ -129,15 +130,15 @@ export function buildOwnerInviteHtml({
           You don't need to finish day-to-day setup yourself — your Administrator can keep running the account while this invitation is pending.
         </p>
         ${htcEmailCtaAnchorHtml(escapeHtml(acceptUrl), "Accept Owner Invitation →")}
-        <p style="margin:32px 0 0;font-size:13px;color:#9ca3af;line-height:1.5">
+        <p style="margin:32px 0 0;font-size:13px;color:${EMAIL_INK.footer};line-height:1.5">
           If you weren't expecting this invitation, you can safely ignore it.<br>
-          <a href="${acceptUrl}" style="color:#9ca3af;word-break:break-all">${acceptUrl}</a>
+          <a href="${acceptUrl}" style="color:${EMAIL_INK.footer};word-break:break-all">${acceptUrl}</a>
         </p>
       </td>
     </tr>
     <tr>
       <td style="padding-top:20px;text-align:center">
-        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Hello to Cheers</p>
+        <p style="font-size:12px;color:${EMAIL_INK.footer};margin:0">Powered by Hello to Cheers</p>
       </td>
     </tr>
   </table>

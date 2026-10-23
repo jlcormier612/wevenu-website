@@ -3,6 +3,7 @@
  */
 
 import { htcEmailLogoHeaderHtml } from "@/shared/brand/logo";
+import { EMAIL_INK } from "@/lib/email/contrast-safe";
 
 export type DigestItem = {
   label: string;
@@ -39,7 +40,7 @@ export function buildDigestHtml(ctx: DigestContext): string {
       <tr><td style="padding:4px 0">
         <a href="${escapeHtml(i.href)}" style="display:block;padding:10px 14px;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;background:#f9fafb">
           <p style="margin:0;font-size:14px;font-weight:600;color:#111827">${escapeHtml(i.label)}</p>
-          ${i.detail ? `<p style="margin:4px 0 0;font-size:12px;color:#6b7280">${escapeHtml(i.detail)}</p>` : ""}
+          ${i.detail ? `<p style="margin:4px 0 0;font-size:12px;color:${EMAIL_INK.muted}">${escapeHtml(i.detail)}</p>` : ""}
         </a>
       </td></tr>`).join("")}`;
   };
@@ -69,7 +70,7 @@ export function buildDigestHtml(ctx: DigestContext): string {
     <tr>
       <td style="background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb">
         ${htcEmailLogoHeaderHtml()}
-        <p style="margin:0 0 4px;font-size:12px;color:#9ca3af">${escapeHtml(ctx.todayFormatted)}</p>
+        <p style="margin:0 0 4px;font-size:12px;color:${EMAIL_INK.footer}">${escapeHtml(ctx.todayFormatted)}</p>
         <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;color:#111827">${escapeHtml(ctx.venueName)}</h1>
         <p style="margin:0 0 4px;font-size:15px;color:#374151">${escapeHtml(ctx.subjectLine)}</p>
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -78,15 +79,15 @@ export function buildDigestHtml(ctx: DigestContext): string {
           ${winsHtml}
           ${luvHtml}
         </table>
-        <p style="margin:32px 0 0;font-size:12px;color:#9ca3af;line-height:1.6">
+        <p style="margin:32px 0 0;font-size:12px;color:${EMAIL_INK.footer};line-height:1.6">
           You're getting this because daily digests are on by default.<br>
-          <a href="${settingsUrl}" style="color:#9ca3af">Turn them off in Notification Preferences →</a>
+          <a href="${settingsUrl}" style="color:${EMAIL_INK.footer}">Turn them off in Notification Preferences →</a>
         </p>
       </td>
     </tr>
     <tr>
       <td style="padding-top:20px;text-align:center">
-        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Hello to Cheers</p>
+        <p style="font-size:12px;color:${EMAIL_INK.footer};margin:0">Powered by Hello to Cheers</p>
       </td>
     </tr>
   </table>

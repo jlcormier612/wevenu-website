@@ -50,7 +50,7 @@ import { createClient } from "@/integrations/supabase/client";
 import { ATTACHMENT_SOURCE_LABELS } from "@/lib/documents/attachment-source";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import {
-  AUTO_COMPLETE_TRIGGERS, categoryColor, categoryLabel, defaultReminderForCategory,
+  AUTO_COMPLETE_TRIGGERS, categoryLabel, categoryLabelStyle, defaultReminderForCategory,
   directionForOffset, formatDaysOffset, offsetForDirection, taskActionOptionsForKind, TASK_CATEGORIES, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
@@ -483,7 +483,7 @@ function TaskRow({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-          <span style={{ color: categoryColor(task.category) }}>{categoryLabel(task.category)}</span>
+          <span {...categoryLabelStyle(task.category)}>{categoryLabel(task.category)}</span>
           <span>·</span>
           <span>{formatDaysOffset(task.daysOffset)}</span>
           {task.reminderBeforeDays && <><span>·</span><span>reminds {task.reminderBeforeDays[0]}d before</span></>}

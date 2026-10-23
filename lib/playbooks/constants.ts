@@ -63,14 +63,27 @@ export function playbookKindLabel(kind: PlaybookKind): string {
   return PLAYBOOK_KINDS.find((k) => k.value === kind)?.label ?? kind;
 }
 
-export const TASK_CATEGORIES: { value: TaskCategory; label: string; color: string }[] = [
-  { value: "communication", label: "Communication", color: "#5D6F5D" },
-  { value: "financial",     label: "Financial",     color: "#C7A66A" },
-  { value: "planning",      label: "Planning",      color: "#4F5F4F" },
-  { value: "document",      label: "Document",      color: "#B8AEA1" },
-  { value: "meeting",       label: "Meeting",       color: "#B9D1C2" },
-  { value: "internal",      label: "Internal",      color: "#DED6CA" },
-  { value: "custom",        label: "Custom",        color: "#D8A7AA" },
+/**
+ * Task category taxonomy.
+ * - `color` — decorative swatch (chips/dots); not guaranteed as text ink.
+ * - `labelInkLight` / `labelInkDark` — WCAG 2.2 AA (≥4.5:1) label ink on
+ *   light surfaces (white/cream/soft-sage) and dark staff surfaces
+ *   (forest/heritage sage). Used by every category label in task lists.
+ */
+export const TASK_CATEGORIES: {
+  value: TaskCategory;
+  label: string;
+  color: string;
+  labelInkLight: string;
+  labelInkDark: string;
+}[] = [
+  { value: "communication", label: "Communication", color: "#5D6F5D", labelInkLight: "#2F3A2F", labelInkDark: "#E8F0EA" },
+  { value: "financial",     label: "Financial",     color: "#C7A66A", labelInkLight: "#5C4A1A", labelInkDark: "#FAF0D8" },
+  { value: "planning",      label: "Planning",      color: "#4F5F4F", labelInkLight: "#1F2A1F", labelInkDark: "#F7F5F1" },
+  { value: "document",      label: "Document",      color: "#B8AEA1", labelInkLight: "#4A433A", labelInkDark: "#F0EBE3" },
+  { value: "meeting",       label: "Meeting",       color: "#B9D1C2", labelInkLight: "#2F4A3C", labelInkDark: "#E8F0EA" },
+  { value: "internal",      label: "Internal",      color: "#DED6CA", labelInkLight: "#4A433A", labelInkDark: "#F5F2EC" },
+  { value: "custom",        label: "Custom",        color: "#D8A7AA", labelInkLight: "#6B4044", labelInkDark: "#FAE8EA" },
 ];
 
 export const TASK_OWNERS: { value: TaskOwner; label: string }[] = [
@@ -136,8 +149,38 @@ export function categoryLabel(cat: TaskCategory): string {
   return TASK_CATEGORIES.find((c) => c.value === cat)?.label ?? cat;
 }
 
+/** Decorative taxonomy swatch — do not use as text color. */
 export function categoryColor(cat: TaskCategory): string {
   return TASK_CATEGORIES.find((c) => c.value === cat)?.color ?? "#B8AEA1";
+}
+
+const FALLBACK_LABEL_INK = { light: "#4A433A", dark: "#F0EBE3" } as const;
+
+/** AA-safe label ink for light theme surfaces. */
+export function categoryLabelInkLight(cat: TaskCategory): string {
+  return TASK_CATEGORIES.find((c) => c.value === cat)?.labelInkLight ?? FALLBACK_LABEL_INK.light;
+}
+
+/** AA-safe label ink for dark theme staff/portal sage surfaces. */
+export function categoryLabelInkDark(cat: TaskCategory): string {
+  return TASK_CATEGORIES.find((c) => c.value === cat)?.labelInkDark ?? FALLBACK_LABEL_INK.dark;
+}
+
+/**
+ * Theme-aware inline style + class for category text labels.
+ * Sets CSS variables; dark mode overrides via `.dark` (next-themes).
+ */
+export function categoryLabelStyle(cat: TaskCategory): {
+  className: string;
+  style: { color: string; ["--category-label-ink-dark"]: string };
+} {
+  return {
+    className: "dark:!text-[color:var(--category-label-ink-dark)]",
+    style: {
+      color: categoryLabelInkLight(cat),
+      "--category-label-ink-dark": categoryLabelInkDark(cat),
+    },
+  };
 }
 
 // Scheduled Activity (Calendar Integration — Phase 1) — presentation helpers

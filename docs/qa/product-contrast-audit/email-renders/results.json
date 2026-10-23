@@ -1,0 +1,250 @@
+{
+  "renderedAt": "2026-10-23T15:45:16.098Z",
+  "outDir": "docs/qa/product-contrast-audit/email-renders",
+  "emailInk": {
+    "body": "#374151",
+    "heading": "#111827",
+    "muted": "#6b7280",
+    "footer": "#6b7280",
+    "card": "#ffffff",
+    "page": "#f9fafb"
+  },
+  "paleCtaInk": "#000000",
+  "paleCtaOk": true,
+  "rows": [
+    {
+      "id": "platform-welcome",
+      "htmlBytes": 2431,
+      "textBytes": 466,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-founder_welcome",
+      "htmlBytes": 2658,
+      "textBytes": 601,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-welcome_back",
+      "htmlBytes": 1832,
+      "textBytes": 354,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-welcome_back_verified",
+      "htmlBytes": 1668,
+      "textBytes": 257,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-welcome_back_rejected",
+      "htmlBytes": 1754,
+      "textBytes": 345,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-kickoff",
+      "htmlBytes": 1853,
+      "textBytes": 368,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-payment_receipt",
+      "htmlBytes": 1611,
+      "textBytes": 205,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-white_glove_scheduling",
+      "htmlBytes": 1657,
+      "textBytes": 251,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-white_glove_welcome",
+      "htmlBytes": 2429,
+      "textBytes": 716,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-welcome_home",
+      "htmlBytes": 1712,
+      "textBytes": 204,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-payment_reminder",
+      "htmlBytes": 1666,
+      "textBytes": 260,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-account_suspended",
+      "htmlBytes": 1626,
+      "textBytes": 223,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-account_reactivated",
+      "htmlBytes": 1481,
+      "textBytes": 155,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-subscription_link",
+      "htmlBytes": 1728,
+      "textBytes": 245,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-trial_reminder",
+      "htmlBytes": 1643,
+      "textBytes": 239,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-renewal_reminder",
+      "htmlBytes": 1530,
+      "textBytes": 200,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-inquiry_confirmation",
+      "htmlBytes": 1660,
+      "textBytes": 247,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-feedback_confirmation",
+      "htmlBytes": 1669,
+      "textBytes": 255,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "platform-luv_suggestion",
+      "htmlBytes": 1331,
+      "textBytes": 58,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "venue-branded-shell",
+      "htmlBytes": 1151,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "venue-brand-preview",
+      "htmlBytes": 1223,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "venue-cta-heritage",
+      "htmlBytes": 1282,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "venue-cta-pale",
+      "htmlBytes": 1092,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "conversation-wrap",
+      "htmlBytes": 1570,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "team-invite",
+      "htmlBytes": 2060,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "vendor-invite",
+      "htmlBytes": 2820,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "vendor-assignment",
+      "htmlBytes": 2070,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "vendor-removed",
+      "htmlBytes": 1707,
+      "textBytes": 0,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    },
+    {
+      "id": "daily-digest",
+      "htmlBytes": 2262,
+      "textBytes": 17,
+      "hasPaleFooter": false,
+      "sampleMutedOk": true,
+      "notes": "ok"
+    }
+  ],
+  "failCount": 0,
+  "renderedCount": 29
+}

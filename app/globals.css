@@ -105,8 +105,8 @@
   --secondary: var(--natural-cream);
   --secondary-foreground: var(--forest-sage);
   --muted: var(--natural-cream);
-  /* 82% keeps muted secondary while meeting WCAG AA for helper/placeholder copy */
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 82%, transparent);
+  /* 92% keeps muted secondary while meeting WCAG AA (≥4.5:1) on white/cream */
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 92%, transparent);
   --accent: var(--soft-sage);
   --accent-foreground: var(--forest-sage);
   --destructive: var(--dusty-rose);
@@ -245,7 +245,7 @@ html:has(.htc-staff) {
   --popover: var(--true-white);
   --popover-foreground: var(--forest-sage);
   --muted: var(--natural-cream);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 80%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 92%, transparent);
   --secondary: var(--natural-cream);
   --secondary-foreground: var(--forest-sage);
   --border: var(--taupe-medium);
@@ -283,7 +283,7 @@ html.dark:has(.htc-staff) {
   --popover: var(--heritage-sage);
   --popover-foreground: var(--true-white);
   --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 92%, transparent);
   --secondary: var(--heritage-sage);
   --secondary-foreground: var(--true-white);
   --border: color-mix(in oklch, var(--true-white) 28%, transparent);
@@ -488,7 +488,7 @@ html:has(.htc-staff) [data-slot="table"] {
   --secondary: var(--heritage-sage);
   --secondary-foreground: var(--true-white);
   --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 92%, transparent);
   --accent: var(--heritage-sage);
   --accent-foreground: var(--true-white);
   --destructive: var(--dusty-rose);

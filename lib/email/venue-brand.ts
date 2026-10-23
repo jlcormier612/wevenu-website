@@ -7,7 +7,9 @@
  * email is a constrained medium.
  */
 
+import { EMAIL_INK } from "@/lib/email/contrast-safe";
 import { formatPhoneDisplay } from "@/lib/sms/phone";
+import { inkOn } from "@/lib/theme/public-form-surface";
 
 /** Columns needed to build EmailVenueBrand from a venues row (or embed). */
 export const VENUE_EMAIL_BRAND_SELECT =
@@ -107,7 +109,8 @@ export function escapeHtml(s: string): string {
 
 /** A primary-color CTA button, matching the venue's brand. */
 export function brandButtonHtml(brand: EmailVenueBrand, href: string, label: string): string {
-  return `<a href="${escapeHtml(href)}" style="background:${brand.primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600;">${escapeHtml(label)}</a>`;
+  const ink = inkOn(brand.primaryColor);
+  return `<a href="${escapeHtml(href)}" style="background:${brand.primaryColor};color:${ink};padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600;">${escapeHtml(label)}</a>`;
 }
 
 function signatureBlockHtml(brand: EmailVenueBrand): string {
@@ -119,12 +122,12 @@ function signatureBlockHtml(brand: EmailVenueBrand): string {
   const parts: string[] = [];
   if (sig) {
     parts.push(
-      `<p style="font-size:13px;color:#6b7280;margin:0;white-space:pre-line;line-height:1.45">${escapeHtml(sig)}</p>`,
+      `<p style="font-size:13px;color:${EMAIL_INK.muted};margin:0;white-space:pre-line;line-height:1.45">${escapeHtml(sig)}</p>`,
     );
   }
   if (contact) {
     parts.push(
-      `<p style="font-size:12px;color:#9ca3af;margin:${sig ? "8px" : "0"} 0 0">${escapeHtml(contact)}</p>`,
+      `<p style="font-size:12px;color:${EMAIL_INK.footer};margin:${sig ? "8px" : "0"} 0 0">${escapeHtml(contact)}</p>`,
     );
   }
   return parts.join("");
@@ -162,12 +165,12 @@ export function renderBrandedEmailHtml(brand: EmailVenueBrand, bodyHtml: string)
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:24px 16px">
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:${EMAIL_INK.page};margin:0;padding:24px 16px">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
     <tr>
-      <td style="background:#fff;border-radius:12px;padding:28px 32px;border:1px solid #e5e7eb;border-top:4px solid ${brand.primaryColor}">
+      <td style="background:${EMAIL_INK.card};border-radius:12px;padding:28px 32px;border:1px solid #e5e7eb;border-top:4px solid ${brand.primaryColor}">
         ${headerHtml}
-        <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#6b7280">${escapeHtml(brand.name)}</p>
+        <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:${EMAIL_INK.muted}">${escapeHtml(brand.name)}</p>
         ${bodyHtml}
       </td>
     </tr>
@@ -182,6 +185,6 @@ export function renderEmailBrandPreviewHtml(
   brand: EmailVenueBrand,
   sampleBody = "Hi — this is a sample message from your venue.",
 ): string {
-  const bodyHtml = `<p style="margin:0 0 12px;font-size:15px;color:#374151;line-height:1.5">${escapeHtml(sampleBody)}</p>`;
+  const bodyHtml = `<p style="margin:0 0 12px;font-size:15px;color:${EMAIL_INK.body};line-height:1.5">${escapeHtml(sampleBody)}</p>`;
   return renderBrandedEmailHtml(brand, bodyHtml);
 }

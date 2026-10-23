@@ -17,14 +17,17 @@ function read(rel: string) {
 describe("theme contrast anchors", () => {
   it("bumps muted-foreground opacity for WCAG-friendly secondary copy", () => {
     const css = read("app/globals.css");
+    // 92% clears ≥4.5:1 on white/cream (82%/86% did not).
     assert.match(
       css,
-      /--muted-foreground:\s*color-mix\(in oklch, var\(--forest-sage\) 82%, transparent\)/,
+      /--muted-foreground:\s*color-mix\(in oklch, var\(--forest-sage\) 92%, transparent\)/,
     );
     assert.match(
       css,
-      /--muted-foreground:\s*color-mix\(in oklch, var\(--true-white\) 86%, transparent\)/,
+      /--muted-foreground:\s*color-mix\(in oklch, var\(--true-white\) 92%, transparent\)/,
     );
+    assert.doesNotMatch(css, /forest-sage\) 82%, transparent/);
+    assert.doesNotMatch(css, /true-white\) 86%, transparent/);
   });
 
   it("forces explicit text-foreground on shared Input/Textarea/SelectTrigger", () => {

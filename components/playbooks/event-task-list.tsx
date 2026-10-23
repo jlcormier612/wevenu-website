@@ -34,7 +34,7 @@ import {
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { sortByDueDateAsc } from "@/lib/tasks/group-by-completion";
 import {
-  categoryColor, categoryLabel, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
+  categoryLabel, categoryLabelStyle, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
   formatRequiredTaskProgress, formatScheduledTime, isScheduledActivity, offsetForDirection,
   PLAYBOOK_KINDS, STATUS_CONFIG, TASK_VISIBILITY, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
@@ -569,7 +569,7 @@ function TaskRow({
             )}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-            <span style={{ color: categoryColor(task.category) }}>{categoryLabel(task.category)}</span>
+            <span {...categoryLabelStyle(task.category)}>{categoryLabel(task.category)}</span>
             <span>·</span>
             <span>{task.ownerType === "couple" ? "Client" : task.ownerType === "vendor" ? "Vendor" : "Coordinator"}</span>
             <span>·</span>
@@ -668,7 +668,7 @@ function TaskRow({
                 {creatingRequest ? <Loader2 className="h-3 w-3 animate-spin" /> : "Create Request"}
               </Button>
             )}
-            <Button type="button" size="sm" variant="outline" onClick={handleComplete} disabled={pending} className="h-7 px-2 text-xs">
+            <Button type="button" size="sm" variant="outline" onClick={handleComplete} disabled={pending} className="h-7 px-2 text-xs" aria-label="Mark complete">
               {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={handleWaive} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">

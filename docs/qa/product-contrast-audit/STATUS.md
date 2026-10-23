@@ -1,52 +1,93 @@
-# Product contrast audit + event-assignment fixes
+# Product-wide contrast & legibility — closure report
 
-**STATUS: GREEN**
+**STATUS: PARTIAL** — systemic fixes committed and unit/email-render GREEN; Sandbox deploy + live browser matrix still required for GREEN / COMPLETE.
 
-Production untouched. Unrelated dirty tree preserved.
+Production untouched. Unrelated dirty tree preserved (only contrast-scoped paths staged for this commit).
 
-## Serving proof
+## Original requested scope vs prior claimed closure
+
+| Claim | Reality |
+| --- | --- |
+| Prior `STATUS: GREEN` (@ `79db74af`) | Narrow: assignment-panel vendors + shared Button/Badge tokens — **not** product-wide portals×themes×emails |
+| Screenshot defect (Planning on muted green) | **Confirmed root cause:** decorative `categoryColor` (#4F5F4F forest) used as text on dark staff `heritage`/`forest` cards (~1.0–1.3:1) |
+| Full email path contrast | Prior inventory existed; pale `#9ca3af` footer ink (~2.5:1) remained in shared shells |
+
+## Systemic fixes (this pass)
+
+1. **Task category labels** — `labelInkLight` / `labelInkDark` + `categoryLabelStyle()`; call sites: event-task-list, task-center, playbook-builder. Swatches kept for taxonomy; text uses AA inks.
+2. **`--muted-foreground`** — light/dark opacity **82%/86%/80% → 92%** in `app/globals.css`, staff scope, `workspace/app/globals.css`, and `PUBLIC_FORM_LIGHT_VARS` (82% failed AA on cream/white).
+3. **Email shells** — `EMAIL_INK` tokens; replace `#9ca3af`; `brandButtonHtml` / conversation CTAs use `inkOn(primary)` for pale venue brands.
+
+## Inventory (discovered, not assumed)
+
+| Dimension | Count / notes |
+| --- | --- |
+| Portals | **3** — venue staff (`app/(app)`), couple (`workspace` / portal), vendor (`vendor-app` / vendor surfaces) |
+| User-facing `page.tsx` under `app/` | **221** routes (includes public/auth); portal+vendor+workspace pages subset **~27** under those trees |
+| Themes | **light + dark** (staff `.dark .htc-staff`; portal/workspace globals; auth light-locked) |
+| Customer email purposes | **33** in `docs/qa/email-consistency-audit/INVENTORY.md` |
+| Platform registry templates | **19** (`shared/email/templates`) |
+| Safe renders this pass | **29** HTML artifacts under `email-renders/` (registry + venue shell + invites + digest + conversation wrap) — **no external delivery** |
+
+## Failures found → fixed
+
+| Failure | Criterion | Fix |
+| --- | --- | --- |
+| Planning (and other) category text on dark sage | Normal text ≥4.5:1 | Theme-aware label inks |
+| Pale category swatches as text on light (financial/meeting/…) | ≥4.5:1 | `labelInkLight` palette |
+| `--muted-foreground` 82%/80% on cream/white | ≥4.5:1 | 92% mix |
+| Email `#9ca3af` footers | ≥4.5:1 | `EMAIL_INK.footer` = `#6b7280` |
+| White CTA on dusty-rose venue primary | ≥4.5:1 | `inkOn(primary)` |
+
+## Regression commands
+
+```bash
+npx tsx --test \
+  lib/playbooks/category-label-contrast.test.ts \
+  lib/email/email-shell-contrast.test.ts \
+  lib/theme/contrast-anchors.test.ts \
+  lib/theme/shared-contrast-regression.test.ts \
+  lib/portal/vendor-selection-contrast.test.ts \
+  lib/portal/client-portal-contrast.test.ts \
+  lib/vendors/vendor-preferred-dark-contrast.test.ts \
+  lib/dashboard-system/follow-up-dark-contrast.test.ts \
+  lib/email/venue-brand.test.ts \
+  lib/email/htc-cta.test.ts \
+  lib/email/customer-facing-branding.closeout.test.ts
+
+npx tsx scripts/qa/render-customer-email-contrast.mts
+# After Sandbox serves EXPECTED_SHA:
+EXPECTED_SHA=<sha> npx tsx docs/qa/product-contrast-audit/verify-task-category-labels.mts
+```
+
+**Unit/email-render (pre-deploy):** 64/64 contrast-related tests PASS; email render `failCount: 0`, `renderedCount: 29`.
+
+## Serving / deploy (fill after deploy)
 
 | Item | Value |
 | --- | --- |
-| Contrast fix commit | `79db74af822b5880838bf8d331ab075eb1012093` |
-| Currently serving (ECS) | `76aa3be7a060fbc71367459a6f737896c7dc5bf5` (ancestor includes `79db74af`) |
-| Task definition | `htc-sandbox-venue-app:881` |
-| ECR image | `…/htc-sandbox-venue-app:76aa3be7a060fbc71367459a6f737896c7dc5bf5` |
-| Deploy (contrast) | [39879000136](https://github.com/jlcormier612/wevenu-website/actions/runs/39879000136) — success @ `79db74af` |
-| Deploy (serving now) | [39880136569](https://github.com/jlcormier612/wevenu-website/actions/runs/39880136569) — vendor-selection lifecycle on top of contrast |
-| Migration (required exclude) | `20261422500000_submit_vendor_list_exclude_required.sql` — applied |
+| Contrast commit | _(set after commit)_ |
+| Deploy workflow | _(set after `gh workflow run deploy-sandbox.yml`)_ |
+| ECS image / serving SHA | _(independent verify)_ |
+| Browser task-category evidence | `task-category-browser-results.json`, `shots/task-categories-*-1280.png` |
+| Email render evidence | `email-renders/results.json` |
 
-## Browser verification (`verify-assignment-panel.mts`)
+## Explicitly unverified / remaining for GREEN
 
-**16/16 passed** against live Sandbox Fancy event `ebf74f77…` Vendors panel (not `/vendors` network).
+- Live Sandbox browser: all three portals × both themes × representative routes (beyond task-category + prior narrow passes).
+- Every dynamic commercial email body variant with venue-extreme primaries (unit covers pale CTA; not every invoice/proposal HTML at runtime).
+- Soft-sage as a **full** text surface still cannot carry forest muted ink at 4.5:1 even at 100% — soft-sage is accent, not body surface (documented exception).
 
-| Check | Result |
-| --- | --- |
-| Cuppity assignment fee $500 | PASS |
-| Cuppity `is_required` active | PASS |
-| No pending couple removal on required | PASS |
-| Fee not on Event Order lines (named) | PASS |
-| **Venue cost $500** visible @ 1280 | PASS (`venueCost=1`) |
-| Venue cost chip contrast | PASS **6.36:1** |
-| Seeded Baker couple-removal banner | PASS |
-| Dismiss request contrast | PASS **6.36:1** |
-| Remove from event contrast | PASS **10.03:1** (black on dusty-rose) |
-| Screenshots 1280 + 390 | PASS → `shots/event-vendors-*.png` |
-| ECS serving SHA includes contrast ancestor | PASS |
+## Exceptions
 
-## Root causes (closed)
+| Item | Reason | Owner |
+| --- | --- | --- |
+| Soft-sage (#b9d1c2) as body text backdrop | Forest ink max ~4.21:1; accent surface only | Design tokens — do not use soft-sage for paragraphs |
+| Calendar taxonomy dots | Decorative; meaning also in labels | Prior COVERAGE |
+| Marketing heroes / image overlays | Dynamic imagery | Manual |
 
-1. Soft destructive white-on-amber under `.dark` → solid destructive + black foreground; outline on `bg-background`.
-2. Bare `$500` → labeled **Venue cost** (venue→vendor coordination; not couple/EO charge).
-3. `submit_vendor_list` invented couple withdrawals for required vendors → CTE excludes required; repair dismissed stale pending.
+## Safety
 
-## Tests
-
-```text
-npx tsx --test \
-  lib/theme/shared-contrast-regression.test.ts \
-  lib/vendors/vendor-assignment-fee-and-removal.test.ts \
-  lib/vendors/required-vendors.test.ts
-```
-
-Harness results: `docs/qa/product-contrast-audit/browser-results.json`
+- No real customer emails/SMS sent.
+- Production not deployed/migrated.
+- Unrelated working-tree changes not staged.

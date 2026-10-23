@@ -6,7 +6,9 @@
  * Plain-text bodies are escaped, then http(s) URLs become real <a href>
  * anchors so proposal / offer links are clickable in HTML email clients.
  */
+import { EMAIL_INK } from "@/lib/email/contrast-safe";
 import { escapeHtml, renderBrandedEmailHtml, type EmailVenueBrand } from "@/lib/email/venue-brand";
+import { inkOn } from "@/lib/theme/public-form-surface";
 
 /** http/https URLs; trailing sentence punctuation is stripped from the href. */
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"'`]+/gi;
@@ -47,14 +49,15 @@ function emailCtaHtml(
   btnColor: string,
   options?: { showRawUrl?: boolean },
 ): string {
+  const ink = inkOn(btnColor);
   const button =
-    `<a href="${safeHref}" style="background:${btnColor};color:#fff;padding:12px 20px;border-radius:8px;` +
+    `<a href="${safeHref}" style="background:${btnColor};color:${ink};padding:12px 20px;border-radius:8px;` +
     `text-decoration:none;display:inline-block;font-weight:600;font-size:16px;line-height:1.25;margin:4px 0;">` +
     `${escapeHtml(label)}</a>`;
   if (options?.showRawUrl === false) return button;
   return (
     `${button}` +
-    `<br><span style="font-size:12px;color:#6b7280;word-break:break-all">${safeHref}</span>`
+    `<br><span style="font-size:12px;color:${EMAIL_INK.muted};word-break:break-all">${safeHref}</span>`
   );
 }
 
