@@ -138,13 +138,10 @@ export async function submitClientChoicesCoupleEmail(input: {
 
   const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
   const sessions = await getPortalSessions(input.clientId);
-  let session =
+  const session =
     sessions.find((s) => s.accessLevel !== "financial")
     ?? sessions[0]
-    ?? null;
-  if (!session) {
-    session = await createPortalSession(input.clientId, null, "couple");
-  }
+    ?? (await createPortalSession(input.clientId, null, "couple"));
   if (!session?.accessToken) {
     return {
       submitted: false,
