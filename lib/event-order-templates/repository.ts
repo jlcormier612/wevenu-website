@@ -119,7 +119,30 @@ export async function getTemplates(client: DbClient, venueId: string, includeArc
   if (!includeArchived) q = q.eq("is_archived", false);
   const { data, error } = await q.order("name");
   if (error) throw error;
-  return (data as TemplateRow[]).map(mapTemplate);
+  const templates = (data as TemplateRow[]).map(mapTemplate);
+  if (templates.length === 0) return templates;
+
+  // Enrich with choice-group counts so Library can hide Path B Send on fixed-only templates.
+  const ids = templates.map((t) => t.id);
+  const gRes = await client
+    .from("event_order_template_groups")
+    .select("template_id")
+    .eq("venue_id", venueId)
+    .in("template_id", ids);
+  const groupsMissing = Boolean(
+    gRes.error && /does not exist|schema cache|Could not find the table/i.test(gRes.error.message ?? ""),
+  );
+  if (gRes.error && !groupsMissing) throw gRes.error;
+  const counts = new Map<string, number>();
+  if (!groupsMissing) {
+    for (const row of (gRes.data ?? []) as { template_id: string }[]) {
+      counts.set(row.template_id, (counts.get(row.template_id) ?? 0) + 1);
+    }
+  }
+  return templates.map((t) => ({
+    ...t,
+    selectableGroupCount: counts.get(t.id) ?? 0,
+  }));
 }
 
 export async function getTemplateWithDetails(client: DbClient, venueId: string, id: string): Promise<EventOrderTemplateWithDetails | null> {

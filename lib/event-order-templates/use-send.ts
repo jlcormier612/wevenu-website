@@ -36,6 +36,13 @@ export type SendEventOrderTemplateResult =
   | { ok: false; message?: string };
 
 /**
+ * Path B (client selection) requires choice groups. Fixed-only templates use
+ * Path A: Library Use / Apply → Finalize → Share on the event Event Order.
+ */
+export const SEND_REQUIRES_SELECTABLE_GROUPS_MESSAGE =
+  "This template only has fixed offerings — there is nothing for the client to select. Use the template to apply it to the Event Order, then Finalize and Share from the event.";
+
+/**
  * Use (no client round-trip):
  * 1. Apply fixed lines/sections into the event’s Event Order.
  * 2. If the template has choice groups, freeze a selection instance, apply
@@ -134,7 +141,7 @@ export async function sendEventOrderTemplate(
   if (!templateHasSelectableGroups(template)) {
     return {
       ok: false,
-      message: "This template has no choice groups to send. Use Apply for fixed offerings, or add choice groups first.",
+      message: SEND_REQUIRES_SELECTABLE_GROUPS_MESSAGE,
     };
   }
 

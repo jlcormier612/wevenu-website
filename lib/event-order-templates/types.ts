@@ -17,6 +17,11 @@ export type EventOrderTemplate = {
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Count of selectable choice groups when the list query enriches it.
+   * Used to hide Path B “Send to client” on fixed-only templates.
+   */
+  selectableGroupCount?: number;
 };
 
 export type EventOrderTemplateSection = {

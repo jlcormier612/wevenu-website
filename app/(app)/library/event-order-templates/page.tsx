@@ -30,11 +30,11 @@ export default async function EventOrderTemplatesPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Event Order Templates"
-        description="Commercial build sheets — fixed offerings and selectable choice groups. Use applies on the venue side; Send lets the client choose. Applying creates the event’s own Event Order, not an invoice."
+        description="Commercial build sheets — fixed offerings and selectable choice groups. Use applies fixed offerings to the event’s Event Order (then Finalize & Share). Send is only for templates with client choice groups. Neither creates an invoice."
         actions={<NewEventOrderTemplateButton />}
       />
       <LibraryHowItWorks>
-        Assemble a reusable commercial configuration once. Use fills selections and finalizes into that event&apos;s Event Order. Send freezes choice groups for the client portal.
+        Assemble a reusable commercial configuration once. Use applies fixed offerings (and any venue-filled choices) into that event&apos;s Event Order — Finalize and Share there for the couple. Send freezes choice groups for the client to select; it is hidden on fixed-only templates.
       </LibraryHowItWorks>
       <LibraryDependencyNote
         detail="When you edit a template, select offerings from your catalog first for fixed lines and choice options. Add a custom line or option only when something is not already in Offerings. Applying copies a snapshot into the event — later catalog price changes do not rewrite existing event orders."

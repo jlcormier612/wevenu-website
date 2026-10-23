@@ -181,13 +181,41 @@ function UseOrSendEventOrderSheet({
     });
   }
 
+  const sendBlockedNoGroups =
+    mode === "send" && !!detail && !templateHasSelectableGroups(detail);
+
   function requestApply() {
     if (!selected || !template || !detail) return;
+    // Fixed-only templates cannot use Path B Send — route to Use/Apply instead.
+    if (sendBlockedNoGroups) {
+      runApplyAsUse();
+      return;
+    }
     if (isEventOrderTemplateUnfinished(detail.lines.length, detail.groups?.length ?? 0)) {
       setWarnOpen(true);
       return;
     }
     runApply();
+  }
+
+  function runApplyAsUse() {
+    if (!selected || !template || !detail) return;
+    setWarnOpen(false);
+    startTransition(async () => {
+      const result = await useEventOrderTemplateAction(selected.id, template.id, {
+        lineSelections: selections,
+        answers,
+      });
+      if (result.ok) {
+        toast.success(
+          "Template applied to the Event Order. Finalize and Share from the event when ready — Send to client is only for templates with choices.",
+        );
+        router.push(`/events/${selected.id}#event-order`);
+        onOpenChange(false);
+      } else {
+        toast.error(result.message ?? "Could not apply this template.");
+      }
+    });
   }
 
   function runApply() {
@@ -227,63 +255,85 @@ function UseOrSendEventOrderSheet({
   }
 
   const title = mode === "send" ? LIBRARY_LABELS.sendToClient : "Use Template";
-  const confirmCta = mode === "send"
-    ? (pending ? "Sending…" : "Send to client")
-    : (pending ? "Applying…" : "Apply to event");
+  const confirmCta = sendBlockedNoGroups
+    ? (pending ? "Applying…" : "Apply to event instead")
+    : mode === "send"
+      ? (pending ? "Sending…" : "Send to client")
+      : (pending ? "Applying…" : "Apply to event");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-4">
+      <SheetContent side="right" className="flex h-full max-h-full w-full flex-col gap-0 overflow-hidden sm:max-w-lg">
+        <SheetHeader className="mb-4 shrink-0 pr-8">
           <SheetTitle>{title}</SheetTitle>
           {step === "pick" ? (
             <p className="text-sm text-muted-foreground">
               {mode === "send"
-                ? <>Choose a client event to send &ldquo;{template?.name}&rdquo; for selections.</>
+                ? <>Choose a client event to send &ldquo;{template?.name}&rdquo; for client selections (requires choice groups).</>
                 : <>Choose a client. This starts that booking&apos;s Event Order from &ldquo;{template?.name}&rdquo;.</>}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {mode === "send"
-                ? "Fixed offerings apply now. Choice groups go to the client for selection — you finalize into the Event Order after they submit."
-                : "Choose fixed offerings and fill any choice groups. This applies on the venue side — no client round-trip."}
+              {sendBlockedNoGroups
+                ? "This template has fixed offerings only — nothing for the client to select. Apply it to the Event Order, then Finalize and Share from the event."
+                : mode === "send"
+                  ? "Fixed offerings apply now. Choice groups go to the client for selection — you finalize into the Event Order after they submit."
+                  : "Choose fixed offerings and fill any choice groups. This applies on the venue side — no client round-trip."}
             </p>
           )}
         </SheetHeader>
 
         {step === "pick" ? (
-          <TemplateApplyTargetPicker
-            groups={clientGroups}
-            disabled={pending || loading}
-            onSelectEvent={pickEvent}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <TemplateApplyTargetPicker
+              groups={clientGroups}
+              disabled={pending || loading}
+              onSelectEvent={pickEvent}
+            />
+          </div>
         ) : selected && template && (
-          <div className="space-y-4">
-            <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
-              <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
-              <p><span className="text-muted-foreground">Client</span> · {selected.clientDisplayName}</p>
-              <p><span className="text-muted-foreground">Event</span> · {selected.name} · {selected.eventDate}</p>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto" data-testid="event-order-use-list">
+              <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
+                <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
+                <p><span className="text-muted-foreground">Client</span> · {selected.clientDisplayName}</p>
+                <p><span className="text-muted-foreground">Event</span> · {selected.name} · {selected.eventDate}</p>
+              </div>
+              {detail ? (
+                <>
+                  <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} />
+                  {templateHasSelectableGroups(detail) ? (
+                    <TemplateGroupAnswerChooser
+                      template={detail}
+                      answers={answers}
+                      onChange={setAnswers}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Loading offerings…</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                If this event already has a finalized Event Order, applying is blocked. Open orders receive additional structure without replacing existing lines.
+              </p>
+              {sendBlockedNoGroups ? (
+                <p
+                  className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground"
+                  data-testid="event-order-send-fixed-only-notice"
+                  role="status"
+                >
+                  Send to client is for templates with client choices. For a fixed Event Order, apply here, then open the event&apos;s Event Order to Finalize and Share.
+                </p>
+              ) : null}
             </div>
-            {detail ? (
-              <>
-                <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} />
-                {templateHasSelectableGroups(detail) ? (
-                  <TemplateGroupAnswerChooser
-                    template={detail}
-                    answers={answers}
-                    onChange={setAnswers}
-                  />
-                ) : null}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Loading offerings…</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              If this event already has a finalized Event Order, applying is blocked. Open orders receive additional structure without replacing existing lines.
-            </p>
-            <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-popover pt-4" data-testid="event-order-use-footer">
               <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
-              <Button type="button" disabled={pending || !detail} onClick={requestApply}>
+              <Button
+                type="button"
+                disabled={pending || !detail}
+                onClick={requestApply}
+                data-testid={sendBlockedNoGroups ? "event-order-apply-instead" : mode === "send" ? "event-order-send-confirm" : "event-order-apply-confirm"}
+              >
                 {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{confirmCta}</> : confirmCta}
               </Button>
             </div>
@@ -346,7 +396,11 @@ function TemplateCard({
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/event-order-templates/${template.id}/preview`, emphasis: "preview" },
             { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" },
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
-            { id: "send", label: LIBRARY_LABELS.sendToClient, onClick: onSend, emphasis: "use" },
+            // Path B only when the template has selectable groups. Fixed-only
+            // templates use Use → Finalize → Share (Path A).
+            ...((template.selectableGroupCount ?? 0) > 0
+              ? [{ id: "send", label: LIBRARY_LABELS.sendToClient, onClick: onSend, emphasis: "use" as const }]
+              : []),
           ]}
       overflowPending={pendingId === template.id}
       overflowItems={archivedView ? [] : [
