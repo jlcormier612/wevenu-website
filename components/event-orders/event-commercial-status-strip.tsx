@@ -35,18 +35,18 @@ export function EventCommercialStatusStrip({
       data-testid="event-commercial-status-strip"
     >
       <div>
-        <p className="text-sm font-medium text-heading">Commercial workspace</p>
+        <p className="text-sm font-medium text-heading">Commercial progress</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Event-level home for commercial progress. Inventory selection and client-selectable choices
-          are separate workflows. Applying a template is not sharing an Event Order; client submission
-          is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan
-          follow after the agreed Event Order. Use the chips and checklist to open the existing
-          workflow — actions stay on those screens.
+          Status chips for this event&apos;s Event Order path. Build selections and fixed lines below,
+          apply couple submissions with Create / Update Event Order, then share the final order and
+          invoice. Applying a template is not sharing; client submission is not venue confirmation;
+          creating the Event Order does not change booking state. Inventory stays operational and
+          separate from billable Event Order lines.
         </p>
         <p className="mt-1.5 text-xs text-muted-foreground" data-testid="commercial-path-wiring">
-          Fixed Event Order (no choice groups): Library Use / Apply → Finalize → Share on Event Order.
-          Library Send is only for templates with choice groups. Inventory selection runs on the
-          Inventory tab; Your Choices runs in Client selections below.
+          Fixed-only Event Order (no choice groups): Library Use / Apply → Finalize → Share on Event
+          Order. Templates with choice groups: Start selections → Send to Client (portal) → Create /
+          Update Event Order from selections → Share. Active proposed-order email is a later step.
         </p>
       </div>
 

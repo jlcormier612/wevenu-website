@@ -58,8 +58,14 @@ describe("P2-A venue workspace tab rows", () => {
     assert.match(detail, /TabsContent value="event-order"/);
     assert.match(detail, /QuestionnaireFamilyPanel/);
     assert.match(detail, /EventInventoryPanel/);
-    assert.match(detail, /EventOrderPanel/);
-    assert.match(detail, /ClientChoicesPanel/);
+    // P2-B composes Choices + EO into EventCommercialWorkflow (panels still mounted inside).
+    assert.match(detail, /EventCommercialWorkflow/);
+    const workflow = readFileSync(
+      resolve("components/event-orders/event-commercial-workflow.tsx"),
+      "utf8",
+    );
+    assert.match(workflow, /EventOrderPanel/);
+    assert.match(workflow, /ClientChoicesPanel/);
   });
 
   it("exposes Questionnaires and Inventory & Event Order workspace cards", () => {

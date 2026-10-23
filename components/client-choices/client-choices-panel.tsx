@@ -18,17 +18,32 @@ import {
   addSelectionsToExistingInvoiceAction,
   createInvoiceFromEventOrderAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
+import { ChoicesDefinitionView } from "@/components/client-choices/choices-definition-view";
+import {
+  eventOrderApplyConfirmMessage,
+  eventOrderApplyLabel,
+} from "@/lib/client-choices/event-order-apply-cta";
 import { financialImpactCopy } from "@/lib/client-choices/selections-billing";
 import type { SelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   clientChoicesDisplayLabel,
   clientChoicesNextActor,
+  isClientChoicesNeedsVenueReview,
 } from "@/lib/client-choices/constants";
 import type { ClientChoices, ClientChoicesWithHistory } from "@/lib/client-choices/types";
 import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
+
+export { eventOrderApplyConfirmMessage, eventOrderApplyLabel };
 
 function summarizeAnswers(row: ClientChoices): string {
   const parts: string[] = [];
@@ -46,44 +61,98 @@ function summarizeAnswers(row: ClientChoices): string {
 function ChoicesRow({
   eventId,
   row,
+  hasEventOrder,
 }: {
   eventId: string;
   row: ClientChoicesWithHistory | ClientChoices;
+  hasEventOrder: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [note, setNote] = React.useState("");
   const [showNote, setShowNote] = React.useState(false);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [reviewOpen, setReviewOpen] = React.useState(false);
   const actor = clientChoicesNextActor(row.status);
   const submissions = "submissions" in row ? row.submissions : [];
+  const needsReview = isClientChoicesNeedsVenueReview(row.status);
+  const appliedLineIds = row.appliedLineIds ?? [];
+  const applyLabel = eventOrderApplyLabel({
+    hasEventOrder,
+    eventOrderId: row.eventOrderId,
+    appliedLineIds,
+  });
 
   return (
-    <div className="rounded-sm border border-border p-4 space-y-3">
+    <div
+      className={
+        needsReview
+          ? "rounded-sm border border-primary/40 bg-muted/15 p-4 space-y-3 ring-1 ring-primary/10"
+          : "rounded-sm border border-border p-4 space-y-3"
+      }
+      data-testid={`client-choices-row-${row.id}`}
+      data-status={row.status}
+      data-needs-review={needsReview ? "true" : "false"}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-heading">{row.name}</p>
           <p className="text-xs text-muted-foreground">
             {clientChoicesDisplayLabel(row.status)}
             {actor === "venue" ? " · Venue to act" : actor === "client" ? " · Client to act" : ""}
+            {needsReview ? " · Couple submission (not yet on Event Order)" : ""}
           </p>
           <p className="text-xs text-muted-foreground mt-1">{summarizeAnswers(row)}</p>
+          {appliedLineIds.length > 0 ? (
+            <p className="text-xs text-muted-foreground mt-1" data-testid="choices-prior-applied">
+              Previously applied {appliedLineIds.length} Event Order line
+              {appliedLineIds.length === 1 ? "" : "s"} from this packet — updating replaces those
+              selection lines (not venue-authored fixed lines).
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid="choices-staff-preview"
+            onClick={() => setPreviewOpen(true)}
+          >
+            Preview couple view
+          </Button>
+          {needsReview ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-testid="choices-review-submission"
+              onClick={() => setReviewOpen(true)}
+            >
+              Review submission
+            </Button>
+          ) : null}
           {row.status === "draft" ? (
             <Button
               type="button"
               size="sm"
               disabled={pending}
+              data-testid="choices-send-to-client"
               onClick={() => startTransition(async () => {
                 const r = await sendClientChoicesAction(eventId, row.id);
                 if (!r.ok) toast.error(r.message ?? "Could not send.");
-                else { toast.success("Sent to client."); router.refresh(); }
+                else {
+                  toast.success(
+                    "Opened for the couple in their portal. Active proposed-order email delivery is a later step.",
+                  );
+                  router.refresh();
+                }
               })}
             >
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send to Client"}
             </Button>
           ) : null}
-          {(row.status === "submitted" || row.status === "resubmitted") ? (
+          {needsReview ? (
             <>
               <Button
                 type="button"
@@ -98,21 +167,30 @@ function ChoicesRow({
                 type="button"
                 size="sm"
                 disabled={pending}
-                onClick={() => startTransition(async () => {
-                  const r = await finalizeClientChoicesAction(eventId, row.id);
-                  if (!r.ok) {
-                    toast.error(r.message ?? "Could not finalize.");
-                    return;
-                  }
-                  if (r.financialDelta === 0) {
-                    toast.success("Finalized. Event Order updated — no additional cost.");
-                  } else {
-                    toast.success("Finalized. Event Order updated.");
-                  }
-                  router.refresh();
-                })}
+                data-testid="choices-create-event-order"
+                onClick={() => {
+                  const msg = eventOrderApplyConfirmMessage({
+                    hasEventOrder,
+                    eventOrderId: row.eventOrderId,
+                    appliedLineIds,
+                  });
+                  if (!window.confirm(msg)) return;
+                  startTransition(async () => {
+                    const r = await finalizeClientChoicesAction(eventId, row.id);
+                    if (!r.ok) {
+                      toast.error(r.message ?? "Could not update the Event Order.");
+                      return;
+                    }
+                    if (r.financialDelta === 0) {
+                      toast.success("Event Order updated from selections — no additional cost.");
+                    } else {
+                      toast.success("Event Order updated from selections.");
+                    }
+                    router.refresh();
+                  });
+                }}
               >
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Finalize"}
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : applyLabel}
               </Button>
             </>
           ) : null}
@@ -140,7 +218,12 @@ function ChoicesRow({
               onClick={() => startTransition(async () => {
                 const r = await sendClientChoicesAction(eventId, row.id);
                 if (!r.ok) toast.error(r.message ?? "Could not re-send.");
-                else { toast.success("Reminder recorded."); router.refresh(); }
+                else {
+                  toast.success(
+                    "Reminder recorded in the portal. Active email delivery is a later step.",
+                  );
+                  router.refresh();
+                }
               })}
             >
               Re-send
@@ -177,6 +260,20 @@ function ChoicesRow({
         </div>
       ) : null}
 
+      {needsReview ? (
+        <div
+          className="rounded-sm border border-dashed border-border bg-background/80 p-3 space-y-2"
+          data-testid="choices-submission-summary"
+        >
+          <p className="text-xs font-medium text-heading">Couple-submitted choices</p>
+          <p className="text-xs text-muted-foreground">
+            Highlighted options below are what the couple selected. Fixed/included Event Order lines
+            (authored on the order itself) are separate and appear in the Event Order section.
+          </p>
+          <ChoicesDefinitionView definition={row.definition} answers={row.answers} mode="review" />
+        </div>
+      ) : null}
+
       {submissions.length > 0 ? (
         <details className="text-xs text-muted-foreground">
           <summary className="cursor-pointer">Submission history ({submissions.length})</summary>
@@ -197,6 +294,32 @@ function ChoicesRow({
           {row.eventOrderId ? " Applied to the Event Order." : ""}
         </p>
       ) : null}
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg" data-testid="choices-preview-dialog">
+          <DialogHeader>
+            <DialogTitle>Couple view preview</DialogTitle>
+            <DialogDescription>
+              Same choice packet the couple sees in their portal. Selections shown are the current
+              answers on this packet (empty until they respond). This is a preview — it does not send.
+            </DialogDescription>
+          </DialogHeader>
+          <ChoicesDefinitionView definition={row.definition} answers={row.answers} mode="preview" />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg" data-testid="choices-review-dialog">
+          <DialogHeader>
+            <DialogTitle>Review couple submission</DialogTitle>
+            <DialogDescription>
+              Selected options are marked. Use {applyLabel} on the row to apply them to the Event Order
+              without creating a second commercial system.
+            </DialogDescription>
+          </DialogHeader>
+          <ChoicesDefinitionView definition={row.definition} answers={row.answers} mode="review" />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -282,25 +405,30 @@ export function ClientChoicesPanel({
   eventOrderTemplates,
   choices,
   financialImpact = null,
+  hasEventOrder = false,
 }: {
   eventId: string;
   /** Selectable Event Order Templates (preferred authoring source). */
   eventOrderTemplates: Pick<EventOrderTemplate, "id" | "name">[];
   choices: ClientChoicesWithHistory[];
   financialImpact?: SelectionsFinancialImpact | null;
+  /** True when this event already has an Event Order (Create vs Update CTA). */
+  hasEventOrder?: boolean;
 }) {
   const router = useRouter();
   const [templateId, setTemplateId] = React.useState(eventOrderTemplates[0]?.id ?? "");
   const [pending, startTransition] = React.useTransition();
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4" data-testid="client-choices-panel">
       <CardHeader>
-        <CardTitle className="text-base">Client selections</CardTitle>
+        <CardTitle className="text-base">Build proposed order — client selections</CardTitle>
         <CardDescription>
-          Optional choice packets from Event Order Templates (menus, add-ons, rentals). The Event Order below can already
-          include venue-authored lines — those are not client submissions. Client drafts stay editable until they submit;
-          you finalize submitted choices into Event Order lines (not a second invoice).
+          Combine selectable packets (menus, add-ons, rentals) with the fixed and included lines on the
+          Event Order below. This is one commercial path — not a second invoice or inventory workflow.
+          After the couple submits, use Create Event Order (or Update Event Order from selections) to
+          apply their picks. Included/free options stay informational. Sending opens the portal task;
+          proposed-order email delivery is a later step.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -318,6 +446,7 @@ export function ClientChoicesPanel({
               className="min-w-[220px] rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={templateId}
               onChange={(e) => setTemplateId(e.target.value)}
+              data-testid="choices-template-select"
             >
               {eventOrderTemplates.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
@@ -327,6 +456,7 @@ export function ClientChoicesPanel({
               type="button"
               size="sm"
               disabled={pending || !templateId}
+              data-testid="choices-start-selections"
               onClick={() => startTransition(async () => {
                 const r = await createClientChoicesFromEventOrderTemplateAction(eventId, templateId);
                 if (!r.ok) toast.error(r.message ?? "Could not create.");
@@ -343,13 +473,19 @@ export function ClientChoicesPanel({
 
         {choices.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No client selections for this event yet. Venue-authored Event Order lines (if any) remain below and are
-            independent of this panel — start selections only when the couple should choose from a template.
+            No client selections for this event yet. Add fixed/included lines on the Event Order below,
+            or start selections when the couple should choose from a template. Operational Inventory
+            remains on its own surface and is not a billable Event Order line source.
           </p>
         ) : (
           <div className="space-y-3">
             {choices.map((c) => (
-              <ChoicesRow key={c.id} eventId={eventId} row={c} />
+              <ChoicesRow
+                key={c.id}
+                eventId={eventId}
+                row={c}
+                hasEventOrder={hasEventOrder}
+              />
             ))}
             {financialImpact && choices.some((c) => c.status === "finalized") ? (
               <FinancialImpact eventId={eventId} impact={financialImpact} />

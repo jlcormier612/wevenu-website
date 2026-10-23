@@ -61,9 +61,7 @@ import { venueToday } from "@/lib/venue/timezone";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
-import { EventCommercialStatusStrip } from "@/components/event-orders/event-commercial-status-strip";
-import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
-import { ClientChoicesPanel } from "@/components/client-choices/client-choices-panel";
+import { EventCommercialWorkflow } from "@/components/event-orders/event-commercial-workflow";
 import type { CommercialNavTarget } from "@/lib/event-orders/commercial-status";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
@@ -1321,10 +1319,10 @@ export function EventDetail({
           </Card>
         </TabsContent>
 
-        {/* ── Event Order (canonical commercial workspace) ─────────── */}
+        {/* ── Event Order (canonical commercial workspace; P2-B composed) ─ */}
         <TabsContent value="event-order">
-          <EventCommercialStatusStrip
-            input={{
+          <EventCommercialWorkflow
+            stripInput={{
               eventInventory: eventInventory
                 ? { status: eventInventory.status }
                 : null,
@@ -1355,45 +1353,36 @@ export function EventDetail({
                 });
               }
             }}
+            eventId={event.id}
+            eventOrderTemplates={eventOrderTemplates}
+            choices={clientChoices}
+            financialImpact={financialImpact}
+            eventOrder={eventOrder}
+            clientId={event.clientId}
+            clientName={event.clientName}
+            clientEmail={coupleEmail}
+            venueName={venueName}
+            packages={packages}
+            packagesWithItems={packagesWithItems}
+            selectedPackageName={selectedPackage?.name ?? null}
+            offerings={offerings}
+            inventoryItems={inventoryItems}
+            invoices={invoices}
+            bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+            linkedScheduleId={linkedScheduleId}
+            floorPlans={event.floorPlans}
+            templates={eventOrderTemplates}
+            preferredTemplateId={eventSetup.inheritedTemplateRefs?.eventOrderTemplateId ?? null}
+            overview={{
+              eventName: event.name,
+              eventDate: event.eventDate,
+              eventType: event.eventType,
+              guestCount: event.guestCount,
+              spaceName,
+              ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
+              receptionStartTime: questionnaire?.receptionStartTime ?? null,
+            }}
           />
-          <div id="event-order-choices" data-testid="event-order-choices">
-            <ClientChoicesPanel
-              eventId={event.id}
-              eventOrderTemplates={eventOrderTemplates}
-              choices={clientChoices}
-              financialImpact={financialImpact}
-            />
-          </div>
-          <div id="event-order-order" data-testid="event-order-order">
-            <EventOrderPanel
-              eventId={event.id}
-              clientId={event.clientId}
-              clientName={event.clientName}
-              clientEmail={coupleEmail}
-              venueName={venueName}
-              eventOrder={eventOrder}
-              packages={packages}
-              packagesWithItems={packagesWithItems}
-              selectedPackageName={selectedPackage?.name ?? null}
-              offerings={offerings}
-              inventoryItems={inventoryItems}
-              invoices={invoices}
-              bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
-              linkedScheduleId={linkedScheduleId}
-              floorPlans={event.floorPlans}
-              templates={eventOrderTemplates}
-              preferredTemplateId={eventSetup.inheritedTemplateRefs?.eventOrderTemplateId ?? null}
-              overview={{
-                eventName: event.name,
-                eventDate: event.eventDate,
-                eventType: event.eventType,
-                guestCount: event.guestCount,
-                spaceName,
-                ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
-                receptionStartTime: questionnaire?.receptionStartTime ?? null,
-              }}
-            />
-          </div>
         </TabsContent>
 
         {/* ── Event Inventory ──────────────────────────────────────── */}
