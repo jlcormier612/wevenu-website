@@ -34,7 +34,7 @@ export const TASK_ACTION_TYPES: { value: TaskActionType; defaultLabel: string; t
   { value: "timeline",         defaultLabel: "Open Timeline",           tabHash: "timeline" },
   { value: "floor_plan",       defaultLabel: "Open Floor Plan",         tabHash: "floorplan" },
   { value: "event_order",      defaultLabel: "Open Event Order",        tabHash: "event-order" },
-  { value: "client_choices",   defaultLabel: "Open Your Choices",       tabHash: "event-order" },
+  { value: "client_choices",   defaultLabel: "Open Your Choices",       tabHash: "event-order-choices" },
   { value: "event_details",    defaultLabel: "Open Event Details",      tabHash: "overview" },
   { value: "wedding_website",  defaultLabel: "Open Wedding Website",    tabHash: "overview", audiences: ["client"] },
 ];

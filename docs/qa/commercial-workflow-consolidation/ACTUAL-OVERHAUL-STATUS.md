@@ -1,29 +1,28 @@
 # HTC — Actual Commercial Workflow Overhaul Status
 
-**Status:** **GREEN / COMPLETE**  
+**Status:** **GREEN / COMPLETE** (full browser E2E + DB proof)  
 **Date:** 2026-10-23  
 **Branch:** `feat/spaces-booking-e1-smart-fields`
 
-| Role | SHA |
+| Role | SHA / identity |
 | --- | --- |
-| Product (serving) | `e1c84abf22d32e4718c255e1f695488df9df3754` |
-| Migration repair | `be5723ef202f942579dd3e2946456b7ff5cf1604` |
-| Evidence / status closure (pushed) | `5a3efbae185f917fbc1129fc41d6b8aca9658f9c` |
+| Product (serving Sandbox) | `c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd` |
+| Overhaul product baseline (still in history) | `e1c84abf22d32e4718c255e1f695488df9df3754` |
+| Migration repair (applied earlier; not re-run) | `be5723ef` / file `20261422800000_event_order_client_agreement.sql` |
+| Complete E2E evidence commit | *(this push)* |
 
 ---
 
-## 1. What was fixed
+## 1. What was verified in this pass
 
-### Structural overhaul (product commit `e1c84abf`)
-- Removed Inventory / Event Order from Setup Profiles and Event Setup UI.
-- Stopped booking inherit and portal-release from auto-creating Inventory/EO drafts.
-- Added Event Order **client agreement** (`client_agreed_*`) distinct from venue finalize/share; portal Accept UI + RPC.
+This pass **does not reopen** the structural overhaul or migration. It proves the **actual customer journey** on the running Sandbox app:
 
-### Migration repair (commit `be5723ef`)
-- **Root cause:** version `20261401000000` was already tracked as `20261401000000_sandbox_pgrst_recover.sql` (PostgREST cache recovery). The sibling file `…_event_order_client_agreement.sql` shared that version and could never apply.
-- **Live schema before repair:** `client_agreed_*` columns **missing**; `accept_event_order_for_portal` **missing**.
-- **Fix:** removed colliding agreement filename; added forward idempotent migration `20261422800000_event_order_client_agreement.sql` (after tracked max `20261422700000`).
-- **Did not** delete/fabricate `schema_migrations` rows; **did not** re-run the failed batch.
+- Setup boundary (Inventory/EO not in Setup checklist; commercial tabs remain).
+- Event Order reopen → finalize → share → client accept → reopen → re-finalize → re-share → re-accept.
+- Agreement columns independently verified in DB (`client_agreed_at/name/revision` match accepted revision).
+- Inventory portal shared surface + finance/documents handoff surfaces.
+- Overhaul harness no longer PASS-on-skip for acceptance.
+- C5 finance browser regression re-run vs serving SHA.
 
 ---
 
@@ -31,99 +30,108 @@
 
 | Check | Result |
 | --- | --- |
-| Deploy workflow | [39916930256](https://github.com/jlcormier612/wevenu-website/actions/runs/39916930256) **success** · headSha `e1c84abf…` |
-| ECS service | `htc-sandbox-venue-app` desired/running **1** · task def `:898` |
-| Container image | `…/htc-sandbox-venue-app:e1c84abf22d32e4718c255e1f695488df9df3754` |
-| Image digest | `sha256:bcad9d4f3a41548804b951350786d0119bee921c715bf58a62614ea0c781646b` |
-| Health | `{"ok":true,"checks":{"env":"ok","supabase":"ok"}}` |
-| Environment | Sandbox (`wvpsldwwjqdannqasrdf` / `app.sandbox.hellotocheers.com`) |
-
-Browser harness gated on `EXPECTED_SHA=e1c84abf…` and matched the live image tag.
+| ECS service | `htc-sandbox-venue-app` |
+| Container image | `…/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd` |
+| Harness gate | `EXPECTED_SHA=c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd` matched live tag |
+| Health | Sandbox app reachable (`app.sandbox.hellotocheers.com`) |
+| Environment | Sandbox (`wvpsldwwjqdannqasrdf`) |
 
 ---
 
-## 3. Migration / schema verification
+## 3. Complete commercial browser E2E
 
-| Item | Result |
+```text
+EXPECTED_SHA=c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd E2E_RUN_ID=E2E72168 \
+  npx tsx docs/qa/commercial-workflow-consolidation/verify-browser-e2e-commercial.mts
+→ 22 PASS / 0 FAIL / 0 BLOCKED
+```
+
+| Check | Outcome |
 | --- | --- |
-| Failed apply (expected) | [39916932605](https://github.com/jlcormier612/wevenu-website/actions/runs/39916932605) preflight: `20261401000000` already recorded |
-| Successful repair apply | [39977648998](https://github.com/jlcormier612/wevenu-website/actions/runs/39977648998) **success** · file `20261422800000_event_order_client_agreement.sql` · verify-sandbox-database step **passed** |
-| Columns | `client_agreed_at`, `client_agreed_name`, `client_agreed_revision` present on `event_orders` |
-| RPC `get_event_order_for_portal` | Returns agreement fields on fixture token |
-| RPC `accept_event_order_for_portal` | Live; invalid token → `Portal session not found.` |
-| Probe evidence | `overhaul-schema-probe.json` |
+| A Setup Profiles exclude Inventory/EO templates | PASS |
+| A Event Setup excludes Inventory/EO checklist rows | PASS |
+| A Inventory commercial tab / EO strip | PASS |
+| E1–E13 reopen → finalize → share → accept → reopen → re-finalize → re-share → re-accept | PASS |
+| C Portal inventory shared surface | PASS (`status=shared`) |
+| F EO invoice link + Documents tab | PASS |
+
+**Agreement persistence (run `E2E72168`, EO `624eceef-…`):**
+
+| Step | revision | `client_agreed_name` | `client_agreed_revision` |
+| --- | --- | --- | --- |
+| Accept 1 | 10 | `E2E-COMMERCIAL-E2E72168-ACCEPT1` | 10 |
+| After reopen | 10 | cleared | cleared |
+| Accept 2 (post re-share) | 11 | `E2E-COMMERCIAL-E2E72168-ACCEPT2` | 11 |
+
+Evidence:
+
+- `browser-results-e2e-commercial.json`
+- `browser-run-e2e-commercial.log`
+- `e2e-evidence/before-E2E72168.json` / `after-E2E72168.json`
+- `shots-e2e/`
+
+**Share UI note:** ShareDialog “Sent to …” toast can miss the harness wait (`uiSent=false`) while `shared_at` updates authoritatively — E3/E11 pass on DB `shared_at` change after the real Share/Update Shared Copy UI click.
+
+**Harness anti-false-positive:** `verify-browser-overhaul.mts` fails (does not PASS) when accept is skipped because EO is already agreed.
 
 ---
 
-## 4. Browser harness
+## 4. C5 finance regression
 
 ```text
-EXPECTED_SHA=e1c84abf22d32e4718c255e1f695488df9df3754 \
-  npx tsx docs/qa/commercial-workflow-consolidation/verify-browser-overhaul.mts
-→ ALL PASS 11/11
-```
-
-Evidence: `browser-results-overhaul.json`, `browser-run-overhaul.log`, `shots-overhaul/`.
-
-Finance regression:
-
-```text
-EXPECTED_SHA=e1c84abf22d32e4718c255e1f695488df9df3754 \
+EXPECTED_SHA=c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd \
   npx tsx docs/qa/commercial-workflow-consolidation/verify-browser-c5.mts
+→ ALL PASS 20/20
 ```
 
-(See `browser-run-c5-overhaul.log`.)
+Evidence: `browser-run-c5-e2e.log`, `browser-results-c5.json`.
 
 ---
 
-## 5. Journey results (A–F)
-
-| Area | Result | Evidence |
-| --- | --- | --- |
-| **A. Setup boundary** | **PASS** | Profiles: no Starting Inventory/EO templates. Event Setup: no Open Inventory/EO; planning/timeline/vendors/floor only. Commercial strip remains on EO tab. |
-| **B. Booking / draft creation** | **PASS** | Units assert inherit + prepare-release have **no** `ensureEventInventory` / `ensureEventOrder`. Fixture remained **1** inventory row / **1** EO row after overhaul ops. Fresh booking not created (avoid extra fixtures); suppression is structural + count-stable. |
-| **C. Inventory-selection separation** | **PASS** | Portal home Inventory entry retained as commercial (not Setup). Existing selection runtime + units unchanged; Inventory Templates remain in Library. |
-| **D. Event Order agreement** | **PASS** | Share ≠ agree. Browser Accept recorded `Overhaul Accept QA` @ revision 3. Reopen cleared agreement (no outbound share). Re-finalize + accept required new agreement (`ReAgree QA`); second accept idempotent `already=true`. Activities: 2× `client_agreed`. See `overhaul-agreement-persist.json`. |
-| **E. Commercial handoff** | **PASS** | Strip present; checklist uses `clientAgreedAt` for Agreed. C5 finance browser re-run vs serving SHA. No finance redesign. |
-| **F. Persistence / regression** | **PASS** | Agreement persisted across reload path; reopen clears; idempotent accept. Focused units **30/30**; original overhaul suite **88/88** on product commit. |
-
----
-
-## 6. Unit / integration commands
+## 5. Unit / integration
 
 ```text
 npx tsx --test \
   lib/event-setup/commercial-setup-separation.test.ts \
   lib/event-orders/client-agreement.test.ts \
   lib/event-orders/commercial-status.test.ts
-→ 30/30 pass (closure re-run)
+→ 30/30 pass
 
-# Product commit baseline (earlier):
-# commercial-setup + status + profile/setup suites → 88/88
+npx tsx --test \
+  lib/playbooks/constants.test.ts \
+  lib/portal/task-action-destinations.test.ts \
+  lib/event-inventory/client-selection.test.ts \
+  lib/portal/inventory-event-order-discoverability.test.ts \
+  lib/event-setup/inventory-eo-setup-editor.test.ts
+→ 34/34 pass
 ```
 
 ---
 
-## 7. Workflow links
+## 6. Related: Event Task Opens matrix
 
-| Workflow | URL | Outcome |
-| --- | --- | --- |
-| Deploy Sandbox (`e1c84abf`) | https://github.com/jlcormier612/wevenu-website/actions/runs/39916930256 | success |
-| Migration (collision fail) | https://github.com/jlcormier612/wevenu-website/actions/runs/39916932605 | failure (preflight; nothing applied) |
-| Migration repair `20261422800000` | https://github.com/jlcormier612/wevenu-website/actions/runs/39977648998 | success + DB verify |
+Separate track — see `docs/qa/event-task-opens/STATUS.md`.
 
----
-
-## 8. Limitations (accepted, non-blocking)
-
-- No new Sandbox booking was created in this pass; draft suppression is proven by removed call sites + stable fixture counts + release copy.
-- Reopen/re-agree used the same DB updates as `reopenEventOrder` / finalize (no customer email). Full re-share UI was not re-triggered (outbound risk).
-- Closure commit `be5723ef` is migration + evidence; runtime product remains serving `e1c84abf` (intentional — no product code change required for the repair).
+```text
+EXPECTED_SHA=c5bdafc0… E2E_RUN_ID=OP2555 \
+  npx tsx docs/qa/event-task-opens/verify-browser.mts
+→ 19 PASS / 0 FAIL / 0 BLOCKED (all 13 Opens options + staff href); fixtures use QAOPENS-/QA-BTN- (avoid /\be2e\b/ portal filter)
+```
 
 ---
 
-## 9. Confirmations
+## 7. Limitations (accepted, non-blocking)
+
+- Fresh booking UI not recreated this run; draft suppression remains proven by removed call sites + stable inventory/EO row counts on the Fancy fixture + Setup UI checks.
+- Outbound email/SMS intercepted at app Share UI; no real delivery required. Share success asserted via `shared_at`.
+- No real money / live payment collection (C5 uses frozen sent invoice fixtures).
+- Inventory client select → venue confirm deep path uses existing shared inventory fixture rather than creating a brand-new template from scratch in this run.
+
+---
+
+## 8. Confirmations
 
 - **Production untouched.**
-- **Unrelated dirty work preserved** (~1055 dirty/untracked paths at verification start; no reset/clean/stash).
-- Artifacts now **in git** at `be5723ef`: `ACTUAL-OVERHAUL-STATUS.md`, `verify-browser-overhaul.mts`, `20261422800000_event_order_client_agreement.sql`.
+- **Migration not re-run** (schema already present; no new schema defect).
+- **Unrelated dirty/untracked work preserved** (no reset/clean/stash).
+- **No real communications or payments.**

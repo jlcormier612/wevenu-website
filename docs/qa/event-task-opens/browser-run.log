@@ -1,0 +1,21 @@
+PASS Serving expected SHA — image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd expected=c5bdafc029ca
+PASS Fixture tasks created — count=13
+PASS Library playbook editor reachable — https://app.sandbox.hellotocheers.com/library/playbooks/b2808150-67cb-4900-9cf2-eb5c10c3123e/preview
+PASS RPC get_portal_tasks returns fixtures — count=13 err= run=OP2555 total=24 sample=[{"id":"24fdd60f-fc66-476e-9948-52553250b0c5","links":[],"title":"QAOPENS-OP2555-none","status":"pending","canUndo":false,"dueDate":"2060-07-17","category":"planning","ownerType":"couple","actionType":null,"daysOffset":-14,"isRequired":false,"visibility":"client_owned","actionLabel":null,"canComplete":true,"completedAt":null,"description":"checklist only","milestoneKind":null,
+PASS Portal checklist-only task visible — count=1
+PASS Portal click vendor_library — hash=vendors expected=vendors cueOk=true
+PASS Portal click payments — hash=payments expected=payments cueOk=true
+PASS Portal click documents — hash=documents expected=documents cueOk=true
+PASS Portal click guest_list — hash=guests expected=guests cueOk=true
+PASS Portal click questionnaire — hash=questionnaire/form expected=questionnaire cueOk=true
+PASS Portal click contract — hash=documents/sign expected=documents cueOk=true
+PASS Portal click timeline — hash=timeline expected=timeline cueOk=true
+PASS Portal click floor_plan — hash=floor_plans expected=floor_plans cueOk=true
+PASS Portal click event_order — hash=event-order expected=event-order cueOk=true
+PASS Portal click client_choices — hash=choices/form expected=choices cueOk=true
+PASS Portal click event_details — hash=overview expected=overview cueOk=true
+PASS Portal click wedding_website — hash=website expected=website cueOk=true
+PASS Venue staff Opens destination (questionnaire href) — href=/events/ebf74f77-2944-474a-b735-48762ecb6842#questionnaires url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#questionnaires
+PASS Cleanup fixture tasks — deleted
+
+19 PASS / 0 FAIL / 0 BLOCKED

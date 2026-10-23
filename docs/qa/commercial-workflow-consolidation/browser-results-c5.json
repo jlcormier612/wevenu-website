@@ -1,17 +1,17 @@
 {
-  "expectedSha": "e1c84abf22d32e4718c255e1f695488df9df3754",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e1c84abf22d32e4718c255e1f695488df9df3754",
+  "expectedSha": "c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:e1c84abf22d32e4718c255e1f695488df9df3754 expected=e1c84abf22d3"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd expected=c5bdafc029ca"
     },
     {
       "name": "DB: EO shared/finalized without inventing invoice-from-share rule",
       "pass": true,
-      "detail": "eo=624eceef-5096-4288-b104-62daa3a82d11 status=finalized shared_at=2026-10-23T00:26:09.17+00:00 linkedInvoices=1"
+      "detail": "eo=624eceef-5096-4288-b104-62daa3a82d11 status=finalized shared_at=2026-10-23T16:18:04.956+00:00 linkedInvoices=1"
     },
     {
       "name": "DB: EO-linked invoice is a distinct persisted record when present",
@@ -107,7 +107,7 @@
   "persisted": {
     "eventOrderId": "624eceef-5096-4288-b104-62daa3a82d11",
     "eventOrderStatus": "finalized",
-    "sharedAt": "2026-10-23T00:26:09.17+00:00",
+    "sharedAt": "2026-10-23T16:18:04.956+00:00",
     "linkedInvoices": [
       {
         "id": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
@@ -124,5 +124,5 @@
       "frozenLineCount": 1
     }
   },
-  "at": "2026-10-23T15:24:51.988Z"
+  "at": "2026-10-23T16:20:26.020Z"
 }

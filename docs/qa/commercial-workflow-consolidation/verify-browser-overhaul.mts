@@ -199,7 +199,21 @@ async function main() {
     `accept=${acceptCount} agreedBadge=${agreedBadge} shared=${eoBefore?.shared_at}`,
   );
 
-  if (acceptCount > 0 && !eoBefore?.client_agreed_at) {
+  // Required accept must execute on a fresh open EO. Never PASS when skipped.
+  // Prefer full lifecycle harness: verify-browser-e2e-commercial.mts
+  if (eoBefore?.client_agreed_at) {
+    record(
+      "Client accept persists agreement",
+      false,
+      "FAIL — EO already agreed; reopen+re-share first (use verify-browser-e2e-commercial.mts). Do not count skip as pass.",
+    );
+  } else if (acceptCount === 0) {
+    record(
+      "Client accept persists agreement",
+      false,
+      "FAIL — accept panel absent while EO not agreed; required accept not executed",
+    );
+  } else {
     await portalPage.getByTestId("event-order-accept-name").fill("Overhaul Accept QA");
     await portalPage.getByTestId("event-order-accept-submit").click();
     await portalPage.waitForTimeout(2000);
@@ -212,12 +226,6 @@ async function main() {
       "Client accept persists agreement",
       Boolean(eoAfter?.client_agreed_at),
       JSON.stringify(eoAfter),
-    );
-  } else {
-    record(
-      "Client accept persists agreement",
-      true,
-      "skipped — already agreed or accept panel absent",
     );
   }
   await portalPage.screenshot({ path: `${OUT}/shots-overhaul/portal-eo-1280.png`, fullPage: true });

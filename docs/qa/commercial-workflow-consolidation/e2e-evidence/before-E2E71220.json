@@ -1,0 +1,15 @@
+{
+  "eo": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-23T15:57:58.045+00:00",
+    "finalized_at": "2026-10-23T15:58:29.557+00:00",
+    "revision": 5,
+    "client_agreed_at": null,
+    "client_agreed_name": null,
+    "client_agreed_revision": null
+  },
+  "inv": null,
+  "at": "2026-10-23T16:00:22.956Z",
+  "runId": "E2E71220"
+}
