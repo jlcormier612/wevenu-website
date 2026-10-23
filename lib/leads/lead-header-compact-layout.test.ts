@@ -47,17 +47,19 @@ describe("lead header compact layout", () => {
   });
 
   it("compact Date hold keeps protection status inline (not a full-width banner above the band)", () => {
-    const compactBand = holds.slice(
-      holds.indexOf('data-testid="date-hold-compact-band"'),
-      holds.indexOf("Regular (non-compact) active holds"),
-    );
+    const bandIdx = holds.indexOf('data-testid="date-hold-compact-band"');
+    // className sits on the opening tag just before the test id
+    const compactBand = holds.slice(Math.max(0, bandIdx - 220), holds.indexOf("Regular (non-compact) active holds"));
     assert.match(compactBand, /Not protected/);
     assert.match(compactBand, /No active hold is protecting this event date/);
     assert.match(compactBand, /date-hold-protection-banner/);
     assert.match(compactBand, /date-hold-place/);
+    // Share the Sales owner row at sm+ (flex-1 + basis-0) instead of wrapping as a full-width block.
+    assert.match(compactBand, /flex-1/);
+    assert.match(compactBand, /sm:basis-0/);
+    assert.match(compactBand, /truncate/);
     // Full-width basis-full banner must not precede the compact control band.
     const contentsIdx = holds.indexOf('className={compact ? "contents"');
-    const bandIdx = holds.indexOf('data-testid="date-hold-compact-band"');
     const fullWidthBannerBeforeBand = holds.slice(contentsIdx, bandIdx);
     assert.doesNotMatch(fullWidthBannerBeforeBand, /basis-full w-full rounded-md border/);
   });

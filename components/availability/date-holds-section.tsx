@@ -338,13 +338,13 @@ export function DateHoldsSection({
       ) : null}
       {compact ? (
         <div
-          className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap"
+          className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-2 gap-y-1 sm:basis-0 sm:flex-nowrap"
           data-testid="date-hold-compact-band"
         >
           <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span>
           {!showForm && activeHolds.length === 0 ? (
             <div
-              className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-0.5"
+              className="flex min-w-0 flex-1 items-center gap-x-2 gap-y-0.5"
               data-testid="date-hold-protection-banner"
               data-protected="false"
               title={protection.detail ?? undefined}
@@ -356,7 +356,7 @@ export function DateHoldsSection({
                 Not protected
               </span>
               <span
-                className="min-w-0 text-xs text-muted-foreground"
+                className="min-w-0 truncate text-xs text-muted-foreground"
                 data-testid="date-hold-protection-detail"
               >
                 No active hold is protecting this event date.
