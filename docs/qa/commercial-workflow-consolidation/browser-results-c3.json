@@ -1,17 +1,17 @@
 {
-  "expectedSha": "dfabcca2107558710b72a9c6efd650c7733ad174",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174",
+  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174 expected=dfabcca21075"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
     },
     {
       "name": "A Strip present as commercial home",
       "pass": true,
-      "detail": "Commercial workspace\n\nEvent-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan follow after the agreed Event Order. Use the chips to "
+      "detail": "Commercial workspace\n\nEvent-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan follow after the agreed Event Order. Use the chips and"
     },
     {
       "name": "A Copy: separate workflows + finalize ≠ share",
@@ -140,5 +140,5 @@
     "eventOrderSharedAt": "2026-10-23T00:26:09.17+00:00",
     "choiceCount": 1
   },
-  "at": "2026-10-23T05:12:13.639Z"
+  "at": "2026-10-23T05:59:28.800Z"
 }

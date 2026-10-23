@@ -1,12 +1,12 @@
 {
-  "expectedSha": "dfabcca2107558710b72a9c6efd650c7733ad174",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174",
+  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174 expected=dfabcca21075"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
     },
     {
       "name": "A Setup Profiles: Event Order template label",
@@ -56,7 +56,7 @@
     {
       "name": "C Commercial workspace intro present",
       "pass": true,
-      "detail": "Commercial workspace\n\nEvent-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan follow after the agreed Event Order. Use the chips to open the existing workflow — actions stay on those"
+      "detail": "Commercial workspace\n\nEvent-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan follow after the agreed Event Order. Use the chips and checklist to open the existing workflow — actions"
     },
     {
       "name": "C Intro: Inventory tab + no invoice from setup",
@@ -66,7 +66,7 @@
     {
       "name": "C Client selections panel present (choices runtime)",
       "pass": true,
-      "detail": "count=1"
+      "detail": "count=2"
     },
     {
       "name": "C Event Order panel present",
@@ -76,7 +76,7 @@
     {
       "name": "C Inventory tab available",
       "pass": true,
-      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTas"
     },
     {
       "name": "C Inventory tab remains separate from Event Order",
@@ -86,7 +86,7 @@
     {
       "name": "E Payments tab intact",
       "pass": true,
-      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTas"
     },
     {
       "name": "E Event Order retains invoice / payment language",
@@ -96,12 +96,12 @@
     {
       "name": "E Portal section inventory reachable",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading…\nJen's Fancy "
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour inventory choi"
     },
     {
       "name": "E Portal section event-order reachable",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nWhat you're receivi"
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendors\nWhat you're recei"
     },
     {
       "name": "E Portal section choices reachable",
@@ -114,5 +114,5 @@
       "detail": "390 viewport"
     }
   ],
-  "at": "2026-10-23T05:13:30.311Z"
+  "at": "2026-10-23T06:00:24.217Z"
 }

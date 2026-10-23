@@ -1,0 +1,129 @@
+{
+  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "passed": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
+    },
+    {
+      "name": "Checklist present",
+      "pass": true,
+      "detail": "progress checklist"
+    },
+    {
+      "name": "Checklist step draft",
+      "pass": true,
+      "detail": "complete"
+    },
+    {
+      "name": "Checklist step engagement",
+      "pass": true,
+      "detail": "complete"
+    },
+    {
+      "name": "Checklist step order_agreed",
+      "pass": true,
+      "detail": "complete"
+    },
+    {
+      "name": "Checklist step invoiced",
+      "pass": true,
+      "detail": "complete"
+    },
+    {
+      "name": "Path wiring copy (fixed EO vs Send vs Inventory/Choices)",
+      "pass": true,
+      "detail": "Fixed Event Order (no choice groups): Library Use / Apply → Finalize → Share on Event Order. Library Send is only for templates with choice groups. Inventory selection runs on the Inventory tab; Your Choices runs in Client selections below."
+    },
+    {
+      "name": "Strip has no Share/Finalize/Send authoritative controls",
+      "pass": true,
+      "detail": "deep-link only"
+    },
+    {
+      "name": "A Library EO Templates: Use vs Send guidance present",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nTO DO’S\n\nTask Center\n"
+    },
+    {
+      "name": "A Library retains Use actions for templates",
+      "pass": true,
+      "detail": "use=2 send=1"
+    },
+    {
+      "name": "A Event Order panel keeps Finalize/Share (authoritative, not on strip)",
+      "pass": true,
+      "detail": "finalize=true shareish=true eoDb=finalized/shared"
+    },
+    {
+      "name": "A Checklist reflects finalized+shared EO from DB",
+      "pass": true,
+      "detail": "order_agreed=complete engagement=complete"
+    },
+    {
+      "name": "B1 Open Inventory reaches inventory workspace",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be?tab=event-order#inventory"
+    },
+    {
+      "name": "B1 Inventory chip matches persisted status (submit ≠ confirm)",
+      "pass": true,
+      "detail": "db=shared chip=Inventory\n· Awaiting client"
+    },
+    {
+      "name": "B2 Choices anchor keeps client_choices panel (separate from inventory)",
+      "pass": true,
+      "detail": "Client selections\nOptional choice packets from Event Order Templates (menus, add-ons, rentals). The Event Order below can already include venue-authored lines — those are not client submissions. Client drafts stay editab"
+    },
+    {
+      "name": "B2 Choice rows exist without merging into inventory runtime",
+      "pass": true,
+      "detail": "choiceCount=1 inventoryStatus=shared"
+    },
+    {
+      "name": "D Invoice anchor reaches EO invoice link (no strip Create)",
+      "pass": true,
+      "detail": "invoice handoff UI"
+    },
+    {
+      "name": "E Portal inventory reachable (client role)",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nP"
+    },
+    {
+      "name": "E Portal event-order reachable (client role)",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nP"
+    },
+    {
+      "name": "E Portal choices reachable (client role)",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nP"
+    },
+    {
+      "name": "C3 chips still present",
+      "pass": true,
+      "detail": "chips"
+    },
+    {
+      "name": "Checklist visible at 390",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "No duplicate inventory/choices/EO lines/tasks from C4 navigation",
+      "pass": true,
+      "detail": "inv 1->1 lines 44->44 choices 1->1 tasks 19->19"
+    }
+  ],
+  "persisted": {
+    "inventoryStatus": "shared",
+    "eventOrderStatus": "finalized",
+    "eventOrderSharedAt": "2026-10-23T00:26:09.17+00:00",
+    "choiceCount": 1
+  },
+  "at": "2026-10-23T05:58:38.795Z"
+}
