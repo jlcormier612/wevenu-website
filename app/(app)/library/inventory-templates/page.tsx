@@ -30,11 +30,11 @@ export default async function InventoryTemplatesLibraryPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Inventory Templates"
-        description="Reusable inventory setups for a kind of event. Use applies a snapshot to the event Inventory tab — share and client selection happen there, not in Library."
+        description="Reusable packing lists for a kind of event. Use applies a draft snapshot to the event Inventory tab (does not share). Send applies and shares for portal review — continue selection, finalize, and Event Order handoff on the event. Neither creates an invoice."
         actions={<NewInventoryTemplateButton />}
       />
       <LibraryHowItWorks>
-        Build a reusable packing/checklist once. Use on a client booking to create that event&apos;s inventory list from this template.
+        Build a reusable packing list once from Available Inventory. Use starts that event&apos;s inventory draft without sharing. Send is an event shortcut that applies (if needed) and shares for portal review — then work continues on the event Inventory tab.
       </LibraryHowItWorks>
       <LibraryDependencyNote
         detail="Add items from Available Inventory when you edit a template. Use a custom line only for one-offs that are not already in your catalog. Applying a template copies a snapshot onto the event."

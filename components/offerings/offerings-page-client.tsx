@@ -31,7 +31,7 @@ export function OfferingsPageClient({
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Offerings"
-        description="Menus, bar, services, and rentals you provide — create and edit them here."
+        description="Menus, bar, services, and rentals you provide — create and edit them here. Catalog edits do not request client selections or apply an Event Order to an event."
         actions={
           <Button type="button" onClick={() => sectionRef.current?.openCreate()}>
             + New Offering
@@ -39,10 +39,10 @@ export function OfferingsPageClient({
         }
       />
       <LibraryHowItWorks>
-        Create sellable offerings here. Event Order Templates select from this catalog when you build fixed lines and choice options.
+        Maintain the reusable offerings catalog here. Event Order Templates select from this catalog when you author fixed lines and choice options. Client selection and Event Order finalization happen on the event — not on this page.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="After you add or update offerings here, open an Event Order Template and select which offerings to include as fixed lines or choice options. You can optionally link an offering to a physical inventory item."
+        detail="After you add or update offerings here, open an Event Order Template and select which offerings to include as fixed lines or choice options. You can optionally link an offering to a physical inventory item. Applying or sending a template is an event action from Event Order Templates or the event workspace."
         action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
         secondaryActions={[
           { href: "/library/inventory", label: "Manage Available Inventory" },

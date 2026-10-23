@@ -207,14 +207,14 @@ function UseOrSendInventoryTemplateSheet({
           {step === "pick" ? (
             <p className="text-sm text-muted-foreground">
               {mode === "send"
-                ? <>Choose a client event to apply &ldquo;{template?.name}&rdquo; and share for client review.</>
-                : <>Choose a client. This starts that booking&apos;s inventory list from &ldquo;{template?.name}&rdquo;.</>}
+                ? <>Choose a client event to apply &ldquo;{template?.name}&rdquo; and share for portal review. You will land on that event&apos;s Inventory tab.</>
+                : <>Choose a client. This starts that booking&apos;s inventory draft from &ldquo;{template?.name}&rdquo; without sharing.</>}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
               {mode === "send"
-                ? "Applies the template (if needed) and shares the event inventory for client portal review — not an invoice."
-                : "Confirm before setting up inventory."}
+                ? "Applies the template (if needed) and shares the event inventory for client portal review — not an invoice. Finalize and Event Order handoff stay on the event."
+                : "Confirm before setting up this event’s inventory draft. Does not share with the client."}
             </p>
           )}
         </SheetHeader>
@@ -388,8 +388,9 @@ export function InventoryTemplateList({
         {headerCreate ? <NewInventoryTemplateButton /> : null}
       </div>
       <p className="text-xs text-muted-foreground">
-        Reusable packing lists. Use applies on the venue side; Send applies and shares for client portal review.
-        Billable inventory still uses Event Order / Invoice — not a parallel payment stack.
+        Reusable packing lists. Use applies a draft on the venue side (does not share). Send applies and shares for
+        client portal review — continue on the event Inventory tab. Billable inventory still uses Event Order /
+        Invoice — not a parallel payment stack.
       </p>
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">

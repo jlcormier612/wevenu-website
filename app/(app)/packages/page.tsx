@@ -28,7 +28,7 @@ export default async function PackagesPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Packages"
-        description="Define package tiers and inclusions. Customize starters, set pricing, then use them on invoices and Event Orders."
+        description="Priced sales packages with inclusions for booking and Selected Package snapshots. Distinct from Event Order Templates (delivery build sheets) — this is not where you author or send an Event Order."
         actions={
           <Button type="button" render={<Link href="/packages/new" />}>
             + New Package
@@ -36,7 +36,7 @@ export default async function PackagesPage() {
         }
       />
       <LibraryHowItWorks>
-        Package names, pricing, and inclusion lines are authored here. Inclusions are written on the package itself — they are not selected from the Offerings catalog.
+        Package names, pricing, and inclusion lines are authored here for what you sell. Inclusions are written on the package itself — they are not selected from the Offerings catalog. For event delivery lists and client choice groups, use Event Order Templates.
       </LibraryHowItWorks>
       <PackageList initialPackages={packages} missingStarterKeys={missingStarterKeys} />
     </div>
