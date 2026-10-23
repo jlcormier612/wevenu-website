@@ -44,6 +44,22 @@ describe("theme contrast anchors", () => {
     assert.doesNotMatch(form, /text-\[var\(--forest-sage\)\]\/85/);
   });
 
+  it("locks client invite / public auth Wordmark shells to AuthBrandFrame light chrome", () => {
+    for (const rel of [
+      "app/client/accept/page.tsx",
+      "app/client/accept-participant/page.tsx",
+      "app/client/login/page.tsx",
+      "app/join/page.tsx",
+    ] as const) {
+      const src = read(rel);
+      assert.match(src, /AuthBrandFrame/, rel);
+      assert.doesNotMatch(src, /bg-muted\/40/, rel);
+    }
+    const frame = read("components/auth/auth-brand-shell.tsx");
+    assert.match(frame, /data-theme-lock="light"/);
+    assert.match(frame, /data-auth-brand-frame/);
+  });
+
   it("workspace dark mode remaps warm-gray but defines ws-control dark ink", () => {
     const css = read("workspace/app/globals.css");
     assert.match(css, /\.dark\s*\{[\s\S]*--warm-gray:\s*var\(--forest-sage\)/);

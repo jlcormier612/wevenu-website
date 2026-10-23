@@ -12,6 +12,7 @@
 | Couple portal | `/portal/*` (client workspace), public forms `/form/*`, `/offer/*` | light surface (pinned) + system dark on chrome |
 | Vendor portal | `/vendor-app/*` (vendor workspace) | light + dark |
 | Auth / legal / public | `/login`, `/select-venue`, terms, `/guide`, SMS consent | light (+ public-form pin) |
+| Client / team / vendor invite + client login | `/client/accept`, `/client/accept-participant`, `/client/login`, `/join`, `/workspaces`, `/vendor/accept` | **always light** via `AuthBrandFrame` / `AUTH_BRAND_PAGE_STYLE` (primary Wordmark; never theme `bg-muted`) |
 
 Total discovered `page.tsx` + `route.ts` paths under `app/`: **~412** (includes API routes). User-facing pages are the subset without `route.ts`-only handlers.
 
@@ -24,8 +25,11 @@ Total discovered `page.tsx` + `route.ts` paths under `app/`: **~412** (includes 
 | Payment status badges | `PaymentStatusBadge`, `ScheduleStatusBadge` (“Needs Attention” → destructive) | same — asserts shared Badge wiring + dark AA pair |
 | Theme tokens | `--destructive-foreground` (solid buttons stay black), primary/secondary pairs, amber banner | same + existing portal/vendor contrast tests |
 | Assignment withdrawal banner | light amber + dark amber; dismiss/remove | shared + `vendor-assignment-fee-and-removal.test.ts` |
+| Public auth Wordmark | `AuthBrandFrame` light lock + primary asset on warm linen/taupe page | `components/auth/auth-brand-frame.test.ts` + `lib/theme/contrast-anchors.test.ts` + `docs/qa/client-invite-logo-contrast/` browser |
 
 **Coverage gap closed (2026-10-22):** Prior gate only asserted light soft destructive (black on dusty/25 over white) and pinned `--destructive-foreground: black` in dark for solid buttons — it never evaluated soft badge ink on dark surfaces, so Payments “Needs Attention” dark text was missed.
+
+**Coverage gap closed (2026-10-22, logo):** Dark-mode sidebar logo work forced primary asset everywhere but never audited public auth pages that used `bg-muted/40` without `data-theme-lock="light"`. Client invite rendered primary (dark) lettering on heritage-sage → illegible. Gate now requires `AuthBrandFrame` on those routes.
 
 ## Interaction states
 

@@ -3,37 +3,26 @@ import Link from "next/link";
 
 import { peekClientInvitation } from "@/lib/client-auth/service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Wordmark } from "@/components/brand/wordmark";
+import { AuthBrandFrame } from "@/components/auth/auth-brand-shell";
 import { AcceptClientForm } from "@/app/client/accept/accept-form";
 
 export const metadata: Metadata = { title: "Create Your Account — Hello to Cheers" };
 
 type Props = { searchParams: Promise<{ token?: string }> };
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-12">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <div className="flex justify-center"><Wordmark /></div>
-        {children}
-      </div>
-    </main>
-  );
-}
-
 export default async function ClientAcceptPage({ searchParams }: Props) {
   const { token } = await searchParams;
 
   if (!token) {
     return (
-      <Shell>
+      <AuthBrandFrame>
         <Card>
           <CardHeader className="text-center">
             <CardTitle>Invalid Invitation</CardTitle>
             <CardDescription>This invitation link is missing a token.</CardDescription>
           </CardHeader>
         </Card>
-      </Shell>
+      </AuthBrandFrame>
     );
   }
 
@@ -41,7 +30,7 @@ export default async function ClientAcceptPage({ searchParams }: Props) {
 
   if (!invitation || invitation.status !== "pending" || invitation.expired) {
     return (
-      <Shell>
+      <AuthBrandFrame>
         <Card>
           <CardHeader className="text-center">
             <CardTitle>Invitation Not Found</CardTitle>
@@ -56,12 +45,12 @@ export default async function ClientAcceptPage({ searchParams }: Props) {
             </Link>
           </CardContent>
         </Card>
-      </Shell>
+      </AuthBrandFrame>
     );
   }
 
   return (
-    <Shell>
+    <AuthBrandFrame>
       <Card>
         <CardHeader className="text-center space-y-3">
           <CardTitle>Welcome, {invitation.coupleName}</CardTitle>
@@ -89,6 +78,6 @@ export default async function ClientAcceptPage({ searchParams }: Props) {
           </p>
         </CardContent>
       </Card>
-    </Shell>
+    </AuthBrandFrame>
   );
 }
