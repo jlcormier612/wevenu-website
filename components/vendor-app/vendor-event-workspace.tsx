@@ -657,15 +657,15 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Agreed fee — coordination reference only. Payments happen outside
-          Hello to Cheers; no paid/pending status is shown here. Hidden when
-          the venue hasn't set a fee. */}
+      {/* Venue cost (agreed_fee) — coordination reference only. Not a couple
+          charge, Event Order line, or invoice. Payments happen outside HTC.
+          Hidden when the venue hasn't set a fee. */}
       {detail.agreedFee != null && (
         <div className="rounded-sm border border-border bg-card p-4 space-y-2 sm:col-span-2">
-          <h2 className="text-sm font-semibold text-foreground">Agreed fee</h2>
+          <h2 className="text-sm font-semibold text-foreground">Venue cost for this event</h2>
           <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground">
-            Tracked for coordination — payments happen outside Hello to Cheers.
+            What the venue recorded as owed to you for coordination — not a couple charge in Hello to Cheers. Payments happen outside the app.
           </p>
         </div>
       )}

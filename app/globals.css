@@ -110,7 +110,8 @@
   --accent: var(--soft-sage);
   --accent-foreground: var(--forest-sage);
   --destructive: var(--dusty-rose);
-  --destructive-foreground: var(--forest-sage);
+  /* Black on dusty-rose clears WCAG AA (~10:1). Forest-sage on dusty fails (~3.25:1). */
+  --destructive-foreground: var(--black);
   --success: var(--heritage-sage);
   --success-foreground: var(--true-white);
   --warning: var(--taupe-dark);
@@ -491,7 +492,8 @@ html:has(.htc-staff) [data-slot="table"] {
   --accent: var(--heritage-sage);
   --accent-foreground: var(--true-white);
   --destructive: var(--dusty-rose);
-  --destructive-foreground: var(--forest-sage);
+  /* Same ink as light: black on dusty-rose (~10:1). Forest-sage on dusty fails AA. */
+  --destructive-foreground: var(--black);
   --success: var(--soft-sage);
   --success-foreground: var(--forest-sage);
   --warning: var(--taupe-dark);

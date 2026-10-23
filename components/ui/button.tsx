@@ -17,7 +17,10 @@ const buttonVariants = cva(
         ghost:
           "text-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
-          "border-destructive/40 bg-destructive/15 text-foreground hover:bg-destructive/25 focus-visible:border-destructive/50 focus-visible:ring-destructive/30 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          // Solid dusty-rose + destructive-foreground (black). Soft fill +
+          // theme foreground failed on light amber banners when .dark set
+          // white ink (~1:1). Black on #d8a7aa is ~10:1 (AA).
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:border-destructive focus-visible:ring-destructive/40 active:bg-destructive/80",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

@@ -140,6 +140,11 @@ describe("staff event workspace and categories", () => {
     assert.match(eventVendors, /In-house/);
   });
 
+  it("required removal override is an explicit venue confirmation", () => {
+    assert.match(eventVendors, /overrides the venue Required designation/);
+    assert.match(eventVendors, /Remove \(override required\)/);
+  });
+
   it("required categories remain informational and separate", () => {
     assert.match(categories, /venue_required_vendor_categories/);
     assert.match(categoriesPanel, /Required categories/);

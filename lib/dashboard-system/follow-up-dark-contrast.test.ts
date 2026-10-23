@@ -16,7 +16,7 @@ const page = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
 
 describe("dashboard Follow up dark-mode contrast", () => {
   it("dark theme warning-foreground is light text, not forest-sage", () => {
-    const darkBlock = css.slice(css.indexOf(".dark {"), css.indexOf(".dark {") + 1200);
+    const darkBlock = css.slice(css.indexOf(".dark {"), css.indexOf(".dark {") + 2200);
     assert.match(darkBlock, /--warning-foreground:\s*var\(--true-white\)/);
     assert.doesNotMatch(
       darkBlock,

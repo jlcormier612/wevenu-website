@@ -70,7 +70,10 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
 
   function handleEditFee(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
-    const input = window.prompt("Agreed fee for this vendor ($)", fee != null ? String(fee) : "");
+    const input = window.prompt(
+      "Venue cost for this vendor ($) — what the venue owes them. Not a couple charge or Event Order line.",
+      fee != null ? String(fee) : "",
+    );
     if (input === null) return;
     const trimmed = input.trim();
     if (!trimmed) { save(null, status); return; }
@@ -87,23 +90,29 @@ function VendorPaymentControl({ eventId, assignment }: { eventId: string; assign
   if (fee == null) {
     return (
       <button type="button" onClick={handleEditFee} disabled={pending}
-        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:border-primary/40">
-        + Add fee
+        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:border-primary/40"
+        title="Venue cost owed to this vendor — not charged to the couple"
+        aria-label="Add venue cost for this vendor">
+        + Add venue cost
       </button>
     );
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" title="Venue cost owed to this vendor — not a couple charge">
       <button type="button" onClick={handleEditFee} disabled={pending}
-        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-foreground hover:border-primary/40">
-        ${fee.toLocaleString()}
+        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-foreground hover:border-primary/40"
+        aria-label={`Venue cost $${fee.toLocaleString()} — edit`}>
+        Venue cost ${fee.toLocaleString()}
       </button>
       <button type="button" onClick={toggleStatus} disabled={pending}
         className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-          status === "paid" ? "border-primary/40 bg-primary/10 text-primary" : "border-amber-300 bg-amber-50 text-amber-700"
-        }`}>
-        {pending ? "…" : status === "paid" ? "Paid" : "Pending"}
+          status === "paid"
+            ? "border-primary/40 bg-primary/10 text-primary"
+            : "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+        }`}
+        aria-label={status === "paid" ? "Mark venue cost unpaid" : "Mark venue cost paid"}>
+        {pending ? "…" : status === "paid" ? "Paid to vendor" : "Unpaid"}
       </button>
     </div>
   );
@@ -192,8 +201,12 @@ export function EventVendorsSection({
     });
   }
 
-  async function handleRemove(assignmentId: string, vendorName: string) {
-    if (!confirm(`Remove ${vendorName} from this event? They'll lose access to the event workspace and conversations for this booking.`)) {
+  async function handleRemove(assignmentId: string, vendorName: string, opts?: { isRequired?: boolean }) {
+    const required = opts?.isRequired === true;
+    const message = required
+      ? `Remove required vendor ${vendorName}?\n\nThis overrides the venue Required designation for this event. They will lose access to the event workspace and conversations for this booking. Event Order / invoice lines are not changed automatically.`
+      : `Remove ${vendorName} from this event? They'll lose access to the event workspace and conversations for this booking.`;
+    if (!confirm(message)) {
       return;
     }
     setAssignments(prev => prev.filter(a => a.id !== assignmentId));
@@ -203,7 +216,11 @@ export function EventVendorsSection({
       router.refresh();
       return;
     }
-    toast.success(`${vendorName} removed from this event.`);
+    toast.success(
+      required
+        ? `${vendorName} removed (required-vendor exception).`
+        : `${vendorName} removed from this event.`,
+    );
     router.refresh();
   }
 
@@ -293,7 +310,9 @@ export function EventVendorsSection({
                     </button>
                   )}
                   <button type="button"
-                    onClick={() => handleRemove(a.id, a.vendorName)}
+                    onClick={() => handleRemove(a.id, a.vendorName, {
+                      isRequired: availableVendors.find((v) => v.id === a.vendorId)?.isRequired,
+                    })}
                     className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     aria-label="Remove vendor">
                     <Trash2 className="h-3.5 w-3.5" />
@@ -302,17 +321,27 @@ export function EventVendorsSection({
               </div>
 
               {(a.pendingRemovalRequests ?? []).length > 0 && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 space-y-2">
-                  {(a.pendingRemovalRequests ?? []).map((req) => (
+                <div
+                  className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 space-y-2 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+                  data-testid="vendor-removal-request-banner"
+                >
+                  {(a.pendingRemovalRequests ?? []).map((req) => {
+                    const isRequired = !!availableVendors.find((v) => v.id === a.vendorId)?.isRequired;
+                    return (
                     <div key={req.id} className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0 space-y-0.5">
-                        <p className="text-xs font-medium text-amber-900">
+                        <p className="text-xs font-medium">
                           {req.requestedBy === "couple"
-                            ? `Couple withdrew ${a.vendorName} — remove from event?`
-                            : `${a.vendorName} requested to leave`}
+                            ? `Couple asked to remove ${a.vendorName} — assignment still active until you decide.`
+                            : `${a.vendorName} requested to leave — assignment still active until you decide.`}
                         </p>
+                        {isRequired && (
+                          <p className="text-[11px] font-medium">
+                            Required vendor — dismissing keeps them assigned; removing overrides the requirement.
+                          </p>
+                        )}
                         {req.reason && (
-                          <p className="text-[11px] text-amber-800/80 italic">“{req.reason}”</p>
+                          <p className="text-[11px] opacity-80 italic">“{req.reason}”</p>
                         )}
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -320,8 +349,9 @@ export function EventVendorsSection({
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="h-7 text-xs"
+                          className="h-7 text-xs bg-background text-foreground"
                           onClick={() => handleDismissRequest(req)}
+                          aria-label="Dismiss request — keep vendor assigned"
                         >
                           Dismiss request
                         </Button>
@@ -330,13 +360,15 @@ export function EventVendorsSection({
                           size="sm"
                           variant="destructive"
                           className="h-7 text-xs"
-                          onClick={() => handleRemove(a.id, a.vendorName)}
+                          onClick={() => handleRemove(a.id, a.vendorName, { isRequired })}
+                          aria-label={isRequired ? "Remove required vendor from event" : "Remove vendor from event"}
                         >
-                          Remove
+                          {isRequired ? "Remove (override required)" : "Remove from event"}
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
