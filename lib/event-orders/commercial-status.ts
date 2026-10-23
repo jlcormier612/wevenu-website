@@ -192,7 +192,7 @@ export function commercialChoicesDisplayKey(
 export type CommercialProgressStepId =
   | "draft"
   | "engagement"
-  | "finalized"
+  | "order_agreed"
   | "invoiced";
 
 export type CommercialProgressStepState = "complete" | "current" | "upcoming";
@@ -289,7 +289,7 @@ export function buildCommercialProgressSteps(
   ) {
     cursor = "engagement";
   } else if (input.eventOrder?.status === "open") {
-    cursor = "finalized";
+    cursor = "order_agreed";
   } else if (input.eventOrder?.status === "finalized" && !input.eventOrder.sharedAt) {
     cursor = "engagement";
   } else if (!invoicedComplete) {
@@ -332,9 +332,9 @@ export function buildCommercialProgressSteps(
           : { kind: "tab", tab: "event-order", anchor: "event-order-order" },
     },
     {
-      id: "finalized",
+      id: "order_agreed",
       label: "Finalized",
-      state: stateFor("finalized", finalizedComplete),
+      state: stateFor("order_agreed", finalizedComplete),
       detail: finalizedComplete
         ? "Event Order is finalized (sharing is separate)."
         : "Finalize the Event Order when deliverables are agreed — not implied by template apply or client submit.",

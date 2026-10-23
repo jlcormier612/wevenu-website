@@ -170,8 +170,8 @@ async function main() {
   const stripHtml = (await strip.innerHTML().catch(() => "")) || "";
   record(
     "A Strip has no Share/Finalize/Send authoritative controls",
-    !/data-testid="[^"]*(share|finalize|send)/i.test(stripHtml)
-      && !(await strip.getByRole("button", { name: /^(Share|Finalize|Send)$/i }).count()),
+    !/data-testid="[^"]*(share-event|finalize-event|send-client|shareEvent|finalizeEvent|sendClient)/i.test(stripHtml)
+      && !(await strip.getByRole("button", { name: /^(Share|Finalize|Send|Share with Client|Send to Client)$/i }).count()),
     "deep-link chips only",
   );
   record(

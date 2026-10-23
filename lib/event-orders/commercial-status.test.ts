@@ -198,7 +198,7 @@ describe("C4 commercial progress checklist", () => {
     });
     assert.equal(steps.find((s) => s.id === "draft")?.state, "complete");
     assert.equal(steps.find((s) => s.id === "engagement")?.state, "upcoming");
-    assert.equal(steps.find((s) => s.id === "finalized")?.state, "current");
+    assert.equal(steps.find((s) => s.id === "order_agreed")?.state, "current");
     assert.equal(steps.find((s) => s.id === "invoiced")?.state, "upcoming");
     assert.deepEqual(
       buildCommercialNextAction({
@@ -224,7 +224,7 @@ describe("C4 commercial progress checklist", () => {
       linkedScheduleId: null,
       showInventory: false,
     });
-    assert.equal(finalizedOnly.find((s) => s.id === "finalized")?.state, "complete");
+    assert.equal(finalizedOnly.find((s) => s.id === "order_agreed")?.state, "complete");
     assert.equal(finalizedOnly.find((s) => s.id === "engagement")?.state, "current");
     assert.equal(finalizedOnly.find((s) => s.id === "invoiced")?.state, "upcoming");
 
