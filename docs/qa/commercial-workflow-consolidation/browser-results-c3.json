@@ -1,12 +1,12 @@
 {
-  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "expectedSha": "020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4 expected=020b6f0bc8b7"
     },
     {
       "name": "A Strip present as commercial home",
@@ -71,7 +71,7 @@
     {
       "name": "D Invoice anchor reaches existing EO invoice link",
       "pass": true,
-      "detail": "Amount due lives on\nEvent & Inventory Selections INV-2026-4489C8\nDraft\nOpen Invoice\nCreate Payment Plan\n\nEvent Order is not an invoice. The payment plan total always follows this invoice."
+      "detail": "Amount due lives on\nEvent & Inventory Selections INV-2026-4489C8\nDraft\nOpen Invoice\nOpen Payment Plan\n\nEvent Order is not an invoice. The payment plan total always follows this invoice."
     },
     {
       "name": "D Invoice chip is status/deep-link only",
@@ -106,7 +106,7 @@
     {
       "name": "E Portal inventory reachable",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading…\n"
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors"
     },
     {
       "name": "E Portal event-order reachable",
@@ -140,5 +140,5 @@
     "eventOrderSharedAt": "2026-10-23T00:26:09.17+00:00",
     "choiceCount": 1
   },
-  "at": "2026-10-23T06:10:09.225Z"
+  "at": "2026-10-23T06:29:21.109Z"
 }

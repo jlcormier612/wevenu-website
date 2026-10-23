@@ -1,12 +1,12 @@
 {
-  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "expectedSha": "020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4 expected=020b6f0bc8b7"
     },
     {
       "name": "Hub: five commercial areas present",
@@ -31,7 +31,7 @@
     {
       "name": "Available Inventory editable catalog",
       "pass": true,
-      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTas"
     },
     {
       "name": "Available Inventory: catalog ≠ share/EO",
@@ -104,5 +104,5 @@
       "detail": "390"
     }
   ],
-  "at": "2026-10-23T06:11:29.757Z"
+  "at": "2026-10-23T06:30:55.885Z"
 }

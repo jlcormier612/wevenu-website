@@ -1,12 +1,12 @@
 {
-  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "expectedSha": "020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4 expected=020b6f0bc8b7"
     },
     {
       "name": "A Setup Profiles: Event Order template label",
@@ -96,12 +96,12 @@
     {
       "name": "E Portal section inventory reachable",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n📋\nOrder\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading…\nJen's Fancy Venue\n💗"
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour inventory choi"
     },
     {
       "name": "E Portal section event-order reachable",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nLoading…\nJen's Fanc"
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendors\nWhat you're recei"
     },
     {
       "name": "E Portal section choices reachable",
@@ -114,5 +114,5 @@
       "detail": "390 viewport"
     }
   ],
-  "at": "2026-10-23T06:11:08.565Z"
+  "at": "2026-10-23T06:28:33.988Z"
 }

@@ -1,12 +1,12 @@
 {
-  "expectedSha": "c1b210d3fb4155d6dc68b1853f1581d244e03cba",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba",
+  "expectedSha": "020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c1b210d3fb4155d6dc68b1853f1581d244e03cba expected=c1b210d3fb41"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:020b6f0bc8b7288cf8e10ef6ce117367530cf0f4 expected=020b6f0bc8b7"
     },
     {
       "name": "DB: EO shared/finalized without inventing invoice-from-share rule",
@@ -124,5 +124,5 @@
       "frozenLineCount": 1
     }
   },
-  "at": "2026-10-23T06:13:23.873Z"
+  "at": "2026-10-23T06:30:32.122Z"
 }
