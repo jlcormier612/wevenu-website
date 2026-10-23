@@ -610,9 +610,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
       />
       <TourScheduleRoot leadId={lead.id} tourAppointments={tourAppointments} now={now} venueTimezone={venueTimezone}>
       {/* Header: identity → actions → sales & availability → space prefs */}
-      <div className="space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-2">
+      <div className="space-y-3" data-testid="lead-detail-header">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-1.5">
           <Button
             variant="ghost" size="sm"
             className="-ml-2 text-muted-foreground"
@@ -623,7 +623,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
           </Button>
           <div className="flex min-w-0 items-start gap-3">
             <RelationshipPhotoAvatar photoUrl={photoUrl} name={displayName} />
-            <div className="min-w-0 space-y-1">
+            <div className="min-w-0 space-y-0.5">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <h1 className="font-heading text-2xl font-medium leading-tight text-heading sm:text-3xl">
                   {displayName}
@@ -688,7 +688,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
         <div
           data-testid="lead-action-area"
-          className="flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:max-w-3xl sm:items-end"
+          className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:max-w-3xl sm:items-end"
         >
           {showEventSpaceField && (
             <div className="w-full min-w-56">
@@ -713,8 +713,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               />
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="mr-1 text-right">
+          {/* Row 1 — Lead management */}
+          <div
+            data-testid="lead-management-actions"
+            className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2"
+          >
+            <div className="mr-0.5 text-right">
               <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline stage</p>
               <LeadStatusBadge status={currentStage} />
             </div>
@@ -755,6 +759,14 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               <Pencil className="mr-1 h-3.5 w-3.5" />
               Edit
             </Button>
+            <MergeLeadButton leadId={lead.id} />
+            <DeleteRecordButton
+              kind="lead"
+              recordId={lead.id}
+              fallbackName={displayName}
+              previewAction={previewDeleteLeadAction}
+              deleteAction={deleteLeadRecordAction}
+            />
             {relationshipArchived ? (
               <Button
                 type="button"
@@ -799,18 +811,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 Archive
               </Button>
             )}
-            <MergeLeadButton leadId={lead.id} />
-            <DeleteRecordButton
-              kind="lead"
-              recordId={lead.id}
-              fallbackName={displayName}
-              previewAction={previewDeleteLeadAction}
-              deleteAction={deleteLeadRecordAction}
-            />
           </div>
+          {/* Row 2 — Next actions */}
           <div
             data-testid="lead-booking-tour-actions"
-            className="flex flex-wrap items-center justify-end gap-2"
+            className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2"
           >
             {(previouslyConverted && (relationshipCancelled || (!isBookingStarted && currentStage !== "lost"))) && (
               <Button
@@ -872,16 +877,16 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
       <div
         data-testid="lead-sales-availability"
-        className="rounded-lg border border-border/80 bg-muted/20 p-3 sm:p-4"
+        className="rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5 sm:px-3.5 sm:py-3"
       >
-        <p className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Sales &amp; availability
         </p>
         <div
           data-testid="lead-owner-hold-row"
-          className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3"
+          className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 lg:gap-x-6"
         >
-          <div className="min-w-0 shrink-0 basis-full sm:basis-auto sm:max-w-[22rem]">
+          <div className="min-w-0 shrink-0 sm:max-w-[22rem]">
             <StaffAssignmentField
               compact
               label="Sales owner"
@@ -891,6 +896,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               onSave={(staffId) => setLeadAssignedStaffAction(lead.id, staffId)}
             />
           </div>
+          <span
+            className="hidden h-6 w-px shrink-0 bg-border sm:block"
+            aria-hidden
+            data-testid="lead-owner-hold-divider"
+          />
           <DateHoldsSection
             density="compact"
             leadId={lead.id}

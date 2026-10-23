@@ -302,22 +302,19 @@ export function DateHoldsSection({
 
   // Compact: `contents` so the hold form can `basis-full` under the whole
   // Sales & availability control row (Sales owner + Date hold), not a right column.
+  // Protection status stays on the Date hold band (not a full-width banner above).
   return (
     <div
       className={compact ? "contents" : "space-y-3"}
       data-testid={compact ? "date-hold-compact" : undefined}
     >
-      {/* Current protection truth — always visible before active/history lists */}
-      {!showForm ? (
+      {/* Regular density: full protection banner above lists */}
+      {!compact && !showForm ? (
         <div
           className={
             protection.protected
-              ? compact
-                ? "basis-full w-full rounded-md border border-warning/30 bg-warning/5 px-2 py-1.5"
-                : "rounded-lg border border-warning/30 bg-warning/5 px-3 py-2"
-              : compact
-                ? "basis-full w-full rounded-md border border-border bg-muted/40 px-2 py-1.5"
-                : "rounded-lg border border-border bg-muted/40 px-3 py-2"
+              ? "rounded-lg border border-warning/30 bg-warning/5 px-3 py-2"
+              : "rounded-lg border border-border bg-muted/40 px-3 py-2"
           }
           data-testid="date-hold-protection-banner"
           data-protected={protection.protected ? "true" : "false"}
@@ -340,8 +337,32 @@ export function DateHoldsSection({
         </div>
       ) : null}
       {compact ? (
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap">
+        <div
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-2 sm:flex-nowrap"
+          data-testid="date-hold-compact-band"
+        >
           <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span>
+          {!showForm && activeHolds.length === 0 ? (
+            <div
+              className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-0.5"
+              data-testid="date-hold-protection-banner"
+              data-protected="false"
+              title={protection.detail ?? undefined}
+            >
+              <span
+                className="shrink-0 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs font-semibold text-muted-foreground"
+                data-testid="date-hold-protection-headline"
+              >
+                Not protected
+              </span>
+              <span
+                className="min-w-0 text-xs text-muted-foreground"
+                data-testid="date-hold-protection-detail"
+              >
+                No active hold is protecting this event date.
+              </span>
+            </div>
+          ) : null}
           {activeHolds.length > 0 ? (
             <div
               className="flex w-fit min-w-0 flex-nowrap items-center gap-x-2 gap-y-2"
@@ -352,11 +373,15 @@ export function DateHoldsSection({
                   key={hold.id}
                   className="flex h-8 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
                   data-testid="date-hold-active"
+                  data-protected="true"
                 >
                   <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground dark:text-foreground" />
                   <div className="flex min-w-0 flex-nowrap items-center gap-x-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground">
-                      Hold active
+                    <p
+                      className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground"
+                      data-testid="date-hold-protection-headline"
+                    >
+                      Held
                     </p>
                     <p className="text-sm font-medium text-foreground" data-testid="date-hold-summary-date">
                       {holdDateRangeLabel(hold)}
@@ -515,32 +540,69 @@ export function DateHoldsSection({
 
       {/* Historical holds — released / expired / converted; not current protection */}
       {pastHolds.length > 0 && (
-        <div className={compact ? "basis-full space-y-1" : "space-y-1"} data-testid="date-hold-history">
-          <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Hold history (not current protection)
-          </p>
-          {pastHolds.map((hold) => (
-            <div
-              key={hold.id}
-              className="flex flex-wrap items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground"
-              data-testid="date-hold-history-row"
-            >
-              <span>{historicalHoldLabel(hold)}</span>
-              {canReactivateHold(hold) ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-1.5 text-xs"
-                  disabled={addPending}
-                  onClick={() => openEdit(hold)}
-                  data-testid="date-hold-reactivate"
+        <div className={compact ? "basis-full min-w-0 pt-1" : "space-y-1"} data-testid="date-hold-history">
+          {compact ? (
+            <details className="group">
+              <summary className="cursor-pointer list-none px-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex items-center gap-1">
+                  <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                  Hold history ({pastHolds.length}) — not current protection
+                </span>
+              </summary>
+              <div className="mt-1 space-y-0.5">
+                {pastHolds.map((hold) => (
+                  <div
+                    key={hold.id}
+                    className="flex flex-wrap items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground"
+                    data-testid="date-hold-history-row"
+                  >
+                    <span>{historicalHoldLabel(hold)}</span>
+                    {canReactivateHold(hold) ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-1.5 text-xs"
+                        disabled={addPending}
+                        onClick={() => openEdit(hold)}
+                        data-testid="date-hold-reactivate"
+                      >
+                        Reactivate…
+                      </Button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : (
+            <>
+              <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Hold history (not current protection)
+              </p>
+              {pastHolds.map((hold) => (
+                <div
+                  key={hold.id}
+                  className="flex flex-wrap items-center gap-2 px-1 py-0.5 text-xs text-muted-foreground"
+                  data-testid="date-hold-history-row"
                 >
-                  Reactivate…
-                </Button>
-              ) : null}
-            </div>
-          ))}
+                  <span>{historicalHoldLabel(hold)}</span>
+                  {canReactivateHold(hold) ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5 text-xs"
+                      disabled={addPending}
+                      onClick={() => openEdit(hold)}
+                      data-testid="date-hold-reactivate"
+                    >
+                      Reactivate…
+                    </Button>
+                  ) : null}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
