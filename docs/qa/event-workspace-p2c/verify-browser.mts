@@ -124,17 +124,49 @@ async function main() {
     "strip still demoted",
   );
 
-  // Ensure a draft/sent packet exists for ShareDialog
+  async function expandChoices() {
+    const choicesSection = page.locator('[data-testid="event-order-choices"]');
+    if ((await choicesSection.count()) === 0) return;
+    const open = await choicesSection.evaluate((el) =>
+      el instanceof HTMLDetailsElement ? el.open : true,
+    ).catch(() => true);
+    if (!open) {
+      await choicesSection.locator("summary").first().click();
+      await page.waitForTimeout(500);
+    }
+  }
+
+  await expandChoices();
+
+  // Prefer an existing draft/sent packet (DB may already have one from prior runs).
   let sendBtn = page.locator('[data-testid="choices-send-selection-request"]').first();
   if ((await sendBtn.count()) === 0) {
     const start = page.locator('[data-testid="choices-start-selections"]');
-    if ((await start.count()) > 0 && !(await start.isDisabled())) {
-      await start.click();
-      await page.waitForTimeout(2500);
+    if ((await start.count()) > 0) {
+      await start.scrollIntoViewIfNeeded();
+      await start.click({ force: true });
+      await page.waitForTimeout(2000);
+    } else {
+      const amend = page.getByRole("button", { name: /^Amend$/ }).first();
+      if ((await amend.count()) > 0) {
+        await amend.click({ force: true });
+        await page.waitForTimeout(2000);
+      }
     }
+    // Journey may re-emphasize selections after draft exists — reload + expand.
+    await page.goto(`${APP}/events/${EVENT}#event-order-choices`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
+    await page.waitForTimeout(2000);
+    await expandChoices();
   }
   sendBtn = page.locator('[data-testid="choices-send-selection-request"]').first();
-  record("send-cta-present", (await sendBtn.count()) > 0, "Send selection request");
+  record(
+    "send-cta-present",
+    (await sendBtn.count()) > 0,
+    `count=${await sendBtn.count()} bodyHasSend=${/Send selection request/i.test(await page.locator("body").innerText())}`,
+  );
 
   if ((await sendBtn.count()) === 0) {
     record("share-dialog", false, "no sendable choices packet on fixture");
