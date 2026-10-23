@@ -1,12 +1,12 @@
 {
-  "expectedSha": "bc9db11165beff5856507278faa5f2f0fb57d7a4",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:bc9db11165beff5856507278faa5f2f0fb57d7a4",
+  "expectedSha": "dfabcca2107558710b72a9c6efd650c7733ad174",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174",
   "passed": true,
   "checks": [
     {
       "name": "Serving expected SHA",
       "pass": true,
-      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:bc9db11165beff5856507278faa5f2f0fb57d7a4 expected=bc9db11165be"
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174 expected=dfabcca21075"
     },
     {
       "name": "Hub: five commercial areas present",
@@ -91,7 +91,7 @@
     {
       "name": "C1 regression: commercial workspace intro",
       "pass": true,
-      "detail": "intro"
+      "detail": "status strip"
     },
     {
       "name": "EO → Invoice handoff language intact",
@@ -104,5 +104,5 @@
       "detail": "390"
     }
   ],
-  "at": "2026-10-23T04:35:40.190Z"
+  "at": "2026-10-23T05:14:15.981Z"
 }

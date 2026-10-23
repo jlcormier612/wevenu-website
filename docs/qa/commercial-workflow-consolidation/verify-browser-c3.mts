@@ -232,12 +232,21 @@ async function main() {
 
   await page.getByTestId("commercial-open-inventory").click();
   await page.waitForTimeout(1200);
+  const invTab = page.getByTestId("booked-tab-row-1").getByRole("tab", { name: /^Inventory$/i });
+  const invActiveAttr =
+    (await invTab.getAttribute("data-active"))
+    ?? (await invTab.getAttribute("aria-selected"))
+    ?? (await invTab.getAttribute("data-state"));
   const invTabActive =
-    (await page.getByRole("tab", { name: /^Inventory$/i }).getAttribute("data-state")) === "active";
+    invActiveAttr === ""
+    || invActiveAttr === "true"
+    || invActiveAttr === "active"
+    || (await page.getByTestId("booked-tab-row-1").locator('[data-slot="tabs-trigger"][data-active]').filter({ hasText: /^Inventory$/i }).count()) > 0;
+  const invPanelVisible = /Event Inventory/i.test(await page.locator("body").innerText());
   record(
     "B Open Inventory reaches Inventory tab",
-    invTabActive,
-    `url=${page.url()} active=${invTabActive} hash=${await page.evaluate(() => location.hash)}`,
+    (invTabActive || invPanelVisible) && /#inventory/i.test(page.url()),
+    `url=${page.url()} activeAttr=${invActiveAttr} panel=${invPanelVisible}`,
   );
   await page.screenshot({ path: `${OUT}/shots-c3/B-open-inventory-1280.png`, fullPage: true });
 
@@ -398,8 +407,8 @@ async function main() {
   await page.waitForTimeout(1000);
   record(
     "E Open Inventory works at 390",
-    (await page.getByRole("tab", { name: /^Inventory$/i }).getAttribute("data-state")) === "active"
-      || /Event Inventory/i.test(await page.locator("body").innerText()),
+    /#inventory/i.test(page.url())
+      && /Event Inventory/i.test(await page.locator("body").innerText()),
     page.url(),
   );
   await page.screenshot({ path: `${OUT}/shots-c3/E-strip-390.png`, fullPage: true });

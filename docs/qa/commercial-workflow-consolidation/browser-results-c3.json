@@ -1,0 +1,144 @@
+{
+  "expectedSha": "dfabcca2107558710b72a9c6efd650c7733ad174",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174",
+  "passed": true,
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "pass": true,
+      "detail": "image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:dfabcca2107558710b72a9c6efd650c7733ad174 expected=dfabcca21075"
+    },
+    {
+      "name": "A Strip present as commercial home",
+      "pass": true,
+      "detail": "Commercial workspace\n\nEvent-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice and payment plan follow after the agreed Event Order. Use the chips to "
+    },
+    {
+      "name": "A Copy: separate workflows + finalize ≠ share",
+      "pass": true,
+      "detail": "Commercial workspace\n\nEvent-level home for commercial progress. Inventory selection and client-selectable choices are separate workflows. Applying a template is not sharing an Event Order; client submission is not venue confirmation; finalizing is distinct from sharing; invoice a"
+    },
+    {
+      "name": "A Anchors + Open Inventory present",
+      "pass": true,
+      "detail": "subnav"
+    },
+    {
+      "name": "A Strip has no Share/Finalize/Send authoritative controls",
+      "pass": true,
+      "detail": "deep-link chips only"
+    },
+    {
+      "name": "A Choices + Event Order panels still mounted (Path A does not require groups)",
+      "pass": true,
+      "detail": "choicesPanel=1 orderPanel=1"
+    },
+    {
+      "name": "A Event Order chip matches persisted finalize≠share",
+      "pass": true,
+      "detail": "chip=Event Order\n· Shared db status=finalized shared_at=2026-10-23T00:26:09.17+00:00 expect=Shared"
+    },
+    {
+      "name": "B Inventory chip matches persisted status",
+      "pass": true,
+      "detail": "chip=Inventory\n· Awaiting client db=shared expect=Awaiting client"
+    },
+    {
+      "name": "B Client submission not shown as venue confirmation",
+      "pass": true,
+      "detail": "status=shared chip=Inventory\n· Awaiting client"
+    },
+    {
+      "name": "B Open Inventory reaches Inventory tab",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be?tab=event-order#inventory activeAttr= panel=true"
+    },
+    {
+      "name": "C Choices chip present (separate from Inventory)",
+      "pass": true,
+      "detail": "choices=1 inventory=1 choiceRows=1"
+    },
+    {
+      "name": "C Choices anchor scrolls to client_choices panel",
+      "pass": true,
+      "detail": "strip=true hash=#event-order-choices Client selections\nOptional choice packets from Event Order Templates (menus, add-ons, rentals). The Event Order below can already include venue-authored lines — those are not client submissions. Clien"
+    },
+    {
+      "name": "C Event Order anchor reaches order panel",
+      "pass": true,
+      "detail": "hash=#event-order-order"
+    },
+    {
+      "name": "D Invoice anchor reaches existing EO invoice link",
+      "pass": true,
+      "detail": "Amount due lives on\nEvent & Inventory Selections INV-2026-4489C8\nDraft\nOpen Invoice\nCreate Payment Plan\n\nEvent Order is not an invoice. The payment plan total always follows this invoice."
+    },
+    {
+      "name": "D Invoice chip is status/deep-link only",
+      "pass": true,
+      "detail": "Invoice\n· Draft"
+    },
+    {
+      "name": "D Strip does not expose Create Invoice / Payment Plan primary actions",
+      "pass": true,
+      "detail": "no finance create on strip"
+    },
+    {
+      "name": "E Inventory tab intact",
+      "pass": true,
+      "detail": "inventory tab"
+    },
+    {
+      "name": "E Payments tab intact",
+      "pass": true,
+      "detail": "payments"
+    },
+    {
+      "name": "E C2 Library Packages ≠ Event Order Templates intact",
+      "pass": true,
+      "detail": "library hub"
+    },
+    {
+      "name": "E C1 Setup readiness links intact",
+      "pass": true,
+      "detail": "Event setup\n\nUsing: Standard Wedding Setup\n\nReview your event's standard setup, make any event-specific changes, and release the prepared experience to the client portal. Invite the client separately when you're ready. Questionnaires use authorized send when staff choose — not an"
+    },
+    {
+      "name": "E Portal inventory reachable",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors"
+    },
+    {
+      "name": "E Portal event-order reachable",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendo"
+    },
+    {
+      "name": "E Portal choices reachable",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n5\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n💳\nPayments\n💬\nMessages\n1\n🏛️\nGuide\n🤝\nVendo"
+    },
+    {
+      "name": "E Strip + Open Inventory visible at 390",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "E Open Inventory works at 390",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be?tab=event-order#inventory"
+    },
+    {
+      "name": "E No duplicate inventory/choices/EO lines from strip navigation",
+      "pass": true,
+      "detail": "inv 1->1 lines 44->44 choices 1->1"
+    }
+  ],
+  "persisted": {
+    "inventoryStatus": "shared",
+    "eventOrderStatus": "finalized",
+    "eventOrderSharedAt": "2026-10-23T00:26:09.17+00:00",
+    "choiceCount": 1
+  },
+  "at": "2026-10-23T05:12:13.639Z"
+}
