@@ -12,7 +12,7 @@ import type { TaskActionType } from "@/lib/playbooks/types";
 const ALL_TAB_HASHES = new Set([
   "overview", "playbook", "timeline", "floorplan", "documents", "vendors",
   "event-order", "inventory", "invoice", "messages", "activity", "notes",
-  "team", "feedback",
+  "team", "feedback", "questionnaires",
 ]);
 
 describe("Task Destination Audit — venue-side action types", () => {
@@ -26,7 +26,7 @@ describe("Task Destination Audit — venue-side action types", () => {
   });
 
   it("taskActionHref builds an event-scoped hash link", () => {
-    assert.equal(taskActionHref("questionnaire", "evt-1"), "/events/evt-1#overview");
+    assert.equal(taskActionHref("questionnaire", "evt-1"), "/events/evt-1#questionnaires");
     assert.equal(taskActionHref("timeline", "evt-1"), "/events/evt-1#timeline");
     assert.equal(taskActionHref("contract", "evt-1"), "/events/evt-1#documents");
     assert.equal(taskActionHref(null, "evt-1"), null);

@@ -469,6 +469,14 @@ export async function completeQuestionnaire(
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "Only a submitted form can be marked complete." };
   await logActivity(supabase, venue.id, data.id, "completed", `${kindLabel(kind)} marked complete`, "Coordinator completed review");
+
+  // Finish line for questionnaire_submitted planning tasks — submit only advances
+  // to needs-review; venue Mark Complete satisfies the auto-complete trigger.
+  try {
+    const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+    await triggerAutoComplete(supabase, venue.id, eventId, "questionnaire_submitted");
+  } catch { /* non-blocking */ }
+
   return { ok: true };
 }
 

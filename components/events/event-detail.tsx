@@ -1052,6 +1052,8 @@ export function EventDetail({
                 eventDate={event.eventDate}
                 eventName={event.name}
                 clientName={event.clientName}
+                clientEmail={coupleEmail}
+                venueName={venueName}
                 eventType={event.eventType}
                 initialTasks={eventTasks}
                 readinessByKind={readinessByKind}

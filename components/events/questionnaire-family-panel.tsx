@@ -594,10 +594,10 @@ export function QuestionnaireFamilyPanel({
       >
         <p className="font-medium text-heading">Questionnaire delivery</p>
         <p className="mt-1 text-muted-foreground leading-relaxed">
-          You can request questionnaire information through planning tasks or automated messages where
-          supported. If you&apos;ve already requested the same information through one of those
-          workflows, you don&apos;t need to send a separate questionnaire request here. Use this
-          section when you need to send a questionnaire directly.
+          Planning tasks linked to a questionnaire use <span className="text-heading">Send to client</span> on
+          the task — that emails the real form for this event. Use this section to configure fields,
+          review submissions, or send the same form again. Creating a generic Request does not deliver
+          a questionnaire.
         </p>
       </div>
       <div className="flex flex-wrap gap-2" data-testid="questionnaire-kind-tabs">

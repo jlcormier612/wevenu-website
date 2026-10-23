@@ -14,10 +14,10 @@ import { clampDaysOffset } from "@/lib/playbooks/due-dates";
 // tab already on the event page — the URL hash makes that tab addressable
 // (see event-detail.tsx) rather than just landing on the event.
 //
-// guest_list, questionnaire, event_details and wedding_website
-// have no dedicated venue-side view/tab — Overview is the closest honest
-// destination until a real venue-side view exists (see
-// docs/product-backlog.md). Never point at a tab that doesn't exist.
+// guest_list, event_details and wedding_website have no dedicated venue-side
+// view/tab — Overview is the closest honest destination until a real
+// venue-side view exists (see docs/product-backlog.md). questionnaire lands
+// on the Questionnaires tab. Never point at a tab that doesn't exist.
 //
 // Task Destination Audit (2026-09-03): audiences restricts which Playbook
 // kind offers a destination in the Task Builder's "Opens" dropdown —
@@ -29,7 +29,7 @@ export const TASK_ACTION_TYPES: { value: TaskActionType; defaultLabel: string; t
   { value: "payments",         defaultLabel: "Open Payments",           tabHash: "invoice" },
   { value: "documents",        defaultLabel: "Open Documents",          tabHash: "documents" },
   { value: "guest_list",       defaultLabel: "Open Guest List",         tabHash: "overview" },
-  { value: "questionnaire",    defaultLabel: "Open Questionnaire",      tabHash: "overview" },
+  { value: "questionnaire",    defaultLabel: "Open Questionnaire",      tabHash: "questionnaires" },
   { value: "contract",         defaultLabel: "Open Contract / Agreement", tabHash: "documents" },
   { value: "timeline",         defaultLabel: "Open Timeline",           tabHash: "timeline" },
   { value: "floor_plan",       defaultLabel: "Open Floor Plan",         tabHash: "floorplan" },
@@ -93,7 +93,8 @@ export const AUTO_COMPLETE_TRIGGERS: { value: string; label: string }[] = [
   { value: "contract_signed",       label: "Contract signed" },
   { value: "payment_received",      label: "Any payment received" },
   { value: "final_payment_obligation_paid", label: "Final Payment obligation paid" },
-  { value: "questionnaire_submitted", label: "Final details submitted" },
+  // Submit advances needs-review; venue Mark Complete finishes the task.
+  { value: "questionnaire_submitted", label: "Questionnaire (couple submits; venue confirms review)" },
   { value: "client_choices_submitted", label: "Client choices submitted" },
   { value: "client_choices_finalized", label: "Client choices finalized" },
   { value: "guest_count_finalized", label: "Guest count submitted" },
@@ -245,7 +246,7 @@ export const STANDARD_CLIENT_PLANNING_MILESTONES: SeedMilestone[] = [
 ];
 
 export const STANDARD_CLIENT_PLANNING_TASKS: SeedTask[] = [
-  { ...R, title: "Complete your questionnaire", description: "Tell us about your vision for the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -90, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "questionnaire_submitted", isRequired: true, sortOrder: 0, dependsOnTaskId: null },
+  { ...R, title: "Complete your questionnaire", description: "Tell us about your vision for the day. Your venue reviews what you submit — submitting does not finish this task by itself.", ownerType: "couple", visibility: "client_owned", daysOffset: -90, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "questionnaire_submitted", isRequired: true, sortOrder: 0, dependsOnTaskId: null },
   { ...R, title: "Purchase event insurance", description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -60, category: "document", milestoneIndex: 0, autoCompleteTrigger: "document_uploaded_insurance", isRequired: true, sortOrder: 1, dependsOnTaskId: null },
   { ...R, title: "Choose your vendors",      description: "Pick vendors and submit your list. Your venue reviews and confirms the team — submitting an update does not finish this task by itself.", ownerType: "couple", visibility: "client_owned", daysOffset: -45, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "vendor_selected", isRequired: false, sortOrder: 2, dependsOnTaskId: null },
   { ...R, title: "Submit your guest count",  description: "We need your final headcount to plan seating, catering, and rentals.", ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "guest_count_finalized", isRequired: true, sortOrder: 3, dependsOnTaskId: null },

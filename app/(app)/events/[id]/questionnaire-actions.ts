@@ -33,16 +33,9 @@ export async function saveQuestionnaireAction(
   const result = await saveQuestionnaire(eventId, fields, submit, options);
   if (result.ok) {
     revalidatePath(`/events/${eventId}`);
+    // Submit (venue or couple path) does not finish questionnaire_submitted tasks —
+    // that happens on completeQuestionnaireAction / Mark Complete.
     if (submit) {
-      void (async () => {
-        try {
-          const { createClient: mk } = await import("@/integrations/supabase/server");
-          const { getCurrentVenue } = await import("@/lib/venue/service");
-          const { triggerAutoComplete } = await import("@/lib/playbooks/service");
-          const [sb, venue] = await Promise.all([mk(), getCurrentVenue()]);
-          if (venue) await triggerAutoComplete(sb, venue.id, eventId, "questionnaire_submitted");
-        } catch { /* non-blocking */ }
-      })();
       void (async () => {
         try {
           const supabase = await createClient();

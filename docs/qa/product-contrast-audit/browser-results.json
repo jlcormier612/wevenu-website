@@ -1,0 +1,87 @@
+{
+  "expectedSha": "76aa3be7a060fbc71367459a6f737896c7dc5bf5",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "checks": [
+    {
+      "name": "cuppity-assignment-present",
+      "pass": true,
+      "detail": "{\"id\":\"2538b7de-e214-4885-ae5b-96cde28bbdfb\",\"fee\":500,\"status\":\"pending\",\"vendor\":{\"category\":\"cake\",\"business_name\":\"Cuppity Cakes\"}}"
+    },
+    {
+      "name": "cuppity-is-required-network",
+      "pass": true,
+      "detail": "{\"is_required\":true,\"status\":\"active\"}"
+    },
+    {
+      "name": "cuppity-no-pending-couple-removal-after-repair",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "fee-not-on-event-order-lines",
+      "pass": true,
+      "detail": "eo=624eceef-5096-4288-b104-62daa3a82d11 cuppity/fee-named hits=[] lines=44"
+    },
+    {
+      "name": "invoices-exist-independently",
+      "pass": true,
+      "detail": "count=1 sample=[{\"id\":\"4489c869-38fd-4ae1-8cad-cc7043d1d527\",\"total\":133.31,\"status\":\"draft\"}]"
+    },
+    {
+      "name": "fancy-no-pending-couple-requests-on-required",
+      "pass": true,
+      "detail": "pendingCouple=0 requiredOverlap=0"
+    },
+    {
+      "name": "seed-baker-removal-request",
+      "pass": true,
+      "detail": "id=38be8aaa-252f-43d5-a0a7-962a645cf86f"
+    },
+    {
+      "name": "page-loaded",
+      "pass": true,
+      "detail": "status=200 dpl="
+    },
+    {
+      "name": "venue-cost-label-visible-or-add",
+      "pass": true,
+      "detail": "venueCost=1 add=1 legacyBareDollarButtons=0 cuppityVisible=3"
+    },
+    {
+      "name": "venue-cost-chip-contrast-aa",
+      "pass": true,
+      "detail": "ratio=6.36 {\"color\":\"rgb(79, 95, 79)\",\"bg\":\"rgba(0, 0, 0, 0)\",\"pageBg\":\"rgb(248, 247, 244)\"}"
+    },
+    {
+      "name": "removal-banner-count",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "banner-buttons-computed-styles",
+      "pass": true,
+      "detail": "{\"dismiss\":{\"color\":\"rgb(79, 95, 79)\",\"bg\":\"rgb(248, 247, 244)\",\"border\":\"rgb(210, 203, 191)\"},\"remove\":{\"color\":\"rgb(0, 0, 0)\",\"bg\":\"rgb(216, 167, 170)\",\"border\":\"rgba(0, 0, 0, 0)\"},\"dBox\":{\"x\":949.046875,\"y\":1210.625,\"width\":108.15625,\"height\":29.75},\"rBox\":{\"x\":1063.578125,\"y\":1210.625,\"width\":128.421875,\"height\":29.75}}"
+    },
+    {
+      "name": "dismiss-button-contrast-aa",
+      "pass": true,
+      "detail": "ratio=6.36 {\"color\":\"rgb(79, 95, 79)\",\"bg\":\"rgb(248, 247, 244)\",\"border\":\"rgb(210, 203, 191)\"}"
+    },
+    {
+      "name": "remove-button-contrast-aa",
+      "pass": true,
+      "detail": "ratio=10.03 {\"color\":\"rgb(0, 0, 0)\",\"bg\":\"rgb(216, 167, 170)\",\"border\":\"rgba(0, 0, 0, 0)\"}"
+    },
+    {
+      "name": "screenshots-saved",
+      "pass": true,
+      "detail": "shots/event-vendors-1280.png + 390.png"
+    },
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=76aa3be7a060 contrastAncestor=79db74af822b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:76aa3be7a060fbc71367459a6f737896c7dc5bf5 meta=\"\""
+    }
+  ],
+  "failed": 0
+}

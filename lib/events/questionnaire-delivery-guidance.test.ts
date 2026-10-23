@@ -17,8 +17,8 @@ describe("questionnaire delivery guidance", () => {
   it("shows the note above kind tabs on the family panel", () => {
     assert.match(panel, /data-testid="questionnaire-delivery-guidance"/);
     assert.match(panel, /Questionnaire delivery/);
-    assert.match(panel, /don&apos;t need to send a separate questionnaire request here/);
-    assert.match(panel, /planning tasks or automated messages where\s+supported/);
+    assert.match(panel, /Send to client/);
+    assert.match(panel, /Creating a generic Request does not deliver/);
     assert.match(panel, /data-testid="questionnaire-kind-tabs"/);
     const guidanceAt = panel.indexOf("questionnaire-delivery-guidance");
     const tabsAt = panel.indexOf("questionnaire-kind-tabs");
@@ -27,7 +27,7 @@ describe("questionnaire delivery guidance", () => {
 
   it("does not imply attach or schedule equals sent", () => {
     assert.doesNotMatch(panel, /already been sent through planning|automatically sends/i);
-    assert.match(panel, /send a questionnaire directly/);
+    assert.match(panel, /send the same form again/);
   });
 
   it("booked Questionnaires tab still hosts the family panel with intro copy", () => {
