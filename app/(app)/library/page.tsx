@@ -142,7 +142,7 @@ export default async function LibraryPage() {
         guidance="These are reusable items your templates can pull from, or shareable assets (forms, QR codes, brochures). They are not applied like templates."
       >
         <ToolboxCard kind="catalog" title="Offerings" description="Menus, bar, services, and rentals. Event Order Templates select from here." href="/library/offerings" count={offerings.length} icon={Package} />
-        <ToolboxCard kind="catalog" title="Packages" description="What you sell commercially — priced packages with inclusions." href="/packages" count={packages.length} icon={Boxes} />
+        <ToolboxCard kind="catalog" title="Packages" description="What you sell commercially — priced sales packages with inclusions. Distinct from Event Order Templates (delivery build sheets)." href="/packages" count={packages.length} icon={Boxes} />
         <ToolboxCard kind="catalog" title="Available Inventory" description="Physical stock your venue owns. Inventory templates and floor plans use these items." href="/library/inventory" count={inventoryItems.length} icon={Package} />
         <ToolboxCard kind="catalog" title="Public Forms" description="Lead-capture forms for expos and open houses. Share by link or as a QR destination." href="/library/public-forms" count={publicForms.length} icon={ClipboardList} />
         <ToolboxCard kind="catalog" title="QR Campaigns" description="Printable QR codes that send people to a Public Form, tour, website, or URL — with scan tracking." href="/library/qr-campaigns" count={qrCampaigns.length} icon={QrCode} />

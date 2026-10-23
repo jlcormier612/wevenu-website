@@ -84,7 +84,7 @@ export async function replaceEventInventoryFromTemplate(
   const result = await withVenue(async (supabase, venueId) => {
     const template = await repo.getTemplate(supabase, venueId, templateId);
     if (!template || template.isArchived) {
-      return { ok: false, message: "Select an active Inventory offering template." } as EventInventoryActionResult;
+      return { ok: false, message: "Select an active inventory template." } as EventInventoryActionResult;
     }
     let details = await repo.getEventInventoryByEvent(supabase, venueId, eventId);
     if (!details) {
@@ -113,7 +113,7 @@ export async function replaceEventInventoryFromTemplate(
     await repo.applyTemplateItems(supabase, venueId, details.id, template.items);
     await repo.insertActivity(
       supabase, venueId, details.id, "template_replaced",
-      `Replaced starting offering with: ${template.name}`,
+      `Replaced starting inventory template with: ${template.name}`,
       "Event-specific items were replaced. The Library template was not changed. Not shared or invoiced.",
     );
     return { ok: true, eventInventoryId: details.id } as EnsureEventInventoryResult;

@@ -201,7 +201,7 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.nextAction, "Open Inventory");
   });
 
-  it("treats missing Event Order draft with a valid package ref as recoverable Draft, not Unavailable", () => {
+  it("treats missing Event Order draft with a valid template ref as recoverable Draft, not Unavailable", () => {
     const detail = setupReadinessDetail(base({
       step: "event_order",
       inheritedRefs: { eventOrderTemplateId: "eo-1" },
@@ -212,28 +212,46 @@ describe("setupReadinessDetail", () => {
     assert.equal(detail.nextAction, "Open Event Order");
   });
 
-  it("surfaces a Setup Profile configuration gap when Event Order is included without a package ref", () => {
+  it("surfaces a Setup Profile configuration gap when Event Order is included without a template ref", () => {
     const detail = setupReadinessDetail(base({
       step: "event_order",
       inheritedRefs: {},
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: null },
     }));
     assert.equal(detail.status, "needs_action");
-    assert.match(detail.summary, /no starting package selected/i);
-    assert.match(detail.summary, /package-only/i);
+    assert.match(detail.summary, /no starting Event Order template selected/i);
+    assert.match(detail.summary, /sales Package only/i);
     assert.match(detail.summary, /Skip this area/i);
     assert.equal(detail.nextAction, "Open Setup Profiles");
   });
 
-  it("surfaces a Setup Profile configuration gap when Inventory is included without an offering ref", () => {
+  it("surfaces a Setup Profile configuration gap when Inventory is included without a template ref", () => {
     const detail = setupReadinessDetail(base({
       step: "inventory",
       inheritedRefs: {},
       templateNames: { planning: null, timeline: null, inventory: null, eventOrder: null },
     }));
     assert.equal(detail.status, "needs_action");
-    assert.match(detail.summary, /no starting offering selected/i);
+    assert.match(detail.summary, /no starting inventory template selected/i);
     assert.equal(detail.nextAction, "Open Setup Profiles");
+  });
+
+  it("C1: Inventory and Event Order readiness point commercial work to event tabs", () => {
+    const inventory = setupReadinessDetail(base({
+      step: "inventory",
+      hasEventInventory: true,
+    }));
+    assert.equal(inventory.nextAction, "Open Inventory");
+    assert.match(inventory.summary, /Open Inventory to share/i);
+    assert.match(inventory.summary, /not an invoice/i);
+
+    const eventOrder = setupReadinessDetail(base({
+      step: "event_order",
+      eventOrder: { status: "open", sharedAt: null },
+    }));
+    assert.equal(eventOrder.nextAction, "Open Event Order");
+    assert.match(eventOrder.summary, /Event Order tab/i);
+    assert.match(eventOrder.summary, /not an invoice/i);
   });
 
   it("does not treat missing optional highlights as a Vendor Network failure", () => {

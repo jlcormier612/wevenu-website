@@ -275,20 +275,21 @@ function inventoryDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     if (hasRef) {
       return {
         status: "draft",
-        summary: `Starting offering "${name ?? "selected"}" is configured. The event inventory draft is recoverable on Release to client portal — there is no separate inventory prepare step. Does not share with the couple or create invoices.`,
+        summary: `Starting inventory template "${name ?? "selected"}" is configured. The event inventory draft is recoverable on Release to client portal — there is no separate inventory prepare step. Share, client selection, and Event Order handoff happen on the event Inventory tab — not from this checklist. Does not share with the couple or create invoices.`,
         nextAction: "Open Inventory",
       };
     }
     return {
       status: "needs_action",
       summary:
-        "Inventory is included, but this event's Setup Profile has no starting offering selected. Edit Setup Profiles to choose a template, or Skip this area if inventory is not needed.",
+        "Inventory is included, but this event's Setup Profile has no starting inventory template selected. Edit Setup Profiles to choose a template, or Skip this area if inventory is not needed.",
       nextAction: "Open Setup Profiles",
     };
   }
   return {
     status: "included",
-    summary: "Event inventory draft is prepared for this event. Not shared with the couple and not an invoice.",
+    summary:
+      "Event inventory draft is prepared for this event. Not shared with the couple and not an invoice. Open Inventory to share, review selections, finalize, or add to the Event Order.",
     nextAction: "Open Inventory",
   };
 }
@@ -301,27 +302,27 @@ function eventOrderDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
     if (hasRef) {
       return {
         status: "draft",
-        summary: `Starting package "${name ?? "selected"}" is configured. The Event Order draft is recoverable on Release to client portal — there is no separate Event Order prepare step. Not an invoice, contract, or payment plan.`,
+        summary: `Starting Event Order template "${name ?? "selected"}" is configured. The Event Order draft is recoverable on Release to client portal — there is no separate Event Order prepare step. Finalize, Share, client choices, and invoice handoff happen on the event Event Order tab — not from this checklist. Not an invoice, contract, or payment plan.`,
         nextAction: "Open Event Order",
       };
     }
     return {
       status: "needs_action",
       summary:
-        "Event Order is included, but this event's Setup Profile has no starting package selected. Edit Setup Profiles to choose a package, or Skip this area for package-only events.",
+        "Event Order is included, but this event's Setup Profile has no starting Event Order template selected. Edit Setup Profiles to choose a template, or Skip this area for events that use a sales Package only.",
       nextAction: "Open Setup Profiles",
     };
   }
   if (order.sharedAt) {
     return {
       status: "shared",
-      summary: `Event Order (${order.status}) has been shared with the client.`,
+      summary: `Event Order (${order.status}) has been shared with the client. Continue commercial work on the Event Order tab (choices, revisions, invoice).`,
       nextAction: "Open Event Order",
     };
   }
   return {
     status: "draft",
-    summary: `Event Order draft exists (${order.status}) — not yet shared. Not an invoice or payment plan. Sharing stays separate from portal release.`,
+    summary: `Event Order draft exists (${order.status}) — not yet shared. Not an invoice or payment plan. Finalize, Share, and invoice handoff stay on the Event Order tab — separate from portal release.`,
     nextAction: "Open Event Order",
   };
 }

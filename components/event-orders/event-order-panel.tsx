@@ -200,7 +200,7 @@ export function EventOrderPanel({
   templates?: EventOrderTemplate[];
   /** Payment schedule already attached to the EO-linked invoice, if any. */
   linkedScheduleId?: string | null;
-  /** Setup Profile starting Event Order package — preselect only; does not auto-create. */
+  /** Setup Profile starting Event Order template — preselect only; does not auto-create. */
   preferredTemplateId?: string | null;
 }) {
   const router = useRouter();
@@ -310,7 +310,7 @@ export function EventOrderPanel({
           <CardHeader>
             <CardTitle className="text-base">Event Order</CardTitle>
             <CardDescription>
-              Preparing the profile starting package for this event. Draft only — not an invoice, contract, or payment plan.
+              Preparing the profile starting Event Order template for this event. Draft only — not an invoice, contract, or payment plan.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -327,7 +327,7 @@ export function EventOrderPanel({
         <CardHeader>
           <CardTitle className="text-base">Event Order</CardTitle>
           <CardDescription>
-            Manage the event&apos;s order/package draft and its operational status. An Event Order is
+            Manage this event&apos;s Event Order — the agreed deliverables record. An Event Order is
             not itself an invoice, contract, or payment plan.
           </CardDescription>
         </CardHeader>
@@ -339,9 +339,9 @@ export function EventOrderPanel({
               </p>
             )}
             <p className="max-w-md text-sm text-muted-foreground">
-              Optional — use when you need a detailed delivery list. Package-only events can skip this.
-              Templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
-              When a Setup Profile package is configured, use Release to client portal from Overview instead of starting here. An Event Order is not itself an invoice, contract, or payment plan.
+              Optional — use when you need a detailed delivery list. Events that use a sales Package only can skip this.
+              Event Order templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
+              When a Setup Profile starting Event Order template is configured, use Release to client portal from Overview instead of starting here.
             </p>
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}

@@ -159,7 +159,7 @@ export async function saveVenueSetupProfile(
       .eq("venue_id", gate.venueId)
       .maybeSingle<{ id: string }>();
     if (!eoTemplate) {
-      return { ok: false, message: "That Event Order package is not available for this venue." };
+      return { ok: false, message: "That Event Order template is not available for this venue." };
     }
   }
 

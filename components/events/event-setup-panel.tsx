@@ -355,6 +355,8 @@ export function EventSetupPanel({
                 Review your event&apos;s standard setup, make any event-specific changes, and release
                 the prepared experience to the client portal. Invite the client separately when
                 you&apos;re ready. Questionnaires use authorized send when staff choose — not an automated schedule.
+                Inventory and Event Order rows here are readiness for portal release — share, client choices,
+                finalize, and invoice run from the event Inventory and Event Order tabs.
               </p>
             </>
           ) : (

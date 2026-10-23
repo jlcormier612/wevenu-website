@@ -10,8 +10,8 @@
  * - Timeline Included → default timeline template id required
  * - Floor plans Included → at least one floor-plan template (preferred or list)
  * - Questionnaires Included → at least one questionnaire template id
- * - Inventory Included → starting inventory offering id required
- * - Event Order Included → starting Event Order package id required
+ * - Inventory Included → starting inventory template id required
+ * - Event Order Included → starting Event Order template id required
  *
  * A saved profile with these refs is the complete standard starting setup.
  * Booking instantiates event-level content from the selected templates.
@@ -113,7 +113,7 @@ export function profileHardConfigGaps(
       step: "inventory",
       severity: "hard",
       message:
-        "Inventory is Included but no starting offering is selected. Choose a template, or mark Not included.",
+        "Inventory is Included but no starting inventory template is selected. Choose a template, or mark Not included.",
     });
   }
   if (
@@ -125,7 +125,7 @@ export function profileHardConfigGaps(
       step: "event_order",
       severity: "hard",
       message:
-        "Event Order is Included but no starting package is selected. Choose a template, or mark Not included.",
+        "Event Order is Included but no starting Event Order template is selected. Choose a template, or mark Not included.",
     });
   }
   return gaps;

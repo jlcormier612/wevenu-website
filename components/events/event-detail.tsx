@@ -1251,8 +1251,20 @@ export function EventDetail({
           </Card>
         </TabsContent>
 
-        {/* ── Event Order ──────────────────────────────────────────── */}
+        {/* ── Event Order (canonical commercial workspace) ─────────── */}
         <TabsContent value="event-order">
+          <div
+            className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-3"
+            data-testid="event-commercial-workspace-intro"
+          >
+            <p className="text-sm font-medium text-heading">Commercial workspace</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Run this event&apos;s commercial workflow here: optional client choices, the Event Order
+              (agreed deliverables), then invoice and payment plan from the Event Order / Payments tab.
+              Inventory selection lives on the Inventory tab. Setup Profile defaults prepare drafts only —
+              they do not send selections or create invoices.
+            </p>
+          </div>
           <ClientChoicesPanel
             eventId={event.id}
             eventOrderTemplates={eventOrderTemplates}

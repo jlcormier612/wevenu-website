@@ -57,7 +57,7 @@ export async function startOrApplyEventOrderTemplateAction(
   return result;
 }
 
-/** Overview setup — replace open Event Order contents from a Library package (no share/invoice). */
+/** Overview setup — replace open Event Order contents from a Library Event Order template (no share/invoice). */
 export async function replaceEventOrderFromTemplateAction(
   eventId: string,
   templateId: string,

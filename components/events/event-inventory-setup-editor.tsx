@@ -144,19 +144,19 @@ export function EventInventorySetupEditor({
       if (!confirm("You have unsaved inventory edits. Switch anyway?")) return;
     }
     if (mode === "template" && templateChanged) {
-      if (!confirm("You selected a different offering but have not applied it. Switch anyway?")) return;
+      if (!confirm("You selected a different inventory template but have not applied it. Switch anyway?")) return;
     }
     setMode(next);
   }
 
   function applyTemplate() {
     if (!selectedTemplateId) {
-      toast.error("Choose an Inventory offering template.");
+      toast.error("Choose an inventory template.");
       return;
     }
     if (
       !confirm(
-        "Replace this event's inventory items with the selected offering?\n\n"
+        "Replace this event's inventory items with the selected inventory template?\n\n"
         + "Current draft items on this event will be removed and replaced. "
         + "The Library template will not change. This does not share inventory or create invoices.",
       )
@@ -166,10 +166,10 @@ export function EventInventorySetupEditor({
     startTransition(async () => {
       const result = await replaceEventInventoryFromTemplateAction(eventId, selectedTemplateId);
       if (!result.ok) {
-        toast.error(result.message ?? "Could not switch the inventory offering.");
+        toast.error(result.message ?? "Could not switch the inventory template.");
         return;
       }
-      toast.success("This event's inventory now uses the selected offering. The Library was not changed.");
+      toast.success("This event's inventory now uses the selected template. The Library was not changed.");
       router.refresh();
       onOpenChange(false);
     });
@@ -266,7 +266,7 @@ export function EventInventorySetupEditor({
             {profileName ? ` · from ${profileName}` : ""}
             . Included items are operational (what you are providing). Additional items may carry extra cost.
             Sharing shows this list informationally in the client portal — it does not ask the couple to select
-            every item. Changes apply only to this event and do not update the reusable Library offering.
+            every item. Changes apply only to this event and do not update the reusable Library inventory template.
             Sharing and Event Order handoff stay in the Inventory workspace — not here.
           </SheetDescription>
         </SheetHeader>
@@ -293,7 +293,7 @@ export function EventInventorySetupEditor({
             onClick={() => switchMode("template")}
             disabled={pending || locked}
           >
-            Choose a different offering
+            Choose a different template
           </Button>
           <Button
             type="button"
@@ -310,7 +310,7 @@ export function EventInventorySetupEditor({
         {mode === "template" ? (
           <div className="space-y-3" data-testid="inventory-setup-template-path">
             <p className="text-sm text-muted-foreground">
-              Current offering:{" "}
+              Current inventory template:{" "}
               <span className="font-medium text-foreground">{currentTemplateName ?? "None yet"}</span>
             </p>
             <Select
@@ -319,7 +319,7 @@ export function EventInventorySetupEditor({
               items={activeTemplates.map((t) => ({ value: t.id, label: t.name }))}
             >
               <SelectTrigger data-testid="inventory-setup-template-select">
-                <SelectValue placeholder="Select an Inventory offering" />
+                <SelectValue placeholder="Select an inventory template" />
               </SelectTrigger>
               <SelectContent>
                 {activeTemplates.map((t) => (
@@ -329,7 +329,7 @@ export function EventInventorySetupEditor({
             </Select>
             <p className="text-xs text-muted-foreground">
               Applying replaces this event&apos;s draft items. Blocked after share/finalize or when items
-              were already added to the Event Order. The Library offering is unchanged.
+              were already added to the Event Order. The Library inventory template is unchanged.
             </p>
             <Button
               type="button"
@@ -338,15 +338,15 @@ export function EventInventorySetupEditor({
               data-testid="inventory-setup-apply-template"
               onClick={applyTemplate}
             >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply offering to this event"}
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
             </Button>
           </div>
         ) : (
           <div className="space-y-4" data-testid="inventory-setup-customize-path">
             {!eventInventory && !ensuring ? (
               <p className="text-sm text-muted-foreground">
-                No inventory draft on this event yet. Choose an offering first, or confirm the Setup Profile
-                has a starting offering selected.
+                No inventory draft on this event yet. Choose a template first, or confirm the Setup Profile
+                has a starting inventory template selected.
               </p>
             ) : (
               <>

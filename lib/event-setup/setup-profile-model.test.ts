@@ -125,8 +125,8 @@ describe("selected defaults visible and editable on the profile", () => {
     assert.match(section, /Preferred, recommended, and required classifications/);
     assert.match(section, /Required vendors keep their existing Vendor Network/);
     assert.match(section, /Questionnaires for this event type/);
-    assert.match(section, /Starting inventory offering/);
-    assert.match(section, /Starting event-order package/);
+    assert.match(section, /Starting inventory template/);
+    assert.match(section, /Starting Event Order template/);
     assert.match(section, /CapabilityDefaults/);
     assert.doesNotMatch(section, /sm:grid-cols-2[\s\S]*Planning checklist[\s\S]*Timeline template/);
   });

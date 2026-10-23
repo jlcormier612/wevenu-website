@@ -96,14 +96,14 @@ export const PLANNING_CAPABILITY_OPTIONS: {
     key: "inventory",
     label: "Inventory",
     description:
-      "Event inventory offerings and drafts. When on, Setup Profiles choose a starting offering and booking prepares the event inventory draft (not shared, not an invoice). When off, Inventory is omitted from Setup Profiles and is not auto-created at booking.",
+      "Event inventory templates and drafts. When on, Setup Profiles choose a starting inventory template and booking prepares the event inventory draft (not shared, not an invoice). Share, client selection, and Event Order handoff happen on the event Inventory tab. When off, Inventory is omitted from Setup Profiles and is not auto-created at booking.",
   },
   {
     id: "event_order",
     key: "eventOrder",
     label: "Event Order",
     description:
-      "Event Order packages and drafts. When on, Setup Profiles choose a starting package and booking prepares the Event Order draft (not an invoice or payment plan). When off, Event Order is omitted from Setup Profiles and is not auto-created at booking.",
+      "Event Order templates and drafts. When on, Setup Profiles choose a starting Event Order template and booking prepares the Event Order draft (not an invoice or payment plan). Finalize, Share, client choices, and invoice handoff happen on the event Event Order tab. When off, Event Order is omitted from Setup Profiles and is not auto-created at booking.",
   },
   {
     id: "questionnaires",

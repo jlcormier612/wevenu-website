@@ -8,7 +8,7 @@
  * portal action handles that. Questionnaires stay on their own schedule.
  *
  * Unavailable = genuine broken configuration. Needs action = missing required
- * configuration (for example Inventory Included with no starting offering).
+ * configuration (for example Inventory Included with no starting inventory template).
  */
 import type { SetupReadinessStatus } from "@/lib/event-setup/readiness-detail";
 import type { SetupDecision, SetupStepKey } from "@/lib/event-setup/state";

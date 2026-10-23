@@ -30,7 +30,7 @@ export default async function InventoryTemplatesLibraryPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Inventory Templates"
-        description="What you typically use for a kind of event. Customize a starter, then apply it to create Working Inventory for a booking."
+        description="Reusable inventory setups for a kind of event. Use applies a snapshot to the event Inventory tab — share and client selection happen there, not in Library."
         actions={<NewInventoryTemplateButton />}
       />
       <LibraryHowItWorks>

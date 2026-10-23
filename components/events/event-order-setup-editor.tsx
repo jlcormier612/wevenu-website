@@ -163,21 +163,21 @@ export function EventOrderSetupEditor({
       if (!confirm("You have unsaved Event Order edits. Switch anyway?")) return;
     }
     if (mode === "template" && templateChanged) {
-      if (!confirm("You selected a different package but have not applied it. Switch anyway?")) return;
+      if (!confirm("You selected a different Event Order template but have not applied it. Switch anyway?")) return;
     }
     setMode(next);
   }
 
   function applyTemplate() {
     if (!selectedTemplateId) {
-      toast.error("Choose an Event Order package.");
+      toast.error("Choose an Event Order template.");
       return;
     }
     if (
       !confirm(
-        "Replace this event's Event Order contents with the selected package?\n\n"
+        "Replace this event's Event Order contents with the selected Event Order template?\n\n"
         + "Current open lines and sections on this event will be removed and replaced. "
-        + "The Library package will not change. This does not share, finalize, or create an invoice.",
+        + "The Library template will not change. This does not share, finalize, or create an invoice.",
       )
     ) {
       return;
@@ -185,10 +185,10 @@ export function EventOrderSetupEditor({
     startTransition(async () => {
       const result = await replaceEventOrderFromTemplateAction(eventId, selectedTemplateId);
       if (!result.ok) {
-        toast.error(result.message ?? "Could not switch the Event Order package.");
+        toast.error(result.message ?? "Could not switch the Event Order template.");
         return;
       }
-      toast.success("This event's Event Order now uses the selected package. The Library was not changed.");
+      toast.success("This event's Event Order now uses the selected template. The Library was not changed.");
       router.refresh();
       onOpenChange(false);
     });
@@ -274,8 +274,8 @@ export function EventOrderSetupEditor({
             {eventName}
             {profileName ? ` · from ${profileName}` : ""}
             . This is the delivery list for this event — what the couple sees as read-only when you share.
-            It is not a couple pick-list; optional choice requests use Client selections when your package
-            has choice groups. Changes apply only to this event and do not update the reusable Library package.
+            It is not a couple pick-list; optional choice requests use Client selections when your Event Order template
+            has choice groups. Changes apply only to this event and do not update the reusable Library Event Order template.
             Sharing, finalization, and invoices stay in the Event Order workspace — not here.
           </SheetDescription>
         </SheetHeader>
@@ -303,7 +303,7 @@ export function EventOrderSetupEditor({
             onClick={() => switchMode("template")}
             disabled={pending || locked}
           >
-            Choose a different package
+            Choose a different template
           </Button>
           <Button
             type="button"
@@ -320,7 +320,7 @@ export function EventOrderSetupEditor({
         {mode === "template" ? (
           <div className="space-y-3" data-testid="event-order-setup-template-path">
             <p className="text-sm text-muted-foreground">
-              Current package:{" "}
+              Current Event Order template:{" "}
               <span className="font-medium text-foreground">{currentTemplateName ?? "None yet"}</span>
             </p>
             <Select
@@ -329,7 +329,7 @@ export function EventOrderSetupEditor({
               items={activeTemplates.map((t) => ({ value: t.id, label: t.name }))}
             >
               <SelectTrigger data-testid="event-order-setup-template-select">
-                <SelectValue placeholder="Select an Event Order package" />
+                <SelectValue placeholder="Select an Event Order template" />
               </SelectTrigger>
               <SelectContent>
                 {activeTemplates.map((t) => (
@@ -339,7 +339,7 @@ export function EventOrderSetupEditor({
             </Select>
             <p className="text-xs text-muted-foreground">
               Applying replaces this event&apos;s open lines and sections. Blocked after share or finalize.
-              The Library package is unchanged. Not an invoice or payment plan.
+              The Library Event Order template is unchanged. Not an invoice or payment plan.
             </p>
             <Button
               type="button"
@@ -348,21 +348,21 @@ export function EventOrderSetupEditor({
               data-testid="event-order-setup-apply-template"
               onClick={applyTemplate}
             >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply package to this event"}
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply template to this event"}
             </Button>
           </div>
         ) : (
           <div className="space-y-4" data-testid="event-order-setup-customize-path">
             {!eventOrder && !ensuring ? (
               <p className="text-sm text-muted-foreground">
-                No Event Order draft on this event yet. Choose a package first, or confirm the Setup Profile
-                has a starting package selected.
+                No Event Order draft on this event yet. Choose a template first, or confirm the Setup Profile
+                has a starting Event Order template selected.
               </p>
             ) : (
               <>
                 {rows.length === 0 && !ensuring ? (
                   <p className="text-sm text-muted-foreground" data-testid="event-order-setup-empty">
-                    This event&apos;s Event Order has no lines yet. Apply a package, or add a custom line below.
+                    This event&apos;s Event Order has no lines yet. Apply a template, or add a custom line below.
                   </p>
                 ) : null}
                 <div className="space-y-4" data-testid="event-order-setup-lines">

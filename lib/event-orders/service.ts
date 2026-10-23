@@ -282,9 +282,9 @@ export async function startOrApplyEventOrderTemplate(
 
 /**
  * Overview setup editor — replace this event's open Event Order contents from a
- * Library package/template. Clears existing sections/lines then copies defaults.
+ * Library Event Order template. Clears existing sections/lines then copies defaults.
  * Refuses finalized or previously shared orders. Does not invoice, share, or
- * mutate the Library. Prefer this over merge-apply when switching starting package.
+ * mutate the Library. Prefer this over merge-apply when switching starting template.
  */
 export async function replaceEventOrderFromTemplate(
   eventId: string,
@@ -293,7 +293,7 @@ export async function replaceEventOrderFromTemplate(
   const result = await withVenue(async (supabase, venueId) => {
     const template = await loadTemplateReadyForApply(supabase, venueId, templateId);
     if (!template || template.isArchived) {
-      return { ok: false, message: "Select an active Event Order package." } as EventOrderActionResult;
+      return { ok: false, message: "Select an active Event Order template." } as EventOrderActionResult;
     }
     let existing = await repo.getEventOrderByEvent(supabase, venueId, eventId);
     const starting = packageStartingSelections(template.lines);
@@ -311,13 +311,13 @@ export async function replaceEventOrderFromTemplate(
     if (existing.status !== "open") {
       return {
         ok: false,
-        message: "This Event Order is finalized. Reopen it in the Event Order workspace before switching packages.",
+        message: "This Event Order is finalized. Reopen it in the Event Order workspace before switching templates.",
       } as EventOrderActionResult;
     }
     if (existing.sharedAt) {
       return {
         ok: false,
-        message: "This Event Order was already shared with the client. Package switch from setup is blocked — use the Event Order workspace so the shared snapshot stays intentional.",
+        message: "This Event Order was already shared with the client. Template switch from setup is blocked — use the Event Order workspace so the shared snapshot stays intentional.",
       } as EventOrderActionResult;
     }
     await repo.clearEventOrderContents(supabase, venueId, existing.id);
@@ -327,10 +327,10 @@ export async function replaceEventOrderFromTemplate(
     );
     await repo.insertActivity(
       supabase, venueId, existing.id, "template_replaced",
-      `Replaced starting package with: ${template.name}`,
+      `Replaced starting Event Order template with: ${template.name}`,
       copied > 0
         ? "Event Order contents were replaced for this event. Not an invoice, contract, or share."
-        : "Package sections applied. No default offerings were selected on the template.",
+        : "Template sections applied. No default offerings were selected on the template.",
     );
     return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
   });

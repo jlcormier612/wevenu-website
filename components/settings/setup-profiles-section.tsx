@@ -672,14 +672,14 @@ function CapabilityDefaults({
     return (
       <div className="space-y-1 text-sm" data-testid="setup-profile-inventory">
         <label className="block space-y-1">
-          <span className="font-medium text-heading">Starting inventory offering</span>
+          <span className="font-medium text-heading">Starting inventory template</span>
           <select
             className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
             value={refs.inventoryTemplateId ?? ""}
             onChange={(event) => patchRefs({ inventoryTemplateId: event.target.value || null })}
             aria-invalid={incomplete}
           >
-            <option value="">Select a starting offering…</option>
+            <option value="">Select a starting inventory template…</option>
             {inventoryTemplates.map((option) => (
               <option key={option.id} value={option.id}>{option.name}</option>
             ))}
@@ -693,8 +693,9 @@ function CapabilityDefaults({
         ) : (
           <p className="text-xs text-muted-foreground">
             Configured starting point: {selected?.name}. When a client is booked with this profile,
-            the event inventory draft is prepared automatically from this offering. It is not shared
-            with the couple and does not create invoices. Saving the profile does not change existing events.
+            the event inventory draft is prepared automatically from this inventory template. It is not shared
+            with the couple and does not create invoices. Share, selection, and Event Order handoff happen on
+            the event Inventory tab — not from this Setup Profile. Saving the profile does not change existing events.
           </p>
         )}
         {inventoryTemplates.length === 0 ? (
@@ -709,14 +710,14 @@ function CapabilityDefaults({
     return (
       <div className="space-y-1 text-sm" data-testid="setup-profile-event-order">
         <label className="block space-y-1">
-          <span className="font-medium text-heading">Starting event-order package</span>
+          <span className="font-medium text-heading">Starting Event Order template</span>
           <select
             className="mt-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
             value={refs.eventOrderTemplateId ?? ""}
             onChange={(event) => patchRefs({ eventOrderTemplateId: event.target.value || null })}
             aria-invalid={incomplete}
           >
-            <option value="">Select a starting package…</option>
+            <option value="">Select a starting Event Order template…</option>
             {eventOrderTemplates.map((option) => (
               <option key={option.id} value={option.id}>{option.name}</option>
             ))}
@@ -724,14 +725,15 @@ function CapabilityDefaults({
         </label>
         {incomplete ? (
           <p className="text-xs text-amber-800">
-            Included but not configured — select a package, or mark Event Order Not included (for package-only events).
-            Saving this profile never creates an Event Order draft on existing events.
+            Included but not configured — select an Event Order template, or mark Event Order Not included
+            (for events that use a sales Package only). Saving this profile never creates an Event Order draft on existing events.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Configured starting point: {selected?.name}. When a client is booked with this profile,
-            the Event Order draft is prepared automatically from this package. It is not shared,
-            not an invoice, and not a payment plan. Saving the profile does not change existing events.
+            the Event Order draft is prepared automatically from this Event Order template. It is not shared,
+            not an invoice, and not a payment plan. Finalize, Share, client choices, and invoice handoff happen on
+            the event Event Order tab — not from this Setup Profile. Saving the profile does not change existing events.
           </p>
         )}
         {eventOrderTemplates.length === 0 ? (

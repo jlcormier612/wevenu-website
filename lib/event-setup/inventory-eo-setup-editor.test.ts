@@ -93,7 +93,7 @@ describe("Inventory setup editor seams", () => {
 });
 
 describe("Event Order setup editor seams", () => {
-  it("offers package switch and customize without share/finalize/invoice", () => {
+  it("offers template switch and customize without share/finalize/invoice", () => {
     assert.match(eoEditor, /event-order-setup-mode-template/);
     assert.match(eoEditor, /event-order-setup-mode-customize/);
     assert.match(eoEditor, /replaceEventOrderFromTemplateAction/);
@@ -115,7 +115,7 @@ describe("Event Order setup editor seams", () => {
     assert.match(eoEditor, /Additional/);
   });
 
-  it("replace clears contents then copies package; blocks finalized/shared", () => {
+  it("replace clears contents then copies template; blocks finalized/shared", () => {
     assert.match(eoService, /export async function replaceEventOrderFromTemplate/);
     assert.match(eoService, /clearEventOrderContents/);
     assert.match(eoService, /setEventOrderTemplateId/);

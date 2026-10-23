@@ -83,24 +83,24 @@ describe("profileHardConfigGaps", () => {
     );
   });
 
-  it("treats Included Inventory without a starting offering as a hard gap", () => {
+  it("treats Included Inventory without a starting inventory template as a hard gap", () => {
     const decisions: SetupDecisions = { inventory: "set_up" };
     const gaps = profileHardConfigGaps(decisions, emptyRefs);
     assert.equal(gaps.length, 1);
     assert.equal(gaps[0]!.step, "inventory");
     assert.equal(gaps[0]!.severity, "hard");
-    assert.match(gaps[0]!.message, /no starting offering/i);
+    assert.match(gaps[0]!.message, /no starting inventory template/i);
     assert.equal(profileTemplateRefIncomplete("inventory", decisions, emptyRefs), true);
     assert.equal(profileTemplateRefIncomplete("inventory", decisions, { inventoryTemplateId: "inv-1" }), false);
   });
 
-  it("treats Included Event Order without a starting package as a hard gap", () => {
+  it("treats Included Event Order without a starting Event Order template as a hard gap", () => {
     const decisions: SetupDecisions = { event_order: "set_up" };
     const gaps = profileHardConfigGaps(decisions, emptyRefs);
     assert.equal(gaps.length, 1);
     assert.equal(gaps[0]!.step, "event_order");
     assert.equal(gaps[0]!.severity, "hard");
-    assert.match(gaps[0]!.message, /no starting package/i);
+    assert.match(gaps[0]!.message, /no starting Event Order template/i);
     assert.equal(profileTemplateRefIncomplete("event_order", decisions, emptyRefs), true);
   });
 
@@ -170,8 +170,8 @@ describe("profile UI and save seams for Inventory/Event Order honesty", () => {
     assert.match(section, /Event Order draft is prepared automatically/);
     assert.match(section, /does not create invoices/);
     assert.match(section, /not an invoice/);
-    assert.match(section, /Select a starting offering/);
-    assert.match(section, /Select a starting package/);
+    assert.match(section, /Select a starting inventory template/);
+    assert.match(section, /Select a starting Event Order template/);
     assert.doesNotMatch(section, /setup-profile-soft-gaps/);
     assert.match(profiles, /inventory_templates/);
     assert.match(profiles, /event_order_templates/);
