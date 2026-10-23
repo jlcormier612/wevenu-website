@@ -1,6 +1,6 @@
 /**
- * C3 — Event commercial status strip (pure derivation).
- * Chips + deep-links only. No Share/Finalize/Send/Create actions.
+ * C3/C4 — Event commercial status strip (pure derivation).
+ * Chips + checklist + deep-links only. No Share/Finalize/Send/Create actions.
  * Uses only statuses supported by existing domain models.
  */
 
@@ -186,4 +186,260 @@ export function commercialChoicesDisplayKey(
   const s = pickPrimaryChoicesStatus(rows);
   if (!s) return "none";
   return toClientChoicesDisplayStatus(s);
+}
+
+/** C4 checklist milestones — AUDIT: draft → shared/selections → finalized → invoiced */
+export type CommercialProgressStepId =
+  | "draft"
+  | "shared_selections"
+  | "finalized"
+  | "invoiced";
+
+export type CommercialProgressStepState = "complete" | "current" | "upcoming";
+
+export type CommercialProgressStep = {
+  id: CommercialProgressStepId;
+  label: string;
+  state: CommercialProgressStepState;
+  detail: string;
+  nav: CommercialNavTarget;
+};
+
+export type CommercialNextAction = {
+  label: string;
+  nav: CommercialNavTarget;
+};
+
+const INV_CLIENT_FACING: ReadonlySet<EventInventoryStatus> = new Set([
+  "shared",
+  "submitted",
+  "changes_requested",
+  "confirmed",
+  "finalized",
+]);
+
+const CHOICES_CLIENT_FACING = new Set([
+  "sent",
+  "in_progress",
+  "submitted",
+  "changes_requested",
+  "resubmitted",
+  "finalized",
+]);
+
+function hasSelectionActivity(input: CommercialStatusInput): boolean {
+  if (input.eventInventory && INV_CLIENT_FACING.has(input.eventInventory.status)) return true;
+  if (input.clientChoices.some((c) => CHOICES_CLIENT_FACING.has(c.status))) return true;
+  if (input.clientChoices.some((c) => c.status === "draft")) return true;
+  return false;
+}
+
+function invNeedsVenueOrClient(input: CommercialStatusInput): boolean {
+  const s = input.eventInventory?.status;
+  return s === "shared" || s === "submitted" || s === "changes_requested" || s === "confirmed";
+}
+
+function choiceNeedsVenueOrClient(choice: string | null): boolean {
+  return (
+    choice === "draft"
+    || choice === "sent"
+    || choice === "in_progress"
+    || choice === "submitted"
+    || choice === "resubmitted"
+    || choice === "changes_requested"
+  );
+}
+
+/**
+ * C4 — Sequential commercial progress from existing statuses only.
+ * Steps complete independently (Path A may finalize before share; share ≠ invoice).
+ */
+export function buildCommercialProgressSteps(
+  input: CommercialStatusInput,
+): CommercialProgressStep[] {
+  const linked = pickEoLinkedInvoice(
+    input.invoices,
+    input.eventOrderId,
+    input.bookingCommitmentInvoiceIds ?? [],
+  );
+  const hasDraftArtifact = Boolean(
+    input.eventOrder || input.eventInventory || input.clientChoices.length > 0,
+  );
+  const sharedOrSelections = Boolean(
+    input.eventOrder?.sharedAt
+      || (input.eventInventory && INV_CLIENT_FACING.has(input.eventInventory.status))
+      || input.clientChoices.some((c) => CHOICES_CLIENT_FACING.has(c.status)),
+  );
+  const eoFinalized = input.eventOrder?.status === "finalized";
+  const invoiced = Boolean(linked);
+
+  const draftComplete = hasDraftArtifact;
+  const sharedComplete = sharedOrSelections;
+  const finalizedComplete = Boolean(eoFinalized);
+  const invoicedComplete = invoiced;
+
+  // Current mirrors the next authoritative step (deep-link only) — not a gate.
+  const choice = pickPrimaryChoicesStatus(input.clientChoices);
+  let cursor: CommercialProgressStepId | null = null;
+  if (!draftComplete) {
+    cursor = "draft";
+  } else if (
+    invNeedsVenueOrClient(input)
+    || choiceNeedsVenueOrClient(choice)
+  ) {
+    cursor = "shared_selections";
+  } else if (input.eventOrder?.status === "open") {
+    cursor = "finalized";
+  } else if (input.eventOrder?.status === "finalized" && !input.eventOrder.sharedAt) {
+    cursor = "shared_selections";
+  } else if (!invoicedComplete) {
+    cursor = "invoiced";
+  }
+
+  function stateFor(
+    id: CommercialProgressStepId,
+    complete: boolean,
+  ): CommercialProgressStepState {
+    if (complete) return "complete";
+    return id === cursor ? "current" : "upcoming";
+  }
+
+  const selectionNote = hasSelectionActivity(input)
+    ? "Selections (Inventory and/or Choices) are in play — keep those runtimes separate."
+    : "Fixed Event Order path: no client selection required.";
+
+  return [
+    {
+      id: "draft",
+      label: "Draft",
+      state: stateFor("draft", draftComplete),
+      detail: draftComplete
+        ? "Working commercial records exist on this event."
+        : "Apply a template or start blank on Event Order / Inventory.",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
+    },
+    {
+      id: "shared_selections",
+      label: "Shared / selections",
+      state: stateFor("shared_selections", sharedComplete),
+      detail: sharedComplete
+        ? `Client engagement started. ${selectionNote}`
+        : `Not shared and no client selection in flight. ${selectionNote}`,
+      nav: hasSelectionActivity(input) && input.eventInventory && INV_CLIENT_FACING.has(input.eventInventory.status)
+        ? { kind: "tab", tab: "inventory" }
+        : input.clientChoices.some((c) => CHOICES_CLIENT_FACING.has(c.status) || c.status === "draft")
+          ? { kind: "tab", tab: "event-order", anchor: "event-order-choices" }
+          : { kind: "tab", tab: "event-order", anchor: "event-order-order" },
+    },
+    {
+      id: "finalized",
+      label: "Finalized",
+      state: stateFor("finalized", finalizedComplete),
+      detail: finalizedComplete
+        ? "Event Order is finalized (sharing is separate)."
+        : "Finalize the Event Order when deliverables are agreed — not implied by template apply or client submit.",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
+    },
+    {
+      id: "invoiced",
+      label: "Invoiced",
+      state: stateFor("invoiced", invoicedComplete),
+      detail: invoicedComplete
+        ? `Invoice ${INVOICE_STATUS_LABEL[linked!.status] ?? linked!.status} (payment plan is a later step on the invoice).`
+        : "Invoice is not created by sharing an Event Order — create or link from the Event Order below.",
+      nav: linked
+        ? { kind: "href", href: `/invoices/${linked.id}` }
+        : { kind: "tab", tab: "event-order", anchor: "event-order-invoice" },
+    },
+  ];
+}
+
+/**
+ * C4 — Next deep-link only (never a second Share/Finalize/Send control).
+ * Points staff to the existing authoritative panel.
+ */
+export function buildCommercialNextAction(
+  input: CommercialStatusInput,
+): CommercialNextAction | null {
+  const linked = pickEoLinkedInvoice(
+    input.invoices,
+    input.eventOrderId,
+    input.bookingCommitmentInvoiceIds ?? [],
+  );
+  const inv = input.eventInventory?.status;
+  const choice = pickPrimaryChoicesStatus(input.clientChoices);
+
+  if (inv === "submitted") {
+    return {
+      label: "Review inventory submission on Inventory (confirm is not automatic)",
+      nav: { kind: "tab", tab: "inventory" },
+    };
+  }
+  if (inv === "shared" || inv === "changes_requested") {
+    return {
+      label: "Open Inventory — awaiting client selection",
+      nav: { kind: "tab", tab: "inventory" },
+    };
+  }
+  if (inv === "confirmed") {
+    return {
+      label: "Finalize inventory on Inventory, then Add to Event Order",
+      nav: { kind: "tab", tab: "inventory" },
+    };
+  }
+  if (choice === "submitted" || choice === "resubmitted") {
+    return {
+      label: "Review client choices below (finalize is a venue step)",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-choices" },
+    };
+  }
+  if (choice === "sent" || choice === "in_progress" || choice === "changes_requested") {
+    return {
+      label: "Open Choices — awaiting client",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-choices" },
+    };
+  }
+  if (choice === "draft") {
+    return {
+      label: "Send choices from Client selections below (not from Inventory)",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-choices" },
+    };
+  }
+  if (!input.eventOrder) {
+    return {
+      label: "Start or apply an Event Order below (Library Use for fixed templates)",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
+    };
+  }
+  if (input.eventOrder.status === "open") {
+    return {
+      label: "Finalize Event Order below when agreed (Share stays separate)",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
+    };
+  }
+  if (input.eventOrder.status === "finalized" && !input.eventOrder.sharedAt) {
+    return {
+      label: "Share Event Order below — finalizing alone does not share",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
+    };
+  }
+  if (!linked) {
+    return {
+      label: "Create or link invoice from Event Order (not created by Share)",
+      nav: { kind: "tab", tab: "event-order", anchor: "event-order-invoice" },
+    };
+  }
+  if (linked.status === "draft") {
+    return {
+      label: "Open invoice — send freezes billable lines",
+      nav: { kind: "href", href: `/invoices/${linked.id}` },
+    };
+  }
+  if (!input.linkedScheduleId) {
+    return {
+      label: "Payment plan attaches to the invoice (open invoice)",
+      nav: { kind: "href", href: `/invoices/${linked.id}` },
+    };
+  }
+  return null;
 }

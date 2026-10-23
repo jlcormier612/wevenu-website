@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import {
+  buildCommercialNextAction,
+  buildCommercialProgressSteps,
   buildCommercialStatusChips,
   commercialChoicesDisplayKey,
 } from "@/lib/event-orders/commercial-status";
@@ -183,13 +185,102 @@ describe("buildCommercialStatusChips", () => {
   });
 });
 
-describe("C3 strip seams — no duplicate authoritative actions", () => {
+describe("C4 commercial progress checklist", () => {
+  it("maps Path A open EO to draft complete and finalized current (not shared/invoiced)", () => {
+    const steps = buildCommercialProgressSteps({
+      eventInventory: null,
+      clientChoices: [],
+      eventOrder: { status: "open", sharedAt: null },
+      invoices: [],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+      showInventory: false,
+    });
+    assert.equal(steps.find((s) => s.id === "draft")?.state, "complete");
+    assert.equal(steps.find((s) => s.id === "shared_selections")?.state, "upcoming");
+    assert.equal(steps.find((s) => s.id === "finalized")?.state, "current");
+    assert.equal(steps.find((s) => s.id === "invoiced")?.state, "upcoming");
+    assert.deepEqual(
+      buildCommercialNextAction({
+        eventInventory: null,
+        clientChoices: [],
+        eventOrder: { status: "open", sharedAt: null },
+        invoices: [],
+        eventOrderId: "eo-1",
+        linkedScheduleId: null,
+        showInventory: false,
+      })?.nav,
+      { kind: "tab", tab: "event-order", anchor: "event-order-order" },
+    );
+  });
+
+  it("does not treat finalize as share or share as invoiced", () => {
+    const finalizedOnly = buildCommercialProgressSteps({
+      eventInventory: null,
+      clientChoices: [],
+      eventOrder: { status: "finalized", sharedAt: null },
+      invoices: [],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+      showInventory: false,
+    });
+    assert.equal(finalizedOnly.find((s) => s.id === "finalized")?.state, "complete");
+    assert.equal(finalizedOnly.find((s) => s.id === "shared_selections")?.state, "current");
+    assert.equal(finalizedOnly.find((s) => s.id === "invoiced")?.state, "upcoming");
+
+    const sharedNoInvoice = buildCommercialProgressSteps({
+      eventInventory: null,
+      clientChoices: [],
+      eventOrder: { status: "finalized", sharedAt: "2026-01-01" },
+      invoices: [],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+      showInventory: false,
+    });
+    assert.equal(sharedNoInvoice.find((s) => s.id === "shared_selections")?.state, "complete");
+    assert.equal(sharedNoInvoice.find((s) => s.id === "invoiced")?.state, "current");
+  });
+
+  it("keeps inventory submission distinct from venue confirmation in next action", () => {
+    const next = buildCommercialNextAction({
+      eventInventory: { status: "submitted" },
+      clientChoices: [],
+      eventOrder: { status: "open", sharedAt: null },
+      invoices: [],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+    });
+    assert.match(next?.label ?? "", /confirm is not automatic/i);
+    assert.deepEqual(next?.nav, { kind: "tab", tab: "inventory" });
+  });
+
+  it("routes choices next action to choices anchor, not inventory", () => {
+    const next = buildCommercialNextAction({
+      eventInventory: null,
+      clientChoices: [{ status: "sent" }],
+      eventOrder: { status: "open", sharedAt: null },
+      invoices: [],
+      eventOrderId: "eo-1",
+      linkedScheduleId: null,
+      showInventory: false,
+    });
+    assert.deepEqual(next?.nav, {
+      kind: "tab",
+      tab: "event-order",
+      anchor: "event-order-choices",
+    });
+  });
+});
+
+describe("C3/C4 strip seams — no duplicate authoritative actions", () => {
   it("strip component is deep-link only (no Share/Finalize/Send handlers)", () => {
     const src = readFileSync(
       resolve("components/event-orders/event-commercial-status-strip.tsx"),
       "utf8",
     );
     assert.match(src, /data-testid="event-commercial-status-strip"/);
+    assert.match(src, /event-commercial-progress-checklist/);
+    assert.match(src, /commercial-path-wiring/);
     assert.doesNotMatch(src, /sendClientChoices|shareEventOrder|createInvoice|finalizeEventOrder/);
     assert.match(src, /onNavigate/);
   });
