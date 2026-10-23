@@ -34,10 +34,10 @@ describe("C1 commercial terminology and entry points", () => {
     assert.match(panel, /data-testid=\{`event-setup-open-\$\{step\}`\}/);
   });
 
-  it("Event Order tab presents the commercial workspace intro without replacing panels", () => {
+  it("Event Order tab presents the commercial workspace without replacing panels", () => {
     const detail = read("components/events/event-detail.tsx");
-    assert.match(detail, /data-testid="event-commercial-workspace-intro"/);
-    assert.match(detail, /Commercial workspace/);
+    // C3: status strip supersedes the C1 static intro; same commercial home.
+    assert.match(detail, /EventCommercialStatusStrip|event-commercial-status-strip/);
     assert.match(detail, /ClientChoicesPanel/);
     assert.match(detail, /EventOrderPanel/);
     assert.match(detail, /EventInventoryPanel/);

@@ -146,13 +146,13 @@ async function main() {
   record("Packages: not Event Order authoring", /not where you author or send an Event Order/i.test(pkg), "boundary");
   await page.screenshot({ path: `${OUT}/shots-c2/packages-1280.png`, fullPage: true });
 
-  // C1 regression: commercial workspace intro still present
+  // C1/C3 regression: commercial status strip present (supersedes static intro)
   await page.goto(`${APP}/events/${EVENT}?tab=event-order`, { waitUntil: "domcontentloaded", timeout: 90_000 });
   await page.waitForTimeout(1200);
   record(
     "C1 regression: commercial workspace intro",
-    (await page.getByTestId("event-commercial-workspace-intro").count()) > 0,
-    "intro",
+    (await page.getByTestId("event-commercial-status-strip").count()) > 0,
+    "status strip",
   );
   const eoTab = await page.locator("body").innerText();
   record("EO → Invoice handoff language intact", /Invoice|Payment/i.test(eoTab), "finance nav");

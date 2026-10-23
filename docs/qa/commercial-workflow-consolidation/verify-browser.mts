@@ -215,11 +215,11 @@ async function main() {
   if (await openEo.count()) {
     await page.getByTestId("event-setup-open-event_order").click();
     await page.waitForTimeout(1200);
-    const intro = page.getByTestId("event-commercial-workspace-intro");
+    const strip = page.getByTestId("event-commercial-status-strip");
     record(
       "B Open Event Order reaches commercial workspace",
-      (await intro.count()) > 0,
-      `intro=${await intro.count()} url=${page.url()}`,
+      (await strip.count()) > 0,
+      `strip=${await strip.count()} url=${page.url()}`,
     );
   } else {
     // Fall through to direct tab
@@ -227,13 +227,13 @@ async function main() {
   }
   await page.screenshot({ path: `${OUT}/shots/B-overview-setup-1280.png`, fullPage: true });
 
-  // C — Event commercial workspace
+  // C — Event commercial workspace (C3 strip supersedes C1 static intro)
   await page.goto(`${APP}/events/${EVENT}?tab=event-order`, {
     waitUntil: "domcontentloaded",
     timeout: 90_000,
   });
   await page.waitForTimeout(1500);
-  const intro = page.getByTestId("event-commercial-workspace-intro");
+  const intro = page.getByTestId("event-commercial-status-strip");
   const introText = (await intro.innerText().catch(() => "")) || "";
   record(
     "C Commercial workspace intro present",
@@ -242,7 +242,8 @@ async function main() {
   );
   record(
     "C Intro: Inventory tab + no invoice from setup",
-    /Inventory tab/i.test(introText) && /do not send selections or create invoices/i.test(introText),
+    /Inventory selection and client-selectable choices/i.test(introText)
+      && /invoice and payment plan follow/i.test(introText),
     introText.slice(0, 300),
   );
   const choices = await page.getByText(/Client selections/i).count();
@@ -265,8 +266,8 @@ async function main() {
   );
   record(
     "C Inventory tab remains separate from Event Order",
-    /Event Inventory/i.test(invBody) && !(await page.getByTestId("event-commercial-workspace-intro").count()),
-    "inventory workspace without commercial EO intro",
+    /Event Inventory/i.test(invBody) && !(await page.getByTestId("event-commercial-status-strip").count()),
+    "inventory workspace without commercial EO strip",
   );
   await page.screenshot({ path: `${OUT}/shots/C-inventory-1280.png`, fullPage: true });
 
@@ -335,7 +336,7 @@ async function main() {
     record("E Portal sections", false, "no portal session token for client+event");
   }
 
-  // Mobile width smoke on commercial intro
+  // Mobile width smoke on commercial strip
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${APP}/events/${EVENT}?tab=event-order`, {
     waitUntil: "domcontentloaded",
@@ -344,7 +345,7 @@ async function main() {
   await page.waitForTimeout(1200);
   record(
     "C Commercial intro visible at 390",
-    (await page.getByTestId("event-commercial-workspace-intro").count()) > 0,
+    (await page.getByTestId("event-commercial-status-strip").count()) > 0,
     "390 viewport",
   );
   await page.screenshot({ path: `${OUT}/shots/C-event-order-commercial-390.png`, fullPage: true });

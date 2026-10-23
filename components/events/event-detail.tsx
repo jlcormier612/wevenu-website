@@ -61,8 +61,10 @@ import { venueToday } from "@/lib/venue/timezone";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
+import { EventCommercialStatusStrip } from "@/components/event-orders/event-commercial-status-strip";
 import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
 import { ClientChoicesPanel } from "@/components/client-choices/client-choices-panel";
+import type { CommercialNavTarget } from "@/lib/event-orders/commercial-status";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Package } from "@/lib/packages/types";
@@ -1253,52 +1255,77 @@ export function EventDetail({
 
         {/* ── Event Order (canonical commercial workspace) ─────────── */}
         <TabsContent value="event-order">
-          <div
-            className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-3"
-            data-testid="event-commercial-workspace-intro"
-          >
-            <p className="text-sm font-medium text-heading">Commercial workspace</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Run this event&apos;s commercial workflow here: optional client choices, the Event Order
-              (agreed deliverables), then invoice and payment plan from the Event Order / Payments tab.
-              Inventory selection lives on the Inventory tab. Setup Profile defaults prepare drafts only —
-              they do not send selections or create invoices.
-            </p>
-          </div>
-          <ClientChoicesPanel
-            eventId={event.id}
-            eventOrderTemplates={eventOrderTemplates}
-            choices={clientChoices}
-            financialImpact={financialImpact}
-          />
-          <EventOrderPanel
-            eventId={event.id}
-            clientId={event.clientId}
-            clientName={event.clientName}
-            clientEmail={coupleEmail}
-            venueName={venueName}
-            eventOrder={eventOrder}
-            packages={packages}
-            packagesWithItems={packagesWithItems}
-            selectedPackageName={selectedPackage?.name ?? null}
-            offerings={offerings}
-            inventoryItems={inventoryItems}
-            invoices={invoices}
-            bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
-            linkedScheduleId={linkedScheduleId}
-            floorPlans={event.floorPlans}
-            templates={eventOrderTemplates}
-            preferredTemplateId={eventSetup.inheritedTemplateRefs?.eventOrderTemplateId ?? null}
-            overview={{
-              eventName: event.name,
-              eventDate: event.eventDate,
-              eventType: event.eventType,
-              guestCount: event.guestCount,
-              spaceName,
-              ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
-              receptionStartTime: questionnaire?.receptionStartTime ?? null,
+          <EventCommercialStatusStrip
+            input={{
+              eventInventory: eventInventory
+                ? { status: eventInventory.status }
+                : null,
+              clientChoices: clientChoices ?? [],
+              eventOrder: eventOrder
+                ? { status: eventOrder.status, sharedAt: eventOrder.sharedAt }
+                : null,
+              invoices: invoices ?? [],
+              eventOrderId: eventOrder?.id ?? null,
+              linkedScheduleId,
+              bookingCommitmentInvoiceIds,
+            }}
+            onNavigate={(target: CommercialNavTarget) => {
+              if (target.kind === "href") {
+                router.push(target.href);
+                return;
+              }
+              setActiveTab(target.tab);
+              window.location.hash = target.anchor || target.tab;
+              if (target.anchor) {
+                requestAnimationFrame(() => {
+                  window.setTimeout(() => {
+                    document.getElementById(target.anchor!)?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }, 80);
+                });
+              }
             }}
           />
+          <div id="event-order-choices" data-testid="event-order-choices">
+            <ClientChoicesPanel
+              eventId={event.id}
+              eventOrderTemplates={eventOrderTemplates}
+              choices={clientChoices}
+              financialImpact={financialImpact}
+            />
+          </div>
+          <div id="event-order-order" data-testid="event-order-order">
+            <EventOrderPanel
+              eventId={event.id}
+              clientId={event.clientId}
+              clientName={event.clientName}
+              clientEmail={coupleEmail}
+              venueName={venueName}
+              eventOrder={eventOrder}
+              packages={packages}
+              packagesWithItems={packagesWithItems}
+              selectedPackageName={selectedPackage?.name ?? null}
+              offerings={offerings}
+              inventoryItems={inventoryItems}
+              invoices={invoices}
+              bookingCommitmentInvoiceIds={bookingCommitmentInvoiceIds}
+              linkedScheduleId={linkedScheduleId}
+              floorPlans={event.floorPlans}
+              templates={eventOrderTemplates}
+              preferredTemplateId={eventSetup.inheritedTemplateRefs?.eventOrderTemplateId ?? null}
+              overview={{
+                eventName: event.name,
+                eventDate: event.eventDate,
+                eventType: event.eventType,
+                guestCount: event.guestCount,
+                spaceName,
+                ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
+                receptionStartTime: questionnaire?.receptionStartTime ?? null,
+              }}
+            />
+          </div>
         </TabsContent>
 
         {/* ── Event Inventory ──────────────────────────────────────── */}

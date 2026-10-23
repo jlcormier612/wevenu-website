@@ -45,7 +45,7 @@ export function EventOrderInvoiceLink({
     // hasPricedContent keeps Create Payment Plan visible when the EO commercial amount > 0.
     const showCreatePlan = (linked.total > 0 || hasPricedContent) && !linkedScheduleId;
     return (
-      <div className="space-y-2">
+      <div className="space-y-2" id="event-order-invoice" data-testid="event-order-invoice">
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">Amount due lives on</span>
           <Link href={`/invoices/${linked.id}`} className="font-medium text-primary hover:underline">
@@ -103,7 +103,7 @@ export function EventOrderInvoiceLink({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" id="event-order-invoice" data-testid="event-order-invoice">
       <p className="text-xs text-muted-foreground">
         Event Order is not an invoice. Create an Invoice when you are ready to collect what they owe — a payment plan attaches to that invoice, not to the Event Order.
       </p>
