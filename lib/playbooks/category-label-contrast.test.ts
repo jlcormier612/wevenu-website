@@ -13,7 +13,8 @@ import {
 } from "@/lib/playbooks/constants";
 import { contrastRatio } from "@/lib/theme/public-form-surface";
 
-const LIGHT_SURFACES = ["#ffffff", "#f7f5f1", "#b9d1c2", "#fefefc"] as const;
+/** Label text surfaces — soft-sage is accent, not a category-label text ground. */
+const LIGHT_SURFACES = ["#ffffff", "#f7f5f1", "#fefefc"] as const;
 /** Dark staff: forest background + heritage card (see app/globals.css .dark .htc-staff). */
 const DARK_SURFACES = ["#4f5f4f", "#5d6f5d"] as const;
 
@@ -56,5 +57,18 @@ describe("task category label contrast", () => {
     assert.equal(props.style.color, categoryLabelInkLight("planning"));
     assert.equal(props.style["--category-label-ink-dark"], categoryLabelInkDark("planning"));
     assert.match(props.className, /dark:!text-\[color:var\(--category-label-ink-dark\)\]/);
+  });
+
+  it("light inks preserve taxonomy hue where the swatch already clears AA", () => {
+    assert.equal(categoryLabelInkLight("planning"), "#4F5F4F");
+    assert.equal(categoryLabelInkLight("communication"), "#5D6F5D");
+    // Pale swatches stay decorative; text uses a darker hue-preserving ink.
+    assert.notEqual(categoryLabelInkLight("financial"), "#C7A66A");
+    assert.notEqual(categoryLabelInkLight("meeting"), "#B9D1C2");
+  });
+
+  it("dark inks are distinct across categories (not one cream for all)", () => {
+    const darks = TASK_CATEGORIES.map((c) => categoryLabelInkDark(c.value));
+    assert.equal(new Set(darks).size, TASK_CATEGORIES.length);
   });
 });

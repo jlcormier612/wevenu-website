@@ -110,7 +110,7 @@ function ContextLinkRow({ link, eventId, onRemove, removing }: { link: EventTask
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         {label}
-        {link.detail && <p className="truncate text-[11px] text-muted-foreground">{link.detail}</p>}
+        {link.detail && <p className="truncate text-xs text-muted-foreground">{link.detail}</p>}
       </div>
       <button type="button" onClick={onRemove} disabled={removing} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive" aria-label="Remove">
         {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
@@ -197,7 +197,7 @@ function TaskDueSection({ task, eventId, eventDate }: { task: EventTask; eventId
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Due</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Due</p>
       {!useAbsolute ? (
         <DueDateComposer
           size="sm"
@@ -216,7 +216,7 @@ function TaskDueSection({ task, eventId, eventDate }: { task: EventTask; eventId
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => setUseAbsolute((v) => !v)}
         >
           {useAbsolute ? "Use days before/after event instead" : "Set a specific calendar date"}
@@ -228,7 +228,7 @@ function TaskDueSection({ task, eventId, eventDate }: { task: EventTask; eventId
         )}
       </div>
       {task.dueDateLocked && (
-        <p className="text-[10px] text-muted-foreground">Fixed date — won&apos;t move if the event date changes.</p>
+        <p className="text-xs text-muted-foreground">Fixed date — won&apos;t move if the event date changes.</p>
       )}
     </div>
   );
@@ -273,7 +273,7 @@ function TaskScheduleSection({ task, eventId }: { task: EventTask; eventId: stri
 
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
+      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
         <Checkbox checked={enabled} onCheckedChange={(v) => handleToggle(v === true)} />
         Scheduled Activity
       </label>
@@ -318,7 +318,7 @@ function TaskAssignmentSection({ task, eventId, staffOptions }: { task: EventTas
 
   return (
     <div className="space-y-1">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Assigned To</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assigned To</p>
       <div className="flex items-center gap-1.5">
         <Select value={staffId} onValueChange={handleChange} items={options}>
           <SelectTrigger className="h-7 w-48 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
@@ -393,7 +393,7 @@ function TaskDetailPanel({
       <TaskDueSection task={task} eventId={eventId} eventDate={eventDate} />
 
       <div className="space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {isVenue ? "Related Context" : "Helpful Information"}
         </p>
         {visibleLinks.length === 0 && <p className="text-xs text-muted-foreground">Nothing attached yet.</p>}
@@ -420,8 +420,8 @@ function TaskDetailPanel({
 
       {isVenue && (
         <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{internalNotesLabel("task")}</p>
-          <p className="text-[11px] text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{internalNotesLabel("task")}</p>
+          <p className="text-xs text-muted-foreground">{INTERNAL_NOTES_PRIVACY_HINT}</p>
           <Textarea
             value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
             placeholder="Operational notes…"
@@ -553,22 +553,22 @@ function TaskRow({
           <p className={`text-sm font-medium ${isComplete ? "text-muted-foreground line-through" : "text-heading"}`}>
             {task.title}
             {isWaived && (
-              <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="ml-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Waived
               </span>
             )}
-            {!task.isRequired && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground uppercase tracking-wide">optional</span>}
+            {!task.isRequired && <span className="ml-1.5 text-xs font-normal text-muted-foreground uppercase tracking-wide">optional</span>}
             {/* Wedding-Day Visibility (Planning Execution — Release
                 Completion) — same milestone_kind get_wedding_day_ops
                 already reads; this is the first place a coordinator sees
                 it while planning, not only after opening Wedding Day Ops. */}
             {task.milestoneKind === "event_day" && (
-              <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground align-middle">
+              <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground align-middle">
                 💍 Wedding Day
               </span>
             )}
           </p>
-          <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
             <span {...categoryLabelStyle(task.category)}>{categoryLabel(task.category)}</span>
             <span>·</span>
             <span>{task.ownerType === "couple" ? "Client" : task.ownerType === "vendor" ? "Vendor" : "Coordinator"}</span>
@@ -598,12 +598,12 @@ function TaskRow({
           </div>
           {(task.autoCompleteTrigger === "vendor_selected" || task.autoCompleteTrigger === "questionnaire_submitted")
             && !isComplete && task.progressState === "in_progress" && (
-            <p className="text-[10px] font-medium text-amber-900 dark:text-amber-100">
+            <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
               Submitted — needs venue review
             </p>
           )}
           {task.autoCompleteTrigger && !isComplete && (
-            <p className="text-[10px] text-muted-foreground italic">
+            <p className="text-xs text-muted-foreground italic">
               {task.autoCompleteTrigger === "vendor_selected"
                 ? "Couple submit = needs review — mark complete when the vendor team is confirmed"
                 : task.autoCompleteTrigger === "questionnaire_submitted"
@@ -819,10 +819,10 @@ export function PlaybookApplyRow({
             <p className="text-xs text-muted-foreground flex-1">
               <span className="font-medium text-heading">For your couple:</span> {displayTitle} — draft, not yet visible to {clientName ?? "your couple"}
             </p>
-            <Badge variant="warning" className="text-[10px] shrink-0">Draft</Badge>
+            <Badge variant="warning" className="text-xs shrink-0">Draft</Badge>
           </div>
           {readiness && (
-            <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground" data-testid="planning-required-progress">
+            <p className="mt-1.5 pl-6 text-xs text-muted-foreground" data-testid="planning-required-progress">
               {formatRequiredTaskProgress(readiness)}
             </p>
           )}
@@ -845,7 +845,7 @@ export function PlaybookApplyRow({
             >
               {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Remove Planning / Start Over"}
             </Button>
-            <p className="w-full text-[11px] text-muted-foreground">
+            <p className="w-full text-xs text-muted-foreground">
               You&apos;re editing this event&apos;s copy — changes here don&apos;t update the Library template.
               {preferOverviewRelease
                 ? " When the checklist is ready, return to Overview and use Release to client portal. That does not send an invitation."
@@ -863,7 +863,7 @@ export function PlaybookApplyRow({
           <p className="text-xs text-muted-foreground flex-1">
             <span className="font-medium text-heading">{meta.label}:</span> {displayTitle} applied
           </p>
-          <Badge variant="muted" className="text-[10px] shrink-0">
+          <Badge variant="muted" className="text-xs shrink-0">
             {kind === "client" && application.releasedAt
               ? `Released ${new Date(application.releasedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
               : "Active"}
@@ -876,12 +876,12 @@ export function PlaybookApplyRow({
                 <div className="h-1.5 flex-1 max-w-[120px] rounded-full bg-border overflow-hidden">
                   <div className="h-full bg-primary" style={{ width: `${readiness.score}%` }} />
                 </div>
-                <span className="text-[11px] text-muted-foreground" data-testid="planning-required-progress">
+                <span className="text-xs text-muted-foreground" data-testid="planning-required-progress">
                   {formatRequiredTaskProgress(readiness)}
                 </span>
               </>
             ) : (
-              <span className={cn("text-[11px] font-medium", needsAttention === 0 ? "text-success" : "text-warning-foreground")}>
+              <span className={cn("text-xs font-medium", needsAttention === 0 ? "text-success" : "text-warning-foreground")}>
                 {needsAttention === 0 ? "On track" : `${needsAttention} task${needsAttention === 1 ? "" : "s"} need attention`}
               </span>
             )}
@@ -902,7 +902,7 @@ export function PlaybookApplyRow({
           </div>
         )}
         {kind === "client" && application.releasedAt && (
-          <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground">
+          <p className="mt-1.5 pl-6 text-xs text-muted-foreground">
             Released Client Planning can&apos;t be removed wholesale — edit individual tasks below.
           </p>
         )}
@@ -948,7 +948,7 @@ export function PlaybookApplyRow({
         <span className="text-sm">{meta.emoji}</span>
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">{emptyState}</p>
-          <p className="text-[11px] text-muted-foreground/90 line-clamp-2">
+          <p className="text-xs text-muted-foreground/90 line-clamp-2">
             {preferredTemplate
               ? `Preview and apply "${preferredTemplate.name}" for this event, or choose a different valid template. This creates an event-specific copy — Library templates stay unchanged.`
               : kindCopy.explanation}
@@ -975,7 +975,7 @@ export function PlaybookApplyRow({
         </Button>
       </div>
       {selectedStats && (
-        <p className="mt-1 pl-6 text-[11px] text-muted-foreground">
+        <p className="mt-1 pl-6 text-xs text-muted-foreground">
           {selectedStats.milestoneCount} milestone{selectedStats.milestoneCount === 1 ? "" : "s"} · {selectedStats.taskCount} task{selectedStats.taskCount === 1 ? "" : "s"} — preview to see what&apos;s included before applying
         </p>
       )}
@@ -1125,7 +1125,7 @@ export function EventTaskList({
 
   const renderStatusGroup = (groupTasks: EventTask[], label: string, show: boolean) => !show || groupTasks.length === 0 ? null : (
     <div className="space-y-0">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground py-1.5">{label} ({groupTasks.length})</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground py-1.5">{label} ({groupTasks.length})</p>
       {groupTasks.map(renderTaskRow)}
     </div>
   );

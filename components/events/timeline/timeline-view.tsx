@@ -218,23 +218,23 @@ function TimelineEntryRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               {entry.entryTime && (
-                <span className="shrink-0 text-xs font-semibold text-heading">
+                <span className="shrink-0 text-sm font-semibold text-heading">
                   {formatTime(entry.entryTime)}
                 </span>
               )}
               {isEventStart && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   Event start
                 </span>
               )}
               {!entry.entryTime && (
-                <span className="text-[10px] text-muted-foreground italic">No time set</span>
+                <span className="text-xs text-muted-foreground italic">No time set</span>
               )}
-              <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-semibold", DUE_STATUS_BADGE[dueStatus])}>
+              <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-semibold", DUE_STATUS_BADGE[dueStatus])}>
                 {DUE_STATUS_LABEL[dueStatus]}
               </span>
               {isClientOwned && (
-                <span className="rounded-full bg-[#D8A7AA]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#8A5A5E]" title="From the client's latest submitted timeline — read-only here">
+                <span className="rounded-full bg-[#D8A7AA]/15 px-1.5 py-0.5 text-xs font-semibold text-[#8A5A5E]" title="From the client's latest submitted timeline — read-only here">
                   💗 From client&apos;s timeline
                 </span>
               )}
@@ -263,7 +263,7 @@ function TimelineEntryRow({
               </div>
             )}
             {(links.length > 0 || attachments.length > 0 || assignee) && (
-              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 {assignee && <span>Assigned to {assignee.name}</span>}
                 {links.length > 0 && <span>{links.length} link{links.length !== 1 ? "s" : ""}</span>}
                 {attachments.length > 0 && <span>{attachments.length} attachment{attachments.length !== 1 ? "s" : ""}</span>}

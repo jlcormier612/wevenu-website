@@ -17,7 +17,7 @@ export const PUBLIC_FORM_LIGHT_VARS = {
   "--popover-foreground": "var(--black)",
   "--heading": "var(--forest-sage)",
   "--muted": "var(--natural-cream)",
-  "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 92%, transparent)",
+  "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 82%, transparent)",
   "--secondary": "var(--natural-cream)",
   "--secondary-foreground": "var(--forest-sage)",
   "--primary": "var(--heritage-sage)",

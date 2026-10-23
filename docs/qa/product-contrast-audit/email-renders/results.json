@@ -1,13 +1,13 @@
 {
-  "renderedAt": "2026-10-23T15:45:16.098Z",
+  "renderedAt": "2026-10-23T17:02:38.390Z",
   "outDir": "docs/qa/product-contrast-audit/email-renders",
   "emailInk": {
-    "body": "#374151",
-    "heading": "#111827",
-    "muted": "#6b7280",
-    "footer": "#6b7280",
+    "body": "#4f5f4f",
+    "heading": "#000000",
+    "muted": "#5d6f5d",
+    "footer": "#4f5f4f",
     "card": "#ffffff",
-    "page": "#f9fafb"
+    "page": "#f7f5f1"
   },
   "paleCtaInk": "#000000",
   "paleCtaOk": true,

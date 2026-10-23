@@ -77,13 +77,14 @@ export const TASK_CATEGORIES: {
   labelInkLight: string;
   labelInkDark: string;
 }[] = [
-  { value: "communication", label: "Communication", color: "#5D6F5D", labelInkLight: "#2F3A2F", labelInkDark: "#E8F0EA" },
-  { value: "financial",     label: "Financial",     color: "#C7A66A", labelInkLight: "#5C4A1A", labelInkDark: "#FAF0D8" },
-  { value: "planning",      label: "Planning",      color: "#4F5F4F", labelInkLight: "#1F2A1F", labelInkDark: "#F7F5F1" },
-  { value: "document",      label: "Document",      color: "#B8AEA1", labelInkLight: "#4A433A", labelInkDark: "#F0EBE3" },
-  { value: "meeting",       label: "Meeting",       color: "#B9D1C2", labelInkLight: "#2F4A3C", labelInkDark: "#E8F0EA" },
+  // labelInk*: hue-preserving AA text. Prefer taxonomy `color` on light when it clears 4.5:1.
+  { value: "communication", label: "Communication", color: "#5D6F5D", labelInkLight: "#5D6F5D", labelInkDark: "#ECEEEC" },
+  { value: "financial",     label: "Financial",     color: "#C7A66A", labelInkLight: "#6B5A2A", labelInkDark: "#F3EBDE" },
+  { value: "planning",      label: "Planning",      color: "#4F5F4F", labelInkLight: "#4F5F4F", labelInkDark: "#EAECEA" },
+  { value: "document",      label: "Document",      color: "#B8AEA1", labelInkLight: "#4A433A", labelInkDark: "#EFEEEA" },
+  { value: "meeting",       label: "Meeting",       color: "#B9D1C2", labelInkLight: "#2F4A3C", labelInkDark: "#E8F2EC" },
   { value: "internal",      label: "Internal",      color: "#DED6CA", labelInkLight: "#4A433A", labelInkDark: "#F5F2EC" },
-  { value: "custom",        label: "Custom",        color: "#D8A7AA", labelInkLight: "#6B4044", labelInkDark: "#FAE8EA" },
+  { value: "custom",        label: "Custom",        color: "#D8A7AA", labelInkLight: "#6B4044", labelInkDark: "#F6ECEC" },
 ];
 
 export const TASK_OWNERS: { value: TaskOwner; label: string }[] = [

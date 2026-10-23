@@ -57,7 +57,7 @@
   --card: var(--true-white);
   --card-foreground: var(--forest-sage);
   --muted: var(--natural-cream);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 92%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 80%, transparent);
   --border: var(--taupe-medium);
   --input: var(--taupe-medium);
   --ring: var(--heritage-sage);
@@ -86,7 +86,7 @@
   --card: var(--heritage-sage);
   --card-foreground: var(--true-white);
   --muted: var(--heritage-sage);
-  --muted-foreground: color-mix(in oklch, var(--true-white) 92%, transparent);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
   --border: color-mix(in oklch, var(--true-white) 28%, transparent);
   --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --ring: var(--soft-sage);

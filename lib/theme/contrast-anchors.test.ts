@@ -15,19 +15,23 @@ function read(rel: string) {
 }
 
 describe("theme contrast anchors", () => {
-  it("bumps muted-foreground opacity for WCAG-friendly secondary copy", () => {
+  it("keeps muted-foreground in the soft 80–86% HTC secondary band (not near-solid)", () => {
     const css = read("app/globals.css");
-    // 92% clears ≥4.5:1 on white/cream (82%/86% did not).
+    // Recovery: restore softer secondary copy; spot-fix failing pairs elsewhere.
     assert.match(
       css,
-      /--muted-foreground:\s*color-mix\(in oklch, var\(--forest-sage\) 92%, transparent\)/,
+      /--muted-foreground:\s*color-mix\(in oklch, var\(--forest-sage\) 82%, transparent\)/,
     );
     assert.match(
       css,
-      /--muted-foreground:\s*color-mix\(in oklch, var\(--true-white\) 92%, transparent\)/,
+      /--muted-foreground:\s*color-mix\(in oklch, var\(--forest-sage\) 80%, transparent\)/,
     );
-    assert.doesNotMatch(css, /forest-sage\) 82%, transparent/);
-    assert.doesNotMatch(css, /true-white\) 86%, transparent/);
+    assert.match(
+      css,
+      /--muted-foreground:\s*color-mix\(in oklch, var\(--true-white\) 86%, transparent\)/,
+    );
+    assert.doesNotMatch(css, /forest-sage\) 92%, transparent/);
+    assert.doesNotMatch(css, /true-white\) 92%, transparent/);
   });
 
   it("forces explicit text-foreground on shared Input/Textarea/SelectTrigger", () => {

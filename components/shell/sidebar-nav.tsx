@@ -64,7 +64,7 @@ export function SidebarNav({
     <nav className="flex flex-col gap-6 px-3 py-5" aria-label="Primary">
       {sections.map((section) => (
         <div key={section.id} className="flex flex-col gap-1">
-          <p className="px-3 pb-1.5 text-xs font-medium uppercase tracking-[0.2em] text-sidebar-foreground/60">
+          <p className="px-3 pb-1.5 text-xs font-medium uppercase tracking-[0.2em] text-sidebar-foreground/80">
             {section.label}
           </p>
           {section.items.map((item) => {

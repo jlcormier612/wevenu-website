@@ -405,13 +405,13 @@ function WeddingSnapshotCard({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] mb-3" style={{ color: ROSE_DEEP }}>🌿 Your Snapshot</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] mb-3" style={{ color: ROSE_DEEP }}>🌿 Your Snapshot</p>
       <div className="grid grid-cols-2 gap-2">
         {cells.map(cell => (
           <div key={cell.label} className="rounded-xl p-3" style={{ background: "#F8F6F2" }}>
             <p className="text-base mb-1">{cell.emoji}</p>
             <p className="text-xs font-medium text-heading leading-snug">{cell.label}</p>
-            {cell.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{cell.sub}</p>}
+            {cell.sub && <p className="text-xs text-muted-foreground mt-0.5">{cell.sub}</p>}
           </div>
         ))}
       </div>
@@ -427,7 +427,7 @@ function VenueNoteCard({ venueName }: { venueName: string }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid #E8E2D8` }}>
       <div className="px-5 pt-4 pb-5" style={{ background: "linear-gradient(135deg, #F9F6F0 0%, #F4EFE6 100%)" }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: ROSE_DEEP }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: ROSE_DEEP }}>
           💌 From Your Venue
         </p>
         <p className="font-heading text-sm text-heading leading-relaxed italic">
@@ -480,7 +480,7 @@ function ComingUpCard({ bracket, onNavigate }: { bracket: string; onNavigate: (s
   const items = COMING_UP_BY_BRACKET[bracket] ?? COMING_UP_BY_BRACKET["6-9"];
   return (
     <div className="rounded-2xl p-5 space-y-3" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}28` }}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>💗 Coming Up</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>💗 Coming Up</p>
       <div className="space-y-2.5">
         {items.map(item => (
           <button key={item.text} type="button" onClick={() => onNavigate("todos")}
@@ -526,7 +526,7 @@ function SeasonalInspirationCard({
   return (
     <div className="rounded-3xl overflow-hidden" style={{ border: `1px solid ${ROSE}28` }}>
       <div className="p-6 sm:p-7 space-y-5" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FBF9F6 100%)` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>{emoji} Seasonal Inspiration</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>{emoji} Seasonal Inspiration</p>
 
         {/* Seasonal reminder — the season's own narrative framing */}
         <div>
@@ -537,7 +537,7 @@ function SeasonalInspirationCard({
         {/* Seasonal planning tips */}
         {suggestions.length > 0 && (
           <div className="space-y-2 pt-1 border-t" style={{ borderColor: `${ROSE}20` }}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal planning tips</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal planning tips</p>
             <div className="space-y-2.5">
               {suggestions.slice(0, 3).map(s => (
                 <button key={s.title} type="button" onClick={() => onNavigate("todos")}
@@ -553,7 +553,7 @@ function SeasonalInspirationCard({
 
         {/* Seasonal décor ideas */}
         <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: `${ROSE}20` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal décor ideas</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal décor ideas</p>
           <div className="space-y-1.5">
             {inspiration.items.map(item => (
               <p key={item} className="text-xs text-muted-foreground flex items-center gap-2">
@@ -594,7 +594,7 @@ function WeddingJourneySection({ guestStats }: { guestStats: GuestStats | null }
     }}>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1" style={{ color: ROSE_DEEP }}>💗 Your Wedding Journey</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-1" style={{ color: ROSE_DEEP }}>💗 Your Wedding Journey</p>
           <p className="font-heading text-2xl sm:text-3xl text-heading leading-snug">Milestones worth celebrating</p>
         </div>
         <div className="text-right shrink-0 pl-4">
@@ -789,7 +789,7 @@ function FeedbackFlow({
         {step === "step1" && (
           <>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
                 Your experience with {venueName}
               </p>
               <p className="text-xs text-muted-foreground mb-3">
@@ -848,7 +848,7 @@ function FeedbackFlow({
         {step === "step2" && (
           <>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] mb-2" style={{ color: ROSE_DEEP }}>
                 Sharing your kind words
               </p>
               <p className="text-sm font-medium text-heading mb-1">
@@ -878,7 +878,7 @@ function FeedbackFlow({
           <>
             <div className="rounded-xl border p-4 space-y-4 bg-card">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
                   Just for the Hello to Cheers team
                 </p>
                 <p className="text-sm font-medium text-heading">How was your experience using Hello to Cheers?</p>
@@ -888,7 +888,7 @@ function FeedbackFlow({
               </div>
 
               <div>
-                <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
                   <span>Not likely</span>
                   <span className="font-semibold text-heading">{npsScore} / 10</span>
                   <span>Extremely likely</span>
@@ -896,7 +896,7 @@ function FeedbackFlow({
                 <input type="range" min={0} max={10} value={npsScore}
                   onChange={e => setNpsScore(Number(e.target.value))}
                   className="w-full accent-rose-400" />
-                <p className="text-center text-[10px] text-muted-foreground mt-1">
+                <p className="text-center text-xs text-muted-foreground mt-1">
                   How likely are you to recommend Hello to Cheers to others?
                 </p>
               </div>
@@ -1295,7 +1295,7 @@ function KeepsakeSection({
       {/* ── Venue anniversary message (if sent) ── */}
       {annivMessages.length > 0 && (
         <div className="rounded-2xl p-5 space-y-3" style={{ background: `color-mix(in srgb, var(--venue-primary) 3%, transparent)`, border: `1px solid color-mix(in srgb, var(--venue-primary) 15%, transparent)` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: SAGE }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: SAGE }}>
             A note from {venueName}
           </p>
           {annivMessages.map(m => (
@@ -1310,7 +1310,7 @@ function KeepsakeSection({
       {luvObs.length > 0 && (
         <div className="rounded-2xl px-5 py-4 space-y-3"
           style={{ background: "#FDF5F5", border: `1px solid ${ROSE}28` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
           {luvObs.map(obs => (
             <p key={obs.id} className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
           ))}
@@ -1524,7 +1524,7 @@ function WeddingDayPortal({
       {countdown && (
         <div className="rounded-2xl px-5 py-4 text-center space-y-1"
           style={{ background: `linear-gradient(135deg, ${ROSE}18 0%, #FBF8F5 100%)`, border: `1px solid ${ROSE}35` }}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
             💗 Ceremony begins in
           </p>
           <p className="font-heading text-4xl text-heading font-medium">{countdown.label}</p>
@@ -1535,7 +1535,7 @@ function WeddingDayPortal({
       {/* ── Luv observations ── */}
       <div className="rounded-2xl p-5 space-y-3"
         style={{ background: "#FDF5F5", border: `1px solid ${ROSE}30` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>💗 Luv</p>
         {luvMessages.map((msg, i) => (
           <p key={i} className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{msg}</p>
         ))}
@@ -2048,7 +2048,7 @@ function WorkingWithYourVenue({
 
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Working With Your Venue</p>
+      <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Working With Your Venue</p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <VenueTeamCard token={token} venueName={venueName} onNavigate={onNavigate} />
         <div className="space-y-3">
@@ -2180,7 +2180,7 @@ function WhatsHappeningCard({
                   <p className="text-xs text-heading leading-snug">{item.summary}</p>
                   {item.whenLabel ? (
                     <time
-                      className="text-[10px] text-muted-foreground mt-0.5 block"
+                      className="text-xs text-muted-foreground mt-0.5 block"
                       dateTime={item.occurredAt}
                     >
                       {item.whenLabel}
@@ -2258,7 +2258,7 @@ function MemoryStrip({
         >
           <h2
             id="memories-heading"
-            className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+            className="text-xs font-semibold uppercase tracking-[0.16em]"
             style={{ color: ROSE_DEEP }}
           >
             {model.heading}
@@ -2292,7 +2292,7 @@ function MemoryStrip({
       >
         <h2
           id="memories-heading"
-          className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+          className="text-xs font-semibold uppercase tracking-[0.16em]"
           style={{ color: ROSE_DEEP }}
         >
           {model.heading}
@@ -2569,7 +2569,7 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
               ))}
               {done.length > 0 && (
                 <div className="pt-2 border-t border-border/50 space-y-1">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide px-3 py-1">Completed ({done.length})</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide px-3 py-1">Completed ({done.length})</p>
                   {done.map(t => (
                     <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl opacity-50">
                       <button type="button" onClick={() => handleToggle(t)} className="shrink-0 h-5 w-5 rounded border flex items-center justify-center" style={{ background: SAGE, borderColor: SAGE }}>
@@ -2620,7 +2620,7 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Suggested for your stage</p>
                 {eventDate && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     💗 {getBracketLabel(getSuggestionBracket(daysUntil(eventDate)))}
                   </p>
                 )}
@@ -2854,7 +2854,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
       {/* Header */}
       <div className="rounded-3xl p-6" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}25` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>💗 Your People</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>💗 Your People</p>
         <p className="font-heading text-xl text-heading leading-snug mb-2">Who is helping you plan your celebration?</p>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Invite family members, your wedding planner, or anyone you'd like to share parts of your planning experience with. You control what each person can see and do.
@@ -2863,7 +2863,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
       {/* Primary couple */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Primary</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Primary</p>
         <div className="rounded-2xl border border-border bg-card p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold"
             style={{ background: `color-mix(in srgb, var(--venue-primary) 13%, transparent)`, color: SAGE }}>
@@ -2882,7 +2882,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
         <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /></div>
       ) : participants.length > 0 ? (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Planning Team</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Planning Team</p>
           <div className="space-y-2">
             {participants.map(p => {
               const isEditing = editingId === p.id;
@@ -3093,7 +3093,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
       {/* Activity feed */}
       {activity.length > 0 && (
         <div className="rounded-2xl border border-border/50 bg-card p-4 space-y-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">✨ Recent Activity</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">✨ Recent Activity</p>
           <div className="space-y-2.5">
             {activity.map(a => (
               <div key={a.id} className="flex items-start gap-2.5">
@@ -3644,7 +3644,7 @@ function JourneySection({
 
       {/* ── Header ── */}
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>
           📖 Your Journey
         </p>
         <h2 className="text-2xl font-bold text-heading">
@@ -3994,7 +3994,7 @@ function OurStorySection({
       {/* ── Hashtag + Our Story ── */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
             💍 Who You Are
           </p>
           {!editing && (
@@ -4064,7 +4064,7 @@ function OurStorySection({
       {/* ── Engagement Photos ── */}
       <section className="space-y-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
             📸 Engagement Photos
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -4085,7 +4085,7 @@ function OurStorySection({
       {/* ── Inspiration Board ── */}
       <section className="space-y-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
             🌸 Inspiration Board
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -4105,7 +4105,7 @@ function OurStorySection({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
               📖 Planning Journal
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -4393,7 +4393,7 @@ function AccountSettingsPanel({ token, venueName }: { token: string; venueName: 
   return (
     <div className="space-y-6">
       <div className="rounded-3xl p-6" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}25` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>⚙️ Account</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>⚙️ Account</p>
         <p className="font-heading text-xl text-heading leading-snug">Your account, your workspace</p>
         <p className="text-sm text-muted-foreground mt-1">You own this account. {venueName} can invite, resend, or revoke access, but never sign in as you.</p>
       </div>
@@ -5533,7 +5533,7 @@ function NextStepsCard({
             )}
           </div>
           {t.description && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
           )}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
             {due && (
@@ -5886,7 +5886,7 @@ function WeddingPlanningProgressCard({
           >
             {progress.percent}%
           </p>
-          <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">readiness</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-none">readiness</p>
         </div>
       </div>
       <p id="planning-progress-support" className="text-[11px] text-muted-foreground mb-1 leading-snug">

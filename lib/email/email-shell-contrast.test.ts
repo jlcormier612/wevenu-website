@@ -40,6 +40,15 @@ describe("email shell contrast tokens", () => {
     assertAA(EMAIL_INK.heading, EMAIL_INK.card, "heading on card");
   });
 
+  it("EMAIL_INK uses HTC forest/heritage/black — not cool Tailwind greys", () => {
+    assert.equal(EMAIL_INK.body, "#4f5f4f");
+    assert.equal(EMAIL_INK.muted, "#5d6f5d");
+    assert.equal(EMAIL_INK.footer, "#4f5f4f");
+    assert.equal(EMAIL_INK.heading, "#000000");
+    assert.equal(EMAIL_INK.page, "#f7f5f1");
+    assert.notEqual(EMAIL_INK.muted, "#6b7280");
+  });
+
   it("banned pale footer grey stays below AA so we do not regress", () => {
     assert.ok((contrastRatio("#9ca3af", "#ffffff") ?? 0) < 4.5);
   });
@@ -127,7 +136,12 @@ describe("email shell contrast tokens", () => {
         // Allow brand sage used as text only if AA; CTAs use white/black ink separately.
         if (c === "#5d6f5d" || c === "#2f3d2f") continue;
         assert.ok(
-          onWhite >= 4.5 || c === "#000000" || c === "#111827" || c === "#374151" || c === "#6b7280",
+          onWhite >= 4.5
+            || c === "#000000"
+            || c === "#4f5f4f"
+            || c === "#5d6f5d"
+            || c === "#111827"
+            || c === "#374151",
           `${name} inline color ${c} on white = ${onWhite.toFixed(2)}`,
         );
       }
