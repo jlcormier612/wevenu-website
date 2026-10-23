@@ -868,6 +868,61 @@ export function EventDetail({
               <EventTeamSection eventId={event.id} initialTeam={event.team} />
             </CardContent>
           </Card>
+          <Card size="sm" className="gap-2" id="questionnaires-card" data-testid="event-questionnaires-card">
+            <CardHeader className="gap-0.5">
+              <CardTitle className="text-base">Questionnaires</CardTitle>
+              <CardDescription className="text-xs leading-snug">
+                Draft, review, and send questionnaires when ready — separate from portal release.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid="open-questionnaires-card"
+                onClick={() => {
+                  setActiveTab("questionnaires");
+                  window.location.hash = "questionnaires";
+                }}
+              >
+                Open Questionnaires
+              </Button>
+            </CardContent>
+          </Card>
+          <Card size="sm" className="gap-2" id="inventory-event-order-card" data-testid="event-inventory-event-order-card">
+            <CardHeader className="gap-0.5">
+              <CardTitle className="text-base">Inventory &amp; Event Order</CardTitle>
+              <CardDescription className="text-xs leading-snug">
+                Commercial workspace for this event — selections, Event Order, and inventory handoff.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                data-testid="open-event-order-card"
+                onClick={() => {
+                  setActiveTab("event-order");
+                  window.location.hash = "event-order";
+                }}
+              >
+                Open Event Order
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid="open-inventory-card"
+                onClick={() => {
+                  setActiveTab("inventory");
+                  window.location.hash = "inventory";
+                }}
+              >
+                Open Inventory
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -876,30 +931,29 @@ export function EventDetail({
           straight to the right tab (e.g. #vendors) — "tasks become
           navigation into the platform," Vendor Management Next Iteration,
           2026-07-10 — rather than just landing on the event and leaving the
-          coordinator to find the right tab themselves. */}
+          coordinator to find the right tab themselves.
+          Questionnaires / Inventory / Event Order remain hash-addressable
+          TabsContent destinations opened from workspace cards (not tab rows). */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as string); window.location.hash = v as string; }}>
-        {/* Two deliberate rows of seven — fixed semantic grouping, not wrap. */}
+        {/* Row 1 planning setup (5) · Row 2 day-to-day (6). Fixed semantic grouping. */}
         <div className="space-y-1.5" data-testid="booked-workspace-tab-nav">
           <div className="w-full overflow-x-auto">
             <TabsList
               data-testid="booked-tab-row-1"
-              className="grid h-auto w-full min-w-[40rem] grid-cols-7 gap-0.5"
+              className="grid h-auto w-full min-w-[36rem] grid-cols-5 gap-0.5"
             >
-              <TabsTrigger value="overview" className={bookedTabTriggerClass}>Overview</TabsTrigger>
-              <TabsTrigger value="playbook" className={bookedTabTriggerClass}>Planning</TabsTrigger>
+              <TabsTrigger value="overview" className={bookedTabTriggerClass}>Planning Overview</TabsTrigger>
+              <TabsTrigger value="playbook" className={bookedTabTriggerClass}>Planning Tasks</TabsTrigger>
               <TabsTrigger value="timeline" className={bookedTabTriggerClass}>Timeline</TabsTrigger>
               <TabsTrigger value="floorplan" className={bookedTabTriggerClass}>Floor Plans</TabsTrigger>
               <TabsTrigger value="vendors" className={bookedTabTriggerClass}>Vendors</TabsTrigger>
-              <TabsTrigger value="inventory" className={bookedTabTriggerClass}>Inventory</TabsTrigger>
-              <TabsTrigger value="event-order" className={bookedTabTriggerClass}>Event Order</TabsTrigger>
             </TabsList>
           </div>
           <div className="w-full overflow-x-auto">
             <TabsList
               data-testid="booked-tab-row-2"
-              className="grid h-auto w-full min-w-[40rem] grid-cols-7 gap-0.5"
+              className="grid h-auto w-full min-w-[36rem] grid-cols-6 gap-0.5"
             >
-              <TabsTrigger value="questionnaires" className={bookedTabTriggerClass}>Questionnaires</TabsTrigger>
               <TabsTrigger value="documents" className={bookedTabTriggerClass}>
                 Documents
                 {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
@@ -1055,7 +1109,7 @@ export function EventDetail({
         <TabsContent value="playbook">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Planning</CardTitle>
+              <CardTitle className="text-base">Planning Tasks</CardTitle>
               <CardDescription>
                 Manage the client checklist and your venue&apos;s internal task list. Client tasks are
                 shared through portal release; venue tasks remain internal.

@@ -22,7 +22,7 @@ describe("C6 Setup no longer shows Send-as-EO or invoice create", () => {
     assert.doesNotMatch(panel, /sendClientChoices/);
     assert.doesNotMatch(panel, /Open Inventory/);
     assert.doesNotMatch(panel, /Open Event Order/);
-    assert.match(panel, /event Inventory and Event Order tabs|Inventory and Event Order tabs/);
+    assert.match(panel, /Inventory &amp; Event Order card|Inventory & Event Order card/);
   });
 
   it("Release success copy does not create or claim commercial share/invoice", () => {

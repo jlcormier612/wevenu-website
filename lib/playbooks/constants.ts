@@ -17,7 +17,8 @@ import { clampDaysOffset } from "@/lib/playbooks/due-dates";
 // guest_list, event_details and wedding_website have no dedicated venue-side
 // view/tab — Overview is the closest honest destination until a real
 // venue-side view exists (see docs/product-backlog.md). questionnaire lands
-// on the Questionnaires tab. Never point at a tab that doesn't exist.
+// on the Questionnaires workspace (hash #questionnaires). Never point at a
+// destination that doesn't exist on the event page.
 //
 // Task Destination Audit (2026-09-03): audiences restricts which Playbook
 // kind offers a destination in the Task Builder's "Opens" dropdown —

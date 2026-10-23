@@ -4729,7 +4729,11 @@ export function PortalShell({
       available:
         item.available
         && isPortalSectionEnabledByCapabilities(item.id, planningCapabilities)
-        && (item.id !== "choices" || hasClientChoices),
+        && (item.id !== "choices" || hasClientChoices)
+        // P2-A: hide passive Inventory/Order until shared. Active shared requests
+        // keep their nav entries. Full Docs-first removal is deferred (P2-D).
+        && (item.id !== "inventory" || hasSharedInventory)
+        && (item.id !== "event-order" || hasSharedEventOrder),
     }))
     .filter((item) => item.available);
 

@@ -343,7 +343,7 @@ export function EventSetupPanel({
                 Review planning, timeline, vendors, and floor plans for this event, then release
                 the prepared experience to the client portal. Invite the client separately when
                 you&apos;re ready. Questionnaires use authorized send when staff choose — not an automated schedule.
-                Inventory selection and Event Order are commercial workflows on their own event tabs — not part of Setup.
+                Inventory selection and Event Order are commercial workflows on the Inventory &amp; Event Order card — not part of Setup.
               </p>
             </>
           ) : (
@@ -406,7 +406,7 @@ export function EventSetupPanel({
             <p className="mt-1 text-xs text-muted-foreground">
               {portalReleased
                 ? "The prepared experience is released. You can still manage every area from its workspace tab. Re-running release is safe: it does not invite the client, send questionnaires, start Inventory or Event Order commercial work, or create invoices."
-                : "One action for the reviewed setup: releases Client Planning, applies and shares the timeline when present, and keeps floor-plan options ready. Does not invite the client, send questionnaires, create Inventory or Event Order drafts, share commercial materials, or create invoices — initiate those from the event Inventory and Event Order tabs."}
+                : "One action for the reviewed setup: releases Client Planning, applies and shares the timeline when present, and keeps floor-plan options ready. Does not invite the client, send questionnaires, create Inventory or Event Order drafts, share commercial materials, or create invoices — initiate those from the Inventory & Event Order card on this event."}
             </p>
           </div>
           <Button
