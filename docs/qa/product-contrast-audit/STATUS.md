@@ -1,6 +1,6 @@
 # Product-wide contrast & legibility — closure report
 
-**STATUS: PARTIAL** — systemic fixes committed and unit/email-render GREEN; Sandbox deploy + live browser matrix still required for GREEN / COMPLETE.
+**STATUS: PARTIAL** — systemic fixes committed (`c5bdafc0`); unit/email-render GREEN; Sandbox deploy dispatched; live browser matrix pending serving revision.
 
 Production untouched. Unrelated dirty tree preserved (only contrast-scoped paths staged for this commit).
 
@@ -66,11 +66,11 @@ EXPECTED_SHA=<sha> npx tsx docs/qa/product-contrast-audit/verify-task-category-l
 
 | Item | Value |
 | --- | --- |
-| Contrast commit | _(set after commit)_ |
-| Deploy workflow | _(set after `gh workflow run deploy-sandbox.yml`)_ |
-| ECS image / serving SHA | _(independent verify)_ |
-| Browser task-category evidence | `task-category-browser-results.json`, `shots/task-categories-*-1280.png` |
-| Email render evidence | `email-renders/results.json` |
+| Contrast commit | `c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd` |
+| Deploy workflow | [39981141119](https://github.com/jlcormier612/wevenu-website/actions/runs/39981141119) — dispatched @ `c5bdafc0` |
+| ECS image / serving SHA | Pending ECS roll-forward (was `e1c84abf…` before this deploy) |
+| Browser task-category evidence | Run `EXPECTED_SHA=c5bdafc0… npx tsx docs/qa/product-contrast-audit/verify-task-category-labels.mts` after serve |
+| Email render evidence | `email-renders/results.json` (29 renders, failCount 0; no sends) |
 
 ## Explicitly unverified / remaining for GREEN
 
