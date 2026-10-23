@@ -1,0 +1,49 @@
+{
+  "expectedSha": "df95f7c4c17a3e522396df98df818754994d37b6",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6",
+  "counts": {
+    "pass": 7,
+    "fail": 0,
+    "total": 7
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=df95f7c4c17a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6"
+    },
+    {
+      "name": "venue-staff-light-muted-aa",
+      "pass": true,
+      "detail": "pass=2 fail=0 skipped=0 samples=2 bad="
+    },
+    {
+      "name": "venue-staff-dark-muted-aa",
+      "pass": true,
+      "detail": "pass=2 fail=0 skipped=0 samples=2 bad="
+    },
+    {
+      "name": "auth-login-light-locked",
+      "pass": true,
+      "detail": "lockCount=1 url=https://app.sandbox.hellotocheers.com/login"
+    },
+    {
+      "name": "couple-portal-home-muted-aa",
+      "pass": true,
+      "detail": "pass=14 fail=0 skipped=0 samples=14 bad="
+    },
+    {
+      "name": "couple-portal-tasks-muted-aa",
+      "pass": true,
+      "detail": "pass=11 fail=0 skipped=0 samples=11 bad="
+    },
+    {
+      "name": "vendor-surface-muted-aa",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor pass=2 fail=0 skipped=0 samples=2 bad="
+    }
+  ],
+  "representativeOnly": true,
+  "note": "Not all 221 routes — representative venue/couple/vendor/auth surfaces",
+  "at": "2026-10-23T16:46:39.683Z"
+}

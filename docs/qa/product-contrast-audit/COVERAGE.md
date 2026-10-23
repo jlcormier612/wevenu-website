@@ -62,4 +62,17 @@ npx tsx --test \
 
 npx tsx scripts/qa/render-customer-email-contrast.mts
 EXPECTED_SHA=<serving> npx tsx docs/qa/product-contrast-audit/verify-task-category-labels.mts
+EXPECTED_SHA=<serving> npx tsx docs/qa/product-contrast-audit/verify-portals-live.mts
 ```
+
+## Live browser matrix (2026-10-23, serving `df95f7c4`)
+
+| Portal | Routes exercised | Themes | Evidence |
+| --- | --- | --- | --- |
+| Venue staff | `/events/{fancy}` planning/tasks content | light + dark | `shots-portals/venue-*.png`, category harness `shots/` |
+| Couple | `/p/{token}` home + `#tasks` | default portal surface | `shots-portals/couple-*.png` |
+| Vendor | `/vendor/login` (auth light) | light | `shots-portals/vendor-1280.png` |
+| Auth | `/login` | light-locked | `shots-portals/auth-login-1280.png` |
+
+**Explicit:** 221 app routes were inventoried; **runtime contrast measured on representative routes above**, not the full inventory.
+

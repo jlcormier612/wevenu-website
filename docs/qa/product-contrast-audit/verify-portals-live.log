@@ -1,0 +1,9 @@
+PASS serving-sha — expected=df95f7c4c17a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6
+PASS venue-staff-light-muted-aa — pass=2 fail=0 skipped=0 samples=2 bad=
+PASS venue-staff-dark-muted-aa — pass=2 fail=0 skipped=0 samples=2 bad=
+PASS auth-login-light-locked — lockCount=1 url=https://app.sandbox.hellotocheers.com/login
+PASS couple-portal-home-muted-aa — pass=14 fail=0 skipped=0 samples=14 bad=
+PASS couple-portal-tasks-muted-aa — pass=11 fail=0 skipped=0 samples=11 bad=
+PASS vendor-surface-muted-aa — url=https://app.sandbox.hellotocheers.com/vendor/login?next=%2Fvendor pass=2 fail=0 skipped=0 samples=2 bad=
+
+7 pass / 0 fail → docs/qa/product-contrast-audit/browser-results-portals.json

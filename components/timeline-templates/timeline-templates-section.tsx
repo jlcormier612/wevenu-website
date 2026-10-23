@@ -376,7 +376,7 @@ export function TimelineTemplatesSection({
         ) : null}
       </div>
       <p className="text-xs text-muted-foreground">
-        Edit reusable timelines here. Applying a timeline to a booking happens on the event — never as a client send from the Library.
+        Edit reusable timelines here. Assign a Space (and event type) when creating a template so it can be the default for that space — it only affects which template is preselected on a booking, not which rooms appear on the schedule. Apply a template from the event Timeline (or Setup), then use Share with couple on that event timeline so the client sees the event-specific copy. Library templates are never emailed or sent directly to a client.
       </p>
       {active.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No active timeline templates.</p>

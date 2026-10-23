@@ -1,0 +1,70 @@
+{
+  "runId": "TS3776",
+  "expectedSha": "df95f7c4c17a3e522396df98df818754994d37b6",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6",
+  "spaceAssignment": "Functional for default preselect (eventType+spaceId); not copied onto timeline entries at apply",
+  "librarySend": "Intentionally prohibited — apply on event, then Share with couple (in-app, no email)",
+  "counts": {
+    "PASS": 11,
+    "FAIL": 0,
+    "BLOCKED": 0
+  },
+  "checks": [
+    {
+      "name": "Serving expected SHA",
+      "outcome": "PASS",
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6"
+    },
+    {
+      "name": "Template↔space association persists",
+      "outcome": "PASS",
+      "detail": "{\"id\":\"ee269ba0-e49a-4ea1-a08c-6aa82386f576\",\"space_id\":\"40f81c67-199d-47f8-bf7d-79c118e34198\",\"event_type\":\"wedding\",\"name\":\"QA-TS-TS3776\"}"
+    },
+    {
+      "name": "Space assignment drives default preselect",
+      "outcome": "PASS",
+      "detail": "preselect=ee269ba0-e49a-4ea1-a08c-6aa82386f576 tpl=ee269ba0-e49a-4ea1-a08c-6aa82386f576 otherSpace=undefined"
+    },
+    {
+      "name": "Library explains apply/share path (no direct client send)",
+      "outcome": "PASS",
+      "detail": "explains=true noSend=true"
+    },
+    {
+      "name": "Library lists fixture template",
+      "outcome": "PASS",
+      "detail": "sees=true"
+    },
+    {
+      "name": "Template editor shows space context",
+      "outcome": "PASS",
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n13\n\nT"
+    },
+    {
+      "name": "Event edit does not mutate master template",
+      "outcome": "PASS",
+      "detail": "tplTitle=QA-TS-TS3776-item"
+    },
+    {
+      "name": "Share with couple UI",
+      "outcome": "PASS",
+      "detail": "already shared or button absent; audiences forced client"
+    },
+    {
+      "name": "Client portal sees event-specific timeline",
+      "outcome": "PASS",
+      "detail": "sees=true noTplNote=true"
+    },
+    {
+      "name": "Invalid portal token cannot access timeline",
+      "outcome": "PASS",
+      "detail": "💗\n\nThis link has expired or is no longer active.\n\nPlease contact your venue coordinator for an updated link to your wed"
+    },
+    {
+      "name": "Cleanup",
+      "outcome": "PASS",
+      "detail": "deleted QA-TS fixtures"
+    }
+  ],
+  "at": "2026-10-23T16:43:25.844Z"
+}

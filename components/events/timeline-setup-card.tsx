@@ -10,18 +10,8 @@ import { applyClientTimelineTemplateAction } from "@/app/(app)/clients/planning-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { resolveDefaultTimelineTemplateId } from "@/lib/timeline-templates/default-for-event";
 import type { TimelineTemplate } from "@/lib/timeline-templates/types";
-
-/** The venue's marked default for this event type + space, degrading gracefully to a less specific default rather than inventing one the venue hasn't set. Mirrors resolveDefaultTemplateId in booking-setup-card.tsx. */
-function resolveDefaultTimelineTemplateId(templates: TimelineTemplate[], eventType: string | null, spaceId: string | null): string | undefined {
-  const defaults = templates.filter((t) => t.isDefault);
-  return (
-    defaults.find((t) => t.eventType === eventType && t.spaceId === spaceId)
-    ?? defaults.find((t) => t.eventType === eventType && !t.spaceId)
-    ?? defaults.find((t) => !t.eventType && t.spaceId === spaceId)
-    ?? defaults.find((t) => !t.eventType && !t.spaceId)
-  )?.id;
-}
 
 /**
  * Shown once, on a booking with no Timeline yet — disappears permanently as

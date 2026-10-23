@@ -311,7 +311,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               </div>
             </div>
             <p className="-mt-2 text-[11px] text-muted-foreground">
-              Day is relative to the event start (Day 1 = first calendar day). Relative Time is minutes from the event&apos;s start time (negative = before). Time is an optional fixed clock time.
+              Day is relative to the event&apos;s calendar date (Day 1 = event date). Relative Time is minutes from the event&apos;s Day-of schedule Start time when you apply this template — not ceremony, reception, or getting-ready space times. A fixed Time overrides Relative Time. Offsets bake into clock times at apply; changing Start time later does not recalculate existing items.
             </p>
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>

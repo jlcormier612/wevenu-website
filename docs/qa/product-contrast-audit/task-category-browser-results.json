@@ -1,0 +1,124 @@
+{
+  "at": "2026-10-23T16:39:08.766Z",
+  "expectedSha": "df95f7c4c17a3e522396df98df818754994d37b6",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=df95f7c4c17a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6"
+    },
+    {
+      "name": "light-labels-found",
+      "pass": true,
+      "detail": "count=11 sample=[{\"text\":\"Planning\",\"color\":\"rgb(31, 42, 31)\",\"surface\":\"oklab(0.999994 0.0000455678 0.0000200868 / 0.4)\",\"backdrop\":\"rgb(248, 247, 244)\"},{\"text\":\"Document\",\"color\":\"rgb(74, 67, 58)\",\"surface\":\"oklab(0.999994 0.0000455678 0.0000200868 / 0.4)\",\"backdrop\":\"rgb(248, 247, 244)\"},{\"text\":\"Planning\",\"color\":\"rgb(31, 42, 31)\",\"surface\":\"oklab(0.999994 0.0000455678 0.0000200868 / 0.4)\",\"backdrop\":\"rgb(248, 247, 244)\"}]"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-label-planning",
+      "pass": true,
+      "detail": "ratio=14.30 fg=rgb(31, 42, 31) surface=oklab(0.999994 0.0000455678 0.0000200868 / 0.4) bg=rgb(248, 247, 244)"
+    },
+    {
+      "name": "light-category-labels-aa",
+      "pass": true,
+      "detail": "pass=11 fail=0"
+    },
+    {
+      "name": "dark-labels-found",
+      "pass": true,
+      "detail": "count=11 sample=[{\"text\":\"Planning\",\"color\":\"rgb(247, 245, 241)\",\"surface\":\"oklab(0.521358 -0.0288675 0.0202034 / 0.4)\",\"backdrop\":\"rgb(79, 95, 79)\"},{\"text\":\"Document\",\"color\":\"rgb(240, 235, 227)\",\"surface\":\"oklab(0.521358 -0.0288675 0.0202034 / 0.4)\",\"backdrop\":\"rgb(79, 95, 79)\"},{\"text\":\"Planning\",\"color\":\"rgb(247, 245, 241)\",\"surface\":\"oklab(0.521358 -0.0288675 0.0202034 / 0.4)\",\"backdrop\":\"rgb(79, 95, 79)\"}]"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-label-planning",
+      "pass": true,
+      "detail": "ratio=5.69 fg=rgb(247, 245, 241) surface=oklab(0.521358 -0.0288675 0.0202034 / 0.4) bg=rgb(79, 95, 79)"
+    },
+    {
+      "name": "dark-category-labels-aa",
+      "pass": true,
+      "detail": "pass=11 fail=0"
+    },
+    {
+      "name": "dark-planning-not-forest-ink",
+      "pass": true,
+      "detail": "color=rgb(247, 245, 241) avg=244"
+    },
+    {
+      "name": "narrow-dark-shot",
+      "pass": true,
+      "detail": "390"
+    }
+  ],
+  "pass": 23,
+  "fail": 0
+}

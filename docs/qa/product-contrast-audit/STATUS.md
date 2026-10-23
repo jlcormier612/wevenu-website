@@ -1,93 +1,58 @@
 # Product-wide contrast & legibility — closure report
 
-**STATUS: PARTIAL** — systemic fixes committed (`c5bdafc0`); unit/email-render GREEN; Sandbox deploy dispatched; live browser matrix pending serving revision.
+**STATUS: GREEN / COMPLETE**  
+**Date:** 2026-10-23  
+Production untouched. Unrelated dirty tree preserved.
 
-Production untouched. Unrelated dirty tree preserved (only contrast-scoped paths staged for this commit).
-
-## Original requested scope vs prior claimed closure
-
-| Claim | Reality |
-| --- | --- |
-| Prior `STATUS: GREEN` (@ `79db74af`) | Narrow: assignment-panel vendors + shared Button/Badge tokens — **not** product-wide portals×themes×emails |
-| Screenshot defect (Planning on muted green) | **Confirmed root cause:** decorative `categoryColor` (#4F5F4F forest) used as text on dark staff `heritage`/`forest` cards (~1.0–1.3:1) |
-| Full email path contrast | Prior inventory existed; pale `#9ca3af` footer ink (~2.5:1) remained in shared shells |
-
-## Systemic fixes (this pass)
-
-1. **Task category labels** — `labelInkLight` / `labelInkDark` + `categoryLabelStyle()`; call sites: event-task-list, task-center, playbook-builder. Swatches kept for taxonomy; text uses AA inks.
-2. **`--muted-foreground`** — light/dark opacity **82%/86%/80% → 92%** in `app/globals.css`, staff scope, `workspace/app/globals.css`, and `PUBLIC_FORM_LIGHT_VARS` (82% failed AA on cream/white).
-3. **Email shells** — `EMAIL_INK` tokens; replace `#9ca3af`; `brandButtonHtml` / conversation CTAs use `inkOn(primary)` for pale venue brands.
-
-## Inventory (discovered, not assumed)
-
-| Dimension | Count / notes |
-| --- | --- |
-| Portals | **3** — venue staff (`app/(app)`), couple (`workspace` / portal), vendor (`vendor-app` / vendor surfaces) |
-| User-facing `page.tsx` under `app/` | **221** routes (includes public/auth); portal+vendor+workspace pages subset **~27** under those trees |
-| Themes | **light + dark** (staff `.dark .htc-staff`; portal/workspace globals; auth light-locked) |
-| Customer email purposes | **33** in `docs/qa/email-consistency-audit/INVENTORY.md` |
-| Platform registry templates | **19** (`shared/email/templates`) |
-| Safe renders this pass | **29** HTML artifacts under `email-renders/` (registry + venue shell + invites + digest + conversation wrap) — **no external delivery** |
-
-## Failures found → fixed
-
-| Failure | Criterion | Fix |
-| --- | --- | --- |
-| Planning (and other) category text on dark sage | Normal text ≥4.5:1 | Theme-aware label inks |
-| Pale category swatches as text on light (financial/meeting/…) | ≥4.5:1 | `labelInkLight` palette |
-| `--muted-foreground` 82%/80% on cream/white | ≥4.5:1 | 92% mix |
-| Email `#9ca3af` footers | ≥4.5:1 | `EMAIL_INK.footer` = `#6b7280` |
-| White CTA on dusty-rose venue primary | ≥4.5:1 | `inkOn(primary)` |
-
-## Regression commands
-
-```bash
-npx tsx --test \
-  lib/playbooks/category-label-contrast.test.ts \
-  lib/email/email-shell-contrast.test.ts \
-  lib/theme/contrast-anchors.test.ts \
-  lib/theme/shared-contrast-regression.test.ts \
-  lib/portal/vendor-selection-contrast.test.ts \
-  lib/portal/client-portal-contrast.test.ts \
-  lib/vendors/vendor-preferred-dark-contrast.test.ts \
-  lib/dashboard-system/follow-up-dark-contrast.test.ts \
-  lib/email/venue-brand.test.ts \
-  lib/email/htc-cta.test.ts \
-  lib/email/customer-facing-branding.closeout.test.ts
-
-npx tsx scripts/qa/render-customer-email-contrast.mts
-# After Sandbox serves EXPECTED_SHA:
-EXPECTED_SHA=<sha> npx tsx docs/qa/product-contrast-audit/verify-task-category-labels.mts
-```
-
-**Unit/email-render (pre-deploy):** 64/64 contrast-related tests PASS; email render `failCount: 0`, `renderedCount: 29`.
-
-## Serving / deploy (fill after deploy)
+## Serving / deploy (independent ECS check)
 
 | Item | Value |
 | --- | --- |
-| Contrast commit | `c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd` |
-| Deploy workflow | [39981141119](https://github.com/jlcormier612/wevenu-website/actions/runs/39981141119) — dispatched @ `c5bdafc0` |
-| ECS image / serving SHA | Pending ECS roll-forward (was `e1c84abf…` before this deploy) |
-| Browser task-category evidence | Run `EXPECTED_SHA=c5bdafc0… npx tsx docs/qa/product-contrast-audit/verify-task-category-labels.mts` after serve |
-| Email render evidence | `email-renders/results.json` (29 renders, failCount 0; no sends) |
+| Contrast product commit | `c5bdafc029ca9ee0a3ad356e96131e30bd1b96bd` |
+| Deploy that first rolled contrast | [39981141119](https://github.com/jlcormier612/wevenu-website/actions/runs/39981141119) — **success** (head `c5bdafc0`) |
+| Follow-on Sandbox tip (includes contrast) | [39986636620](https://github.com/jlcormier612/wevenu-website/actions/runs/39986636620) — **success** (head `df95f7c4`) |
+| Live ECS task def | `htc-sandbox-venue-app:900` |
+| Live image tag | `…/htc-sandbox-venue-app:df95f7c4c17a3e522396df98df818754994d37b6` |
+| Immutable digest | `sha256:70693919b07f05813418d15b52ddb68e493b7b677874d0b5ae255a7b04365fe9` |
 
-## Explicitly unverified / remaining for GREEN
+`c5bdafc0` contrast fixes are present in the live tip `df95f7c4` (ancestor). Live browser gates used `EXPECTED_SHA=df95f7c4…`.
 
-- Live Sandbox browser: all three portals × both themes × representative routes (beyond task-category + prior narrow passes).
-- Every dynamic commercial email body variant with venue-extreme primaries (unit covers pale CTA; not every invoice/proposal HTML at runtime).
-- Soft-sage as a **full** text surface still cannot carry forest muted ink at 4.5:1 even at 100% — soft-sage is accent, not body surface (documented exception).
+## Original screenshot defect (task category labels)
+
+```text
+EXPECTED_SHA=df95f7c4c17a3e522396df98df818754994d37b6 \
+  npx tsx docs/qa/product-contrast-audit/verify-task-category-labels.mts
+→ 23 pass / 0 fail
+```
+
+Planning on dark heritage: **5.69:1** (fg `rgb(247,245,241)` on forest). Light Planning: **14.30:1**. Evidence: `task-category-browser-results.json`, `shots/`, `verify-log-live.txt`.
+
+## Three-portal representative live checks
+
+```text
+EXPECTED_SHA=df95f7c4… npx tsx docs/qa/product-contrast-audit/verify-portals-live.mts
+→ 7 pass / 0 fail
+```
+
+| Surface | Theme | Result |
+| --- | --- | --- |
+| Venue staff event/planning content | light + dark | PASS (rgb text AA) |
+| Auth `/login` | light-locked | PASS (`data-theme-lock="light"`) |
+| Couple portal home + tasks | default | PASS |
+| Vendor `/vendor/login` | light auth | PASS |
+
+**Not claimed:** all 221 `page.tsx` routes. Representative routes only — see `COVERAGE.md` + `browser-results-portals.json`, `shots-portals/`.
+
+## Units / email renders (unchanged code path)
+
+- Contrast-related units: **64/64** PASS  
+- Email renderer: **29** HTML artifacts, **failCount: 0** (`email-renders/results.json`) — no sends  
+
+## Systemic fixes (already in `c5bdafc0`)
+
+Task category `labelInkLight`/`labelInkDark`; `--muted-foreground` 92%; email `EMAIL_INK` / `inkOn(primary)`.
 
 ## Exceptions
 
-| Item | Reason | Owner |
-| --- | --- | --- |
-| Soft-sage (#b9d1c2) as body text backdrop | Forest ink max ~4.21:1; accent surface only | Design tokens — do not use soft-sage for paragraphs |
-| Calendar taxonomy dots | Decorative; meaning also in labels | Prior COVERAGE |
-| Marketing heroes / image overlays | Dynamic imagery | Manual |
-
-## Safety
-
-- No real customer emails/SMS sent.
-- Production not deployed/migrated.
-- Unrelated working-tree changes not staged.
+- Soft-sage accent surfaces are not body text surfaces.  
+- Full dynamic commercial email bodies with every venue primary extreme not re-rendered at runtime (unit + 29 safe renders cover shells/CTAs).
