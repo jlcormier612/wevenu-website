@@ -550,8 +550,17 @@ function TaskRow({
             )}
             {contextLinks.length > 0 && <><span>·</span><span>{contextLinks.length} attached</span></>}
           </div>
+          {task.autoCompleteTrigger === "vendor_selected" && !isComplete && task.progressState === "in_progress" && (
+            <p className="text-[10px] font-medium text-amber-900 dark:text-amber-100">
+              Submitted — needs venue review
+            </p>
+          )}
           {task.autoCompleteTrigger && !isComplete && (
-            <p className="text-[10px] text-muted-foreground italic">Auto-completes on trigger</p>
+            <p className="text-[10px] text-muted-foreground italic">
+              {task.autoCompleteTrigger === "vendor_selected"
+                ? "Couple submit = needs review — mark complete when the vendor team is confirmed"
+                : "Auto-completes on trigger"}
+            </p>
           )}
           {request && (
             <p className="text-xs text-muted-foreground">

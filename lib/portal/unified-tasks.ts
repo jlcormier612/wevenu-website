@@ -120,7 +120,8 @@ const TRIGGER_WORKSPACE: Record<
   { section: UnifiedTaskTargetSection; actionLabel: string; focus: PortalWorkspaceFocus | null }
 > = {
   guest_count_finalized: { section: "guests", actionLabel: "Submit guest count", focus: "finalize" },
-  vendor_selected: { section: "vendors", actionLabel: "Add vendors", focus: "pick" },
+  // Trigger routes here; submit does not complete the task (venue confirms).
+  vendor_selected: { section: "vendors", actionLabel: "Review vendors", focus: "pick" },
   seating_submitted: { section: "seating", actionLabel: "Submit seating", focus: "submit" },
   timeline_submitted: { section: "timeline", actionLabel: "Submit timeline", focus: "submit" },
   contract_signed: { section: "documents", actionLabel: "Review & sign", focus: "sign" },

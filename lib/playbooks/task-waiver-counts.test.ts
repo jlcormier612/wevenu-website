@@ -24,6 +24,7 @@ function task(overrides: Partial<EventTask> & Pick<EventTask, "id" | "status" | 
     autoCompleteTrigger: null,
     paymentLineItemId: null,
     isRequired: true,
+    progressState: null,
     dependsOnEventTaskId: null,
     dependsOnTitle: null,
     completedAt: null,

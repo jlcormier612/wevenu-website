@@ -103,7 +103,9 @@ export const AUTO_COMPLETE_TRIGGERS: { value: string; label: string }[] = [
   { value: "timeline_created",      label: "Timeline entries added" },
   { value: "timeline_submitted",    label: "Client submits their timeline" },
   { value: "floor_plan_created",    label: "Floor plan created" },
-  { value: "vendor_selected",       label: "Client chooses a recommended vendor" },
+  // Routing / portal workspace only — submit_vendor_list must NOT auto-complete.
+  // Venue marks Complete when the vendor team is confirmed.
+  { value: "vendor_selected",       label: "Vendor selection (couple submits; venue confirms)" },
 ];
 
 // "blocked" remains in the union for schema/history compatibility only.
@@ -245,7 +247,7 @@ export const STANDARD_CLIENT_PLANNING_MILESTONES: SeedMilestone[] = [
 export const STANDARD_CLIENT_PLANNING_TASKS: SeedTask[] = [
   { ...R, title: "Complete your questionnaire", description: "Tell us about your vision for the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -90, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "questionnaire_submitted", isRequired: true, sortOrder: 0, dependsOnTaskId: null },
   { ...R, title: "Purchase event insurance", description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -60, category: "document", milestoneIndex: 0, autoCompleteTrigger: "document_uploaded_insurance", isRequired: true, sortOrder: 1, dependsOnTaskId: null },
-  { ...R, title: "Choose your vendors",      description: "Pick the vendors you'd like to work with, then submit your list so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -45, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "vendor_selected", isRequired: false, sortOrder: 2, dependsOnTaskId: null },
+  { ...R, title: "Choose your vendors",      description: "Pick vendors and submit your list. Your venue reviews and confirms the team — submitting an update does not finish this task by itself.", ownerType: "couple", visibility: "client_owned", daysOffset: -45, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "vendor_selected", isRequired: false, sortOrder: 2, dependsOnTaskId: null },
   { ...R, title: "Submit your guest count",  description: "We need your final headcount to plan seating, catering, and rentals.", ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "guest_count_finalized", isRequired: true, sortOrder: 3, dependsOnTaskId: null },
   { ...R, title: "Submit your seating plan", description: "Arrange your tables, then submit your seating plan so your venue has it for the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -21, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "seating_submitted", isRequired: true, sortOrder: 4, dependsOnTaskId: null },
   { ...R, title: "Submit your timeline",     description: "Plan your Timeline, then submit it so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -14, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "timeline_submitted", isRequired: true, sortOrder: 5, dependsOnTaskId: null },

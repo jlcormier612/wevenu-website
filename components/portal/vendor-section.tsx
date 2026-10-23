@@ -12,8 +12,9 @@
  *
  * Commitment Alignment: picks stay private (picked_at) until Submit, which
  * reveals selected_at to the venue, creates event_vendor_assignments
- * (venue↔vendor + couple↔vendor conversations + vendor email), and completes
- * the "Choose your vendors" task.
+ * (venue↔vendor + couple↔vendor conversations + vendor email), and advances
+ * "Choose your vendors" to needs-review (progress_state in_progress). Submit
+ * does not mark that task complete — the venue confirms the vendor team.
  *
  * Messaging: once assigned, couples open a dedicated couple↔vendor thread
  * from this section. Venue↔vendor ops stay separate.
@@ -910,8 +911,8 @@ export function VendorSection({ token, clientId, venueName, eventDate: eventDate
         } else {
           toast.success(
             n > 0
-              ? `Your vendors are submitted — ${venueName} and the vendors have been notified.`
-              : "Your vendor list is submitted — your venue can see it now.",
+              ? `List submitted to ${venueName} — they will review and confirm your vendor team.`
+              : `List submitted to ${venueName} — they can see it and will confirm when ready.`,
           );
         }
         setConfirmingSubmit(false);

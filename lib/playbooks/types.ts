@@ -161,6 +161,12 @@ export type EventTask = {
   paymentLineItemId: string | null;
   isRequired: boolean;
   status: TaskStatus;
+  /**
+   * Intermediate work for tasks that use it (e.g. vendor_selected:
+   * not_started → in_progress after couple submit → complete when venue confirms).
+   * Null = binary pending/complete task.
+   */
+  progressState: "not_started" | "in_progress" | "complete" | null;
   /** @deprecated Compatibility only — always null in product paths. Planning has no task dependencies. */
   dependsOnEventTaskId: string | null;
   /** @deprecated Compatibility only — always null in product paths. */
