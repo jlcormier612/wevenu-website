@@ -248,7 +248,10 @@ export function EventOrderPanel({
   async function runFinalize(eventOrderId: string) {
     const result = await finalizeEventOrderAction(eventOrderId, scopeId);
     if (!result.ok) toast.error(result.message ?? "Could not finalize.");
-    else toast.success("Event Order finalized.");
+    else {
+      toast.success("Event Order finalized.");
+      refresh();
+    }
   }
 
   async function runShare(eventOrderId: string, message: string) {
