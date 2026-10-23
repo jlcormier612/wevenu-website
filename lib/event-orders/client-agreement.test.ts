@@ -13,11 +13,24 @@ function read(path: string) {
 }
 
 describe("Event Order client agreement", () => {
-  it("migration adds agreement columns and accept RPC", () => {
-    const mig = read("supabase/migrations/20261401000000_event_order_client_agreement.sql");
+  it("forward repair migration adds agreement columns and accept RPC", () => {
+    const mig = read("supabase/migrations/20261422800000_event_order_client_agreement.sql");
     assert.match(mig, /client_agreed_at/);
     assert.match(mig, /accept_event_order_for_portal/);
-    assert.match(mig, /client_agreed/);
+    assert.match(mig, /client_agreed_revision/);
+    assert.match(mig, /add column if not exists client_agreed_at/);
+  });
+
+  it("agreement migration version does not collide with pgrst recover timestamp", () => {
+    const { readdirSync } = require("node:fs") as typeof import("node:fs");
+    const agreement = readdirSync("supabase/migrations").filter((f: string) =>
+      f.includes("event_order_client_agreement"),
+    );
+    assert.deepEqual(agreement, ["20261422800000_event_order_client_agreement.sql"]);
+    const at010 = readdirSync("supabase/migrations").filter((f: string) =>
+      f.startsWith("20261401000000_"),
+    );
+    assert.deepEqual(at010, ["20261401000000_sandbox_pgrst_recover.sql"]);
   });
 
   it("reopen clears client agreement fields", () => {

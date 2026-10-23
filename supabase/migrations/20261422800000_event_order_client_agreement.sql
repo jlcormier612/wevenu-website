@@ -1,6 +1,9 @@
--- Event Order client agreement (distinct from venue finalize + share).
--- Share delivers a reviewable snapshot; client_agreed_at records mutual agreement.
--- Reopen clears agreement so a deliberate re-share + re-agree path is required.
+-- Forward repair: Event Order client agreement.
+-- Root cause: version 20261401000000 was already consumed by
+-- 20261401000000_sandbox_pgrst_recover.sql (PostgREST cache recovery), so the
+-- earlier sibling file could not be applied. This migration is the sole
+-- authoritative apply for agreement columns + portal accept RPC.
+-- Idempotent: ADD COLUMN IF NOT EXISTS; CREATE OR REPLACE / DROP+CREATE functions.
 
 alter table public.event_orders
   add column if not exists client_agreed_at timestamptz;
