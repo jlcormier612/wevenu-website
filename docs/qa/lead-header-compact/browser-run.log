@@ -1,0 +1,28 @@
+PASS serving-sha — expected=c2f4c39d6313 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:c2f4c39d6313118ffa5fa1114127d0f821bcced7
+PASS fixture-lead — leadId=907693d8-2694-4bd4-8de7-1fcbfd748848
+PASS desktop-sales-section-present — salesH=117.875 rowH=66.875
+PASS desktop-sales-compact-height — height=117.875
+PASS desktop-owner-present — staff assignment
+PASS desktop-hold-band — date-hold-compact-band
+PASS desktop-divider — owner-hold divider
+PASS desktop-owner-hold-same-row — owner={"x":321.875,"y":312.96875,"w":330.96875,"h":34} hold={"x":704.84375,"y":312.96875,"w":516.78125,"h":34} midDelta=0
+PASS protection-status-visible — unprotected=true active=false headline=Not protected
+PASS unprotected-copy — Not protected
+PASS unprotected-detail — No active hold is protecting this event date.
+PASS place-hold-cta — place=1
+PASS management-row — PIPELINE STAGE
+
+New Inquiry
+Change stage
+Edit
+Merge lead
+Delete
+Archive
+PASS next-actions-row — Schedule Tour
+Start booking file
+PASS desktop-no-horizontal-overflow — {"scrollWidth":932,"clientWidth":932}
+PASS narrow-sales-present — salesH=156.125
+PASS narrow-no-page-overflow — {"scrollWidth":390,"clientWidth":390}
+PASS narrow-actions-readable — rows present at 390
+
+18 pass / 0 fail
