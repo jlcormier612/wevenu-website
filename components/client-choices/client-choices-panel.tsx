@@ -13,18 +13,21 @@ import {
   requestClientChoicesChangesAction,
   reviseClientChoicesAction,
   sendClientChoicesAction,
+  sendClientChoicesRequestAction,
 } from "@/app/(app)/events/[id]/client-choices-actions";
 import {
   addSelectionsToExistingInvoiceAction,
   createInvoiceFromEventOrderAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
 import { ChoicesDefinitionView } from "@/components/client-choices/choices-definition-view";
+import { ShareDialog } from "@/components/sharing/share-dialog";
 import {
   eventOrderApplyConfirmMessage,
   eventOrderApplyLabel,
 } from "@/lib/client-choices/event-order-apply-cta";
 import { financialImpactCopy } from "@/lib/client-choices/selections-billing";
 import type { SelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
+import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -45,6 +48,14 @@ import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
 
 export { eventOrderApplyConfirmMessage, eventOrderApplyLabel };
 
+type ShareRecipientProps = {
+  clientName?: string | null;
+  clientEmail?: string | null;
+  venueName?: string | null;
+  eventName?: string | null;
+  eventDate?: string | null;
+};
+
 function summarizeAnswers(row: ClientChoices): string {
   const parts: string[] = [];
   for (const group of row.definition.groups) {
@@ -62,10 +73,12 @@ function ChoicesRow({
   eventId,
   row,
   hasEventOrder,
+  shareContext,
 }: {
   eventId: string;
   row: ClientChoicesWithHistory | ClientChoices;
   hasEventOrder: boolean;
+  shareContext: ShareRecipientProps;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -73,6 +86,8 @@ function ChoicesRow({
   const [showNote, setShowNote] = React.useState(false);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [reviewOpen, setReviewOpen] = React.useState(false);
+  const [shareOpen, setShareOpen] = React.useState(false);
+  const [sendingRequest, setSendingRequest] = React.useState(false);
   const actor = clientChoicesNextActor(row.status);
   const submissions = "submissions" in row ? row.submissions : [];
   const needsReview = isClientChoicesNeedsVenueReview(row.status);
@@ -82,6 +97,52 @@ function ChoicesRow({
     eventOrderId: row.eventOrderId,
     appliedLineIds,
   });
+  const canEmailRequest = row.status === "draft" || row.status === "sent" || row.status === "in_progress";
+  const shareRecipient = shareContext.clientName
+    ? {
+        name: shareContext.clientName,
+        contact: shareContext.clientEmail ?? null,
+        relationshipLabel: "Client",
+      }
+    : null;
+  const shareDefaultMessage = mergeContent(
+    "Please review and submit your selections for {{event_name}} when you have a moment.",
+    buildMergeData({
+      venueName: shareContext.venueName ?? "Your venue",
+      clientName: shareContext.clientName ?? "",
+      coordinatorName: shareContext.venueName ?? "",
+      eventDate: shareContext.eventDate ?? null,
+      eventName: shareContext.eventName ?? "",
+    }),
+  );
+
+  async function runSelectionRequest(message: string) {
+    if (sendingRequest) {
+      return { ok: false as const, message: "Already sending — wait for this request to finish." };
+    }
+    setSendingRequest(true);
+    try {
+      const r = await sendClientChoicesRequestAction(eventId, row.id, message);
+      if (!r.ok) {
+        return { ok: false as const, message: r.message ?? "Could not send the selection request." };
+      }
+      router.refresh();
+      if (!r.email.submitted) {
+        toast.message("Available in the couple’s portal. Email was not submitted.");
+        return {
+          ok: false as const,
+          message: r.email.message
+            ?? "Available in the portal, but the email was not submitted. You can retry.",
+        };
+      }
+      toast.success(
+        r.email.message ?? "Selection request email submitted. Delivery is confirmed separately.",
+      );
+      return { ok: true as const };
+    } finally {
+      setSendingRequest(false);
+    }
+  }
 
   return (
     <div
@@ -132,25 +193,50 @@ function ChoicesRow({
               Review submission
             </Button>
           ) : null}
-          {row.status === "draft" ? (
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending}
-              data-testid="choices-send-to-client"
-              onClick={() => startTransition(async () => {
-                const r = await sendClientChoicesAction(eventId, row.id);
-                if (!r.ok) toast.error(r.message ?? "Could not open in portal.");
-                else {
-                  toast.success(
-                    "Available in the couple’s portal (task created). No email was sent.",
-                  );
+          {canEmailRequest ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                data-testid="choices-send-selection-request"
+                onClick={() => setShareOpen(true)}
+              >
+                {row.status === "draft" ? "Send selection request" : "Resend selection request"}
+              </Button>
+              <ShareDialog
+                open={shareOpen}
+                onOpenChange={setShareOpen}
+                title={row.status === "draft" ? "Send selection request" : "Resend selection request"}
+                recipient={shareRecipient}
+                whatHappensNext="They'll open their portal, review the options you offered, and submit their choices. This emails a secure link — it does not share a final Event Order or change booking status."
+                defaultMessage={shareDefaultMessage}
+                sendLabel={row.status === "draft" ? "Send" : "Resend"}
+                onSend={(message) => runSelectionRequest(message)}
+                onSent={() => {
+                  setShareOpen(false);
                   router.refresh();
-                }
-              })}
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Make available in portal"}
-            </Button>
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pending || sendingRequest}
+                data-testid="choices-portal-only"
+                onClick={() => startTransition(async () => {
+                  const r = await sendClientChoicesAction(eventId, row.id);
+                  if (!r.ok) toast.error(r.message ?? "Could not open in portal.");
+                  else {
+                    toast.success(
+                      "Available in the couple’s portal (task created). No email was sent.",
+                    );
+                    router.refresh();
+                  }
+                })}
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Make available in portal"}
+              </Button>
+            </>
           ) : null}
           {needsReview ? (
             <>
@@ -203,30 +289,13 @@ function ChoicesRow({
               onClick={() => startTransition(async () => {
                 const r = await reviseClientChoicesAction(eventId, row.id);
                 if (!r.ok) toast.error(r.message ?? "Could not start the amendment.");
-                else { toast.success("Amendment started. Send to the client when ready."); router.refresh(); }
-              })}
-            >
-              Amend
-            </Button>
-          ) : null}
-          {(row.status === "sent" || row.status === "in_progress") ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => startTransition(async () => {
-                const r = await sendClientChoicesAction(eventId, row.id);
-                if (!r.ok) toast.error(r.message ?? "Could not record reminder.");
                 else {
-                  toast.success(
-                    "Portal reminder recorded. No email was sent.",
-                  );
+                  toast.success("Amendment started. Send a selection request when ready.");
                   router.refresh();
                 }
               })}
             >
-              Remind in portal
+              Amend
             </Button>
           ) : null}
         </div>
@@ -301,7 +370,8 @@ function ChoicesRow({
             <DialogTitle>Couple view preview</DialogTitle>
             <DialogDescription>
               Same choice packet the couple sees in their portal. Selections shown are the current
-              answers on this packet (empty until they respond). This is a preview — it does not send.
+              answers on this packet (empty until they respond). This is a preview — it does not
+              send email or change request status.
             </DialogDescription>
           </DialogHeader>
           <ChoicesDefinitionView definition={row.definition} answers={row.answers} mode="preview" />
@@ -407,6 +477,11 @@ export function ClientChoicesPanel({
   financialImpact = null,
   hasEventOrder = false,
   showFinancialImpact = true,
+  clientName = null,
+  clientEmail = null,
+  venueName = null,
+  eventName = null,
+  eventDate = null,
 }: {
   eventId: string;
   /** Selectable Event Order Templates (preferred authoring source). */
@@ -417,20 +492,32 @@ export function ClientChoicesPanel({
   hasEventOrder?: boolean;
   /** False when the Event Order panel already owns the invoice handoff. */
   showFinancialImpact?: boolean;
+  clientName?: string | null;
+  clientEmail?: string | null;
+  venueName?: string | null;
+  eventName?: string | null;
+  eventDate?: string | null;
 }) {
   const router = useRouter();
   const [templateId, setTemplateId] = React.useState(eventOrderTemplates[0]?.id ?? "");
   const [pending, startTransition] = React.useTransition();
+  const shareContext: ShareRecipientProps = {
+    clientName,
+    clientEmail,
+    venueName,
+    eventName,
+    eventDate,
+  };
 
   return (
     <Card className="mb-4" data-testid="client-choices-panel">
       <CardHeader>
         <CardTitle className="text-base">Client selections</CardTitle>
         <CardDescription>
-          Selectable packets (menus, add-ons, rentals) for the couple. Fixed and included lines are
-          authored on the Event Order. After they submit, use Create Event Order (or Update Event
-          Order from selections). Making a packet available opens their portal task — it does not
-          send email. Inventory is operational and separate.
+          Selectable packets for the couple. Use Send selection request to email a secure portal
+          link (ShareDialog). Make available in portal opens the task without email. After they
+          submit, Create or Update the Event Order. Sharing a final Event Order is a separate step
+          on the Event Order document.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -487,6 +574,7 @@ export function ClientChoicesPanel({
                 eventId={eventId}
                 row={c}
                 hasEventOrder={hasEventOrder}
+                shareContext={shareContext}
               />
             ))}
             {showFinancialImpact

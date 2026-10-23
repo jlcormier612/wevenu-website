@@ -176,6 +176,11 @@ export function EventCommercialWorkflow({
           financialImpact={showFinancialImpact ? financialImpact : null}
           hasEventOrder={Boolean(eventOrder)}
           showFinancialImpact={showFinancialImpact}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          venueName={venueName}
+          eventName={overview.eventName}
+          eventDate={overview.eventDate}
         />
       </StageSection>
 

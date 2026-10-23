@@ -109,13 +109,14 @@ describe("Stage 0 workflow composition source", () => {
     assert.match(workflow, /EventOrderPanel/);
   });
 
-  it("portal availability CTA does not claim email send", () => {
+  it("portal-only CTA remains distinct from email send", () => {
     const panel = readFileSync(
       resolve("components/client-choices/client-choices-panel.tsx"),
       "utf8",
     );
     assert.match(panel, /Make available in portal/);
+    assert.match(panel, /choices-portal-only/);
     assert.match(panel, /No email was sent/);
-    assert.doesNotMatch(panel, /Sent to client\./);
+    assert.match(panel, /Send selection request/);
   });
 });

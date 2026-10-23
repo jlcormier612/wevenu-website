@@ -9,6 +9,7 @@ import {
   requestClientChoicesChanges,
   reviseClientChoices,
   sendClientChoices,
+  sendClientChoicesRequest,
   updateClientChoicesDraft,
 } from "@/lib/client-choices/service";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
@@ -51,6 +52,17 @@ export async function updateClientChoicesDraftAction(
 
 export async function sendClientChoicesAction(eventId: string, choicesId: string) {
   const result = await sendClientChoices(choicesId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** P2-C — portal availability + selection-request email via ShareDialog. */
+export async function sendClientChoicesRequestAction(
+  eventId: string,
+  choicesId: string,
+  customMessage?: string | null,
+) {
+  const result = await sendClientChoicesRequest(choicesId, customMessage);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

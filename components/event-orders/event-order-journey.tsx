@@ -31,9 +31,9 @@ export function EventOrderJourney({
       </h2>
       <p className="mt-2 text-sm font-medium text-heading">Commercial journey for this booked event</p>
       <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-        Build selectable packets and fixed lines, open the request in the couple&apos;s portal, apply
-        their response to the Event Order, share the final document, then invoice. Inventory stays on
-        its own card and tab — not part of this billable path.
+        Build selectable packets and fixed lines, send the selection request, apply their response to
+        the Event Order, share the final document, then invoice. Inventory stays on its own card and
+        tab — not part of this billable path.
       </p>
 
       <ul className="mt-4 divide-y divide-border" data-testid="event-order-journey-rows">

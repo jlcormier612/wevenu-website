@@ -24,6 +24,7 @@ import type {
   ClientChoicesWithHistory,
   CreateClientChoicesResult,
   FinalizeClientChoicesResult,
+  SendClientChoicesRequestResult,
 } from "@/lib/client-choices/types";
 import * as eoTemplatesRepo from "@/lib/event-order-templates/repository";
 import {
@@ -201,9 +202,9 @@ export async function sendClientChoices(choicesId: string): Promise<ClientChoice
         status: "sent",
         sent_at: new Date().toISOString(),
       });
-      await repo.insertActivity(supabase, venueId, choicesId, "sent", "Sent to client");
+      await repo.insertActivity(supabase, venueId, choicesId, "sent", "Made available in portal");
     } else if (row.status === "sent" || row.status === "in_progress") {
-      await repo.insertActivity(supabase, venueId, choicesId, "resent", "Re-sent reminder to client");
+      await repo.insertActivity(supabase, venueId, choicesId, "resent", "Portal reminder recorded");
     } else {
       return { ok: false, message: "These choices cannot be sent in their current status." } as ClientChoicesActionResult;
     }
@@ -213,6 +214,90 @@ export async function sendClientChoices(choicesId: string): Promise<ClientChoice
     return { ok: true } as ClientChoicesActionResult;
   });
   return result as ClientChoicesActionResult;
+}
+
+/**
+ * P2-C — Make available in portal (sendClientChoices), then submit selection-request email.
+ * Email failure does not roll back portal status/task. Never reports email success from portal alone.
+ */
+export async function sendClientChoicesRequest(
+  choicesId: string,
+  customMessage?: string | null,
+): Promise<SendClientChoicesRequestResult> {
+  const portal = await sendClientChoices(choicesId);
+  if (!portal.ok) {
+    return { ok: false, message: portal.message };
+  }
+
+  const result = await withVenue(async (supabase, venueId) => {
+    const row = await repo.getById(supabase, venueId, choicesId);
+    if (!row) {
+      return {
+        ok: true as const,
+        portalReady: true as const,
+        email: {
+          submitted: false,
+          state: "not_submitted" as const,
+          message: "Available in the portal, but the choices record could not be reloaded for email.",
+        },
+      };
+    }
+
+    const { getEvent } = await import("@/lib/events/service");
+    const event = await getEvent(row.eventId);
+    if (!event?.clientId) {
+      await repo.insertActivity(
+        supabase, venueId, choicesId, "email_not_submitted",
+        "Selection email not submitted — no client on event",
+      );
+      return {
+        ok: true as const,
+        portalReady: true as const,
+        email: {
+          submitted: false,
+          state: "not_submitted" as const,
+          message:
+            "The request is available in the portal, but this event has no client, so the selection email was not sent.",
+        },
+      };
+    }
+
+    const { submitClientChoicesCoupleEmail } = await import("@/lib/client-choices/couple-email");
+    const email = await submitClientChoicesCoupleEmail({
+      supabase,
+      venueId,
+      choicesId,
+      choicesName: row.name,
+      eventId: row.eventId,
+      eventName: event.name ?? null,
+      clientId: event.clientId,
+      customMessage,
+    });
+
+    await repo.insertActivity(
+      supabase,
+      venueId,
+      choicesId,
+      email.submitted ? "email_submitted" : "email_not_submitted",
+      email.submitted
+        ? "Selection request email submitted"
+        : "Selection request email not submitted",
+      email.message,
+    );
+
+    return {
+      ok: true as const,
+      portalReady: true as const,
+      email: {
+        submitted: email.submitted,
+        state: email.state,
+        message: email.message,
+        recipient: email.recipient,
+      },
+    };
+  });
+
+  return result as SendClientChoicesRequestResult;
 }
 
 export async function requestClientChoicesChanges(

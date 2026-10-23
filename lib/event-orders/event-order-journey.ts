@@ -82,17 +82,17 @@ function selectionsState(choices: EventOrderJourneyInput["choices"]): {
     return {
       state: clientChoicesDisplayLabel(awaiting.status),
       detail:
-        "Available in the couple’s portal (portal task). This stage does not send email until the delivery step is built.",
-      primaryLabel: "Open selections",
+        "Waiting on the couple. Resend the selection request email, or open selections below to remind in the portal only.",
+      primaryLabel: "Resend selection request",
     };
   }
   const draft = choices.find((c) => c.status === "draft");
   if (draft) {
     return {
-      state: "Draft — not in portal yet",
+      state: "Draft — not sent yet",
       detail:
-        "When ready, make the packet available in the couple’s portal. That opens the portal task; it does not email them yet.",
-      primaryLabel: "Open selections",
+        "Send a selection request to email a secure portal link. Make available in portal opens the task without email.",
+      primaryLabel: "Send selection request",
     };
   }
   if (choices.every((c) => c.status === "finalized")) {

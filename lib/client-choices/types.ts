@@ -112,6 +112,20 @@ export type ClientChoicesActionResult =
   | { ok: true }
   | { ok: false; message?: string; errors?: Record<string, string> };
 
+/** Portal availability + optional email submit (P2-C). Email never implied by portal alone. */
+export type SendClientChoicesRequestResult =
+  | {
+      ok: true;
+      portalReady: true;
+      email: {
+        submitted: boolean;
+        state: "submitted" | "not_submitted";
+        message?: string;
+        recipient?: string;
+      };
+    }
+  | { ok: false; message?: string };
+
 export type CreateClientChoicesResult =
   | { ok: true; choicesId: string }
   | { ok: false; message?: string };
