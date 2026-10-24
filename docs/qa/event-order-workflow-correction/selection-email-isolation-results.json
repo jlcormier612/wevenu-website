@@ -1,0 +1,69 @@
+{
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a",
+  "digest": "sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe",
+  "eoBefore": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-24T02:24:06.106+00:00",
+    "client_agreed_at": null,
+    "finalized_at": "2026-10-24T03:22:06.683+00:00",
+    "revision": 18
+  },
+  "eventBefore": {
+    "status": "confirmed",
+    "booked_at": "2026-10-22"
+  },
+  "invBefore": 1,
+  "checks": [
+    {
+      "name": "serving-image",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe"
+    },
+    {
+      "name": "send-cta",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "selection-email-accepted",
+      "pass": true,
+      "detail": "{\"status\":\"accepted\",\"provider_id\":\"01a16c0e-be46-7428-8304-c7b71b79bb08\",\"sent_at\":\"2026-10-24T03:57:48.052375+00:00\",\"sourceType\":\"client_choices_request\"}"
+    },
+    {
+      "name": "selection-url-is-choices",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices"
+    },
+    {
+      "name": "shared-at-unchanged",
+      "pass": true,
+      "detail": "before=2026-10-24T02:24:06.106+00:00 after=2026-10-24T02:24:06.106+00:00"
+    },
+    {
+      "name": "client-agreed-still-null",
+      "pass": true,
+      "detail": "null"
+    },
+    {
+      "name": "eo-status-unchanged-by-send",
+      "pass": true,
+      "detail": "finalized->finalized"
+    },
+    {
+      "name": "invoice-count-unchanged",
+      "pass": true,
+      "detail": "1->1"
+    },
+    {
+      "name": "booking-unchanged",
+      "pass": true,
+      "detail": "{\"before\":{\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\"},\"after\":{\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\"}}"
+    },
+    {
+      "name": "link-opens-choices-not-eo-accept",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception\nCeremony + Reception\nCeremony + Reception\nCeremony + Reception\nCere"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+PASS serving-image — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe
+PASS send-cta — count=1
+PASS selection-email-accepted — {"status":"accepted","provider_id":"01a16c0e-be46-7428-8304-c7b71b79bb08","sent_at":"2026-10-24T03:57:48.052375+00:00","sourceType":"client_choices_request"}
+PASS selection-url-is-choices — https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices
+PASS shared-at-unchanged — before=2026-10-24T02:24:06.106+00:00 after=2026-10-24T02:24:06.106+00:00
+PASS client-agreed-still-null — null
+PASS eo-status-unchanged-by-send — finalized->finalized
+PASS invoice-count-unchanged — 1->1
+PASS booking-unchanged — {"before":{"status":"confirmed","booked_at":"2026-10-22"},"after":{"status":"confirmed","booked_at":"2026-10-22"}}
+PASS link-opens-choices-not-eo-accept — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+9+
+🏠
+Home
+✅
+Tasks
+9
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Select options your venue asked for. Submitting sends them for review — it is not a payment.
+
+Ceremony + Reception
+Ceremony + Reception
+Ceremony + Reception
+Ceremony + Reception
+Cere
+
+GREEN 10/10

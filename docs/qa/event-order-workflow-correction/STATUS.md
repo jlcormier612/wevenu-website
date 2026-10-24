@@ -1,64 +1,47 @@
-# Event Order workflow — commercial experience reuse
+# Event Order selection request vs Event Order share
 
 ## Status
 
-**IN PROGRESS — deployed commit pending Sandbox serve + E2E**
+**GREEN for selection-email isolation** (proven on live Sandbox).  
+Composer deploy `3ad50017` is a separate in-progress image; isolation does not depend on that SHA.
 
-Product implementation is on `2bdb49e4`. Sandbox deploy dispatched; browser GREEN is not claimed until the serving image matches and the full journey harness passes.
+## Forensic verdict
 
-## Implementation commit
+Sending **Send selection request** emails a secure Choices link via the same `sendEmail` + conversation outbound path as proposals. It does **not** share, finalize, or accept the Event Order.
 
-| Item | Value |
-| --- | --- |
-| Commit | `2bdb49e4eb2ed49f78001f234e1672a92e7346d8` |
-| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40059994727 |
-| Branch | `feat/spaces-booking-e1-smart-fields` |
+The portal **Shared** / **Accept this Event Order** UI on fixture `ebf74f77-…` is a **pre-existing** shared Event Order (`shared_at` `2026-10-24T02:24:06Z` from an earlier explicit Share). Ten+ later selection sends left `shared_at` unchanged. `client_agreed_at` remains null.
 
-Production was not deployed.
+Details: `SELECTION-VS-SHARE.md`, `selection-vs-share-probe.json`, `selection-email-isolation-results.json`.
 
-## What changed (product)
-
-### Reused commercial patterns
-
-| Lead → Booked pattern | Event Order reuse |
-| --- | --- |
-| CreateProposalSheet / RH preview | `ClientChoicesPanel` two-column composer + `EventOrderTemplatePreviewView` / `ChoicesDefinitionView` |
-| ArtifactReviewOverlay send preview | Full selection-request preview before ShareDialog |
-| ShareDialog send | Unchanged `sendClientChoicesRequest` + ShareDialog |
-| CommercialFacts meaningful CTAs | `EventOrderJourney` — never generic "View" |
-| Create contract → invoice | Finalize Event Order (no signature) → Create invoice & payment plan |
-| Invoice / payment plan engine | Existing `createInvoiceFromEventOrderAction` + payments UI |
-
-### Stages
-
-1. **Client selections** — template dropdown, RH full template preview (categories, fixed/included, prices, choice groups), prepare packet, ArtifactReviewOverlay full send preview, one Send selection request. Fixed lines freeze into `ChoicesDefinition.fixedLines` so the couple sees complete context.
-2. **Event Order** — Review selections → apply → Review Event Order → Finalize Event Order. Signature / share is optional and not an invoice gate.
-3. **Invoice & payments** — Create / Open invoice & payment plan labels; existing financial path preserved (`da1b04cf` billable reconciliation).
-
-## Unit tests (local)
-
-```text
-npx tsx --test lib/events/event-order-journey-stage0.test.ts \
-  lib/events/event-commercial-workflow-p2b.test.ts \
-  lib/event-order-templates/selection-definition.test.ts \
-  lib/client-choices/couple-email.test.ts
-→ pass
-```
-
-## E2E (required for GREEN)
-
-```text
-EXPECTED_SHA=2bdb49e4eb2ed49f78001f234e1672a92e7346d8 npx tsx docs/qa/event-order-workflow-correction/verify-browser.mts
-```
-
-Run only after deploy success and serving image tag/digest match `2bdb49e4…`.
-
-## Prior billing GREEN (preserve)
+## Live isolation proof (this turn)
 
 | Item | Value |
 | --- | --- |
-| Billing fix | `da1b04cfd6761c77ec89de81bc2e0609d7852231` |
-| Digest (historical) | `sha256:272529ddc58671f2014c711d2c18d88a4fbba618c2851123b5396842e9986363` |
-| Payable | $2,266.31 |
+| Serving image | `htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a` |
+| Digest | `sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe` |
+| Harness | `verify-selection-email-isolation.mts` → **GREEN 10/10** |
+| Email | `status=accepted`, `sourceType=client_choices_request`, Resend `01a16c0e-…` |
+| URL (redacted) | `https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices` |
+| Link opens | **Your Choices** (not Accept this Event Order) |
+| `shared_at` | unchanged `2026-10-24T02:24:06.106Z` |
+| `client_agreed_at` | null |
+| Invoices | 1 → 1 |
+| Booking | `confirmed` / `booked_at` 2026-10-22 unchanged |
 
-Do not regress billable vs delivery subtotal semantics.
+Shots: `shots/isolation-send-dialog-1280.png`, `shots/isolation-selection-link-1280.png`.
+
+## Code / tests
+
+- Path: ShareDialog → `sendClientChoicesRequest` → `sendClientChoices` + `submitClientChoicesCoupleEmail` (mirrors proposal couple email).
+- No call to `shareEventOrderWithClient` / `setSharedAt`.
+- Regression: `lib/client-choices/selection-request-lifecycle.test.ts` (pass).
+- Full journey harness now asserts isolation before any intentional Share.
+
+## Follow-up deploy (composer typefix)
+
+| Item | Value |
+| --- | --- |
+| Commit | `3ad50017c386282f2f0f0437aa3f7af119f88e32` |
+| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40060379987 (in progress at report time) |
+
+Fixes `ChoicesDefinitionView` `pricingModel` typing that blocked the prior `2bdb49e4` build. Production untouched.
