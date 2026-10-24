@@ -65,6 +65,14 @@ export default async function PortalPage({ params, searchParams }: Props) {
   }
 
   const choicesView = isChoicesPortalView(query.view);
+  const viewParam = Array.isArray(query.view) ? query.view[0] : query.view;
+  const initialSection = choicesView
+    ? "choices"
+    : viewParam === "documents"
+      ? "documents"
+      : viewParam === "questionnaire"
+        ? "questionnaire"
+        : undefined;
 
   const [tasks, vendorTasks, timeline, legalGate] = await Promise.all([
     resolvePortalTasks(token),
@@ -77,7 +85,7 @@ export default async function PortalPage({ params, searchParams }: Props) {
     <PortalShell
       token={token}
       context={context}
-      initialSection={choicesView ? "choices" : undefined}
+      initialSection={initialSection}
       initialTasks={tasks}
       initialVendorTasks={vendorTasks}
       initialTimelineSections={timeline.sections}
