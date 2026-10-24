@@ -90,13 +90,13 @@ describe("questionnaire category selectors", () => {
       new URL("../../components/events/questionnaire-family-panel.tsx", import.meta.url),
       "utf8",
     );
-    assert.match(panel, /key=\{active\}/);
-    assert.match(panel, /initialTemplateSelection/);
+    assert.match(panel, /key=\{`\$\{active\}-\$\{applyTick\}`\}/);
+    assert.match(panel, /preferredTemplateId/);
     assert.match(panel, /Select a template…/);
     assert.match(panel, /Loading templates…/);
     assert.doesNotMatch(panel, /Template unavailable/);
     assert.match(panel, /templates\.filter\(\(t\) => t\.kind === kind && !t\.isArchived\)/);
-    assert.match(panel, /Does not send anything to the client/);
+    assert.match(panel, /Does not send or schedule anything/);
     assert.match(panel, /questionnaire-preview\?kind=.*from=event/);
     assert.doesNotMatch(panel, /questionnaire-preview[^"]*target="_blank"/);
   });

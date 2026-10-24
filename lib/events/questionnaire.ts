@@ -56,6 +56,10 @@ export type Questionnaire = {
   submittedAt: string | null;
   changesRequestedNote: string | null;
   changesRequestedAt: string | null;
+  scheduledSendAt: string | null;
+  scheduledSendStatus: "scheduled" | "sending" | "sent" | "failed" | "cancelled" | null;
+  scheduledSendMessage: string | null;
+  scheduledSendError: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -76,6 +80,10 @@ type QRow = {
   submitted_at: string | null;
   changes_requested_note?: string | null;
   changes_requested_at?: string | null;
+  scheduled_send_at?: string | null;
+  scheduled_send_status?: string | null;
+  scheduled_send_message?: string | null;
+  scheduled_send_error?: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -103,6 +111,10 @@ function mapQ(r: QRow): Questionnaire {
     submittedAt: r.submitted_at,
     changesRequestedNote: r.changes_requested_note ?? null,
     changesRequestedAt: r.changes_requested_at ?? null,
+    scheduledSendAt: r.scheduled_send_at ?? null,
+    scheduledSendStatus: (r.scheduled_send_status as Questionnaire["scheduledSendStatus"]) ?? null,
+    scheduledSendMessage: r.scheduled_send_message ?? null,
+    scheduledSendError: r.scheduled_send_error ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -177,6 +189,20 @@ const SHARE_DEFAULTS: Record<QuestionnaireKind, { subject: string; body: string 
   },
 };
 
+type VenueEmailBits = {
+  id: string;
+  name: string;
+  email?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  emailSignature?: string | null;
+  phone?: string | null;
+  emailFooterShowSignature?: boolean | null;
+  emailFooterShowEmail?: boolean | null;
+  emailFooterShowPhone?: boolean | null;
+};
+
+/** Session-bound send — used by staff Share / Send now. */
 export async function sendQuestionnaireToCouple(
   eventId: string,
   coupleEmail: string,
@@ -190,9 +216,39 @@ export async function sendQuestionnaireToCouple(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
+  return sendQuestionnaireToCoupleForVenue(
+    supabase,
+    venue.id,
+    eventId,
+    coupleEmail,
+    coupleName,
+    eventName,
+    threadId,
+    customMessage,
+    kind,
+    venue,
+  );
+}
 
+/**
+ * Venue-scoped send used by staff actions and the scheduled-send cron.
+ * Resolves form link + status/activity the same way for both paths.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function sendQuestionnaireToCoupleForVenue(
+  supabase: any,
+  venueId: string,
+  eventId: string,
+  coupleEmail: string,
+  coupleName: string,
+  eventName: string,
+  threadId?: string,
+  customMessage?: string,
+  kind: QuestionnaireKind = "final_details",
+  venueBits?: VenueEmailBits | null,
+): Promise<{ ok: boolean; formUrl?: string; message?: string }> {
   const { data: existing } = await supabase.from("event_questionnaires")
-    .select("id, access_key, status").eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
+    .select("id, access_key, status").eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
     .maybeSingle<{ id: string; access_key: string; status: string }>();
   const isResend = existing ? existing.status !== "draft" : false;
 
@@ -203,7 +259,7 @@ export async function sendQuestionnaireToCouple(
     const master = getQuestionnaireMasterByKind(kind);
     const { data: created } = await supabase.from("event_questionnaires")
       .insert({
-        venue_id: venue.id,
+        venue_id: venueId,
         event_id: eventId,
         kind,
         included_fields: masterIncludedFieldIds(master),
@@ -227,15 +283,28 @@ export async function sendQuestionnaireToCouple(
   if (threadId) patch.thread_id = threadId;
   const { data: sentRow } = await supabase.from("event_questionnaires")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update(patch as any).eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
+    .update(patch as any).eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
     .select("id").maybeSingle<{ id: string }>();
   if (sentRow) {
     await logActivity(
-      supabase, venue.id, sentRow.id,
+      supabase, venueId, sentRow.id,
       isResend ? "resent" : "sent",
       isResend ? `Resent ${kindLabel(kind)}` : `Sent ${kindLabel(kind)}`,
     );
   }
+
+  let venueSource: VenueEmailBits | Record<string, unknown> | null = venueBits ?? null;
+  if (!venueSource) {
+    const { data } = await supabase.from("venues")
+      .select("id, name, email, logo_url, primary_color, email_signature, phone, email_footer_show_signature, email_footer_show_email, email_footer_show_phone")
+      .eq("id", venueId)
+      .maybeSingle();
+    if (!data) return { ok: false, formUrl, message: "Venue not found for send." };
+    venueSource = data as Record<string, unknown>;
+  }
+
+  const venueName = String((venueSource as { name?: string }).name ?? "Your venue");
+  const venueEmail = (venueSource as { email?: string | null }).email ?? null;
 
   const share = SHARE_DEFAULTS[kind];
   const defaultText = share.body.replace(/\{\{event\}\}/g, eventName);
@@ -248,17 +317,17 @@ export async function sendQuestionnaireToCouple(
       "",
       formUrl,
       "",
-      `Everything goes directly to ${venue.name} — no PDFs, no attachments.`,
+      `Everything goes directly to ${venueName} — no PDFs, no attachments.`,
       "",
-      venue.name,
+      venueName,
     ].join("\n");
-    const brand = emailBrandFromVenue(venue);
+    const brand = emailBrandFromVenue(venueSource as never);
     const emailResult = await sendEmail({
       to: coupleEmail,
       subject: share.subject.replace(/\{\{event\}\}/g, eventName),
       text,
       html: wrapConversationMessageHtml(brand, text),
-      replyTo: venue.email ?? undefined,
+      replyTo: venueEmail ?? undefined,
     });
     if (!emailResult.ok) {
       return { ok: false, formUrl, message: `The form link was created, but the email couldn't be sent: ${emailResult.message}` };

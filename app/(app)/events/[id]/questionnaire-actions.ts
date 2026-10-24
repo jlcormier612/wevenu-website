@@ -12,6 +12,10 @@ import {
   type Questionnaire,
 } from "@/lib/events/questionnaire";
 import {
+  cancelScheduledQuestionnaireSend,
+  scheduleQuestionnaireSend,
+} from "@/lib/events/questionnaire-scheduled-send";
+import {
   addQuestionnaireStarterAgain,
   ensureQuestionnaireFamilyForCurrentVenue,
   provisionMissingQuestionnaireStarters,
@@ -64,6 +68,26 @@ export async function sendQuestionnaireAction(
   kind: QuestionnaireKind = "final_details",
 ): Promise<{ ok: boolean; formUrl?: string; message?: string }> {
   const result = await sendQuestionnaireToCouple(eventId, coupleEmail, coupleName, eventName, threadId, customMessage, kind);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function scheduleQuestionnaireSendAction(
+  eventId: string,
+  kind: QuestionnaireKind,
+  scheduledFor: string,
+  customMessage?: string,
+): Promise<{ ok: boolean; message?: string; scheduledFor?: string }> {
+  const result = await scheduleQuestionnaireSend(eventId, kind, scheduledFor, customMessage);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function cancelScheduledQuestionnaireSendAction(
+  eventId: string,
+  kind: QuestionnaireKind,
+): Promise<{ ok: boolean; message?: string }> {
+  const result = await cancelScheduledQuestionnaireSend(eventId, kind);
   if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }

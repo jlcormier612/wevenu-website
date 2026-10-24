@@ -16,6 +16,10 @@
  * Deliberately built on the existing Sheet primitive — the one dialog-style
  * surface already used throughout this app (Template sheets, item sheets,
  * etc.) — not a new modal system.
+ *
+ * Optional schedule mode: when `allowSchedule` + `onSchedule` are provided,
+ * the sheet offers Send now vs Schedule send. Scheduling still uses the
+ * caller's domain action — this file does not own persistence.
  */
 
 import * as React from "react";
@@ -23,6 +27,7 @@ import * as React from "react";
 import { CheckCircle2, Loader2, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -53,13 +58,28 @@ export type ShareDialogProps = {
   /** Optional controlled open state (e.g. after a pre-share confirmation). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** When true with onSchedule, offer Send now / Schedule send. */
+  allowSchedule?: boolean;
+  /** Persist a future send. scheduledFor is an ISO timestamp from the local datetime input. */
+  onSchedule?: (
+    message: string,
+    scheduledFor: string,
+  ) => Promise<{ ok: boolean; message?: string; scheduledFor?: string }>;
+  scheduleLabel?: string;
 };
 
-type State = "idle" | "sending" | "success" | "error";
+type State = "idle" | "sending" | "success" | "scheduled" | "error";
+type Mode = "now" | "schedule";
+
+function defaultLocalScheduleValue(): string {
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export function ShareDialog({
   trigger, title, recipient, whatHappensNext, defaultMessage, sendLabel = "Send", onSend, onSent,
-  open: openControlled, onOpenChange,
+  open: openControlled, onOpenChange, allowSchedule = false, onSchedule, scheduleLabel = "Schedule send",
 }: ShareDialogProps) {
   const [openUncontrolled, setOpenUncontrolled] = React.useState(false);
   const open = openControlled ?? openUncontrolled;
@@ -67,15 +87,26 @@ export function ShareDialog({
   const [message, setMessage] = React.useState(defaultMessage);
   const [state, setState] = React.useState<State>("idle");
   const [error, setError] = React.useState("");
+  const [mode, setMode] = React.useState<Mode>("now");
+  const [scheduleLocal, setScheduleLocal] = React.useState(defaultLocalScheduleValue);
+  const [scheduledConfirm, setScheduledConfirm] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (open) { setMessage(defaultMessage); setState("idle"); setError(""); }
+    if (open) {
+      setMessage(defaultMessage);
+      setState("idle");
+      setError("");
+      setMode("now");
+      setScheduleLocal(defaultLocalScheduleValue());
+      setScheduledConfirm(null);
+    }
   }, [open, defaultMessage]);
 
-  const canSend = state !== "sending" && !!recipient?.contact;
+  const canAct = state !== "sending" && !!recipient?.contact;
+  const scheduleEnabled = allowSchedule && typeof onSchedule === "function";
 
-  function handleSend() {
-    if (!canSend) return;
+  function handleSendNow() {
+    if (!canAct) return;
     setState("sending");
     setError("");
     void onSend(message).then((result) => {
@@ -94,6 +125,40 @@ export function ShareDialog({
     });
   }
 
+  function handleSchedule() {
+    if (!canAct || !onSchedule) return;
+    const iso = new Date(scheduleLocal).toISOString();
+    if (!Number.isFinite(Date.parse(iso))) {
+      setState("error");
+      setError("Choose a valid date and time.");
+      return;
+    }
+    setState("sending");
+    setError("");
+    void onSchedule(message, iso).then((result) => {
+      if (result.ok) {
+        const when = result.scheduledFor ? new Date(result.scheduledFor) : new Date(iso);
+        setScheduledConfirm(
+          when.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          }),
+        );
+        setState("scheduled");
+        onSent?.();
+      } else {
+        setState("error");
+        setError(result.message ?? "Couldn't schedule. Please try again.");
+      }
+    }).catch(() => {
+      setState("error");
+      setError("Couldn't schedule. Please try again.");
+    });
+  }
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {trigger && openControlled === undefined ? <SheetTrigger render={trigger} /> : null}
@@ -106,11 +171,22 @@ export function ShareDialog({
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <CheckCircle2 className="h-10 w-10 text-success" />
             <p className="text-sm font-medium text-heading">Sent to {recipient?.name}.</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Accepted by the email provider for delivery — this does not confirm the message reached their inbox.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Done</Button>
+          </div>
+        ) : state === "scheduled" ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-center" data-testid="share-schedule-success">
+            <CheckCircle2 className="h-10 w-10 text-success" />
+            <p className="text-sm font-medium text-heading">Scheduled for {scheduledConfirm}.</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              It will send automatically at that time. Nothing has been emailed yet.
+            </p>
             <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Done</Button>
           </div>
         ) : (
           <div className="space-y-5">
-            {/* Recipient safety (Step 6) — never ambiguous, never an internal id. */}
             <div className="rounded-sm border border-border bg-muted/30 p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Sending to</p>
               {recipient ? (
@@ -135,8 +211,47 @@ export function ShareDialog({
               )}
             </div>
 
-            {/* Step 8 — what happens next, in plain language, never a technical action selector. */}
             <p className="text-sm text-foreground">{whatHappensNext}</p>
+
+            {scheduleEnabled ? (
+              <div className="flex flex-wrap gap-2" data-testid="share-send-mode">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === "now" ? "default" : "outline"}
+                  onClick={() => setMode("now")}
+                  disabled={state === "sending"}
+                >
+                  Send now
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === "schedule" ? "default" : "outline"}
+                  onClick={() => setMode("schedule")}
+                  disabled={state === "sending"}
+                  data-testid="share-schedule-mode"
+                >
+                  Schedule send
+                </Button>
+              </div>
+            ) : null}
+
+            {scheduleEnabled && mode === "schedule" ? (
+              <div className="space-y-1.5" data-testid="share-schedule-datetime">
+                <label className="text-sm font-medium text-heading" htmlFor="share-schedule-at">
+                  Send on
+                </label>
+                <Input
+                  id="share-schedule-at"
+                  type="datetime-local"
+                  value={scheduleLocal}
+                  onChange={(e) => setScheduleLocal(e.target.value)}
+                  disabled={state === "sending"}
+                />
+                <p className="text-xs text-muted-foreground">Uses your local timezone. Nothing is emailed until that time.</p>
+              </div>
+            ) : null}
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-heading">Message</label>
@@ -147,9 +262,15 @@ export function ShareDialog({
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={state === "sending"}>Cancel</Button>
-              <Button type="button" disabled={!canSend} onClick={handleSend}>
-                {state === "sending" ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Sending…</> : sendLabel}
-              </Button>
+              {scheduleEnabled && mode === "schedule" ? (
+                <Button type="button" disabled={!canAct} onClick={handleSchedule} data-testid="share-schedule-submit">
+                  {state === "sending" ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Scheduling…</> : scheduleLabel}
+                </Button>
+              ) : (
+                <Button type="button" disabled={!canAct} onClick={handleSendNow} data-testid="share-send-now">
+                  {state === "sending" ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Sending…</> : sendLabel}
+                </Button>
+              )}
             </div>
           </div>
         )}

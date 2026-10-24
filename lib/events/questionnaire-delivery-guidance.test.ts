@@ -1,6 +1,6 @@
 /**
  * Questionnaires tab — delivery guidance note (avoid duplicate direct sends).
- * Does not change send/attach/schedule behavior.
+ * Does not change send/attach/schedule behavior contracts beyond requested copy.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -16,9 +16,10 @@ const previewRoute = readFileSync(resolve("app/(app)/events/[id]/questionnaire-p
 describe("questionnaire delivery guidance", () => {
   it("shows the note above kind tabs on the family panel", () => {
     assert.match(panel, /data-testid="questionnaire-delivery-guidance"/);
-    assert.match(panel, /Questionnaire delivery/);
-    assert.match(panel, /Send to client/);
-    assert.match(panel, /Creating a generic Request does not deliver/);
+    assert.match(
+      panel,
+      /Manage questionnaire delivery by sending immediately or schedule sending them below/,
+    );
     assert.match(panel, /data-testid="questionnaire-kind-tabs"/);
     const guidanceAt = panel.indexOf("questionnaire-delivery-guidance");
     const tabsAt = panel.indexOf("questionnaire-kind-tabs");
@@ -27,12 +28,15 @@ describe("questionnaire delivery guidance", () => {
 
   it("does not imply attach or schedule equals sent", () => {
     assert.doesNotMatch(panel, /already been sent through planning|automatically sends/i);
-    assert.match(panel, /send the same form again/);
+    assert.match(panel, /resend them if desired/);
   });
 
   it("booked Questionnaires tab still hosts the family panel with intro copy", () => {
     assert.match(detail, /QuestionnaireFamilyPanel/);
-    assert.match(detail, /Manage questionnaire drafts, delivery timing where supported/);
+    assert.match(
+      detail,
+      /Collect the information you need from clients when the timing is right by sending your prepared questionnaires here\./,
+    );
     assert.match(detail, /value="questionnaires"/);
   });
 

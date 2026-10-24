@@ -1147,8 +1147,7 @@ export function EventDetail({
             <CardHeader>
               <CardTitle className="text-base">Questionnaires</CardTitle>
               <CardDescription>
-                Manage questionnaire drafts, delivery timing where supported, and authorized sending
-                separately from portal release and invitation.
+                Collect the information you need from clients when the timing is right by sending your prepared questionnaires here.
               </CardDescription>
             </CardHeader>
             <CardContent>
