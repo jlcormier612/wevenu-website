@@ -30,7 +30,6 @@ import { EventFeedbackSection } from "@/components/events/event-feedback-section
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import type { InternalNoteRollupItem } from "@/lib/notes/internal-notes-rollup";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
-import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { RelationshipPhotoAvatar } from "@/components/relationship-photos/relationship-photo-avatar";
@@ -847,32 +846,16 @@ export function EventDetail({
             </p>
             <div
               data-testid="event-team-assignment-row"
-              className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 lg:gap-x-6"
+              className="min-w-0"
             >
-              <div className="min-w-0 shrink-0 sm:max-w-[22rem]">
-                <StaffAssignmentField
-                  compact
-                  label="Event owner"
-                  staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
-                  value={event.assignedStaffId ?? null}
-                  testId="event-owner-assignment"
-                  onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
-                />
-              </div>
-              <span
-                className="hidden h-6 w-px shrink-0 bg-border sm:block"
-                aria-hidden
-                data-testid="event-team-assignment-divider"
+              <StaffAssignmentField
+                compact
+                label="Event owner"
+                staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
+                value={event.assignedStaffId ?? null}
+                testId="event-owner-assignment"
+                onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
               />
-              <div className="min-w-0 flex-1" data-testid="event-team-roster">
-                <EventTeamSection
-                  eventId={event.id}
-                  initialTeam={event.team}
-                  density="compact"
-                  ownerStaffId={event.assignedStaffId ?? null}
-                  staffOptions={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
-                />
-              </div>
             </div>
           </div>
           <Card size="sm" className="gap-2" id="questionnaires-card" data-testid="event-questionnaires-card">

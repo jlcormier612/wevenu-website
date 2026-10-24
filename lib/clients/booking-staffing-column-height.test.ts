@@ -32,27 +32,26 @@ describe("booking + staffing column equal height", () => {
     assert.doesNotMatch(hero, /min-h-\[|h-\[\d/);
   });
 
-  it("keeps one compact Team assignment band beside booking (not two stacked cards)", () => {
+  it("keeps one compact Team assignment band beside booking (owner only)", () => {
     const region = detail.slice(
       detail.indexOf('data-testid="client-booking-staff-region"'),
       detail.indexOf("{/* ── Tabs"),
     );
     assert.match(region, /data-testid="event-staff-assignment"/);
     assert.match(region, /data-testid="event-team-assignment-row"/);
-    assert.match(region, /data-testid="event-team-roster"/);
+    assert.match(region, /id="event-team-roster"/);
     assert.match(region, /Team assignment/);
-    assert.match(region, /density="compact"/);
+    assert.match(region, /\bcompact\b/);
     assert.doesNotMatch(region, /Additional event staff/);
+    assert.doesNotMatch(region, /Additional team members/);
+    assert.doesNotMatch(region, /EventTeamSection/);
     assert.match(region, /flex min-w-0 flex-col gap-3/);
-    // Staffing band must not be forced to booking height.
     const staffCol = region.slice(region.indexOf('data-testid="client-staffing-column"'));
-    assert.doesNotMatch(
-      staffCol.slice(0, staffCol.indexOf("EventTeamSection") + 40),
-      /h-full/,
-    );
+    const band = staffCol.slice(0, staffCol.indexOf("questionnaires-card"));
+    assert.doesNotMatch(band, /h-full/);
   });
 
-  it("preserves booking details and assignment controls", () => {
+  it("preserves booking details and Event owner control", () => {
     const start = detail.indexOf("function EventHeroCard");
     const end = detail.indexOf("// ---- Coming Soon", start);
     const hero = detail.slice(start, end);
@@ -63,6 +62,6 @@ describe("booking + staffing column equal height", () => {
     assert.match(hero, /<dt[^>]*>Spaces<\/dt>/);
     assert.match(detail, /StaffAssignmentField/);
     assert.match(detail, /label="Event owner"/);
-    assert.match(detail, /EventTeamSection/);
+    assert.doesNotMatch(detail, /EventTeamSection/);
   });
 });

@@ -7,7 +7,6 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const detail = readFileSync(resolve("components/events/event-detail.tsx"), "utf8");
-const teamSection = readFileSync(resolve("components/events/event-team-section.tsx"), "utf8");
 const staffField = readFileSync(resolve("components/team/staff-assignment-field.tsx"), "utf8");
 const actionLabel = readFileSync(resolve("lib/team/assignment-action-label.ts"), "utf8");
 const eventActions = readFileSync(resolve("app/(app)/events/[id]/actions.ts"), "utf8");
@@ -36,15 +35,16 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(region, /EventHeroCard/);
     assert.match(region, /data-testid="event-staff-assignment"/);
     assert.match(region, /data-testid="event-team-assignment-row"/);
-    assert.match(region, /data-testid="event-team-roster"/);
+    assert.match(region, /id="event-team-roster"/);
     assert.match(region, /items-stretch/);
     assert.match(region, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(0,1fr\)\]/);
     assert.match(region, /data-testid="client-staffing-column"/);
     assert.match(region, /StaffAssignmentField/);
     assert.match(region, /compact/);
     assert.match(region, /label="Event owner"/);
-    assert.match(region, /EventTeamSection/);
-    assert.match(region, /density="compact"/);
+    assert.doesNotMatch(region, /EventTeamSection/);
+    assert.doesNotMatch(region, /Additional team members/);
+    assert.match(region, /\bcompact\b/);
     assert.doesNotMatch(region, /Additional event staff/);
 
     // Staffing cards no longer live as full-width Overview stack.
@@ -97,16 +97,16 @@ describe("client page compact booking + staffing layout", () => {
     );
   });
 
-  it("additional staff uses compact internal selector with add/remove", () => {
-    assert.match(teamSection, /No additional staff assigned\./);
-    assert.doesNotMatch(teamSection, /py-4 text-center/);
-    assert.match(teamSection, /data-testid="event-team-add-select"/);
-    assert.match(teamSection, /Additional team members/);
-    assert.match(teamSection, /addTeamMemberAction/);
-    assert.match(teamSection, /removeTeamMemberAction/);
-    assert.match(teamSection, /data-testid="event-team-member"/);
-    assert.match(teamSection, /filterEligibleAdditionalStaff/);
-    assert.match(teamSection, /staffOptions/);
+  it("does not render Additional team members on the booked event staffing band", () => {
+    const region = detail.slice(
+      detail.indexOf('data-testid="client-booking-staff-region"'),
+      detail.indexOf("{/* ── Tabs"),
+    );
+    assert.doesNotMatch(region, /Additional team members/);
+    assert.doesNotMatch(region, /event-team-add-select/);
+    assert.doesNotMatch(region, /EventTeamSection/);
+    assert.match(region, /label="Event owner"/);
+    assert.match(region, /testId="event-owner-assignment"/);
   });
 
   it("overview keeps adjacent setup and attention content after the upper region", () => {
