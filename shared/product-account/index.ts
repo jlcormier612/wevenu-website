@@ -162,6 +162,8 @@ export async function activateVenueAccount(input: {
   password: string;
   /** Required. Never omit — missing ownership choice must fail closed. */
   purchaserIsOwner: boolean;
+  /** Required affirmative Terms + Privacy acknowledgment from Activate UI. */
+  legalAccepted: true;
   invitedOwnerName?: string | null;
   invitedOwnerEmail?: string | null;
   inviteOwnerNow?: boolean;

@@ -396,9 +396,18 @@ function clientIdFromAcceptRpc(data: unknown): string | null {
 }
 
 export async function acceptClientInvitation(
-  token: string, email: string, password: string,
+  token: string,
+  email: string,
+  password: string,
+  options?: { legalAccepted?: boolean },
 ): Promise<AcceptClientInvitationResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  if (!options?.legalAccepted) {
+    return {
+      ok: false,
+      error: "Please agree to the End User Terms and Privacy Policy to continue.",
+    };
+  }
 
   // Invitation email is authoritative. A disabled <input> does not submit,
   // which previously left `email` empty and failed auth createUser with
@@ -434,9 +443,18 @@ export async function acceptClientInvitation(
 }
 
 export async function acceptParticipantInvitation(
-  token: string, email: string, password: string,
+  token: string,
+  email: string,
+  password: string,
+  options?: { legalAccepted?: boolean },
 ): Promise<AcceptClientInvitationResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  if (!options?.legalAccepted) {
+    return {
+      ok: false,
+      error: "Please agree to the End User Terms and Privacy Policy to continue.",
+    };
+  }
 
   const invitation = await peekParticipantInvitation(token);
   if (!invitation || invitation.inviteStatus !== "pending") {

@@ -8,6 +8,7 @@ import {
 } from "@/lib/activation/purchaser-ownership";
 import { isSupabaseConfigured } from "@/lib/env";
 import { resolveUserIdForEmail } from "@/lib/legal/service";
+import { isLegalAcceptedValue } from "@/lib/legal/signup-consent";
 import { createPurchaseOnboardingHandoff } from "@/lib/venue/onboarding-handoff";
 
 export const runtime = "nodejs";
@@ -18,15 +19,17 @@ export const runtime = "nodejs";
  * Auth: Bearer PRODUCT_SYNC_API_KEY
  *
  * Body: { token, password, purchaserIsOwner (required boolean),
- *         invitedOwnerName?, invitedOwnerEmail? }
+ *         legalAccepted: true, invitedOwnerName?, invitedOwnerEmail? }
  *
  * Purchaser ≠ Owner unless purchaserIsOwner is explicitly true.
  * Missing/invalid ownership choice is rejected (fail closed).
+ * Legal acknowledgment is required before auth password / venue creation.
  */
 type ActivateBody = {
   token?: string;
   password?: string;
   purchaserIsOwner?: unknown;
+  legalAccepted?: unknown;
   invitedOwnerName?: string | null;
   invitedOwnerEmail?: string | null;
   inviteOwnerNow?: unknown;
@@ -60,6 +63,17 @@ export async function POST(request: Request) {
 
   const token = body.token?.trim();
   const password = body.password ?? "";
+  if (!isLegalAcceptedValue(body.legalAccepted)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "legal_acceptance_required",
+        message:
+          "Please agree to the Terms of Service and Privacy Policy to continue.",
+      },
+      { status: 400 },
+    );
+  }
   const ownership = parseExplicitPurchaserIsOwner(body.purchaserIsOwner);
   if (!ownership.ok) {
     return NextResponse.json(

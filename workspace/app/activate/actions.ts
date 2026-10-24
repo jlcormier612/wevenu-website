@@ -50,6 +50,7 @@ export async function activateAccountAction(
     token,
     password,
     purchaserIsOwner,
+    legalAccepted: true,
     invitedOwnerName,
     invitedOwnerEmail,
     inviteOwnerNow,

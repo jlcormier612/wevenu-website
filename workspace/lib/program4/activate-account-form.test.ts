@@ -359,6 +359,7 @@ describe("Let's go submit path", () => {
     const validateIdx = actionSrc.indexOf("gateActivateAccountSubmission");
     const bridgeIdx = actionSrc.indexOf("activateVenueAccount({");
     assert.ok(validateIdx > 0 && bridgeIdx > validateIdx);
+    assert.match(actionSrc, /legalAccepted:\s*true/);
   });
 });
 

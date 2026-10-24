@@ -1,11 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { createVendorClient } from "@/integrations/supabase/server";
 import { updateVendorProfile, updateVendorLogo, markVendorLuvIntroSeen } from "@/lib/vendor-profile/service";
 import { claimVendorProfile, createVendorAccountAndClaim } from "@/lib/vendor-auth/service";
 import { getVendorActiveVenue, updateVenuePromotion } from "@/lib/vendor-partnerships/service";
+import { clientRequestMeta, recordVendorPortalLegalAcceptances } from "@/lib/legal/service";
+import {
+  parseLegalAcceptedFromFormData,
+  requireSignupLegalAccepted,
+} from "@/lib/legal/signup-consent";
 import type { VendorActionResult, VendorActiveVenueContext, VendorProfileInput } from "@/lib/vendors/types";
 
 /** Form state for vendor accept signup — type-only export (no runtime value). */
@@ -17,6 +24,26 @@ function validateVendorSignupPassword(password: string, confirm: string): string
   return null;
 }
 
+async function recordVendorSignupLegal(email: string): Promise<void> {
+  try {
+    const supabase = await createVendorClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const hdrs = await headers();
+    const meta = clientRequestMeta(hdrs);
+    await recordVendorPortalLegalAcceptances({
+      userId: user?.id ?? null,
+      email,
+      acceptanceMethod: "Vendor Invitation",
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+    });
+  } catch (error) {
+    console.error("[vendor/accept] legal acceptance record failed", error);
+  }
+}
+
 export async function createVendorAccountAndClaimAction(
   _prevState: VendorAcceptFormState,
   formData: FormData,
@@ -25,21 +52,30 @@ export async function createVendorAccountAndClaimAction(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirmPassword") ?? "");
+  const legalGate = requireSignupLegalAccepted(
+    "vendor",
+    parseLegalAcceptedFromFormData(formData),
+  );
+  if (!legalGate.ok) return { error: legalGate.error };
 
   if (!token) return { error: "This invitation link is missing a token." };
 
   const passwordError = validateVendorSignupPassword(password, confirm);
   if (passwordError) return { error: passwordError };
 
-  const result = await createVendorAccountAndClaim(token, email, password);
+  const result = await createVendorAccountAndClaim(token, email, password, {
+    legalAccepted: true,
+  });
   if (!result.ok) {
     // Auth succeeded but claim did not — land on accept so Claim button can finish.
     if (result.signedIn) {
+      await recordVendorSignupLegal(email);
       redirect(`/vendor/accept?token=${encodeURIComponent(token)}`);
     }
     return { error: result.message };
   }
 
+  await recordVendorSignupLegal(email);
   revalidatePath("/vendor", "layout");
   redirect("/vendor/dashboard");
 }
