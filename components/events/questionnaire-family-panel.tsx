@@ -280,7 +280,7 @@ function KindPanel({
       : isChangesRequested ? "warning"
       : "default";
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid={`questionnaire-kind-panel-${kind}`}>
         <BusinessAssetHeader
           compact
           whatIsThis="Planning form"
@@ -541,13 +541,6 @@ function KindPanel({
           ) : (
             <p className="text-xs text-muted-foreground">No library templates for this type yet.</p>
           )}
-          <p className="text-xs text-muted-foreground pt-1" data-testid="questionnaire-create-in-templates-guidance">
-            Want to create another questionnaire? Go to{" "}
-            <Link href="/library/questionnaire-templates" className="underline underline-offset-2 text-heading">
-              Questionnaires &amp; Feedback
-            </Link>{" "}
-            in your Templates tab. New questionnaires you create there will appear here as additional sending options.
-          </p>
         </div>
       )}
 
@@ -673,6 +666,13 @@ export function QuestionnaireFamilyPanel({
           </button>
         ))}
       </div>
+      <p className="text-xs text-muted-foreground" data-testid="questionnaire-create-in-templates-guidance">
+        Want to create another questionnaire? Go to{" "}
+        <Link href="/library/questionnaire-templates" className="underline underline-offset-2 text-heading">
+          Questionnaires &amp; Feedback
+        </Link>{" "}
+        in your Templates tab. New questionnaires you create there will appear here as additional sending options.
+      </p>
       <KindPanel
         key={`${active}-${applyTick}`}
         kind={active}
