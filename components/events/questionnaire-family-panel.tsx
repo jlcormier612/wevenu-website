@@ -245,7 +245,8 @@ function KindPanel({
           ? `Scheduled for ${new Date(result.scheduledFor).toLocaleString()}.`
           : "Questionnaire send scheduled.",
       );
-      onApplied?.();
+      // Do not refresh here — ShareDialog must paint the scheduled confirmation first.
+      // Refresh when the sheet closes via onSent / Done.
     }
     return result;
   }

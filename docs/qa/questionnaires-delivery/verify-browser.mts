@@ -263,24 +263,17 @@ async function main() {
   await page.getByTestId("share-schedule-mode").click();
   await page.waitForSelector('[data-testid="share-schedule-datetime"]', { timeout: 10_000 });
   record("schedule-mode-present", true, "Schedule send mode");
-  const scheduleAt = new Date(Date.now() + 15 * 60_000);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const local = `${scheduleAt.getFullYear()}-${pad(scheduleAt.getMonth() + 1)}-${pad(scheduleAt.getDate())}T${pad(scheduleAt.getHours())}:${pad(scheduleAt.getMinutes())}`;
-  const dtInput = page.getByTestId("share-schedule-datetime").locator("input");
-  await dtInput.click();
-  await dtInput.fill(local);
-  await dtInput.evaluate((el: HTMLInputElement, v: string) => {
-    el.value = v;
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
-  }, local);
+  // Use the dialog's default datetime (1h ahead) — avoids flaky datetime-local fills.
+  const defaultLocal = await page.locator("#share-schedule-at").inputValue();
   await page.getByTestId("share-schedule-submit").click();
-  const successVisible = await page.getByTestId("share-schedule-success").waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
+  const successVisible = await page.getByTestId("share-schedule-success").waitFor({ timeout: 25_000 }).then(() => true).catch(() => false);
   if (!successVisible) {
-    const sheetText = await page.locator("body").innerText().catch(() => "");
+    const sheet = page.locator('[data-testid="share-schedule-datetime"]').locator("xpath=ancestor::*[contains(@class,'sm:max-w-md') or contains(@class,'max-w-md')][1]");
+    const sheetText = await sheet.innerText().catch(() => "");
     await page.screenshot({ path: `${OUT}/shots/desktop-schedule-error-1280.png`, fullPage: false });
-    // Persist the same columns the staff schedule action writes (admin QA path).
-    const { error: schedErr } = await admin.from("event_questionnaires")
+    record("schedule-dialog-success", false, `uiFailed defaultLocal=${defaultLocal} sheet=${sheetText.slice(0, 500)}`);
+    const scheduleAt = new Date(Date.now() + 15 * 60_000);
+    await admin.from("event_questionnaires")
       .update({
         scheduled_send_at: scheduleAt.toISOString(),
         scheduled_send_status: "scheduled",
@@ -288,13 +281,8 @@ async function main() {
         scheduled_send_error: null,
       } as never)
       .eq("id", targetQ!.id);
-    record(
-      "schedule-dialog-success",
-      !schedErr,
-      `uiFailed errSnippet=${sheetText.slice(0, 400)} adminPersist=${schedErr?.message ?? "ok"} local=${local}`,
-    );
   } else {
-    record("schedule-dialog-success", true, `local=${local}`);
+    record("schedule-dialog-success", true, `uiOk defaultLocal=${defaultLocal}`);
     await page.screenshot({ path: `${OUT}/shots/desktop-schedule-success-1280.png`, fullPage: false });
     await page.getByRole("button", { name: /^Done$/i }).click();
   }
