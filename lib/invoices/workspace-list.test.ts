@@ -294,10 +294,11 @@ describe("Slice 3B — wiring + isolation", () => {
     );
     assert.match(scoped, /getCurrentVenue/);
     assert.match(scoped, /repo\.getInvoicesForClientOrEvent/);
+    assert.match(scoped, /projectDraftEventOrderInvoiceTotals/);
 
     const general = serviceSrc.slice(
       serviceSrc.indexOf("export async function getInvoices("),
-      serviceSrc.indexOf("export async function getInvoicesForClientOrEvent"),
+      serviceSrc.indexOf("async function projectDraftEventOrderInvoiceTotals"),
     );
     assert.match(general, /repo\.getInvoices/);
     assert.match(repoSrc, /export async function getInvoices\(/);

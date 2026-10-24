@@ -112,6 +112,33 @@ export async function getInvoices(filters?: { q?: string; status?: string }): Pr
  * Client Workspace invoices: client OR event scope.
  * Venue authorization remains via getCurrentVenue + RLS.
  */
+/**
+ * Draft EO-linked invoices store only ad hoc rows (often tax-only). List
+ * endpoints must surface the same projected payable getInvoice returns, or
+ * the workspace shows a misleading tax-only total next to a finalized EO.
+ */
+async function projectDraftEventOrderInvoiceTotals(invoices: Invoice[]): Promise<Invoice[]> {
+  const draftEo = invoices.filter((inv) => inv.status === "draft" && inv.eventOrderId);
+  if (draftEo.length === 0) return invoices;
+  const projectedById = new Map<string, Invoice>();
+  await Promise.all(
+    draftEo.map(async (inv) => {
+      const full = await getInvoice(inv.id);
+      if (!full) return;
+      projectedById.set(inv.id, {
+        ...inv,
+        subtotal: full.subtotal,
+        discountAmount: full.discountAmount,
+        taxAmount: full.taxAmount,
+        total: full.total,
+        balanceDue: full.balanceDue,
+      });
+    }),
+  );
+  if (projectedById.size === 0) return invoices;
+  return invoices.map((inv) => projectedById.get(inv.id) ?? inv);
+}
+
 export async function getInvoicesForClientOrEvent(
   clientId: string,
   eventId: string,
@@ -119,7 +146,11 @@ export async function getInvoicesForClientOrEvent(
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getInvoicesForClientOrEvent(await createClient(), venue.id, { clientId, eventId });
+  const invoices = await repo.getInvoicesForClientOrEvent(await createClient(), venue.id, {
+    clientId,
+    eventId,
+  });
+  return projectDraftEventOrderInvoiceTotals(invoices);
 }
 
 export async function getInvoice(id: string): Promise<InvoiceWithLineItems | null> {
@@ -175,7 +206,8 @@ export async function getInvoicesForEventOrder(eventOrderId: string): Promise<In
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getInvoicesForEventOrder(await createClient(), venue.id, eventOrderId);
+  const invoices = await repo.getInvoicesForEventOrder(await createClient(), venue.id, eventOrderId);
+  return projectDraftEventOrderInvoiceTotals(invoices);
 }
 
 export async function getInvoiceLineMarkers(invoiceIds: string[]): Promise<repo.InvoiceLineMarker[]> {
@@ -404,6 +436,10 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
             description: l.description, quantity: l.quantity,
             unitPrice: eoUnitPriceForInvoice(l.unitPrice), amount: l.amount, sortOrder: l.sortOrder,
           })));
+          // After EO charges are stored, recompute percent tax from those
+          // rows alone (no live projection rollup) so the frozen payable
+          // matches billable EO + adjustments before status flips to sent.
+          await repo.afterLineItemMutation(c, venueId, invoiceId);
           // Booking Financial Architecture Phase 3c — a permanent trace of
           // which Event Order revision produced this invoice, independent
           // of whatever revision Event Order has moved to since.
