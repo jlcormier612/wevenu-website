@@ -12,6 +12,13 @@ import * as React from "react";
 
 import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/floor-plan-shapes";
 import { OBJECT_STYLE } from "@/lib/floor-plans/constants";
+import {
+  clientLayoutStatusHint,
+  clientLayoutStatusLabel,
+  clientMayEditLayout,
+  clientMaySubmitLayout,
+  normalizeClientLayoutStatus,
+} from "@/lib/floor-plans/client-layout-review";
 import type { DisplayShape, ObjectType } from "@/lib/floor-plans/types";
 import type {
   PortalFloorPlanCatalogItem,
@@ -615,6 +622,9 @@ export default function FloorPlanSection({ token }: { token: string }) {
   const [catalogOpen, setCatalogOpen] = React.useState(false);
   const [catalog, setCatalog] = React.useState<PortalFloorPlanFurnitureCatalog | null>(null);
   const [catalogLoading, setCatalogLoading] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [submitOk, setSubmitOk] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -706,6 +716,10 @@ export default function FloorPlanSection({ token }: { token: string }) {
         return "Your venue has not allowed adding tables.";
       case "plan_ready":
         return "This layout is Ready — ask your venue to Make Changes if you need edits.";
+      case "awaiting_review":
+        return "This layout is with your venue for review — editing is paused.";
+      case "plan_approved":
+        return "Your venue approved this layout — placement is locked.";
       case "quantity_exceeded":
         return "No more of that item are available for this event.";
       case "quantity_not_configured":
@@ -742,6 +756,50 @@ export default function FloorPlanSection({ token }: { token: string }) {
       setAddError("Could not load furniture catalog.");
     } finally {
       setCatalogLoading(false);
+    }
+  }
+
+  async function submitToVenue() {
+    if (!selectedId) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitOk(false);
+    try {
+      const res = await fetch("/api/portal/floor-plans/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, floorPlanId: selectedId }),
+      });
+      const body = await res.json().catch(() => ({})) as {
+        ok?: boolean;
+        error?: string;
+        alreadySubmitted?: boolean;
+      };
+      if (!res.ok || !body.ok) {
+        setSubmitError(submitErrorMessage(body.error));
+        return;
+      }
+      setSubmitOk(true);
+      setReloadTick((n) => n + 1);
+    } catch {
+      setSubmitError("Could not submit right now. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function submitErrorMessage(code?: string): string {
+    switch (code) {
+      case "plan_ready":
+        return "This layout is already Ready for the event.";
+      case "plan_approved":
+        return "Your venue already approved this layout.";
+      case "not_selected_layout":
+        return "Submit the layout you selected for your event.";
+      case "awaiting_review":
+        return "This layout is already with your venue for review.";
+      default:
+        return "Could not submit this layout. Please try again.";
     }
   }
 
@@ -803,8 +861,21 @@ export default function FloorPlanSection({ token }: { token: string }) {
       ?? selectedSummary?.isReady
       ?? list.some((p) => p.isReady),
   );
-  const mayAddTables = Boolean(plan?.coupleMayAddTables !== false) && !selectedIsReady;
-  const editable = hasShared && !selectedIsReady;
+  const layoutStatus = normalizeClientLayoutStatus(
+    plan?.clientLayoutStatus ?? selectedSummary?.clientLayoutStatus,
+  );
+  const canEditLayout = clientMayEditLayout({
+    clientLayoutStatus: layoutStatus,
+    isReady: selectedIsReady,
+  });
+  const canSubmitLayout = clientMaySubmitLayout({
+    clientLayoutStatus: layoutStatus,
+    isReady: selectedIsReady,
+    isCoupleSelected: selectedIsCoupleChoice,
+  });
+  const mayAddTables = Boolean(plan?.coupleMayAddTables !== false) && canEditLayout;
+  const editable = hasShared && canEditLayout;
+  const reviewNote = plan?.clientReviewNote ?? selectedSummary?.clientReviewNote ?? null;
 
   if (!hasOffers && !hasShared) {
     return (
@@ -833,16 +904,49 @@ export default function FloorPlanSection({ token }: { token: string }) {
         <section className="space-y-4" data-testid="floor-plan-working-view">
           <div>
             <h2 className="text-lg font-semibold text-heading">Your Floor Plan</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5" data-testid="floor-plan-status-label">
               {selectedIsReady
                 ? "This layout is Ready for the event. Furniture placement is locked."
-                : "Arrange unlocked furniture, add permitted tables, and seat guests in Seating."}
+                : clientLayoutStatusLabel(layoutStatus)}
             </p>
             {selectedIsReady && (
               <p className="text-xs font-medium mt-1" style={{ color: SAGE }} data-testid="floor-plan-ready-badge">
                 Ready for the event
               </p>
             )}
+          </div>
+
+          <div
+            className="rounded-2xl border border-border bg-card px-4 py-3 space-y-2"
+            data-testid="floor-plan-guidance"
+          >
+            <p className="text-sm font-medium text-heading">
+              {selectedSummary?.name ?? plan?.name ?? "Your selected layout"}
+              {selectedIsCoupleChoice ? " · Your choice" : ""}
+            </p>
+            <p className="text-xs text-muted-foreground" data-testid="floor-plan-guidance-copy">
+              {selectedIsReady
+                ? "Your venue marked this layout Ready. Placement and furniture adds are locked."
+                : clientLayoutStatusHint(layoutStatus)}
+            </p>
+            {layoutStatus === "changes_requested" && reviewNote?.trim() && (
+              <p
+                className="text-xs rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-amber-950"
+                data-testid="floor-plan-changes-note"
+              >
+                From your venue: {reviewNote.trim()}
+              </p>
+            )}
+            <ul className="text-[11px] text-muted-foreground space-y-1 list-disc pl-4">
+              <li>Locked items (gray lock mark) stay where your venue placed them.</li>
+              <li>
+                {plan?.coupleMayAddTables === false
+                  ? "Your venue has turned off adding furniture on this layout."
+                  : "You may add tables your venue permits, within their inventory limits."}
+              </li>
+              <li>Seat guests on the Seating tab when seating is open.</li>
+              <li>When the arrangement looks right, submit it so your venue can review.</li>
+            </ul>
           </div>
 
           {list.length > 1 && (
@@ -879,12 +983,18 @@ export default function FloorPlanSection({ token }: { token: string }) {
                   <p className="text-[11px] text-muted-foreground">
                     {selectedIsReady
                       ? "Ready for the event — furniture placement is set"
-                      : selectedIsCoupleChoice || plan.isOperational
-                        ? "Your working layout — drag unlocked items to rearrange"
-                        : "Shared layout"}
+                      : layoutStatus === "submitted"
+                        ? "Submitted — awaiting venue review"
+                        : layoutStatus === "approved"
+                          ? "Approved — placement locked"
+                          : layoutStatus === "changes_requested"
+                            ? "Updates requested — edit, then submit again"
+                            : selectedIsCoupleChoice || plan.isOperational
+                              ? "Working copy — drag unlocked items; changes save as you go"
+                              : "Shared layout"}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                   {mayAddTables && (
                     <button
                       type="button"
@@ -896,6 +1006,27 @@ export default function FloorPlanSection({ token }: { token: string }) {
                       {catalogLoading ? "Loading…" : "Add furniture"}
                     </button>
                   )}
+                  {canSubmitLayout && (
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => void submitToVenue()}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-xl text-white disabled:opacity-50"
+                      style={{ background: SAGE }}
+                      data-testid="floor-plan-submit-to-venue"
+                    >
+                      {submitting ? "Submitting…" : "Submit floor plan to venue"}
+                    </button>
+                  )}
+                  {layoutStatus === "submitted" && !selectedIsReady && (
+                    <span
+                      className="text-[11px] font-medium px-2 py-1 rounded-full border"
+                      style={{ borderColor: `${SAGE}55`, color: SAGE }}
+                      data-testid="floor-plan-submitted-badge"
+                    >
+                      With venue for review
+                    </span>
+                  )}
                   <p className="text-[11px] text-muted-foreground">
                     {objects.length} element{objects.length === 1 ? "" : "s"}
                     {objects.filter((o) => SEATABLE.has(o.objectType)).length > 0
@@ -904,6 +1035,18 @@ export default function FloorPlanSection({ token }: { token: string }) {
                   </p>
                 </div>
               </div>
+              {(submitError || submitOk) && (
+                <div className="px-4 py-2 border-b border-border">
+                  {submitError && (
+                    <p className="text-xs text-destructive" data-testid="floor-plan-submit-error">{submitError}</p>
+                  )}
+                  {submitOk && !submitError && (
+                    <p className="text-xs font-medium" style={{ color: SAGE }} data-testid="floor-plan-submit-success">
+                      Submitted to your venue. Placement is locked until they review.
+                    </p>
+                  )}
+                </div>
+              )}
               <WorkingLayoutCanvas
                 token={token}
                 planName={plan.name}

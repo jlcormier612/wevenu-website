@@ -2,6 +2,10 @@
  * Floor Plans data access layer. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import {
+  normalizeClientLayoutStatus,
+  type ClientLayoutStatus,
+} from "@/lib/floor-plans/client-layout-review";
 import type {
   AddObjectInput,
   DisplayShape,
@@ -33,6 +37,11 @@ type PlanRow = {
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   finalized_at: string | null;
+  couple_may_add_tables?: boolean | null;
+  client_layout_status?: string | null;
+  client_submitted_at?: string | null;
+  client_review_note?: string | null;
+  client_reviewed_at?: string | null;
   notes: string | null; created_at: string; updated_at: string;
 };
 
@@ -59,6 +68,11 @@ const mapPlan = (r: PlanRow): FloorPlan => ({
   roomWidthFt: Number(r.room_width_ft), roomDepthFt: Number(r.room_depth_ft),
   measurementUnit: r.measurement_unit,
   finalizedAt: r.finalized_at,
+  coupleMayAddTables: r.couple_may_add_tables !== false,
+  clientLayoutStatus: normalizeClientLayoutStatus(r.client_layout_status),
+  clientSubmittedAt: r.client_submitted_at ?? null,
+  clientReviewNote: r.client_review_note ?? null,
+  clientReviewedAt: r.client_reviewed_at ?? null,
   notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -322,6 +336,39 @@ export async function setFloorPlanFinalized(
   const { error } = await (client.from("floor_plans") as any)
     .update({ finalized_at: finalized ? new Date().toISOString() : null })
     .eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function setFloorPlanCoupleMayAddTables(
+  client: DbClient, venueId: string, planId: string, coupleMayAddTables: boolean,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ couple_may_add_tables: coupleMayAddTables })
+    .eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function setFloorPlanClientLayoutReview(
+  client: DbClient,
+  venueId: string,
+  planId: string,
+  input: {
+    clientLayoutStatus: ClientLayoutStatus;
+    clientReviewNote?: string | null;
+  },
+): Promise<void> {
+  const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({
+      client_layout_status: input.clientLayoutStatus,
+      client_review_note: input.clientReviewNote ?? null,
+      client_reviewed_at: now,
+      updated_at: now,
+    })
+    .eq("id", planId)
+    .eq("venue_id", venueId);
   if (error) throw error;
 }
 

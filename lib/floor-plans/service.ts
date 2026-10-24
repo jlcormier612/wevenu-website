@@ -9,6 +9,7 @@ import {
   FLOOR_PLAN_DELETE_DENIED,
   FLOOR_PLAN_EDIT_DENIED,
 } from "@/lib/floor-plans/authorize";
+import { venueMayReviewSubmission } from "@/lib/floor-plans/client-layout-review";
 import * as repo from "@/lib/floor-plans/repository";
 import * as templatesRepo from "@/lib/floor-plan-templates/repository";
 import type {
@@ -311,6 +312,65 @@ export async function getVendorFloorPlan(planId: string): Promise<VendorFloorPla
 export async function setFinalized(planId: string, finalized: boolean): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanFinalized(supabase, venueId, planId, finalized);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Venue: whether the couple may add tables on this working layout. */
+export async function setCoupleMayAddTables(
+  planId: string,
+  coupleMayAddTables: boolean,
+): Promise<FloorPlanActionResult> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    await repo.setFloorPlanCoupleMayAddTables(supabase, venueId, planId, coupleMayAddTables);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Venue: approve a client-submitted working layout (locks further couple placement). */
+export async function approveClientFloorPlanLayout(planId: string): Promise<FloorPlanActionResult> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const plan = await repo.getFloorPlan(supabase, venueId, planId);
+    if (!plan) return { ok: false, message: "Floor plan not found." } as FloorPlanActionResult;
+    if (!venueMayReviewSubmission({ clientLayoutStatus: plan.clientLayoutStatus })) {
+      return {
+        ok: false,
+        message: "There is no client submission waiting for review on this layout.",
+      } as FloorPlanActionResult;
+    }
+    await repo.setFloorPlanClientLayoutReview(supabase, venueId, planId, {
+      clientLayoutStatus: "approved",
+      clientReviewNote: null,
+    });
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Venue: ask the couple to update the submitted layout. */
+export async function requestClientFloorPlanChanges(
+  planId: string,
+  note: string,
+): Promise<FloorPlanActionResult> {
+  const trimmed = note.trim();
+  if (!trimmed) {
+    return { ok: false, message: "Add a short note so the couple knows what to change." };
+  }
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const plan = await repo.getFloorPlan(supabase, venueId, planId);
+    if (!plan) return { ok: false, message: "Floor plan not found." } as FloorPlanActionResult;
+    if (!venueMayReviewSubmission({ clientLayoutStatus: plan.clientLayoutStatus })) {
+      return {
+        ok: false,
+        message: "There is no client submission waiting for review on this layout.",
+      } as FloorPlanActionResult;
+    }
+    await repo.setFloorPlanClientLayoutReview(supabase, venueId, planId, {
+      clientLayoutStatus: "changes_requested",
+      clientReviewNote: trimmed.slice(0, 2000),
+    });
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;

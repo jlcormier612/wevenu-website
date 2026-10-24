@@ -5,6 +5,7 @@
  * Object positions (x, y) are the center of the object in that space.
  */
 
+import type { ClientLayoutStatus } from "@/lib/floor-plans/client-layout-review";
 import type { InventoryShape } from "@/lib/inventory/types";
 
 export type ObjectType =
@@ -73,6 +74,13 @@ export type FloorPlan = {
   // — placement stays open before, during, and after Ready (customer language;
   // column remains finalized_at). Not an immutability lock.
   finalizedAt: string | null;
+  /** When false, portal cannot add tables (server-enforced). */
+  coupleMayAddTables: boolean;
+  /** Couple collaboration review status on the working layout. */
+  clientLayoutStatus: ClientLayoutStatus;
+  clientSubmittedAt: string | null;
+  clientReviewNote: string | null;
+  clientReviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -16,6 +16,9 @@ import {
   setBackgroundLocked,
   setClientAccess,
   setCoupleShare,
+  approveClientFloorPlanLayout,
+  requestClientFloorPlanChanges,
+  setCoupleMayAddTables,
   setFinalized,
   setOperationalFloorPlan,
   setVendorAccess,
@@ -332,4 +335,28 @@ export async function getFloorPlanReconciliationAction(
   planId: string,
 ): Promise<FloorPlanSectionReconciliation[]> {
   return getFloorPlanReconciliation(planId);
+}
+
+export async function setFloorPlanCoupleMayAddTablesAction(
+  planId: string, eventId: string, coupleMayAddTables: boolean,
+): Promise<FloorPlanActionResult> {
+  const result = await setCoupleMayAddTables(planId, coupleMayAddTables);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function approveClientFloorPlanLayoutAction(
+  planId: string, eventId: string,
+): Promise<FloorPlanActionResult> {
+  const result = await approveClientFloorPlanLayout(planId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function requestClientFloorPlanChangesAction(
+  planId: string, eventId: string, note: string,
+): Promise<FloorPlanActionResult> {
+  const result = await requestClientFloorPlanChanges(planId, note);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
 }

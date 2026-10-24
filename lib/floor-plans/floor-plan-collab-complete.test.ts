@@ -78,6 +78,8 @@ describe("Floor plan collaboration complete (auto-assign, seating, couple move)"
     assert.match(portalSection, /floor-plan-working-canvas/);
     assert.match(portalSection, /move-object/);
     assert.match(portalSection, /floor-plan-add-table/);
+    assert.match(portalSection, /floor-plan-submit-to-venue/);
+    assert.match(portalSection, /floor-plan-guidance/);
     assert.match(portalSection, /Seating is available now/);
     assert.match(portalSection, /floor-plan-ready-badge/);
     assert.doesNotMatch(portalSection, /furniture is venue-owned/);

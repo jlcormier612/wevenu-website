@@ -167,6 +167,11 @@ export type PortalFloorPlanSummary = {
   isOperational: boolean;
   isCoupleSelected?: boolean;
   isReady?: boolean;
+  clientLayoutStatus?: string;
+  clientSubmittedAt?: string | null;
+  clientReviewNote?: string | null;
+  clientReviewedAt?: string | null;
+  coupleMayAddTables?: boolean;
   spaceId: string | null;
   createdAt: string;
 };
@@ -217,6 +222,7 @@ export type PortalFloorPlanFurnitureCatalog = {
   planId: string;
   coupleMayAddTables: boolean;
   isReady: boolean;
+  clientLayoutStatus?: string;
   roomWidthFt: number | null;
   roomDepthFt: number | null;
   measurementUnit?: string | null;
@@ -235,6 +241,10 @@ export type PortalFloorPlanDetail = {
     isReady?: boolean;
     /** When true, couple may add table objects on this working plan. */
     coupleMayAddTables?: boolean;
+    clientLayoutStatus?: string;
+    clientSubmittedAt?: string | null;
+    clientReviewNote?: string | null;
+    clientReviewedAt?: string | null;
     backgroundImageUrl: string | null;
     backgroundImageOpacity: number;
     roomWidthFt: number;

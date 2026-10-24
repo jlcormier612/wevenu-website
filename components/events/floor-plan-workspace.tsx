@@ -16,17 +16,25 @@ import { Loader2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  approveClientFloorPlanLayoutAction,
   applyTemplateAction,
   createFloorPlanAction,
   deleteFloorPlanAction,
   duplicateFloorPlanAction,
   ensureWorkingFloorPlanAction,
   renameFloorPlanAction,
+  requestClientFloorPlanChangesAction,
   setClientAccessAction,
   setCoupleShareAction,
+  setFloorPlanCoupleMayAddTablesAction,
   setOperationalFloorPlanAction,
   setVendorAccessAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
+import {
+  clientLayoutStatusLabel,
+  normalizeClientLayoutStatus,
+  venueMayReviewSubmission,
+} from "@/lib/floor-plans/client-layout-review";
 import {
   applyClientFloorPlanTemplateAction,
   createClientFloorPlanAction,
@@ -242,11 +250,29 @@ function FloorPlanCard({
         )}
       </div>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
-      {(isOperational || isCoupleSelected || plan.finalizedAt) && (
+      {(isOperational || isCoupleSelected || plan.finalizedAt || plan.clientLayoutStatus !== "working") && (
         <div className="flex flex-wrap gap-1">
           {plan.finalizedAt && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent-foreground">
               Ready
+            </span>
+          )}
+          {plan.clientLayoutStatus === "submitted" && (
+            <span
+              className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-900"
+              data-testid="floor-plan-card-submitted"
+            >
+              Client submitted
+            </span>
+          )}
+          {plan.clientLayoutStatus === "changes_requested" && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+              Changes requested
+            </span>
+          )}
+          {plan.clientLayoutStatus === "approved" && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary">
+              Client approved
             </span>
           )}
           {isCoupleSelected && (
@@ -267,9 +293,130 @@ function FloorPlanCard({
           <ShareForSeatingToggle eventId={eventId} plan={plan} />
           <ShareWithVendorsToggle eventId={eventId} plan={plan} />
           <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
+          <CoupleMayAddTablesToggle eventId={eventId} plan={plan} />
         </div>
       )}
     </Link>
+  );
+}
+
+function CoupleMayAddTablesToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  const allowed = plan.coupleMayAddTables !== false;
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="h-7 text-[11px]"
+      disabled={pending}
+      data-testid="floor-plan-couple-may-add"
+      onClick={() => {
+        startTransition(async () => {
+          const result = await setFloorPlanCoupleMayAddTablesAction(plan.id, eventId, !allowed);
+          if (!result.ok) {
+            toast.error(result.message ?? "Could not update add-furniture setting.");
+            return;
+          }
+          toast.success(allowed ? "Client table adds turned off." : "Client table adds allowed.");
+          router.refresh();
+        });
+      }}
+    >
+      {allowed ? "Client may add tables" : "Client cannot add tables"}
+    </Button>
+  );
+}
+
+function ClientSubmissionReviewPanel({
+  eventId,
+  plan,
+}: {
+  eventId: string;
+  plan: FloorPlan;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  const [note, setNote] = React.useState("");
+  if (!venueMayReviewSubmission({ clientLayoutStatus: plan.clientLayoutStatus })) return null;
+
+  return (
+    <div
+      className="rounded-md border border-amber-300 bg-amber-50/60 px-3 py-3 space-y-2"
+      data-testid="floor-plan-client-submission-review"
+    >
+      <p className="text-sm font-medium text-heading">
+        Client submitted: <span className="font-semibold">{plan.name}</span>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Submitted{" "}
+        {plan.clientSubmittedAt
+          ? new Date(plan.clientSubmittedAt).toLocaleString()
+          : "recently"}
+        . Open the layout to inspect, then approve or request changes. The operational plan is this
+        working layout — approval does not create a second copy.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={pending}
+          data-testid="floor-plan-approve-submission"
+          onClick={() => {
+            startTransition(async () => {
+              const result = await approveClientFloorPlanLayoutAction(plan.id, eventId);
+              if (!result.ok) {
+                toast.error(result.message ?? "Could not approve.");
+                return;
+              }
+              toast.success("Client layout approved.");
+              router.refresh();
+            });
+          }}
+        >
+          Approve layout
+        </Button>
+        <Link
+          href={`/events/${eventId}/floor-plans/${plan.id}`}
+          className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-xs font-medium"
+          data-testid="floor-plan-open-submission"
+        >
+          Inspect layout
+        </Link>
+      </div>
+      <div className="space-y-1.5 pt-1">
+        <Label htmlFor={`fp-changes-${plan.id}`} className="text-xs">Request changes</Label>
+        <Input
+          id={`fp-changes-${plan.id}`}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="What should the couple update?"
+          data-testid="floor-plan-changes-note-input"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={pending || !note.trim()}
+          data-testid="floor-plan-request-changes"
+          onClick={() => {
+            startTransition(async () => {
+              const result = await requestClientFloorPlanChangesAction(plan.id, eventId, note);
+              if (!result.ok) {
+                toast.error(result.message ?? "Could not request changes.");
+                return;
+              }
+              toast.success("Changes requested — couple can edit again.");
+              setNote("");
+              router.refresh();
+            });
+          }}
+        >
+          Request changes
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -497,6 +644,16 @@ export function FloorPlanWorkspace({
                 if (!selected) return null;
                 const seatingOpen = selected.clientAccess !== "hidden";
                 const ready = Boolean(selected.finalizedAt);
+                const status = normalizeClientLayoutStatus(selected.clientLayoutStatus);
+                if (status === "submitted") {
+                  return (
+                    <p data-testid="floor-plan-next-review-submission">
+                      Client submitted this layout for review ({clientLayoutStatusLabel(status)}).
+                      Use the review panel below to approve or request changes before{" "}
+                      <span className="font-medium text-foreground">Mark as Ready</span>.
+                    </p>
+                  );
+                }
                 if (!seatingOpen) {
                   return (
                     <p data-testid="floor-plan-next-share-seating">
@@ -504,10 +661,26 @@ export function FloorPlanWorkspace({
                     </p>
                   );
                 }
+                if (status === "changes_requested") {
+                  return (
+                    <p data-testid="floor-plan-next-awaiting-resubmit">
+                      You asked the couple for updates. They can edit again and resubmit.
+                    </p>
+                  );
+                }
+                if (status === "approved" && !ready) {
+                  return (
+                    <p data-testid="floor-plan-next-mark-ready-after-approve">
+                      Client layout is approved. When print/setup-ready, open it and{" "}
+                      <span className="font-medium text-foreground">Mark as Ready</span>.
+                    </p>
+                  );
+                }
                 if (!ready) {
                   return (
                     <p data-testid="floor-plan-next-mark-ready">
-                      Layout and seating are available to the couple. When the arrangement is print/setup-ready, open it and{" "}
+                      Layout and seating are available to the couple. They can rearrange unlocked furniture and submit
+                      when ready. When the arrangement is print/setup-ready, open it and{" "}
                       <span className="font-medium text-foreground">Mark as Ready</span>.
                     </p>
                   );
@@ -537,6 +710,11 @@ export function FloorPlanWorkspace({
           )}
         </div>
       )}
+
+      {!preBooking && coupleSelectedFloorPlanId && (() => {
+        const submitted = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);
+        return submitted ? <ClientSubmissionReviewPanel eventId={eventId} plan={submitted} /> : null;
+      })()}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         {!preBooking && sharedPlans.length > 0 && (
