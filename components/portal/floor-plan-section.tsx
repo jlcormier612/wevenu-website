@@ -940,13 +940,56 @@ export default function FloorPlanSection({ token }: { token: string }) {
             <ul className="text-[11px] text-muted-foreground space-y-1 list-disc pl-4">
               <li>Locked items (gray lock mark) stay where your venue placed them.</li>
               <li>
-                {plan?.coupleMayAddTables === false
+                {(plan?.coupleMayAddTables ?? selectedSummary?.coupleMayAddTables) === false
                   ? "Your venue has turned off adding furniture on this layout."
                   : "You may add tables your venue permits, within their inventory limits."}
               </li>
               <li>Seat guests on the Seating tab when seating is open.</li>
               <li>When the arrangement looks right, submit it so your venue can review.</li>
             </ul>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {canSubmitLayout && selectedId && (
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => void submitToVenue()}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-xl text-white disabled:opacity-50"
+                  style={{ background: SAGE }}
+                  data-testid="floor-plan-submit-to-venue"
+                >
+                  {submitting ? "Submitting…" : "Submit floor plan to venue"}
+                </button>
+              )}
+              {layoutStatus === "submitted" && !selectedIsReady && (
+                <span
+                  className="text-[11px] font-medium px-2 py-1 rounded-full border"
+                  style={{ borderColor: `${SAGE}55`, color: SAGE }}
+                  data-testid="floor-plan-submitted-badge"
+                >
+                  With venue for review
+                </span>
+              )}
+              {layoutStatus === "approved" && !selectedIsReady && (
+                <span
+                  className="text-[11px] font-medium px-2 py-1 rounded-full border border-primary/40 bg-primary/10 text-primary"
+                  data-testid="floor-plan-approved-badge"
+                >
+                  Approved by venue
+                </span>
+              )}
+            </div>
+            {(submitError || submitOk) && (
+              <div>
+                {submitError && (
+                  <p className="text-xs text-destructive" data-testid="floor-plan-submit-error">{submitError}</p>
+                )}
+                {submitOk && !submitError && (
+                  <p className="text-xs font-medium" style={{ color: SAGE }} data-testid="floor-plan-submit-success">
+                    Submitted to your venue. Placement is locked until they review.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {list.length > 1 && (
@@ -974,6 +1017,15 @@ export default function FloorPlanSection({ token }: { token: string }) {
           )}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
+
+          {selectedId && !plan && !error && (
+            <div
+              className="rounded-2xl border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground"
+              data-testid="floor-plan-detail-loading"
+            >
+              Loading your layout…
+            </div>
+          )}
 
           {plan && (
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -1006,27 +1058,6 @@ export default function FloorPlanSection({ token }: { token: string }) {
                       {catalogLoading ? "Loading…" : "Add furniture"}
                     </button>
                   )}
-                  {canSubmitLayout && (
-                    <button
-                      type="button"
-                      disabled={submitting}
-                      onClick={() => void submitToVenue()}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-xl text-white disabled:opacity-50"
-                      style={{ background: SAGE }}
-                      data-testid="floor-plan-submit-to-venue"
-                    >
-                      {submitting ? "Submitting…" : "Submit floor plan to venue"}
-                    </button>
-                  )}
-                  {layoutStatus === "submitted" && !selectedIsReady && (
-                    <span
-                      className="text-[11px] font-medium px-2 py-1 rounded-full border"
-                      style={{ borderColor: `${SAGE}55`, color: SAGE }}
-                      data-testid="floor-plan-submitted-badge"
-                    >
-                      With venue for review
-                    </span>
-                  )}
                   <p className="text-[11px] text-muted-foreground">
                     {objects.length} element{objects.length === 1 ? "" : "s"}
                     {objects.filter((o) => SEATABLE.has(o.objectType)).length > 0
@@ -1035,18 +1066,6 @@ export default function FloorPlanSection({ token }: { token: string }) {
                   </p>
                 </div>
               </div>
-              {(submitError || submitOk) && (
-                <div className="px-4 py-2 border-b border-border">
-                  {submitError && (
-                    <p className="text-xs text-destructive" data-testid="floor-plan-submit-error">{submitError}</p>
-                  )}
-                  {submitOk && !submitError && (
-                    <p className="text-xs font-medium" style={{ color: SAGE }} data-testid="floor-plan-submit-success">
-                      Submitted to your venue. Placement is locked until they review.
-                    </p>
-                  )}
-                </div>
-              )}
               <WorkingLayoutCanvas
                 token={token}
                 planName={plan.name}

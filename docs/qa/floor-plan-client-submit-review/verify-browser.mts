@@ -197,6 +197,7 @@ async function main() {
     await page.screenshot({ path: `${OUT}/shots/client-working-1280.png`, fullPage: false });
 
     const submitBtn = page.locator('[data-testid="floor-plan-submit-to-venue"]');
+    await submitBtn.waitFor({ state: "visible", timeout: 45_000 }).catch(() => undefined);
     record("client-submit-cta-visible", await submitBtn.isVisible().catch(() => false), "submit cta");
     if ((await submitBtn.count()) > 0) {
       await submitBtn.click();
@@ -204,6 +205,7 @@ async function main() {
         .first()
         .waitFor({ timeout: 20_000 })
         .catch(() => undefined);
+      await page.waitForTimeout(800);
     }
     await page.screenshot({ path: `${OUT}/shots/client-submitted-1280.png`, fullPage: false });
 
@@ -296,18 +298,17 @@ async function main() {
     const staff = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await staff.addCookies(await staffCookies());
     const venuePage = await staff.newPage();
-    await venuePage.goto(`${APP}/events/${EVENT}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await venuePage.waitForTimeout(2000);
-    const fpTab = venuePage.getByRole("button", { name: /^Floor Plans$/i }).or(
-      venuePage.getByRole("tab", { name: /Floor Plans/i }),
-    ).first();
+    await venuePage.goto(`${APP}/events/${EVENT}#floorplan`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await venuePage.waitForTimeout(2500);
+    const fpTab = venuePage.getByRole("tab", { name: /Floor Plans/i }).first();
     if ((await fpTab.count()) > 0) await fpTab.click().catch(() => undefined);
-    await venuePage.waitForTimeout(1500);
-    // Deep-link hash / query sometimes used
-    if ((await venuePage.locator('[data-testid="floor-plan-operational-workspace"]').count()) === 0) {
-      await venuePage.goto(`${APP}/events/${EVENT}#floor-plans`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-      await venuePage.waitForTimeout(2000);
-    }
+    await venuePage.waitForTimeout(1000);
+    const workspace = venuePage.locator('[data-testid="floor-plan-operational-workspace"]');
+    await workspace.waitFor({ state: "visible", timeout: 45_000 }).catch(() => undefined);
+    await workspace.scrollIntoViewIfNeeded().catch(() => undefined);
     await venuePage.locator('[data-testid="floor-plan-client-submission-review"]')
       .waitFor({ timeout: 45_000 })
       .catch(() => undefined);
