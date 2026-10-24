@@ -32,17 +32,19 @@ describe("booking + staffing column equal height", () => {
     assert.doesNotMatch(hero, /min-h-\[|h-\[\d/);
   });
 
-  it("keeps Team assignment and Additional event staff as distinct stacked cards", () => {
+  it("keeps one compact Team assignment band beside booking (not two stacked cards)", () => {
     const region = detail.slice(
       detail.indexOf('data-testid="client-booking-staff-region"'),
       detail.indexOf("{/* ── Tabs"),
     );
     assert.match(region, /data-testid="event-staff-assignment"/);
+    assert.match(region, /data-testid="event-team-assignment-row"/);
     assert.match(region, /data-testid="event-team-roster"/);
     assert.match(region, /Team assignment/);
-    assert.match(region, /Additional event staff/);
+    assert.match(region, /density="compact"/);
+    assert.doesNotMatch(region, /Additional event staff/);
     assert.match(region, /flex min-w-0 flex-col gap-3/);
-    // Individual staffing cards must not be forced to booking height.
+    // Staffing band must not be forced to booking height.
     const staffCol = region.slice(region.indexOf('data-testid="client-staffing-column"'));
     assert.doesNotMatch(
       staffCol.slice(0, staffCol.indexOf("EventTeamSection") + 40),
@@ -56,7 +58,7 @@ describe("booking + staffing column equal height", () => {
     const hero = detail.slice(start, end);
     assert.match(hero, /formatEventDateRange/);
     assert.match(hero, /EventStatusBadge/);
-    assert.match(hero, /<dt[^>]*>Time<\/dt>/);
+    assert.match(hero, /multiDay \? "Overall booking window" : "Time"/);
     assert.match(hero, /<dt[^>]*>Guests<\/dt>/);
     assert.match(hero, /<dt[^>]*>Spaces<\/dt>/);
     assert.match(detail, /StaffAssignmentField/);

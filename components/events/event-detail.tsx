@@ -837,40 +837,49 @@ export function EventDetail({
           data-testid="client-staffing-column"
           className="flex min-w-0 flex-col gap-3"
         >
-          <Card size="sm" className="gap-2" data-testid="event-staff-assignment">
-            <CardHeader className="gap-0.5">
-              <CardTitle className="text-base">Team assignment</CardTitle>
-              <CardDescription className="text-xs leading-snug">
-                The person responsible for this booked event. This can differ from who handled the lead.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StaffAssignmentField
-                compact
-                label="Event owner"
-                staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
-                value={event.assignedStaffId ?? null}
-                testId="event-owner-assignment"
-                onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
+          <div
+            className="rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5 sm:px-3.5 sm:py-3"
+            data-testid="event-staff-assignment"
+            id="event-team-roster"
+          >
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Team assignment
+            </p>
+            <div
+              data-testid="event-team-assignment-row"
+              className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 lg:gap-x-6"
+            >
+              <div className="min-w-0 shrink-0 sm:max-w-[22rem]">
+                <StaffAssignmentField
+                  compact
+                  label="Event owner"
+                  staff={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
+                  value={event.assignedStaffId ?? null}
+                  testId="event-owner-assignment"
+                  onSave={(staffId) => setEventAssignedStaffAction(event.id, staffId)}
+                />
+              </div>
+              <span
+                className="hidden h-6 w-px shrink-0 bg-border sm:block"
+                aria-hidden
+                data-testid="event-team-assignment-divider"
               />
-            </CardContent>
-          </Card>
-          <Card size="sm" className="gap-2" id="event-team-roster" data-testid="event-team-roster">
-            <CardHeader className="gap-0.5">
-              <CardTitle className="text-base">Additional event staff</CardTitle>
-              <CardDescription className="text-xs leading-snug">
-                Names working this event who are not the assigned owner.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventTeamSection eventId={event.id} initialTeam={event.team} />
-            </CardContent>
-          </Card>
+              <div className="min-w-0 flex-1" data-testid="event-team-roster">
+                <EventTeamSection
+                  eventId={event.id}
+                  initialTeam={event.team}
+                  density="compact"
+                  ownerStaffId={event.assignedStaffId ?? null}
+                  staffOptions={(teamMembers ?? []).map((member) => ({ id: member.id, name: member.name }))}
+                />
+              </div>
+            </div>
+          </div>
           <Card size="sm" className="gap-2" id="questionnaires-card" data-testid="event-questionnaires-card">
             <CardHeader className="gap-0.5">
               <CardTitle className="text-base">Questionnaires</CardTitle>
               <CardDescription className="text-xs leading-snug">
-                Draft, review, and send questionnaires when ready — separate from portal release.
+                Choose and send your prepared information/feedback-gathering questionnaires when ready — separate from the client portal release process. Schedule them or send now — your choice!
               </CardDescription>
             </CardHeader>
             <CardContent>

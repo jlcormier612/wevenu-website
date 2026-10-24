@@ -28,13 +28,14 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(celebration, /href=\{`\/leads\/\$\{client\.leadId\}`\}/);
   });
 
-  it("places booking, team assignment, and additional staff in one upper region", () => {
+  it("places booking and compact team assignment in one upper region", () => {
     const region = detail.slice(
       detail.indexOf('data-testid="client-booking-staff-region"'),
       detail.indexOf("{/* ── Tabs"),
     );
     assert.match(region, /EventHeroCard/);
     assert.match(region, /data-testid="event-staff-assignment"/);
+    assert.match(region, /data-testid="event-team-assignment-row"/);
     assert.match(region, /data-testid="event-team-roster"/);
     assert.match(region, /items-stretch/);
     assert.match(region, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(0,1fr\)\]/);
@@ -43,6 +44,8 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(region, /compact/);
     assert.match(region, /label="Event owner"/);
     assert.match(region, /EventTeamSection/);
+    assert.match(region, /density="compact"/);
+    assert.doesNotMatch(region, /Additional event staff/);
 
     // Staffing cards no longer live as full-width Overview stack.
     const overview = detail.slice(
@@ -60,12 +63,11 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(hero, /data-testid="event-booking-summary"/);
     assert.match(hero, /formatEventDateRange/);
     assert.match(hero, /EventStatusBadge/);
-    assert.match(hero, /<dt[^>]*>Time<\/dt>/);
+    assert.match(hero, /multiDay \? "Overall booking window" : "Time"/);
     assert.match(hero, /<dt[^>]*>Guests<\/dt>/);
     assert.match(hero, /<dt[^>]*>Spaces<\/dt>/);
-    assert.match(hero, /parseSpaceLines/);
-    assert.match(hero, /row\.use/);
-    assert.match(hero, /row\.space/);
+    assert.match(hero, /spaceLine/);
+    assert.match(hero, /groupBookingSummaryByDate|event-booking-component-schedule/);
     assert.match(hero, /sm:grid-cols-2/);
     assert.match(hero, /lg:grid-cols-3/);
     assert.doesNotMatch(hero, /text-5xl/);
@@ -95,14 +97,16 @@ describe("client page compact booking + staffing layout", () => {
     );
   });
 
-  it("additional staff empty state is compact and keep add/remove controls", () => {
+  it("additional staff uses compact internal selector with add/remove", () => {
     assert.match(teamSection, /No additional staff assigned\./);
     assert.doesNotMatch(teamSection, /py-4 text-center/);
-    assert.match(teamSection, /data-testid="event-team-add"/);
-    assert.match(teamSection, /Add team member/);
+    assert.match(teamSection, /data-testid="event-team-add-select"/);
+    assert.match(teamSection, /Additional team members/);
     assert.match(teamSection, /addTeamMemberAction/);
     assert.match(teamSection, /removeTeamMemberAction/);
     assert.match(teamSection, /data-testid="event-team-member"/);
+    assert.match(teamSection, /filterEligibleAdditionalStaff/);
+    assert.match(teamSection, /staffOptions/);
   });
 
   it("overview keeps adjacent setup and attention content after the upper region", () => {
