@@ -9,6 +9,10 @@ import { celebrateLuv } from "@/lib/luv/celebrate";
 import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-celebrations";
 import { coupleDocumentStatusBadge } from "@/lib/portal/couple-document-status";
 import { portalFocusElementId } from "@/lib/portal/workspace-routing";
+import {
+  isSubmittedQuestionnaireDocumentStatus,
+  submittedQuestionnaireTitle,
+} from "@/lib/questionnaire-family/submitted-answers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +51,12 @@ type PaidLineItem = { id: string; label: string; amount: number; paidAt: string;
 type PortalScheduleLine = { id: string; label: string; amount: number; dueDate: string | null; status: string };
 type PortalSchedule = { id: string; title: string; invoiceId?: string | null; lineItems: PortalScheduleLine[] };
 
-type QuestionnaireSummary = { status: string };
+type QuestionnaireDocSummary = {
+  questionnaire_id?: string;
+  access_key?: string;
+  kind?: string;
+  status: string;
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -296,37 +305,50 @@ function ReceiptRow({ r }: { r: PaidLineItem }) {
   );
 }
 
-// ── Questionnaire card — Program 4, Initiative C, Phase 6 (2026-07-23):
-// a questionnaire is a document as much as it's a task; the couple should
-// never wonder where it lives. Reuses the existing questionnaire status,
-// links back to the same section Tasks already navigates to.
+// Questionnaire cards — same portal questionnaire records (not a second store).
+// Submitted/complete open the read-only answers review in the Questionnaire section.
 const QUESTIONNAIRE_STATUS_BADGE: Record<string, { label: string; color: string }> = {
   not_started: { label: "Not started", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  sent:        { label: "To complete", color: "bg-amber-50 text-amber-700 border-amber-200" },
   in_progress: { label: "In progress", color: "bg-amber-50 text-amber-700 border-amber-200" },
   submitted:   { label: "Submitted",   color: "bg-green-50 text-green-700 border-green-200" },
   resubmitted: { label: "Resubmitted", color: "bg-green-50 text-green-700 border-green-200" },
+  changes_requested: { label: "Changes requested", color: "bg-amber-50 text-amber-700 border-amber-200" },
   complete:    { label: "Complete",    color: "bg-green-50 text-green-700 border-green-200" },
   completed:   { label: "Complete",    color: "bg-green-50 text-green-700 border-green-200" },
 };
 
-function QuestionnaireCard({ status, onNavigate }: { status: string; onNavigate: (s: "questionnaire") => void }) {
-  const badge = QUESTIONNAIRE_STATUS_BADGE[status] ?? QUESTIONNAIRE_STATUS_BADGE.not_started;
-  const isDone =
-    status === "submitted" ||
-    status === "resubmitted" ||
-    status === "complete" ||
-    status === "completed";
+function QuestionnaireCard({
+  row,
+  onNavigate,
+}: {
+  row: QuestionnaireDocSummary;
+  onNavigate: (s: "questionnaire") => void;
+}) {
+  const badge = QUESTIONNAIRE_STATUS_BADGE[row.status] ?? QUESTIONNAIRE_STATUS_BADGE.not_started;
+  const isDone = isSubmittedQuestionnaireDocumentStatus(row.status);
+  const title = submittedQuestionnaireTitle(row.kind);
 
   return (
-    <button type="button" onClick={() => onNavigate("questionnaire")}
-      className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-3 transition-opacity hover:opacity-90 ${isDone ? "border-border/60 bg-card" : "border-amber-300 bg-amber-50/30"}`}>
+    <button
+      type="button"
+      onClick={() => onNavigate("questionnaire")}
+      data-testid="portal-documents-questionnaire"
+      data-questionnaire-id={row.questionnaire_id ?? ""}
+      data-status={row.status}
+      className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-3 transition-opacity hover:opacity-90 ${isDone ? "border-border/60 bg-card" : "border-amber-300 bg-amber-50/30"}`}
+    >
       <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-purple-50 text-purple-700 border-purple-100 shrink-0">📋</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-heading">Final Details Questionnaire</span>
+          <span className="text-sm font-medium text-heading">{title}</span>
           <Badge className={`text-[10px] px-1.5 py-0 border ${badge.color}`}>{badge.label}</Badge>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-0.5">Meal selections, music, emergency contact, and more.</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {isDone
+            ? "Your submitted answers — open to review (read-only)."
+            : "Open to complete and submit your answers."}
+        </p>
       </div>
       <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">{isDone ? "Review →" : "Complete →"}</span>
     </button>
@@ -478,7 +500,7 @@ export default function CoupleDocumentsSection({
   const [documents, setDocuments] = useState<CoupleDocument[]>([]);
   const [receipts, setReceipts] = useState<PaidLineItem[]>([]);
   const [schedules, setSchedules] = useState<PortalSchedule[]>([]);
-  const [questionnaire, setQuestionnaire] = useState<QuestionnaireSummary | null>(null);
+  const [questionnaires, setQuestionnaires] = useState<QuestionnaireDocSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -491,7 +513,15 @@ export default function CoupleDocumentsSection({
       ]);
       const [docsJson, paymentsJson, questionnaireJson] = await Promise.all([docsRes.json(), paymentsRes.json(), questionnaireRes.json()]);
       setDocuments(docsJson.documents ?? []);
-      setQuestionnaire(questionnaireJson.questionnaire ? { status: questionnaireJson.questionnaire.status } : null);
+      const list = (questionnaireJson.questionnaires ?? []) as QuestionnaireDocSummary[];
+      // Prefer full list; fall back to singular back-compat payload.
+      setQuestionnaires(
+        list.length > 0
+          ? list
+          : questionnaireJson.questionnaire
+            ? [questionnaireJson.questionnaire as QuestionnaireDocSummary]
+            : [],
+      );
 
       // Receipts are derived from paid payment line items — not a separate
       // entity (Client Collaboration Workspace, 2026-07-22): "the client
@@ -544,7 +574,7 @@ export default function CoupleDocumentsSection({
   const coupleUploaded = documents.filter((d) => d.uploadedBy === "couple");
 
   const pendingSignature = contracts.filter((c) => c.status === "sent" && c.signToken);
-  const isEmpty = documents.length === 0 && receipts.length === 0 && !questionnaire;
+  const isEmpty = documents.length === 0 && receipts.length === 0 && questionnaires.length === 0;
 
   return (
     <div id="portal-focus-documents-sign" className="w-full space-y-8">
@@ -552,7 +582,7 @@ export default function CoupleDocumentsSection({
         <div>
           <h2 className="text-sm font-semibold text-heading">Documents</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Contracts, invoices, your Event Order, receipts, and anything your venue or vendors share — all in one place.
+            Contracts, invoices, questionnaires, your Event Order, receipts, and anything your venue or vendors share — all in one place.
           </p>
         </div>
         <UploadRow token={token} onDone={load} />
@@ -592,10 +622,18 @@ export default function CoupleDocumentsSection({
         </section>
       )}
 
-      {questionnaire && onNavigate && (
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-heading">Questionnaire</h3>
-          <QuestionnaireCard status={questionnaire.status} onNavigate={onNavigate} />
+      {questionnaires.length > 0 && onNavigate && (
+        <section className="space-y-3" data-testid="portal-documents-questionnaires">
+          <h3 className="text-sm font-semibold text-heading">Questionnaires</h3>
+          <div className="space-y-2">
+            {questionnaires.map((row) => (
+              <QuestionnaireCard
+                key={row.questionnaire_id ?? row.access_key ?? `${row.kind}-${row.status}`}
+                row={row}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
         </section>
       )}
 

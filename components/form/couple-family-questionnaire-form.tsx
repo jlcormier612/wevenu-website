@@ -18,6 +18,7 @@ import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import {
   getQuestionnaireMasterByKind,
+  kindLabel,
   type QuestionnaireKind,
 } from "@/lib/questionnaire-family/definitions";
 import {
@@ -26,6 +27,9 @@ import {
   type MasterOverrides,
   type ResolvedQuestionnaireField,
 } from "@/lib/questionnaire-family/resolve";
+import {
+  buildSubmittedAnswerRows,
+} from "@/lib/questionnaire-family/submitted-answers";
 import { inkOn } from "@/lib/theme/public-form-surface";
 
 export type FamilyQuestionnaireData = {
@@ -326,22 +330,59 @@ export function CoupleFamilyQuestionnaireForm({
   }
 
   if (state === "success" || state === "already_submitted") {
+    const answerRows = buildSubmittedAnswerRows({
+      ...data,
+      kind,
+      additional: { family },
+      meal_notes: columns.meal_notes ?? data.meal_notes,
+      processional_song: columns.processional_song ?? data.processional_song,
+      recessional_song: columns.recessional_song ?? data.recessional_song,
+      first_dance_song: columns.first_dance_song ?? data.first_dance_song,
+      parent_dances: columns.parent_dances ?? data.parent_dances,
+      emergency_contact_name: columns.emergency_contact_name ?? data.emergency_contact_name,
+      emergency_contact_phone: columns.emergency_contact_phone ?? data.emergency_contact_phone,
+      special_requests: columns.special_requests ?? data.special_requests,
+      vendor_notes: columns.vendor_notes ?? data.vendor_notes,
+      ceremony_start_time: columns.ceremony_start_time ?? data.ceremony_start_time,
+      reception_start_time: columns.reception_start_time ?? data.reception_start_time,
+      ceremony_location: columns.ceremony_location ?? data.ceremony_location,
+      reception_location: columns.reception_location ?? data.reception_location,
+      final_guest_count: guestCount ? Number(guestCount) : data.final_guest_count,
+    });
+    const sectionsInAnswers = [...new Set(answerRows.map((r) => r.section))];
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-3">
-        <CheckCircle className="mx-auto h-10 w-10" style={{ color: primary }} />
-        <p className="font-heading text-xl text-heading">Thank you</p>
-        <p className="text-sm text-muted-foreground">
-          {data.status === "complete"
-            ? "This form is complete with your venue."
-            : kind === "post_event_feedback"
-              ? "Your feedback is with our team."
-              : isChangesRequested || state === "success"
-                ? "Your answers are with your venue team for review."
-                : "Your answers are with your venue team."}
-        </p>
-        {data.status === "complete" && (
-          <p className="text-xs text-muted-foreground">Status: {questionnaireStatusLabel("complete")}</p>
-        )}
+      <div
+        className="max-w-xl mx-auto px-4 py-8 space-y-6 pb-24"
+        data-testid="questionnaire-submitted-review"
+        data-status={data.status}
+      >
+        <header className="space-y-3 text-center">
+          <CheckCircle className="mx-auto h-10 w-10" style={{ color: primary }} />
+          <p className="font-heading text-xl text-heading">{kindLabel(kind)}</p>
+          <p className="text-sm text-muted-foreground">
+            {data.status === "complete"
+              ? "This form is complete with your venue. Your submitted answers are below."
+              : kind === "post_event_feedback"
+                ? "Your feedback is with our team. A copy of what you sent is below."
+                : "Your answers are with your venue team. A read-only copy of what you submitted is below."}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Status: {questionnaireStatusLabel(data.status)} · Read-only
+          </p>
+        </header>
+        {sectionsInAnswers.map((section) => (
+          <section key={section} className="space-y-3">
+            <SectionHead>{section}</SectionHead>
+            <dl className="space-y-3 rounded-lg border border-border bg-card px-4 py-3">
+              {answerRows.filter((r) => r.section === section).map((row) => (
+                <div key={row.id} className="space-y-1">
+                  <dt className="text-xs font-medium text-muted-foreground">{row.label}</dt>
+                  <dd className="text-sm text-heading whitespace-pre-wrap">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
       </div>
     );
   }

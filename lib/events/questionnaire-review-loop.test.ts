@@ -150,4 +150,12 @@ describe("venue + couple UI", () => {
     assert.match(coupleDocs, /complete:\s+\{\s+label: "Complete"/);
     assert.doesNotMatch(coupleDocs, /completed:\s+\{\s+label: "Submitted"/);
   });
+
+  it("couple Documents uses real questionnaire titles and submitted review path", () => {
+    assert.match(coupleDocs, /submittedQuestionnaireTitle/);
+    assert.match(coupleDocs, /portal-documents-questionnaires/);
+    assert.doesNotMatch(coupleDocs, />Final Details Questionnaire</);
+    assert.match(coupleForm, /questionnaire-submitted-review/);
+    assert.match(coupleForm, /buildSubmittedAnswerRows/);
+  });
 });
