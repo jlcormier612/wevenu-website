@@ -6,7 +6,10 @@
  * Renders the complete offering context (fixed/included lines + choice groups)
  * so venue preview and couple send preview match the Event Order Template.
  */
-import { formatTemplateOfferingPrice } from "@/lib/event-order-templates/offerings";
+import {
+  formatTemplateOfferingPrice,
+  normalizeTemplatePricingModel,
+} from "@/lib/event-order-templates/offerings";
 import type {
   ChoicesAnswers,
   ChoicesDefinition,
@@ -26,7 +29,7 @@ function linesForSection(
 function FixedLineItem({ line }: { line: ChoicesDefinitionFixedLine }) {
   const priceLabel = formatTemplateOfferingPrice({
     unitPrice: line.unitPrice,
-    pricingModel: line.pricingModel ?? "none",
+    pricingModel: normalizeTemplatePricingModel(line.pricingModel),
     unit: line.unit,
   });
   return (
