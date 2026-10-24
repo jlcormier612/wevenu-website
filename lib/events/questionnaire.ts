@@ -234,9 +234,10 @@ export async function sendQuestionnaireToCouple(
  * Venue-scoped send used by staff actions and the scheduled-send cron.
  * Resolves form link + status/activity the same way for both paths.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type QuestionnaireDb = Awaited<ReturnType<typeof createClient>>;
+
 export async function sendQuestionnaireToCoupleForVenue(
-  supabase: any,
+  supabase: QuestionnaireDb,
   venueId: string,
   eventId: string,
   coupleEmail: string,
@@ -249,12 +250,13 @@ export async function sendQuestionnaireToCoupleForVenue(
 ): Promise<{ ok: boolean; formUrl?: string; message?: string }> {
   const { data: existing } = await supabase.from("event_questionnaires")
     .select("id, access_key, status").eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
-    .maybeSingle<{ id: string; access_key: string; status: string }>();
-  const isResend = existing ? existing.status !== "draft" : false;
+    .maybeSingle();
+  const existingRow = existing as { id: string; access_key: string; status: string } | null;
+  const isResend = existingRow ? existingRow.status !== "draft" : false;
 
   let accessKey: string;
-  if (existing) {
-    accessKey = existing.access_key;
+  if (existingRow) {
+    accessKey = existingRow.access_key;
   } else {
     const master = getQuestionnaireMasterByKind(kind);
     const { data: created } = await supabase.from("event_questionnaires")
@@ -265,17 +267,18 @@ export async function sendQuestionnaireToCoupleForVenue(
         included_fields: masterIncludedFieldIds(master),
         required_fields: masterRequiredFieldIds(master),
       })
-      .select("access_key").single<{ access_key: string }>();
-    if (!created) return { ok: false, message: "Could not create the form." };
-    accessKey = created.access_key;
+      .select("access_key").single();
+    const createdRow = created as { access_key: string } | null;
+    if (!createdRow) return { ok: false, message: "Could not create the form." };
+    accessKey = createdRow.access_key;
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const formUrl = `${appUrl}/questionnaire/${accessKey}`;
 
   const patch: Record<string, unknown> = {
-    status: existing?.status === "submitted" || existing?.status === "resubmitted" || existing?.status === "complete" || existing?.status === "changes_requested" || existing?.status === "in_progress"
-      ? existing.status
+    status: existingRow?.status === "submitted" || existingRow?.status === "resubmitted" || existingRow?.status === "complete" || existingRow?.status === "changes_requested" || existingRow?.status === "in_progress"
+      ? existingRow.status
       : "sent",
     sent_at: new Date().toISOString(),
     kind,
@@ -284,10 +287,11 @@ export async function sendQuestionnaireToCoupleForVenue(
   const { data: sentRow } = await supabase.from("event_questionnaires")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update(patch as any).eq("event_id", eventId).eq("venue_id", venueId).eq("kind", kind)
-    .select("id").maybeSingle<{ id: string }>();
-  if (sentRow) {
+    .select("id").maybeSingle();
+  const sent = sentRow as { id: string } | null;
+  if (sent) {
     await logActivity(
-      supabase, venueId, sentRow.id,
+      supabase, venueId, sent.id,
       isResend ? "resent" : "sent",
       isResend ? `Resent ${kindLabel(kind)}` : `Sent ${kindLabel(kind)}`,
     );

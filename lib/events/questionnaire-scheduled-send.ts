@@ -177,8 +177,9 @@ export async function processDueQuestionnaireScheduledSends(): Promise<ProcessQu
         || "there";
       const eventName = event.name?.trim() || "your event";
 
+      // Admin client is compatible with the staff client surface used by send.
       const send = await sendQuestionnaireToCoupleForVenue(
-        supabase,
+        supabase as never,
         row.venue_id,
         row.event_id,
         email,
