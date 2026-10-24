@@ -342,8 +342,7 @@ export function EventSetupPanel({
               <p className="mt-1 text-sm text-muted-foreground">
                 Review planning, timeline, vendors, and floor plans for this event, then release
                 the prepared experience to the client portal. Invite the client separately when
-                you&apos;re ready. Questionnaires use authorized send when staff choose — not an automated schedule.
-                Inventory selection and Event Order are commercial workflows on the Inventory &amp; Event Order card — not part of Setup.
+                you&apos;re ready. Questionnaires use authorized send when staff choose — scheduled or immediate. Inventory selection and Event Orders are separate workflows found on the Inventory &amp; Event Order card — not part of Setup.
               </p>
             </>
           ) : (

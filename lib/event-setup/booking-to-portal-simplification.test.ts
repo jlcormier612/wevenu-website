@@ -50,7 +50,12 @@ describe("booking-to-portal simplification", () => {
     assert.match(panel, /prepareAndReleasePortalAction/);
     assert.match(panel, /data-testid="prepare-and-release-portal"/);
     assert.match(panel, /inviteLabel="Invite client"/);
-    assert.match(panel, /Questionnaires use authorized send when staff choose/);
+    assert.match(
+      panel,
+      /Questionnaires use authorized send when staff choose — scheduled or immediate\. Inventory selection and Event Orders are separate workflows found on the Inventory &amp; Event Order card — not part of Setup\./,
+    );
+    assert.doesNotMatch(panel, /not an automated schedule/);
+    assert.doesNotMatch(panel, /Event Order are commercial workflows on the Inventory/);
     assert.doesNotMatch(panel, /inviteLabel="Invite client to workspace"/);
     assert.doesNotMatch(panel, /ensureEventInventoryAction/);
     assert.doesNotMatch(panel, /ensureEventOrderAction/);
