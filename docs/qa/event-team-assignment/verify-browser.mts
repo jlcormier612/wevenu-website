@@ -77,22 +77,13 @@ async function staffCookies() {
   const { data: link } = await admin.auth.admin.generateLink({ type: "magiclink", email: EMAIL });
   const { data: otp, error } = await anon.auth.verifyOtp({
     type: "email",
-    token_hash: link.properties.hashed_token,
+    token_hash: link!.properties!.hashed_token!,
   });
-  if (error || !otp.session) throw error ?? new Error("no session");
-  const session = otp.session;
-  const cookieName = `sb-wvpsldwwjqdannqasrdf-auth-token`;
-  const value = JSON.stringify({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-    expires_at: session.expires_at,
-    expires_in: session.expires_in,
-    token_type: session.token_type,
-    user: session.user,
-  });
-  const chunks = ssrUtils.createChunks(cookieName, ssrUtils.stringToBase64URL(value));
+  if (error || !otp?.session) throw error ?? new Error("no session");
+  const cookieName = "sb-wvpsldwwjqdannqasrdf-auth-token";
+  const encoded = "base64-" + ssrUtils.stringToBase64URL(JSON.stringify(otp.session));
   return [
-    ...chunks.map((c: { name: string; value: string }) => ({
+    ...ssrUtils.createChunks(cookieName, encoded).map((c: { name: string; value: string }) => ({
       name: c.name,
       value: c.value,
       domain: "app.sandbox.hellotocheers.com",
@@ -172,7 +163,7 @@ async function main() {
     if (res.status() >= 400) failedRequests.push(`${res.status()} ${res.url()}`.slice(0, 300));
   });
 
-  const workspaceUrl = `${APP}/clients/${clientId}`;
+  const workspaceUrl = `${APP}/events/${EVENT}`;
   await page.goto(workspaceUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
   await page.waitForSelector('[data-testid="event-staff-assignment"]', { timeout: 60_000 });
   await page.waitForTimeout(800);

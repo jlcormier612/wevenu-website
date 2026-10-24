@@ -1,0 +1,154 @@
+{
+  "pass": true,
+  "failed": 0,
+  "total": 29,
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=3377a8614cb9 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a"
+    },
+    {
+      "name": "serving-digest-present",
+      "pass": true,
+      "detail": "sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe"
+    },
+    {
+      "name": "fixture-event",
+      "pass": true,
+      "detail": "{\"id\":\"ebf74f77-2944-474a-b735-48762ecb6842\",\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\",\"client_id\":\"b4e2764b-be33-4579-89e3-0c8e4a6dd5be\",\"assigned_staff_id\":null,\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}"
+    },
+    {
+      "name": "venue-staff-count",
+      "pass": true,
+      "detail": "n=4"
+    },
+    {
+      "name": "team-band-visible",
+      "pass": true,
+      "detail": "event-staff-assignment"
+    },
+    {
+      "name": "team-row-visible",
+      "pass": true,
+      "detail": "event-team-assignment-row"
+    },
+    {
+      "name": "owner-field",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "name": "no-additional-team-members-label",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "name": "no-additional-event-staff-heading",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "name": "no-additional-select",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "name": "no-event-team-section",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "name": "owner-fully-inside-band",
+      "pass": true,
+      "detail": "{\"bandBox\":{\"x\":862.5,\"y\":280.5,\"width\":375,\"height\":85},\"ownerBox\":{\"x\":878.375,\"y\":317.75,\"width\":343.25,\"height\":34}}"
+    },
+    {
+      "name": "desktop-no-h-overflow",
+      "pass": true,
+      "detail": "scrollWidth vs innerWidth"
+    },
+    {
+      "name": "questionnaires-card",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "name": "questionnaires-copy",
+      "pass": true,
+      "detail": "Questionnaires\nChoose and send your prepared information/feedback-gathering questionnaires when ready — separate from the client portal release process. Schedule them or send now — your choice!\nOpen Q"
+    },
+    {
+      "name": "alternate-owner-available",
+      "pass": true,
+      "detail": "Jen Fancy"
+    },
+    {
+      "name": "owner-option-visible",
+      "pass": true,
+      "detail": "Jen Fancy"
+    },
+    {
+      "name": "owner-persisted",
+      "pass": true,
+      "detail": "want=67458154-e6fe-41e3-830e-ea39844e4e19 got=67458154-e6fe-41e3-830e-ea39844e4e19"
+    },
+    {
+      "name": "booking-unchanged-after-owner",
+      "pass": true,
+      "detail": "{\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\"}"
+    },
+    {
+      "name": "owner-ui-matches-db",
+      "pass": true,
+      "detail": "Event owner\nJen Fancy\nEdit/Save"
+    },
+    {
+      "name": "event-team-rows-unchanged",
+      "pass": true,
+      "detail": "{\"before\":[{\"id\":\"340acb14-57de-413d-8079-e7ee75b68979\",\"full_name\":\"QA Legacy Florist\",\"role\":\"Florist\",\"phone\":\"555-0100\"}],\"final\":[{\"id\":\"340acb14-57de-413d-8079-e7ee75b68979\",\"full_name\":\"QA Legacy Florist\",\"role\":\"Florist\",\"phone\":\"555-0100\"}]}"
+    },
+    {
+      "name": "owner-restored",
+      "pass": true,
+      "detail": "want=null got=null"
+    },
+    {
+      "name": "booking-final-unchanged",
+      "pass": true,
+      "detail": "{\"assigned_staff_id\":null,\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\"}"
+    },
+    {
+      "name": "narrow-band-visible",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "narrow-owner-fully-inside-band",
+      "pass": true,
+      "detail": "{\"nb\":{\"x\":17,\"y\":625.46875,\"width\":356,\"height\":80.75},\"no\":{\"x\":30.75,\"y\":660.59375,\"width\":328.5,\"height\":34}}"
+    },
+    {
+      "name": "narrow-no-h-overflow",
+      "pass": true,
+      "detail": "390 scrollWidth"
+    },
+    {
+      "name": "narrow-no-additional-label",
+      "pass": true,
+      "detail": "390"
+    },
+    {
+      "name": "no-page-errors",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "name": "no-failed-requests",
+      "pass": true,
+      "detail": "none"
+    }
+  ],
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a",
+  "digest": "sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe"
+}
