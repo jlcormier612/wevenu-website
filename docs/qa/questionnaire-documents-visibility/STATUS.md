@@ -2,17 +2,39 @@
 
 ## Status
 
-**IN PROGRESS** — implementation committed; awaiting Sandbox deploy + browser GREEN.
+**NOT GREEN yet** — code fixed and pushed; Sandbox deploy of `c26af6a5` pending verification.
 
 ## Root cause
 
-1. Submitted questionnaire **is persisted** (`event_questionnaires`, status `complete` / `submitted`) and returned by `get_questionnaire_for_portal`.
-2. Documents already linked to the Questionnaire section, but after submission the couple form showed only a **Thank you** screen — **no questions or answers**.
-3. Documents card hard-coded **"Final Details Questionnaire"** instead of the real family title (e.g. Client Planning Questionnaire).
+| Question | Answer |
+| --- | --- |
+| Response persisted? | **Yes** — `event_questionnaires` on fixture `e055c612-…`, status `complete`, `submitted_at` set |
+| Registered as couple_documents row? | **No** — product uses the questionnaire record itself (venue Documents workspace already treats returned questionnaires as docs; portal used a section card) |
+| Documents query omit? | Card existed but title was hard-coded **Final Details**; after open, form showed only **Thank you** with **no Q&A** |
+| Client-facing route missing answers? | **Yes** — `CoupleFamilyQuestionnaireForm` replaced the form with a thank-you screen on `already_submitted` / `success` |
 
-Not a missing DB document row: the canonical representation is the questionnaire record + portal section (same pattern as Event Order merge into Documents).
+Email delivery and venue-side returned answers were already working; do not reopen.
 
-## Fix
+## Fix (commits)
 
-- Read-only submitted review via `buildSubmittedAnswerRows` in `CoupleFamilyQuestionnaireForm` (`data-testid=questionnaire-submitted-review`).
-- Documents lists all portal questionnaires with `submittedQuestionnaireTitle(kind)` and Review CTA.
+1. `b54fcf3b` — read-only submitted Q&A review (`buildSubmittedAnswerRows`); Documents lists questionnaires by real `kindLabel` title + Review CTA  
+2. `c26af6a5` — `?view=documents` / `?view=questionnaire` portal deep links  
+
+Reuse: canonical `event_questionnaires` + `get_questionnaire_for_portal` — no parallel document store / PDF.
+
+## Tests
+
+```text
+npx tsx --test lib/questionnaire-family/submitted-answers.test.ts lib/events/questionnaire-review-loop.test.ts
+→ pass
+```
+
+## Deploy / E2E
+
+| Item | Value |
+| --- | --- |
+| Commit to verify | `c26af6a5d7bff13e36d680ac468c31ed8ebe79e3` |
+| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40061415812 |
+| Harness | `EXPECTED_SHA=c26af6a5 npx tsx docs/qa/questionnaire-documents-visibility/verify-browser.mts` |
+
+Production untouched.
