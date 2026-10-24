@@ -1,6 +1,7 @@
 /**
  * Staff Client Portal Preview must reuse couple-facing presentation and
  * portal visibility rules — never a parallel mockup or mutating ensure path.
+ * Nav is Event Setup planning only: Planning → Timeline → Floor Plans → Vendors.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -9,36 +10,50 @@ import { describe, it } from "node:test";
 
 const preview = readFileSync(resolve("components/events/client-portal-preview.tsx"), "utf8");
 const loader = readFileSync(resolve("lib/client-portal-preview/load-preview.ts"), "utf8");
-const eoSection = readFileSync(resolve("components/portal/event-order-section.tsx"), "utf8");
-const eoView = readFileSync(resolve("components/portal/event-order-view.tsx"), "utf8");
-const invSection = readFileSync(resolve("components/portal/inventory-section.tsx"), "utf8");
-const invView = readFileSync(resolve("components/portal/inventory-view.tsx"), "utf8");
+const timelinePreview = readFileSync(resolve("components/portal/timeline-preview-view.tsx"), "utf8");
 const fpView = readFileSync(resolve("components/portal/floor-plan-view.tsx"), "utf8");
 const planningView = readFileSync(resolve("components/portal/planning-tasks-view.tsx"), "utf8");
 
 describe("Client portal preview fidelity", () => {
-  it("Event Order portal section and preview share EventOrderPortalView", () => {
-    assert.match(eoSection, /EventOrderPortalView/);
-    assert.match(preview, /EventOrderPortalView/);
-    assert.match(eoView, /Not shared yet/);
-    assert.match(eoView, /What you&apos;re receiving/);
-    assert.match(eoView, /eventOrderPortalLineMoneyLabel/);
-    assert.match(eoView, /eventOrderPortalAdditionalReferenceTotal/);
-    assert.match(eoView, /Additional total \(for reference\)/);
-    assert.doesNotMatch(eoView, /Delivery subtotal \(for reference\)/);
+  it("preview nav is exactly Planning → Timeline → Floor Plans → Vendors", () => {
+    const tabsMatch = preview.match(
+      /export const CLIENT_PORTAL_PREVIEW_TABS = \[([\s\S]*?)\] as const/,
+    );
+    assert.ok(tabsMatch, "CLIENT_PORTAL_PREVIEW_TABS export missing");
+    const tabsBlock = tabsMatch[1];
+    assert.match(tabsBlock, /\["planning", "Planning"\]/);
+    assert.match(tabsBlock, /\["timeline", "Timeline"\]/);
+    assert.match(tabsBlock, /\["floor-plans", "Floor Plans"\]/);
+    assert.match(tabsBlock, /\["vendors", "Vendors"\]/);
+    const order = [
+      tabsBlock.indexOf('["planning", "Planning"]'),
+      tabsBlock.indexOf('["timeline", "Timeline"]'),
+      tabsBlock.indexOf('["floor-plans", "Floor Plans"]'),
+      tabsBlock.indexOf('["vendors", "Vendors"]'),
+    ];
+    assert.ok(order.every((i) => i >= 0), `tab labels missing: ${tabsBlock}`);
+    assert.deepEqual(
+      [...order].sort((a, b) => a - b),
+      order,
+      "tab order must be Planning → Timeline → Floor Plans → Vendors",
+    );
+    assert.equal((tabsBlock.match(/\["/g) ?? []).length, 4, "exactly four preview tabs");
+    assert.match(preview, /useState<ClientPortalPreviewTab>\("planning"\)/);
+    assert.doesNotMatch(preview, /portal-preview-tab-event-order|portal-preview-tab-inventory/);
+    assert.doesNotMatch(preview, /\["event-order", "Event Order"\]|\["inventory", "Inventory"\]/);
+    assert.doesNotMatch(preview, /EventOrderPortalView|InventoryPortalView/);
   });
 
-  it("Inventory portal section and preview share InventoryPortalView", () => {
-    assert.match(invSection, /InventoryPortalView/);
-    assert.match(preview, /InventoryPortalView/);
-    assert.match(invView, /Not shared yet/);
-    assert.match(invView, /has not shared this event&apos;s inventory yet/);
-    assert.match(invView, /Included — no extra charge/);
-    assert.match(invView, /Additional fee/);
-    assert.match(invView, /package-included items and available add-ons/);
-    assert.match(invView, /collaborationMode/);
-    assert.doesNotMatch(invView, /What.?s included in your event/);
-    assert.doesNotMatch(invView, /what your venue is including for this celebration/);
+  it("Timeline preview is read-only and does not call mutating timeline sync", () => {
+    assert.match(preview, /TimelinePortalPreviewView/);
+    assert.match(loader, /timelineRepo\.getTimelineEntries/);
+    assert.match(loader, /venueItemVisibleToClient/);
+    // Must not use the service helper — it runs schedule sync (mutates).
+    assert.doesNotMatch(loader, /@\/lib\/timeline\/service/);
+    assert.doesNotMatch(loader, /shareTimelineWithCouple|submitPortalTimeline/);
+    assert.match(timelinePreview, /No timeline shared yet/);
+    assert.match(timelinePreview, /timeline-portal-preview/);
+    assert.doesNotMatch(timelinePreview, /fetch\(|\/api\/portal\/timeline/);
   });
 
   it("Floor Plans preview only presents shared plans + offers (not unshared operational alone)", () => {
@@ -63,7 +78,8 @@ describe("Client portal preview fidelity", () => {
   });
 
   it("preview payments link is inert (no couple navigation side channel)", () => {
-    assert.match(preview, /paymentsHref=\{null\}/);
+    // Commercial EO removed from preview — paymentsHref must not reappear via EO view.
+    assert.doesNotMatch(preview, /paymentsHref/);
   });
 
   it("preview locks light tokens so dark staff theme cannot wash out cream surfaces", () => {
@@ -71,5 +87,10 @@ describe("Client portal preview fidelity", () => {
     assert.match(preview, /PUBLIC_FORM_LIGHT_VARS/);
     assert.match(preview, /natural-cream|PUBLIC_FORM_LIGHT_VARS/);
     assert.doesNotMatch(preview, /bg-\[#F7F5F1\]/);
+  });
+
+  it("preview loader no longer loads commercial Event Order or Inventory", () => {
+    assert.doesNotMatch(loader, /getEventOrder|getEventInventory|event_order_share_snapshots/);
+    assert.doesNotMatch(loader, /eventOrder:|inventory:/);
   });
 });

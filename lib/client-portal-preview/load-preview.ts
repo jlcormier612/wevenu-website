@@ -1,24 +1,27 @@
 /**
  * Staff read-only client portal preview — portal-faithful payloads.
  * Does not invite, release, share, ensure recommendations, or mutate.
+ * Preview sections match Event Setup client planning experience only
+ * (Planning, Timeline, Floor Plans, Vendors) — not commercial Inventory/EO.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getEventOrder } from "@/lib/event-orders/service";
-import type { EventOrderSharePayload } from "@/lib/event-orders/types";
 import { getEvent } from "@/lib/events/service";
 import { getFloorPlan, getFloorPlansByEvent } from "@/lib/floor-plans/service";
-import { getEventInventory } from "@/lib/event-inventory/service";
 import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
 import { getObjects as getTemplateObjects, getTemplate } from "@/lib/floor-plan-templates/service";
 import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getCurrentVenue } from "@/lib/venue/service";
-import type { PortalEventOrderViewModel } from "@/components/portal/event-order-view";
-import type { PortalInventoryViewModel } from "@/components/portal/inventory-view";
 import type { FloorPlanPortalViewModel } from "@/components/portal/floor-plan-view";
 import type { PlanningTaskPreviewItem } from "@/components/portal/planning-tasks-view";
+import type { TimelinePreviewEntry } from "@/components/portal/timeline-preview-view";
 import type { VendorPreviewCard } from "@/components/portal/vendors-preview-view";
 import type { PortalFloorPlanDetail, PortalFloorPlanObject } from "@/lib/portal/types";
+import {
+  computeVenueTimelineClientShareStatus,
+  venueItemVisibleToClient,
+} from "@/lib/timeline/audience-ownership";
+import * as timelineRepo from "@/lib/timeline/repository";
 
 export type PreviewVisibility = "released" | "draft" | "not_included";
 
@@ -29,20 +32,17 @@ export type PortalPreviewData = {
   coupleName: string;
   venueName: string;
   returnHref: string;
+  eventDate: string | null;
+  eventEndDate: string | null;
   planning: {
     visibility: PreviewVisibility;
     released: boolean;
     tasks: PlanningTaskPreviewItem[];
   };
-  eventOrder: {
+  timeline: {
     visibility: PreviewVisibility;
-    clientVisible: PortalEventOrderViewModel | null;
-    staffDraft: PortalEventOrderViewModel | null;
-  };
-  inventory: {
-    visibility: PreviewVisibility;
-    clientVisible: PortalInventoryViewModel | null;
-    staffDraft: PortalInventoryViewModel | null;
+    clientVisible: TimelinePreviewEntry[];
+    staffDraft: TimelinePreviewEntry[];
   };
   floorPlans: {
     visibility: PreviewVisibility;
@@ -88,6 +88,32 @@ function toPortalObjects(
     displayShape: o.displayShape,
     inventoryItemId: o.inventoryItemId ?? null,
   }));
+}
+
+function toPreviewEntry(
+  e: {
+    id: string;
+    title: string;
+    description: string | null;
+    entryTime: string | null;
+    dayOffset: number;
+    sectionId: string | null;
+    sortOrder: number;
+    owner: "venue" | "client";
+  },
+  sectionNameById: Map<string, string>,
+): TimelinePreviewEntry {
+  return {
+    id: e.id,
+    title: e.title,
+    description: e.description,
+    entryTime: e.entryTime,
+    dayOffset: Number(e.dayOffset ?? 0) || 0,
+    sectionId: e.sectionId,
+    sectionName: e.sectionId ? sectionNameById.get(e.sectionId) ?? null : null,
+    sortOrder: e.sortOrder,
+    owner: e.owner,
+  };
 }
 
 export async function loadClientPortalPreview(
@@ -162,117 +188,28 @@ export async function loadClientPortalPreview(
     isRequired: Boolean(t.is_required),
   }));
 
-  const eventOrder = await getEventOrder(eventId);
-  let clientEo: PortalEventOrderViewModel | null = null;
-  let staffEoDraft: PortalEventOrderViewModel | null = null;
-
-  if (eventOrder?.sharedAt) {
-    const { data: snap } = await supabase
-      .from("event_order_share_snapshots")
-      .select("revision, shared_at, payload")
-      .eq("event_order_id", eventOrder.id)
-      .order("shared_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ revision: number; shared_at: string; payload: EventOrderSharePayload }>();
-
-    if (snap?.payload) {
-      const sectionNameById = new Map(snap.payload.sections.map((s) => [s.id, s.name]));
-      clientEo = {
-        id: eventOrder.id,
-        status: eventOrder.status,
-        revision: snap.revision,
-        sharedAt: snap.shared_at,
-        lines: snap.payload.lines.map((l) => ({
-          id: l.id,
-          description: l.description,
-          quantity: l.quantity,
-          amount: l.amount,
-          sectionId: l.sectionId,
-          sectionName: l.sectionId ? sectionNameById.get(l.sectionId) ?? null : null,
-          isIncluded: l.isIncluded,
-          unit: l.unit,
-          unitPrice: l.unitPrice,
-          notes: l.notes,
-        })),
-      };
-    } else {
-      const sectionNameById = new Map((eventOrder.sections ?? []).map((s) => [s.id, s.name]));
-      clientEo = {
-        id: eventOrder.id,
-        status: eventOrder.status,
-        revision: eventOrder.revision,
-        sharedAt: eventOrder.sharedAt,
-        lines: (eventOrder.lines ?? []).map((l) => ({
-          id: l.id,
-          description: l.description,
-          quantity: l.quantity,
-          amount: l.amount,
-          sectionId: l.sectionId,
-          sectionName: l.sectionId ? sectionNameById.get(l.sectionId) ?? null : null,
-          isIncluded: l.isIncluded,
-          unit: l.unit,
-          unitPrice: l.unitPrice,
-          notes: l.notes,
-        })),
-      };
-    }
-  } else if (eventOrder) {
-    const sectionNameById = new Map((eventOrder.sections ?? []).map((s) => [s.id, s.name]));
-    staffEoDraft = {
-      id: eventOrder.id,
-      status: eventOrder.status,
-      revision: eventOrder.revision,
-      sharedAt: null,
-      lines: (eventOrder.lines ?? []).map((l) => ({
-        id: l.id,
-        description: l.description,
-        quantity: l.quantity,
-        amount: l.amount,
-        sectionId: l.sectionId,
-        sectionName: l.sectionId ? sectionNameById.get(l.sectionId) ?? null : null,
-        isIncluded: l.isIncluded,
-        unit: l.unit,
-        unitPrice: l.unitPrice,
-        notes: l.notes,
-      })),
-    };
-  }
-
-  const eoVisibility: PreviewVisibility = !eventOrder
-    ? "not_included"
-    : eventOrder.sharedAt
-      ? "released"
-      : "draft";
-
-  const inventory = await getEventInventory(eventId);
-  const invReleased =
-    inventory != null &&
-    ["shared", "submitted", "changes_requested", "confirmed", "finalized"].includes(inventory.status);
-  const mapInv = (inv: NonNullable<typeof inventory>): PortalInventoryViewModel => ({
-    id: inv.id,
-    status: inv.status,
-    finalizedAt: inv.finalizedAt ?? null,
-    collaborationMode: inv.collaborationMode ?? "view",
-    items: (inv.items ?? []).map((i) => ({
-      id: i.id,
-      name: i.name,
-      category: i.category ?? null,
-      quantity: i.quantity,
-      unitPrice: i.unitPrice ?? null,
-      isIncluded: i.isIncluded,
-      notes: i.notes ?? null,
-      clientSelectable: i.clientSelectable,
-      maxQuantity: i.maxQuantity,
-      clientDraftQuantity: i.clientDraftQuantity,
-      clientSubmittedQuantity: i.clientSubmittedQuantity,
-    })),
-  });
-
-  const invVisibility: PreviewVisibility = !inventory
-    ? "not_included"
-    : invReleased
-      ? "released"
-      : "draft";
+  // Read-only — do not call getTimelineEntries (that syncs/mutates schedule rows).
+  const [timelineEntries, timelineSections] = await Promise.all([
+    timelineRepo.getTimelineEntries(supabase, venue.id, eventId),
+    timelineRepo.getSections(supabase, venue.id, eventId),
+  ]);
+  const sectionNameById = new Map(timelineSections.map((s) => [s.id, s.name]));
+  const shareStatus = computeVenueTimelineClientShareStatus(timelineEntries);
+  const clientVisibleEntries = timelineEntries
+    .filter((e) => e.owner === "client" || venueItemVisibleToClient(e.audiences))
+    .map((e) => toPreviewEntry(e, sectionNameById));
+  const staffDraftEntries =
+    shareStatus.kind === "not_shared" || shareStatus.kind === "partial"
+      ? timelineEntries
+          .filter((e) => e.owner === "venue" && !venueItemVisibleToClient(e.audiences))
+          .map((e) => toPreviewEntry(e, sectionNameById))
+      : [];
+  const timelineVisibility: PreviewVisibility =
+    shareStatus.kind === "empty"
+      ? "not_included"
+      : shareStatus.kind === "not_shared"
+        ? "draft"
+        : "released";
 
   const plans = await getFloorPlansByEvent(eventId);
   const offers = await getEventFloorPlanOffers(eventId);
@@ -398,20 +335,17 @@ export async function loadClientPortalPreview(
     coupleName,
     venueName: venue.name,
     returnHref: `/clients/${clientId}`,
+    eventDate: event.eventDate ?? null,
+    eventEndDate: event.eventEndDate ?? null,
     planning: {
       visibility: planningVisibility,
       released: planningReleased,
       tasks: planningTasks,
     },
-    eventOrder: {
-      visibility: eoVisibility,
-      clientVisible: clientEo,
-      staffDraft: staffEoDraft,
-    },
-    inventory: {
-      visibility: invVisibility,
-      clientVisible: invReleased && inventory ? mapInv(inventory) : null,
-      staffDraft: !invReleased && inventory ? mapInv(inventory) : null,
+    timeline: {
+      visibility: timelineVisibility,
+      clientVisible: clientVisibleEntries,
+      staffDraft: staffDraftEntries,
     },
     floorPlans: {
       visibility: fpVisibility,

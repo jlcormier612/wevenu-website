@@ -145,14 +145,15 @@ describe("Client portal preview seams", () => {
     assert.match(page, /Does not use a portal invite token/);
   });
 
-  it("preview mounts shared portal presentation views (not a parallel mockup list)", () => {
-    assert.match(preview, /EventOrderPortalView/);
-    assert.match(preview, /InventoryPortalView/);
-    assert.match(preview, /FloorPlanPortalView/);
+  it("preview mounts Event Setup planning views only (not commercial EO/Inventory)", () => {
     assert.match(preview, /PlanningTasksPortalView/);
+    assert.match(preview, /TimelinePortalPreviewView/);
+    assert.match(preview, /FloorPlanPortalView/);
     assert.match(preview, /VendorsPortalPreviewView/);
-    assert.match(loader, /event_order_share_snapshots/);
+    assert.doesNotMatch(preview, /EventOrderPortalView|InventoryPortalView/);
     assert.match(loader, /sharedWithCouple/);
     assert.match(loader, /owner_type", "couple"/);
+    assert.doesNotMatch(loader, /event_order_share_snapshots|getEventOrder|getEventInventory/);
   });
 });
+

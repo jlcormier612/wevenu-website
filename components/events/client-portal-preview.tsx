@@ -4,13 +4,22 @@ import * as React from "react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { EventOrderPortalView } from "@/components/portal/event-order-view";
-import { InventoryPortalView } from "@/components/portal/inventory-view";
 import { FloorPlanPortalView } from "@/components/portal/floor-plan-view";
 import { PlanningTasksPortalView } from "@/components/portal/planning-tasks-view";
+import { TimelinePortalPreviewView } from "@/components/portal/timeline-preview-view";
 import { VendorsPortalPreviewView } from "@/components/portal/vendors-preview-view";
 import type { PortalPreviewData, PreviewVisibility } from "@/lib/client-portal-preview/load-preview";
 import { PUBLIC_FORM_LIGHT_VARS } from "@/lib/theme/public-form-surface";
+
+/** Exact Client Portal Preview nav — Event Setup planning experience only. */
+export const CLIENT_PORTAL_PREVIEW_TABS = [
+  ["planning", "Planning"],
+  ["timeline", "Timeline"],
+  ["floor-plans", "Floor Plans"],
+  ["vendors", "Vendors"],
+] as const;
+
+export type ClientPortalPreviewTab = (typeof CLIENT_PORTAL_PREVIEW_TABS)[number][0];
 
 function visibilityBadge(visibility: PreviewVisibility): {
   label: string;
@@ -22,9 +31,7 @@ function visibilityBadge(visibility: PreviewVisibility): {
 }
 
 export function ClientPortalPreview({ data }: { data: PortalPreviewData }) {
-  const [tab, setTab] = React.useState<
-    "planning" | "event-order" | "floor-plans" | "inventory" | "vendors"
-  >("event-order");
+  const [tab, setTab] = React.useState<ClientPortalPreviewTab>("planning");
 
   // Staff app may be in dark mode; couple portal is always a light surface.
   // Hardcoding cream without re-pinning light tokens made text-heading /
@@ -66,15 +73,7 @@ export function ClientPortalPreview({ data }: { data: PortalPreviewData }) {
           </Link>
         </div>
         <div className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 pb-3">
-          {(
-            [
-              ["event-order", "Event Order"],
-              ["floor-plans", "Floor Plans"],
-              ["planning", "Planning"],
-              ["inventory", "Inventory"],
-              ["vendors", "Vendors"],
-            ] as const
-          ).map(([id, label]) => (
+          {CLIENT_PORTAL_PREVIEW_TABS.map(([id, label]) => (
             <button
               key={id}
               type="button"
@@ -93,47 +92,6 @@ export function ClientPortalPreview({ data }: { data: PortalPreviewData }) {
       </div>
 
       <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-        {tab === "event-order" ? (
-          <section data-testid="portal-preview-event-order" className="space-y-4">
-            <div className="flex justify-end px-4">
-              <Badge variant={visibilityBadge(data.eventOrder.visibility).variant}>
-                {visibilityBadge(data.eventOrder.visibility).label}
-              </Badge>
-            </div>
-            <EventOrderPortalView data={data.eventOrder.clientVisible} paymentsHref={null} />
-            {data.eventOrder.staffDraft ? (
-              <div className="border-t border-dashed border-border pt-4 space-y-2">
-                <p className="px-4 text-xs text-muted-foreground">
-                  Staff draft below — not visible to the couple until you share the Event Order.
-                </p>
-                <EventOrderPortalView
-                  data={data.eventOrder.staffDraft}
-                  paymentsHref={null}
-                  staffPreviewLabel="Preview — not yet released"
-                />
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        {tab === "floor-plans" ? (
-          <section data-testid="portal-preview-floor-plans" className="space-y-2">
-            <div className="flex justify-end px-4">
-              <Badge variant={visibilityBadge(data.floorPlans.visibility).variant}>
-                {visibilityBadge(data.floorPlans.visibility).label}
-              </Badge>
-            </div>
-            <FloorPlanPortalView
-              data={data.floorPlans.view}
-              staffPreviewLabel={
-                data.floorPlans.visibility === "draft"
-                  ? "Layout offers are visible for choosing; shared Floor Plan view appears after the venue shares a plan."
-                  : null
-              }
-            />
-          </section>
-        ) : null}
-
         {tab === "planning" ? (
           <section data-testid="portal-preview-planning" className="space-y-4">
             <div className="flex justify-end px-4">
@@ -162,25 +120,51 @@ export function ClientPortalPreview({ data }: { data: PortalPreviewData }) {
           </section>
         ) : null}
 
-        {tab === "inventory" ? (
-          <section data-testid="portal-preview-inventory" className="space-y-4">
+        {tab === "timeline" ? (
+          <section data-testid="portal-preview-timeline" className="space-y-4">
             <div className="flex justify-end px-4">
-              <Badge variant={visibilityBadge(data.inventory.visibility).variant}>
-                {visibilityBadge(data.inventory.visibility).label}
+              <Badge variant={visibilityBadge(data.timeline.visibility).variant}>
+                {visibilityBadge(data.timeline.visibility).label}
               </Badge>
             </div>
-            <InventoryPortalView data={data.inventory.clientVisible} />
-            {data.inventory.staffDraft ? (
+            <TimelinePortalPreviewView
+              entries={data.timeline.clientVisible}
+              venueName={data.venueName}
+              eventDate={data.eventDate}
+              eventEndDate={data.eventEndDate}
+            />
+            {data.timeline.staffDraft.length > 0 ? (
               <div className="border-t border-dashed border-border pt-4 space-y-2">
                 <p className="px-4 text-xs text-muted-foreground">
-                  Staff draft below — not visible to the couple until inventory is shared or finalized.
+                  Staff draft below — not visible to the couple until you share the Timeline.
                 </p>
-                <InventoryPortalView
-                  data={data.inventory.staffDraft}
+                <TimelinePortalPreviewView
+                  entries={data.timeline.staffDraft}
+                  venueName={data.venueName}
+                  eventDate={data.eventDate}
+                  eventEndDate={data.eventEndDate}
                   staffPreviewLabel="Preview — not yet released"
                 />
               </div>
             ) : null}
+          </section>
+        ) : null}
+
+        {tab === "floor-plans" ? (
+          <section data-testid="portal-preview-floor-plans" className="space-y-2">
+            <div className="flex justify-end px-4">
+              <Badge variant={visibilityBadge(data.floorPlans.visibility).variant}>
+                {visibilityBadge(data.floorPlans.visibility).label}
+              </Badge>
+            </div>
+            <FloorPlanPortalView
+              data={data.floorPlans.view}
+              staffPreviewLabel={
+                data.floorPlans.visibility === "draft"
+                  ? "Layout offers are visible for choosing; shared Floor Plan view appears after the venue shares a plan."
+                  : null
+              }
+            />
           </section>
         ) : null}
 

@@ -47,9 +47,10 @@ describe("Client portal Inventory terminology", () => {
     assert.match(invView, /isIncluded/);
   });
 
-  it("staff preview reuses the same InventoryPortalView (no parallel Included branding)", () => {
-    assert.match(preview, /InventoryPortalView/);
-    assert.match(preview, /\["inventory", "Inventory"\]/);
+  it("staff Client Portal Preview does not mount Inventory (commercial workflow is separate)", () => {
+    assert.doesNotMatch(preview, /InventoryPortalView/);
+    assert.doesNotMatch(preview, /\["inventory", "Inventory"\]/);
+    assert.doesNotMatch(preview, /portal-preview-tab-inventory/);
   });
 
   it("task CTA and share notice say inventory, not what's included", () => {
