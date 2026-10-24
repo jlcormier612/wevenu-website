@@ -117,10 +117,10 @@ export function EventTeamSection({
             </button>
           </span>
         ))}
-        <Select
+        <Select<string>
           key={addSelectKey}
-          onValueChange={(v) => {
-            if (typeof v === "string" && v) handleAddStaff(v);
+          onValueChange={(staffId) => {
+            if (staffId) handleAddStaff(staffId);
           }}
           items={eligibleToAdd.map((s) => ({ value: s.id, label: s.name }))}
           disabled={addPending || eligibleToAdd.length === 0}
@@ -169,10 +169,10 @@ export function EventTeamSection({
           ))}
         </div>
       )}
-      <Select
+      <Select<string>
         key={addSelectKey}
-        onValueChange={(v) => {
-          if (typeof v === "string" && v) handleAddStaff(v);
+        onValueChange={(staffId) => {
+          if (staffId) handleAddStaff(staffId);
         }}
         items={eligibleToAdd.map((s) => ({ value: s.id, label: s.name }))}
         disabled={addPending || eligibleToAdd.length === 0}
