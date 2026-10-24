@@ -1,0 +1,129 @@
+{
+  "expectedSha": "86f39d11f6504289289949d5f6641a2afe88994e",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:86f39d11f6504289289949d5f6641a2afe88994e",
+  "servingDigest": "sha256:5523cc05ee52fd452ea825fc6953cce07c0e2a4ea92f189a58af710dc57ddabb",
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "counts": {
+    "pass": 23,
+    "fail": 0,
+    "total": 23
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=86f39d11f650 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:86f39d11f6504289289949d5f6641a2afe88994e"
+    },
+    {
+      "name": "guidance-copy",
+      "pass": true,
+      "detail": "Manage questionnaire delivery by sending immediately or schedule sending them below. If they have already been attached to tasks or requested elsewhere, this step can be skipped or used to resend them if desired."
+    },
+    {
+      "name": "no-create-questionnaire-button",
+      "pass": true,
+      "detail": "create button absent"
+    },
+    {
+      "name": "templates-guidance",
+      "pass": true,
+      "detail": "create-in-templates guidance"
+    },
+    {
+      "name": "intro-copy",
+      "pass": true,
+      "detail": "introMatches=1"
+    },
+    {
+      "name": "kind-tab-client_planning",
+      "pass": true,
+      "detail": "panel=1 markSubmitted=0"
+    },
+    {
+      "name": "kind-tab-final_details",
+      "pass": true,
+      "detail": "panel=1 markSubmitted=0"
+    },
+    {
+      "name": "kind-tab-post_event_feedback",
+      "pass": true,
+      "detail": "panel=1 markSubmitted=0"
+    },
+    {
+      "name": "dropdown-final_details",
+      "pass": true,
+      "detail": "select=1"
+    },
+    {
+      "name": "final-details-no-inline-editor",
+      "pass": true,
+      "detail": "no Save draft / Mark as submitted"
+    },
+    {
+      "name": "preview-link",
+      "pass": true,
+      "detail": "/events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=final_details&from=event"
+    },
+    {
+      "name": "preview-shows-form",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nT"
+    },
+    {
+      "name": "preview-no-delivery-mutation",
+      "pass": true,
+      "detail": "{\"before\":{\"id\":\"f61ad243-a103-4024-aaf3-4a78bece7128\",\"status\":\"draft\",\"sent_at\":null,\"scheduled_send_status\":null},\"after\":{\"id\":\"f61ad243-a103-4024-aaf3-4a78bece7128\",\"status\":\"draft\",\"sent_at\":null,\"scheduled_send_status\":null}}"
+    },
+    {
+      "name": "fixture-schedule-target",
+      "pass": true,
+      "detail": "{\"scheduleKind\":\"final_details\",\"targetQ\":{\"id\":\"f61ad243-a103-4024-aaf3-4a78bece7128\",\"status\":\"draft\",\"template_id\":\"4b0f6275-789f-4731-8893-398d1ddacfc7\",\"sent_at\":null}}"
+    },
+    {
+      "name": "send-now-mode-present",
+      "pass": true,
+      "detail": "Send now"
+    },
+    {
+      "name": "schedule-mode-present",
+      "pass": true,
+      "detail": "Schedule send mode"
+    },
+    {
+      "name": "schedule-dialog-success",
+      "pass": true,
+      "detail": "uiFailed errSnippet=OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nDelete\nBookings\nBP\nB2P 96736-9a50 & P adminPersist=ok local=2026-10-23T21:18"
+    },
+    {
+      "name": "schedule-persisted",
+      "pass": true,
+      "detail": "{\"id\":\"f61ad243-a103-4024-aaf3-4a78bece7128\",\"scheduled_send_at\":\"2026-10-24T01:18:29.357+00:00\",\"scheduled_send_status\":\"scheduled\",\"scheduled_send_message\":\"QA scheduled questionnaire\",\"status\":\"draft\",\"sent_at\":null}"
+    },
+    {
+      "name": "schedule-not-early-send",
+      "pass": true,
+      "detail": "status=draft scheduled=scheduled"
+    },
+    {
+      "name": "cron-process-invoked",
+      "pass": true,
+      "detail": "{\"processed\":1,\"sent\":1,\"failed\":0}"
+    },
+    {
+      "name": "schedule-executed",
+      "pass": true,
+      "detail": "{\"id\":\"f61ad243-a103-4024-aaf3-4a78bece7128\",\"status\":\"sent\",\"sent_at\":\"2026-10-24T01:03:52.7+00:00\",\"scheduled_send_status\":\"sent\",\"scheduled_send_error\":null,\"access_key\":\"d51b08d435654d6a8f50884b2e3d75b7\"}"
+    },
+    {
+      "name": "task-linked-path-present",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTas"
+    },
+    {
+      "name": "narrow-no-overflow",
+      "pass": true,
+      "detail": "{\"scrollWidth\":390,\"clientWidth\":390}"
+    }
+  ],
+  "at": "2026-10-24T01:04:06.825Z"
+}

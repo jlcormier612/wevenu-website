@@ -1,0 +1,39 @@
+{
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:86f39d11f6504289289949d5f6641a2afe88994e",
+  "servingDigest": "sha256:5523cc05ee52fd452ea825fc6953cce07c0e2a4ea92f189a58af710dc57ddabb",
+  "expectedSha": "86f39d11f6504289289949d5f6641a2afe88994e",
+  "schedule": {
+    "beforeProcess": {
+      "id": "f61ad243-a103-4024-aaf3-4a78bece7128",
+      "scheduled_send_at": "2026-10-24T01:18:29.357+00:00",
+      "scheduled_send_status": "scheduled",
+      "scheduled_send_message": "QA scheduled questionnaire",
+      "status": "draft",
+      "sent_at": null
+    },
+    "afterProcess": {
+      "id": "f61ad243-a103-4024-aaf3-4a78bece7128",
+      "status": "sent",
+      "sent_at": "2026-10-24T01:03:52.7+00:00",
+      "scheduled_send_status": "sent",
+      "scheduled_send_error": null,
+      "access_key": "d51b08d435654d6a8f50884b2e3d75b7"
+    },
+    "processResult": {
+      "processed": 1,
+      "sent": 1,
+      "failed": 0
+    },
+    "forcedDueAt": "2026-10-24T01:02:51.612Z"
+  },
+  "preview": {
+    "before": {
+      "id": "f61ad243-a103-4024-aaf3-4a78bece7128",
+      "status": "draft",
+      "sent_at": null,
+      "scheduled_send_status": null
+    }
+  },
+  "notEarly": true
+}

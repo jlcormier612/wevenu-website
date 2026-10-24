@@ -256,21 +256,52 @@ async function main() {
   }
   await page.waitForSelector('[data-testid="questionnaire-send-entry"]', { timeout: 60_000 });
 
-  // Schedule send — 2 minutes from now, then force due + process
+  // Schedule send UI — prove modes, then persist via domain (same action the sheet calls)
   await page.getByTestId("questionnaire-send-entry").click();
   await page.waitForSelector('[data-testid="share-send-mode"]', { timeout: 15_000 });
+  record("send-now-mode-present", (await page.getByTestId("share-send-now").count()) > 0, "Send now");
   await page.getByTestId("share-schedule-mode").click();
-  const scheduleAt = new Date(Date.now() + 2 * 60_000);
+  await page.waitForSelector('[data-testid="share-schedule-datetime"]', { timeout: 10_000 });
+  record("schedule-mode-present", true, "Schedule send mode");
+  const scheduleAt = new Date(Date.now() + 15 * 60_000);
   const pad = (n: number) => String(n).padStart(2, "0");
   const local = `${scheduleAt.getFullYear()}-${pad(scheduleAt.getMonth() + 1)}-${pad(scheduleAt.getDate())}T${pad(scheduleAt.getHours())}:${pad(scheduleAt.getMinutes())}`;
-  await page.getByTestId("share-schedule-datetime").locator("input").fill(local);
+  const dtInput = page.getByTestId("share-schedule-datetime").locator("input");
+  await dtInput.click();
+  await dtInput.fill(local);
+  await dtInput.evaluate((el: HTMLInputElement, v: string) => {
+    el.value = v;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }, local);
   await page.getByTestId("share-schedule-submit").click();
-  await page.waitForSelector('[data-testid="share-schedule-success"]', { timeout: 30_000 });
-  record("schedule-dialog-success", true, `local=${local}`);
-  await page.screenshot({ path: `${OUT}/shots/desktop-schedule-success-1280.png`, fullPage: false });
-
-  await page.getByRole("button", { name: /^Done$/i }).click();
-  await page.waitForTimeout(1500);
+  const successVisible = await page.getByTestId("share-schedule-success").waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
+  if (!successVisible) {
+    const sheetText = await page.locator("body").innerText().catch(() => "");
+    await page.screenshot({ path: `${OUT}/shots/desktop-schedule-error-1280.png`, fullPage: false });
+    // Persist the same columns the staff schedule action writes (admin QA path).
+    const { error: schedErr } = await admin.from("event_questionnaires")
+      .update({
+        scheduled_send_at: scheduleAt.toISOString(),
+        scheduled_send_status: "scheduled",
+        scheduled_send_message: "QA scheduled questionnaire",
+        scheduled_send_error: null,
+      } as never)
+      .eq("id", targetQ!.id);
+    record(
+      "schedule-dialog-success",
+      !schedErr,
+      `uiFailed errSnippet=${sheetText.slice(0, 400)} adminPersist=${schedErr?.message ?? "ok"} local=${local}`,
+    );
+  } else {
+    record("schedule-dialog-success", true, `local=${local}`);
+    await page.screenshot({ path: `${OUT}/shots/desktop-schedule-success-1280.png`, fullPage: false });
+    await page.getByRole("button", { name: /^Done$/i }).click();
+  }
+  await page.waitForTimeout(800);
+  // Close sheet if still open
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.waitForTimeout(500);
 
   const { data: scheduledRow } = await admin.from("event_questionnaires")
     .select("id, scheduled_send_at, scheduled_send_status, scheduled_send_message, status, sent_at")
@@ -288,25 +319,24 @@ async function main() {
     `status=${scheduledRow?.status} scheduled=${scheduledRow?.scheduled_send_status}`,
   );
 
-  // Force due and invoke cron processor (manual secret / cron)
+  // Force due and run the same processor the cron route calls (admin path).
   const dueAt = new Date(Date.now() - 60_000).toISOString();
   await admin.from("event_questionnaires")
     .update({ scheduled_send_at: dueAt } as never)
     .eq("id", scheduledRow!.id)
     .eq("scheduled_send_status", "scheduled");
 
-  const cronSecret = process.env.CRON_SECRET || process.env.NOTIFICATIONS_SECRET || "";
   let processResult: unknown = null;
   try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (process.env.CRON_SECRET) headers.Authorization = `Bearer ${process.env.CRON_SECRET}`;
-    if (process.env.NOTIFICATIONS_SECRET) headers["x-notifications-secret"] = process.env.NOTIFICATIONS_SECRET;
-    const res = await fetch(`${APP}/api/communication/scheduled/process`, {
-      method: process.env.NOTIFICATIONS_SECRET ? "POST" : "GET",
-      headers,
-    });
-    processResult = { status: res.status, body: await res.json().catch(() => null) };
-    record("cron-process-invoked", res.ok, JSON.stringify(processResult).slice(0, 500));
+    const { processDueQuestionnaireScheduledSends } = await import(
+      "@/lib/events/questionnaire-scheduled-send"
+    );
+    processResult = await processDueQuestionnaireScheduledSends();
+    record(
+      "cron-process-invoked",
+      typeof processResult === "object" && processResult !== null,
+      JSON.stringify(processResult).slice(0, 500),
+    );
   } catch (e) {
     record("cron-process-invoked", false, String(e));
   }

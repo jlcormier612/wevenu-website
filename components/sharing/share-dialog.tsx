@@ -127,12 +127,16 @@ export function ShareDialog({
 
   function handleSchedule() {
     if (!canAct || !onSchedule) return;
-    const iso = new Date(scheduleLocal).toISOString();
-    if (!Number.isFinite(Date.parse(iso))) {
+    const inputEl = document.getElementById("share-schedule-at") as HTMLInputElement | null;
+    const raw = (inputEl?.value || scheduleLocal || "").trim();
+    const parsed = Date.parse(raw);
+    if (!Number.isFinite(parsed)) {
       setState("error");
       setError("Choose a valid date and time.");
       return;
     }
+    const iso = new Date(parsed).toISOString();
+    setScheduleLocal(raw);
     setState("sending");
     setError("");
     void onSchedule(message, iso).then((result) => {
