@@ -88,8 +88,9 @@ export function ShareDialog({
   const [state, setState] = React.useState<State>("idle");
   const [error, setError] = React.useState("");
   const [mode, setMode] = React.useState<Mode>("now");
-  const [scheduleLocal, setScheduleLocal] = React.useState(defaultLocalScheduleValue);
+  const [scheduleInputKey, setScheduleInputKey] = React.useState(0);
   const [scheduledConfirm, setScheduledConfirm] = React.useState<string | null>(null);
+  const scheduleDefaultRef = React.useRef(defaultLocalScheduleValue());
 
   React.useEffect(() => {
     if (open) {
@@ -97,7 +98,8 @@ export function ShareDialog({
       setState("idle");
       setError("");
       setMode("now");
-      setScheduleLocal(defaultLocalScheduleValue());
+      scheduleDefaultRef.current = defaultLocalScheduleValue();
+      setScheduleInputKey((k) => k + 1);
       setScheduledConfirm(null);
     }
   }, [open, defaultMessage]);
@@ -128,7 +130,7 @@ export function ShareDialog({
   function handleSchedule() {
     if (!canAct || !onSchedule) return;
     const inputEl = document.getElementById("share-schedule-at") as HTMLInputElement | null;
-    const raw = (inputEl?.value || scheduleLocal || "").trim();
+    const raw = (inputEl?.value || scheduleDefaultRef.current || "").trim();
     const parsed = Date.parse(raw);
     if (!Number.isFinite(parsed)) {
       setState("error");
@@ -136,7 +138,6 @@ export function ShareDialog({
       return;
     }
     const iso = new Date(parsed).toISOString();
-    setScheduleLocal(raw);
     setState("sending");
     setError("");
     void onSchedule(message, iso).then((result) => {
@@ -247,10 +248,10 @@ export function ShareDialog({
                   Send on
                 </label>
                 <Input
+                  key={scheduleInputKey}
                   id="share-schedule-at"
                   type="datetime-local"
-                  value={scheduleLocal}
-                  onChange={(e) => setScheduleLocal(e.target.value)}
+                  defaultValue={scheduleDefaultRef.current}
                   disabled={state === "sending"}
                 />
                 <p className="text-xs text-muted-foreground">Uses your local timezone. Nothing is emailed until that time.</p>
