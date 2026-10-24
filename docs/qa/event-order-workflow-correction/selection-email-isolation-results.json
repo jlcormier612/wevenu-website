@@ -1,6 +1,6 @@
 {
-  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a",
-  "digest": "sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a",
+  "digest": "sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902",
   "eoBefore": {
     "id": "624eceef-5096-4288-b104-62daa3a82d11",
     "status": "finalized",
@@ -18,7 +18,7 @@
     {
       "name": "serving-image",
       "pass": true,
-      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe"
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902"
     },
     {
       "name": "send-cta",
@@ -28,7 +28,7 @@
     {
       "name": "selection-email-accepted",
       "pass": true,
-      "detail": "{\"status\":\"accepted\",\"provider_id\":\"01a16c0e-be46-7428-8304-c7b71b79bb08\",\"sent_at\":\"2026-10-24T03:57:48.052375+00:00\",\"sourceType\":\"client_choices_request\"}"
+      "detail": "{\"status\":\"accepted\",\"provider_id\":\"01a16c5d-ef36-7e48-bdf7-4624eb44d2af\",\"sent_at\":\"2026-10-24T05:24:17.935398+00:00\",\"sourceType\":\"client_choices_request\"}"
     },
     {
       "name": "selection-url-is-choices",
@@ -63,7 +63,7 @@
     {
       "name": "link-opens-choices-not-eo-accept",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception\nCeremony + Reception\nCeremony + Reception\nCeremony + Reception\nCere"
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception\nCeremony + Reception\nCeremony + Reception\nCeremony + Receptio"
     }
   ]
 }

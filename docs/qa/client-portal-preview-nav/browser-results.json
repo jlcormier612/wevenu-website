@@ -1,0 +1,76 @@
+{
+  "expectedSha": "4ef14218c5379f6e443a5b68e8e83689f90c979a",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=4ef14218c537 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a"
+    },
+    {
+      "name": "serving-image-digest",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a"
+    },
+    {
+      "name": "exact-four-tabs",
+      "pass": true,
+      "detail": "[{\"id\":\"planning\",\"label\":\"Planning\"},{\"id\":\"timeline\",\"label\":\"Timeline\"},{\"id\":\"floor-plans\",\"label\":\"Floor Plans\"},{\"id\":\"vendors\",\"label\":\"Vendors\"}]"
+    },
+    {
+      "name": "no-event-order-tab",
+      "pass": true,
+      "detail": "[{\"id\":\"planning\",\"label\":\"Planning\"},{\"id\":\"timeline\",\"label\":\"Timeline\"},{\"id\":\"floor-plans\",\"label\":\"Floor Plans\"},{\"id\":\"vendors\",\"label\":\"Vendors\"}]"
+    },
+    {
+      "name": "no-inventory-tab",
+      "pass": true,
+      "detail": "[{\"id\":\"planning\",\"label\":\"Planning\"},{\"id\":\"timeline\",\"label\":\"Timeline\"},{\"id\":\"floor-plans\",\"label\":\"Floor Plans\"},{\"id\":\"vendors\",\"label\":\"Vendors\"}]"
+    },
+    {
+      "name": "default-tab-planning",
+      "pass": true,
+      "detail": "planningVisible=true"
+    },
+    {
+      "name": "tab-content-planning",
+      "pass": true,
+      "detail": "visible=true"
+    },
+    {
+      "name": "tab-content-timeline",
+      "pass": true,
+      "detail": "visible=true"
+    },
+    {
+      "name": "tab-content-floor-plans",
+      "pass": true,
+      "detail": "visible=true"
+    },
+    {
+      "name": "tab-content-vendors",
+      "pass": true,
+      "detail": "visible=true"
+    },
+    {
+      "name": "narrow-four-tabs",
+      "pass": true,
+      "detail": "[\"Planning\",\"Timeline\",\"Floor Plans\",\"Vendors\"]"
+    },
+    {
+      "name": "commercial-eo-inventory-card",
+      "pass": true,
+      "detail": "card=1 eo=1 inv=1"
+    },
+    {
+      "name": "commercial-event-order-tab",
+      "pass": true,
+      "detail": "eoSurface=true"
+    },
+    {
+      "name": "commercial-inventory-tab",
+      "pass": true,
+      "detail": "invSurface=true"
+    }
+  ]
+}

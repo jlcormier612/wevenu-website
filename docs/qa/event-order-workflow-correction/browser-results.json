@@ -1,0 +1,314 @@
+{
+  "pass": false,
+  "failed": 2,
+  "total": 61,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a",
+  "digest": "sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902"
+    },
+    {
+      "name": "fixture-booked",
+      "pass": true,
+      "detail": "{\"id\":\"ebf74f77-2944-474a-b735-48762ecb6842\",\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\",\"client_id\":\"b4e2764b-be33-4579-89e3-0c8e4a6dd5be\",\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}"
+    },
+    {
+      "name": "isolated-to-financial-session-only",
+      "pass": true,
+      "detail": "financial=true coupleOrPlanningRemoved=12 createdFinancial=false"
+    },
+    {
+      "name": "venue-workspace-landed",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order-choices"
+    },
+    {
+      "name": "stages-not-collapsed-details",
+      "pass": true,
+      "detail": "choices=SECTION order=SECTION"
+    },
+    {
+      "name": "template-select-visible",
+      "pass": true,
+      "detail": "choices-template-select"
+    },
+    {
+      "name": "rh-template-preview-visible",
+      "pass": true,
+      "detail": "choices-template-preview"
+    },
+    {
+      "name": "journey-no-generic-view",
+      "pass": true,
+      "detail": "<h2 class=\"text-xs font-medium uppercase tracking-widest text-muted-foreground\">Event Order</h2><p class=\"mt-2 text-sm font-medium text-heading\">Commercial journey for this booked event</p><p class=\"m"
+    },
+    {
+      "name": "prepare-or-active-packet",
+      "pass": true,
+      "detail": "active packet"
+    },
+    {
+      "name": "event-order-document-stage-visible",
+      "pass": true,
+      "detail": "event-order-order"
+    },
+    {
+      "name": "start-selections-did-not-error",
+      "pass": true,
+      "detail": "no prepare button — existing packets"
+    },
+    {
+      "name": "preview-dialog",
+      "pass": false,
+      "detail": "ArtifactReviewOverlay"
+    },
+    {
+      "name": "send-cta",
+      "pass": true,
+      "detail": "count=1 body=Client selections\nChoose an Event Order template, review the complete offering, then send a selection request. Same composer pattern as Package/Proposal — sending does not finalize the Event Order or create an invoice.\nEvent Order template\nCeremony + Reception\nWedding Reception\nManage templates\n\nCeremony + Reception\n\nAwaiting Client · Client to act\n\nNo selections yet\n\nPreview selection request\nRes"
+    },
+    {
+      "name": "share-dialog",
+      "pass": true,
+      "detail": "ShareDialog"
+    },
+    {
+      "name": "send-finished",
+      "pass": true,
+      "detail": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately."
+    },
+    {
+      "name": "selection-send-does-not-change-eo-shared-at",
+      "pass": true,
+      "detail": "before=2026-10-24T02:24:06.106+00:00 after=2026-10-24T02:24:06.106+00:00"
+    },
+    {
+      "name": "selection-send-does-not-set-client-agreed",
+      "pass": true,
+      "detail": "{\"before\":null,\"after\":null}"
+    },
+    {
+      "name": "selection-send-does-not-finalize-eo",
+      "pass": true,
+      "detail": "before=finalized/2026-10-24T03:22:06.683+00:00 after=finalized/2026-10-24T03:22:06.683+00:00"
+    },
+    {
+      "name": "selection-send-does-not-create-invoice",
+      "pass": true,
+      "detail": "before=1 after=1"
+    },
+    {
+      "name": "selection-send-does-not-change-booking",
+      "pass": true,
+      "detail": "{\"before\":{\"id\":\"ebf74f77-2944-474a-b735-48762ecb6842\",\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\"},\"after\":{\"id\":\"ebf74f77-2944-474a-b735-48762ecb6842\",\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\"}}"
+    },
+    {
+      "name": "generated-selection-url",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices"
+    },
+    {
+      "name": "selection-url-not-financial-token",
+      "pass": true,
+      "detail": "token differs from financial session"
+    },
+    {
+      "name": "selection-link-renders-form",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception\nCeremony + Reception\nCeremony + Reception\nCeremony + Receptio"
+    },
+    {
+      "name": "selection-submitted-ui",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options y"
+    },
+    {
+      "name": "selection-submit-does-not-change-eo-shared-at",
+      "pass": true,
+      "detail": "beforeSend=2026-10-24T02:24:06.106+00:00 afterSubmit=2026-10-24T02:24:06.106+00:00"
+    },
+    {
+      "name": "selection-submit-does-not-accept-eo",
+      "pass": true,
+      "detail": "{\"client_agreed_at\":null}"
+    },
+    {
+      "name": "selection-submit-does-not-finalize-eo",
+      "pass": true,
+      "detail": "before=2026-10-24T03:22:06.683+00:00 after=2026-10-24T03:22:06.683+00:00"
+    },
+    {
+      "name": "selection-form-shows-offering-context",
+      "pass": false,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it i"
+    },
+    {
+      "name": "selection-persisted",
+      "pass": true,
+      "detail": "[{\"id\":\"8edc95f2-585a-424c-81ae-496a1fc17e55\",\"status\":\"submitted\"},{\"id\":\"dd1b6f18-d9ee-46e5-9c49-0c08cba29ff7\",\"status\":\"finalized\"},{\"id\":\"2c2dbf0a-b62f-46be-ba25-bb799310c346\",\"status\":\"finalized\"}]"
+    },
+    {
+      "name": "no-invoice-on-submit",
+      "pass": true,
+      "detail": "1→1"
+    },
+    {
+      "name": "invoice-link-still-invoice",
+      "pass": true,
+      "detail": "INVOICE & PAYMENT PLAN\n\nJen's Fancy Venue\n\nINV-2026-4489C8\n\nEvent & Inventory Selections\n\nPrepared for\n\nB2P 96736-9a50 & Portal Partner\n\nB2P 96736-9a50 & Portal Partner · July 17, 2060\n\nTOTAL CONTRACTED\n\n$2,266.31\n\nPAID TO DATE\n\n$0\n\nBALANCE REMAINING\n\n$2,266.31\n\nAMOUNT DUE NOW\n\n$566.58\n\nInitial Paym"
+    },
+    {
+      "name": "financial-token-ignores-choices-view",
+      "pass": true,
+      "detail": "INVOICE & PAYMENT PLAN\n\nJen's Fancy Venue\n\nINV-2026-4489C8\n\nEvent & Inventory Selections\n\nPrepared for\n\nB2P 96736-9a50 & Portal Partner\n\nB2P 96736-9a50 & Portal Partner · July 17, 2060\n\nTOTAL CONTRACTED\n\n$2,266.31\n\nPAID TO DATE\n\n$0\n\nBALANCE REMAINING\n\n$2,266.31\n\nAMOUNT DUE NOW\n\n$566.58\n\nInitial Paym"
+    },
+    {
+      "name": "create-event-order-cta",
+      "pass": true,
+      "detail": "count=1 Client selections\nChoose an Event Order template, review the complete offering, then send a selection request. Same composer pattern as Package/Proposal — sending does not finalize the Event Order or create an invoice.\nEvent Order template\nCeremony + Reception\nWedding Reception\nManage templates\n\nCeremony + Reception\n\nClient Submitted · Venue to act · Couple submission (not yet on Event Order)\n\nNo selections yet\n\nPreview selection request\nReview selections\nRequest Changes\nUpdate Event Order from "
+    },
+    {
+      "name": "event-order-document-visible",
+      "pass": true,
+      "detail": "Event Order document\n\nEVENT ORDER\n\nEvent Order\nOwner: Venue\n·\nUpdated Oct 24, 2026\nAmended · v18\nFinalize Event Order\n\nWhat this event is receiving. Delivery subtotal (for reference): $2,453 — amount due is on Invoice / Payments.\n\nClients still see the shared version from Oct 23, 2026. Re-share when you are ready to publish revisions.\nAmount due lives on\nEvent & Inventory Selections INV-2026-4489C"
+    },
+    {
+      "name": "event-order-lines-present",
+      "pass": true,
+      "detail": "n=44 status=open"
+    },
+    {
+      "name": "event-order-no-duplicate-line-ids",
+      "pass": true,
+      "detail": "ids=44"
+    },
+    {
+      "name": "event-order-finalized-or-already",
+      "pass": true,
+      "detail": "{\"status\":\"finalized\",\"shared_at\":\"2026-10-24T02:24:06.106+00:00\",\"client_agreed_at\":null}"
+    },
+    {
+      "name": "finalize-does-not-auto-accept",
+      "pass": true,
+      "detail": "{\"client_agreed_at\":null}"
+    },
+    {
+      "name": "event-order-shared-via-explicit-share-or-preexisting",
+      "pass": true,
+      "detail": "{\"shared_at\":\"2026-10-24T02:24:06.106+00:00\",\"preexisting\":true,\"performedExplicitShare\":false}"
+    },
+    {
+      "name": "eo-invoice-present-or-existing",
+      "pass": true,
+      "detail": "eoLinked=1 invoices 1→1"
+    },
+    {
+      "name": "no-duplicate-invoice-burst",
+      "pass": true,
+      "detail": "1→1"
+    },
+    {
+      "name": "eo-delivery-not-assumed-payable",
+      "pass": true,
+      "detail": "{\"deliverySubtotal\":2453,\"billableSubtotal\":2133,\"includedOrNonBillable\":320,\"invoiceAdjustmentsSubtotal\":0,\"discountAmount\":0,\"taxAmount\":133.31,\"payableTotal\":2266.31}"
+    },
+    {
+      "name": "eo-payable-equals-billable-plus-tax-minus-discount",
+      "pass": true,
+      "detail": "{\"deliverySubtotal\":2453,\"billableSubtotal\":2133,\"includedOrNonBillable\":320,\"invoiceAdjustmentsSubtotal\":0,\"discountAmount\":0,\"taxAmount\":133.31,\"payableTotal\":2266.31}"
+    },
+    {
+      "name": "expected-payable-from-billable-plus-adjustments",
+      "pass": true,
+      "detail": "payable=2266.31 billable=2133 tax=133.31"
+    },
+    {
+      "name": "payment-plan-reconciles-to-expected-payable",
+      "pass": true,
+      "detail": "schedule=2266.31 expected=2266.31 lines=4"
+    },
+    {
+      "name": "invoice-detail-shows-projected-payable",
+      "pass": true,
+      "detail": "status=sent"
+    },
+    {
+      "name": "invoice-published-sent",
+      "pass": true,
+      "detail": "{\"id\":\"4489c869-38fd-4ae1-8cad-cc7043d1d527\",\"status\":\"sent\",\"total\":2266.31,\"subtotal\":2133,\"tax_amount\":133.31,\"balance_due\":2266.31,\"event_order_revision_at_freeze\":17}"
+    },
+    {
+      "name": "invoice-frozen-eo-line-count",
+      "pass": true,
+      "detail": "frozen=10 billable=10"
+    },
+    {
+      "name": "invoice-total-matches-expected-payable",
+      "pass": true,
+      "detail": "stored=2266.31 expected=2266.31"
+    },
+    {
+      "name": "invoice-not-tax-only-after-send",
+      "pass": true,
+      "detail": "{\"id\":\"4489c869-38fd-4ae1-8cad-cc7043d1d527\",\"status\":\"sent\",\"total\":2266.31,\"subtotal\":2133,\"tax_amount\":133.31,\"balance_due\":2266.31,\"event_order_revision_at_freeze\":17}"
+    },
+    {
+      "name": "no-duplicate-invoice-after-send",
+      "pass": true,
+      "detail": "1→1"
+    },
+    {
+      "name": "portal-shows-expected-payable",
+      "pass": true,
+      "detail": "expected=$2,266.31 body=INVOICE & PAYMENT PLAN\n\nJen's Fancy Venue\n\nINV-2026-4489C8\n\nEvent & Inventory Selections\n\nPrepared for\n\nB2P 96736-9a50 & Portal Partner\n\nB2P 96736-9a50 & Portal Partner · July 17, 2060\n\nTOTAL CONTRACTED\n\n$2,266.31\n\nPAID TO DATE\n\n$0\n\nBALANCE REMAINING\n\n$2,266.31\n\nAMOUNT DUE NOW\n\n$566.58\n\nInitial Payment · due October 23, 2026\n\nHow to pay\n\nJen's Fancy Venue accepts Check, Cash, ACH / bank transfer, and Other / manual.\n\nPlease remit payment by the method indicated on your invoice. If you have a question or require a different accommodation, please message us. We look forward to celebrating with y"
+    },
+    {
+      "name": "portal-shows-installment-schedule",
+      "pass": true,
+      "detail": "INVOICE & PAYMENT PLAN\n\nJen's Fancy Venue\n\nINV-2026-4489C8\n\nEvent & Inventory Selections\n\nPrepared for\n\nB2P 96736-9a50 & Portal Partner\n\nB2P 96736-9a50 & Portal Partner · July 17, 2060\n\nTOTAL CONTRACTED\n\n$2,266.31\n\nPAID TO DATE\n\n$0\n\nBALANCE REMAINING\n\n$2,266.31\n\nAMOUNT DUE NOW\n\n$566.58\n\nInitial Payment · due October 23, 2026\n\nHow to pay\n\nJen's Fancy Venue accepts Check, Cash, ACH / bank transfer, "
+    },
+    {
+      "name": "portal-rpc-returns-published-financials",
+      "pass": true,
+      "detail": "{\"schedules\":1,\"invoices\":1}"
+    },
+    {
+      "name": "portal-rpc-total-matches-payable",
+      "pass": true,
+      "detail": "portal=2266.31 expected=2266.31"
+    },
+    {
+      "name": "repeat-create-does-not-duplicate-invoice",
+      "pass": true,
+      "detail": "1→1"
+    },
+    {
+      "name": "documents-show-event-order-or-invoice",
+      "pass": true,
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nDocuments\n\nContracts, invoices, questionnaires, your Event Order, receipts, and anything your venue or vendors share — all in one place.\n\nEvent insurance\nShare with venue\n+ Upload document\nEvent Order\n📦\nEvent Order\nShared\nEvent Order\n· Shared Oct 23, 2026\nReview →\nQuestionnaires\n📋\nClient"
+    },
+    {
+      "name": "booking-unchanged",
+      "pass": true,
+      "detail": "{\"status\":\"confirmed\",\"booked_at\":\"2026-10-22\"}"
+    },
+    {
+      "name": "restore-portal-sessions",
+      "pass": true,
+      "detail": "restored=12"
+    },
+    {
+      "name": "serving-sha-unchanged-during-run",
+      "pass": true,
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a"
+    }
+  ]
+}

@@ -2,46 +2,40 @@
 
 ## Status
 
-**GREEN for selection-email isolation** (proven on live Sandbox).  
-Composer deploy `3ad50017` is a separate in-progress image; isolation does not depend on that SHA.
+**GREEN for selection-email isolation** on serving `4ef14218`  
+(`digest sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902`).
 
-## Forensic verdict
+**NOT GREEN for full workflow-correction harness** — **59/61** on the same image.
 
-Sending **Send selection request** emails a secure Choices link via the same `sendEmail` + conversation outbound path as proposals. It does **not** share, finalize, or accept the Event Order.
+## Isolation (closed)
 
-The portal **Shared** / **Accept this Event Order** UI on fixture `ebf74f77-…` is a **pre-existing** shared Event Order (`shared_at` `2026-10-24T02:24:06Z` from an earlier explicit Share). Ten+ later selection sends left `shared_at` unchanged. `client_agreed_at` remains null.
+`verify-selection-email-isolation.mts` → **GREEN 10/10** against `4ef14218`.
 
-Details: `SELECTION-VS-SHARE.md`, `selection-vs-share-probe.json`, `selection-email-isolation-results.json`.
+Sending **Send selection request** emails a secure Choices link. It does **not** share, finalize, or accept the Event Order. Booking timestamps unchanged.
 
-## Live isolation proof (this turn)
+## Full journey outstanding (2 failures)
 
-| Item | Value |
-| --- | --- |
-| Serving image | `htc-sandbox-venue-app:3377a8614cb9e66637142f36495b36bc4dba774a` |
-| Digest | `sha256:95ad0e6068b06255884e75f86e3386294f0eca4af2fd0c35f8704b23d6e4d8fe` |
-| Harness | `verify-selection-email-isolation.mts` → **GREEN 10/10** |
-| Email | `status=accepted`, `sourceType=client_choices_request`, Resend `01a16c0e-…` |
-| URL (redacted) | `https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices` |
-| Link opens | **Your Choices** (not Accept this Event Order) |
-| `shared_at` | unchanged `2026-10-24T02:24:06.106Z` |
-| `client_agreed_at` | null |
-| Invoices | 1 → 1 |
-| Booking | `confirmed` / `booked_at` 2026-10-22 unchanged |
+`verify-browser.mts` on `4ef14218`:
 
-Shots: `shots/isolation-send-dialog-1280.png`, `shots/isolation-selection-link-1280.png`.
+| Check | Result | Note |
+| --- | --- | --- |
+| `preview-dialog` | FAIL | Staff preview did not show `#artifact-review-title` + `choices-definition-view` together |
+| `selection-form-shows-offering-context` | FAIL | Couple Choices shows “Your Choices” but missing Included/Pick/fieldset offering context |
 
-## Code / tests
+All other full-journey checks passed (send isolation, invoice reconcile, portal payable, documents EO, booking unchanged, session restore).
 
-- Path: ShareDialog → `sendClientChoicesRequest` → `sendClientChoices` + `submitClientChoicesCoupleEmail` (mirrors proposal couple email).
-- No call to `shareEventOrderWithClient` / `setSharedAt`.
-- Regression: `lib/client-choices/selection-request-lifecycle.test.ts` (pass).
-- Full journey harness now asserts isolation before any intentional Share.
+**Next action:** Fix staff EO send-preview overlay surface and couple Choices offering-context presentation (or align harness selectors to the shipped UI), then re-run `verify-browser.mts` with `EXPECTED_SHA=<serving>`.
 
-## Follow-up deploy (composer typefix)
+## Build / deploy (this closure)
 
 | Item | Value |
 | --- | --- |
-| Commit | `3ad50017c386282f2f0f0437aa3f7af119f88e32` |
-| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40060379987 (in progress at report time) |
+| PricingModel TSC fix | `e4b4849f` |
+| docs exclude + handoff | `c4530c3a` → `4ef14218` |
+| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40065359281 **success** |
+| Production | untouched |
 
-Fixes `ChoicesDefinitionView` `pricingModel` typing that blocked the prior `2bdb49e4` build. Production untouched.
+## Evidence
+
+- `isolation-browser-run.log`, `selection-email-isolation-results.json`
+- `browser-run.log`, `browser-results.json` (59/61)

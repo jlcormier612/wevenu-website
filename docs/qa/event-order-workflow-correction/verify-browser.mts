@@ -889,15 +889,15 @@ async function main() {
     persisted.invoiceAfterSend = invAfterSend;
     persisted.frozenLineCount = frozenEo.length;
 
-    const { count: invoicesAfterSend } = await admin
+    const { count: invoicesCountAfterPublish } = await admin
       .from("invoices")
       .select("id", { count: "exact", head: true })
       .eq("client_id", CLIENT)
       .eq("venue_id", FANCY);
     record(
       "no-duplicate-invoice-after-send",
-      (invoicesAfterSend ?? 0) === (invoicesAfterHandoff ?? 0),
-      `${invoicesAfterHandoff}→${invoicesAfterSend}`,
+      (invoicesCountAfterPublish ?? 0) === (invoicesAfterHandoff ?? 0),
+      `${invoicesAfterHandoff}→${invoicesCountAfterPublish}`,
     );
 
     // Couple financial portal must show the published payable — not $0 / empty plan.
@@ -977,8 +977,8 @@ async function main() {
       .eq("venue_id", FANCY);
     record(
       "repeat-create-does-not-duplicate-invoice",
-      (invoicesAfterRepeat ?? 0) === (invoicesAfterSend ?? invoicesAfterHandoff ?? 0),
-      `${invoicesAfterSend}→${invoicesAfterRepeat}`,
+      (invoicesAfterRepeat ?? 0) === (invoicesCountAfterPublish ?? invoicesAfterHandoff ?? 0),
+      `${invoicesCountAfterPublish}→${invoicesAfterRepeat}`,
     );
 
     if (tokenInUrl) {

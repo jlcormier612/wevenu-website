@@ -1,0 +1,14 @@
+PASS serving-sha — expected=4ef14218c537 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a
+PASS serving-image-digest — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a
+PASS exact-four-tabs — [{"id":"planning","label":"Planning"},{"id":"timeline","label":"Timeline"},{"id":"floor-plans","label":"Floor Plans"},{"id":"vendors","label":"Vendors"}]
+PASS no-event-order-tab — [{"id":"planning","label":"Planning"},{"id":"timeline","label":"Timeline"},{"id":"floor-plans","label":"Floor Plans"},{"id":"vendors","label":"Vendors"}]
+PASS no-inventory-tab — [{"id":"planning","label":"Planning"},{"id":"timeline","label":"Timeline"},{"id":"floor-plans","label":"Floor Plans"},{"id":"vendors","label":"Vendors"}]
+PASS default-tab-planning — planningVisible=true
+PASS tab-content-planning — visible=true
+PASS tab-content-timeline — visible=true
+PASS tab-content-floor-plans — visible=true
+PASS tab-content-vendors — visible=true
+PASS narrow-four-tabs — ["Planning","Timeline","Floor Plans","Vendors"]
+PASS commercial-eo-inventory-card — card=1 eo=1 inv=1
+PASS commercial-event-order-tab — eoSurface=true
+PASS commercial-inventory-tab — invSurface=true
