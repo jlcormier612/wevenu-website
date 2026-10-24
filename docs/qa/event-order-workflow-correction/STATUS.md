@@ -1,29 +1,64 @@
-# Event Order workflow + selection email link
+# Event Order workflow — commercial experience reuse
 
 ## Status
 
-**BLOCKED / NOT GREEN** — link and stage-visibility corrections are in the working tree. Full deployed browser journey (acceptance steps 1–28) is not yet proven against a new serving SHA.
+**IN PROGRESS — deployed commit pending Sandbox serve + E2E**
 
-## Serving before this change
+Product implementation is on `2bdb49e4`. Sandbox deploy dispatched; browser GREEN is not claimed until the serving image matches and the full journey harness passes.
 
-| Field | Value |
+## Implementation commit
+
+| Item | Value |
 | --- | --- |
-| Image | `405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:49b3c72dcc0ef251f19fc35b40a7055ed54da87e` |
-| Digest | `sha256:44c06727274575b855b9ad014e322fdeaa44a6750ce329040efa0ab16bfc0f88` |
-| Prior deploy of `0acf5305` | https://github.com/jlcormier612/wevenu-website/actions/runs/40051465891 **failure** (team Select `onValueChange` type). That type error is fixed in the same commit so Sandbox can build. |
+| Commit | `2bdb49e4eb2ed49f78001f234e1672a92e7346d8` |
+| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40059994727 |
+| Branch | `feat/spaces-booking-e1-smart-fields` |
 
-## Why earlier E2E missed this
+Production was not deployed.
 
-P2-E (GREEN on `1939228e`) checked that the email HTML contained `#choices` and opened a couple portal token the harness already held. It did not resolve the session the sender picks when the only stored portal session is the invoice `financial` token. That token always renders Invoice & Payment Plan.
+## What changed (product)
 
-## Unit checks run
+### Reused commercial patterns
 
-`lib/client-choices/choices-portal-link.test.ts` + `couple-email.test.ts` + `payment-access.test.ts` — pass (see test output when recorded).
+| Lead → Booked pattern | Event Order reuse |
+| --- | --- |
+| CreateProposalSheet / RH preview | `ClientChoicesPanel` two-column composer + `EventOrderTemplatePreviewView` / `ChoicesDefinitionView` |
+| ArtifactReviewOverlay send preview | Full selection-request preview before ShareDialog |
+| ShareDialog send | Unchanged `sendClientChoicesRequest` + ShareDialog |
+| CommercialFacts meaningful CTAs | `EventOrderJourney` — never generic "View" |
+| Create contract → invoice | Finalize Event Order (no signature) → Create invoice & payment plan |
+| Invoice / payment plan engine | Existing `createInvoiceFromEventOrderAction` + payments UI |
 
-## Not yet done
+### Stages
 
-- Sandbox deploy of this correction
-- Fresh couple browser opening the generated selection URL (not a staff page)
-- Invoice link still opening PaymentAccessShell
-- Full Create Event Order → finalize → invoice → Documents journey on that SHA
-- Production untouched; unrelated dirty files preserved
+1. **Client selections** — template dropdown, RH full template preview (categories, fixed/included, prices, choice groups), prepare packet, ArtifactReviewOverlay full send preview, one Send selection request. Fixed lines freeze into `ChoicesDefinition.fixedLines` so the couple sees complete context.
+2. **Event Order** — Review selections → apply → Review Event Order → Finalize Event Order. Signature / share is optional and not an invoice gate.
+3. **Invoice & payments** — Create / Open invoice & payment plan labels; existing financial path preserved (`da1b04cf` billable reconciliation).
+
+## Unit tests (local)
+
+```text
+npx tsx --test lib/events/event-order-journey-stage0.test.ts \
+  lib/events/event-commercial-workflow-p2b.test.ts \
+  lib/event-order-templates/selection-definition.test.ts \
+  lib/client-choices/couple-email.test.ts
+→ pass
+```
+
+## E2E (required for GREEN)
+
+```text
+EXPECTED_SHA=2bdb49e4eb2ed49f78001f234e1672a92e7346d8 npx tsx docs/qa/event-order-workflow-correction/verify-browser.mts
+```
+
+Run only after deploy success and serving image tag/digest match `2bdb49e4…`.
+
+## Prior billing GREEN (preserve)
+
+| Item | Value |
+| --- | --- |
+| Billing fix | `da1b04cfd6761c77ec89de81bc2e0609d7852231` |
+| Digest (historical) | `sha256:272529ddc58671f2014c711d2c18d88a4fbba618c2851123b5396842e9986363` |
+| Payable | $2,266.31 |
+
+Do not regress billable vs delivery subtotal semantics.

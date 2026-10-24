@@ -1,0 +1,178 @@
+{
+  "eo": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-24T02:24:06.106+00:00",
+    "finalized_at": "2026-10-24T03:22:06.683+00:00",
+    "client_agreed_at": null,
+    "revision": 18
+  },
+  "selectionSendsAfterShareCount": 10,
+  "latestSendsAfterShare": [
+    {
+      "id": "dd1b6f18-d9ee-46e5-9c49-0c08cba29ff7",
+      "status": "finalized",
+      "sent_at": "2026-10-24T03:21:32.827+00:00",
+      "submitted_at": "2026-10-24T03:21:41.800697+00:00",
+      "finalized_at": "2026-10-24T03:21:54.113+00:00",
+      "created_at": "2026-10-24T03:21:22.271781+00:00"
+    },
+    {
+      "id": "2c2dbf0a-b62f-46be-ba25-bb799310c346",
+      "status": "finalized",
+      "sent_at": "2026-10-24T03:17:03.313+00:00",
+      "submitted_at": "2026-10-24T03:17:22.457868+00:00",
+      "finalized_at": "2026-10-24T03:17:35.075+00:00",
+      "created_at": "2026-10-24T03:16:30.771539+00:00"
+    },
+    {
+      "id": "d4aef3ed-d898-477d-b126-502afde5c9dd",
+      "status": "finalized",
+      "sent_at": "2026-10-24T03:15:29.485+00:00",
+      "submitted_at": "2026-10-24T03:15:40.191429+00:00",
+      "finalized_at": "2026-10-24T03:16:00.66+00:00",
+      "created_at": "2026-10-24T03:15:18.421952+00:00"
+    },
+    {
+      "id": "8edc95f2-585a-424c-81ae-496a1fc17e55",
+      "status": "sent",
+      "sent_at": "2026-10-24T03:10:31.801+00:00",
+      "submitted_at": null,
+      "finalized_at": null,
+      "created_at": "2026-10-24T03:10:21.222748+00:00"
+    },
+    {
+      "id": "ae899332-e4ea-4eb8-9b4d-ec873739734c",
+      "status": "finalized",
+      "sent_at": "2026-10-24T02:35:52.296+00:00",
+      "submitted_at": "2026-10-24T02:36:05.032839+00:00",
+      "finalized_at": "2026-10-24T02:36:16.267+00:00",
+      "created_at": "2026-10-24T02:35:36.690834+00:00"
+    }
+  ],
+  "sharedAtUnchangedProof": {
+    "shared_at": "2026-10-24T02:24:06.106+00:00",
+    "selectionSendsAfterThatTimestamp": 10,
+    "interpretation": "Multiple selection sends occurred AFTER shared_at; shared_at remained fixed — selection request does not re-share EO"
+  },
+  "clientAgreedAt": null,
+  "shareActivities": [
+    {
+      "type": "shared",
+      "title": "Updated shared copy",
+      "description": null,
+      "created_at": "2026-10-24T02:24:06.174479+00:00"
+    },
+    {
+      "type": "shared",
+      "title": "Updated shared copy",
+      "description": null,
+      "created_at": "2026-10-23T16:18:05.084225+00:00"
+    },
+    {
+      "type": "shared",
+      "title": "Updated shared copy",
+      "description": null,
+      "created_at": "2026-10-23T16:16:52.918822+00:00"
+    },
+    {
+      "type": "shared",
+      "title": "Updated shared copy",
+      "description": null,
+      "created_at": "2026-10-23T16:07:20.210012+00:00"
+    },
+    {
+      "type": "shared",
+      "title": "Updated shared copy",
+      "description": null,
+      "created_at": "2026-10-23T16:06:04.400905+00:00"
+    },
+    {
+      "type": "shared",
+      "title": "Updated shared copy",
+      "description": null,
+      "created_at": "2026-10-23T16:01:19.725774+00:00"
+    }
+  ],
+  "choiceEmailActivities": [
+    {
+      "client_choices_id": "dd1b6f18-d9ee-46e5-9c49-0c08cba29ff7",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T03:21:33.983565+00:00"
+    },
+    {
+      "client_choices_id": "2c2dbf0a-b62f-46be-ba25-bb799310c346",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T03:17:06.638987+00:00"
+    },
+    {
+      "client_choices_id": "d4aef3ed-d898-477d-b126-502afde5c9dd",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T03:15:30.71775+00:00"
+    },
+    {
+      "client_choices_id": "8edc95f2-585a-424c-81ae-496a1fc17e55",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T03:10:38.596538+00:00"
+    },
+    {
+      "client_choices_id": "ae899332-e4ea-4eb8-9b4d-ec873739734c",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T02:35:54.361541+00:00"
+    },
+    {
+      "client_choices_id": "6de443bf-e7f8-4826-90e0-e3f0129c4698",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T02:34:13.72875+00:00"
+    },
+    {
+      "client_choices_id": "2b5ddd72-7e48-448f-879f-857741bd8572",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T02:31:12.679002+00:00"
+    },
+    {
+      "client_choices_id": "88f83c5a-4ed1-48f5-9ddf-abd432aa3da5",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T02:29:12.184169+00:00"
+    },
+    {
+      "client_choices_id": "6b0b33dc-e0b1-4db1-8c17-a13d41b4a95a",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T02:27:12.615079+00:00"
+    },
+    {
+      "client_choices_id": "dabb1eb9-cc0a-47f4-b645-25d8ea617bc7",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T02:25:33.506759+00:00"
+    },
+    {
+      "client_choices_id": "6cb900e2-efe9-4aa9-b8b5-c333479ce1f5",
+      "type": "email_submitted",
+      "title": "Selection request email submitted",
+      "description": "Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.",
+      "created_at": "2026-10-24T02:23:55.318164+00:00"
+    }
+  ],
+  "selectionEmails": [],
+  "sampleMessages": []
+}

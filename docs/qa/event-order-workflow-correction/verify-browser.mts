@@ -293,6 +293,26 @@ async function main() {
       record("preview-dialog", false, "no preview button");
     }
 
+    const { data: eoBeforeSend } = await admin
+      .from("event_orders")
+      .select("id, status, shared_at, client_agreed_at, finalized_at, revision")
+      .eq("event_id", EVENT)
+      .eq("venue_id", FANCY)
+      .maybeSingle();
+    const { count: invoicesBeforeSend } = await admin
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", CLIENT)
+      .eq("venue_id", FANCY);
+    const { data: eventBeforeSend } = await admin
+      .from("events")
+      .select("id, status, booked_at")
+      .eq("id", EVENT)
+      .maybeSingle();
+    persisted.eoBeforeSelectionSend = eoBeforeSend;
+    persisted.eventBeforeSelectionSend = eventBeforeSend;
+    persisted.invoicesBeforeSelectionSend = invoicesBeforeSend ?? 0;
+
     let send = page.locator('[data-testid="choices-send-selection-request"]').first();
     if ((await send.count()) === 0) {
       const amend = page.getByRole("button", { name: /^Amend$/ }).first();
@@ -319,6 +339,52 @@ async function main() {
     const sendToast = await page.locator("[data-sonner-toast]").allInnerTexts().catch(() => []);
     record("send-finished", sendToast.length > 0 || (await page.locator('[role="dialog"]').count()) === 0, sendToast.join(" | ") || "dialog closed");
     await page.screenshot({ path: `${OUT}/shots/after-send-1280.png`, fullPage: false });
+
+    const { data: eoAfterSend } = await admin
+      .from("event_orders")
+      .select("id, status, shared_at, client_agreed_at, finalized_at, revision")
+      .eq("event_id", EVENT)
+      .eq("venue_id", FANCY)
+      .maybeSingle();
+    const { count: invoicesAfterSend } = await admin
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", CLIENT)
+      .eq("venue_id", FANCY);
+    const { data: eventAfterSend } = await admin
+      .from("events")
+      .select("id, status, booked_at")
+      .eq("id", EVENT)
+      .maybeSingle();
+    persisted.eoAfterSelectionSend = eoAfterSend;
+    record(
+      "selection-send-does-not-change-eo-shared-at",
+      (eoBeforeSend?.shared_at ?? null) === (eoAfterSend?.shared_at ?? null),
+      `before=${eoBeforeSend?.shared_at ?? "null"} after=${eoAfterSend?.shared_at ?? "null"}`,
+    );
+    record(
+      "selection-send-does-not-set-client-agreed",
+      (eoBeforeSend?.client_agreed_at ?? null) === (eoAfterSend?.client_agreed_at ?? null)
+        && eoAfterSend?.client_agreed_at == null,
+      JSON.stringify({ before: eoBeforeSend?.client_agreed_at, after: eoAfterSend?.client_agreed_at }),
+    );
+    record(
+      "selection-send-does-not-finalize-eo",
+      (eoBeforeSend?.status ?? null) === (eoAfterSend?.status ?? null)
+        && (eoBeforeSend?.finalized_at ?? null) === (eoAfterSend?.finalized_at ?? null),
+      `before=${eoBeforeSend?.status}/${eoBeforeSend?.finalized_at ?? "null"} after=${eoAfterSend?.status}/${eoAfterSend?.finalized_at ?? "null"}`,
+    );
+    record(
+      "selection-send-does-not-create-invoice",
+      (invoicesBeforeSend ?? 0) === (invoicesAfterSend ?? 0),
+      `before=${invoicesBeforeSend} after=${invoicesAfterSend}`,
+    );
+    record(
+      "selection-send-does-not-change-booking",
+      eventBeforeSend?.booked_at === eventAfterSend?.booked_at
+        && eventBeforeSend?.status === eventAfterSend?.status,
+      JSON.stringify({ before: eventBeforeSend, after: eventAfterSend }),
+    );
 
     const { data: messages, error: messageError } = await admin
       .from("conversation_messages")
@@ -392,9 +458,43 @@ async function main() {
         afterBody.slice(0, 240),
       );
       await couplePage.screenshot({ path: `${OUT}/shots/selection-submitted-1280.png`, fullPage: false });
+
+      const { data: eoAfterSubmit } = await admin
+        .from("event_orders")
+        .select("id, status, shared_at, client_agreed_at, finalized_at")
+        .eq("event_id", EVENT)
+        .eq("venue_id", FANCY)
+        .maybeSingle();
+      record(
+        "selection-submit-does-not-change-eo-shared-at",
+        (eoBeforeSend?.shared_at ?? null) === (eoAfterSubmit?.shared_at ?? null),
+        `beforeSend=${eoBeforeSend?.shared_at ?? "null"} afterSubmit=${eoAfterSubmit?.shared_at ?? "null"}`,
+      );
+      record(
+        "selection-submit-does-not-accept-eo",
+        eoAfterSubmit?.client_agreed_at == null,
+        JSON.stringify({ client_agreed_at: eoAfterSubmit?.client_agreed_at ?? null }),
+      );
+      record(
+        "selection-submit-does-not-finalize-eo",
+        (eoBeforeSend?.finalized_at ?? null) === (eoAfterSubmit?.finalized_at ?? null),
+        `before=${eoBeforeSend?.finalized_at ?? "null"} after=${eoAfterSubmit?.finalized_at ?? "null"}`,
+      );
+      // Full offering context on couple form (fixed lines when frozen into definition).
+      record(
+        "selection-form-shows-offering-context",
+        /Your Choices/i.test(afterBody)
+          && (/Included with your event|Pick one|Pick many|required|optional/i.test(afterBody)
+            || (await couplePage.locator('[data-testid="choices-definition-view"], fieldset').count()) > 0),
+        afterBody.slice(0, 300),
+      );
     } else {
       record("selection-link-renders-form", false, "no url");
       record("selection-submitted-ui", false, "no url");
+      record("selection-submit-does-not-change-eo-shared-at", false, "no url");
+      record("selection-submit-does-not-accept-eo", false, "no url");
+      record("selection-submit-does-not-finalize-eo", false, "no url");
+      record("selection-form-shows-offering-context", false, "no url");
     }
 
     const { data: choicesAfter } = await admin
@@ -523,7 +623,7 @@ async function main() {
           timeout: 90_000,
         });
         await page.waitForSelector('[data-testid="event-order-order"]', { timeout: 45_000 });
-        const finalize = page.getByRole("button", { name: /^Finalize$/ }).first();
+        const finalize = page.getByRole("button", { name: /Finalize Event Order|^Finalize$/i }).first();
         if ((await finalize.count()) > 0) {
           await finalize.click();
           await page.waitForTimeout(3000);
@@ -531,20 +631,20 @@ async function main() {
       }
     }
     let orderAfterFinalize = order?.id
-      ? (await admin.from("event_orders").select("status, shared_at").eq("id", order.id).maybeSingle()).data
+      ? (await admin.from("event_orders").select("status, shared_at, client_agreed_at").eq("id", order.id).maybeSingle()).data
       : null;
     if (orderAfterFinalize?.status !== "finalized" && order?.id) {
       await page.goto(`${APP}/events/${EVENT}?needFinalize2=${Date.now()}#event-order-order`, {
         waitUntil: "domcontentloaded",
         timeout: 90_000,
       });
-      const finalize2 = page.getByRole("button", { name: /^Finalize$/ }).first();
+      const finalize2 = page.getByRole("button", { name: /Finalize Event Order|^Finalize$/i }).first();
       if ((await finalize2.count()) > 0) {
         await finalize2.click();
         await page.waitForTimeout(3500);
       }
       orderAfterFinalize = (
-        await admin.from("event_orders").select("status, shared_at").eq("id", order.id).maybeSingle()
+        await admin.from("event_orders").select("status, shared_at, client_agreed_at").eq("id", order.id).maybeSingle()
       ).data;
     }
     record(
@@ -552,22 +652,41 @@ async function main() {
       orderAfterFinalize?.status === "finalized",
       JSON.stringify(orderAfterFinalize ?? order),
     );
+    record(
+      "finalize-does-not-auto-accept",
+      orderAfterFinalize?.client_agreed_at == null,
+      JSON.stringify({ client_agreed_at: orderAfterFinalize?.client_agreed_at ?? null }),
+    );
 
+    // Intentional later Share — distinct from selection-request send above.
+    const sharedAtBeforeExplicitShare = orderAfterFinalize?.shared_at ?? order?.shared_at ?? null;
     const share = page.getByRole("button", { name: /Share with Client|Update Shared Copy/i }).first();
-    if ((await share.count()) > 0 && !orderAfterFinalize?.shared_at && !order?.shared_at) {
+    let performedExplicitShare = false;
+    if ((await share.count()) > 0 && !sharedAtBeforeExplicitShare) {
       await share.click();
       await page.waitForTimeout(600);
       const shareBtn = page.locator('[role="dialog"]').getByRole("button", { name: /^Share$/ }).first();
       if ((await shareBtn.count()) > 0) {
         await shareBtn.click();
         await page.waitForTimeout(3000);
+        performedExplicitShare = true;
       }
     }
     const { data: orderShared } = order?.id
-      ? await admin.from("event_orders").select("status, shared_at").eq("id", order.id).maybeSingle()
+      ? await admin.from("event_orders").select("status, shared_at, client_agreed_at").eq("id", order.id).maybeSingle()
       : { data: null };
-    record("event-order-shared", Boolean(orderShared?.shared_at), JSON.stringify(orderShared));
+    record(
+      "event-order-shared-via-explicit-share-or-preexisting",
+      Boolean(orderShared?.shared_at),
+      JSON.stringify({
+        shared_at: orderShared?.shared_at,
+        preexisting: Boolean(sharedAtBeforeExplicitShare),
+        performedExplicitShare,
+      }),
+    );
     persisted.orderShared = orderShared;
+    persisted.explicitSharePerformed = performedExplicitShare;
+    persisted.sharedAtWasPreexistingBeforeExplicitShare = Boolean(sharedAtBeforeExplicitShare);
 
     const invoiceBtn = page.locator('[data-testid="eo-create-draft-invoice"], [data-testid="eo-create-payment-plan"], [data-testid="eo-link-draft-invoice"]').first();
     const { count: invoicesBeforeHandoff } = await admin
