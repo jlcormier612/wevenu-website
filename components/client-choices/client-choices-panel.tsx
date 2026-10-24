@@ -272,6 +272,11 @@ function ChoicesRow({
                     } else {
                       toast.success("Event Order updated from selections.");
                     }
+                    window.location.hash = "event-order-order";
+                    document.getElementById("event-order-order")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
                     router.refresh();
                   });
                 }}

@@ -120,7 +120,7 @@ export function EventTeamSection({
         <Select
           key={addSelectKey}
           onValueChange={(v) => {
-            if (v) handleAddStaff(v);
+            if (typeof v === "string" && v) handleAddStaff(v);
           }}
           items={eligibleToAdd.map((s) => ({ value: s.id, label: s.name }))}
           disabled={addPending || eligibleToAdd.length === 0}
@@ -172,7 +172,7 @@ export function EventTeamSection({
       <Select
         key={addSelectKey}
         onValueChange={(v) => {
-          if (v) handleAddStaff(v);
+          if (typeof v === "string" && v) handleAddStaff(v);
         }}
         items={eligibleToAdd.map((s) => ({ value: s.id, label: s.name }))}
         disabled={addPending || eligibleToAdd.length === 0}

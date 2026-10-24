@@ -15,6 +15,7 @@ import {
   type EmailVenueBrand,
   VENUE_EMAIL_BRAND_SELECT,
 } from "@/lib/email/venue-brand";
+import { choicesReviewUrl, pickChoicesPortalSession } from "@/lib/client-choices/choices-portal-link";
 import { publicAppOrigin } from "@/lib/env";
 import { customerFacingVenueName } from "@/lib/venue/identity";
 
@@ -138,10 +139,11 @@ export async function submitClientChoicesCoupleEmail(input: {
 
   const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
   const sessions = await getPortalSessions(input.clientId);
+  // Never reuse the invoice financial token — that page is PaymentAccessShell
+  // and ignores #choices, which is why "Review your selections" opened the invoice.
   const session =
-    sessions.find((s) => s.accessLevel !== "financial")
-    ?? sessions[0]
-    ?? (await createPortalSession(input.clientId, null, "couple"));
+    pickChoicesPortalSession(sessions)
+    ?? (await createPortalSession(input.clientId, "Selections", "couple"));
   if (!session?.accessToken) {
     return {
       submitted: false,
@@ -152,7 +154,7 @@ export async function submitClientChoicesCoupleEmail(input: {
     };
   }
 
-  const portalUrl = `${publicAppOrigin()}/p/${session.accessToken}#choices`;
+  const portalUrl = choicesReviewUrl(publicAppOrigin(), session.accessToken);
   const content = buildChoicesCoupleEmail({
     venueName,
     recipientFirstName: (client?.first_name as string | null) ?? null,

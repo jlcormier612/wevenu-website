@@ -4718,6 +4718,7 @@ export function PortalShell({
   token, context, initialTasks, initialVendorTasks = [], initialTimelineSections = [], initialTimelineEntries = [],
   initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
   initialLegalGate,
+  initialSection,
 }: {
   token: string;
   context: PortalContext;
@@ -4728,8 +4729,10 @@ export function PortalShell({
   initialTimelineLastSubmittedAt?: string | null;
   initialTimelineHasUnpublishedChanges?: boolean;
   initialLegalGate?: CouplePortalLegalGateStatus;
+  /** Server-resolved deep link (e.g. ?view=choices) so email redirects that drop #hash still land. */
+  initialSection?: PortalSection;
 }) {
-  const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
+  const [activeSection, setActiveSection] = React.useState<PortalSection>(initialSection ?? "overview");
   const [workspaceFocus, setWorkspaceFocus] = React.useState<PortalWorkspaceFocus | null>(null);
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);

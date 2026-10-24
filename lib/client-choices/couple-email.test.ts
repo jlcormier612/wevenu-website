@@ -35,7 +35,8 @@ describe("P2-C buildChoicesCoupleEmail", () => {
     assert.match(src, /sendEmail/);
     assert.match(src, /recordExternalClientOutbound/);
     assert.match(src, /sourceType: "client_choices_request"/);
-    assert.match(src, /#choices/);
+    assert.match(src, /choicesReviewUrl/);
+    assert.doesNotMatch(src, /sessions\[0\]/);
   });
 });
 

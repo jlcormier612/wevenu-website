@@ -44,28 +44,20 @@ function StageSection({
   emphasized: boolean;
   children: ReactNode;
 }) {
-  if (emphasized) {
-    return (
-      <div id={id} data-testid={testId} data-stage-emphasis="primary">
-        {children}
-      </div>
-    );
-  }
+  // Both stages stay open, matching the proposal → contract document flow.
+  // Collapsing the Event Order hid Start selections and the document itself.
   return (
-    <details
+    <section
       id={id}
       data-testid={testId}
-      data-stage-emphasis="secondary"
-      className="rounded-lg border border-dashed border-border bg-muted/10 px-3 py-2"
+      data-stage-emphasis={emphasized ? "primary" : "secondary"}
+      className={emphasized ? undefined : "rounded-lg border border-border bg-card px-3 py-3"}
     >
-      <summary className="cursor-pointer text-sm font-medium text-heading">
-        {title}
-        <span className="ml-2 text-xs font-normal text-muted-foreground">
-          (collapsed — open when you need this stage)
-        </span>
-      </summary>
-      <div className="mt-3">{children}</div>
-    </details>
+      {emphasized ? null : (
+        <h3 className="mb-3 text-sm font-medium text-heading">{title}</h3>
+      )}
+      {children}
+    </section>
   );
 }
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PaymentAccessShell } from "@/components/portal/payment-access-shell";
 import { PortalShell } from "@/components/portal/portal-shell";
+import { isChoicesPortalView } from "@/lib/client-choices/choices-portal-link";
 import {
   getCouplePortalLegalGateStatus,
   resolveCouplePortalLegalIdentity,
@@ -10,7 +11,10 @@ import {
 import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
 import { resolvePortalContext, resolvePortalTasks, resolvePortalTimeline, resolvePortalVendorTasks } from "@/lib/portal/service";
 
-type Props = { params: Promise<{ token: string }> };
+type Props = {
+  params: Promise<{ token: string }>;
+  searchParams?: Promise<{ view?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
@@ -42,14 +46,16 @@ async function resolvePortalLegalGate(
   }
 }
 
-export default async function PortalPage({ params }: Props) {
+export default async function PortalPage({ params, searchParams }: Props) {
   const { token } = await params;
+  const query = searchParams ? await searchParams : {};
   const context = await resolvePortalContext(token);
   if (!context) notFound();
 
   // Payment access before portal invitation — purpose-built pay experience.
   // Portal layout pins h-svh + overflow-hidden for PortalShell; financial pages
   // need a nested page scroll so the Invoice & Payment Plan schedule is reachable.
+  // view=choices is ignored here so invoice links stay on the financial document.
   if (context.accessLevel === "financial") {
     return (
       <div className="h-full overflow-y-auto overscroll-contain">
@@ -57,6 +63,8 @@ export default async function PortalPage({ params }: Props) {
       </div>
     );
   }
+
+  const choicesView = isChoicesPortalView(query.view);
 
   const [tasks, vendorTasks, timeline, legalGate] = await Promise.all([
     resolvePortalTasks(token),
@@ -69,6 +77,7 @@ export default async function PortalPage({ params }: Props) {
     <PortalShell
       token={token}
       context={context}
+      initialSection={choicesView ? "choices" : undefined}
       initialTasks={tasks}
       initialVendorTasks={vendorTasks}
       initialTimelineSections={timeline.sections}
