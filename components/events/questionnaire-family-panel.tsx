@@ -416,6 +416,7 @@ function KindPanel({
                 allowSchedule
                 onSchedule={handleSchedule}
                 scheduleLabel="Schedule send"
+                onSent={() => onApplied?.()}
               />
             )}
             {canWithdrawAccess && (
