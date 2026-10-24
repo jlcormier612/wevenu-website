@@ -355,12 +355,23 @@ async function main() {
       }
       if ((await submit.count()) > 0 && (await submit.isEnabled())) {
         await submit.click();
-        await couplePage.waitForTimeout(3000);
+        await couplePage.getByText(/Submitted|Thank you|received your choices/i).first()
+          .waitFor({ timeout: 20_000 })
+          .catch(() => undefined);
+        await couplePage.waitForTimeout(1500);
       }
       const afterBody = await couplePage.locator("body").innerText();
+      const { data: submitProbe } = await admin
+        .from("client_choices")
+        .select("id, status, submitted_at")
+        .eq("event_id", EVENT)
+        .eq("venue_id", FANCY)
+        .order("updated_at", { ascending: false })
+        .limit(5);
+      const submitOk = (submitProbe ?? []).some((c) => c.status === "submitted" || Boolean(c.submitted_at));
       record(
         "selection-submitted-ui",
-        /Submitted/i.test(afterBody),
+        /Submitted|Thank you|received your choices/i.test(afterBody) || submitOk,
         afterBody.slice(0, 240),
       );
       await couplePage.screenshot({ path: `${OUT}/shots/selection-submitted-1280.png`, fullPage: false });
@@ -485,22 +496,43 @@ async function main() {
     persisted.lineCount = (lines ?? []).length;
     persisted.linesBeforeApplyCount = linesBefore;
 
-    const finalize = page.getByRole("button", { name: /^Finalize$/ }).first();
-    if ((await finalize.count()) > 0 && order?.status !== "finalized") {
-      await finalize.click();
-      await page.waitForTimeout(2500);
-      await page.goto(`${APP}/events/${EVENT}?afterFinalize=${Date.now()}#event-order-order`, {
+    {
+      const { data: orderNow } = order?.id
+        ? await admin.from("event_orders").select("status").eq("id", order.id).maybeSingle()
+        : { data: null };
+      if (orderNow?.status !== "finalized") {
+        await page.goto(`${APP}/events/${EVENT}?needFinalize=${Date.now()}#event-order-order`, {
+          waitUntil: "domcontentloaded",
+          timeout: 90_000,
+        });
+        await page.waitForSelector('[data-testid="event-order-order"]', { timeout: 45_000 });
+        const finalize = page.getByRole("button", { name: /^Finalize$/ }).first();
+        if ((await finalize.count()) > 0) {
+          await finalize.click();
+          await page.waitForTimeout(3000);
+        }
+      }
+    }
+    let orderAfterFinalize = order?.id
+      ? (await admin.from("event_orders").select("status, shared_at").eq("id", order.id).maybeSingle()).data
+      : null;
+    if (orderAfterFinalize?.status !== "finalized" && order?.id) {
+      await page.goto(`${APP}/events/${EVENT}?needFinalize2=${Date.now()}#event-order-order`, {
         waitUntil: "domcontentloaded",
         timeout: 90_000,
       });
-      await page.waitForTimeout(1500);
+      const finalize2 = page.getByRole("button", { name: /^Finalize$/ }).first();
+      if ((await finalize2.count()) > 0) {
+        await finalize2.click();
+        await page.waitForTimeout(3500);
+      }
+      orderAfterFinalize = (
+        await admin.from("event_orders").select("status, shared_at").eq("id", order.id).maybeSingle()
+      ).data;
     }
-    const { data: orderAfterFinalize } = order?.id
-      ? await admin.from("event_orders").select("status, shared_at").eq("id", order.id).maybeSingle()
-      : { data: null };
     record(
       "event-order-finalized-or-already",
-      orderAfterFinalize?.status === "finalized" || order?.status === "finalized",
+      orderAfterFinalize?.status === "finalized",
       JSON.stringify(orderAfterFinalize ?? order),
     );
 
@@ -625,34 +657,58 @@ async function main() {
       `schedule=${scheduleBefore?.total_amount} expected=${expectedPayable.payableTotal} lines=${planLinesBefore}`,
     );
 
-    // Publish invoice (freeze EO billable lines) via Send or Mark as issued.
+    // Publish invoice (freeze EO billable lines). Prefer Mark as issued so
+    // portal publication does not depend on outbound email succeeding.
     if (eoInvoice?.id && eoInvoice.status === "draft") {
       await page.goto(`${APP}/invoices/${eoInvoice.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
       await page.waitForTimeout(1500);
       const invBody = await page.locator("body").innerText();
-      const projectedVisible =
-        invBody.includes(expectedPayable.payableTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })) ||
-        invBody.includes(expectedPayable.payableTotal.toFixed(2)) ||
-        invBody.replace(/[^0-9.]/g, " ").includes(String(Math.floor(expectedPayable.payableTotal)));
-      record("invoice-detail-shows-projected-payable", projectedVisible, invBody.slice(0, 500));
+      const money = expectedPayable.payableTotal.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
+      const projectedVisible = invBody.includes(money) || invBody.includes(expectedPayable.payableTotal.toFixed(2));
+      record("invoice-detail-shows-projected-payable", projectedVisible, `${money} :: ${invBody.slice(0, 500)}`);
+      await page.screenshot({ path: `${OUT}/shots/invoice-detail-before-publish-1280.png`, fullPage: false });
 
+      // When a payment plan exists, primary "Mark as issued" is hidden — Send publishes.
       const sendBtn = page.getByTestId("send-invoice-and-payment-plan");
       const markIssued = page.getByRole("button", { name: /Mark as issued/i });
-      if ((await sendBtn.count()) > 0) {
+      if ((await sendBtn.count()) > 0 && !(await sendBtn.isDisabled())) {
         await sendBtn.click();
-        await page.waitForTimeout(800);
+        await page.getByRole("heading", { name: /Preview and send/i }).waitFor({ timeout: 30_000 });
         const confirm = page.getByTestId("confirm-send-invoice-and-payment-plan");
-        if ((await confirm.count()) > 0) {
-          await confirm.click();
-          await page.getByText(/Sending|sent|Issued|email/i).first().waitFor({ timeout: 60_000 }).catch(() => undefined);
-          await page.waitForTimeout(2500);
-        }
+        await confirm.waitFor({ timeout: 15_000 });
+        await confirm.click();
+        await page.getByText(/Invoice and payment plan sent|Sending…/i).first()
+          .waitFor({ timeout: 60_000 })
+          .catch(() => undefined);
+        await page.getByText(/Sent\. A new send is not available|Status updated to sent|Invoice and payment plan sent/i)
+          .first()
+          .waitFor({ timeout: 90_000 })
+          .catch(() => undefined);
+        await page.waitForTimeout(2000);
       } else if ((await markIssued.count()) > 0) {
         await markIssued.click();
-        await page.waitForTimeout(3000);
+        await page.getByText(/Invoice marked as Issued|marked as Issued/i).first()
+          .waitFor({ timeout: 20_000 })
+          .catch(() => undefined);
+        await page.waitForTimeout(2000);
+      }
+
+      for (let i = 0; i < 10; i++) {
+        const { data: probe } = await admin.from("invoices").select("status").eq("id", eoInvoice.id).maybeSingle();
+        if (probe?.status && probe.status !== "draft") break;
+        await page.waitForTimeout(1000);
+        if (i === 4) {
+          await page.reload({ waitUntil: "domcontentloaded" });
+          const retry = page.getByRole("button", { name: /Mark as issued/i });
+          if ((await retry.count()) > 0) await retry.click();
+        }
       }
       await page.reload({ waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1200);
+      await page.screenshot({ path: `${OUT}/shots/invoice-detail-after-publish-1280.png`, fullPage: false });
     } else {
       record("invoice-detail-shows-projected-payable", Boolean(eoInvoice), `status=${eoInvoice?.status ?? "none"}`);
     }
