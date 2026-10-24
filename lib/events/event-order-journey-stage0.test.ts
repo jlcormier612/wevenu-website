@@ -26,7 +26,7 @@ describe("Stage 0 Event Order journey facts", () => {
     assert.equal(rows.find((r) => r.key === "selections")?.primaryLabel, "Build selections");
   });
 
-  it("marks selections current on couple submission", () => {
+  it("marks selections current on couple submission with Review selections", () => {
     const { currentStep, rows } = describeEventOrderJourney({
       choices: [{ status: "submitted" }],
       eventOrder: { status: "draft", sharedAt: null },
@@ -34,27 +34,57 @@ describe("Stage 0 Event Order journey facts", () => {
     });
     assert.equal(currentStep, "review");
     assert.equal(rows.find((r) => r.isCurrent)?.key, "selections");
-    assert.match(rows.find((r) => r.key === "selections")!.primaryLabel ?? "", /Review/);
+    assert.equal(rows.find((r) => r.key === "selections")!.primaryLabel, "Review selections");
   });
 
-  it("marks event_order current after selections applied, before share", () => {
+  it("marks event_order current after selections applied, before finalize", () => {
+    const { currentStep, rows } = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "draft", sharedAt: null },
+      hasEoInvoice: false,
+    });
+    assert.equal(currentStep, "order");
+    assert.equal(rows.find((r) => r.isCurrent)?.key, "event_order");
+    assert.equal(rows.find((r) => r.key === "event_order")!.primaryLabel, "Review Event Order");
+  });
+
+  it("marks invoice current after Event Order finalize (share not required)", () => {
     const { currentStep, rows } = describeEventOrderJourney({
       choices: [{ status: "finalized" }],
       eventOrder: { status: "finalized", sharedAt: null },
       hasEoInvoice: false,
     });
-    assert.equal(currentStep, "order");
-    assert.equal(rows.find((r) => r.isCurrent)?.key, "event_order");
-  });
-
-  it("marks invoice current after share", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [{ status: "finalized" }],
-      eventOrder: { status: "finalized", sharedAt: "2026-10-23T00:00:00Z" },
-      hasEoInvoice: false,
-    });
     assert.equal(currentStep, "invoice");
     assert.equal(rows.find((r) => r.isCurrent)?.key, "invoice");
+    assert.equal(
+      rows.find((r) => r.key === "invoice")!.primaryLabel,
+      "Create invoice & payment plan",
+    );
+  });
+
+  it("invoice action becomes Open invoice & payment plan when linked", () => {
+    const { rows } = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "finalized", sharedAt: null },
+      hasEoInvoice: true,
+      eoInvoiceStatus: "sent",
+    });
+    assert.equal(
+      rows.find((r) => r.key === "invoice")!.primaryLabel,
+      "Open invoice & payment plan",
+    );
+  });
+
+  it("every row keeps a meaningful action label (never View)", () => {
+    const { rows } = describeEventOrderJourney({
+      choices: [{ status: "draft" }],
+      eventOrder: null,
+      hasEoInvoice: false,
+    });
+    for (const row of rows) {
+      assert.ok(row.primaryLabel, `${row.key} missing label`);
+      assert.doesNotMatch(row.primaryLabel, /^View$/i);
+    }
   });
 
   it("awaiting copy does not claim email was sent", () => {
@@ -118,5 +148,34 @@ describe("Stage 0 workflow composition source", () => {
     assert.match(panel, /choices-portal-only/);
     assert.match(panel, /No email was sent/);
     assert.match(panel, /Send selection request/);
+  });
+
+  it("composer includes template select, RH preview, and ArtifactReviewOverlay", () => {
+    const panel = readFileSync(
+      resolve("components/client-choices/client-choices-panel.tsx"),
+      "utf8",
+    );
+    assert.match(panel, /choices-template-select/);
+    assert.match(panel, /choices-template-preview/);
+    assert.match(panel, /EventOrderTemplatePreviewView|ChoicesDefinitionView/);
+    assert.match(panel, /ArtifactReviewOverlay/);
+    assert.match(panel, /ShareDialog/);
+  });
+
+  it("journey UI never renders generic View label", () => {
+    const journeyUi = readFileSync(
+      resolve("components/event-orders/event-order-journey.tsx"),
+      "utf8",
+    );
+    assert.doesNotMatch(journeyUi, />\s*View\s*</);
+  });
+
+  it("invoice link uses Create/Open invoice & payment plan labels", () => {
+    const link = readFileSync(
+      resolve("components/event-orders/event-order-invoice-link.tsx"),
+      "utf8",
+    );
+    assert.match(link, /Create invoice & payment plan/);
+    assert.match(link, /Open invoice & payment plan/);
   });
 });

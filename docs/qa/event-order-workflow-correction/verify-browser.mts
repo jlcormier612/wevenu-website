@@ -221,8 +221,8 @@ async function main() {
     await page.waitForTimeout(2500);
     const landed = page.url();
     const landedText = await page.locator("body").innerText().catch(() => "");
-    if (!/event-commercial-workflow|client-choices-panel|Start selections|Client selections/i.test(landedText)) {
-      const open = page.getByRole("button", { name: /Open Event Order/i }).first();
+    if (!/event-commercial-workflow|client-choices-panel|Prepare selection request|Start selections|Client selections/i.test(landedText)) {
+      const open = page.getByRole("button", { name: /Review Event Order|Open Event Order|Build selections/i }).first();
       if ((await open.count()) > 0) await open.click();
       await page.waitForTimeout(1500);
     }
@@ -241,11 +241,23 @@ async function main() {
     const choicesTag = await page.locator('[data-testid="event-order-choices"]').evaluate((el) => el.tagName).catch(() => "");
     const orderTag = await page.locator('[data-testid="event-order-order"]').evaluate((el) => el.tagName).catch(() => "");
     const startVisible = await page.locator('[data-testid="choices-start-selections"]').isVisible().catch(() => false);
+    const templateSelect = await page.locator('[data-testid="choices-template-select"]').isVisible().catch(() => false);
+    const rhPreview = await page.locator('[data-testid="choices-template-preview"]').isVisible().catch(() => false);
     const orderVisible = await page.locator('[data-testid="event-order-order"]').isVisible().catch(() => false);
+    const journeyHtml = await page.locator('[data-testid="event-order-journey"]').innerHTML().catch(() => "");
     record("stages-not-collapsed-details", choicesTag !== "DETAILS" && orderTag !== "DETAILS", `choices=${choicesTag} order=${orderTag}`);
-    record("start-selections-visible", startVisible, "choices-start-selections");
+    record("template-select-visible", templateSelect, "choices-template-select");
+    record("rh-template-preview-visible", rhPreview, "choices-template-preview");
+    record("journey-no-generic-view", !/>\s*View\s*</.test(journeyHtml), journeyHtml.slice(0, 200));
+    const activePacket = (await page.locator('[data-testid^="client-choices-row-"]').count().catch(() => 0)) > 0;
+    record(
+      "prepare-or-active-packet",
+      startVisible || activePacket,
+      startVisible ? "choices-start-selections" : activePacket ? "active packet" : "neither",
+    );
     record("event-order-document-stage-visible", orderVisible, "event-order-order");
     await page.screenshot({ path: `${OUT}/shots/venue-stages-1280.png`, fullPage: false });
+    await page.screenshot({ path: `${OUT}/shots/composer-preview-1280.png`, fullPage: false });
 
     if (startVisible) {
       await page.locator('[data-testid="choices-start-selections"]').click();
@@ -255,7 +267,7 @@ async function main() {
     record(
       "start-selections-did-not-error",
       !/Could not create/i.test(startToast),
-      startToast || (startVisible ? "clicked" : "no start button — existing packets"),
+      startToast || (startVisible ? "clicked" : "no prepare button — existing packets"),
     );
     await page.goto(`${APP}/events/${EVENT}#event-order-choices`, {
       waitUntil: "domcontentloaded",
@@ -267,10 +279,15 @@ async function main() {
     const preview = page.locator('[data-testid="choices-staff-preview"]').first();
     if ((await preview.count()) > 0) {
       await preview.click();
-      await page.waitForTimeout(500);
-      record("preview-dialog", (await page.locator('[data-testid="choices-preview-dialog"]').count()) > 0, "preview");
+      await page.waitForTimeout(800);
+      const overlayOpen = await page.locator("#artifact-review-title").isVisible().catch(() => false);
+      const hasFixedOrGroups = await page.locator('[data-testid="choices-definition-view"]').isVisible().catch(() => false);
+      record("preview-dialog", overlayOpen && hasFixedOrGroups, overlayOpen ? "ArtifactReviewOverlay" : "overlay missing");
       await page.screenshot({ path: `${OUT}/shots/preview-1280.png`, fullPage: false });
-      await page.keyboard.press("Escape");
+      await page.screenshot({ path: `${OUT}/shots/send-preview-full-1280.png`, fullPage: false });
+      const back = page.getByRole("button", { name: /Back to edit/i }).first();
+      if ((await back.count()) > 0) await back.click();
+      else await page.keyboard.press("Escape");
       await page.waitForTimeout(300);
     } else {
       record("preview-dialog", false, "no preview button");

@@ -458,7 +458,7 @@ export function EventOrderPanel({
             preBooking ? undefined : !isFinalized ? (
               <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
                 onClick={() => requestFinalize(eventOrder.id, eventOrder.total, eventOrder.lines.length)}>
-                {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
+                {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize Event Order"}
               </Button>
             ) : eventOrder.sharedAt ? (
               <Button type="button" size="sm" disabled={downloading} onClick={() => handleDownload(eventOrder.id)}>

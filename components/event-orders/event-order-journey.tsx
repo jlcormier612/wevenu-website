@@ -3,6 +3,7 @@
 /**
  * Stage 0 — Booking Details–style Event Order journey (one primary progress UI).
  * Domain actions remain on ClientChoicesPanel / EventOrderPanel.
+ * Action labels are always meaningful workflow verbs — never generic "View".
  */
 import { Button } from "@/components/ui/button";
 import type { CommercialNavTarget } from "@/lib/event-orders/commercial-status";
@@ -31,9 +32,8 @@ export function EventOrderJourney({
       </h2>
       <p className="mt-2 text-sm font-medium text-heading">Commercial journey for this booked event</p>
       <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-        Build selectable packets and fixed lines, send the selection request, apply their response to
-        the Event Order, share the final document, then invoice. Inventory stays on its own card and
-        tab — not part of this billable path.
+        Client selections → Event Order → Invoice & payments. Same progression pattern as
+        Package/Proposal → Contract → Invoice. Inventory stays on its own card and tab.
       </p>
 
       <ul className="mt-4 divide-y divide-border" data-testid="event-order-journey-rows">
@@ -58,26 +58,21 @@ export function EventOrderJourney({
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[min(100%,20rem)] sm:justify-end">
-                {row.isCurrent && row.primaryLabel ? (
+                {row.primaryLabel ? (
                   <Button
                     type="button"
                     size="sm"
-                    data-testid={`event-order-journey-primary-${row.key}`}
+                    variant={row.isCurrent ? "default" : "outline"}
+                    data-testid={
+                      row.isCurrent
+                        ? `event-order-journey-primary-${row.key}`
+                        : `event-order-journey-goto-${row.key}`
+                    }
                     onClick={() => onNavigate(row.nav)}
                   >
                     {row.primaryLabel}
                   </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    data-testid={`event-order-journey-goto-${row.key}`}
-                    onClick={() => onNavigate(row.nav)}
-                  >
-                    View
-                  </Button>
-                )}
+                ) : null}
               </div>
             </div>
           </li>

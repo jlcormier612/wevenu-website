@@ -1,6 +1,9 @@
 /**
  * P2-B — Which step of the composed Event Order spine is current.
  * Presentation only; does not mutate commercial state.
+ *
+ * Invoice becomes current once the Event Order is finalized (venue-controlled).
+ * Sharing / signature is optional and is not a gate for invoicing.
  */
 import {
   isClientChoicesNeedsVenueReview,
@@ -11,7 +14,7 @@ export type CommercialWorkflowStepId = "build" | "awaiting" | "review" | "order"
 
 export function resolveCommercialWorkflowStep(input: {
   choices: Array<{ status: string }>;
-  eventOrder: { sharedAt?: string | Date | null } | null;
+  eventOrder: { sharedAt?: string | Date | null; status?: string | null } | null;
   hasEoInvoice: boolean;
 }): CommercialWorkflowStepId {
   const needsReview = input.choices.some((c) => isClientChoicesNeedsVenueReview(c.status));
@@ -23,6 +26,10 @@ export function resolveCommercialWorkflowStep(input: {
   if (awaiting) return "awaiting";
   const draft = input.choices.some((c) => c.status === "draft");
   if (draft || input.choices.length === 0) return "build";
-  if (input.eventOrder?.sharedAt || input.hasEoInvoice) return "invoice";
+  if (input.hasEoInvoice) return "invoice";
+  // Finalized EO is the invoice gate — share/signature is not required.
+  if (input.eventOrder?.status === "finalized" || input.eventOrder?.sharedAt) {
+    return "invoice";
+  }
   return "order";
 }

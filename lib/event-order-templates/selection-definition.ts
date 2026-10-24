@@ -15,6 +15,20 @@ export function selectionDefinitionFromEventOrderTemplate(
       guidance: s.guidance,
       sortOrder: s.sortOrder,
     })),
+    // Fixed offerings travel with the selection request so the couple sees the
+    // complete proposed event — not only stripped-down choice groups.
+    fixedLines: template.lines.map((line) => ({
+      id: line.id,
+      sectionId: line.sectionId,
+      description: line.description,
+      descriptionDetail: line.descriptionDetail,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      unit: line.unit,
+      pricingModel: line.pricingModel,
+      includedByDefault: line.includedByDefault,
+      sortOrder: line.sortOrder,
+    })),
     groups: template.groups.map((g) => ({
       id: g.id,
       sectionId: g.sectionId,

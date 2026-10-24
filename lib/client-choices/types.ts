@@ -33,10 +33,29 @@ export type ChoicesDefinitionOption = {
   sortOrder: number;
 };
 
+/**
+ * Fixed / included offerings frozen from the Event Order Template.
+ * Context for the couple — not selectable and not billed via selection answers.
+ */
+export type ChoicesDefinitionFixedLine = {
+  id: string;
+  sectionId: string | null;
+  description: string;
+  descriptionDetail: string | null;
+  quantity: number;
+  unitPrice: number | null;
+  unit: string | null;
+  pricingModel: string | null;
+  includedByDefault: boolean;
+  sortOrder: number;
+};
+
 export type ChoicesDefinition = {
   sections: ChoicesDefinitionSection[];
   groups: ChoicesDefinitionGroup[];
   options: ChoicesDefinitionOption[];
+  /** Present when created from an Event Order Template with fixed lines. */
+  fixedLines?: ChoicesDefinitionFixedLine[];
 };
 
 /** Working / submitted answers keyed by group id. */

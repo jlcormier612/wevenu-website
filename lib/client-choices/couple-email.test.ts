@@ -59,7 +59,8 @@ describe("P2-C send wiring", () => {
     assert.match(panel, /choices-send-selection-request/);
     assert.match(panel, /choices-portal-only/);
     assert.match(panel, /No email was sent/);
-    assert.match(panel, /preview — it does not\s+send email/i);
+    assert.match(panel, /This is a preview — nothing has been sent/i);
+    assert.match(panel, /does not finalize the Event Order, create an invoice/i);
   });
 
   it("ShareDialog success requires email.submitted; portal-ready alone is not success", () => {

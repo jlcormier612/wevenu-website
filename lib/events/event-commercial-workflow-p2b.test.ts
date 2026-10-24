@@ -102,14 +102,25 @@ describe("P2-B workflow step resolution", () => {
     );
   });
 
-  it("moves to order after finalize without share/invoice", () => {
+  it("moves to order when selections applied but Event Order not finalized", () => {
     assert.equal(
       resolveCommercialWorkflowStep({
         choices: [{ status: "finalized" }],
-        eventOrder: { sharedAt: null },
+        eventOrder: { sharedAt: null, status: "draft" },
         hasEoInvoice: false,
       }),
       "order",
+    );
+  });
+
+  it("moves to invoice after Event Order finalize (share not required)", () => {
+    assert.equal(
+      resolveCommercialWorkflowStep({
+        choices: [{ status: "finalized" }],
+        eventOrder: { sharedAt: null, status: "finalized" },
+        hasEoInvoice: false,
+      }),
+      "invoice",
     );
   });
 
@@ -117,7 +128,7 @@ describe("P2-B workflow step resolution", () => {
     assert.equal(
       resolveCommercialWorkflowStep({
         choices: [{ status: "finalized" }],
-        eventOrder: { sharedAt: new Date().toISOString() },
+        eventOrder: { sharedAt: new Date().toISOString(), status: "finalized" },
         hasEoInvoice: false,
       }),
       "invoice",

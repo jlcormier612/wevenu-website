@@ -52,8 +52,14 @@ export function EventOrderInvoiceLink({
             {linked.displayName?.trim() || "Invoice"} {linked.invoiceNumber}
           </Link>
           <InvoiceStatusBadge status={linked.status} />
-          <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${linked.id}`} />}>
-            Open Invoice
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            render={<Link href={`/invoices/${linked.id}`} />}
+            data-testid="eo-open-invoice-payment-plan"
+          >
+            Open invoice & payment plan
           </Button>
           {showCreatePlan ? (
             <Button
@@ -62,7 +68,7 @@ export function EventOrderInvoiceLink({
               render={<Link href={`/payments/new?invoiceId=${linked.id}`} />}
               data-testid="eo-create-payment-plan"
             >
-              Create Payment Plan
+              Create payment plan
             </Button>
           ) : linkedScheduleId ? (
             <Button
@@ -71,7 +77,7 @@ export function EventOrderInvoiceLink({
               size="sm"
               render={<Link href={`/payments/${linkedScheduleId}`} />}
             >
-              Open Payment Plan
+              Open payment plan
             </Button>
           ) : null}
         </div>
@@ -115,7 +121,7 @@ export function EventOrderInvoiceLink({
             </Button>
           ) : (
             <Button type="button" size="sm" disabled={pending} onClick={handleCreate} data-testid="eo-create-draft-invoice">
-              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create Invoice"}
+              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create invoice & payment plan"}
             </Button>
           )
         ) : (
@@ -124,8 +130,8 @@ export function EventOrderInvoiceLink({
               {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `Link draft ${linkableDraft.invoiceNumber}`}
             </Button>
           ) : (
-            <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleCreate}>
-              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create draft Invoice"}
+            <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleCreate} data-testid="eo-create-draft-invoice">
+              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create invoice & payment plan"}
             </Button>
           )
         )}

@@ -141,6 +141,35 @@ export function ChoicesPortalSection({ token }: { token: string }) {
             ) : null}
           </div>
 
+          {(active.definition.fixedLines?.length ?? 0) > 0 ? (
+            <div className="space-y-3 rounded-sm border border-border bg-muted/15 p-4">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Included with your event
+              </p>
+              <ul className="space-y-2">
+                {active.definition.fixedLines!
+                  .slice()
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((line) => (
+                    <li key={line.id} className="text-sm">
+                      <span className="font-medium text-heading">{line.description}</span>
+                      {line.descriptionDetail ? (
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {line.descriptionDetail}
+                        </span>
+                      ) : null}
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {line.includedByDefault ? "Included" : "Part of your offering"}
+                        {line.unitPrice != null && !line.includedByDefault
+                          ? ` · $${Number(line.unitPrice).toFixed(2)}`
+                          : ""}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
+
           {active.definition.groups
             .slice()
             .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -152,6 +181,10 @@ export function ChoicesPortalSection({ token }: { token: string }) {
               return (
                 <fieldset key={group.id} className="space-y-2 rounded-sm border border-border p-4" disabled={!editable}>
                   <legend className="px-1 text-sm font-medium text-heading">{group.name}</legend>
+                  <p className="text-xs text-muted-foreground">
+                    {group.selectionMode === "single" ? "Pick one" : "Pick many"}
+                    {group.minSelect > 0 ? " · required" : " · optional"}
+                  </p>
                   {group.instructions ? (
                     <p className="text-xs text-muted-foreground">{group.instructions}</p>
                   ) : null}

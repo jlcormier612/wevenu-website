@@ -1,6 +1,6 @@
 /**
  * Stage 0 — Event Order journey facts (presentation only).
- * Mirrors Booking Details / CommercialFacts grammar: status + primary next step.
+ * Mirrors Booking Details / CommercialFacts grammar: status + meaningful next action.
  * Does not mutate commercial state or invent parallel workflows.
  */
 import {
@@ -23,6 +23,7 @@ export type EventOrderJourneyRow = {
   detail: string;
   /** True when this row owns the current stage primary action. */
   isCurrent: boolean;
+  /** Always a meaningful workflow label — never generic "View". */
   primaryLabel: string | null;
   nav: CommercialNavTarget;
 };
@@ -62,7 +63,7 @@ function selectionsState(choices: EventOrderJourneyInput["choices"]): {
     return {
       state: "Not started",
       detail:
-        "Start a selectable packet when the couple should choose options, or add fixed lines on the Event Order.",
+        "Choose an Event Order template, review the full offering in the preview, then send a selection request.",
       primaryLabel: "Build selections",
     };
   }
@@ -70,8 +71,8 @@ function selectionsState(choices: EventOrderJourneyInput["choices"]): {
     return {
       state: "Couple submitted — venue to review",
       detail:
-        "Review their selections, then Create or Update the Event Order from those picks. Fixed/included lines stay as authored.",
-      primaryLabel: "Review submission",
+        "Review their selections, then apply them to the Event Order. Fixed and included offerings stay as authored.",
+      primaryLabel: "Review selections",
     };
   }
   const awaiting = choices.find((c) => {
@@ -82,7 +83,7 @@ function selectionsState(choices: EventOrderJourneyInput["choices"]): {
     return {
       state: clientChoicesDisplayLabel(awaiting.status),
       detail:
-        "Waiting on the couple. Resend the selection request email, or open selections below to remind in the portal only.",
+        "Waiting on the couple. Resend the selection request, or open selections below to remind in the portal only.",
       primaryLabel: "Resend selection request",
     };
   }
@@ -91,15 +92,15 @@ function selectionsState(choices: EventOrderJourneyInput["choices"]): {
     return {
       state: "Draft — not sent yet",
       detail:
-        "Send a selection request to email a secure portal link. Make available in portal opens the task without email.",
+        "Preview the complete client-facing request, then send a secure portal link. Sending does not finalize the Event Order or create an invoice.",
       primaryLabel: "Send selection request",
     };
   }
   if (choices.every((c) => c.status === "finalized")) {
     return {
       state: "Applied to Event Order",
-      detail: "Selections are locked into the Event Order. Continue with the document below.",
-      primaryLabel: null,
+      detail: "Selections are locked into the Event Order. Continue with review and finalization below.",
+      primaryLabel: "Open selections",
     };
   }
   const first = choices[0]!;
@@ -119,31 +120,24 @@ function eventOrderState(input: EventOrderJourneyInput): {
     return {
       state: "Not created yet",
       detail:
-        "Create the Event Order from submitted selections, or author fixed lines on the Event Order panel.",
-      primaryLabel: "Open Event Order",
+        "After the couple submits, review selections and create the Event Order. You can also author fixed lines on the Event Order panel.",
+      primaryLabel: "Review Event Order",
     };
   }
   const status = input.eventOrder.status ?? "draft";
-  if (input.eventOrder.sharedAt) {
-    return {
-      state: status === "finalized" ? "Shared with couple" : `Shared · ${status}`,
-      detail:
-        "Final Event Order was shared. Acceptance is optional per your venue rules and does not change booking status. Invoice lives on the Event Order–linked invoice.",
-      primaryLabel: input.hasEoInvoice ? null : "Open Event Order",
-    };
-  }
   if (status === "finalized") {
     return {
-      state: "Finalized — not shared yet",
-      detail: "Share the final Event Order with the couple when ready. Sharing is separate from Create/Update from selections.",
-      primaryLabel: "Share Event Order",
+      state: input.eventOrder.sharedAt ? "Finalized · shared with couple" : "Finalized",
+      detail:
+        "Agreed billable lines are the authoritative record. Sharing with the couple is optional and separate from invoicing — no signature step is required.",
+      primaryLabel: "Review Event Order",
     };
   }
   return {
-    state: status === "draft" ? "Draft" : status,
+    state: status === "draft" ? "Draft — needs review" : status,
     detail:
-      "Review lines, finalize the document if required, then share. Create/Update from selections, finalize, and share stay distinct.",
-    primaryLabel: "Open Event Order",
+      "Review selected options, quantities, included lines, and totals, then finalize. Finalizing does not change booking status.",
+    primaryLabel: "Review Event Order",
   };
 }
 
@@ -153,29 +147,33 @@ function invoiceState(input: EventOrderJourneyInput): {
   primaryLabel: string | null;
 } {
   if (input.hasEoInvoice) {
+    const status = input.eoInvoiceStatus ?? "linked";
     return {
-      state: input.eoInvoiceStatus ? `Invoice · ${input.eoInvoiceStatus}` : "Invoice linked",
+      state: `Invoice · ${status}`,
       detail:
-        "Amount due lives on the Event Order–linked invoice and its payment plan. Do not create a second invoice from selections alone.",
-      primaryLabel: "Open invoice handoff",
+        "Amount due lives on the Event Order–linked invoice and its payment plan. Reopen to check balance and installments.",
+      primaryLabel: "Open invoice & payment plan",
     };
   }
-  if (input.eventOrder?.sharedAt || input.eventOrder?.status === "finalized") {
+  if (input.eventOrder?.status === "finalized" || input.eventOrder?.sharedAt) {
     return {
-      state: "Not invoiced yet",
-      detail: "Create or open the Event Order–linked invoice from the Event Order panel when ready.",
-      primaryLabel: "Open invoice handoff",
+      state: "Ready to invoice",
+      detail:
+        "Create the invoice and payment plan from the finalized Event Order’s billable lines — same workflow as after contract execution.",
+      primaryLabel: "Create invoice & payment plan",
     };
   }
   return {
     state: "Waiting on Event Order",
-    detail: "Invoice and payment plan follow the agreed Event Order — not Inventory and not automatic on selection apply.",
-    primaryLabel: null,
+    detail:
+      "Invoice and payment plan follow the finalized Event Order — not Inventory and not automatic on selection submit.",
+    primaryLabel: "Invoice & payments",
   };
 }
 
 /**
  * Three persistent journey rows (Booking Details style). Exactly one isCurrent.
+ * Every row keeps a meaningful action label (CommercialFacts pattern) — never "View".
  */
 export function describeEventOrderJourney(input: EventOrderJourneyInput): {
   currentStep: CommercialWorkflowStepId;
@@ -204,7 +202,7 @@ export function describeEventOrderJourney(input: EventOrderJourneyInput): {
       state: sel.state,
       detail: sel.detail,
       isCurrent: currentKey === "selections",
-      primaryLabel: currentKey === "selections" ? sel.primaryLabel : null,
+      primaryLabel: sel.primaryLabel,
       nav: { kind: "tab", tab: "event-order", anchor: "event-order-choices" },
     },
     {
@@ -213,7 +211,7 @@ export function describeEventOrderJourney(input: EventOrderJourneyInput): {
       state: eo.state,
       detail: eo.detail,
       isCurrent: currentKey === "event_order",
-      primaryLabel: currentKey === "event_order" ? eo.primaryLabel : null,
+      primaryLabel: eo.primaryLabel,
       nav: { kind: "tab", tab: "event-order", anchor: "event-order-order" },
     },
     {
@@ -222,7 +220,7 @@ export function describeEventOrderJourney(input: EventOrderJourneyInput): {
       state: inv.state,
       detail: inv.detail,
       isCurrent: currentKey === "invoice",
-      primaryLabel: currentKey === "invoice" ? inv.primaryLabel : null,
+      primaryLabel: inv.primaryLabel,
       nav: { kind: "tab", tab: "event-order", anchor: "event-order-invoice" },
     },
   ];

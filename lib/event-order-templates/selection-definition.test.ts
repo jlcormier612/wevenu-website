@@ -142,10 +142,13 @@ function template(
 }
 
 describe("selectionDefinitionFromEventOrderTemplate", () => {
-  it("freezes sections, groups, and options into ChoicesDefinition shape", () => {
+  it("freezes sections, fixed lines, groups, and options into ChoicesDefinition shape", () => {
     const def = selectionDefinitionFromEventOrderTemplate(template());
     assert.equal(def.sections.length, 1);
     assert.equal(def.sections[0]!.name, "Food & Beverage");
+    assert.equal(def.fixedLines?.length, 1);
+    assert.equal(def.fixedLines?.[0]!.description, "House bread service");
+    assert.equal(def.fixedLines?.[0]!.includedByDefault, true);
     assert.equal(def.groups.length, 2);
     assert.equal(def.groups[0]!.selectionMode, "single");
     assert.equal(def.groups[0]!.minSelect, 1);

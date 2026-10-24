@@ -130,7 +130,9 @@ export function EventCommercialWorkflow({
   const hasEoInvoice = Boolean(eoLinkedInvoice);
   const current = resolveCommercialWorkflowStep({
     choices,
-    eventOrder,
+    eventOrder: eventOrder
+      ? { sharedAt: eventOrder.sharedAt, status: eventOrder.status }
+      : null,
     hasEoInvoice,
   });
   const { emphasizeChoices, emphasizeOrder } = panelEmphasisForStep(current);
