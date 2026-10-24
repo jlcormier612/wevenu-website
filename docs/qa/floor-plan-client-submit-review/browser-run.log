@@ -1,0 +1,77 @@
+PASS serving-image — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a58a319fe0f4fb4584a76bf136e5708a8b79225c sha256:11a4a86edc51d8647cc728542157f02bd11275ebc63f954923ab0014f09674dd
+PASS serving-sha-matches — expected=a58a319fe0f4fb4584a76bf136e5708a8b79225c image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a58a319fe0f4fb4584a76bf136e5708a8b79225c
+PASS migration-columns-present — {"id":"18c943fb-9762-4383-948a-e0f82fa4f89f","client_layout_status":"changes_requested","client_submitted_at":"2026-10-24T15:02:25.084834+00:00"}
+PASS client-guidance-visible — guidance
+PASS client-guidance-explains-limits — Barn-master-floorplan · Your choice
+
+Arrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.
+
+Locked items (gray lock mark) stay where your venue placed them.
+You may add tables your venue permits, within their inventory limits.
+Seat guests on the Seating tab when seating is open.
+When the arrangement looks right
+PASS client-submit-cta-visible — submit cta
+PASS persisted-submitted — {"client_layout_status":"submitted","client_submitted_at":"2026-10-24T15:05:29.754719+00:00","finalized_at":null}
+PASS operational-unchanged-plan-id — working layout is the same plan row; status gate freezes client edits
+PASS client-reload-shows-awaiting-review — B2P & Portal
+
+·
+
+Jen's Fancy Venue
+
+Jul 17, 2060
+
+Export my data
+9+
+🏠
+Home
+✅
+Tasks
+9+
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+📋
+Order
+1
+✅
+Choices
+1
+💳
+Payments
+1
+💬
+Messages
+9+
+🏛️
+Guide
+🤝
+Vendors
+Your Floor Plan
+
+Submitted — awaiting venue review
+
+Barn-master-floorplan · Your choice
+
+Your venue has your layout. Furniture placement is locked until they respond.
+
+Locked items (gray loc
+PASS client-submit-cta-hidden-after-submit — no submit while awaiting review
+PASS move-blocked-while-submitted — {"status":400,"body":{"error":"awaiting_review"}}
+PASS foreign-token-cannot-submit — {"status":403,"body":{"error":"invalid_token"}}
+PASS narrow-submitted-status-visible — 390
+PASS venue-review-panel-visible — review panel
+PASS persisted-changes-requested — {"client_layout_status":"changes_requested","client_review_note":"Please move the sweetheart table closer to the dance floor."}
+PASS client-sees-changes-note — From your venue: Please move the sweetheart table closer to the dance floor.
+PASS client-can-resubmit — resubmit cta
+PASS persisted-resubmitted — {"client_layout_status":"submitted","client_submitted_at":"2026-10-24T15:05:58.259084+00:00"}
+PASS persisted-approved — {"client_layout_status":"approved","client_reviewed_at":"2026-10-24T15:06:06.257+00:00","id":"18c943fb-9762-4383-948a-e0f82fa4f89f"}
+PASS operational-still-same-plan — {"operational_floor_plan_id":"18c943fb-9762-4383-948a-e0f82fa4f89f","couple_selected_floor_plan_id":"18c943fb-9762-4383-948a-e0f82fa4f89f"}
+
+GREEN 20/20

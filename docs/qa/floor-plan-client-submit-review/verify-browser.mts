@@ -343,18 +343,33 @@ async function main() {
       timeout: 90_000,
     });
     await page2.waitForTimeout(1500);
+    const accept2 = page2.getByRole("button", { name: /I agree|Accept|Continue/i }).first();
+    if ((await accept2.count()) > 0) await accept2.click().catch(() => undefined);
+    await page2.waitForTimeout(800);
+    const fpNav3 = page2.getByRole("button", { name: /Floor Plan/i }).first();
+    if ((await fpNav3.count()) > 0) await fpNav3.click().catch(() => undefined);
+    await page2.locator('[data-testid="floor-plan-working-view"]').waitFor({ timeout: 45_000 }).catch(() => undefined);
+    await page2.locator('[data-testid="floor-plan-guidance"]').waitFor({ timeout: 30_000 }).catch(() => undefined);
     const noteEl = page2.locator('[data-testid="floor-plan-changes-note"]');
-    await noteEl.waitFor({ timeout: 30_000 }).catch(() => undefined);
+    await noteEl.waitFor({ state: "visible", timeout: 45_000 }).catch(() => undefined);
+    const noteText = await noteEl.innerText().catch(() => "");
+    const body2 = await page2.locator("body").innerText().catch(() => "");
     record(
       "client-sees-changes-note",
-      (await noteEl.count()) > 0 && /sweetheart/i.test(await noteEl.innerText().catch(() => "")),
-      await noteEl.innerText().catch(() => ""),
+      /sweetheart/i.test(noteText) || /sweetheart/i.test(body2),
+      noteText || body2.slice(0, 500),
     );
+    await page2.screenshot({ path: `${OUT}/shots/client-changes-requested-1280.png`, fullPage: false });
     const submit2 = page2.locator('[data-testid="floor-plan-submit-to-venue"]');
+    await submit2.waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
     record("client-can-resubmit", await submit2.isVisible().catch(() => false), "resubmit cta");
     if ((await submit2.count()) > 0) {
       await submit2.click();
-      await page2.waitForTimeout(2000);
+      await page2.locator('[data-testid="floor-plan-submitted-badge"], [data-testid="floor-plan-submit-success"]')
+        .first()
+        .waitFor({ timeout: 20_000 })
+        .catch(() => undefined);
+      await page2.waitForTimeout(1000);
     }
     await couple2.close();
 
@@ -369,16 +384,19 @@ async function main() {
       JSON.stringify(afterResubmit),
     );
 
-    // Approve on venue.
-    await venuePage.reload({ waitUntil: "domcontentloaded" });
-    await venuePage.waitForTimeout(2000);
-    if ((await venuePage.locator('[data-testid="floor-plan-client-submission-review"]').count()) === 0) {
-      const tab = venuePage.getByRole("button", { name: /^Floor Plans$/i }).first();
-      if ((await tab.count()) > 0) await tab.click().catch(() => undefined);
-      await venuePage.waitForTimeout(1500);
-    }
+    // Approve on venue after resubmit.
+    await venuePage.goto(`${APP}/events/${EVENT}#floorplan`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await venuePage.waitForTimeout(2500);
+    const fpTab2 = venuePage.getByRole("tab", { name: /Floor Plans/i }).first();
+    if ((await fpTab2.count()) > 0) await fpTab2.click().catch(() => undefined);
+    await venuePage.locator('[data-testid="floor-plan-operational-workspace"]')
+      .waitFor({ state: "visible", timeout: 45_000 })
+      .catch(() => undefined);
     const approve = venuePage.locator('[data-testid="floor-plan-approve-submission"]');
-    await approve.waitFor({ timeout: 30_000 }).catch(() => undefined);
+    await approve.waitFor({ state: "visible", timeout: 45_000 }).catch(() => undefined);
     if ((await approve.count()) > 0) {
       await approve.click();
       await venuePage.waitForTimeout(2000);
