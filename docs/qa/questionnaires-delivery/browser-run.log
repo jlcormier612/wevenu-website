@@ -1,4 +1,4 @@
-PASS serving-sha — expected=86f39d11f650 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:86f39d11f6504289289949d5f6641a2afe88994e
+PASS serving-sha — expected=49b3c72dcc0e ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:49b3c72dcc0ef251f19fc35b40a7055ed54da87e
 PASS guidance-copy — Manage questionnaire delivery by sending immediately or schedule sending them below. If they have already been attached to tasks or requested elsewhere, this step can be skipped or used to resend them if desired.
 PASS no-create-questionnaire-button — create button absent
 PASS templates-guidance — create-in-templates guidance
@@ -10,6 +10,48 @@ PASS dropdown-final_details — select=1
 PASS final-details-no-inline-editor — no Save draft / Mark as submitted
 PASS preview-link — /events/ebf74f77-2944-474a-b735-48762ecb6842/questionnaire-preview?kind=final_details&from=event
 PASS preview-shows-form — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Tas
+PASS preview-no-delivery-mutation — {"before":{"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"draft","sent_at":null,"scheduled_send_status":null},"after":{"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"draft","sent_at":null,"scheduled_send_status":null}}
+PASS fixture-schedule-target — {"scheduleKind":"final_details","targetQ":{"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"draft","template_id":"4b0f6275-789f-4731-8893-398d1ddacfc7","sent_at":null}}
+PASS send-now-mode-present — Send now
+PASS schedule-mode-present — Schedule send mode
+PASS schedule-dialog-success — uiOk defaultLocal=2026-10-23T22:35
+PASS schedule-persisted — {"id":"f61ad243-a103-4024-aaf3-4a78bece7128","scheduled_send_at":"2026-10-24T02:35:00+00:00","scheduled_send_status":"scheduled","scheduled_send_message":"Your Final Details form for B2P 96736-9a50 & Portal Partner is ready. Please confirm what's still correct and fill in anything that's still open.","status":"draft","sent_at":null}
+PASS schedule-not-early-send — status=draft scheduled=scheduled
+PASS cron-process-invoked — {"processed":1,"sent":1,"failed":0}
+PASS schedule-executed — {"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"sent","sent_at":"2026-10-24T01:35:50.89+00:00","scheduled_send_status":"sent","scheduled_send_error":null,"access_key":"d51b08d435654d6a8f50884b2e3d75b7"}
+PASS task-linked-path-present — OVERVIEW
 
 Dashboard
 
@@ -44,104 +86,6 @@ Payments
 14
 
 T
-PASS preview-no-delivery-mutation — {"before":{"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"draft","sent_at":null,"scheduled_send_status":null},"after":{"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"draft","sent_at":null,"scheduled_send_status":null}}
-PASS fixture-schedule-target — {"scheduleKind":"final_details","targetQ":{"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"draft","template_id":"4b0f6275-789f-4731-8893-398d1ddacfc7","sent_at":null}}
-PASS send-now-mode-present — Send now
-PASS schedule-mode-present — Schedule send mode
-PASS schedule-dialog-success — uiFailed errSnippet=OVERVIEW
-
-Dashboard
-
-YOUR RELATIONSHIPS
-
-Leads
-28
-Clients
-Vendors
-
-SCHEDULING
-
-Calendar
-Tours
-4
-
-COMMUNICATION
-
-Inbox
-Automations
-
-LIBRARY
-
-Templates
-Documents
-
-FINANCIALS
-
-Contracts
-13
-Payments
-14
-
-TO DO’S
-
-Task Center
-Requests
-
-YOUR VENUE
-
-Setup
-Settings
-Guidance
-Venue Guide
-Reports
-Help & Feedback
-Jen's Fancy Venue
-Search
-⌘K
-99+
-J
-jennifer@hellotocheers.com
-Delete
-Bookings
-BP
-B2P 96736-9a50 & P adminPersist=ok local=2026-10
-PASS schedule-persisted — {"id":"f61ad243-a103-4024-aaf3-4a78bece7128","scheduled_send_at":"2026-10-24T01:18:29.357+00:00","scheduled_send_status":"scheduled","scheduled_send_message":"QA scheduled questionnaire","status":"draft","sent_at":null}
-PASS schedule-not-early-send — status=draft scheduled=scheduled
-PASS cron-process-invoked — {"processed":1,"sent":1,"failed":0}
-PASS schedule-executed — {"id":"f61ad243-a103-4024-aaf3-4a78bece7128","status":"sent","sent_at":"2026-10-24T01:03:52.7+00:00","scheduled_send_status":"sent","scheduled_send_error":null,"access_key":"d51b08d435654d6a8f50884b2e3d75b7"}
-PASS task-linked-path-present — OVERVIEW
-
-Dashboard
-
-YOUR RELATIONSHIPS
-
-Leads
-Clients
-Vendors
-
-SCHEDULING
-
-Calendar
-Tours
-
-COMMUNICATION
-
-Inbox
-Automations
-
-LIBRARY
-
-Templates
-Documents
-
-FINANCIALS
-
-Contracts
-Payments
-
-TO DO’S
-
-Tas
 PASS narrow-no-overflow — {"scrollWidth":390,"clientWidth":390}
 
 23 pass / 0 fail
