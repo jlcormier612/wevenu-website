@@ -10,6 +10,9 @@ import {
   type ResolvedQuestionnaireField,
 } from "@/lib/questionnaire-family/resolve";
 
+/** sessionStorage key: Documents card → Questionnaire section opens this form. */
+export const DOCS_QUESTIONNAIRE_HANDOFF_KEY = "htc:docs-questionnaire-key";
+
 export type SubmittedQuestionnaireSource = {
   kind: QuestionnaireKind | string;
   status: string;

@@ -52,23 +52,22 @@ function servingImage(): { image: string; digest: string } {
 
 async function ensureCoupleToken(): Promise<string> {
   const { data: existing } = await admin
-    .from("portal_sessions")
+    .from("client_portal_sessions")
     .select("access_token")
     .eq("client_id", CLIENT)
-    .eq("access_level", "couple")
-    .is("revoked_at", null)
+    .eq("venue_id", FANCY)
+    .is("participant_id", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (existing?.access_token) return existing.access_token;
+  if (existing?.access_token) return existing.access_token as string;
 
   const token = `qa-docs-q-${Date.now().toString(36)}`;
-  const { error } = await admin.from("portal_sessions").insert({
+  const { error } = await admin.from("client_portal_sessions").insert({
     venue_id: FANCY,
     client_id: CLIENT,
+    event_id: EVENT,
     access_token: token,
-    access_level: "couple",
-    label: "QA Docs Questionnaire",
   });
   if (error) throw new Error(error.message);
   return token;
@@ -115,22 +114,26 @@ async function main() {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
     await page.goto(`${APP}/p/${encodeURIComponent(token)}?view=documents#documents`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 90_000,
     });
     await page.waitForTimeout(1500);
     const accept = page.getByRole("button", { name: /I agree|Accept|Continue/i }).first();
-    if ((await accept.count()) > 0) await accept.click().catch(() => undefined);
-    await page.waitForTimeout(800);
+    if ((await accept.count()) > 0) {
+      await accept.click().catch(() => undefined);
+      await page.waitForTimeout(1200);
+    }
 
     // Navigate to Documents if not already there.
     const docsNav = page.getByRole("button", { name: /^Docs$/i }).or(page.getByText("Documents", { exact: true })).first();
     if ((await docsNav.count()) > 0) await docsNav.click().catch(() => undefined);
-    await page.waitForTimeout(1200);
+    await page.getByText("Loading documents").waitFor({ state: "hidden", timeout: 45_000 }).catch(() => undefined);
+    await page.waitForTimeout(800);
 
     const section = page.locator('[data-testid="portal-documents-questionnaires"]');
-    await section.waitFor({ timeout: 30_000 }).catch(() => undefined);
+    await section.waitFor({ timeout: 45_000 }).catch(() => undefined);
     const card = page.locator('[data-testid="portal-documents-questionnaire"]').first();
+    await card.waitFor({ timeout: 30_000 }).catch(() => undefined);
     const cardText = (await card.innerText().catch(() => "")) || (await page.locator("body").innerText());
     record(
       "documents-shows-questionnaire-card",
@@ -139,12 +142,21 @@ async function main() {
     );
     await page.screenshot({ path: `${OUT}/shots/documents-1280.png`, fullPage: false });
 
-    if ((await card.count()) > 0) {
+    const planningCard = page.locator(
+      `[data-testid="portal-documents-questionnaire"][data-questionnaire-id="${QID}"]`,
+    ).or(page.locator('[data-testid="portal-documents-questionnaire"][data-status="complete"]').first());
+    record(
+      "title-is-client-planning",
+      (await planningCard.count()) > 0 && /Client Planning/i.test(cardText),
+      cardText.slice(0, 300),
+    );
+    if ((await planningCard.count()) > 0) {
+      await planningCard.click();
+    } else if ((await card.count()) > 0) {
       await card.click();
-      await page.waitForTimeout(1500);
     }
     const review = page.locator('[data-testid="questionnaire-submitted-review"]');
-    await review.waitFor({ timeout: 25_000 }).catch(() => undefined);
+    await review.waitFor({ timeout: 45_000 }).catch(() => undefined);
     const reviewText = await page.locator("body").innerText();
     record(
       "submitted-review-visible",
@@ -157,23 +169,26 @@ async function main() {
       reviewText.includes(MARKER) ? "marker present" : reviewText.slice(0, 500),
     );
     record(
-      "title-is-client-planning",
-      /Client Planning Questionnaire/i.test(reviewText) || /Client Planning/i.test(reviewText),
-      reviewText.slice(0, 300),
+      "review-not-event-setup",
+      (await review.count()) > 0 && !/Event setup overview|Prepare.*release/i.test(reviewText),
+      "questionnaire review surface",
     );
     await page.screenshot({ path: `${OUT}/shots/submitted-review-1280.png`, fullPage: false });
 
     // Reload Documents and re-open.
     await page.goto(`${APP}/p/${encodeURIComponent(token)}?view=documents#documents`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 90_000,
     });
-    await page.waitForTimeout(1200);
-    const card2 = page.locator('[data-testid="portal-documents-questionnaire"]').first();
+    await page.getByText("Loading documents").waitFor({ state: "hidden", timeout: 45_000 }).catch(() => undefined);
+    await page.waitForTimeout(800);
+    const card2 = page.locator(
+      `[data-testid="portal-documents-questionnaire"][data-questionnaire-id="${QID}"]`,
+    ).or(page.locator('[data-testid="portal-documents-questionnaire"]').first());
     record("documents-card-persists-reload", (await card2.count()) > 0, `count=${await card2.count()}`);
     if ((await card2.count()) > 0) {
       await card2.click();
-      await page.waitForTimeout(1200);
+      await page.locator('[data-testid="questionnaire-submitted-review"]').waitFor({ timeout: 45_000 }).catch(() => undefined);
     }
     const review2 = page.locator('[data-testid="questionnaire-submitted-review"]');
     record(

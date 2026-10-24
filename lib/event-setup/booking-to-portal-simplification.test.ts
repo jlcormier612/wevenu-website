@@ -13,11 +13,12 @@ function read(path: string) {
 }
 
 describe("booking-to-portal simplification", () => {
-  it("booking inherit prepares inventory, Event Order, and both Planning checklists", () => {
+  it("booking inherit prepares both Planning checklists without auto-creating commercial drafts", () => {
     const inherit = read("lib/event-setup/inherit.ts");
-    assert.match(inherit, /applyInheritedInventoryAndEventOrder/);
-    assert.match(inherit, /ensureEventInventory/);
-    assert.match(inherit, /ensureEventOrder/);
+    assert.doesNotMatch(inherit, /applyInheritedInventoryAndEventOrder/);
+    assert.doesNotMatch(inherit, /ensureEventInventory/);
+    assert.doesNotMatch(inherit, /ensureEventOrder/);
+    assert.match(inherit, /never auto-created from Setup/);
     assert.match(inherit, /applyProfileVenuePlaybook/);
     assert.match(inherit, /venuePlanningPlaybookTemplateId/);
     assert.match(inherit, /applyDefaultVenuePlaybook/);
@@ -34,8 +35,9 @@ describe("booking-to-portal simplification", () => {
     const actions = read("app/(app)/events/[id]/setup-actions.ts");
     assert.match(prepare, /releasePlaybookApplication/);
     assert.match(prepare, /shareTimelineWithCouple/);
-    assert.match(prepare, /ensureEventInventory/);
-    assert.match(prepare, /ensureEventOrder/);
+    assert.doesNotMatch(prepare, /ensureEventInventory/);
+    assert.doesNotMatch(prepare, /ensureEventOrder/);
+    assert.match(prepare, /never from Setup release/);
     assert.match(prepare, /venuePlanningPlaybookTemplateId/);
     assert.match(prepare, /Could not apply Venue Planning/);
     assert.doesNotMatch(prepare, /inviteClient/);

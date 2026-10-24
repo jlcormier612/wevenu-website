@@ -144,8 +144,9 @@ async function main() {
 
   for (const [id] of REQUIRED_TABS) {
     await page.click(`[data-testid="portal-preview-tab-${id}"]`);
-    await page.waitForTimeout(400);
     const section = page.locator(`[data-testid="portal-preview-${id}"]`);
+    await section.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
+    await page.waitForTimeout(300);
     const visible = await section.isVisible().catch(() => false);
     record(`tab-content-${id}`, visible, `visible=${visible}`);
     await page.screenshot({ path: `${OUT}/shots/preview-${id}-1280.png`, fullPage: true });

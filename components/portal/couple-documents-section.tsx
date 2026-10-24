@@ -10,6 +10,7 @@ import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-cele
 import { coupleDocumentStatusBadge } from "@/lib/portal/couple-document-status";
 import { portalFocusElementId } from "@/lib/portal/workspace-routing";
 import {
+  DOCS_QUESTIONNAIRE_HANDOFF_KEY,
   isSubmittedQuestionnaireDocumentStatus,
   submittedQuestionnaireTitle,
 } from "@/lib/questionnaire-family/submitted-answers";
@@ -332,7 +333,17 @@ function QuestionnaireCard({
   return (
     <button
       type="button"
-      onClick={() => onNavigate("questionnaire")}
+      onClick={() => {
+        const key = row.questionnaire_id ?? row.access_key ?? "";
+        if (key && typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(DOCS_QUESTIONNAIRE_HANDOFF_KEY, key);
+          } catch {
+            // ignore quota / private mode
+          }
+        }
+        onNavigate("questionnaire");
+      }}
       data-testid="portal-documents-questionnaire"
       data-questionnaire-id={row.questionnaire_id ?? ""}
       data-status={row.status}

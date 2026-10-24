@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { CoupleFamilyQuestionnaireForm, type FamilyQuestionnaireData } from "@/components/form/couple-family-questionnaire-form";
 import { kindLabel, type QuestionnaireKind } from "@/lib/questionnaire-family/definitions";
+import { DOCS_QUESTIONNAIRE_HANDOFF_KEY } from "@/lib/questionnaire-family/submitted-answers";
 
 /**
  * Questionnaire section in the client portal — lists each open form by name
@@ -22,9 +23,28 @@ export function QuestionnairePortalSection({ token }: { token: string }) {
           kind: (q.kind || "final_details") as QuestionnaireKind,
         }));
         setRows(list);
-        const open = list.find((q) =>
-          q.status === "sent" || q.status === "in_progress" || q.status === "changes_requested"
-        ) ?? list[0];
+        let preferred: string | null = null;
+        if (typeof window !== "undefined") {
+          try {
+            preferred = sessionStorage.getItem(DOCS_QUESTIONNAIRE_HANDOFF_KEY);
+            if (preferred) sessionStorage.removeItem(DOCS_QUESTIONNAIRE_HANDOFF_KEY);
+          } catch {
+            preferred = null;
+          }
+        }
+        const fromDocs = preferred
+          ? list.find(
+              (q) =>
+                q.questionnaire_id === preferred ||
+                q.access_key === preferred ||
+                (q.access_key ?? q.questionnaire_id) === preferred,
+            )
+          : null;
+        const open = fromDocs
+          ?? list.find((q) =>
+            q.status === "sent" || q.status === "in_progress" || q.status === "changes_requested"
+          )
+          ?? list[0];
         setActiveKey(open?.access_key ?? open?.questionnaire_id ?? null);
       })
       .catch(() => setRows(null));

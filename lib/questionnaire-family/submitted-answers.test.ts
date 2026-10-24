@@ -7,6 +7,7 @@ import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
 import {
+  DOCS_QUESTIONNAIRE_HANDOFF_KEY,
   buildSubmittedAnswerRows,
   isSubmittedQuestionnaireDocumentStatus,
   submittedQuestionnaireTitle,
@@ -61,5 +62,16 @@ describe("submitted questionnaire answers for Documents", () => {
     assert.match(docs, /submittedQuestionnaireTitle/);
     assert.doesNotMatch(docs, />Final Details Questionnaire</);
     assert.match(docs, /Your submitted answers/);
+  });
+
+  it("Documents card hands questionnaire id to Questionnaire section", () => {
+    assert.equal(DOCS_QUESTIONNAIRE_HANDOFF_KEY, "htc:docs-questionnaire-key");
+    const docs = readFileSync(resolve("components/portal/couple-documents-section.tsx"), "utf8");
+    const section = readFileSync(resolve("components/portal/questionnaire-section.tsx"), "utf8");
+    assert.match(docs, /DOCS_QUESTIONNAIRE_HANDOFF_KEY/);
+    assert.match(docs, /sessionStorage\.setItem\(DOCS_QUESTIONNAIRE_HANDOFF_KEY/);
+    assert.match(section, /sessionStorage\.getItem\(DOCS_QUESTIONNAIRE_HANDOFF_KEY/);
+    assert.match(section, /q\.questionnaire_id === preferred/);
+    assert.match(section, /q\.access_key === preferred/);
   });
 });
