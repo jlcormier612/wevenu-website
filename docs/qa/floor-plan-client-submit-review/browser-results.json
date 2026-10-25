@@ -1,23 +1,23 @@
 {
   "pass": true,
-  "expectedSha": "a58a319fe0f4fb4584a76bf136e5708a8b79225c",
-  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a58a319fe0f4fb4584a76bf136e5708a8b79225c",
-  "digest": "sha256:11a4a86edc51d8647cc728542157f02bd11275ebc63f954923ab0014f09674dd",
+  "expectedSha": "2aad64718c9295b97a0114c217f165178698414e",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2aad64718c9295b97a0114c217f165178698414e",
+  "digest": "sha256:9c64f696da1bba3a5b394cbcbd70364c912ad0cebd6eb7cfd7054e5fbc43d556",
   "checks": [
     {
       "name": "serving-image",
       "pass": true,
-      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a58a319fe0f4fb4584a76bf136e5708a8b79225c sha256:11a4a86edc51d8647cc728542157f02bd11275ebc63f954923ab0014f09674dd"
+      "detail": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2aad64718c9295b97a0114c217f165178698414e sha256:9c64f696da1bba3a5b394cbcbd70364c912ad0cebd6eb7cfd7054e5fbc43d556"
     },
     {
       "name": "serving-sha-matches",
       "pass": true,
-      "detail": "expected=a58a319fe0f4fb4584a76bf136e5708a8b79225c image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a58a319fe0f4fb4584a76bf136e5708a8b79225c"
+      "detail": "expected=2aad64718c9295b97a0114c217f165178698414e image=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:2aad64718c9295b97a0114c217f165178698414e"
     },
     {
       "name": "migration-columns-present",
       "pass": true,
-      "detail": "{\"id\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\",\"client_layout_status\":\"changes_requested\",\"client_submitted_at\":\"2026-10-24T15:02:25.084834+00:00\"}"
+      "detail": "{\"id\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\",\"client_layout_status\":\"approved\",\"client_submitted_at\":\"2026-10-25T17:38:37.419553+00:00\"}"
     },
     {
       "name": "client-guidance-visible",
@@ -27,7 +27,7 @@
     {
       "name": "client-guidance-explains-limits",
       "pass": true,
-      "detail": "Barn-master-floorplan · Your choice\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLocked items (gray lock mark) stay where your venue placed them.\nYou may add tables your venue permits, within their inventory limits.\nSeat guests on the Seating tab when seating is open.\nWhen the arrangement looks right"
+      "detail": "Barn-master-floorplan · Your choice\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLocked items (gray lock mark) stay where your venue placed them.\nYou may add tables your venue permits, within their inventory limits shown in the catalog.\nSeat guests on the Seating tab when seating is open (separate fr"
     },
     {
       "name": "client-submit-cta-visible",
@@ -35,9 +35,24 @@
       "detail": "submit cta"
     },
     {
+      "name": "submit-opens-confirm-dialog",
+      "pass": true,
+      "detail": "confirm dialog after Submit CTA"
+    },
+    {
+      "name": "submit-cancel-keeps-editable",
+      "pass": true,
+      "detail": "{\"beforeCancel\":{\"client_layout_status\":\"working\",\"client_submitted_at\":null},\"afterCancel\":{\"client_layout_status\":\"working\",\"client_submitted_at\":null}}"
+    },
+    {
+      "name": "submit-confirm-closes-dialog",
+      "pass": true,
+      "detail": "dialog closed after confirm"
+    },
+    {
       "name": "persisted-submitted",
       "pass": true,
-      "detail": "{\"client_layout_status\":\"submitted\",\"client_submitted_at\":\"2026-10-24T15:05:29.754719+00:00\",\"finalized_at\":null}"
+      "detail": "{\"client_layout_status\":\"submitted\",\"client_submitted_at\":\"2026-10-25T17:39:49.327164+00:00\",\"finalized_at\":null}"
     },
     {
       "name": "operational-unchanged-plan-id",
@@ -47,7 +62,7 @@
     {
       "name": "client-reload-shows-awaiting-review",
       "pass": true,
-      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nSubmitted — awaiting venue review\n\nBarn-master-floorplan · Your choice\n\nYour venue has your layout. Furniture placement is locked until they respond.\n\nLocked items (gray loc"
+      "detail": "B2P & Portal\n\n·\n\nJen's Fancy Venue\n\nJul 17, 2060\n\nExport my data\n9+\n🏠\nHome\n✅\nTasks\n9+\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n📋\nOrder\n1\n✅\nChoices\n1\n💳\nPayments\n1\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nSubmitted — awaiting venue review\n\nBarn-master-floorplan · Your choice\n\nYour venue has your layout. Furniture placement is locked until they respond.\n\nLAYOUT CAPACITY\n\n170 l"
     },
     {
       "name": "client-submit-cta-hidden-after-submit",
@@ -90,14 +105,19 @@
       "detail": "resubmit cta"
     },
     {
+      "name": "resubmit-opens-confirm-dialog",
+      "pass": true,
+      "detail": "confirm on resubmit"
+    },
+    {
       "name": "persisted-resubmitted",
       "pass": true,
-      "detail": "{\"client_layout_status\":\"submitted\",\"client_submitted_at\":\"2026-10-24T15:05:58.259084+00:00\"}"
+      "detail": "{\"client_layout_status\":\"submitted\",\"client_submitted_at\":\"2026-10-25T17:40:50.961729+00:00\"}"
     },
     {
       "name": "persisted-approved",
       "pass": true,
-      "detail": "{\"client_layout_status\":\"approved\",\"client_reviewed_at\":\"2026-10-24T15:06:06.257+00:00\",\"id\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\"}"
+      "detail": "{\"client_layout_status\":\"approved\",\"client_reviewed_at\":\"2026-10-25T17:40:59.465+00:00\",\"id\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\"}"
     },
     {
       "name": "operational-still-same-plan",

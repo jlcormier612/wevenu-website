@@ -457,19 +457,27 @@ async function main() {
     await approve.waitFor({ state: "visible", timeout: 45_000 }).catch(() => undefined);
     if ((await approve.count()) > 0) {
       await approve.click();
-      await venuePage.waitForTimeout(2000);
+      // Approve runs in a client transition — wait for persisted status, not a fixed sleep.
+      let approvedRow: { client_layout_status: string; client_reviewed_at: string | null; id: string } | null = null;
+      for (let i = 0; i < 20; i++) {
+        await venuePage.waitForTimeout(500);
+        const { data } = await admin
+          .from("floor_plans")
+          .select("client_layout_status,client_reviewed_at,id")
+          .eq("id", PLAN)
+          .single();
+        approvedRow = data;
+        if (data?.client_layout_status === "approved" && data.client_reviewed_at) break;
+      }
+      record(
+        "persisted-approved",
+        approvedRow?.client_layout_status === "approved" && Boolean(approvedRow?.client_reviewed_at),
+        JSON.stringify(approvedRow),
+      );
+    } else {
+      record("persisted-approved", false, "approve button not visible");
     }
     await venuePage.screenshot({ path: `${OUT}/shots/venue-approved-1280.png`, fullPage: false });
-    const { data: afterApprove } = await admin
-      .from("floor_plans")
-      .select("client_layout_status,client_reviewed_at,id")
-      .eq("id", PLAN)
-      .single();
-    record(
-      "persisted-approved",
-      afterApprove?.client_layout_status === "approved" && Boolean(afterApprove.client_reviewed_at),
-      JSON.stringify(afterApprove),
-    );
 
     const { data: eventAfter } = await admin
       .from("events")
