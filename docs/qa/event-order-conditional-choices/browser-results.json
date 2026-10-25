@@ -130,7 +130,7 @@
     {
       "name": "existing-finalized-eo-untouched",
       "pass": true,
-      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"revision\":24}"
+      "detail": "{\"id\":\"624eceef-5096-4288-b104-62daa3a82d11\",\"status\":\"finalized\",\"revision\":25}"
     },
     {
       "name": "production-untouched",

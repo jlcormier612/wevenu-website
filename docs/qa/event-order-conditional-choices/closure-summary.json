@@ -1,30 +1,63 @@
 {
-  "capturedAt": "2026-10-25T20:07:28.277245Z",
+  "capturedAt": "2026-10-25T20:11:51.979Z",
+  "verdict": "GREEN / CLOSED",
   "serving": {
     "sha": "a68e8e9798b960f41f9058f50c62edb9c84f6ff1",
     "digest": "sha256:535134b1609fdef6339a42aff8a3cb691500bcaab19b4e1caff54e70f9b4272a",
     "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a68e8e9798b960f41f9058f50c62edb9c84f6ff1"
   },
+  "migration": "https://github.com/jlcormier612/wevenu-website/actions/runs/40227553347",
+  "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/40227555011",
   "harnesses": {
     "conditionalChoices": {
       "pass": true,
-      "passed": 26,
-      "total": 26,
-      "failed": 0
+      "score": "26/26",
+      "log": "browser-run-rereverify.log"
     },
     "defaultTemplate": {
       "pass": true,
       "score": "21/21",
-      "log": "default-template-run-a68e8e97.log"
+      "log": "default-template-run-a68e8e97-rereverify.log"
     },
     "fullEventOrder": {
       "pass": true,
-      "total": 61,
+      "score": "61/61",
       "failed": 0,
-      "log": "full-eo-run-a68e8e97-r2.log"
+      "log": "full-eo-run-a68e8e97-rereverify.log"
     }
   },
-  "migration": "https://github.com/jlcormier612/wevenu-website/actions/runs/40227553347",
-  "deploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/40227555011",
+  "financial": {
+    "capturedAt": "2026-10-25T20:11:51.977Z",
+    "eventOrder": {
+      "id": "624eceef-5096-4288-b104-62daa3a82d11",
+      "status": "finalized",
+      "revision": 26
+    },
+    "platedCount": 1,
+    "buffetCount": 0,
+    "platedLines": [
+      {
+        "id": "fbe0ba3f-530a-4cd3-a840-b07d6e346bd9",
+        "description": "Plated Dinner",
+        "unit_price": 85,
+        "amount": 85,
+        "is_included": false,
+        "provenance": "custom"
+      }
+    ],
+    "buffetLines": [],
+    "invoices": [
+      {
+        "id": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+        "status": "sent",
+        "total": 2189.81,
+        "subtotal": 2061,
+        "tax_amount": 128.81,
+        "event_order_revision_at_freeze": 26
+      }
+    ],
+    "paymentSchedules": null,
+    "expectedPayable": 2189.81
+  },
   "production": "untouched"
 }
