@@ -72,6 +72,7 @@ function template(
         minSelect: 1,
         maxSelect: 1,
         allowQuantity: false,
+        dependsOnOptionIds: [],
         sortOrder: 0,
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: "2026-01-01T00:00:00Z",
@@ -87,6 +88,7 @@ function template(
         minSelect: 0,
         maxSelect: null,
         allowQuantity: true,
+        dependsOnOptionIds: [],
         sortOrder: 1,
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: "2026-01-01T00:00:00Z",
@@ -154,6 +156,8 @@ describe("selectionDefinitionFromEventOrderTemplate", () => {
     assert.equal(def.groups.length, 2);
     assert.equal(def.groups[0]!.selectionMode, "single");
     assert.equal(def.groups[0]!.minSelect, 1);
+    assert.deepEqual(def.groups[0]!.dependsOnOptionIds, []);
+    assert.deepEqual(def.groups[1]!.dependsOnOptionIds, []);
     assert.equal(def.options.length, 3);
     assert.equal(def.options[0]!.label, "Premium Bar");
     assert.equal(def.options[0]!.unitPrice, 45);

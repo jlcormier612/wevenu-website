@@ -1,3 +1,4 @@
+import { formatDependsOnSummary } from "@/lib/event-order-templates/group-dependencies";
 import {
   formatTemplateOfferingPrice,
   linesForSection,
@@ -92,23 +93,34 @@ export function EventOrderTemplatePreviewView({
                       {g.selectionMode === "single" ? "Pick one" : "Pick many"}
                       {g.minSelect > 0 ? " · required" : " · optional"}
                     </p>
+                    <p className="text-xs font-medium text-heading">
+                      {formatDependsOnSummary(g.dependsOnOptionIds, template.options ?? [])}
+                    </p>
                     {g.instructions ? (
                       <p className="text-sm text-muted-foreground">{g.instructions}</p>
                     ) : null}
                     <ul className="space-y-2">
-                      {opts.map((o) => (
-                        <li key={o.id} className="border-b border-border/70 pb-2 last:border-0 text-sm">
-                          <span className="font-medium text-heading">{o.label}</span>
-                          <span className="ml-2 text-muted-foreground">
-                            {o.isIncluded
-                              ? "Included"
-                              : o.unitPrice != null
-                                ? `$${o.unitPrice.toFixed(2)}`
-                                : "Unpriced"}
-                            {o.isDefault ? " · Default" : ""}
-                          </span>
+                      {opts.length === 0 ? (
+                        <li className="text-sm text-muted-foreground">
+                          {(g.dependsOnOptionIds?.length ?? 0) > 0
+                            ? "No follow-up choices configured."
+                            : "No options yet."}
                         </li>
-                      ))}
+                      ) : (
+                        opts.map((o) => (
+                          <li key={o.id} className="border-b border-border/70 pb-2 last:border-0 text-sm">
+                            <span className="font-medium text-heading">{o.label}</span>
+                            <span className="ml-2 text-muted-foreground">
+                              {o.isIncluded
+                                ? "Included"
+                                : o.unitPrice != null
+                                  ? `$${o.unitPrice.toFixed(2)}`
+                                  : "Unpriced"}
+                              {o.isDefault ? " · Default" : ""}
+                            </span>
+                          </li>
+                        ))
+                      )}
                     </ul>
                   </div>
                 );

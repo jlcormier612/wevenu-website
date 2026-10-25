@@ -3,27 +3,40 @@
 /**
  * Choice groups / options authoring for Event Order Templates
  * (commercial build sheet — absorbs Choices Template authoring).
+ * Increment 1: depends_on_option_ids authoring + conditional preview.
  */
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 
 import {
   addEventOrderTemplateGroupAction,
   addEventOrderTemplateOptionAction,
   removeEventOrderTemplateGroupAction,
   removeEventOrderTemplateOptionAction,
+  updateEventOrderTemplateGroupAction,
 } from "@/app/(app)/library/event-order-templates/actions";
+import { ChoicesDefinitionView } from "@/components/client-choices/choices-definition-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ChoicesAnswers } from "@/lib/client-choices/types";
 import {
   choicesOptionDraftFromOffering,
   isCatalogBackedChoicesOption,
 } from "@/lib/client-choices-templates/option-catalog";
+import {
+  formatDependsOnSummary,
+  isDependentGroup,
+  parentOptionCandidates,
+  sanitizeDependsOnOptionIds,
+} from "@/lib/event-order-templates/group-dependencies";
 import { optionsForGroup } from "@/lib/event-order-templates/offerings";
+import {
+  defaultAnswersFromEventOrderTemplate,
+  selectionDefinitionFromEventOrderTemplate,
+} from "@/lib/event-order-templates/selection-definition";
 import type {
   EventOrderTemplateGroup,
   EventOrderTemplateWithDetails,
@@ -45,6 +58,156 @@ function groupRulesLabel(g: EventOrderTemplateGroup): string {
   return `${mode} · ${req}${qty}`;
 }
 
+function DependsOnPicker({
+  candidates,
+  selectedIds,
+  onChange,
+  disabled,
+  idPrefix,
+}: {
+  candidates: ReturnType<typeof parentOptionCandidates>;
+  selectedIds: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+  idPrefix: string;
+}) {
+  const selected = new Set(selectedIds);
+  if (candidates.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Add options to another group first, then you can make this group appear only when one of those options is chosen.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2" data-testid={`${idPrefix}-depends-on-picker`}>
+      <p className="text-xs text-muted-foreground">
+        Show this group only when the client selects at least one of these options (any selected option activates it). Leave unchecked to always show the group.
+      </p>
+      <ul className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-border bg-muted/10 p-2">
+        {candidates.map((c) => {
+          const inputId = `${idPrefix}-dep-${c.id}`;
+          const checked = selected.has(c.id);
+          return (
+            <li key={c.id}>
+              <label htmlFor={inputId} className="flex cursor-pointer items-start gap-2 text-sm">
+                <input
+                  id={inputId}
+                  type="checkbox"
+                  className="mt-0.5"
+                  disabled={disabled}
+                  checked={checked}
+                  onChange={() => {
+                    if (checked) onChange(selectedIds.filter((id) => id !== c.id));
+                    else onChange([...selectedIds, c.id]);
+                  }}
+                />
+                <span>
+                  <span className="font-medium text-heading">{c.label}</span>
+                  <span className="block text-[0.7rem] text-muted-foreground">{c.groupName}</span>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function ConditionalChoicePreview({
+  template,
+}: {
+  template: EventOrderTemplateWithDetails;
+}) {
+  const definition = React.useMemo(
+    () => selectionDefinitionFromEventOrderTemplate(template),
+    [template],
+  );
+  const hasDeps = template.groups.some((g) => isDependentGroup(g));
+  const [answers, setAnswers] = React.useState<ChoicesAnswers>(() =>
+    defaultAnswersFromEventOrderTemplate(template),
+  );
+
+  React.useEffect(() => {
+    setAnswers(defaultAnswersFromEventOrderTemplate(template));
+  }, [template]);
+
+  if (!hasDeps) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="eo-choice-preview-no-deps">
+        No dependent groups yet. When a group depends on a parent option, you can preview reveal behavior here.
+      </p>
+    );
+  }
+
+  const rootGroups = [...template.groups]
+    .filter((g) => !isDependentGroup(g))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  function toggleOption(group: EventOrderTemplateGroup, optionId: string) {
+    setAnswers((prev) => {
+      const current = prev[group.id]?.optionIds ?? [];
+      let nextIds: string[];
+      if (group.selectionMode === "single") {
+        nextIds = current.includes(optionId) ? [] : [optionId];
+      } else if (current.includes(optionId)) {
+        nextIds = current.filter((id) => id !== optionId);
+      } else {
+        nextIds = [...current, optionId];
+      }
+      return { ...prev, [group.id]: { optionIds: nextIds } };
+    });
+  }
+
+  return (
+    <div className="space-y-4" data-testid="eo-choice-conditional-preview">
+      <p className="text-sm text-muted-foreground">
+        Try parent selections below. Dependent groups appear the same way they will for the client after Send.
+      </p>
+      <div className="space-y-3 rounded-md border border-border bg-muted/10 p-3">
+        {rootGroups.map((g) => {
+          const opts = optionsForGroup(template.options, g.id);
+          if (opts.length === 0) return null;
+          const selected = new Set(answers[g.id]?.optionIds ?? []);
+          return (
+            <div key={g.id} className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                {g.name}
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {opts.map((o) => {
+                  const on = selected.has(o.id);
+                  return (
+                    <li key={o.id}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={on ? "default" : "outline"}
+                        aria-pressed={on}
+                        data-testid={`eo-preview-parent-${o.id}`}
+                        onClick={() => toggleOption(g, o.id)}
+                      >
+                        {o.label}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      <ChoicesDefinitionView
+        definition={definition}
+        answers={answers}
+        mode="preview"
+        testId="eo-template-choices-preview"
+      />
+    </div>
+  );
+}
+
 export function EventOrderTemplateChoiceGroups({
   template,
   catalogOfferings,
@@ -61,6 +224,10 @@ export function EventOrderTemplateChoiceGroups({
   const [groupSectionId, setGroupSectionId] = React.useState<string>("");
   const [groupMode, setGroupMode] = React.useState<"single" | "multi">("single");
   const [groupRequired, setGroupRequired] = React.useState(true);
+  const [groupDependsOn, setGroupDependsOn] = React.useState<string[]>([]);
+
+  const [editingDepsGroupId, setEditingDepsGroupId] = React.useState<string | null>(null);
+  const [editingDepsIds, setEditingDepsIds] = React.useState<string[]>([]);
 
   const available = catalogOfferings.filter((o) => !o.isArchived);
   const [optionMode, setOptionMode] = React.useState<OptionMode>("idle");
@@ -77,6 +244,7 @@ export function EventOrderTemplateChoiceGroups({
   );
 
   const groups = [...template.groups].sort((a, b) => a.sortOrder - b.sortOrder);
+  const addGroupCandidates = parentOptionCandidates(template.groups, template.options, null);
 
   function refresh() {
     router.refresh();
@@ -122,6 +290,40 @@ export function EventOrderTemplateChoiceGroups({
     });
   }
 
+  function beginEditDeps(g: EventOrderTemplateGroup) {
+    setEditingDepsGroupId(g.id);
+    setEditingDepsIds([...(g.dependsOnOptionIds ?? [])]);
+  }
+
+  function saveDeps(g: EventOrderTemplateGroup) {
+    const nextDeps = sanitizeDependsOnOptionIds(
+      editingDepsIds,
+      template.options,
+      g.id,
+    );
+    startTransition(async () => {
+      onPersist("saving");
+      const r = await updateEventOrderTemplateGroupAction(template.id, g.id, {
+        sectionId: g.sectionId,
+        name: g.name,
+        instructions: g.instructions ?? undefined,
+        selectionMode: g.selectionMode,
+        minSelect: g.minSelect,
+        maxSelect: g.maxSelect,
+        allowQuantity: g.allowQuantity,
+        dependsOnOptionIds: nextDeps,
+      });
+      if (!r.ok) {
+        onPersist("error", r.errors?.dependsOnOptionIds ?? r.message ?? "Could not update when this group appears.");
+        return;
+      }
+      onPersist("saved");
+      setEditingDepsGroupId(null);
+      setEditingDepsIds([]);
+      refresh();
+    });
+  }
+
   return (
     <section className="space-y-4">
       <div>
@@ -130,7 +332,8 @@ export function EventOrderTemplateChoiceGroups({
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Selectable commercial groups (Bar, Entrée, add-ons). Fixed offerings stay in sections above.
-          Use and Send freeze these into the client selection runtime.
+          Use and Send freeze these into the client selection runtime. A group can stay always visible,
+          or appear only after the client picks a parent option.
         </p>
       </div>
 
@@ -145,14 +348,29 @@ export function EventOrderTemplateChoiceGroups({
             const sectionName = g.sectionId
               ? template.sections.find((s) => s.id === g.sectionId)?.name
               : null;
+            const dependent = isDependentGroup(g);
+            const dependsSummary = formatDependsOnSummary(g.dependsOnOptionIds, template.options);
+            const editing = editingDepsGroupId === g.id;
+            const candidates = parentOptionCandidates(template.groups, template.options, g.id);
             return (
-              <li key={g.id} className="rounded-lg border border-border bg-background p-4 space-y-2">
+              <li
+                key={g.id}
+                className="rounded-lg border border-border bg-background p-4 space-y-2"
+                data-testid={`eo-choice-group-${g.id}`}
+                data-dependent={dependent ? "true" : "false"}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-heading">{g.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {groupRulesLabel(g)}
                       {sectionName ? ` · ${sectionName}` : ""}
+                    </p>
+                    <p
+                      className="mt-1 text-xs font-medium text-heading"
+                      data-testid={`eo-depends-summary-${g.id}`}
+                    >
+                      {dependsSummary}
                     </p>
                     {g.instructions ? (
                       <p className="mt-1 text-sm text-muted-foreground">{g.instructions}</p>
@@ -175,9 +393,79 @@ export function EventOrderTemplateChoiceGroups({
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+
+                {editing ? (
+                  <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      When this group appears
+                    </p>
+                    <DependsOnPicker
+                      idPrefix={`edit-${g.id}`}
+                      candidates={candidates}
+                      selectedIds={editingDepsIds}
+                      disabled={pending}
+                      onChange={setEditingDepsIds}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={pending}
+                        data-testid={`eo-save-deps-${g.id}`}
+                        onClick={() => saveDeps(g)}
+                      >
+                        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() => {
+                          setEditingDepsGroupId(null);
+                          setEditingDepsIds([]);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      {(g.dependsOnOptionIds?.length ?? 0) > 0 ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending}
+                          data-testid={`eo-clear-deps-${g.id}`}
+                          onClick={() => setEditingDepsIds([])}
+                        >
+                          Always show (clear)
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    data-testid={`eo-edit-deps-${g.id}`}
+                    onClick={() => beginEditDeps(g)}
+                  >
+                    {dependent ? "Edit when this appears" : "Only show when…"}
+                  </Button>
+                )}
+
                 <ul className="space-y-1 pl-1">
                   {opts.length === 0 ? (
-                    <li className="text-sm text-muted-foreground">No options yet.</li>
+                    <li
+                      className="text-sm text-muted-foreground"
+                      data-testid={`eo-group-empty-${g.id}`}
+                    >
+                      {dependent
+                        ? "No follow-up choices configured — clients will see this empty state when the parent option is selected. Add options when you are ready; nothing is invented automatically."
+                        : "No options yet."}
+                    </li>
                   ) : (
                     opts.map((o) => {
                       const catalogName = o.offeringId ? offeringNameById.get(o.offeringId) : null;
@@ -266,12 +554,28 @@ export function EventOrderTemplateChoiceGroups({
             Required
           </label>
         </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">When this group appears (optional)</p>
+          <DependsOnPicker
+            idPrefix="add-group"
+            candidates={addGroupCandidates}
+            selectedIds={groupDependsOn}
+            disabled={pending}
+            onChange={setGroupDependsOn}
+          />
+        </div>
         <Button
           type="button"
           size="sm"
           disabled={pending || !groupName.trim()}
+          data-testid="eo-add-choice-group"
           onClick={() => startTransition(async () => {
             onPersist("saving");
+            const dependsOnOptionIds = sanitizeDependsOnOptionIds(
+              groupDependsOn,
+              template.options,
+              null,
+            );
             const r = await addEventOrderTemplateGroupAction(template.id, {
               sectionId: groupSectionId || null,
               name: groupName,
@@ -279,11 +583,13 @@ export function EventOrderTemplateChoiceGroups({
               minSelect: groupRequired ? 1 : 0,
               maxSelect: groupMode === "single" ? 1 : null,
               allowQuantity: false,
+              dependsOnOptionIds,
             });
             if (!r.ok) onPersist("error", r.errors?.name ?? r.message ?? "Could not add group.");
             else {
               onPersist("saved");
               setGroupName("");
+              setGroupDependsOn([]);
               refresh();
             }
           })}
@@ -437,6 +743,13 @@ export function EventOrderTemplateChoiceGroups({
             </div>
           </div>
         ) : null}
+      </div>
+
+      <div className="rounded-lg border border-border bg-background p-4 space-y-3">
+        <h3 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">
+          Preview client choices
+        </h3>
+        <ConditionalChoicePreview template={template} />
       </div>
     </section>
   );
