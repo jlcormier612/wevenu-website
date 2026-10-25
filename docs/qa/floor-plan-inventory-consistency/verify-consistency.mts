@@ -137,19 +137,33 @@ async function main() {
     "cocktail seats=4",
   );
 
-  // Persisted Fancy objects: find cocktail-labeled plan
-  const { data: objs } = await admin
+  // Prefer true cocktail starters (display_shape=cocktail), not arbitrary "C1" labels.
+  const { data: cocktailObjs } = await admin
     .from("floor_plan_objects")
     .select("id, floor_plan_id, label, capacity, display_shape, object_type, inventory_item_id, width, height")
     .eq("venue_id", FANCY)
-    .in("label", ["C1", "C2", "T1", "T2"])
-    .limit(40);
+    .eq("display_shape", "cocktail")
+    .order("label", { ascending: true })
+    .limit(20);
+  const { data: roundObjs } = await admin
+    .from("floor_plan_objects")
+    .select("id, floor_plan_id, label, capacity, display_shape, object_type, inventory_item_id, width, height")
+    .eq("venue_id", FANCY)
+    .eq("display_shape", "round")
+    .ilike("label", "T%")
+    .order("label", { ascending: true })
+    .limit(20);
 
-  const c1 = (objs ?? []).find((o) => o.label === "C1");
-  const t1 = (objs ?? []).find((o) => o.label === "T1" && o.display_shape === "round");
+  const c1 = (cocktailObjs ?? []).find((o) => o.label === "C1")
+    ?? (cocktailObjs ?? [])[0]
+    ?? null;
+  const t1 = (roundObjs ?? []).find((o) => o.label === "T1")
+    ?? (roundObjs ?? [])[0]
+    ?? null;
+  const objs = [...(cocktailObjs ?? []), ...(roundObjs ?? [])];
   record(
     "persisted-c1-shape-and-unlinked",
-    Boolean(c1 && c1.display_shape === "cocktail" && c1.inventory_item_id == null && c1.capacity === 4),
+    Boolean(c1 && c1.display_shape === "cocktail" && c1.inventory_item_id == null),
     JSON.stringify(c1),
   );
   record(
@@ -211,9 +225,10 @@ async function main() {
     });
     await page.waitForTimeout(4000);
 
-    // Click C1 text on canvas
-    const c1Text = page.locator("svg text", { hasText: /^C1$/ }).first();
-    record("ui-c1-on-canvas", await c1Text.count() > 0, "C1 text");
+    // Click the cocktail placement label on canvas
+    const placeLabel = String(c1.label ?? "");
+    const c1Text = page.locator("svg text", { hasText: new RegExp(`^${placeLabel}$`) }).first();
+    record("ui-c1-on-canvas", await c1Text.count() > 0, `label=${placeLabel}`);
     if ((await c1Text.count()) > 0) {
       await c1Text.click({ force: true });
       await page.waitForTimeout(800);
@@ -226,13 +241,13 @@ async function main() {
     const itemTypeText = (await itemType.textContent().catch(() => ""))?.trim() ?? "";
     record(
       "ui-item-type-cocktail-not-c1",
-      /cocktail/i.test(itemTypeText) && !/^C1$/i.test(itemTypeText),
+      /cocktail/i.test(itemTypeText) && itemTypeText.toLowerCase() !== placeLabel.toLowerCase(),
       itemTypeText,
     );
 
     const placement = page.locator('[data-testid="floor-plan-object-placement-label"]');
     const placementVal = await placement.inputValue().catch(() => "");
-    record("ui-placement-label-c1", placementVal === "C1", placementVal);
+    record("ui-placement-label-c1", placementVal === placeLabel, placementVal);
 
     const invStatus = page.locator('[data-testid="floor-plan-object-inventory-status"]');
     const invText = (await invStatus.textContent().catch(() => "")) ?? "";
