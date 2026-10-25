@@ -11,6 +11,7 @@
 import * as React from "react";
 
 import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/floor-plan-shapes";
+import { FloorPlanSubmitConfirmDialog } from "@/components/portal/floor-plan-submit-confirm-dialog";
 import { OBJECT_STYLE } from "@/lib/floor-plans/constants";
 import {
   clientLayoutStatusHint,
@@ -623,6 +624,7 @@ export default function FloorPlanSection({ token }: { token: string }) {
   const [catalog, setCatalog] = React.useState<PortalFloorPlanFurnitureCatalog | null>(null);
   const [catalogLoading, setCatalogLoading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [submitConfirmOpen, setSubmitConfirmOpen] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [submitOk, setSubmitOk] = React.useState(false);
 
@@ -759,8 +761,20 @@ export default function FloorPlanSection({ token }: { token: string }) {
     }
   }
 
+  function openSubmitConfirm() {
+    if (submitting) return;
+    setSubmitError(null);
+    setSubmitOk(false);
+    setSubmitConfirmOpen(true);
+  }
+
+  function cancelSubmitConfirm() {
+    if (submitting) return;
+    setSubmitConfirmOpen(false);
+  }
+
   async function submitToVenue() {
-    if (!selectedId) return;
+    if (!selectedId || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
     setSubmitOk(false);
@@ -777,12 +791,17 @@ export default function FloorPlanSection({ token }: { token: string }) {
       };
       if (!res.ok || !body.ok) {
         setSubmitError(submitErrorMessage(body.error));
+        setSubmitOk(false);
+        setSubmitConfirmOpen(false);
         return;
       }
       setSubmitOk(true);
+      setSubmitConfirmOpen(false);
       setReloadTick((n) => n + 1);
     } catch {
       setSubmitError("Could not submit right now. Please try again.");
+      setSubmitOk(false);
+      setSubmitConfirmOpen(false);
     } finally {
       setSubmitting(false);
     }
@@ -892,6 +911,12 @@ export default function FloorPlanSection({ token }: { token: string }) {
 
   return (
     <div className="space-y-8">
+      <FloorPlanSubmitConfirmDialog
+        open={submitConfirmOpen}
+        pending={submitting}
+        onCancel={cancelSubmitConfirm}
+        onConfirm={() => void submitToVenue()}
+      />
       {needsChooser && (
         <ChooseLayoutSection
           token={token}
@@ -952,7 +977,7 @@ export default function FloorPlanSection({ token }: { token: string }) {
                 <button
                   type="button"
                   disabled={submitting}
-                  onClick={() => void submitToVenue()}
+                  onClick={openSubmitConfirm}
                   className="text-xs font-semibold px-3 py-1.5 rounded-xl text-white disabled:opacity-50"
                   style={{ background: SAGE }}
                   data-testid="floor-plan-submit-to-venue"

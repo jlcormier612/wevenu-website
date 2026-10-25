@@ -199,13 +199,61 @@ async function main() {
     const submitBtn = page.locator('[data-testid="floor-plan-submit-to-venue"]');
     await submitBtn.waitFor({ state: "visible", timeout: 45_000 }).catch(() => undefined);
     record("client-submit-cta-visible", await submitBtn.isVisible().catch(() => false), "submit cta");
+
+    // Opening confirm must not submit or lock.
     if ((await submitBtn.count()) > 0) {
       await submitBtn.click();
+      const confirmDialog = page.locator('[data-testid="floor-plan-submit-confirm-dialog"]');
+      await confirmDialog.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
+      record(
+        "submit-opens-confirm-dialog",
+        await confirmDialog.isVisible().catch(() => false),
+        "confirm dialog after Submit CTA",
+      );
+      await page.screenshot({ path: `${OUT}/shots/client-submit-confirm-1280.png`, fullPage: false });
+
+      const { data: beforeCancel } = await admin
+        .from("floor_plans")
+        .select("client_layout_status,client_submitted_at")
+        .eq("id", PLAN)
+        .single();
+      await page.locator('[data-testid="floor-plan-submit-confirm-cancel"]').click();
+      await confirmDialog.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => undefined);
+      await page.waitForTimeout(400);
+      const { data: afterCancel } = await admin
+        .from("floor_plans")
+        .select("client_layout_status,client_submitted_at")
+        .eq("id", PLAN)
+        .single();
+      record(
+        "submit-cancel-keeps-editable",
+        afterCancel?.client_layout_status === beforeCancel?.client_layout_status
+          && afterCancel?.client_submitted_at === beforeCancel?.client_submitted_at
+          && (await submitBtn.isVisible().catch(() => false))
+          && !(await confirmDialog.isVisible().catch(() => false)),
+        JSON.stringify({ beforeCancel, afterCancel }),
+      );
+
+      // Confirm submission (guard against double-click with disabled pending state).
+      await submitBtn.click();
+      await confirmDialog.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
+      const confirmSubmit = page.locator('[data-testid="floor-plan-submit-confirm-submit"]');
+      await confirmSubmit.click();
+      await confirmSubmit.click({ trial: true }).catch(() => undefined);
       await page.locator('[data-testid="floor-plan-submit-success"], [data-testid="floor-plan-submitted-badge"]')
         .first()
         .waitFor({ timeout: 20_000 })
         .catch(() => undefined);
       await page.waitForTimeout(800);
+      record(
+        "submit-confirm-closes-dialog",
+        !(await confirmDialog.isVisible().catch(() => false)),
+        "dialog closed after confirm",
+      );
+    } else {
+      record("submit-opens-confirm-dialog", false, "no submit CTA");
+      record("submit-cancel-keeps-editable", false, "no submit CTA");
+      record("submit-confirm-closes-dialog", false, "no submit CTA");
     }
     await page.screenshot({ path: `${OUT}/shots/client-submitted-1280.png`, fullPage: false });
 
@@ -365,11 +413,21 @@ async function main() {
     record("client-can-resubmit", await submit2.isVisible().catch(() => false), "resubmit cta");
     if ((await submit2.count()) > 0) {
       await submit2.click();
+      const confirm2 = page2.locator('[data-testid="floor-plan-submit-confirm-dialog"]');
+      await confirm2.waitFor({ state: "visible", timeout: 10_000 }).catch(() => undefined);
+      record(
+        "resubmit-opens-confirm-dialog",
+        await confirm2.isVisible().catch(() => false),
+        "confirm on resubmit",
+      );
+      await page2.locator('[data-testid="floor-plan-submit-confirm-submit"]').click();
       await page2.locator('[data-testid="floor-plan-submitted-badge"], [data-testid="floor-plan-submit-success"]')
         .first()
         .waitFor({ timeout: 20_000 })
         .catch(() => undefined);
       await page2.waitForTimeout(1000);
+    } else {
+      record("resubmit-opens-confirm-dialog", false, "no resubmit CTA");
     }
     await couple2.close();
 

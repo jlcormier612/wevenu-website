@@ -67,4 +67,34 @@ describe("floor plan client layout review", () => {
     assert.match(workspace, /requestClientFloorPlanChangesAction/);
     assert.match(workspace, /floor-plan-couple-may-add/);
   });
+
+  it("opens a confirmation dialog before invoking submit; cancel does not submit", () => {
+    const portal = readFileSync(resolve("components/portal/floor-plan-section.tsx"), "utf8");
+    const dialog = readFileSync(
+      resolve("components/portal/floor-plan-submit-confirm-dialog.tsx"),
+      "utf8",
+    );
+    assert.match(portal, /FloorPlanSubmitConfirmDialog/);
+    assert.match(portal, /openSubmitConfirm/);
+    assert.match(portal, /onClick=\{openSubmitConfirm\}/);
+    // Primary CTA must not call submitToVenue directly.
+    assert.doesNotMatch(
+      portal.slice(
+        portal.indexOf('data-testid="floor-plan-submit-to-venue"') - 200,
+        portal.indexOf('data-testid="floor-plan-submit-to-venue"') + 200,
+      ),
+      /onClick=\{\(\) => void submitToVenue\(\)\}/,
+    );
+    assert.match(dialog, /Ready to submit your floor plan\?/);
+    assert.match(dialog, /Go back and keep editing/);
+    assert.match(dialog, /Submit for venue review/);
+    assert.match(dialog, /floor-plan-submit-confirm-dialog/);
+    assert.match(dialog, /floor-plan-submit-confirm-cancel/);
+    assert.match(dialog, /floor-plan-submit-confirm-submit/);
+    assert.match(dialog, /role="alertdialog"/);
+    // Confirm button is the only path into the existing submit action.
+    assert.match(portal, /onConfirm=\{\(\) => void submitToVenue\(\)\}/);
+    assert.match(portal, /if \(!selectedId \|\| submitting\) return/);
+    assert.match(portal, /setSubmitOk\(false\)/);
+  });
 });
