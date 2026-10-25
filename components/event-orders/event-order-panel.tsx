@@ -225,11 +225,19 @@ export function EventOrderPanel({
 
   // Profile-configured Event Order should already exist after booking / prepare-release.
   // Recover once so this tab is an editor, not a second setup wizard.
+  // Also re-enter ensure when an open EO already exists so booking Selected Package
+  // inclusions can seed (idempotent; does not recreate the order).
+  const ensuredRef = React.useRef(false);
   React.useEffect(() => {
-    if (eventOrder || !preferredExists || !preferredTemplateId || preBooking) return;
+    if (preBooking || !eventId || ensuredRef.current) return;
+    if (!eventOrder && !preferredExists) return;
+    ensuredRef.current = true;
     let cancelled = false;
     void (async () => {
-      const result = await ensureEventOrderAction(eventId, preferredTemplateId);
+      const result = await ensureEventOrderAction(
+        eventId,
+        preferredExists ? preferredTemplateId : (eventOrder?.templateId ?? null),
+      );
       if (cancelled) return;
       if (!result.ok) toast.error(result.message ?? "Could not prepare Event Order.");
       else refresh();

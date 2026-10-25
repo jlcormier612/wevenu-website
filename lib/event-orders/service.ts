@@ -1,4 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
+import * as commercialSelectionsRepo from "@/lib/commercial-selections/repository";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   finalizeBlockedWhenAlreadyFinalized,
@@ -6,6 +7,10 @@ import {
   reopenBlockedWhenNotFinalized,
 } from "@/lib/event-orders/lifecycle-gates";
 import * as repo from "@/lib/event-orders/repository";
+import {
+  filterPackageInclusionsToSeed,
+  packageSelectionNotes,
+} from "@/lib/event-orders/seed-package-inclusions";
 import {
   applyQuantityForLine,
   canApplyTemplateToEventOrder,
@@ -84,6 +89,69 @@ async function loadTemplateReadyForApply(
 
 function lineDedupeKey(description: string, sectionId: string | null): string {
   return `${sectionId ?? ""}::${description.trim().toLowerCase()}`;
+}
+
+/**
+ * Transfer booking-spine Selected Package inclusion text onto an open, unshared
+ * Event Order as included custom lines. Dedupes by description against existing
+ * lines (including template copies). Does not add the package fee or invent Offerings.
+ */
+async function seedBookingPackageInclusions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  eventId: string,
+  eventOrderId: string,
+): Promise<number> {
+  const details = await repo.getEventOrderByEvent(supabase, venueId, eventId);
+  if (!details || details.id !== eventOrderId) return 0;
+  if (details.status !== "open" || details.sharedAt) return 0;
+
+  let selection = await commercialSelectionsRepo.getActiveSelectionForEvent(
+    supabase, venueId, eventId,
+  );
+  if (!selection) {
+    const { data: eventRow } = await supabase
+      .from("events")
+      .select("client_id")
+      .eq("id", eventId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ client_id: string | null }>();
+    if (eventRow?.client_id) {
+      selection = await commercialSelectionsRepo.getActiveSelectionForClient(
+        supabase, venueId, eventRow.client_id,
+      );
+    }
+  }
+  if (!selection || selection.includedItems.length === 0) return 0;
+
+  const toAdd = filterPackageInclusionsToSeed(
+    selection.includedItems,
+    details.lines.map((l) => l.description),
+  );
+  if (toAdd.length === 0) return 0;
+
+  const notes = packageSelectionNotes(selection.id, selection.name);
+  let lineSort = await repo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
+  for (const item of toAdd) {
+    await repo.insertCustomLine(supabase, venueId, eventOrderId, {
+      description: item.description,
+      quantity: String(item.quantity),
+      unitPrice: "",
+      sectionId: null,
+      unit: item.unit ?? undefined,
+      isIncluded: true,
+      notes,
+    }, lineSort++);
+  }
+  await repo.insertActivity(
+    supabase,
+    venueId,
+    eventOrderId,
+    "line_added",
+    `Imported ${toAdd.length} package inclusion${toAdd.length === 1 ? "" : "s"} from selected package: ${selection.name}`,
+    "Seeded from booking Selected Package. Included custom lines — not Offerings or a package fee.",
+  );
+  return toAdd.length;
 }
 
 async function copyTemplateSnapshotsIntoOrder(
@@ -188,6 +256,10 @@ export async function ensureEventOrder(
           }
         }
       }
+      // Package inclusions seed even when no template heal is needed.
+      if (existing.status === "open" && !existing.sharedAt) {
+        await seedBookingPackageInclusions(supabase, venueId, eventId, existing.id);
+      }
       return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
     }
     const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId, templateId);
@@ -199,6 +271,7 @@ export async function ensureEventOrder(
     } else {
       await repo.insertActivity(supabase, venueId, eventOrderId, "started", "Event Order started");
     }
+    await seedBookingPackageInclusions(supabase, venueId, eventId, eventOrderId);
     return { ok: true, eventOrderId } as EnsureEventOrderResult;
   });
   return result as EnsureEventOrderResult;
@@ -306,6 +379,7 @@ export async function replaceEventOrderFromTemplate(
         supabase, venueId, eventOrderId, "started",
         `Event Order started from template: ${template.name}`,
       );
+      await seedBookingPackageInclusions(supabase, venueId, eventId, eventOrderId);
       return { ok: true, eventOrderId } as EnsureEventOrderResult;
     }
     if (existing.status !== "open") {
@@ -332,6 +406,7 @@ export async function replaceEventOrderFromTemplate(
         ? "Event Order contents were replaced for this event. Not an invoice, contract, or share."
         : "Template sections applied. No default offerings were selected on the template.",
     );
+    await seedBookingPackageInclusions(supabase, venueId, eventId, existing.id);
     return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
   });
   return result as EnsureEventOrderResult | EventOrderActionResult;
