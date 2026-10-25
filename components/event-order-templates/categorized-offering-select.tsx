@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   filterOfferingsForSectionPicker,
@@ -11,8 +12,8 @@ import {
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 /**
- * Contextual Offering picker — filters by section-related category by default,
- * with an explicit escape hatch to other categories. Selection still uses offering id.
+ * Contextual Offering picker — starts in the current commercial category,
+ * with an explicit All categories escape. Selection uses offering id only.
  */
 export function CategorizedOfferingSelect({
   offerings,
@@ -35,16 +36,27 @@ export function CategorizedOfferingSelect({
 }) {
   const categories = React.useMemo(() => uniqueOfferingCategories(offerings), [offerings]);
   const [filter, setFilter] = React.useState<OfferingCategoryFilter>("preferred");
+  const [query, setQuery] = React.useState("");
 
   React.useEffect(() => {
     setFilter("preferred");
+    setQuery("");
   }, [sectionName]);
 
-  const { items, usedFallbackAll } = filterOfferingsForSectionPicker(
+  const { items, preferredEmpty } = filterOfferingsForSectionPicker(
     offerings,
     sectionName,
     filter,
   );
+
+  const visible = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((o) => {
+      const hay = `${o.name} ${o.categoryName ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [items, query]);
 
   return (
     <div className="space-y-2" data-testid={testId ?? "eo-categorized-offering-select"}>
@@ -70,39 +82,68 @@ export function CategorizedOfferingSelect({
             ))}
           </select>
         </div>
+        <div className="min-w-[8rem] flex-1 space-y-1">
+          <Label htmlFor={id ? `${id}-search` : undefined} className="text-xs text-muted-foreground">
+            Search
+          </Label>
+          <Input
+            id={id ? `${id}-search` : undefined}
+            value={query}
+            disabled={disabled}
+            placeholder="Filter by name"
+            className="h-9"
+            data-testid={testId ? `${testId}-search` : "eo-offering-search"}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
       </div>
-      {filter === "preferred" && usedFallbackAll && sectionName ? (
-        <p className="text-xs text-muted-foreground" data-testid="eo-offering-filter-fallback">
-          No catalog items matched “{sectionName}” yet — showing all Offerings. Pick deliberately; nothing is linked by name.
+      {filter === "preferred" && preferredEmpty && sectionName ? (
+        <p className="text-xs text-amber-800" data-testid="eo-offering-filter-empty">
+          No catalog Offerings match “{sectionName}” yet. Switch to All categories or another
+          category deliberately — items are never linked by name.
         </p>
       ) : null}
-      {filter === "preferred" && !usedFallbackAll && sectionName ? (
+      {filter === "preferred" && !preferredEmpty && sectionName ? (
         <p className="text-xs text-muted-foreground">
-          Showing Offerings in categories related to “{sectionName}”. Switch to All categories or another category when you need a cross-category item.
+          Showing Offerings related to “{sectionName}”. Use All categories only when a
+          cross-category item is intentional.
+        </p>
+      ) : null}
+      {filter === "all" ? (
+        <p className="text-xs text-muted-foreground" data-testid="eo-offering-all-categories-note">
+          Browsing every catalog category. Prefer the suggested filter when possible.
         </p>
       ) : null}
       <select
         id={id}
         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
         value={value}
-        disabled={disabled || items.length === 0}
+        disabled={disabled || visible.length === 0}
         data-testid={testId ? `${testId}-list` : "eo-offering-list"}
         onChange={(e) => onChange(e.target.value)}
       >
         <option value="">{emptyLabel}</option>
-        {items.map((off) => (
-          <option key={off.id} value={off.id}>
-            {off.name}
-            {off.categoryName ? ` · ${off.categoryName}` : ""}
-            {off.defaultUnitPrice != null
-              ? ` · $${off.defaultUnitPrice.toFixed(2)}`
-              : " · unpriced"}
-          </option>
-        ))}
+        {visible.map((off) => {
+          const cross =
+            filter === "all"
+            && sectionName
+            && off.categoryName
+            && !off.categoryName.toLowerCase().includes(sectionName.split(" ")[0]!.toLowerCase());
+          return (
+            <option key={off.id} value={off.id}>
+              {off.name}
+              {off.categoryName ? ` · ${off.categoryName}` : " · uncategorized"}
+              {off.defaultUnitPrice != null
+                ? ` · $${off.defaultUnitPrice.toFixed(2)}`
+                : " · unpriced"}
+              {cross ? " · other category" : ""}
+            </option>
+          );
+        })}
       </select>
-      {items.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No active Offerings in this filter. Create catalog items or switch category.
+          No active Offerings in this filter. Create catalog items, clear search, or switch category.
         </p>
       ) : null}
     </div>

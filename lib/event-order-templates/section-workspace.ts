@@ -121,30 +121,35 @@ export function preferredCategoryIdsForSection(
 
 /**
  * Filter catalog offerings for a section-aware picker.
- * - preferred: soft-match category to section (fallback to all when none match)
- * - all: every active offering
+ * - preferred: soft-match category to section only (never silently dump all categories)
+ * - all: every active offering (explicit escape hatch)
  * - category id: that category only
  */
 export function filterOfferingsForSectionPicker(
   offerings: OfferingWithCategory[],
   sectionName: string | null,
   filter: OfferingCategoryFilter,
-): { items: OfferingWithCategory[]; usedFallbackAll: boolean } {
+): { items: OfferingWithCategory[]; usedFallbackAll: boolean; preferredEmpty: boolean } {
   const active = offerings.filter((o) => !o.isArchived);
-  if (filter === "all" || !sectionName) {
-    return { items: active, usedFallbackAll: false };
+  if (filter === "all") {
+    return { items: active, usedFallbackAll: false, preferredEmpty: false };
+  }
+  if (!sectionName) {
+    return { items: active, usedFallbackAll: false, preferredEmpty: false };
   }
   if (filter !== "preferred") {
     return {
       items: active.filter((o) => o.categoryId === filter),
       usedFallbackAll: false,
+      preferredEmpty: false,
     };
   }
   const preferred = active.filter((o) => categoryMatchesSection(o.categoryName, sectionName));
-  if (preferred.length === 0) {
-    return { items: active, usedFallbackAll: true };
-  }
-  return { items: preferred, usedFallbackAll: false };
+  return {
+    items: preferred,
+    usedFallbackAll: false,
+    preferredEmpty: preferred.length === 0,
+  };
 }
 
 export function uniqueOfferingCategories(

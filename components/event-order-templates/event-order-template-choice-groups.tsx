@@ -231,6 +231,7 @@ export function EventOrderTemplateChoiceGroups({
   compact = false,
   showPreview = true,
   nestBranches = true,
+  rootsOnly = false,
 }: {
   template: EventOrderTemplateWithDetails;
   catalogOfferings: OfferingWithCategory[];
@@ -243,6 +244,8 @@ export function EventOrderTemplateChoiceGroups({
   showPreview?: boolean;
   /** Nest dependent groups under their parent options within this section. */
   nestBranches?: boolean;
+  /** Guided “main choices” step — hide dependents until the branch step. */
+  rootsOnly?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -300,7 +303,7 @@ export function EventOrderTemplateChoiceGroups({
     return [...template.groups].sort((a, b) => a.sortOrder - b.sortOrder);
   }, [template.groups, lockedSectionId, showUnassignedOnly]);
 
-  const groups = nestBranches
+  const groups = (nestBranches || rootsOnly)
     ? scopedGroups.filter((g) => !isDependentGroup(g))
     : scopedGroups;
   const completeness = sectionCompletenessIssues(scopedGroups, template.options);

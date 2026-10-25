@@ -128,7 +128,7 @@ describe("section workspace grouping", () => {
 });
 
 describe("filterOfferingsForSectionPicker", () => {
-  it("prefers category-matched offerings and falls back to all when none match", () => {
+  it("prefers category-matched offerings and does not silently dump all categories", () => {
     const items = [
       offering({ id: "1", name: "Chicken Marsala", categoryId: "c1", categoryName: "Catering" }),
       offering({ id: "2", name: "Bartender service", categoryId: "c2", categoryName: "Services" }),
@@ -136,13 +136,16 @@ describe("filterOfferingsForSectionPicker", () => {
     ];
     const preferred = filterOfferingsForSectionPicker(items, "Catering", "preferred");
     assert.equal(preferred.usedFallbackAll, false);
+    assert.equal(preferred.preferredEmpty, false);
     assert.deepEqual(preferred.items.map((o) => o.id), ["1"]);
 
     const none = filterOfferingsForSectionPicker(items, "Photography", "preferred");
-    assert.equal(none.usedFallbackAll, true);
-    assert.equal(none.items.length, 3);
+    assert.equal(none.usedFallbackAll, false);
+    assert.equal(none.preferredEmpty, true);
+    assert.equal(none.items.length, 0);
 
     const all = filterOfferingsForSectionPicker(items, "Catering", "all");
     assert.equal(all.items.length, 3);
   });
 });
+
