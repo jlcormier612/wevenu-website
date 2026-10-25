@@ -8,7 +8,7 @@
 | Digest | `sha256:63e9cfdaf8f7f1c196deef86930675f4889022ca1119d02b4565a96f470c93c0` |
 | Deploy run | https://github.com/jlcormier612/wevenu-website/actions/runs/40242707489 (`success`) |
 | Deploy head SHA | `d9e25c77af78c5e46de46dc831eda8c190dab556` |
-| Repo HEAD (docs after FP proof) | `4b12e27f…` (docs-only; not required on ECS) |
+| Evidence commit (docs) | `7ae77a70…` + follow-up STATUS/JSON (docs-only; not required on ECS) |
 
 ## Ancestry — both Event Order fixes are on the serving image
 
