@@ -142,31 +142,84 @@ export function ChoicesPortalSection({ token }: { token: string }) {
           </div>
 
           {(active.definition.fixedLines?.length ?? 0) > 0 ? (
-            <div className="space-y-3 rounded-sm border border-border bg-muted/15 p-4">
+            <div
+              className="space-y-4 rounded-sm border border-border bg-muted/15 p-4"
+              data-testid="choices-definition-view"
+              data-mode="portal-fixed"
+            >
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Included with your event
               </p>
-              <ul className="space-y-2">
-                {active.definition.fixedLines!
+              {(() => {
+                const fixed = active.definition.fixedLines!.slice();
+                const sections = active.definition.sections
                   .slice()
-                  .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .map((line) => (
-                    <li key={line.id} className="text-sm">
-                      <span className="font-medium text-heading">{line.description}</span>
-                      {line.descriptionDetail ? (
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {line.descriptionDetail}
-                        </span>
-                      ) : null}
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {line.includedByDefault ? "Included" : "Part of your offering"}
-                        {line.unitPrice != null && !line.includedByDefault
-                          ? ` · $${Number(line.unitPrice).toFixed(2)}`
-                          : ""}
-                      </span>
-                    </li>
-                  ))}
-              </ul>
+                  .sort((a, b) => a.sortOrder - b.sortOrder);
+                const bySection = sections
+                  .map((section) => ({
+                    section,
+                    lines: fixed
+                      .filter((l) => l.sectionId === section.id)
+                      .sort((a, b) => a.sortOrder - b.sortOrder),
+                  }))
+                  .filter((entry) => entry.lines.length > 0);
+                const unsectioned = fixed
+                  .filter((l) => !l.sectionId || sections.every((s) => s.id !== l.sectionId))
+                  .sort((a, b) => a.sortOrder - b.sortOrder);
+                const blocks =
+                  bySection.length > 0
+                    ? bySection.map(({ section, lines }) => ({
+                        key: section.id,
+                        title: section.name,
+                        guidance: section.guidance,
+                        lines,
+                      }))
+                    : [
+                        {
+                          key: "included",
+                          title: null as string | null,
+                          guidance: null as string | null,
+                          lines: fixed.sort((a, b) => a.sortOrder - b.sortOrder),
+                        },
+                      ];
+                if (unsectioned.length > 0 && bySection.length > 0) {
+                  blocks.push({
+                    key: "unsectioned",
+                    title: null,
+                    guidance: null,
+                    lines: unsectioned,
+                  });
+                }
+                return blocks.map((block) => (
+                  <section key={block.key} className="space-y-2">
+                    {block.title ? (
+                      <h2 className="text-sm font-semibold text-heading">{block.title}</h2>
+                    ) : null}
+                    {block.guidance ? (
+                      <p className="text-xs text-muted-foreground">{block.guidance}</p>
+                    ) : null}
+                    <ul className="space-y-2">
+                      {block.lines.map((line) => (
+                        <li key={line.id} className="text-sm" data-testid="choices-fixed-line">
+                          <span className="font-medium text-heading">{line.description}</span>
+                          {line.descriptionDetail ? (
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {line.descriptionDetail}
+                            </span>
+                          ) : null}
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {line.includedByDefault ? "Included" : "Part of your offering"}
+                            {line.unitPrice != null
+                              ? ` · $${Number(line.unitPrice).toFixed(2)}`
+                              : ""}
+                            {line.unit ? ` / ${line.unit}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ));
+              })()}
             </div>
           ) : null}
 

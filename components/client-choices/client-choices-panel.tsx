@@ -671,6 +671,7 @@ export function ClientChoicesPanel({
                   definition={active.definition}
                   answers={active.answers}
                   mode={isClientChoicesNeedsVenueReview(active.status) ? "review" : "preview"}
+                  testId="choices-composer-definition-preview"
                 />
               ) : templateDetail ? (
                 <EventOrderTemplatePreviewView template={templateDetail} />

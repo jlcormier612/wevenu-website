@@ -8,7 +8,9 @@ import { join } from "node:path";
 
 import {
   defaultAnswersFromEventOrderTemplate,
+  pruneAnswersToDefinition,
   selectionDefinitionFromEventOrderTemplate,
+  selectionDefinitionNeedsHydration,
   templateHasSelectableGroups,
 } from "@/lib/event-order-templates/selection-definition";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
@@ -198,6 +200,49 @@ describe("defaultAnswersFromEventOrderTemplate", () => {
       }),
     );
     assert.deepEqual(answers, {});
+  });
+});
+
+describe("selectionDefinitionNeedsHydration", () => {
+  it("detects legacy packets missing fixedLines while the template still has lines", () => {
+    const t = template();
+    const legacy = {
+      sections: selectionDefinitionFromEventOrderTemplate(t).sections,
+      groups: [],
+      options: [],
+    };
+    assert.equal(selectionDefinitionNeedsHydration(legacy, t), true);
+  });
+
+  it("is false once fixedLines (and groups) are frozen", () => {
+    const t = template();
+    const def = selectionDefinitionFromEventOrderTemplate(t);
+    assert.equal(selectionDefinitionNeedsHydration(def, t), false);
+  });
+
+  it("detects missing groups/options when the template has selectable offerings", () => {
+    const t = template();
+    const partial = {
+      ...selectionDefinitionFromEventOrderTemplate(t),
+      groups: [],
+      options: [],
+    };
+    assert.equal(selectionDefinitionNeedsHydration(partial, t), true);
+  });
+});
+
+describe("pruneAnswersToDefinition", () => {
+  it("drops answers for removed groups and unknown option ids", () => {
+    const def = selectionDefinitionFromEventOrderTemplate(template());
+    const pruned = pruneAnswersToDefinition(
+      {
+        "grp-bar": { optionIds: ["opt-premium", "opt-gone"] },
+        "grp-missing": { optionIds: ["x"] },
+      },
+      def,
+    );
+    assert.deepEqual(pruned["grp-bar"]?.optionIds, ["opt-premium"]);
+    assert.equal(pruned["grp-missing"], undefined);
   });
 });
 

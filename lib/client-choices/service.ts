@@ -29,7 +29,9 @@ import type {
 import * as eoTemplatesRepo from "@/lib/event-order-templates/repository";
 import {
   defaultAnswersFromEventOrderTemplate,
+  pruneAnswersToDefinition,
   selectionDefinitionFromEventOrderTemplate,
+  selectionDefinitionNeedsHydration,
 } from "@/lib/event-order-templates/selection-definition";
 import * as templatesRepo from "@/lib/client-choices-templates/repository";
 import {
@@ -53,6 +55,31 @@ async function withVenue<T>(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Session expired." };
   return fn(supabase, venue.id);
+}
+
+/**
+ * Persist a complete EO-template freeze onto packets that only have sections
+ * (or empty groups) — so staff preview and the couple form show the same
+ * offering context the venue reviewed. Does not rebuild from a live catalog
+ * at render time; writes the freeze once onto the packet.
+ */
+async function hydrateClientChoicesDefinitionFromEventOrderTemplate(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  row: ClientChoices,
+): Promise<ClientChoices> {
+  if (!row.eventOrderTemplateId) return row;
+  if (row.status === "finalized") return row;
+  const template = await eoTemplatesRepo.getTemplateWithDetails(
+    supabase, venueId, row.eventOrderTemplateId,
+  );
+  if (!template) return row;
+  if (!selectionDefinitionNeedsHydration(row.definition, template)) return row;
+
+  const definition = selectionDefinitionFromEventOrderTemplate(template);
+  const answers = pruneAnswersToDefinition(row.answers ?? {}, definition);
+  await repo.updateInstance(supabase, venueId, row.id, { definition, answers });
+  return { ...row, definition, answers };
 }
 
 function definitionFromTemplate(
@@ -91,14 +118,28 @@ export async function listClientChoicesForEvent(eventId: string): Promise<Client
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.listForEvent(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  const rows = await repo.listForEvent(supabase, venue.id, eventId);
+  const hydrated: ClientChoices[] = [];
+  for (const row of rows) {
+    hydrated.push(
+      await hydrateClientChoicesDefinitionFromEventOrderTemplate(supabase, venue.id, row),
+    );
+  }
+  return hydrated;
 }
 
 export async function getClientChoices(id: string): Promise<ClientChoicesWithHistory | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  return repo.getWithHistory(await createClient(), venue.id, id);
+  const supabase = await createClient();
+  const row = await repo.getWithHistory(supabase, venue.id, id);
+  if (!row) return null;
+  const hydrated = await hydrateClientChoicesDefinitionFromEventOrderTemplate(
+    supabase, venue.id, row,
+  );
+  return hydrated === row ? row : { ...row, ...hydrated };
 }
 
 export async function createClientChoicesFromTemplate(
@@ -192,11 +233,16 @@ export async function updateClientChoicesDraft(
 
 export async function sendClientChoices(choicesId: string): Promise<ClientChoicesActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    const row = await repo.getById(supabase, venueId, choicesId);
-    if (!row) return { ok: false, message: "Choices not found." } as ClientChoicesActionResult;
-    if (row.status === "finalized") {
+    const loaded = await repo.getById(supabase, venueId, choicesId);
+    if (!loaded) return { ok: false, message: "Choices not found." } as ClientChoicesActionResult;
+    if (loaded.status === "finalized") {
       return { ok: false, message: "Already finalized." } as ClientChoicesActionResult;
     }
+    // Freeze the complete offering onto the packet before portal/email so the
+    // couple receives the same context the venue reviewed in send-preview.
+    const row = await hydrateClientChoicesDefinitionFromEventOrderTemplate(
+      supabase, venueId, loaded,
+    );
     if (row.status === "draft") {
       await repo.updateInstance(supabase, venueId, choicesId, {
         status: "sent",

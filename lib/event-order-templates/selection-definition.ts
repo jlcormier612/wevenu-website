@@ -2,7 +2,7 @@
  * Freeze an Event Order Template into the selection definition shape
  * used by client_choices runtime (portal / Use / Send / finalize).
  */
-import type { ChoicesDefinition } from "@/lib/client-choices/types";
+import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 
 export function selectionDefinitionFromEventOrderTemplate(
@@ -51,6 +51,54 @@ export function selectionDefinitionFromEventOrderTemplate(
       sortOrder: o.sortOrder,
     })),
   };
+}
+
+/**
+ * True when the frozen packet is missing offerings that the Event Order
+ * Template still carries (legacy packets created before fixedLines shipped,
+ * or a partial freeze). Staff preview and the couple form both depend on a
+ * complete freeze — not a live catalog rebuild at render time.
+ */
+export function selectionDefinitionNeedsHydration(
+  definition: ChoicesDefinition,
+  template: EventOrderTemplateWithDetails,
+): boolean {
+  const fixedCount = definition.fixedLines?.length ?? 0;
+  if (template.lines.length > 0 && fixedCount === 0) return true;
+  if (template.groups.length > 0 && definition.groups.length === 0) return true;
+  if (template.options.length > 0 && definition.options.length === 0) return true;
+  return false;
+}
+
+/** Keep answers whose groups/options still exist after a re-freeze. */
+export function pruneAnswersToDefinition(
+  answers: ChoicesAnswers,
+  definition: ChoicesDefinition,
+): ChoicesAnswers {
+  const groupIds = new Set(definition.groups.map((g) => g.id));
+  const optionIdsByGroup = new Map<string, Set<string>>();
+  for (const opt of definition.options) {
+    const set = optionIdsByGroup.get(opt.groupId) ?? new Set<string>();
+    set.add(opt.id);
+    optionIdsByGroup.set(opt.groupId, set);
+  }
+  const next: ChoicesAnswers = {};
+  for (const [groupId, answer] of Object.entries(answers)) {
+    if (!groupIds.has(groupId)) continue;
+    const allowed = optionIdsByGroup.get(groupId) ?? new Set<string>();
+    const optionIds = (answer.optionIds ?? []).filter((id) => allowed.has(id));
+    const quantities = answer.quantities
+      ? Object.fromEntries(
+          Object.entries(answer.quantities).filter(([id]) => allowed.has(id)),
+        )
+      : undefined;
+    next[groupId] = {
+      ...answer,
+      optionIds,
+      ...(quantities && Object.keys(quantities).length > 0 ? { quantities } : {}),
+    };
+  }
+  return next;
 }
 
 /** Default answers from isDefault options (Use / first open). */

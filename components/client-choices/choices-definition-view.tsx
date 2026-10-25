@@ -51,11 +51,14 @@ export function ChoicesDefinitionView({
   definition,
   answers,
   mode = "review",
+  /** Overlay send-preview keeps the canonical id; composer aside uses a sibling. */
+  testId = "choices-definition-view",
 }: {
   definition: ChoicesDefinition;
   answers: ChoicesAnswers;
   /** preview = couple-like; review = venue review of submitted picks */
   mode?: "preview" | "review";
+  testId?: string;
 }) {
   const sections = definition.sections.slice().sort((a, b) => a.sortOrder - b.sortOrder);
   const fixedLines = definition.fixedLines ?? [];
@@ -64,7 +67,7 @@ export function ChoicesDefinitionView({
   const hasFixed = fixedLines.length > 0;
 
   return (
-    <div className="space-y-6" data-testid="choices-definition-view" data-mode={mode}>
+    <div className="space-y-6" data-testid={testId} data-mode={mode}>
       {hasFixed || sections.length > 0 ? (
         <div className="space-y-6">
           {sections.map((section) => {
