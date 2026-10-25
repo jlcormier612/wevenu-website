@@ -1,0 +1,26 @@
+{
+  "sections": [
+    {
+      "id": "a335dd2e-d11d-46db-931e-f99474766fc4",
+      "name": "Ceremony"
+    },
+    {
+      "id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+      "name": "Catering"
+    },
+    {
+      "id": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+      "name": "Bar and beverages"
+    },
+    {
+      "id": "e3ef13fb-9a7d-4f2e-b4d2-84327612044f",
+      "name": "Rentals"
+    },
+    {
+      "id": "dcdfb5f2-d068-4f6b-aca5-ba13de0cc1ee",
+      "name": "Services"
+    }
+  ],
+  "optionCount": 5,
+  "groupCount": 7
+}

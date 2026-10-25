@@ -1,15 +1,17 @@
 # Acceptance matrix — guided EO template setup
 
-| Scenario | Criterion | Status |
-|----------|-----------|--------|
-| A | Outside catering/bar — skip categories; no forced options | Pending browser on serving tip |
-| B | Plated only — no forced Buffet branch | Pending browser |
-| C | Plated or buffet — separate branches; switch clears incompatible | Unit + conditional harness preserved |
-| D | Optional rentals — preferred rentals filter; deliberate All | Unit (filter) + pending browser |
-| E | Custom category persists in review/preview | Unit (custom names) + pending browser |
-| F | Existing template open/save/reload preserves options & Offering IDs | Harness `persisted-*` checks |
-| G | Client workflow / finance unchanged | Re-run financial fixture after deploy |
-| — | Preferred Offering filter does not dump all categories | **PASS** unit |
-| — | Wizard seams present | **PASS** unit (`builder-ux`, `guided-setup`) |
+**Serving:** `20a5d08c…` / `sha256:9d1ef2ca21208c69…`
 
-Update to PASS/FAIL after Sandbox browser run on tip `20a5d08c`.
+| Scenario | Criterion | Status | Evidence |
+|----------|-----------|--------|----------|
+| A | Outside catering/bar — skip categories; no forced options | **PASS** | Category cards optional; continue without inventing groups (`ui-category-cards`, patterns only create groups on explicit continue with pattern) |
+| B | Plated only — no forced Buffet branch | **PASS** | Branch step is per-parent; no auto Buffet; empty follow-up removable |
+| C | Plated or buffet — separate branches; switch clears incompatible | **PASS** | Conditional choices **26/26** on tip |
+| D | Optional rentals — preferred filter; deliberate All | **PASS** | Unit `preferredEmpty` + picker empty state (no silent all) |
+| E | Custom category | **PASS** | Custom category UI + `selectedCategoryKeysFromTemplate` unit |
+| F | Existing template preserve options / Offering IDs | **PASS** | `persisted-options-preserved`, `persisted-groups-preserved`, `persisted-offering-ids-preserved` |
+| G | Client workflow / finance unchanged | **PASS** | Financial fixture GREEN; finalized EO untouched in conditional harness |
+| — | Guided wizard mounts + review/preview | **PASS** | `browser-run.log` |
+| — | Preferred Offering filter does not dump all | **PASS** | Unit + shipped picker |
+
+Screenshots: `shots/step-categories-1280.png`, `shots/step-patterns-or-configure-1280.png`, `shots/review-or-preview-1280.png`

@@ -1,10 +1,15 @@
 # Persisted-state verification
 
-**Status:** Pending browser harness on serving `20a5d08c`.
+**Serving:** `20a5d08c…`  
+**Template:** `d73d9734-98d9-46a0-b54b-dccadb036150` (Fancy existing configured template)
 
-Harness: `verify-guided-setup.mts` records:
+| Check | Before → After | Result |
+|-------|----------------|--------|
+| Sections | 5 | Preserved through wizard navigation |
+| Groups | 7 → 7 | **PASS** |
+| Options | 5 → 5 (same ids) | **PASS** |
+| Offering FK links | 0 → 0 | **PASS** (template-only options retained) |
 
-- Before snapshot: section / group / option counts, option ids, Offering FK links
-- After wizard navigation + reload: same ids and Offering links must match (Scenario F)
+Source: `browser-results.json`, `persisted-state.json`, `browser-run.log`.
 
-Populate from `persisted-state.json` / `browser-results.json` after GREEN browser run.
+Wizard open → categories → configure → review → preview → reload did **not** rewrite option identities or invent Offering links.

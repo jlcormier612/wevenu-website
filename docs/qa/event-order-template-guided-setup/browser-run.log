@@ -1,0 +1,15 @@
+PASS serving-sha — expected=20a5d08c39d26efaef2fe098d3b42cf3e6c5000a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:20a5d08c39d26efaef2fe098d3b42cf3e6c5000a
+PASS serving-digest — sha256:9d1ef2ca21208c6977951e349acdfebd4cc7d6dd5e5af5c201a91e568c84c53b
+PASS fixture-existing-template — {"templateId":"d73d9734-98d9-46a0-b54b-dccadb036150","beforeSnapshot":{"sectionCount":5,"groupCount":7,"optionCount":5}}
+PASS ui-guided-wizard — eo-guided-setup-wizard
+PASS ui-categories-step-reachable — categories=1
+PASS ui-category-cards — catering card
+PASS ui-patterns-step — patterns=1
+PASS ui-review-or-preview — review=1 preview=0
+PASS ui-client-preview — 1
+PASS ui-reload-wizard — wizard after reload
+PASS persisted-options-preserved — {"before":5,"after":5}
+PASS persisted-offering-ids-preserved — links=0
+PASS persisted-groups-preserved — before=7 after=7
+
+GREEN guided setup verification

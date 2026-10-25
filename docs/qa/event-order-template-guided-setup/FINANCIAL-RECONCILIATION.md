@@ -1,14 +1,18 @@
 # Financial reconciliation
 
-**Status:** Pending re-run on serving tip after deploy.
+**Serving:** `20a5d08c…` / digest `sha256:9d1ef2ca21208c6977951e349acdfebd4cc7d6dd5e5af5c201a91e568c84c53b`  
+**Harness:** `verify-financial-fixture.mts` → **GREEN** (`financial-run.log`, `financial-results.json`)
 
-Expected: Fancy finalized fixture unchanged by template-builder UX (no EO line mutation from wizard navigation alone).
+## Fancy finalized fixture (this run)
 
-Command after tip is live:
+| Record | Value |
+|--------|-------|
+| Event Order | `624eceef-…` finalized revision **26** |
+| Invoice | `4489c869-…` **sent** |
+| Billable subtotal | 2061 |
+| Tax | 128.81 |
+| Invoice / payable total | **2189.81** |
+| Freeze | `event_order_revision_at_freeze` = **26** |
+| Payment schedule | None on this invoice — skipped |
 
-```bash
-EXPECTED_SHA=20a5d08c39d26efaef2fe098d3b42cf3e6c5000a \
-  npx tsx docs/qa/event-order-process-completion/verify-financial-fixture.mts
-```
-
-Historical comparison values on prior tip (`d9e25c77`): invoice total **2189.81**, freeze rev **26**. Confirm actuals for this run — do not hard-code.
+Guided template UX did not alter finalized EO lines, freeze, or payable reconcile.
