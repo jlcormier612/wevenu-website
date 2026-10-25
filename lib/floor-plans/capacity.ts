@@ -114,7 +114,14 @@ export function summarizeFloorPlanCapacity(input: FloorPlanCapacityInput): Floor
   };
 }
 
-/** Plain-language outcome line for banners — never implies a hard block. */
+/**
+ * Plain-language outcome line for banners — never implies a hard block.
+ *
+ * Layout seating is the sum of seat capacities on table_round / table_rect /
+ * table_oval objects on this canvas (live). "Seats above guest count" is
+ * layoutSeating − event.guestCount — never Space capacity − layout seating.
+ * Space capacity is listed separately so it is not mistaken for that surplus.
+ */
 export function formatFloorPlanCapacitySentence(summary: FloorPlanCapacitySummary): string {
   if (summary.tableCount === 0) {
     return "No seating tables on this plan yet.";
@@ -123,15 +130,17 @@ export function formatFloorPlanCapacitySentence(summary: FloorPlanCapacitySummar
   const seatsPart =
     summary.tablesWithCapacity === 0
       ? `${summary.tableCount} table${summary.tableCount === 1 ? "" : "s"} · set a seat count on each to measure capacity`
-      : `${summary.seatingCapacity} seat${summary.seatingCapacity === 1 ? "" : "s"} across ${summary.tableCount} table${summary.tableCount === 1 ? "" : "s"}`;
+      : `${summary.seatingCapacity} layout seat${summary.seatingCapacity === 1 ? "" : "s"} across ${summary.tableCount} table${summary.tableCount === 1 ? "" : "s"}`;
 
   const parts: string[] = [seatsPart];
 
   if (summary.guestCount != null) {
-    parts.push(`${summary.guestCount} guest${summary.guestCount === 1 ? "" : "s"} on this event`);
+    parts.push(
+      `${summary.guestCount} guest${summary.guestCount === 1 ? "" : "s"} recorded on this event`,
+    );
   }
   if (summary.spaceCapacity != null) {
-    parts.push(`Space holds ${summary.spaceCapacity}`);
+    parts.push(`assigned Space capacity ${summary.spaceCapacity}`);
   }
   if (summary.tablesMissingCapacity > 0 && summary.tablesWithCapacity > 0) {
     parts.push(
@@ -141,11 +150,16 @@ export function formatFloorPlanCapacitySentence(summary: FloorPlanCapacitySummar
 
   if (summary.level === "seating_short" || summary.level === "both_short") {
     parts.push(
-      `short ${summary.seatingShortfall} seat${summary.seatingShortfall === 1 ? "" : "s"} for the guest count`,
+      `short ${summary.seatingShortfall} seat${summary.seatingShortfall === 1 ? "" : "s"} vs the event guest count`,
     );
   } else if (summary.level === "ok" && summary.seatingSurplus != null && summary.guestCount != null) {
-    if (summary.seatingSurplus === 0) parts.push("matches the guest count");
-    else parts.push(`${summary.seatingSurplus} seat${summary.seatingSurplus === 1 ? "" : "s"} to spare`);
+    if (summary.seatingSurplus === 0) {
+      parts.push("layout seating matches the event guest count");
+    } else {
+      parts.push(
+        `${summary.seatingSurplus} layout seat${summary.seatingSurplus === 1 ? "" : "s"} above the event guest count`,
+      );
+    }
   }
 
   if (summary.level === "space_short" || summary.level === "both_short") {

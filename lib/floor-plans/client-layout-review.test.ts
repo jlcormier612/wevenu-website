@@ -62,6 +62,7 @@ describe("floor plan client layout review", () => {
     assert.match(portal, /floor-plan-submit-to-venue/);
     assert.match(portal, /Submit floor plan to venue/);
     assert.match(portal, /floor-plan-guidance/);
+    assert.match(portal, /floor-plan-client-capacity|formatFloorPlanCapacitySentence/);
     assert.match(workspace, /floor-plan-client-submission-review/);
     assert.match(workspace, /approveClientFloorPlanLayoutAction/);
     assert.match(workspace, /requestClientFloorPlanChangesAction/);

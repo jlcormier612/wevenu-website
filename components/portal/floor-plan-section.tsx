@@ -14,6 +14,10 @@ import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/
 import { FloorPlanSubmitConfirmDialog } from "@/components/portal/floor-plan-submit-confirm-dialog";
 import { OBJECT_STYLE } from "@/lib/floor-plans/constants";
 import {
+  formatFloorPlanCapacitySentence,
+  summarizeFloorPlanCapacity,
+} from "@/lib/floor-plans/capacity";
+import {
   clientLayoutStatusHint,
   clientLayoutStatusLabel,
   clientMayEditLayout,
@@ -609,7 +613,14 @@ function ChooseLayoutSection({
   );
 }
 
-export default function FloorPlanSection({ token }: { token: string }) {
+export default function FloorPlanSection({
+  token,
+  guestCount: guestCountProp = null,
+}: {
+  token: string;
+  /** Optional fallback from portal context when detail payload omits it. */
+  guestCount?: number | null;
+}) {
   const [list, setList] = React.useState<PortalFloorPlanSummary[]>([]);
   const [offers, setOffers] = React.useState<PortalFloorPlanOfferSummary[]>([]);
   const [operationalId, setOperationalId] = React.useState<string | null>(null);
@@ -962,15 +973,47 @@ export default function FloorPlanSection({ token }: { token: string }) {
                 From your venue: {reviewNote.trim()}
               </p>
             )}
+            {(() => {
+              const capacitySummary = summarizeFloorPlanCapacity({
+                objects: (detail?.objects ?? []).map((o) => ({
+                  objectType: o.objectType,
+                  capacity: o.capacity,
+                })),
+                guestCount: detail?.eventGuestCount ?? guestCountProp,
+                spaceCapacity: detail?.spaceCapacity ?? null,
+              });
+              if (capacitySummary.tableCount === 0) return null;
+              return (
+                <div
+                  className="rounded-xl border border-border bg-muted/20 px-3 py-2 space-y-1"
+                  data-testid="floor-plan-client-capacity"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Layout capacity
+                  </p>
+                  <p className="text-xs text-heading" data-testid="floor-plan-client-capacity-sentence">
+                    {formatFloorPlanCapacitySentence(capacitySummary)}
+                    {detail?.spaceName ? ` · ${detail.spaceName}` : ""}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Guest count is what your venue recorded for this event — not how many people
+                    are already assigned to seats. Layout seats count tables on this canvas
+                    (including ceremony/cocktail areas when shown). Zone titles are visual areas
+                    on one layout, not separate timed setups. Open the furniture catalog to see
+                    which items you may add and how many remain.
+                  </p>
+                </div>
+              );
+            })()}
             <ul className="text-[11px] text-muted-foreground space-y-1 list-disc pl-4">
               <li>Locked items (gray lock mark) stay where your venue placed them.</li>
               <li>
                 {(plan?.coupleMayAddTables ?? selectedSummary?.coupleMayAddTables) === false
                   ? "Your venue has turned off adding furniture on this layout."
-                  : "You may add tables your venue permits, within their inventory limits."}
+                  : "You may add tables your venue permits, within their inventory limits shown in the catalog."}
               </li>
-              <li>Seat guests on the Seating tab when seating is open.</li>
-              <li>When the arrangement looks right, submit it so your venue can review.</li>
+              <li>Seat guests on the Seating tab when seating is open (separate from layout capacity).</li>
+              <li>When the arrangement looks right, submit it so your venue can review — editing locks until they respond.</li>
             </ul>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {canSubmitLayout && selectedId && (
@@ -1161,7 +1204,7 @@ export default function FloorPlanSection({ token }: { token: string }) {
                                   </p>
                                   <p className="text-[11px] text-muted-foreground">
                                     {item.quantityConfigured
-                                      ? `${item.remaining} of ${item.quantityAvailable} remaining`
+                                      ? `${item.remaining} of ${item.quantityAvailable} remaining (venue inventory)`
                                       : "Quantity not set by venue"}
                                   </p>
                                 </div>

@@ -252,6 +252,12 @@ export type PortalFloorPlanDetail = {
     measurementUnit: string;
     notes: string | null;
   };
+  /** Event.guest_count — recorded guest estimate, not seated assignments. */
+  eventGuestCount?: number | null;
+  /** Assigned Space display name when known. */
+  spaceName?: string | null;
+  /** venue_spaces.capacity for the plan/event Space. */
+  spaceCapacity?: number | null;
   objects: PortalFloorPlanObject[];
 };
 

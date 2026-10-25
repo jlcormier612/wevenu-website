@@ -5363,7 +5363,9 @@ export function PortalShell({
             {activeSection === "choices" && <ChoicesPortalSection token={token} />}
             {activeSection === "inventory" && <InventoryPortalSection token={token} />}
             {activeSection === "event-order" && <EventOrderPortalSection token={token} />}
-            {activeSection === "floor_plans" && planningCapabilities.floorPlan && <FloorPlanSection token={token} />}
+            {activeSection === "floor_plans" && planningCapabilities.floorPlan && (
+              <FloorPlanSection token={token} guestCount={context.event?.guestCount ?? null} />
+            )}
             {activeSection === "vendors"   && planningCapabilities.vendors && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}

@@ -823,8 +823,12 @@ export function FloorPlanWorkspace({
       ) : null}
 
       {inventoryUsage.length > 0 && (
-        <div className="space-y-2 rounded-sm border border-border bg-muted/20 p-4">
+        <div className="space-y-2 rounded-sm border border-border bg-muted/20 p-4" data-testid="floor-plan-workspace-inventory-usage">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inventory Usage</p>
+          <p className="text-[11px] text-muted-foreground">
+            Available is venue inventory on hand. Used is linked objects across this event&apos;s
+            floor plans. Remaining = Available − Used.
+          </p>
           <ul className="space-y-1">
             {inventoryUsage.map((u) => {
               const remaining = u.quantityAvailable - u.quantityUsed;
@@ -832,7 +836,7 @@ export function FloorPlanWorkspace({
                 <li key={u.itemId} className={`flex items-center justify-between text-sm ${remaining < 0 ? "text-destructive" : ""}`}>
                   <span className={remaining < 0 ? "" : "text-foreground"}>{u.name}</span>
                   <span className={remaining < 0 ? "" : "text-muted-foreground"}>
-                    {u.quantityUsed} used · {u.quantityAvailable} available · {remaining} remaining
+                    {u.quantityUsed} used on event · {u.quantityAvailable} available at venue · {remaining} remaining
                   </span>
                 </li>
               );

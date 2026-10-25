@@ -1528,14 +1528,22 @@ export function FloorPlanEditor({
 
       {/* Inventory Usage (Requirement 2) — informational only, never blocks placement */}
       {liveUsage.length > 0 && (
-        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+        <div
+          className="rounded-xl border border-border bg-muted/20 p-4 space-y-2"
+          data-testid="floor-plan-inventory-usage"
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inventory Usage</p>
+          <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-inventory-usage-legend">
+            Available is this venue&apos;s inventory quantity on hand. Used counts objects on this
+            event&apos;s floor plans that are linked to that inventory item (not every canvas
+            object with a similar label). Remaining = Available − Used.
+          </p>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-muted-foreground">
                 <th className="font-normal pb-1">Inventory Item</th>
-                <th className="font-normal pb-1 text-right">Available</th>
-                <th className="font-normal pb-1 text-right">Used</th>
+                <th className="font-normal pb-1 text-right">Available (venue)</th>
+                <th className="font-normal pb-1 text-right">Used (this event)</th>
                 <th className="font-normal pb-1 text-right">Remaining</th>
               </tr>
             </thead>
@@ -1543,7 +1551,12 @@ export function FloorPlanEditor({
               {liveUsage.map((u) => {
                 const overCommitted = u.remaining < 0;
                 return (
-                  <tr key={u.itemId} className={overCommitted ? "text-destructive" : "text-foreground"}>
+                  <tr
+                    key={u.itemId}
+                    className={overCommitted ? "text-destructive" : "text-foreground"}
+                    data-testid="floor-plan-inventory-usage-row"
+                    data-item-id={u.itemId}
+                  >
                     <td className="py-0.5">{u.name}</td>
                     <td className="py-0.5 text-right">{u.quantityAvailable}</td>
                     <td className="py-0.5 text-right">{u.quantityUsed}</td>
