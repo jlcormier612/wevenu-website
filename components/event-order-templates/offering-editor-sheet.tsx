@@ -17,8 +17,9 @@ import {
   inferPricingModelFromUnit,
   type TemplatePricingModel,
 } from "@/lib/event-order-templates/offerings";
+import { CategorizedOfferingSelect } from "@/components/event-order-templates/categorized-offering-select";
 import type { AddTemplateLineInput, EventOrderTemplateLine } from "@/lib/event-order-templates/types";
-import type { Offering } from "@/lib/offerings/types";
+import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 const PRICED_MODELS: TemplatePricingModel[] = ["flat", "per_person", "per_unit", "custom"];
 
@@ -26,6 +27,7 @@ export function OfferingEditorSheet({
   open,
   onOpenChange,
   sectionId,
+  sectionName = null,
   line,
   catalogOfferings,
   pending,
@@ -34,8 +36,9 @@ export function OfferingEditorSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sectionId: string | null;
+  sectionName?: string | null;
   line: EventOrderTemplateLine | null;
-  catalogOfferings: Offering[];
+  catalogOfferings: OfferingWithCategory[];
   pending: boolean;
   onSave: (input: AddTemplateLineInput) => Promise<boolean>;
 }) {
@@ -150,23 +153,18 @@ export function OfferingEditorSheet({
           {!line && available.length > 0 ? (
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-heading">Select from Offerings</Label>
-              <Select
+              <CategorizedOfferingSelect
+                offerings={available}
+                sectionName={sectionName}
                 value={offeringId ?? ""}
-                onValueChange={(v) => {
-                  if (v) applyCatalog(v);
+                onChange={(id) => {
+                  if (id) applyCatalog(id);
                 }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose an offering…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {available.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                testId="eo-line-offering-picker"
+                disabled={pending}
+              />
               <p className="text-xs text-muted-foreground">
-                Details are copied into this template as a snapshot. Changing the catalog later does not rewrite events that already used this template.
+                Details are copied into this template as a snapshot. Changing the catalog later does not rewrite events that already used this template. Catalog identity is kept by Offering id — never matched by name.
               </p>
               {!customMode ? (
                 <button
@@ -174,7 +172,7 @@ export function OfferingEditorSheet({
                   className="text-xs font-medium text-heading underline-offset-2 hover:underline"
                   onClick={startCustom}
                 >
-                  Or add a custom offering
+                  Or add a custom / template-only line
                 </button>
               ) : null}
             </div>

@@ -19,6 +19,7 @@ import {
   updateEventOrderTemplateGroupAction,
   updateEventOrderTemplateOptionAction,
 } from "@/app/(app)/library/event-order-templates/actions";
+import { CategorizedOfferingSelect } from "@/components/event-order-templates/categorized-offering-select";
 import { ChoicesDefinitionView } from "@/components/client-choices/choices-definition-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,12 +44,17 @@ import {
   defaultAnswersFromEventOrderTemplate,
   selectionDefinitionFromEventOrderTemplate,
 } from "@/lib/event-order-templates/selection-definition";
+import {
+  dependentGroupsForOption,
+  groupsForSection,
+  sectionCompletenessIssues,
+} from "@/lib/event-order-templates/section-workspace";
 import type {
   EventOrderTemplateGroup,
   EventOrderTemplateOption,
   EventOrderTemplateWithDetails,
 } from "@/lib/event-order-templates/types";
-import type { Offering } from "@/lib/offerings/types";
+import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 type OptionMode = "idle" | "catalog" | "custom";
 type OptionPanel = "idle" | "link" | "edit";
@@ -123,7 +129,7 @@ function DependsOnPicker({
   );
 }
 
-function ConditionalChoicePreview({
+export function ConditionalChoicePreview({
   template,
 }: {
   template: EventOrderTemplateWithDetails;
@@ -220,16 +226,31 @@ export function EventOrderTemplateChoiceGroups({
   template,
   catalogOfferings,
   onPersist,
+  lockedSectionId,
+  showUnassignedOnly = false,
+  compact = false,
+  showPreview = true,
+  nestBranches = true,
 }: {
   template: EventOrderTemplateWithDetails;
-  catalogOfferings: Offering[];
+  catalogOfferings: OfferingWithCategory[];
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
+  /** When set, only groups for this section are shown and new groups inherit it. */
+  lockedSectionId?: string | null;
+  /** Show only groups with no section assignment. */
+  showUnassignedOnly?: boolean;
+  compact?: boolean;
+  showPreview?: boolean;
+  /** Nest dependent groups under their parent options within this section. */
+  nestBranches?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
 
   const [groupName, setGroupName] = React.useState("");
-  const [groupSectionId, setGroupSectionId] = React.useState<string>("");
+  const [groupSectionId, setGroupSectionId] = React.useState<string>(
+    lockedSectionId ?? "",
+  );
   const [groupMode, setGroupMode] = React.useState<"single" | "multi">("single");
   const [groupRequired, setGroupRequired] = React.useState(true);
   const [groupDependsOn, setGroupDependsOn] = React.useState<string[]>([]);
@@ -237,7 +258,12 @@ export function EventOrderTemplateChoiceGroups({
   const [editingDepsGroupId, setEditingDepsGroupId] = React.useState<string | null>(null);
   const [editingDepsIds, setEditingDepsIds] = React.useState<string[]>([]);
 
-  const available = offeringsAvailableForAttach(catalogOfferings);
+  React.useEffect(() => {
+    if (lockedSectionId) setGroupSectionId(lockedSectionId);
+    else if (showUnassignedOnly) setGroupSectionId("");
+  }, [lockedSectionId, showUnassignedOnly]);
+
+  const available = offeringsAvailableForAttach(catalogOfferings) as OfferingWithCategory[];
   const offeringById = React.useMemo(
     () => new Map(catalogOfferings.map((o) => [o.id, o])),
     [catalogOfferings],
@@ -259,7 +285,25 @@ export function EventOrderTemplateChoiceGroups({
   const [editPrice, setEditPrice] = React.useState("");
   const [editDefault, setEditDefault] = React.useState(false);
 
-  const groups = [...template.groups].sort((a, b) => a.sortOrder - b.sortOrder);
+  const lockedSectionName = lockedSectionId
+    ? template.sections.find((s) => s.id === lockedSectionId)?.name ?? null
+    : null;
+  const optionGroupSectionName = React.useMemo(() => {
+    const g = template.groups.find((x) => x.id === optionGroupId);
+    if (!g?.sectionId) return lockedSectionName;
+    return template.sections.find((s) => s.id === g.sectionId)?.name ?? lockedSectionName;
+  }, [template.groups, template.sections, optionGroupId, lockedSectionName]);
+
+  const scopedGroups = React.useMemo(() => {
+    if (showUnassignedOnly) return groupsForSection(template.groups, null);
+    if (lockedSectionId) return groupsForSection(template.groups, lockedSectionId);
+    return [...template.groups].sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [template.groups, lockedSectionId, showUnassignedOnly]);
+
+  const groups = nestBranches
+    ? scopedGroups.filter((g) => !isDependentGroup(g))
+    : scopedGroups;
+  const completeness = sectionCompletenessIssues(scopedGroups, template.options);
   const addGroupCandidates = parentOptionCandidates(template.groups, template.options, null);
 
   function refresh() {
@@ -377,27 +421,7 @@ export function EventOrderTemplateChoiceGroups({
     });
   }
 
-  return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">
-          Choice groups
-        </h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Selectable commercial groups (Bar, Entrée, add-ons). Fixed offerings stay in sections above.
-          Use and Send freeze these into the client selection runtime. A group can stay always visible,
-          or appear only after the client picks a parent option. Options may link to a catalog Offering
-          explicitly, or stay template-only — never matched by name.
-        </p>
-      </div>
-
-      {groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-          No choice groups yet. Add a group when clients or staff should pick among options.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {groups.map((g) => {
+  function renderGroupCard(g: EventOrderTemplateGroup, depth: number) {
             const opts = optionsForGroup(template.options, g.id);
             const sectionName = g.sectionId
               ? template.sections.find((s) => s.id === g.sectionId)?.name
@@ -406,19 +430,28 @@ export function EventOrderTemplateChoiceGroups({
             const dependsSummary = formatDependsOnSummary(g.dependsOnOptionIds, template.options);
             const editing = editingDepsGroupId === g.id;
             const candidates = parentOptionCandidates(template.groups, template.options, g.id);
+            const emptyDependent = dependent && opts.length === 0;
             return (
               <li
                 key={g.id}
-                className="rounded-lg border border-border bg-background p-4 space-y-2"
+                className={`rounded-lg border bg-background p-4 space-y-2 ${
+                  emptyDependent ? "border-amber-500/60" : "border-border"
+                } ${depth > 0 ? "ml-3 border-l-4 border-l-heading/30 sm:ml-5" : ""}`}
                 data-testid={`eo-choice-group-${g.id}`}
                 data-dependent={dependent ? "true" : "false"}
+                data-branch-depth={depth}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
+                    {depth > 0 ? (
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Follow-up branch
+                      </p>
+                    ) : null}
                     <p className="text-sm font-medium text-heading">{g.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {groupRulesLabel(g)}
-                      {sectionName ? ` · ${sectionName}` : ""}
+                      {sectionName && !lockedSectionId ? ` · ${sectionName}` : ""}
                     </p>
                     <p
                       className="mt-1 text-xs font-medium text-heading"
@@ -426,6 +459,15 @@ export function EventOrderTemplateChoiceGroups({
                     >
                       {dependsSummary}
                     </p>
+                    {emptyDependent ? (
+                      <p
+                        className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-1.5 text-xs text-heading"
+                        data-testid={`eo-incomplete-branch-${g.id}`}
+                      >
+                        Incomplete: no follow-up options configured. Clients will see an empty branch when
+                        the parent option is selected. Add options below — nothing is invented automatically.
+                      </p>
+                    ) : null}
                     {g.instructions ? (
                       <p className="mt-1 text-sm text-muted-foreground">{g.instructions}</p>
                     ) : null}
@@ -511,20 +553,21 @@ export function EventOrderTemplateChoiceGroups({
                 )}
 
                 <ul className="space-y-1 pl-1">
-                  {opts.length === 0 ? (
+                  {opts.length === 0 && !dependent ? (
                     <li
                       className="text-sm text-muted-foreground"
                       data-testid={`eo-group-empty-${g.id}`}
                     >
-                      {dependent
-                        ? "No follow-up choices configured — clients will see this empty state when the parent option is selected. Add options when you are ready; nothing is invented automatically."
-                        : "No options yet."}
+                      No options yet.
                     </li>
-                  ) : (
-                    opts.map((o) => {
+                  ) : null}
+                  {opts.map((o) => {
                       const linked = o.offeringId ? offeringById.get(o.offeringId) : null;
                       const linkStatus = optionCatalogLinkStatus(o, linked);
                       const panelOpen = panelOptionId === o.id;
+                      const branchGroups = nestBranches
+                        ? dependentGroupsForOption(scopedGroups, o.id)
+                        : [];
                       return (
                         <li
                           key={o.id}
@@ -583,22 +626,18 @@ export function EventOrderTemplateChoiceGroups({
                                   an Offering in the catalog first.
                                 </p>
                               ) : (
-                                <select
-                                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                                <CategorizedOfferingSelect
+                                  offerings={available}
+                                  sectionName={
+                                    g.sectionId
+                                      ? template.sections.find((s) => s.id === g.sectionId)?.name ?? null
+                                      : lockedSectionName
+                                  }
                                   value={linkOfferingId}
-                                  data-testid={`eo-option-link-select-${o.id}`}
-                                  onChange={(e) => setLinkOfferingId(e.target.value)}
-                                >
-                                  <option value="">Choose an offering…</option>
-                                  {available.map((off) => (
-                                    <option key={off.id} value={off.id}>
-                                      {off.name}
-                                      {off.defaultUnitPrice != null
-                                        ? ` · $${off.defaultUnitPrice.toFixed(2)}`
-                                        : " · unpriced"}
-                                    </option>
-                                  ))}
-                                </select>
+                                  onChange={setLinkOfferingId}
+                                  testId={`eo-option-link-select-${o.id}`}
+                                  disabled={pending}
+                                />
                               )}
                               {linkStatus.kind === "catalog-archived" || linkStatus.kind === "catalog-missing" ? (
                                 <p className="text-xs text-muted-foreground">
@@ -751,34 +790,130 @@ export function EventOrderTemplateChoiceGroups({
                               </Button>
                             </div>
                           ) : null}
+
+                          {branchGroups.length > 0 ? (
+                            <ul className="mt-2 space-y-2" data-testid={`eo-option-branches-${o.id}`}>
+                              {branchGroups.map((branch) => renderGroupCard(branch, depth + 1))}
+                            </ul>
+                          ) : nestBranches && !dependent ? (
+                            <p className="text-[0.7rem] text-muted-foreground">
+                              No follow-up branch on this option yet. Add a choice group that depends on “{o.label}”.
+                            </p>
+                          ) : null}
                         </li>
                       );
-                    })
-                  )}
+                    })}
                 </ul>
               </li>
             );
-          })}
+  }
+
+  return (
+    <section className="space-y-4" data-testid="eo-choice-groups-panel">
+      {!compact ? (
+        <div>
+          <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">
+            Choice groups
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Selectable commercial groups for this section. Fixed offerings stay above. Options may link to a
+            catalog Offering explicitly, or stay template-only — never matched by name.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <h3 className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            Client choice structure
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Required and optional groups for this category. Dependent branches nest under the parent option that reveals them.
+          </p>
+        </div>
+      )}
+
+      {completeness.length > 0 ? (
+        <div
+          className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm text-heading"
+          data-testid="eo-section-completeness"
+        >
+          <p className="font-medium">Incomplete configuration</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
+            {completeness.map((issue) => (
+              <li key={issue.groupId}>{issue.message}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {groups.length === 0 && !(nestBranches && scopedGroups.some((g) => isDependentGroup(g))) ? (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+          {showUnassignedOnly
+            ? "No unassigned choice groups."
+            : "No choice groups in this section yet. Add a group when clients should pick among options."}
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {groups.map((g) => renderGroupCard(g, 0))}
+          {nestBranches
+            ? (() => {
+                const nestedIds = new Set<string>();
+                const walk = (groupIds: string[]) => {
+                  for (const gid of groupIds) {
+                    for (const o of optionsForGroup(template.options, gid)) {
+                      for (const d of dependentGroupsForOption(scopedGroups, o.id)) {
+                        if (nestedIds.has(d.id)) continue;
+                        nestedIds.add(d.id);
+                        walk([d.id]);
+                      }
+                    }
+                  }
+                };
+                walk(groups.map((g) => g.id));
+                const orphans = scopedGroups.filter(
+                  (g) => isDependentGroup(g) && !nestedIds.has(g.id),
+                );
+                if (orphans.length === 0) return null;
+                return (
+                  <li className="space-y-2" data-testid="eo-orphan-dependent-groups">
+                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Dependent groups (parent option outside this view)
+                    </p>
+                    <ul className="space-y-3">
+                      {orphans.map((g) => renderGroupCard(g, 1))}
+                    </ul>
+                  </li>
+                );
+              })()
+            : null}
         </ul>
       )}
 
       <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Add choice group</p>
         <Input
-          placeholder="Group name (e.g. Bar package)"
+          placeholder="Group name (e.g. Dinner service)"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
+          data-testid="eo-add-group-name"
         />
-        <select
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          value={groupSectionId}
-          onChange={(e) => setGroupSectionId(e.target.value)}
-        >
-          <option value="">No section</option>
-          {template.sections.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+        {lockedSectionId || showUnassignedOnly ? (
+          <p className="text-xs text-muted-foreground" data-testid="eo-add-group-section-locked">
+            {lockedSectionName
+              ? `Adds to section “${lockedSectionName}”.`
+              : "Adds without a section (unassigned)."}
+          </p>
+        ) : (
+          <select
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={groupSectionId}
+            onChange={(e) => setGroupSectionId(e.target.value)}
+          >
+            <option value="">No section</option>
+            {template.sections.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        )}
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input
@@ -829,8 +964,10 @@ export function EventOrderTemplateChoiceGroups({
               template.options,
               null,
             );
+            const resolvedSectionId = lockedSectionId
+              ?? (showUnassignedOnly ? null : (groupSectionId || null));
             const r = await addEventOrderTemplateGroupAction(template.id, {
-              sectionId: groupSectionId || null,
+              sectionId: resolvedSectionId,
               name: groupName,
               selectionMode: groupMode,
               minSelect: groupRequired ? 1 : 0,
@@ -900,17 +1037,14 @@ export function EventOrderTemplateChoiceGroups({
         {optionMode === "catalog" ? (
           <div className="space-y-2">
             <Label className="text-sm">Select Offering</Label>
-            <select
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            <CategorizedOfferingSelect
+              offerings={available}
+              sectionName={optionGroupSectionName}
               value={optionOfferingId}
-              onChange={(e) => pickOffering(e.target.value)}
-              autoFocus
-            >
-              <option value="">Choose an offering…</option>
-              {available.map((o) => (
-                <option key={o.id} value={o.id}>{o.name}</option>
-              ))}
-            </select>
+              onChange={pickOffering}
+              testId="eo-add-option-offering"
+              disabled={pending}
+            />
             <Input
               placeholder="Customer-facing label"
               value={optionLabel}
@@ -1003,12 +1137,14 @@ export function EventOrderTemplateChoiceGroups({
         ) : null}
       </div>
 
-      <div className="rounded-lg border border-border bg-background p-4 space-y-3">
-        <h3 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">
-          Preview client choices
-        </h3>
-        <ConditionalChoicePreview template={template} />
-      </div>
+      {showPreview ? (
+        <div className="rounded-lg border border-border bg-background p-4 space-y-3">
+          <h3 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">
+            Preview client choices
+          </h3>
+          <ConditionalChoicePreview template={template} />
+        </div>
+      ) : null}
     </section>
   );
 }

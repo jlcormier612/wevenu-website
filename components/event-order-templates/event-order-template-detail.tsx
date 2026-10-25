@@ -20,7 +20,10 @@ import {
   updateEventOrderTemplateSectionAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { OfferingEditorSheet } from "@/components/event-order-templates/offering-editor-sheet";
-import { EventOrderTemplateChoiceGroups } from "@/components/event-order-templates/event-order-template-choice-groups";
+import {
+  ConditionalChoicePreview,
+  EventOrderTemplateChoiceGroups,
+} from "@/components/event-order-templates/event-order-template-choice-groups";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
@@ -43,7 +46,12 @@ import type {
   AddTemplateLineInput, EventOrderTemplateLine, EventOrderTemplateSection,
   EventOrderTemplateWithDetails,
 } from "@/lib/event-order-templates/types";
-import type { Offering } from "@/lib/offerings/types";
+import {
+  groupsForSection,
+  sectionCompletenessIssues,
+  sectionNavItems,
+} from "@/lib/event-order-templates/section-workspace";
+import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 function RenameSheet({ template }: { template: EventOrderTemplateWithDetails }) {
   const [open, setOpen] = React.useState(false);
@@ -104,7 +112,7 @@ export function EventOrderTemplateDetail({
   template, catalogOfferings = [],
 }: {
   template: EventOrderTemplateWithDetails;
-  catalogOfferings?: Offering[];
+  catalogOfferings?: OfferingWithCategory[];
 }) {
   const router = useRouter();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
@@ -122,6 +130,23 @@ export function EventOrderTemplateDetail({
   const saveUi = useLibrarySaveStatus();
 
   const sections = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+  const navItems = sectionNavItems(template.sections, template.groups, template.options);
+  const unassignedGroups = groupsForSection(template.groups, null);
+  const unassignedIncomplete = sectionCompletenessIssues(unassignedGroups, template.options).length;
+  const [workspace, setWorkspace] = React.useState<string>(
+    () => sections[0]?.id ?? (unassignedGroups.length > 0 ? "__unassigned__" : ""),
+  );
+  React.useEffect(() => {
+    if (workspace === "__unassigned__") {
+      if (unassignedGroups.length === 0 && sections[0]) setWorkspace(sections[0].id);
+      return;
+    }
+    if (workspace && !sections.some((s) => s.id === workspace)) {
+      setWorkspace(sections[0]?.id ?? (unassignedGroups.length > 0 ? "__unassigned__" : ""));
+    }
+  }, [sections, workspace, unassignedGroups.length]);
+  const activeSection = sections.find((s) => s.id === workspace) ?? null;
+  const showUnassigned = workspace === "__unassigned__";
 
   function onPersist(phase: "saving" | "saved" | "error", message?: string) {
     if (phase === "saving") saveUi.markSaving();
@@ -216,12 +241,13 @@ export function EventOrderTemplateDetail({
       />
 
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        You are building a reusable commercial build sheet. Add fixed offerings and selectable choice
-        groups (Bar, Entrée, add-ons). Use applies selections on the venue side; Send lets the client choose.
-        Applying creates that event’s own Event Order — templates are not commitments.
+        Configure one commercial category at a time — fixed items, client choice groups, and conditional
+        follow-up branches stay together. Use applies on the venue side; Send lets the client choose.
+        Templates are not commitments.
       </p>
       <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground max-w-2xl">
-        Select offerings from your catalog first. Add a custom line or option only when needed. Need to create sellable items?{" "}
+        Catalog Offerings are selected by id (never by name). Prefer category-filtered picks inside each
+        section; switch to All categories when a cross-category item is intentional.{" "}
         <Link href="/library/offerings" className="font-medium text-heading hover:underline">
           Manage Offerings →
         </Link>
@@ -229,115 +255,205 @@ export function EventOrderTemplateDetail({
       {template.description ? <p className="text-sm text-foreground">{template.description}</p> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">Sections</h2>
+        <h2 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">
+          Commercial categories
+        </h2>
         <LibrarySaveStatus status={saveUi.status} model="autosave" />
       </div>
       <LibraryAutosaveHint />
 
-      {sections.length === 0 ? (
+      {sections.length === 0 && unassignedGroups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
           <p className="text-sm text-muted-foreground">
-            Build the structure your team uses for this kind of event. Add as much detail as you need — from simple sections to fully priced offerings.
+            Add a category (section) such as Catering, Bar, Rentals, or Services to start configuring what you sell.
           </p>
         </div>
       ) : null}
 
-      <div className="space-y-4">
-        {sections.map((section, sectionIndex) => {
-          const offerings = linesForSection(template.lines, section.id);
+      <nav
+        className="flex flex-wrap gap-2 border-b border-border pb-3"
+        aria-label="Template commercial categories"
+        data-testid="eo-template-section-nav"
+      >
+        {navItems.map((item) => {
+          const active = workspace === item.id;
           return (
-            <section key={section.id} className="rounded-lg border border-border bg-background p-4 sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="font-heading text-lg text-heading">{section.name}</h3>
-                  {section.guidance ? (
-                    <p className="mt-1 text-sm text-muted-foreground">{section.guidance}</p>
-                  ) : null}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={<Button type="button" variant="ghost" size="sm" className="shrink-0" aria-label={`${section.name} actions`} />}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => {
-                      setRenaming(section);
-                      setRenameName(section.name);
-                      setRenameGuidance(section.guidance ?? "");
-                    }}>Rename</DropdownMenuItem>
-                    <DropdownMenuItem disabled={sectionIndex === 0} onClick={() => void moveSection(sectionIndex, -1)}>
-                      Move up
-                    </DropdownMenuItem>
-                    <DropdownMenuItem disabled={sectionIndex === sections.length - 1} onClick={() => void moveSection(sectionIndex, 1)}>
-                      Move down
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => void handleRemoveSection(section.id, section.name)}
-                      disabled={removingId === section.id}
-                    >
-                      Remove section
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">Offerings</p>
-                {offerings.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No offerings yet. Select from your Offerings catalog, or add a custom line.</p>
-                ) : (
-                  offerings.map((line, lineIndex) => (
-                    <div key={line.id} className="rounded-md border border-border/80 p-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-heading">{line.description}</p>
-                        <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
-                          {line.offeringId ? "From catalog" : "Custom"}
-                        </p>
-                        {line.descriptionDetail ? (
-                          <p className="mt-1 text-sm text-muted-foreground">{line.descriptionDetail}</p>
-                        ) : null}
-                        <p className="mt-2 text-sm text-foreground">{formatTemplateOfferingPrice(line)}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {line.includedByDefault ? "Included" : "Not included by default"}
-                          {line.quantity !== 1 ? ` · Default quantity ${line.quantity}` : ""}
-                        </p>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Move earlier" disabled={lineIndex === 0} onClick={() => void moveOffering(section.id, lineIndex, -1)}>
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Move later" disabled={lineIndex === offerings.length - 1} onClick={() => void moveOffering(section.id, lineIndex, 1)}>
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => { setEditingLine(line); setEditorSectionId(section.id); setEditorOpen(true); }}>
-                          Edit
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" disabled={removingId === line.id} onClick={() => void handleRemoveLine(line.id)}>
-                          {removingId === line.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Remove"}
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setEditingLine(null); setEditorSectionId(section.id); setEditorOpen(true); }}
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add from Offerings
-                </Button>
-              </div>
-            </section>
+            <button
+              key={item.id}
+              type="button"
+              data-testid={`eo-section-nav-${item.id}`}
+              aria-current={active ? "page" : undefined}
+              className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                active
+                  ? "border-heading bg-heading text-background"
+                  : "border-border bg-background text-heading hover:bg-muted/40"
+              }`}
+              onClick={() => setWorkspace(item.id)}
+            >
+              <span className="font-medium">{item.name}</span>
+              {item.incompleteCount > 0 ? (
+                <span className={`ml-2 text-[0.65rem] ${active ? "text-background/80" : "text-amber-700"}`}>
+                  {item.incompleteCount} incomplete
+                </span>
+              ) : null}
+            </button>
           );
         })}
-      </div>
+        {unassignedGroups.length > 0 ? (
+          <button
+            type="button"
+            data-testid="eo-section-nav-unassigned"
+            aria-current={showUnassigned ? "page" : undefined}
+            className={`rounded-md border px-3 py-2 text-sm ${
+              showUnassigned
+                ? "border-heading bg-heading text-background"
+                : "border-border bg-background text-heading hover:bg-muted/40"
+            }`}
+            onClick={() => setWorkspace("__unassigned__")}
+          >
+            Unassigned choices
+            {unassignedIncomplete > 0 ? (
+              <span className="ml-2 text-[0.65rem]">{unassignedIncomplete} incomplete</span>
+            ) : null}
+          </button>
+        ) : null}
+      </nav>
+
+      {activeSection ? (() => {
+        const section = activeSection;
+        const sectionIndex = sections.findIndex((s) => s.id === section.id);
+        const offerings = linesForSection(template.lines, section.id);
+        return (
+          <section
+            key={section.id}
+            className="rounded-lg border border-border bg-background p-4 sm:p-5 space-y-6"
+            data-testid={`eo-section-workspace-${section.id}`}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="font-heading text-lg text-heading">{section.name}</h3>
+                {section.guidance ? (
+                  <p className="mt-1 text-sm text-muted-foreground">{section.guidance}</p>
+                ) : null}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<Button type="button" variant="ghost" size="sm" className="shrink-0" aria-label={`${section.name} actions`} />}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    setRenaming(section);
+                    setRenameName(section.name);
+                    setRenameGuidance(section.guidance ?? "");
+                  }}>Rename</DropdownMenuItem>
+                  <DropdownMenuItem disabled={sectionIndex === 0} onClick={() => void moveSection(sectionIndex, -1)}>
+                    Move up
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={sectionIndex === sections.length - 1} onClick={() => void moveSection(sectionIndex, 1)}>
+                    Move down
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => void handleRemoveSection(section.id, section.name)}
+                    disabled={removingId === section.id}
+                  >
+                    Remove section
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Fixed / included items
+              </p>
+              {offerings.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No fixed items yet. Add catalog Offerings suggested for this category, or a custom line.
+                </p>
+              ) : (
+                offerings.map((line, lineIndex) => (
+                  <div key={line.id} className="rounded-md border border-border/80 p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-heading">{line.description}</p>
+                      <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
+                        {line.offeringId ? "From catalog" : "Custom / template-only"}
+                      </p>
+                      {line.descriptionDetail ? (
+                        <p className="mt-1 text-sm text-muted-foreground">{line.descriptionDetail}</p>
+                      ) : null}
+                      <p className="mt-2 text-sm text-foreground">{formatTemplateOfferingPrice(line)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {line.includedByDefault ? "Included" : "Not included by default"}
+                        {line.quantity !== 1 ? ` · Default quantity ${line.quantity}` : ""}
+                      </p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Move earlier" disabled={lineIndex === 0} onClick={() => void moveOffering(section.id, lineIndex, -1)}>
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Move later" disabled={lineIndex === offerings.length - 1} onClick={() => void moveOffering(section.id, lineIndex, 1)}>
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setEditingLine(line); setEditorSectionId(section.id); setEditorOpen(true); }}>
+                        Edit
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" disabled={removingId === line.id} onClick={() => void handleRemoveLine(line.id)}>
+                        {removingId === line.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Remove"}
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid={`eo-add-offering-${section.id}`}
+                onClick={() => { setEditingLine(null); setEditorSectionId(section.id); setEditorOpen(true); }}
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add from Offerings
+              </Button>
+            </div>
+
+            <EventOrderTemplateChoiceGroups
+              template={template}
+              catalogOfferings={catalogOfferings}
+              onPersist={onPersist}
+              lockedSectionId={section.id}
+              compact
+              showPreview={false}
+              nestBranches
+            />
+          </section>
+        );
+      })() : null}
+
+      {showUnassigned ? (
+        <section className="rounded-lg border border-border bg-background p-4 sm:p-5" data-testid="eo-section-workspace-unassigned">
+          <h3 className="font-heading text-lg text-heading">Unassigned choice groups</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            These groups are not attached to a commercial category yet. Prefer assigning them to Catering, Bar, Rentals, or Services.
+          </p>
+          <div className="mt-4">
+            <EventOrderTemplateChoiceGroups
+              template={template}
+              catalogOfferings={catalogOfferings}
+              onPersist={onPersist}
+              showUnassignedOnly
+              compact
+              showPreview={false}
+              nestBranches
+            />
+          </div>
+        </section>
+      ) : null}
 
       {addingSection ? (
         <div className="space-y-2 rounded-lg border border-border p-4">
-          <Input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="Section name" autoFocus />
+          <Input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="Category name (e.g. Catering)" autoFocus />
           <Textarea value={newSectionGuidance} onChange={(e) => setNewSectionGuidance(e.target.value)} rows={2} placeholder="Description / guidance (optional)" />
           <div className="flex gap-2">
             <Button type="button" size="sm" disabled={!newSectionName.trim()} onClick={() => {
@@ -348,22 +464,31 @@ export function EventOrderTemplateDetail({
                   setAddingSection(false); setNewSectionName(""); setNewSectionGuidance(""); onPersist("saved");
                 } else onPersist("error", result.message);
               });
-            }}>Add section</Button>
+            }}>Add category</Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setAddingSection(false)}>Cancel</Button>
           </div>
         </div>
       ) : (
-        <Button type="button" variant="outline" onClick={() => setAddingSection(true)}>
+        <Button type="button" variant="outline" onClick={() => setAddingSection(true)} data-testid="eo-add-section">
           <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Add section
+          Add category
         </Button>
       )}
 
-      <EventOrderTemplateChoiceGroups
-        template={template}
-        catalogOfferings={catalogOfferings}
-        onPersist={onPersist}
-      />
+      <div className="rounded-lg border border-border bg-background p-4 space-y-3" data-testid="eo-template-client-preview">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-heading text-sm font-semibold uppercase tracking-[0.16em] text-heading">
+            Preview client experience
+          </h3>
+          <Button type="button" variant="outline" size="sm" render={<Link href={`/library/event-order-templates/${template.id}/preview`} />}>
+            Full preview
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Uses this template’s real groups and options — not a hard-coded demo. Try parent selections to reveal dependent branches.
+        </p>
+        <ConditionalChoicePreview template={template} />
+      </div>
 
       <div className="flex justify-end">
         <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={deleting} onClick={handleDelete}>
@@ -375,6 +500,11 @@ export function EventOrderTemplateDetail({
         open={editorOpen}
         onOpenChange={setEditorOpen}
         sectionId={editorSectionId}
+        sectionName={
+          editorSectionId
+            ? template.sections.find((s) => s.id === editorSectionId)?.name ?? null
+            : null
+        }
         line={editingLine}
         catalogOfferings={catalogOfferings}
         pending={editorPending}
