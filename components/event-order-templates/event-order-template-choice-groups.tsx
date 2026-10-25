@@ -4,6 +4,7 @@
  * Choice groups / options authoring for Event Order Templates
  * (commercial build sheet — absorbs Choices Template authoring).
  * Increment 1: depends_on_option_ids authoring + conditional preview.
+ * Increment 2: explicit Offering attach / clear on existing options.
  */
 import * as React from "react";
 
@@ -16,6 +17,7 @@ import {
   removeEventOrderTemplateGroupAction,
   removeEventOrderTemplateOptionAction,
   updateEventOrderTemplateGroupAction,
+  updateEventOrderTemplateOptionAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { ChoicesDefinitionView } from "@/components/client-choices/choices-definition-view";
 import { Button } from "@/components/ui/button";
@@ -23,8 +25,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ChoicesAnswers } from "@/lib/client-choices/types";
 import {
+  attachOfferingPreservingSnapshot,
   choicesOptionDraftFromOffering,
-  isCatalogBackedChoicesOption,
+  clearOfferingLinkPreservingSnapshot,
+  optionCatalogLinkStatus,
+  offeringsAvailableForAttach,
+  updateOptionFieldsPreservingOfferingLink,
 } from "@/lib/client-choices-templates/option-catalog";
 import {
   formatDependsOnSummary,
@@ -39,11 +45,13 @@ import {
 } from "@/lib/event-order-templates/selection-definition";
 import type {
   EventOrderTemplateGroup,
+  EventOrderTemplateOption,
   EventOrderTemplateWithDetails,
 } from "@/lib/event-order-templates/types";
 import type { Offering } from "@/lib/offerings/types";
 
 type OptionMode = "idle" | "catalog" | "custom";
+type OptionPanel = "idle" | "link" | "edit";
 
 function formatOptionPrice(o: { isIncluded: boolean; unitPrice: number | null }): string {
   if (o.isIncluded) return "Included";
@@ -229,7 +237,12 @@ export function EventOrderTemplateChoiceGroups({
   const [editingDepsGroupId, setEditingDepsGroupId] = React.useState<string | null>(null);
   const [editingDepsIds, setEditingDepsIds] = React.useState<string[]>([]);
 
-  const available = catalogOfferings.filter((o) => !o.isArchived);
+  const available = offeringsAvailableForAttach(catalogOfferings);
+  const offeringById = React.useMemo(
+    () => new Map(catalogOfferings.map((o) => [o.id, o])),
+    [catalogOfferings],
+  );
+
   const [optionMode, setOptionMode] = React.useState<OptionMode>("idle");
   const [optionGroupId, setOptionGroupId] = React.useState<string>("");
   const [optionOfferingId, setOptionOfferingId] = React.useState<string>("");
@@ -238,10 +251,13 @@ export function EventOrderTemplateChoiceGroups({
   const [optionPrice, setOptionPrice] = React.useState("");
   const [optionDefault, setOptionDefault] = React.useState(false);
 
-  const offeringNameById = React.useMemo(
-    () => new Map(catalogOfferings.map((o) => [o.id, o.name])),
-    [catalogOfferings],
-  );
+  const [optionPanel, setOptionPanel] = React.useState<OptionPanel>("idle");
+  const [panelOptionId, setPanelOptionId] = React.useState<string>("");
+  const [linkOfferingId, setLinkOfferingId] = React.useState("");
+  const [editLabel, setEditLabel] = React.useState("");
+  const [editIncluded, setEditIncluded] = React.useState(true);
+  const [editPrice, setEditPrice] = React.useState("");
+  const [editDefault, setEditDefault] = React.useState(false);
 
   const groups = [...template.groups].sort((a, b) => a.sortOrder - b.sortOrder);
   const addGroupCandidates = parentOptionCandidates(template.groups, template.options, null);
@@ -324,6 +340,43 @@ export function EventOrderTemplateChoiceGroups({
     });
   }
 
+  function closeOptionPanel() {
+    setOptionPanel("idle");
+    setPanelOptionId("");
+    setLinkOfferingId("");
+  }
+
+  function beginLinkOffering(o: EventOrderTemplateOption) {
+    setOptionPanel("link");
+    setPanelOptionId(o.id);
+    setLinkOfferingId(o.offeringId && offeringById.get(o.offeringId) && !offeringById.get(o.offeringId)!.isArchived
+      ? o.offeringId
+      : "");
+  }
+
+  function beginEditOption(o: EventOrderTemplateOption) {
+    setOptionPanel("edit");
+    setPanelOptionId(o.id);
+    setEditLabel(o.label);
+    setEditIncluded(o.isIncluded);
+    setEditPrice(o.unitPrice != null ? String(o.unitPrice) : "");
+    setEditDefault(o.isDefault);
+  }
+
+  function persistOptionWrite(o: EventOrderTemplateOption, input: Parameters<typeof updateEventOrderTemplateOptionAction>[2]) {
+    startTransition(async () => {
+      onPersist("saving");
+      const r = await updateEventOrderTemplateOptionAction(template.id, o.id, input);
+      if (!r.ok) {
+        onPersist("error", r.errors?.label ?? r.message ?? "Could not update option.");
+        return;
+      }
+      onPersist("saved");
+      closeOptionPanel();
+      refresh();
+    });
+  }
+
   return (
     <section className="space-y-4">
       <div>
@@ -333,7 +386,8 @@ export function EventOrderTemplateChoiceGroups({
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Selectable commercial groups (Bar, Entrée, add-ons). Fixed offerings stay in sections above.
           Use and Send freeze these into the client selection runtime. A group can stay always visible,
-          or appear only after the client picks a parent option.
+          or appear only after the client picks a parent option. Options may link to a catalog Offering
+          explicitly, or stay template-only — never matched by name.
         </p>
       </div>
 
@@ -468,36 +522,235 @@ export function EventOrderTemplateChoiceGroups({
                     </li>
                   ) : (
                     opts.map((o) => {
-                      const catalogName = o.offeringId ? offeringNameById.get(o.offeringId) : null;
+                      const linked = o.offeringId ? offeringById.get(o.offeringId) : null;
+                      const linkStatus = optionCatalogLinkStatus(o, linked);
+                      const panelOpen = panelOptionId === o.id;
                       return (
-                        <li key={o.id} className="flex items-center justify-between gap-2 text-sm">
-                          <span className="min-w-0">
-                            <span className="font-medium text-heading">{o.label}</span>
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              {formatOptionPrice(o)}
-                              {o.isDefault ? " · Default" : ""}
+                        <li
+                          key={o.id}
+                          className="space-y-2 rounded-md border border-transparent px-1 py-1 text-sm hover:border-border/60"
+                          data-testid={`eo-option-${o.id}`}
+                          data-catalog-kind={linkStatus.kind}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="min-w-0">
+                              <span className="font-medium text-heading">{o.label}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {formatOptionPrice(o)}
+                                {o.isDefault ? " · Default" : ""}
+                              </span>
+                              <span
+                                className="block text-[0.7rem] text-muted-foreground"
+                                data-testid={`eo-option-catalog-status-${o.id}`}
+                              >
+                                {linkStatus.summary}
+                              </span>
+                              {linkStatus.labelDiffersFromOffering && linkStatus.offeringName ? (
+                                <span className="block text-[0.7rem] text-muted-foreground">
+                                  Customer label differs from catalog name “{linkStatus.offeringName}”
+                                </span>
+                              ) : null}
                             </span>
-                            <span className="block text-[0.7rem] text-muted-foreground">
-                              {isCatalogBackedChoicesOption(o)
-                                ? (catalogName ? `From catalog · ${catalogName}` : "From catalog")
-                                : "Custom"}
-                            </span>
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={pending}
-                            aria-label={`Remove ${o.label}`}
-                            onClick={() => startTransition(async () => {
-                              onPersist("saving");
-                              const r = await removeEventOrderTemplateOptionAction(template.id, o.id);
-                              if (!r.ok) onPersist("error", r.message ?? "Could not remove option.");
-                              else { onPersist("saved"); refresh(); }
-                            })}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={pending}
+                              aria-label={`Remove ${o.label}`}
+                              onClick={() => startTransition(async () => {
+                                onPersist("saving");
+                                const r = await removeEventOrderTemplateOptionAction(template.id, o.id);
+                                if (!r.ok) onPersist("error", r.message ?? "Could not remove option.");
+                                else { onPersist("saved"); refresh(); }
+                              })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+
+                          {panelOpen && optionPanel === "link" ? (
+                            <div
+                              className="space-y-2 rounded-md border border-dashed border-border p-3"
+                              data-testid={`eo-option-link-panel-${o.id}`}
+                            >
+                              <p className="text-xs text-muted-foreground">
+                                Choose a catalog Offering deliberately. This keeps the option’s current
+                                label and price — catalog prices are not refreshed automatically.
+                              </p>
+                              {available.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                  No active Offerings available. Keep this option template-only, or create
+                                  an Offering in the catalog first.
+                                </p>
+                              ) : (
+                                <select
+                                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                                  value={linkOfferingId}
+                                  data-testid={`eo-option-link-select-${o.id}`}
+                                  onChange={(e) => setLinkOfferingId(e.target.value)}
+                                >
+                                  <option value="">Choose an offering…</option>
+                                  {available.map((off) => (
+                                    <option key={off.id} value={off.id}>
+                                      {off.name}
+                                      {off.defaultUnitPrice != null
+                                        ? ` · $${off.defaultUnitPrice.toFixed(2)}`
+                                        : " · unpriced"}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                              {linkStatus.kind === "catalog-archived" || linkStatus.kind === "catalog-missing" ? (
+                                <p className="text-xs text-muted-foreground">
+                                  The current link is preserved until you choose a different active Offering
+                                  or unlink. Archived offerings cannot be selected for a new attach.
+                                </p>
+                              ) : null}
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={pending || !linkOfferingId}
+                                  data-testid={`eo-option-link-save-${o.id}`}
+                                  onClick={() => {
+                                    if (!linkOfferingId) return;
+                                    persistOptionWrite(o, attachOfferingPreservingSnapshot(o, linkOfferingId));
+                                  }}
+                                >
+                                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                                  Save catalog link
+                                </Button>
+                                {o.offeringId ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={pending}
+                                    data-testid={`eo-option-unlink-${o.id}`}
+                                    onClick={() => {
+                                      persistOptionWrite(o, clearOfferingLinkPreservingSnapshot(o));
+                                    }}
+                                  >
+                                    Unlink (template-only)
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={pending}
+                                  onClick={closeOptionPanel}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {panelOpen && optionPanel === "edit" ? (
+                            <div
+                              className="space-y-2 rounded-md border border-dashed border-border p-3"
+                              data-testid={`eo-option-edit-panel-${o.id}`}
+                            >
+                              <p className="text-xs text-muted-foreground">
+                                Edit customer-facing label and price. Catalog link stays{" "}
+                                {o.offeringId ? "attached" : "template-only"}.
+                              </p>
+                              <Input
+                                value={editLabel}
+                                onChange={(e) => setEditLabel(e.target.value)}
+                                placeholder="Customer-facing label"
+                                data-testid={`eo-option-edit-label-${o.id}`}
+                              />
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={editIncluded}
+                                  onChange={(e) => setEditIncluded(e.target.checked)}
+                                />
+                                Included ($0)
+                              </label>
+                              {!editIncluded ? (
+                                <Input
+                                  value={editPrice}
+                                  onChange={(e) => setEditPrice(e.target.value)}
+                                  placeholder="Unit price"
+                                />
+                              ) : null}
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={editDefault}
+                                  onChange={(e) => setEditDefault(e.target.checked)}
+                                />
+                                Pre-selected (default)
+                              </label>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={pending || !editLabel.trim()}
+                                  data-testid={`eo-option-edit-save-${o.id}`}
+                                  onClick={() => {
+                                    const priceNum = editIncluded
+                                      ? 0
+                                      : editPrice.trim() === ""
+                                        ? null
+                                        : Number(editPrice);
+                                    persistOptionWrite(
+                                      o,
+                                      updateOptionFieldsPreservingOfferingLink(o, {
+                                        label: editLabel,
+                                        isIncluded: editIncluded,
+                                        unitPrice: editIncluded
+                                          ? 0
+                                          : priceNum != null && Number.isFinite(priceNum)
+                                            ? priceNum
+                                            : null,
+                                        isDefault: editDefault,
+                                      }),
+                                    );
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={pending}
+                                  onClick={closeOptionPanel}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {!panelOpen || optionPanel === "idle" ? (
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={pending}
+                                data-testid={`eo-option-link-${o.id}`}
+                                onClick={() => beginLinkOffering(o)}
+                              >
+                                {o.offeringId ? "Change catalog link" : "Link Offering"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={pending}
+                                data-testid={`eo-option-edit-${o.id}`}
+                                onClick={() => beginEditOption(o)}
+                              >
+                                Edit label / price
+                              </Button>
+                            </div>
+                          ) : null}
                         </li>
                       );
                     })
@@ -601,6 +854,11 @@ export function EventOrderTemplateChoiceGroups({
 
       <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Add option</p>
+        <p className="text-xs text-muted-foreground">
+          Prefer a catalog Offering when the choice is a reusable sellable. Use a template-only option when
+          the wording is package-specific or should not live in the global catalog. New catalog picks snapshot
+          label and price once; later catalog edits do not rewrite this option.
+        </p>
         <select
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           value={optionGroupId}
@@ -629,11 +887,11 @@ export function EventOrderTemplateChoiceGroups({
               disabled={!optionGroupId}
               onClick={() => setOptionMode("custom")}
             >
-              + Add custom option
+              + Add template-only option
             </Button>
             {available.length === 0 ? (
               <p className="w-full text-xs text-muted-foreground">
-                No Offerings yet — add a custom option, or create Offerings first.
+                No active Offerings yet — add a template-only option, or create Offerings first.
               </p>
             ) : null}
           </div>
@@ -735,7 +993,7 @@ export function EventOrderTemplateChoiceGroups({
                 disabled={pending || !optionLabel.trim()}
                 onClick={() => submitOption(null)}
               >
-                Add custom option
+                Add template-only option
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={resetOptionForm}>
                 Cancel
