@@ -1,0 +1,128 @@
+{
+  "pass": true,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d9e25c77af78c5e46de46dc831eda8c190dab556",
+  "digest": "sha256:63e9cfdaf8f7f1c196deef86930675f4889022ca1119d02b4565a96f470c93c0",
+  "expectedSha": "d9e25c77af78c5e46de46dc831eda8c190dab556",
+  "planId": "efca57ca-74a9-4c3d-8139-bf73b3c44412",
+  "eventId": "45109b6d-16c7-48c8-b696-15cf81efe816",
+  "c1": {
+    "id": "347cae46-e3cc-405c-aed7-56958de7bfd8",
+    "floor_plan_id": "efca57ca-74a9-4c3d-8139-bf73b3c44412",
+    "label": "C1",
+    "capacity": 4,
+    "display_shape": "cocktail",
+    "object_type": "table_round",
+    "inventory_item_id": null,
+    "width": 42,
+    "height": 42
+  },
+  "t1": {
+    "id": "8f539f13-42c9-4eda-bc91-265c9a1bdeff",
+    "floor_plan_id": "18c943fb-9762-4383-948a-e0f82fa4f89f",
+    "label": "T1",
+    "capacity": 8,
+    "display_shape": "round",
+    "object_type": "table_round",
+    "inventory_item_id": null,
+    "width": 72,
+    "height": 72
+  },
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=d9e25c77af78c5e46de46dc831eda8c190dab556 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d9e25c77af78c5e46de46dc831eda8c190dab556"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:63e9cfdaf8f7f1c196deef86930675f4889022ca1119d02b4565a96f470c93c0"
+    },
+    {
+      "name": "identity-c1-is-placement-not-type",
+      "pass": true,
+      "detail": "C1 → Cocktail Table via shape"
+    },
+    {
+      "name": "identity-t1-distinct-from-cocktail",
+      "pass": true,
+      "detail": "T1 → Round Table"
+    },
+    {
+      "name": "identity-palette-prefixes-distinct",
+      "pass": true,
+      "detail": "C vs T numbering"
+    },
+    {
+      "name": "identity-cocktail-capacity-default",
+      "pass": true,
+      "detail": "cocktail seats=4"
+    },
+    {
+      "name": "persisted-c1-shape-and-unlinked",
+      "pass": true,
+      "detail": "{\"id\":\"347cae46-e3cc-405c-aed7-56958de7bfd8\",\"floor_plan_id\":\"efca57ca-74a9-4c3d-8139-bf73b3c44412\",\"label\":\"C1\",\"capacity\":4,\"display_shape\":\"cocktail\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":42,\"height\":42}"
+    },
+    {
+      "name": "persisted-t1-shape-and-unlinked",
+      "pass": true,
+      "detail": "{\"id\":\"8f539f13-42c9-4eda-bc91-265c9a1bdeff\",\"floor_plan_id\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\",\"label\":\"T1\",\"capacity\":8,\"display_shape\":\"round\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":72,\"height\":72}"
+    },
+    {
+      "name": "fixture-plan",
+      "pass": true,
+      "detail": "{\"id\":\"efca57ca-74a9-4c3d-8139-bf73b3c44412\",\"event_id\":\"45109b6d-16c7-48c8-b696-15cf81efe816\",\"client_id\":null,\"name\":\"Barn-master-floorplan\"}"
+    },
+    {
+      "name": "inventory-cocktail-exists",
+      "pass": true,
+      "detail": "{\"id\":\"e4c69094-2047-4cca-99f3-6ef13943ccf9\",\"name\":\"Cocktail Table\",\"shape\":\"cocktail\",\"quantity_available\":0,\"available_for_floor_plans\":true}"
+    },
+    {
+      "name": "inventory-distinct-from-round60",
+      "pass": true,
+      "detail": "{\"cocktail\":\"e4c69094-2047-4cca-99f3-6ef13943ccf9\",\"round60\":\"02db1a33-a092-4d70-9772-6fe860770178\"}"
+    },
+    {
+      "name": "ui-c1-on-canvas",
+      "pass": true,
+      "detail": "label=C1"
+    },
+    {
+      "name": "ui-properties-open",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "ui-item-type-cocktail-not-c1",
+      "pass": true,
+      "detail": "Cocktail Table"
+    },
+    {
+      "name": "ui-placement-label-c1",
+      "pass": true,
+      "detail": "C1"
+    },
+    {
+      "name": "ui-unlinked-honest",
+      "pass": true,
+      "detail": "Not linked to inventory — layout-only. Placement counts do not change stock."
+    },
+    {
+      "name": "persisted-explicit-link",
+      "pass": true,
+      "detail": "{\"id\":\"347cae46-e3cc-405c-aed7-56958de7bfd8\",\"inventory_item_id\":\"e4c69094-2047-4cca-99f3-6ef13943ccf9\",\"label\":\"C1\"}"
+    },
+    {
+      "name": "persisted-unlink-restores",
+      "pass": true,
+      "detail": "{\"inventory_item_id\":null,\"label\":\"C1\"}"
+    },
+    {
+      "name": "ui-usage-honest-copy",
+      "pass": true,
+      "detail": "Available is the venue's configured inventory quantity (starters often remain 0 until you set stock). Used counts only placements linked to that inventory item — not every canvas object with a similar"
+    }
+  ],
+  "at": "2026-10-25T23:13:02.889Z"
+}
