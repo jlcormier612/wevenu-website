@@ -1,0 +1,27 @@
+PASS serving-image — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d9e25c77af78c5e46de46dc831eda8c190dab556 :: sha256:63e9cfdaf8f7f1c196deef86930675f4889022ca1119d02b4565a96f470c93c0
+PASS serving-sha-matches — got=d9e25c77af78c5e46de46dc831eda8c190dab556 expected=d9e25c77af78c5e46de46dc831eda8c190dab556
+PASS scaffold-conditional-groups — {"ensured":{"repaired":false,"upgraded":false,"conditionalAdded":0},"scaffold":{"added":0}}
+PASS template-dinner-parent — {"dinner":"Dinner service","plated":"4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9","buffet":"c629b92b-132e-4d00-bc96-0e315df55f89"}
+PASS template-dependent-wired — {"platedDepends":["4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9"],"buffetDepends":["c629b92b-132e-4d00-bc96-0e315df55f89"],"platedOptsOnTemplate":0,"buffetOptsOnTemplate":0}
+PASS template-honest-empty-children — no invented plated/buffet menu items on template
+PASS logic-plated-reveals-only-plated — Ceremony enhancements | Dinner service | Plated dinner details | Bar package | Optional rentals
+PASS logic-switch-clears-plated-child — {"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7":{"optionIds":["c629b92b-132e-4d00-bc96-0e315df55f89"]}}
+PASS logic-inactive-not-billable — Plated Dinner, QA Fixture Plated Choice
+PASS logic-required-child-blocks — plated without child
+PASS logic-hidden-required-does-not-block — buffet + buffet child
+PASS rpc-rejects-missing-parent — {"ok":false,"message":"Choose an option for “Dinner service” before submitting."}
+PASS rpc-rejects-missing-active-child — {"ok":false,"message":"Choose an option for “Plated dinner details” before submitting."}
+PASS rpc-rejects-orphan-child — {"ok":false,"message":"“Buffet dinner details” is not available for the current selections."}
+PASS rpc-accepts-plated-with-child — {"ok":true,"status":"submitted","submissionNumber":1}
+PASS persisted-plated-answers — {"status":"submitted","answers":{"7a0eb11a-d4b7-43fd-b780-9045867af4ef":{"optionIds":["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1"]},"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7":{"optionIds":["4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9"]}}}
+PASS browser-child-hidden-before-parent — platedDetailCount=0
+PASS browser-plated-reveals-plated-only — {"platedVisible":1,"buffetHidden":0,"platedChoice":1,"buffetChoice":0}
+PASS browser-switch-to-buffet — {"afterSwitchPlated":0,"afterSwitchBuffet":1,"platedStill":0,"buffetNow":1}
+PASS browser-bar-reveals-dependent — beerDetails=1
+PASS browser-submit-persisted — {"status":"submitted","answers":{"2f6a3767-a0cd-4d3a-9f53-eb435f10065f":{"optionIds":["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2"]},"5df33a80-a410-4c3e-b48f-76a3afd884af":{"optionIds":["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3"]},"6cef4198-ae9c-48d1-abd6-4db051a2ed57":{"optionIds":["e4794273-22a0-43de-ae2c-345e64b94801"]},"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7":{"optionIds":["c629b92b-132e-4d00-bc96-0e315df
+PASS browser-no-stale-plated-child — null
+PASS browser-reopen-restores-active — {"reopenBuffet":1,"reopenPlated":0}
+PASS customized-reception-preserved — groups=1 id=99585da2-587c-4b7a-9e59-5e9db5d4d998
+PASS existing-finalized-eo-untouched — {"id":"624eceef-5096-4288-b104-62daa3a82d11","status":"finalized","revision":26}
+PASS production-untouched — sandbox only
+GREEN 26/26

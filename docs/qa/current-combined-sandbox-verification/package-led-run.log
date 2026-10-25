@@ -2,11 +2,11 @@ PASS serving-sha — expected=d9e25c77af78c5e46de46dc831eda8c190dab556 ecs=40525
 PASS serving-digest — sha256:63e9cfdaf8f7f1c196deef86930675f4889022ca1119d02b4565a96f470c93c0
 PASS fixture-package — {"id":"987a70e2-f654-4569-a500-f2e38fc3a731","name":"Bar Package","base_price":2500}
 PASS fixture-open-eo — {"eventId":"9c200402-5d76-4851-aa8e-ef3ffd823144","eventOrderId":"0feaf2d4-4b6d-4fd2-a909-fe18a37714ad","templateId":"d73d9734-98d9-46a0-b54b-dccadb036150"}
-PASS stage1-selection-created — {"id":"8fc2495f-29a0-4de5-a6fe-2766d65f1fb6","name":"Process seed Bar Package","included_items":[{"unit":null,"quantity":1,"description":"EO-PROC-SEED-1792969910228"},{"unit":null,"quantity":1,"description":"EO-PROC-INCLUDED-SERVICE"}],"total_amount":2500}
+PASS stage1-selection-created — {"id":"eb0c9a1b-d180-45d4-bfa0-1987a44fe533","name":"Process seed Bar Package","included_items":[{"unit":null,"quantity":1,"description":"EO-PROC-SEED-1792970156081"},{"unit":null,"quantity":1,"description":"EO-PROC-INCLUDED-SERVICE"}],"total_amount":2500}
 PASS stage2-marker-absent-before — lines=7
 PASS stage2-browser-landed — https://app.sandbox.hellotocheers.com/clients/21d9fa35-7a0d-42ce-8697-69a9bb202cde#event-order-order
-PASS stage2-package-inclusion-seeded — [{"id":"34638835-202f-47af-bfc4-5544e5d3e36f","description":"EO-PROC-SEED-1792969910228","unit_price":null,"amount":0,"is_included":true,"notes":"package-selection:8fc2495f-29a0-4de5-a6fe-2766d65f1fb6|Process seed Bar Package","provenance":"custom","offering_id":null,"package_id":null}]
-PASS stage2-second-inclusion-seeded — [{"id":"e174fa8c-7964-4932-9e50-179b584ed4cb","description":"EO-PROC-INCLUDED-SERVICE","unit_price":null,"amount":0,"is_included":true,"notes":"package-selection:8fc2495f-29a0-4de5-a6fe-2766d65f1fb6|Process seed Bar Package","provenance":"custom","offering_id":null,"package_id":null}]
+PASS stage2-package-inclusion-seeded — [{"id":"be89e85f-1afd-4b45-89a2-deadb6115207","description":"EO-PROC-SEED-1792970156081","unit_price":null,"amount":0,"is_included":true,"notes":"package-selection:eb0c9a1b-d180-45d4-bfa0-1987a44fe533|Process seed Bar Package","provenance":"custom","offering_id":null,"package_id":null}]
+PASS stage2-second-inclusion-seeded — [{"id":"6d74f844-0a9c-417a-b77e-4cbbd5e690da","description":"EO-PROC-INCLUDED-SERVICE","unit_price":null,"amount":0,"is_included":true,"notes":"package-selection:eb0c9a1b-d180-45d4-bfa0-1987a44fe533|Process seed Bar Package","provenance":"custom","offering_id":null,"package_id":null}]
 PASS stage2-no-offering-invented — offering_id must remain null
 PASS stage2-no-package-fee-auto-added — package fee stays on booking spine
 PASS stage2-idempotent-no-duplicate — count=1

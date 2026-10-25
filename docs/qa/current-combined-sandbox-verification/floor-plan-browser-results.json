@@ -14,18 +14,20 @@
     "object_type": "table_round",
     "inventory_item_id": null,
     "width": 42,
-    "height": 42
+    "height": 42,
+    "locked": false
   },
   "t1": {
-    "id": "8f539f13-42c9-4eda-bc91-265c9a1bdeff",
-    "floor_plan_id": "18c943fb-9762-4383-948a-e0f82fa4f89f",
+    "id": "34bf1eff-9d2b-4ede-a8b8-f27e456b545e",
+    "floor_plan_id": "3cd0befe-2d94-4672-a238-28aee4dde2f0",
     "label": "T1",
     "capacity": 8,
     "display_shape": "round",
     "object_type": "table_round",
     "inventory_item_id": null,
     "width": 72,
-    "height": 72
+    "height": 72,
+    "locked": false
   },
   "checks": [
     {
@@ -61,12 +63,12 @@
     {
       "name": "persisted-c1-shape-and-unlinked",
       "pass": true,
-      "detail": "{\"id\":\"347cae46-e3cc-405c-aed7-56958de7bfd8\",\"floor_plan_id\":\"efca57ca-74a9-4c3d-8139-bf73b3c44412\",\"label\":\"C1\",\"capacity\":4,\"display_shape\":\"cocktail\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":42,\"height\":42}"
+      "detail": "{\"id\":\"347cae46-e3cc-405c-aed7-56958de7bfd8\",\"floor_plan_id\":\"efca57ca-74a9-4c3d-8139-bf73b3c44412\",\"label\":\"C1\",\"capacity\":4,\"display_shape\":\"cocktail\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":42,\"height\":42,\"locked\":false}"
     },
     {
       "name": "persisted-t1-shape-and-unlinked",
       "pass": true,
-      "detail": "{\"id\":\"8f539f13-42c9-4eda-bc91-265c9a1bdeff\",\"floor_plan_id\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\",\"label\":\"T1\",\"capacity\":8,\"display_shape\":\"round\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":72,\"height\":72}"
+      "detail": "{\"id\":\"34bf1eff-9d2b-4ede-a8b8-f27e456b545e\",\"floor_plan_id\":\"3cd0befe-2d94-4672-a238-28aee4dde2f0\",\"label\":\"T1\",\"capacity\":8,\"display_shape\":\"round\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":72,\"height\":72,\"locked\":false}"
     },
     {
       "name": "fixture-plan",
@@ -124,5 +126,5 @@
       "detail": "Available is the venue's configured inventory quantity (starters often remain 0 until you set stock). Used counts only placements linked to that inventory item — not every canvas object with a similar"
     }
   ],
-  "at": "2026-10-25T23:13:02.889Z"
+  "at": "2026-10-25T23:18:58.305Z"
 }

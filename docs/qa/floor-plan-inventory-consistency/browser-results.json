@@ -3,29 +3,31 @@
   "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d9e25c77af78c5e46de46dc831eda8c190dab556",
   "digest": "sha256:63e9cfdaf8f7f1c196deef86930675f4889022ca1119d02b4565a96f470c93c0",
   "expectedSha": "d9e25c77af78c5e46de46dc831eda8c190dab556",
-  "planId": "230b9683-1933-437b-9dba-3fd95cfbe9eb",
-  "eventId": "480628b3-e7a7-48a0-9c84-25b14bd93a26",
+  "planId": "efca57ca-74a9-4c3d-8139-bf73b3c44412",
+  "eventId": "45109b6d-16c7-48c8-b696-15cf81efe816",
   "c1": {
-    "id": "97657fb2-3beb-4976-841d-06697e7e06a2",
-    "floor_plan_id": "230b9683-1933-437b-9dba-3fd95cfbe9eb",
+    "id": "347cae46-e3cc-405c-aed7-56958de7bfd8",
+    "floor_plan_id": "efca57ca-74a9-4c3d-8139-bf73b3c44412",
     "label": "C1",
     "capacity": 4,
     "display_shape": "cocktail",
     "object_type": "table_round",
     "inventory_item_id": null,
     "width": 42,
-    "height": 42
+    "height": 42,
+    "locked": false
   },
   "t1": {
-    "id": "8f539f13-42c9-4eda-bc91-265c9a1bdeff",
-    "floor_plan_id": "18c943fb-9762-4383-948a-e0f82fa4f89f",
+    "id": "34bf1eff-9d2b-4ede-a8b8-f27e456b545e",
+    "floor_plan_id": "3cd0befe-2d94-4672-a238-28aee4dde2f0",
     "label": "T1",
     "capacity": 8,
     "display_shape": "round",
     "object_type": "table_round",
     "inventory_item_id": null,
     "width": 72,
-    "height": 72
+    "height": 72,
+    "locked": false
   },
   "checks": [
     {
@@ -61,17 +63,17 @@
     {
       "name": "persisted-c1-shape-and-unlinked",
       "pass": true,
-      "detail": "{\"id\":\"97657fb2-3beb-4976-841d-06697e7e06a2\",\"floor_plan_id\":\"230b9683-1933-437b-9dba-3fd95cfbe9eb\",\"label\":\"C1\",\"capacity\":4,\"display_shape\":\"cocktail\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":42,\"height\":42}"
+      "detail": "{\"id\":\"347cae46-e3cc-405c-aed7-56958de7bfd8\",\"floor_plan_id\":\"efca57ca-74a9-4c3d-8139-bf73b3c44412\",\"label\":\"C1\",\"capacity\":4,\"display_shape\":\"cocktail\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":42,\"height\":42,\"locked\":false}"
     },
     {
       "name": "persisted-t1-shape-and-unlinked",
       "pass": true,
-      "detail": "{\"id\":\"8f539f13-42c9-4eda-bc91-265c9a1bdeff\",\"floor_plan_id\":\"18c943fb-9762-4383-948a-e0f82fa4f89f\",\"label\":\"T1\",\"capacity\":8,\"display_shape\":\"round\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":72,\"height\":72}"
+      "detail": "{\"id\":\"34bf1eff-9d2b-4ede-a8b8-f27e456b545e\",\"floor_plan_id\":\"3cd0befe-2d94-4672-a238-28aee4dde2f0\",\"label\":\"T1\",\"capacity\":8,\"display_shape\":\"round\",\"object_type\":\"table_round\",\"inventory_item_id\":null,\"width\":72,\"height\":72,\"locked\":false}"
     },
     {
       "name": "fixture-plan",
       "pass": true,
-      "detail": "{\"id\":\"230b9683-1933-437b-9dba-3fd95cfbe9eb\",\"event_id\":\"480628b3-e7a7-48a0-9c84-25b14bd93a26\",\"client_id\":null,\"name\":\"Barn-master-floorplan\"}"
+      "detail": "{\"id\":\"efca57ca-74a9-4c3d-8139-bf73b3c44412\",\"event_id\":\"45109b6d-16c7-48c8-b696-15cf81efe816\",\"client_id\":null,\"name\":\"Barn-master-floorplan\"}"
     },
     {
       "name": "inventory-cocktail-exists",
@@ -111,7 +113,7 @@
     {
       "name": "persisted-explicit-link",
       "pass": true,
-      "detail": "{\"id\":\"97657fb2-3beb-4976-841d-06697e7e06a2\",\"inventory_item_id\":\"e4c69094-2047-4cca-99f3-6ef13943ccf9\",\"label\":\"C1\"}"
+      "detail": "{\"id\":\"347cae46-e3cc-405c-aed7-56958de7bfd8\",\"inventory_item_id\":\"e4c69094-2047-4cca-99f3-6ef13943ccf9\",\"label\":\"C1\"}"
     },
     {
       "name": "persisted-unlink-restores",
@@ -124,5 +126,5 @@
       "detail": "Available is the venue's configured inventory quantity (starters often remain 0 until you set stock). Used counts only placements linked to that inventory item — not every canvas object with a similar"
     }
   ],
-  "at": "2026-10-25T23:09:22.343Z"
+  "at": "2026-10-25T23:18:58.305Z"
 }

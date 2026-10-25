@@ -3,10 +3,10 @@
   "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d9e25c77af78c5e46de46dc831eda8c190dab556",
   "digest": "sha256:63e9cfdaf8f7f1c196deef86930675f4889022ca1119d02b4565a96f470c93c0",
   "expectedSha": "d9e25c77af78c5e46de46dc831eda8c190dab556",
-  "marker": "EO-PROC-SEED-1792969910228",
+  "marker": "EO-PROC-SEED-1792970156081",
   "eventId": "9c200402-5d76-4851-aa8e-ef3ffd823144",
   "eventOrderId": "0feaf2d4-4b6d-4fd2-a909-fe18a37714ad",
-  "selectionId": "8fc2495f-29a0-4de5-a6fe-2766d65f1fb6",
+  "selectionId": "eb0c9a1b-d180-45d4-bfa0-1987a44fe533",
   "checks": [
     {
       "name": "serving-sha",
@@ -31,7 +31,7 @@
     {
       "name": "stage1-selection-created",
       "pass": true,
-      "detail": "{\"id\":\"8fc2495f-29a0-4de5-a6fe-2766d65f1fb6\",\"name\":\"Process seed Bar Package\",\"included_items\":[{\"unit\":null,\"quantity\":1,\"description\":\"EO-PROC-SEED-1792969910228\"},{\"unit\":null,\"quantity\":1,\"description\":\"EO-PROC-INCLUDED-SERVICE\"}],\"total_amount\":2500}"
+      "detail": "{\"id\":\"eb0c9a1b-d180-45d4-bfa0-1987a44fe533\",\"name\":\"Process seed Bar Package\",\"included_items\":[{\"unit\":null,\"quantity\":1,\"description\":\"EO-PROC-SEED-1792970156081\"},{\"unit\":null,\"quantity\":1,\"description\":\"EO-PROC-INCLUDED-SERVICE\"}],\"total_amount\":2500}"
     },
     {
       "name": "stage2-marker-absent-before",
@@ -46,12 +46,12 @@
     {
       "name": "stage2-package-inclusion-seeded",
       "pass": true,
-      "detail": "[{\"id\":\"34638835-202f-47af-bfc4-5544e5d3e36f\",\"description\":\"EO-PROC-SEED-1792969910228\",\"unit_price\":null,\"amount\":0,\"is_included\":true,\"notes\":\"package-selection:8fc2495f-29a0-4de5-a6fe-2766d65f1fb6|Process seed Bar Package\",\"provenance\":\"custom\",\"offering_id\":null,\"package_id\":null}]"
+      "detail": "[{\"id\":\"be89e85f-1afd-4b45-89a2-deadb6115207\",\"description\":\"EO-PROC-SEED-1792970156081\",\"unit_price\":null,\"amount\":0,\"is_included\":true,\"notes\":\"package-selection:eb0c9a1b-d180-45d4-bfa0-1987a44fe533|Process seed Bar Package\",\"provenance\":\"custom\",\"offering_id\":null,\"package_id\":null}]"
     },
     {
       "name": "stage2-second-inclusion-seeded",
       "pass": true,
-      "detail": "[{\"id\":\"e174fa8c-7964-4932-9e50-179b584ed4cb\",\"description\":\"EO-PROC-INCLUDED-SERVICE\",\"unit_price\":null,\"amount\":0,\"is_included\":true,\"notes\":\"package-selection:8fc2495f-29a0-4de5-a6fe-2766d65f1fb6|Process seed Bar Package\",\"provenance\":\"custom\",\"offering_id\":null,\"package_id\":null}]"
+      "detail": "[{\"id\":\"6d74f844-0a9c-417a-b77e-4cbbd5e690da\",\"description\":\"EO-PROC-INCLUDED-SERVICE\",\"unit_price\":null,\"amount\":0,\"is_included\":true,\"notes\":\"package-selection:eb0c9a1b-d180-45d4-bfa0-1987a44fe533|Process seed Bar Package\",\"provenance\":\"custom\",\"offering_id\":null,\"package_id\":null}]"
     },
     {
       "name": "stage2-no-offering-invented",
@@ -84,5 +84,5 @@
       "detail": "removed EO-PROC-* lines; superseded test selection"
     }
   ],
-  "at": "2026-10-25T23:12:34.108Z"
+  "at": "2026-10-25T23:16:57.698Z"
 }

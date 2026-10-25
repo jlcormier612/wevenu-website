@@ -138,27 +138,30 @@ async function main() {
   );
 
   // Prefer true cocktail starters (display_shape=cocktail), not arbitrary "C1" labels.
+  // Order by id for a stable fixture across runs (many Barn-master C1 copies share the same label).
   const { data: cocktailObjs } = await admin
     .from("floor_plan_objects")
-    .select("id, floor_plan_id, label, capacity, display_shape, object_type, inventory_item_id, width, height")
+    .select("id, floor_plan_id, label, capacity, display_shape, object_type, inventory_item_id, width, height, locked")
     .eq("venue_id", FANCY)
     .eq("display_shape", "cocktail")
-    .order("label", { ascending: true })
-    .limit(20);
+    .order("id", { ascending: true })
+    .limit(40);
   const { data: roundObjs } = await admin
     .from("floor_plan_objects")
-    .select("id, floor_plan_id, label, capacity, display_shape, object_type, inventory_item_id, width, height")
+    .select("id, floor_plan_id, label, capacity, display_shape, object_type, inventory_item_id, width, height, locked")
     .eq("venue_id", FANCY)
     .eq("display_shape", "round")
     .ilike("label", "T%")
-    .order("label", { ascending: true })
-    .limit(20);
+    .order("id", { ascending: true })
+    .limit(40);
 
-  const c1 = (cocktailObjs ?? []).find((o) => o.label === "C1")
-    ?? (cocktailObjs ?? [])[0]
+  const unlockedCocktails = (cocktailObjs ?? []).filter((o) => o.locked !== true);
+  const unlockedRounds = (roundObjs ?? []).filter((o) => o.locked !== true);
+  const c1 = unlockedCocktails.find((o) => o.label === "C1")
+    ?? unlockedCocktails[0]
     ?? null;
-  const t1 = (roundObjs ?? []).find((o) => o.label === "T1")
-    ?? (roundObjs ?? [])[0]
+  const t1 = unlockedRounds.find((o) => o.label === "T1")
+    ?? unlockedRounds[0]
     ?? null;
   const objs = [...(cocktailObjs ?? []), ...(roundObjs ?? [])];
   record(
@@ -259,12 +262,22 @@ async function main() {
     const select = page.locator('[data-testid="floor-plan-object-inventory-select"]');
     if ((await select.count()) > 0 && invCocktail?.id) {
       await select.selectOption(invCocktail.id);
-      await page.waitForTimeout(1500);
-      const { data: afterLink } = await admin
-        .from("floor_plan_objects")
-        .select("id, inventory_item_id, label")
-        .eq("id", c1.id)
-        .single();
+      for (let i = 0; i < 10; i++) {
+        if ((await select.inputValue()) === invCocktail.id) break;
+        await page.waitForTimeout(200);
+      }
+      // Persist is async server action — poll DB rather than fixed sleep (avoids parallel-load flakes).
+      let afterLink: { id: string; inventory_item_id: string | null; label: string | null } | null = null;
+      for (let i = 0; i < 20; i++) {
+        const { data } = await admin
+          .from("floor_plan_objects")
+          .select("id, inventory_item_id, label")
+          .eq("id", c1.id)
+          .single();
+        afterLink = data;
+        if (afterLink?.inventory_item_id === invCocktail.id) break;
+        await page.waitForTimeout(400);
+      }
       record(
         "persisted-explicit-link",
         afterLink?.inventory_item_id === invCocktail.id && afterLink?.label === "C1",
@@ -272,12 +285,17 @@ async function main() {
       );
       // Unlink to restore starter state (preserve fixtures)
       await select.selectOption("");
-      await page.waitForTimeout(1200);
-      const { data: afterUnlink } = await admin
-        .from("floor_plan_objects")
-        .select("inventory_item_id, label")
-        .eq("id", c1.id)
-        .single();
+      let afterUnlink: { inventory_item_id: string | null; label: string | null } | null = null;
+      for (let i = 0; i < 20; i++) {
+        const { data } = await admin
+          .from("floor_plan_objects")
+          .select("inventory_item_id, label")
+          .eq("id", c1.id)
+          .single();
+        afterUnlink = data;
+        if (afterUnlink?.inventory_item_id == null) break;
+        await page.waitForTimeout(400);
+      }
       record(
         "persisted-unlink-restores",
         afterUnlink?.inventory_item_id == null && afterUnlink?.label === "C1",
