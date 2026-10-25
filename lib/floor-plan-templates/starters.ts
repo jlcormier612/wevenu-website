@@ -1,14 +1,27 @@
 /**
- * Hello to Cheers — Starter Floor Plan Templates (FP-01 / FP-02).
+ * Hello to Cheers — Starter Floor Plan Templates.
  *
- * Illustrative layouts only. Room dimensions are neutral placeholders —
- * venues resize to their real spaces. No capacity/fire-code/ADA/exit claims.
- * No inventory links (optional sourcing happens later on venue copies).
+ * Distinct wedding-setup starters (ceremony / cocktail / reception), plus an
+ * optional same-room flip and a blank canvas. Illustrative layouts only —
+ * room dimensions are neutral placeholders. No capacity/fire-code/ADA claims.
+ * No inventory links. No phase/timeline engine — each starter is one static plan.
+ *
+ * Legacy FP-01 ("Standard Wedding — Ceremony + Reception" combined canvas) is
+ * intentionally NOT in this list. Existing venue copies with source_master_key
+ * FP-01 remain readable and editable; new venues no longer receive that default.
  */
 
 import type { DisplayShape, MeasurementUnit, ObjectType } from "@/lib/floor-plans/types";
 
-export type FloorPlanStarterMasterKey = "FP-01" | "FP-02";
+export type FloorPlanStarterMasterKey =
+  | "FP-02"
+  | "FP-03"
+  | "FP-04"
+  | "FP-05"
+  | "FP-SR";
+
+/** Legacy combined master — no longer provisioned; kept for docs/tests/compat. */
+export const LEGACY_COMBINED_FLOOR_PLAN_STARTER_KEY = "FP-01" as const;
 
 export type FloorPlanStarterObject = {
   objectType: ObjectType;
@@ -59,65 +72,53 @@ const obj = (
 
 /** Zone label helper — text_label has no capacity. */
 const zone = (label: string, x: number, y: number) =>
-  obj("text_label", label, x, y, 120, 28);
+  obj("text_label", label, x, y, 160, 28);
 
 /**
- * FP-01 — Ceremony (left) → Cocktail (center) → Reception (right).
- * Illustrative canvas: 80 ft × 50 ft (960 × 600 inches). Not a real venue claim.
+ * FP-03 — Wedding Ceremony only.
+ * Illustrative canvas: 50 ft × 40 ft (600 × 480 inches).
  */
-function buildCeremonyAndReceptionObjects(): FloorPlanStarterObject[] {
-  const objects: FloorPlanStarterObject[] = [
-    zone("Ceremony", 140, 36),
-    zone("Cocktail", 380, 36),
-    zone("Reception", 700, 36),
+function buildCeremonyObjects(): FloorPlanStarterObject[] {
+  return [
+    zone("Ceremony", 300, 28),
 
-    // Ceremony focal + aisle
-    obj("other", "Arbor", 140, 100, 90, 50, { displayShape: "arbor" }),
-    obj("other", "Aisle", 140, 260, 48, 220, { displayShape: "aisle" }),
+    obj("other", "Arbor", 300, 90, 100, 56, { displayShape: "arbor" }),
+    obj("other", "Aisle", 300, 280, 48, 240, { displayShape: "aisle" }),
 
-    // Ceremony seating rows (left / right of aisle)
-    obj("table_rect", "Ceremony Row 1", 70, 180, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Ceremony Row 1", 210, 180, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Ceremony Row 2", 70, 230, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Ceremony Row 2", 210, 230, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Ceremony Row 3", 70, 280, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Ceremony Row 3", 210, 280, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Ceremony Row 4", 70, 330, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Ceremony Row 4", 210, 330, 100, 28, { capacity: 8 }),
-    obj("table_rect", "Reserved", 70, 380, 100, 28, { capacity: 6 }),
-    obj("table_rect", "Reserved", 210, 380, 100, 28, { capacity: 6 }),
-
-    // Cocktail hour
-    obj("table_round", "C1", 340, 160, 42, 42, { capacity: 4, displayShape: "cocktail" }),
-    obj("table_round", "C2", 420, 160, 42, 42, { capacity: 4, displayShape: "cocktail" }),
-    obj("table_round", "C3", 340, 250, 42, 42, { capacity: 4, displayShape: "cocktail" }),
-    obj("table_round", "C4", 420, 250, 42, 42, { capacity: 4, displayShape: "cocktail" }),
-    obj("table_round", "C5", 380, 340, 42, 42, { capacity: 4, displayShape: "cocktail" }),
-    obj("bar", "Cocktail Bar", 380, 430, 120, 44, { displayShape: "bar" }),
-
-    // Reception guest tables
-    obj("table_round", "T1", 560, 160, 72, 72, { capacity: 8, displayShape: "round" }),
-    obj("table_round", "T2", 680, 160, 72, 72, { capacity: 8, displayShape: "round" }),
-    obj("table_round", "T3", 800, 160, 72, 72, { capacity: 8, displayShape: "round" }),
-    obj("table_round", "T4", 560, 280, 72, 72, { capacity: 8, displayShape: "round" }),
-    obj("table_round", "T5", 800, 280, 72, 72, { capacity: 8, displayShape: "round" }),
-    obj("table_round", "T6", 560, 400, 72, 72, { capacity: 8, displayShape: "round" }),
-    obj("table_round", "T7", 680, 400, 72, 72, { capacity: 8, displayShape: "round" }),
-    obj("table_round", "T8", 800, 400, 72, 72, { capacity: 8, displayShape: "round" }),
-
-    obj("table_rect", "Sweetheart", 680, 250, 110, 44, { capacity: 2 }),
-    obj("dance_floor", "Dance Floor", 680, 520, 160, 120, { displayShape: "dance_floor" }),
-    obj("other", "DJ / Band", 860, 520, 90, 50, { displayShape: "dj_booth" }),
-    obj("bar", "Bar", 900, 320, 100, 44, { displayShape: "bar" }),
-    obj("cake_table", "Cake", 900, 420, 60, 40),
-    obj("gift_table", "Gifts", 900, 240, 80, 40),
+    obj("table_rect", "Ceremony Row 1", 160, 180, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 1", 440, 180, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 2", 160, 240, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 2", 440, 240, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 3", 160, 300, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 3", 440, 300, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 4", 160, 360, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 4", 440, 360, 110, 28, { capacity: 8 }),
+    obj("table_rect", "Reserved", 160, 420, 110, 28, { capacity: 6 }),
+    obj("table_rect", "Reserved", 440, 420, 110, 28, { capacity: 6 }),
   ];
-  return objects;
 }
 
 /**
- * FP-02 — Reception-only layout (not a ceremony layout with ceremony hidden).
- * Illustrative canvas: 60 ft × 40 ft (720 × 480 inches). Not a real venue claim.
+ * FP-04 — Cocktail Hour only.
+ * Illustrative canvas: 40 ft × 30 ft (480 × 360 inches).
+ */
+function buildCocktailObjects(): FloorPlanStarterObject[] {
+  return [
+    zone("Cocktail Hour", 240, 24),
+
+    obj("table_round", "C1", 120, 120, 42, 42, { capacity: 4, displayShape: "cocktail" }),
+    obj("table_round", "C2", 220, 120, 42, 42, { capacity: 4, displayShape: "cocktail" }),
+    obj("table_round", "C3", 320, 120, 42, 42, { capacity: 4, displayShape: "cocktail" }),
+    obj("table_round", "C4", 120, 220, 42, 42, { capacity: 4, displayShape: "cocktail" }),
+    obj("table_round", "C5", 220, 220, 42, 42, { capacity: 4, displayShape: "cocktail" }),
+    obj("table_round", "C6", 320, 220, 42, 42, { capacity: 4, displayShape: "cocktail" }),
+    obj("bar", "Cocktail Bar", 240, 300, 140, 44, { displayShape: "bar" }),
+  ];
+}
+
+/**
+ * FP-02 — Wedding Reception only (not a ceremony layout with ceremony hidden).
+ * Illustrative canvas: 60 ft × 40 ft (720 × 480 inches).
  */
 function buildReceptionOnlyObjects(): FloorPlanStarterObject[] {
   return [
@@ -145,33 +146,121 @@ function buildReceptionOnlyObjects(): FloorPlanStarterObject[] {
   ];
 }
 
+/**
+ * FP-SR — Same-room ceremony + reception flip (specialized).
+ * One static canvas with two labeled reference arrangements side by side.
+ * Does NOT switch by event phase — Hello to Cheers stores one arrangement
+ * per floor plan; venues edit or duplicate plans for the flip.
+ * Illustrative canvas: 80 ft × 50 ft (960 × 600 inches).
+ */
+function buildSameRoomFlipObjects(): FloorPlanStarterObject[] {
+  return [
+    zone("Ceremony setup (reference)", 160, 28),
+    zone("Reception setup (reference)", 700, 28),
+    obj(
+      "text_label",
+      "Same room — static reference only (not a timed flip)",
+      480,
+      70,
+      280,
+      28,
+    ),
+
+    // Ceremony (left)
+    obj("other", "Arbor", 160, 120, 90, 50, { displayShape: "arbor" }),
+    obj("other", "Aisle", 160, 280, 48, 220, { displayShape: "aisle" }),
+    obj("table_rect", "Ceremony Row 1", 80, 200, 100, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 1", 240, 200, 100, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 2", 80, 260, 100, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 2", 240, 260, 100, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 3", 80, 320, 100, 28, { capacity: 8 }),
+    obj("table_rect", "Ceremony Row 3", 240, 320, 100, 28, { capacity: 8 }),
+    obj("table_rect", "Reserved", 80, 380, 100, 28, { capacity: 6 }),
+    obj("table_rect", "Reserved", 240, 380, 100, 28, { capacity: 6 }),
+
+    // Reception (right) — dining focus for after the flip
+    obj("table_rect", "Sweetheart", 700, 140, 110, 44, { capacity: 2 }),
+    obj("table_round", "T1", 560, 200, 72, 72, { capacity: 8, displayShape: "round" }),
+    obj("table_round", "T2", 680, 200, 72, 72, { capacity: 8, displayShape: "round" }),
+    obj("table_round", "T3", 800, 200, 72, 72, { capacity: 8, displayShape: "round" }),
+    obj("table_round", "T4", 560, 320, 72, 72, { capacity: 8, displayShape: "round" }),
+    obj("table_round", "T5", 800, 320, 72, 72, { capacity: 8, displayShape: "round" }),
+    obj("table_round", "T6", 680, 400, 72, 72, { capacity: 8, displayShape: "round" }),
+    obj("dance_floor", "Dance Floor", 700, 500, 160, 100, { displayShape: "dance_floor" }),
+    obj("bar", "Bar", 880, 320, 100, 44, { displayShape: "bar" }),
+    obj("other", "DJ / Band", 880, 420, 90, 50, { displayShape: "dj_booth" }),
+  ];
+}
+
 export const FLOOR_PLAN_STARTER_MASTERS: readonly FloorPlanStarterMaster[] = [
   {
-    key: "FP-01",
-    name: "Standard Wedding — Ceremony + Reception",
+    key: "FP-03",
+    name: "Wedding Ceremony",
     description:
-      "A flexible starting layout for a wedding with both a ceremony and reception. Customize the room, seating, and other elements to match your venue and the event.",
+      "Ceremony seating and a focal point (arbor/altar). Does not include cocktail hour or reception dining — start from those starters when you need them as separate plans.",
     eventType: "wedding",
-    roomWidthFt: 80,
-    roomDepthFt: 50,
+    roomWidthFt: 50,
+    roomDepthFt: 40,
     measurementUnit: "feet_inches",
-    objects: buildCeremonyAndReceptionObjects(),
+    objects: buildCeremonyObjects(),
+  },
+  {
+    key: "FP-04",
+    name: "Cocktail Hour",
+    description:
+      "Mingling space with high-tops and a bar. Does not include ceremony seating or a full reception dining layout.",
+    eventType: "wedding",
+    roomWidthFt: 40,
+    roomDepthFt: 30,
+    measurementUnit: "feet_inches",
+    objects: buildCocktailObjects(),
   },
   {
     key: "FP-02",
-    name: "Standard Wedding — Reception Only",
+    name: "Wedding Reception",
     description:
-      "A flexible starting layout for a wedding reception at your venue. Customize the room, seating, dance floor, service areas, and other elements to match your space and event.",
+      "Dining tables, dance floor, and common reception service areas. Does not include a ceremony or cocktail-hour setup.",
     eventType: "wedding",
     roomWidthFt: 60,
     roomDepthFt: 40,
     measurementUnit: "feet_inches",
     objects: buildReceptionOnlyObjects(),
   },
+  {
+    key: "FP-SR",
+    name: "Same-Room Ceremony + Reception Flip",
+    description:
+      "Specialized starter for venues that use one room for ceremony then reception. Shows both arrangements as a static reference on one canvas — Hello to Cheers does not switch layouts by event phase. Duplicate or edit plans when you need separate before/after working copies.",
+    eventType: "wedding",
+    roomWidthFt: 80,
+    roomDepthFt: 50,
+    measurementUnit: "feet_inches",
+    objects: buildSameRoomFlipObjects(),
+  },
+  {
+    key: "FP-05",
+    name: "Blank Floor Plan",
+    description:
+      "An empty canvas so you can build your own layout. No ceremony, cocktail, or reception objects are prepopulated.",
+    eventType: "wedding",
+    roomWidthFt: 60,
+    roomDepthFt: 40,
+    measurementUnit: "feet_inches",
+    objects: [],
+  },
 ] as const;
 
 export function getFloorPlanStarterMaster(key: string): FloorPlanStarterMaster | undefined {
   return FLOOR_PLAN_STARTER_MASTERS.find((m) => m.key === key);
+}
+
+export function listFloorPlanStarterMasters(): FloorPlanStarterMaster[] {
+  return [...FLOOR_PLAN_STARTER_MASTERS];
+}
+
+/** Labels that appear only on the specialized same-room flip starter. */
+export function isSameRoomFlipStarter(master: FloorPlanStarterMaster): boolean {
+  return master.key === "FP-SR";
 }
 
 /**
@@ -187,4 +276,17 @@ export function shouldSkipFloorPlanStarterProvision(opts: {
   if (opts.existingByKey.has(opts.masterKey)) return "skip_key";
   if (opts.existingNames.has(opts.masterName)) return "skip_name";
   return "create";
+}
+
+/**
+ * True when a venue template still looks like the legacy combined FP-01
+ * (ceremony + cocktail + reception zones). Used only for documentation /
+ * preservation checks — never auto-rewritten.
+ */
+export function looksLikeLegacyCombinedFloorPlan(labels: readonly (string | null)[]): boolean {
+  const lower = labels.map((l) => (l ?? "").toLowerCase());
+  const hasCeremony = lower.some((l) => l === "ceremony" || l.includes("ceremony row"));
+  const hasCocktail = lower.some((l) => l === "cocktail" || l.includes("cocktail"));
+  const hasReception = lower.some((l) => l === "reception" || l.startsWith("t"));
+  return hasCeremony && hasCocktail && hasReception;
 }

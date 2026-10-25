@@ -40,6 +40,7 @@ import {
 } from "@/lib/floor-plan-templates/event-type-options";
 import {
   FLOOR_PLAN_STARTER_MASTERS,
+  getFloorPlanStarterMaster,
   type FloorPlanStarterMasterKey,
 } from "@/lib/floor-plan-templates/starters";
 import type { FloorPlanTemplateWithStats } from "@/lib/floor-plan-templates/types";
@@ -213,6 +214,11 @@ function TemplateCard({
 }) {
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
   const previewHref = `/library/floor-plan-templates/${template.id}/preview`;
+  const starterMaster = template.sourceMasterKey
+    ? getFloorPlanStarterMaster(template.sourceMasterKey)
+    : undefined;
+  const starterDescription = starterMaster?.description ?? null;
+  const isSpecializedFlip = starterMaster?.key === "FP-SR";
 
   const primaryActions = archivedView
     ? [
@@ -252,11 +258,15 @@ function TemplateCard({
     <LibraryAssetCard
       layout="row"
       title={template.name}
+      description={starterDescription}
       isStarter={Boolean(template.sourceMasterKey)}
       isArchived={template.isArchived}
       badges={
         <>
           <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
+          {isSpecializedFlip && (
+            <Badge variant="muted" className="text-[10px]">Specialized · same room</Badge>
+          )}
           {template.spaceName && <Badge variant="accent" className="text-[10px]">{template.spaceName}</Badge>}
           {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
         </>

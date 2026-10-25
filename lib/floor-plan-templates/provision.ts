@@ -1,7 +1,8 @@
 /**
- * Provision Hello to Cheers Floor Plan starters (FP-01 / FP-02)
- * into a venue Library. Masters are code fixtures — never editable DB rows.
- * Venue copies are independent; provision never overwrites customizations.
+ * Provision Hello to Cheers Floor Plan starters into a venue Library.
+ * Masters are code fixtures — never editable DB rows. Venue copies are
+ * independent; provision never overwrites existing keys or same-named
+ * customizations (including legacy FP-01 combined copies still in the DB).
  */
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
