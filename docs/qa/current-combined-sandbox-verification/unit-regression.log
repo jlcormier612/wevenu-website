@@ -1,0 +1,96 @@
+▶ optionCatalogLinkStatus
+  ✔ marks template-only when offering_id is null (1.606834ms)
+  ✔ shows catalog name and label difference (0.18525ms)
+  ✔ preserves archived link with clear status (0.351875ms)
+  ✔ does not unlink when offering missing from loaded catalog (0.096917ms)
+✔ optionCatalogLinkStatus (4.658625ms)
+▶ attach / clear / edit preserving snapshot
+  ✔ attaches offering_id without changing label or price (0.422875ms)
+  ✔ clears offering link and keeps template-only snapshots (0.120125ms)
+  ✔ edits label without losing offering link (0.328625ms)
+  ✔ new-option draft may snapshot catalog price once; attach path does not refresh (0.137167ms)
+✔ attach / clear / edit preserving snapshot (3.689667ms)
+▶ picker and no name-based attach
+  ✔ excludes archived offerings from attach picker (4.2595ms)
+  ✔ module source has no name-based attach helper (0.204833ms)
+✔ picker and no name-based attach (4.628625ms)
+▶ freeze / provenance carry-through
+  ✔ selection freeze retains offeringId for catalog-backed options and null for template-only (1.372208ms)
+✔ freeze / provenance carry-through (1.417708ms)
+▶ conditional choice groups
+  ✔ 1. required parent cannot be skipped (0.745708ms)
+  ✔ 2. Plated reveals only plated child groups (0.243375ms)
+  ✔ 3. Buffet reveals only buffet child groups (0.090292ms)
+  ✔ 4. switching Plated → Buffet deactivates plated-only selections (0.819417ms)
+  ✔ 5. switching Buffet → Plated deactivates buffet-only selections (0.068583ms)
+  ✔ 6. inactive children cannot remain billable (0.166458ms)
+  ✔ 7. Bar parent/child behaves equivalently (0.110834ms)
+  ✔ 8. parent + child prices are not double-counted beyond selected lines (0.088583ms)
+  ✔ 9. required child blocks submit when active and unanswered (0.222041ms)
+  ✔ 10. hidden required child does not block submit (0.206334ms)
+  ✔ 11. orphan answers on inactive children are rejected without reconcile (0.346625ms)
+  ✔ 12. nested children render immediately after parent in visible order (0.120167ms)
+✔ conditional choice groups (5.270583ms)
+▶ EO template builder — category-first UX seams
+  ✔ detail uses section navigation and nests choice groups per section (0.682875ms)
+  ✔ choice groups nest branches and flag incomplete dependents (0.377ms)
+  ✔ offering pickers are category-filtered without name-based linking (0.164ms)
+✔ EO template builder — category-first UX seams (2.461958ms)
+▶ formatDependsOnSummary
+  ✔ reports Always shown when there are no dependencies (0.777292ms)
+  ✔ renders a single parent option label (0.10125ms)
+  ✔ renders multiple activating parents with or (0.071417ms)
+✔ formatDependsOnSummary (1.639959ms)
+▶ parentOptionCandidates / sanitizeDependsOnOptionIds
+  ✔ lists options from other groups only (1.352042ms)
+  ✔ sanitizes add: keeps valid ids, drops unknown and self-group ids (0.108875ms)
+  ✔ supports removing a dependency by omitting it (0.0695ms)
+✔ parentOptionCandidates / sanitizeDependsOnOptionIds (1.638458ms)
+▶ isDependentGroup
+  ✔ distinguishes gated vs always-on groups (0.104542ms)
+✔ isDependentGroup (0.520042ms)
+▶ persistence + freeze + preview semantics
+  ✔ serializes dependsOnOptionIds into the selection freeze (0.208958ms)
+  ✔ reload shape retains configured dependency (round-trip via template model) (0.855708ms)
+  ✔ preview: child hidden until parent selected; visible after (0.663125ms)
+  ✔ honest-empty dependent group stays active with zero options (0.270917ms)
+  ✔ regression: groups without dependencies remain always visible (0.103708ms)
+✔ persistence + freeze + preview semantics (2.360458ms)
+▶ categoryMatchesSection — discovery only
+  ✔ matches exact and alias labels without inventing links (1.343375ms)
+✔ categoryMatchesSection — discovery only (3.469875ms)
+▶ section workspace grouping
+  ✔ scopes groups to a section and nests dependents under parent options (1.330792ms)
+  ✔ flags empty dependent branches as incomplete (0.203042ms)
+✔ section workspace grouping (1.674625ms)
+▶ filterOfferingsForSectionPicker
+  ✔ prefers category-matched offerings and falls back to all when none match (1.42025ms)
+✔ filterOfferingsForSectionPicker (1.484833ms)
+▶ filterPackageInclusionsToSeed
+  ✔ seeds missing inclusion text as distinct items (0.576583ms)
+  ✔ dedupes against existing EO lines by description (case-insensitive, any section) (0.09575ms)
+  ✔ dedupes duplicate inclusion rows within the package snapshot (0.082167ms)
+  ✔ skips blank descriptions and normalizes zero quantity to 1 (0.070167ms)
+✔ filterPackageInclusionsToSeed (1.622625ms)
+▶ packageSelectionNotes
+  ✔ stamps selection id for audit without inventing Offering links (0.182125ms)
+✔ packageSelectionNotes (0.24675ms)
+▶ ensureEventOrder wires booking package inclusion seed
+  ✔ service seeds after template copy and on replace (0.337209ms)
+  ✔ Event Order panel reconciles ensure when an open EO already exists (0.257417ms)
+✔ ensureEventOrder wires booking package inclusion seed (0.695584ms)
+▶ object identity — placement vs item type
+  ✔ treats C1/T6 as placement ids, not item names (0.681375ms)
+  ✔ numbers cocktail and round placements with distinct prefixes (0.487375ms)
+  ✔ suggests 4 seats for cocktail and size-based seats for rounds (0.102375ms)
+  ✔ resolves item type from inventory, then shape — never from placement id (0.114666ms)
+  ✔ reports unlinked honestly without inventing a relationship (0.126333ms)
+✔ object identity — placement vs item type (2.676291ms)
+ℹ tests 54
+ℹ suites 17
+ℹ pass 54
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 328.804542
