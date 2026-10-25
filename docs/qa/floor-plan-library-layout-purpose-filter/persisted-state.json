@@ -1,0 +1,67 @@
+{
+  "templates": [
+    {
+      "id": "026fb633-2dce-4c73-87c8-144bb29a0318",
+      "name": "Standard Wedding — Reception Only",
+      "event_type": "wedding",
+      "source_master_key": "FP-02",
+      "is_archived": false
+    },
+    {
+      "id": "3d4e11ef-7de7-495b-8fc7-b2eaf59584c3",
+      "name": "Barn-master-floorplan",
+      "event_type": null,
+      "source_master_key": null,
+      "is_archived": false
+    },
+    {
+      "id": "c680cc72-872d-4dab-9bc0-815fefb35251",
+      "name": "Standard Wedding — Ceremony + Reception",
+      "event_type": "wedding",
+      "source_master_key": "FP-01",
+      "is_archived": false
+    },
+    {
+      "id": "2baac114-0349-4c38-83b0-c621e93d0064",
+      "name": "Wedding Ceremony",
+      "event_type": "wedding",
+      "source_master_key": "FP-03",
+      "is_archived": false
+    },
+    {
+      "id": "bd839ee5-5e0b-4556-9ecd-e1980abefba9",
+      "name": "Cocktail Hour",
+      "event_type": "wedding",
+      "source_master_key": "FP-04",
+      "is_archived": false
+    },
+    {
+      "id": "5bf1d3f2-32e4-4ffd-9745-faf74a99d5f4",
+      "name": "Same-Room Ceremony + Reception Flip",
+      "event_type": "wedding",
+      "source_master_key": "FP-SR",
+      "is_archived": false
+    },
+    {
+      "id": "ceaa8b27-a2ea-4c22-b3fb-59d9f70f75b1",
+      "name": "Blank Floor Plan",
+      "event_type": "wedding",
+      "source_master_key": "FP-05",
+      "is_archived": false
+    }
+  ],
+  "fp02": {
+    "id": "026fb633-2dce-4c73-87c8-144bb29a0318",
+    "name": "Standard Wedding — Reception Only",
+    "event_type": "wedding",
+    "source_master_key": "FP-02",
+    "is_archived": false
+  },
+  "fp01": {
+    "id": "c680cc72-872d-4dab-9bc0-815fefb35251",
+    "name": "Standard Wedding — Ceremony + Reception",
+    "event_type": "wedding",
+    "source_master_key": "FP-01",
+    "is_archived": false
+  }
+}

@@ -1,0 +1,256 @@
+{
+  "templateId": "d73d9734-98d9-46a0-b54b-dccadb036150",
+  "dinnerParent": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+  "platedDep": "7a0eb11a-d4b7-43fd-b780-9045867af4ef",
+  "buffetDep": "2f6a3767-a0cd-4d3a-9f53-eb435f10065f",
+  "fixture": {
+    "definition": {
+      "sections": [
+        {
+          "id": "a335dd2e-d11d-46db-931e-f99474766fc4",
+          "name": "Ceremony",
+          "guidance": "Standard ceremony setup is included. Enhancements are optional paid add-ons.",
+          "sortOrder": 0
+        },
+        {
+          "id": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+          "name": "Catering",
+          "guidance": "The couple must choose one dinner service.",
+          "sortOrder": 1
+        },
+        {
+          "id": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+          "name": "Bar and beverages",
+          "guidance": "Bar service is optional — decline by leaving unselected.",
+          "sortOrder": 2
+        },
+        {
+          "id": "e3ef13fb-9a7d-4f2e-b4d2-84327612044f",
+          "name": "Rentals",
+          "guidance": "Optional rental products the couple may add.",
+          "sortOrder": 3
+        },
+        {
+          "id": "dcdfb5f2-d068-4f6b-aca5-ba13de0cc1ee",
+          "name": "Services",
+          "guidance": "Staffing and coordination included with this package.",
+          "sortOrder": 4
+        }
+      ],
+      "fixedLines": [
+        {
+          "id": "e5731b37-5eed-439d-a849-76ea369020a8",
+          "sectionId": "a335dd2e-d11d-46db-931e-f99474766fc4",
+          "description": "Ceremony Coordination",
+          "descriptionDetail": null,
+          "quantity": 1,
+          "unitPrice": 500,
+          "unit": null,
+          "pricingModel": "flat",
+          "includedByDefault": true,
+          "sortOrder": 0
+        },
+        {
+          "id": "19ceaa38-0aa7-43f1-a2d5-ed83f344912d",
+          "sectionId": "dcdfb5f2-d068-4f6b-aca5-ba13de0cc1ee",
+          "description": "Day-of Coordination",
+          "descriptionDetail": null,
+          "quantity": 1,
+          "unitPrice": 1200,
+          "unit": null,
+          "pricingModel": "flat",
+          "includedByDefault": true,
+          "sortOrder": 0
+        }
+      ],
+      "groups": [
+        {
+          "id": "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1",
+          "sectionId": "a335dd2e-d11d-46db-931e-f99474766fc4",
+          "name": "Ceremony enhancements",
+          "instructions": "Optional paid add-ons — select only what you want to purchase.",
+          "selectionMode": "multi",
+          "minSelect": 0,
+          "maxSelect": null,
+          "allowQuantity": false,
+          "sortOrder": 0,
+          "dependsOnOptionIds": []
+        },
+        {
+          "id": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+          "sectionId": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+          "name": "Dinner service",
+          "instructions": "Pick one — prices are per person.",
+          "selectionMode": "single",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "allowQuantity": false,
+          "sortOrder": 1,
+          "dependsOnOptionIds": []
+        },
+        {
+          "id": "6cef4198-ae9c-48d1-abd6-4db051a2ed57",
+          "sectionId": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+          "name": "Bar package",
+          "instructions": "Optional — pick one package, or leave unselected for no bar service. Price is per person.",
+          "selectionMode": "single",
+          "minSelect": 0,
+          "maxSelect": 1,
+          "allowQuantity": false,
+          "sortOrder": 2,
+          "dependsOnOptionIds": []
+        },
+        {
+          "id": "8bad2c52-32dd-4882-b6ce-1119c56883a0",
+          "sectionId": "e3ef13fb-9a7d-4f2e-b4d2-84327612044f",
+          "name": "Optional rentals",
+          "instructions": "Add any rentals you want — priced per unit.",
+          "selectionMode": "multi",
+          "minSelect": 0,
+          "maxSelect": null,
+          "allowQuantity": true,
+          "sortOrder": 3,
+          "dependsOnOptionIds": []
+        },
+        {
+          "id": "7a0eb11a-d4b7-43fd-b780-9045867af4ef",
+          "sectionId": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+          "name": "Plated dinner details",
+          "instructions": "Follow-up choices for plated service. None are pre-configured — your venue will add them here when ready.",
+          "selectionMode": "single",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "allowQuantity": false,
+          "sortOrder": 4,
+          "dependsOnOptionIds": [
+            "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9"
+          ]
+        },
+        {
+          "id": "2f6a3767-a0cd-4d3a-9f53-eb435f10065f",
+          "sectionId": "a2f36af6-3434-4dd6-9094-a75ef907712c",
+          "name": "Buffet dinner details",
+          "instructions": "Follow-up choices for buffet service. None are pre-configured — your venue will add them here when ready.",
+          "selectionMode": "single",
+          "minSelect": 1,
+          "maxSelect": 1,
+          "allowQuantity": false,
+          "sortOrder": 5,
+          "dependsOnOptionIds": [
+            "c629b92b-132e-4d00-bc96-0e315df55f89"
+          ]
+        },
+        {
+          "id": "5df33a80-a410-4c3e-b48f-76a3afd884af",
+          "sectionId": "4a119c18-ecdd-4746-a387-2dcba74498fc",
+          "name": "Beer & Wine details",
+          "instructions": "Follow-up choices for Beer & Wine. None are pre-configured — your venue will add them here when ready.",
+          "selectionMode": "single",
+          "minSelect": 0,
+          "maxSelect": null,
+          "allowQuantity": false,
+          "sortOrder": 6,
+          "dependsOnOptionIds": [
+            "e4794273-22a0-43de-ae2c-345e64b94801"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "id": "5b59b659-9bcd-4c96-82bc-f1334d62df8f",
+          "groupId": "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1",
+          "offeringId": null,
+          "label": "Arbor",
+          "description": "Flat fee",
+          "isIncluded": false,
+          "unitPrice": 350,
+          "sortOrder": 0
+        },
+        {
+          "id": "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9",
+          "groupId": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+          "offeringId": null,
+          "label": "Plated Dinner",
+          "description": "Per person",
+          "isIncluded": false,
+          "unitPrice": 85,
+          "sortOrder": 0
+        },
+        {
+          "id": "e4794273-22a0-43de-ae2c-345e64b94801",
+          "groupId": "6cef4198-ae9c-48d1-abd6-4db051a2ed57",
+          "offeringId": null,
+          "label": "Beer & Wine",
+          "description": "Per person",
+          "isIncluded": false,
+          "unitPrice": 28,
+          "sortOrder": 0
+        },
+        {
+          "id": "e5673c82-3332-4ead-89fc-e13373080978",
+          "groupId": "8bad2c52-32dd-4882-b6ce-1119c56883a0",
+          "offeringId": null,
+          "label": "Chiavari Chair",
+          "description": "Per chair",
+          "isIncluded": false,
+          "unitPrice": 8,
+          "sortOrder": 0
+        },
+        {
+          "id": "c629b92b-132e-4d00-bc96-0e315df55f89",
+          "groupId": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+          "offeringId": null,
+          "label": "Buffet Dinner",
+          "description": "Per person",
+          "isIncluded": false,
+          "unitPrice": 72,
+          "sortOrder": 1
+        },
+        {
+          "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+          "groupId": "7a0eb11a-d4b7-43fd-b780-9045867af4ef",
+          "offeringId": null,
+          "label": "QA Fixture Plated Choice",
+          "description": "Harness-only — not a catalog item",
+          "isIncluded": false,
+          "unitPrice": 10,
+          "sortOrder": 0
+        },
+        {
+          "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+          "groupId": "2f6a3767-a0cd-4d3a-9f53-eb435f10065f",
+          "offeringId": null,
+          "label": "QA Fixture Buffet Choice",
+          "description": "Harness-only — not a catalog item",
+          "isIncluded": false,
+          "unitPrice": 8,
+          "sortOrder": 0
+        },
+        {
+          "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
+          "groupId": "5df33a80-a410-4c3e-b48f-76a3afd884af",
+          "offeringId": null,
+          "label": "QA Fixture Beer Add-on",
+          "description": "Harness-only — not a catalog item",
+          "isIncluded": false,
+          "unitPrice": 5,
+          "sortOrder": 0
+        }
+      ]
+    },
+    "platedOptId": "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9",
+    "buffetOptId": "c629b92b-132e-4d00-bc96-0e315df55f89",
+    "platedChildId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "buffetChildId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+    "beerOptId": "e4794273-22a0-43de-ae2c-345e64b94801",
+    "beerChildId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3"
+  },
+  "ensured": {
+    "repaired": false,
+    "upgraded": false,
+    "conditionalAdded": 0
+  },
+  "scaffold": {
+    "added": 0
+  }
+}

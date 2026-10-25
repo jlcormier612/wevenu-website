@@ -1,39 +1,40 @@
 # Event Order conditional choices — STATUS
 
-**Verdict: NOT GREEN** until Sandbox migration + deploy + browser harness pass on the serving image.
+**Verdict: GREEN** on serving Sandbox image `a68e8e97`.
 
-## Implementation (local)
-
-| Area | State |
-|------|-------|
-| Schema `depends_on_option_ids` + RPC | Migration `20261423300000_event_order_conditional_choice_groups.sql` |
-| TS model / freeze / validate / apply / reconcile | Done |
-| Portal + definition view nesting | Done |
-| Starters EO-D-01 / EO-D-02 empty dependents | Done |
-| Additive `ensureConditionalChoiceScaffolding` | Done |
-| Unit tests | `conditional-groups.test.ts` + starter/validate extensions — **48/48 pass** locally |
-| Financial harness (prior workstream) | **GREEN** 61/61 on `b2377f57` — separate from conditional |
-
-## Serving (pending this change)
+## Serving (verified)
 
 | Field | Value |
 |-------|-------|
-| Pre-change serving | `b2377f578c48be0c226d5323c8a635cdd10c59b1` / `sha256:8902cc94…` |
-| Conditional commit | _(pending commit + deploy)_ |
-| Migration applied | Pending `apply-sandbox-migration.yml` |
-| Browser harness | Pending `verify-browser.mts` |
+| Commit | `a68e8e9798b960f41f9058f50c62edb9c84f6ff1` |
+| Image | `405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:a68e8e9798b960f41f9058f50c62edb9c84f6ff1` |
+| Digest | `sha256:535134b1609fdef6339a42aff8a3cb691500bcaab19b4e1caff54e70f9b4272a` |
+| Migration | [40227553347](https://github.com/jlcormier612/wevenu-website/actions/runs/40227553347) **success** |
+| Deploy | [40227555011](https://github.com/jlcormier612/wevenu-website/actions/runs/40227555011) **success** |
+| Production | Untouched |
 
-## Financial closure (already evidenced)
+## Three harnesses (same serving image)
 
-See `docs/qa/event-order-financial-harness-reconcile/STATUS.md` — four closure checks GREEN; payable `$2189.81`; one Plated; Production untouched.
+| Harness | Result | Evidence |
+|---------|--------|----------|
+| Conditional choices | **26/26 GREEN** | `browser-results.json`, `browser-run.log`, `persisted-state.json`, `shots/` |
+| Default-template correction | **21/21 GREEN** | `default-template-run-a68e8e97.log` |
+| Full Event Order journey | **61/61 GREEN** | `full-eo-run-a68e8e97-r2.log`, `full-eo-browser-results-a68e8e97.json` |
 
-## Remaining for GREEN
+Summary: `closure-summary.json`
 
-1. Commit scoped conditional-choice changes.
-2. Apply migration `20261423300000_event_order_conditional_choice_groups.sql` to Sandbox.
-3. Deploy Sandbox; verify serving SHA/digest.
-4. Run `docs/qa/event-order-conditional-choices/verify-browser.mts`.
-5. Re-run default-template harness (21/21) and full EO (61/61) regression on the new image.
-6. Save browser-results, shots, persisted-state; flip this STATUS to GREEN only when all pass.
+## Conditional proofs (required)
 
-Production remains untouched.
+1. **Parent → dependent reveal** — Plated shows only Plated dinner details (+ fixture choice in disposable packet); Buffet hidden. Bar → Beer & Wine details. Template itself keeps **honest-empty** children (0 catalog options).
+2. **Parent switch clears inactive children** — Plated → Buffet drops plated child from UI and persisted answers (`browser-no-stale-plated-child`).
+3. **Server enforcement** — RPC rejects missing parent, missing active required child, and orphan inactive-child answers; accepts coherent plated+child. Portal submit persistence matches UI.
+4. **Regressions** — default template 21/21; full EO 61/61 (including financial assertions). Customized Wedding Reception preserved; finalized EO `624eceef-…` revision 24 untouched.
+
+## Model note
+
+Conditional dependencies **required** additive `depends_on_option_ids` (not present before). Starters EO-D-01 / EO-D-02 wire dinner/bar parents to empty dependent scaffolds — no invented menu items.
+
+## Harness fixes during verification (no redeploy)
+
+- Conditional harness: use `?view=choices#choices` (not nonexistent `/p/.../choices`).
+- Full EO harness: explicit Plated Dinner click; count only newly submitted packets (not historical `submitted_at`).

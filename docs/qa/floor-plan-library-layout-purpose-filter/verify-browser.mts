@@ -251,11 +251,14 @@ async function main() {
 
   // Client submit confirm still in portal source (smoke via page not portal)
   const { readFileSync } = await import("node:fs");
-  const portalSrc = readFileSync("components/portal/portal-floor-plan-client.tsx", "utf8");
+  const portalSrc = [
+    readFileSync("components/portal/floor-plan-section.tsx", "utf8"),
+    readFileSync("components/portal/floor-plan-submit-confirm-dialog.tsx", "utf8"),
+  ].join("\n");
   record(
     "client-submit-confirm-intact",
-    /confirm|Submit|review/i.test(portalSrc),
-    "portal-floor-plan-client.tsx",
+    /FloorPlanSubmitConfirmDialog|confirm|Submit|review/i.test(portalSrc),
+    "floor-plan-section.tsx + floor-plan-submit-confirm-dialog.tsx",
   );
 
   await browser.close();

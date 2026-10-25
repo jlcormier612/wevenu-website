@@ -450,21 +450,37 @@ async function main() {
       record("selection-link-renders-form", isChoices && !isInvoice, body.slice(0, 400));
       await couplePage.screenshot({ path: `${OUT}/shots/selection-link-1280.png`, fullPage: false });
 
-      // Required pick-one / pick-many groups must be satisfied before submit
-      // (EO-D-02 Dinner service is required). Click one control in each
-      // required fieldset; leave optional groups alone.
+      // Required pick-one groups must be satisfied before submit (EO-D-02 Dinner).
+      // Prefer an explicit dinner option click so conditional dependents reveal
+      // after the parent is selected; then click one control in each remaining
+      // required fieldset. Leave optional / dependent-empty groups alone.
+      const plated = couplePage.getByText("Plated Dinner", { exact: false }).first();
+      if ((await plated.count()) > 0) {
+        await plated.click({ force: true });
+        await couplePage.waitForTimeout(400);
+      }
       const fieldsets = couplePage.locator("fieldset");
       const fieldsetCount = await fieldsets.count();
       for (let i = 0; i < fieldsetCount; i += 1) {
         const fs = fieldsets.nth(i);
         const legend = await fs.innerText().catch(() => "");
         if (!/required/i.test(legend)) continue;
+        if (/details/i.test(legend) && /optional/i.test(legend)) continue;
         const control = fs.locator('input[type="radio"], input[type="checkbox"]').first();
         if ((await control.count()) > 0 && !(await control.isChecked().catch(() => false))) {
           await control.click({ force: true });
           await couplePage.waitForTimeout(200);
         }
       }
+      // Snapshot which packet is still editable before submit.
+      const { data: beforeSubmitRows } = await admin
+        .from("client_choices")
+        .select("id, status")
+        .eq("event_id", EVENT)
+        .eq("venue_id", FANCY)
+        .in("status", ["sent", "in_progress", "changes_requested"]);
+      const editableIds = new Set((beforeSubmitRows ?? []).map((c) => c.id as string));
+
       const submit = couplePage.getByRole("button", { name: /^Submit$/ }).first();
       if ((await submit.count()) > 0 && (await submit.isEnabled())) {
         await submit.click();
@@ -480,8 +496,12 @@ async function main() {
         .eq("event_id", EVENT)
         .eq("venue_id", FANCY)
         .order("updated_at", { ascending: false })
-        .limit(5);
-      const submitOk = (submitProbe ?? []).some((c) => c.status === "submitted" || Boolean(c.submitted_at));
+        .limit(8);
+      // Only count a packet that was editable before this submit — do not treat
+      // historical finalized rows with submitted_at as success for this run.
+      const submitOk = (submitProbe ?? []).some(
+        (c) => editableIds.has(c.id as string) && c.status === "submitted",
+      );
       record(
         "selection-submitted-ui",
         /Submitted|Thank you|received your choices/i.test(afterBody) || submitOk,
@@ -534,7 +554,7 @@ async function main() {
       .eq("venue_id", FANCY)
       .order("updated_at", { ascending: false })
       .limit(3);
-    const submitted = (choicesAfter ?? []).find((c) => c.status === "submitted" || c.submitted_at);
+    const submitted = (choicesAfter ?? []).find((c) => c.status === "submitted");
     record(
       "selection-persisted",
       Boolean(submitted) && submitted?.event_id === EVENT,

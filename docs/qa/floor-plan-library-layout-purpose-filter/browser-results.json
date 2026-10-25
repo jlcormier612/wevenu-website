@@ -1,0 +1,152 @@
+{
+  "pass": true,
+  "capturedAt": "2026-10-25T19:48:42.607Z",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1",
+  "digest": "sha256:8902cc9488ea50ca5d2c768698dffbe3cccba2c6962c9a07970d3d57a6289c0d",
+  "expectedSha": "b2377f578c48be0c226d5323c8a635cdd10c59b1",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=b2377f578c48be0c226d5323c8a635cdd10c59b1 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:8902cc9488ea50ca5d2c768698dffbe3cccba2c6962c9a07970d3d57a6289c0d"
+    },
+    {
+      "name": "production-untouched",
+      "pass": true,
+      "detail": "sandbox only"
+    },
+    {
+      "name": "persisted-fp02-wedding-event-type",
+      "pass": true,
+      "detail": "{\"id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\",\"name\":\"Standard Wedding — Reception Only\",\"event_type\":\"wedding\",\"source_master_key\":\"FP-02\",\"is_archived\":false}"
+    },
+    {
+      "name": "persisted-fp02-reception-layout",
+      "pass": true,
+      "detail": "FP-02"
+    },
+    {
+      "name": "persisted-legacy-fp01-intact",
+      "pass": true,
+      "detail": "{\"id\":\"c680cc72-872d-4dab-9bc0-815fefb35251\",\"name\":\"Standard Wedding — Ceremony + Reception\",\"event_type\":\"wedding\",\"source_master_key\":\"FP-01\",\"is_archived\":false}"
+    },
+    {
+      "name": "db-reception-layout-filter",
+      "pass": true,
+      "detail": "Standard Wedding — Reception Only"
+    },
+    {
+      "name": "library-shows-wedding-and-layout-copy",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nTemplates\nFloor Plan Templates\n\nReusa"
+    },
+    {
+      "name": "library-lists-reception-template",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nTemplates\nFloor Plan Templates\n\nReusable room layouts a venue builds once and applies to any booking.\n\n+ New Template\n\nLayout, background"
+    },
+    {
+      "name": "layout-purpose-filter-present",
+      "pass": true,
+      "detail": "testid"
+    },
+    {
+      "name": "layout-reception-only-shows-fp02",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nTemplates\nFloor Plan Templates\n\nReusable room layouts a venue builds once and applies to any booking.\n\n+ New Template\n\nLayout, background image, and placed objects are edited in the floor plan editor. Assign a space and place inventory i"
+    },
+    {
+      "name": "event-type-wedding-shows-starters",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nTemplates\nFloor Plan Templates\n\nReusable room layouts a venue builds once and applies to any booking.\n\n+ New Template\n\nLayout, background"
+    },
+    {
+      "name": "event-type-reception-explains-or-empty",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nTemplates\nFloor Plan Templates\n\nReusable room layouts a venue builds once and applies to any booking.\n\n+ New Template\n\nLayout, background"
+    },
+    {
+      "name": "search-plus-layout-reception",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nTemplates\nFloor Plan Templates\n\nReusa"
+    },
+    {
+      "name": "layout-purpose-badge-visible",
+      "pass": true,
+      "detail": "Reception Only"
+    },
+    {
+      "name": "event-floorplan-loads",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n28\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n4\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedbac"
+    },
+    {
+      "name": "client-submit-confirm-intact",
+      "pass": true,
+      "detail": "floor-plan-section.tsx + floor-plan-submit-confirm-dialog.tsx"
+    },
+    {
+      "name": "event-plans-count-unchanged",
+      "pass": true,
+      "detail": "1→1"
+    }
+  ],
+  "passCount": 18,
+  "failCount": 0,
+  "templatesSnapshot": [
+    {
+      "id": "026fb633-2dce-4c73-87c8-144bb29a0318",
+      "name": "Standard Wedding — Reception Only",
+      "event_type": "wedding",
+      "source_master_key": "FP-02",
+      "is_archived": false
+    },
+    {
+      "id": "3d4e11ef-7de7-495b-8fc7-b2eaf59584c3",
+      "name": "Barn-master-floorplan",
+      "event_type": null,
+      "source_master_key": null,
+      "is_archived": false
+    },
+    {
+      "id": "c680cc72-872d-4dab-9bc0-815fefb35251",
+      "name": "Standard Wedding — Ceremony + Reception",
+      "event_type": "wedding",
+      "source_master_key": "FP-01",
+      "is_archived": false
+    },
+    {
+      "id": "2baac114-0349-4c38-83b0-c621e93d0064",
+      "name": "Wedding Ceremony",
+      "event_type": "wedding",
+      "source_master_key": "FP-03",
+      "is_archived": false
+    },
+    {
+      "id": "bd839ee5-5e0b-4556-9ecd-e1980abefba9",
+      "name": "Cocktail Hour",
+      "event_type": "wedding",
+      "source_master_key": "FP-04",
+      "is_archived": false
+    },
+    {
+      "id": "5bf1d3f2-32e4-4ffd-9745-faf74a99d5f4",
+      "name": "Same-Room Ceremony + Reception Flip",
+      "event_type": "wedding",
+      "source_master_key": "FP-SR",
+      "is_archived": false
+    },
+    {
+      "id": "ceaa8b27-a2ea-4c22-b3fb-59d9f70f75b1",
+      "name": "Blank Floor Plan",
+      "event_type": "wedding",
+      "source_master_key": "FP-05",
+      "is_archived": false
+    }
+  ]
+}

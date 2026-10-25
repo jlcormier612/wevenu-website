@@ -17,6 +17,7 @@ import {
   orderedVisibleChoiceGroups,
   reconcileAnswersForDependencies,
 } from "@/lib/client-choices/conditional-groups";
+import { choicesReviewUrl } from "@/lib/client-choices/choices-portal-link";
 import { resolveSelectedOptions } from "@/lib/client-choices/apply-to-event-order";
 import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
@@ -487,10 +488,16 @@ async function main() {
 
     const couple = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await couple.newPage();
-    await page.goto(`${APP}/p/${token}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(1500);
-    await page.goto(`${APP}/p/${token}/choices`, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => undefined);
+    const choicesUrl = choicesReviewUrl(APP, token);
+    await page.goto(choicesUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2500);
+    // Ensure Choices section is active even if query/hash was stripped.
+    const choicesNav = page.getByRole("button", { name: /Your Choices|Choices/i }).first();
+    if ((await choicesNav.count()) > 0) {
+      await choicesNav.click().catch(() => undefined);
+      await page.waitForTimeout(1500);
+    }
+    await page.waitForSelector("text=Your Choices", { timeout: 30_000 }).catch(() => undefined);
 
     // Ensure the browser packet is the active editable one — portal lists all; pick by name if needed
     const browserTab = page.getByRole("button", { name: /QA Conditional Choices Browser/i }).first();
@@ -597,10 +604,12 @@ async function main() {
     );
 
     // Refresh reopen
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(choicesUrl, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2000);
-    await page.goto(`${APP}/p/${token}/choices`, { waitUntil: "domcontentloaded" }).catch(() => undefined);
-    await page.waitForTimeout(1500);
+    if ((await choicesNav.count()) > 0) {
+      await choicesNav.click().catch(() => undefined);
+      await page.waitForTimeout(1000);
+    }
     if ((await browserTab.count()) > 0) await browserTab.click().catch(() => undefined);
     await page.waitForTimeout(1000);
     await page.screenshot({ path: `${OUT}/shots/reopen-1280.png`, fullPage: true });
