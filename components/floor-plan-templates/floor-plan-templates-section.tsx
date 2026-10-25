@@ -39,6 +39,12 @@ import {
   buildFloorPlanTemplateFilterEventTypeOptions,
 } from "@/lib/floor-plan-templates/event-type-options";
 import {
+  FLOOR_PLAN_LAYOUT_PURPOSE_ANY,
+  FLOOR_PLAN_LAYOUT_PURPOSE_FILTER_OPTIONS,
+  layoutPurposeLabelForTemplate,
+  templateMatchesLayoutPurposeFilter,
+} from "@/lib/floor-plan-templates/layout-purpose";
+import {
   FLOOR_PLAN_STARTER_MASTERS,
   getFloorPlanStarterMaster,
   type FloorPlanStarterMasterKey,
@@ -46,6 +52,7 @@ import {
 import type { FloorPlanTemplateWithStats } from "@/lib/floor-plan-templates/types";
 
 const ANY_EVENT_TYPE = FLOOR_PLAN_TEMPLATE_ANY_EVENT_TYPE;
+const ANY_LAYOUT = FLOOR_PLAN_LAYOUT_PURPOSE_ANY;
 
 function sortTemplates(templates: FloorPlanTemplateWithStats[]): FloorPlanTemplateWithStats[] {
   return [...templates].sort((a, b) => {
@@ -213,6 +220,7 @@ function TemplateCard({
   canDelete?: boolean;
 }) {
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
+  const layoutPurpose = layoutPurposeLabelForTemplate(template.sourceMasterKey);
   const previewHref = `/library/floor-plan-templates/${template.id}/preview`;
   const starterMaster = template.sourceMasterKey
     ? getFloorPlanStarterMaster(template.sourceMasterKey)
@@ -263,7 +271,17 @@ function TemplateCard({
       isArchived={template.isArchived}
       badges={
         <>
-          <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
+          <Badge variant="outline" className="text-[10px]" title="Booking event type">
+            {eventType}
+          </Badge>
+          <Badge
+            variant="muted"
+            className="text-[10px]"
+            title="Layout purpose"
+            data-testid="floor-plan-layout-purpose-badge"
+          >
+            {layoutPurpose}
+          </Badge>
           {isSpecializedFlip && (
             <Badge variant="muted" className="text-[10px]">Specialized · same room</Badge>
           )}
@@ -317,6 +335,7 @@ export function FloorPlanTemplatesSection({
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [eventTypeFilter, setEventTypeFilter] = React.useState(ANY_EVENT_TYPE);
+  const [layoutPurposeFilter, setLayoutPurposeFilter] = React.useState(ANY_LAYOUT);
   const filterEventTypeOptions = React.useMemo(
     () => buildFloorPlanTemplateFilterEventTypeOptions(acceptedEventTypes),
     [acceptedEventTypes],
@@ -394,9 +413,10 @@ export function FloorPlanTemplatesSection({
   const sorted = React.useMemo(() => sortTemplates(templates), [templates]);
   const filtered = React.useMemo(() => sorted.filter((t) => {
     if (eventTypeFilter !== ANY_EVENT_TYPE && t.eventType !== eventTypeFilter) return false;
+    if (!templateMatchesLayoutPurposeFilter(t.sourceMasterKey, layoutPurposeFilter)) return false;
     if (search.trim() && !t.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
     return true;
-  }), [sorted, search, eventTypeFilter]);
+  }), [sorted, search, eventTypeFilter, layoutPurposeFilter]);
   const { active: filteredActive, archived: filteredArchived } = React.useMemo(
     () => partitionArchived(filtered, (t) => t.isArchived),
     [filtered],
@@ -455,9 +475,29 @@ export function FloorPlanTemplatesSection({
             onValueChange={setEventTypeFilter}
             items={filterEventTypeOptions}
           >
-            <SelectTrigger className="h-9 w-44 text-sm"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 w-44 text-sm" aria-label="Filter by event type">
+              <SelectValue placeholder="Event type" />
+            </SelectTrigger>
             <SelectContent>
               {filterEventTypeOptions.map((e) => (
+                <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={layoutPurposeFilter}
+            onValueChange={setLayoutPurposeFilter}
+            items={FLOOR_PLAN_LAYOUT_PURPOSE_FILTER_OPTIONS}
+          >
+            <SelectTrigger
+              className="h-9 w-48 text-sm"
+              aria-label="Filter by layout purpose"
+              data-testid="floor-plan-layout-purpose-filter"
+            >
+              <SelectValue placeholder="Layout" />
+            </SelectTrigger>
+            <SelectContent>
+              {FLOOR_PLAN_LAYOUT_PURPOSE_FILTER_OPTIONS.map((e) => (
                 <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
               ))}
             </SelectContent>
@@ -481,13 +521,18 @@ export function FloorPlanTemplatesSection({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Edit reusable layouts here. Applying a floor plan to a booking happens on the event — not as a client send from the Library.
+        Event type is the booking kind (Wedding, Reception Only as a booking, and so on). Layout purpose is the room arrangement (Ceremony, Cocktail Hour, Reception Only layout, and so on). Applying a floor plan to a booking happens on the event — not as a client send from the Library.
       </p>
       {filteredActive.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="rounded-xl border border-dashed border-border py-10 text-center space-y-2 px-4">
           <p className="text-sm text-muted-foreground">
             {filtered.length === 0 ? "No templates match your search." : "No active floor plan templates match your search."}
           </p>
+          {eventTypeFilter === "reception" && layoutPurposeFilter === ANY_LAYOUT && (
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              “Reception Only” under event type means a reception-only booking. Wedding reception layouts are tagged Wedding — choose Layout → Reception Only to find them.
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
