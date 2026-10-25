@@ -76,9 +76,13 @@ describe("packageStartingSelections — setup/inherit completeness", () => {
     const master = getEventOrderStarterMaster("EO-D-02");
     assert.ok(master);
     const offeringNames = master!.sections.flatMap((s) => (s.offerings ?? []).map((o) => o.name));
+    const optionNames = master!.sections.flatMap((s) =>
+      (s.choiceGroups ?? []).flatMap((g) => g.options.map((o) => o.name)),
+    );
     assert.ok(offeringNames.includes("Ceremony Coordination"));
-    assert.ok(offeringNames.includes("Plated Dinner"));
     assert.ok(offeringNames.includes("Day-of Coordination"));
+    assert.ok(optionNames.includes("Plated Dinner"));
+    assert.ok(optionNames.includes("Arbor"));
     assert.equal(EVENT_ORDER_STARTER_MASTERS.length, 2);
   });
 });
@@ -90,13 +94,14 @@ describe("Event Order completeness seams", () => {
 
   it("provision repairs empty delivery starters instead of skipping forever", () => {
     assert.match(provision, /repairEmptyDeliveryStarterOfferings/);
+    assert.match(provision, /ensureStarterCommercialStructure/);
+    assert.match(provision, /upgradeUncustomizedLegacyFlatStarter/);
     assert.match(provision, /repaired\.push\(master\.key\)/);
-    assert.match(provision, /if \(\(lineCount \?\? 0\) > 0\) return/);
   });
 
   it("ensure/replace load repaired templates and materialize full package", () => {
     assert.match(service, /loadTemplateReadyForApply/);
-    assert.match(service, /repairEmptyDeliveryStarterOfferings/);
+    assert.match(service, /ensureStarterCommercialStructure/);
     assert.match(service, /packageStartingSelections/);
     assert.match(service, /Filled Event Order from package/);
     assert.match(service, /lineDedupeKey/);

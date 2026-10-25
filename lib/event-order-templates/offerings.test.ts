@@ -312,7 +312,8 @@ describe("Catalog, isolation, and preview labels", () => {
     assert.match(editor, /Add from Offerings/);
     assert.match(editor, /Add section/);
     assert.match(preview, /overflow-x-hidden/);
-    assert.match(preview, /not itself a client commitment/);
+    assert.match(preview, /the template is not a commitment/);
+    assert.doesNotMatch(preview, /is a commitment/);
     assert.match(apply, /w-full/);
     assert.match(apply, /not an invoice, contract, or payment/);
     assert.match(apply, /data-testid="event-order-apply-list"/);
@@ -337,12 +338,17 @@ describe("Catalog, isolation, and preview labels", () => {
   it("starters demonstrate structured offerings without overwriting existing venue copies", () => {
     const reception = EVENT_ORDER_STARTER_MASTERS.find((m) => m.key === "EO-D-01");
     assert.ok(reception);
-    const names = reception!.sections.flatMap((s) => (s.offerings ?? []).map((o) => o.name));
-    assert.ok(names.includes("Plated Dinner"));
-    assert.ok(names.includes("Chiavari Chair"));
+    const fixed = reception!.sections.flatMap((s) => (s.offerings ?? []).map((o) => o.name));
+    const options = reception!.sections.flatMap((s) =>
+      (s.choiceGroups ?? []).flatMap((g) => g.options.map((o) => o.name)),
+    );
+    assert.ok(fixed.includes("Day-of Coordination"));
+    assert.ok(options.includes("Plated Dinner"));
+    assert.ok(options.includes("Chiavari Chair"));
     const provision = readFileSync(join(root, "lib/event-order-templates/provision.ts"), "utf8");
     assert.match(provision, /skipped.push\(master.key\)/);
     assert.match(provision, /source_master_key/);
+    assert.match(provision, /upgradeUncustomizedLegacyFlatStarter/);
   });
 
   it("reorder offerings uses the same ordered-id helper as sections", () => {

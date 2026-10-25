@@ -13,7 +13,7 @@ import {
   snapshotTemplateOfferingForEvent,
   type TemplateApplySelection,
 } from "@/lib/event-order-templates/offerings";
-import { repairEmptyDeliveryStarterOfferings } from "@/lib/event-order-templates/provision";
+import { ensureStarterCommercialStructure } from "@/lib/event-order-templates/provision";
 import * as templatesRepo from "@/lib/event-order-templates/repository";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import type {
@@ -78,7 +78,7 @@ async function loadTemplateReadyForApply(
   venueId: string,
   templateId: string,
 ): Promise<EventOrderTemplateWithDetails | null> {
-  await repairEmptyDeliveryStarterOfferings(supabase, venueId, templateId);
+  await ensureStarterCommercialStructure(supabase, venueId, templateId);
   return templatesRepo.getTemplateWithDetails(supabase, venueId, templateId);
 }
 

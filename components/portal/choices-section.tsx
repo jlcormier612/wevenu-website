@@ -10,6 +10,7 @@ import {
   isClientChoicesClientEditable,
 } from "@/lib/client-choices/constants";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
+import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
 
 type PortalChoices = {
   id: string;
@@ -87,6 +88,13 @@ export function ChoicesPortalSection({ token }: { token: string }) {
   function save(submit: boolean) {
     if (!active) return;
     setMessage(null);
+    if (submit) {
+      const validated = validateChoicesAnswers(active.definition, answers);
+      if (!validated.ok) {
+        setMessage(validated.message);
+        return;
+      }
+    }
     startTransition(async () => {
       const url = submit ? "/api/portal/choices/submit" : "/api/portal/choices/save";
       const res = await fetch(url, {
