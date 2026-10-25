@@ -1,0 +1,118 @@
+PASS serving-sha — expected=b2377f578c48be0c226d5323c8a635cdd10c59b1 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1
+PASS serving-digest — sha256:8902cc9488ea50ca5d2c768698dffbe3cccba2c6962c9a07970d3d57a6289c0d
+PASS financial-fix-in-lineage — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1
+PASS production-untouched — sandbox only
+PASS eo-single-plated-dinner — [{"id":"b6a5bac5-071a-41cb-b085-ae29d158fafe","description":"Plated Dinner","amount":85,"unit_price":85,"is_included":false,"provenance":"custom"}]
+PASS eo-no-billable-buffet — []
+PASS eo-payable-computed — {"deliverySubtotal":2381,"billableSubtotal":2061,"includedOrNonBillable":320,"invoiceAdjustmentsSubtotal":0,"discountAmount":0,"taxAmount":128.81,"payableTotal":2189.81}
+PASS draft-shows-projected-payable — $2,189.81 :: OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+J
+jennifer@hellotocheers.com
+B2P / 96736-9a50 / Portal / Partner
+
+INVOICE & PAYME
+FAIL mark-as-issued-visible — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+J
+jennifer@hellotocheers.com
+B2P / 96736-9a50 / Portal / Partner
+
+INVOICE & PAYME
+FAIL invoice-published-sent — {"status":"draft","total":128.81,"freezeRev":null,"eoRev":23}
+FAIL invoice-total-matches-eo-payable — stored=128.81 expected=2189.81
+FAIL invoice-frozen-eo-line-count — frozen=0 billable=9
+FAIL invoice-not-tax-only — {"total":128.81,"tax":128.81}
+PASS payment-plan-matches-payable — schedule=2189.81 expected=2189.81
+FAIL portal-shows-payable — status=draft financial=true
+FAIL portal-rpc-matches-payable — skipped
+
+RESULT FAIL 9/16

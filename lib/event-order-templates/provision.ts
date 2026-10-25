@@ -69,9 +69,14 @@ async function insertSectionChoiceGroups(
   sectionId: string,
   groups: EventOrderStarterChoiceGroup[],
   groupSortStart: number,
+  /** Label → option id for resolving dependsOnOptionNames within this template. */
+  optionIdsByLabel: Map<string, string>,
 ): Promise<number> {
   let groupOrder = groupSortStart;
   for (const group of groups) {
+    const dependsOn = (group.dependsOnOptionNames ?? [])
+      .map((label) => optionIdsByLabel.get(label.trim()))
+      .filter((id): id is string => typeof id === "string");
     const { data: groupRow, error: gErr } = await client.from("event_order_template_groups").insert({
       template_id: templateId,
       venue_id: venueId,
@@ -82,13 +87,14 @@ async function insertSectionChoiceGroups(
       min_select: group.minSelect,
       max_select: group.maxSelect,
       allow_quantity: group.allowQuantity ?? false,
+      depends_on_option_ids: dependsOn,
       sort_order: groupOrder,
     }).select("id").single<{ id: string }>();
     if (gErr) throw gErr;
     let optOrder = 0;
     for (const opt of group.options) {
       const isIncluded = opt.isIncluded ?? false;
-      const { error: oErr } = await client.from("event_order_template_options").insert({
+      const { data: optRow, error: oErr } = await client.from("event_order_template_options").insert({
         template_id: templateId,
         venue_id: venueId,
         group_id: groupRow.id,
@@ -99,8 +105,12 @@ async function insertSectionChoiceGroups(
         unit_price: isIncluded ? 0 : (opt.unitPrice ?? null),
         is_default: opt.isDefault ?? false,
         sort_order: optOrder,
-      });
+      }).select("id").single<{ id: string }>();
       if (oErr) throw oErr;
+      // First label wins — parent options are unique in starters.
+      if (!optionIdsByLabel.has(opt.name.trim())) {
+        optionIdsByLabel.set(opt.name.trim(), optRow.id);
+      }
       optOrder += 1;
     }
     groupOrder += 1;
@@ -125,6 +135,7 @@ async function insertStarterFromMaster(
 
   let sectionOrder = 0;
   let groupOrder = 0;
+  const optionIdsByLabel = new Map<string, string>();
   for (const section of master.sections) {
     const { data: sectionRow, error: sErr } = await client.from("event_order_template_sections").insert({
       template_id: templateId,
@@ -136,7 +147,7 @@ async function insertStarterFromMaster(
     if (sErr) throw sErr;
     await insertSectionOfferings(client, venueId, templateId, sectionRow.id, section.offerings ?? []);
     groupOrder = await insertSectionChoiceGroups(
-      client, venueId, templateId, sectionRow.id, section.choiceGroups ?? [], groupOrder,
+      client, venueId, templateId, sectionRow.id, section.choiceGroups ?? [], groupOrder, optionIdsByLabel,
     );
     sectionOrder += 1;
   }
@@ -188,6 +199,7 @@ export async function repairEmptyDeliveryStarterOfferings(
   let linesAdded = 0;
   let groupsAdded = 0;
   let groupOrder = 0;
+  const optionIdsByLabel = new Map<string, string>();
   for (const section of master.sections) {
     let sectionId = sectionByName.get(section.name);
     if (!sectionId) {
@@ -207,7 +219,7 @@ export async function repairEmptyDeliveryStarterOfferings(
     linesAdded += (section.offerings ?? []).length;
     void beforeLines;
     const nextGroupOrder = await insertSectionChoiceGroups(
-      client, venueId, templateId, sectionId, section.choiceGroups ?? [], groupOrder,
+      client, venueId, templateId, sectionId, section.choiceGroups ?? [], groupOrder, optionIdsByLabel,
     );
     groupsAdded += (section.choiceGroups ?? []).length;
     groupOrder = nextGroupOrder;
@@ -273,6 +285,7 @@ export async function upgradeUncustomizedLegacyFlatStarter(
 
   let sectionOrder = 0;
   let groupOrder = 0;
+  const optionIdsByLabel = new Map<string, string>();
   for (const section of master.sections) {
     const { data: sectionRow, error: sErr } = await client.from("event_order_template_sections").insert({
       template_id: templateId,
@@ -284,12 +297,102 @@ export async function upgradeUncustomizedLegacyFlatStarter(
     if (sErr) throw sErr;
     await insertSectionOfferings(client, venueId, templateId, sectionRow.id, section.offerings ?? []);
     groupOrder = await insertSectionChoiceGroups(
-      client, venueId, templateId, sectionRow.id, section.choiceGroups ?? [], groupOrder,
+      client, venueId, templateId, sectionRow.id, section.choiceGroups ?? [], groupOrder, optionIdsByLabel,
     );
     sectionOrder += 1;
   }
 
   return { upgraded: true, reason: "upgraded" };
+}
+
+/**
+ * Additive: for uncustomized delivery starters that already have Dinner/Bar
+ * parent groups, insert missing empty dependent groups with depends_on wired.
+ * Never deletes, never mutates existing groups/options, never invents menu items.
+ */
+export async function ensureConditionalChoiceScaffolding(
+  client: DbClient,
+  venueId: string,
+  templateId: string,
+): Promise<{ added: number }> {
+  const { data: header } = await client.from("event_order_templates")
+    .select("id, source_master_key, is_archived")
+    .eq("id", templateId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ id: string; source_master_key: string | null; is_archived: boolean }>();
+  if (!header?.source_master_key || header.is_archived) return { added: 0 };
+  const master = getEventOrderStarterMaster(header.source_master_key);
+  if (!master) return { added: 0 };
+
+  const { data: existingGroups } = await client.from("event_order_template_groups")
+    .select("id, name, section_id, sort_order")
+    .eq("template_id", templateId)
+    .eq("venue_id", venueId);
+  const groupsByName = new Map(
+    (existingGroups ?? []).map((g: { id: string; name: string; section_id: string | null; sort_order: number }) => [
+      g.name, g,
+    ]),
+  );
+
+  const { data: existingOptions } = await client.from("event_order_template_options")
+    .select("id, label, group_id")
+    .eq("template_id", templateId)
+    .eq("venue_id", venueId);
+  const optionIdsByLabel = new Map<string, string>();
+  for (const opt of existingOptions ?? []) {
+    const label = String((opt as { label: string }).label).trim();
+    if (!optionIdsByLabel.has(label)) {
+      optionIdsByLabel.set(label, (opt as { id: string }).id);
+    }
+  }
+
+  const { data: sections } = await client.from("event_order_template_sections")
+    .select("id, name")
+    .eq("template_id", templateId)
+    .eq("venue_id", venueId);
+  const sectionByName = new Map(
+    (sections ?? []).map((s: { id: string; name: string }) => [s.name, s.id]),
+  );
+
+  let maxSort = Math.max(0, ...(existingGroups ?? []).map((g: { sort_order: number }) => g.sort_order));
+  let added = 0;
+
+  for (const section of master.sections) {
+    const sectionId = sectionByName.get(section.name);
+    if (!sectionId) continue;
+    for (const group of section.choiceGroups ?? []) {
+      if (!group.dependsOnOptionNames?.length) continue;
+      if (groupsByName.has(group.name)) continue;
+      const dependsOn = group.dependsOnOptionNames
+        .map((label) => optionIdsByLabel.get(label.trim()))
+        .filter((id): id is string => typeof id === "string");
+      // Parent options must already exist — otherwise this template is customized
+      // or incomplete; skip rather than invent parents.
+      if (dependsOn.length !== group.dependsOnOptionNames.length) continue;
+
+      maxSort += 1;
+      const { data: groupRow, error: gErr } = await client.from("event_order_template_groups").insert({
+        template_id: templateId,
+        venue_id: venueId,
+        section_id: sectionId,
+        name: group.name,
+        instructions: group.instructions ?? null,
+        selection_mode: group.selectionMode,
+        min_select: group.minSelect,
+        max_select: group.maxSelect,
+        allow_quantity: group.allowQuantity ?? false,
+        depends_on_option_ids: dependsOn,
+        sort_order: maxSort,
+      }).select("id").single<{ id: string }>();
+      if (gErr) throw gErr;
+      groupsByName.set(group.name, {
+        id: groupRow.id, name: group.name, section_id: sectionId, sort_order: maxSort,
+      });
+      // Honest empty: no fabricated options.
+      added += 1;
+    }
+  }
+  return { added };
 }
 
 /**
@@ -300,11 +403,19 @@ export async function ensureStarterCommercialStructure(
   client: DbClient,
   venueId: string,
   templateId: string,
-): Promise<{ repaired: boolean; upgraded: boolean }> {
+): Promise<{ repaired: boolean; upgraded: boolean; conditionalAdded: number }> {
   const repaired = await repairEmptyDeliveryStarterOfferings(client, venueId, templateId);
-  if (repaired.repaired) return { repaired: true, upgraded: false };
+  if (repaired.repaired) {
+    const conditional = await ensureConditionalChoiceScaffolding(client, venueId, templateId);
+    return { repaired: true, upgraded: false, conditionalAdded: conditional.added };
+  }
   const upgraded = await upgradeUncustomizedLegacyFlatStarter(client, venueId, templateId);
-  return { repaired: false, upgraded: upgraded.upgraded };
+  const conditional = await ensureConditionalChoiceScaffolding(client, venueId, templateId);
+  return {
+    repaired: false,
+    upgraded: upgraded.upgraded,
+    conditionalAdded: conditional.added,
+  };
 }
 
 export async function provisionEventOrderStarters(

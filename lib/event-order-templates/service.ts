@@ -221,6 +221,9 @@ function parseGroupWrite(input: AddTemplateGroupInput): {
       minSelect: input.minSelect,
       maxSelect: input.selectionMode === "single" ? (input.maxSelect ?? 1) : input.maxSelect,
       allowQuantity: input.allowQuantity,
+      dependsOnOptionIds: (input.dependsOnOptionIds ?? []).filter(
+        (id): id is string => typeof id === "string" && id.length > 0,
+      ),
     },
   };
 }

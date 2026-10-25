@@ -286,4 +286,42 @@ describe("EO starter commercial semantics", () => {
     const defaults = defaultApplySelections([included]);
     assert.equal(defaults[0]?.selected, true);
   });
+
+  it("12. dinner/bar parent groups ship empty dependent scaffolds (no invented menu items)", () => {
+    for (const key of ["EO-D-01", "EO-D-02"] as const) {
+      const master = getEventOrderStarterMaster(key)!;
+      const plated = starterChoiceGroups(master).find((g) => g.name === "Plated dinner details");
+      const buffet = starterChoiceGroups(master).find((g) => g.name === "Buffet dinner details");
+      assert.ok(plated, `${key} plated dependent`);
+      assert.ok(buffet, `${key} buffet dependent`);
+      assert.deepEqual(plated!.dependsOnOptionNames, ["Plated Dinner"]);
+      assert.deepEqual(buffet!.dependsOnOptionNames, ["Buffet Dinner"]);
+      assert.equal(plated!.options.length, 0);
+      assert.equal(buffet!.options.length, 0);
+      assert.equal(plated!.minSelect, 0);
+      assert.equal(buffet!.minSelect, 0);
+      const beer = starterChoiceGroups(master).find((g) => g.name === "Beer & Wine details");
+      assert.ok(beer);
+      assert.deepEqual(beer!.dependsOnOptionNames, ["Beer & Wine"]);
+      assert.equal(beer!.options.length, 0);
+    }
+    const reception = getEventOrderStarterMaster("EO-D-01")!;
+    const fullBar = starterChoiceGroups(reception).find((g) => g.name === "Full Bar details");
+    assert.ok(fullBar);
+    assert.deepEqual(fullBar!.dependsOnOptionNames, ["Full Bar"]);
+    assert.equal(fullBar!.options.length, 0);
+  });
+
+  it("13. provision resolves dependsOnOptionNames and additive scaffolding", () => {
+    const provision = readFileSync(join(root, "lib/event-order-templates/provision.ts"), "utf8");
+    assert.match(provision, /depends_on_option_ids/);
+    assert.match(provision, /dependsOnOptionNames/);
+    assert.match(provision, /ensureConditionalChoiceScaffolding/);
+    const migration = readFileSync(
+      join(root, "supabase/migrations/20261423300000_event_order_conditional_choice_groups.sql"),
+      "utf8",
+    );
+    assert.match(migration, /depends_on_option_ids/);
+    assert.match(migration, /dependsOnOptionIds/);
+  });
 });

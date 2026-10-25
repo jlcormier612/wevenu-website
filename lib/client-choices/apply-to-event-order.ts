@@ -2,6 +2,10 @@
  * Map finalized Client Choices answers onto Event Order lines.
  * Does NOT touch invoices — callers surface existing EO → invoice paths.
  */
+import {
+  isChoiceGroupActive,
+  reconcileAnswersForDependencies,
+} from "@/lib/client-choices/conditional-groups";
 import type {
   ChoicesAnswers,
   ChoicesDefinition,
@@ -25,9 +29,11 @@ export function resolveSelectedOptions(
 ): AppliedChoiceLine[] {
   const byId = new Map(definition.options.map((o) => [o.id, o]));
   const lines: AppliedChoiceLine[] = [];
+  const activeAnswers = reconcileAnswersForDependencies(definition, answers);
 
   for (const group of definition.groups) {
-    const answer = answers[group.id];
+    if (!isChoiceGroupActive(group, activeAnswers)) continue;
+    const answer = activeAnswers[group.id];
     if (!answer?.optionIds?.length) continue;
     for (const optionId of answer.optionIds) {
       const opt = byId.get(optionId);
@@ -111,9 +117,11 @@ export function conflictingSingleSelectLineIds(input: {
   const byId = new Map(input.definition.options.map((o) => [o.id, o]));
   const conflictLabels = new Set<string>();
 
+  const activeAnswers = reconcileAnswersForDependencies(input.definition, input.answers);
   for (const group of input.definition.groups) {
     if (group.selectionMode !== "single") continue;
-    const answer = input.answers[group.id];
+    if (!isChoiceGroupActive(group, activeAnswers)) continue;
+    const answer = activeAnswers[group.id];
     if (!answer?.optionIds?.length) continue;
     for (const opt of input.definition.options) {
       if (opt.groupId !== group.id) continue;

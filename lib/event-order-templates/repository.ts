@@ -38,6 +38,7 @@ type GroupRow = {
   id: string; template_id: string; venue_id: string; section_id: string | null;
   name: string; instructions: string | null; selection_mode: string;
   min_select: number; max_select: number | null; allow_quantity: boolean;
+  depends_on_option_ids?: string[] | null;
   sort_order: number; created_at: string; updated_at: string;
 };
 type OptionRow = {
@@ -80,6 +81,9 @@ const mapGroup = (r: GroupRow): EventOrderTemplateGroup => ({
   minSelect: Number(r.min_select),
   maxSelect: r.max_select == null ? null : Number(r.max_select),
   allowQuantity: Boolean(r.allow_quantity),
+  dependsOnOptionIds: Array.isArray(r.depends_on_option_ids)
+    ? r.depends_on_option_ids.filter((id): id is string => typeof id === "string")
+    : [],
   sortOrder: r.sort_order,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -404,6 +408,7 @@ export type TemplateGroupWrite = {
   minSelect: number;
   maxSelect: number | null;
   allowQuantity: boolean;
+  dependsOnOptionIds?: string[];
 };
 
 export type TemplateOptionWrite = {
@@ -434,6 +439,7 @@ export async function insertGroup(
       min_select: input.minSelect,
       max_select: input.maxSelect,
       allow_quantity: input.allowQuantity,
+      depends_on_option_ids: input.dependsOnOptionIds ?? [],
       sort_order: sortOrder,
     })
     .select()
@@ -458,6 +464,7 @@ export async function updateGroup(
       min_select: input.minSelect,
       max_select: input.maxSelect,
       allow_quantity: input.allowQuantity,
+      depends_on_option_ids: input.dependsOnOptionIds ?? [],
     })
     .eq("id", groupId)
     .eq("venue_id", venueId);

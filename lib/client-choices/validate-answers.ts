@@ -1,7 +1,13 @@
 /**
  * Server-side validation for Client Choices answers against a frozen definition.
  * Required groups cannot be bypassed by omitting options in the browser payload.
+ * Inactive dependent groups (dependsOnOptionIds) do not block submit; orphan
+ * answers on inactive children are rejected.
  */
+import {
+  isChoiceGroupActive,
+  reconcileAnswersForDependencies,
+} from "@/lib/client-choices/conditional-groups";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
 
 export type ChoicesAnswersValidation =
@@ -10,6 +16,7 @@ export type ChoicesAnswersValidation =
 
 /**
  * Enforce min/max select and single-mode exclusivity. Unknown option ids are rejected.
+ * Parent/child: validate only active groups; reject answers on inactive dependents.
  */
 export function validateChoicesAnswers(
   definition: ChoicesDefinition,
@@ -27,6 +34,20 @@ export function validateChoicesAnswers(
     const allowed = optionsByGroup.get(group.id) ?? new Set<string>();
     const raw = safeAnswers[group.id]?.optionIds ?? [];
     const optionIds = raw.filter((id) => typeof id === "string");
+    const active = isChoiceGroupActive(group, safeAnswers);
+
+    if (!active) {
+      if (optionIds.length > 0) {
+        return {
+          ok: false,
+          message: `“${group.name}” is not available for the current selections.`,
+          groupId: group.id,
+          groupName: group.name,
+        };
+      }
+      continue;
+    }
+
     for (const id of optionIds) {
       if (!allowed.has(id)) {
         return {
@@ -37,7 +58,6 @@ export function validateChoicesAnswers(
         };
       }
     }
-    // Deduplicate while preserving order
     const unique = [...new Set(optionIds)];
     const count = unique.length;
 
@@ -70,4 +90,14 @@ export function validateChoicesAnswers(
     }
   }
   return { ok: true };
+}
+
+/** Reconcile then validate — preferred before save/submit from UI. */
+export function reconcileAndValidateChoicesAnswers(
+  definition: ChoicesDefinition,
+  answers: ChoicesAnswers | null | undefined,
+): ChoicesAnswersValidation & { answers: ChoicesAnswers } {
+  const reconciled = reconcileAnswersForDependencies(definition, answers);
+  const validated = validateChoicesAnswers(definition, reconciled);
+  return { ...validated, answers: reconciled };
 }

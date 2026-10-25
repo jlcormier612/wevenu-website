@@ -19,6 +19,11 @@ export type ChoicesDefinitionGroup = {
   maxSelect: number | null;
   allowQuantity: boolean;
   sortOrder: number;
+  /**
+   * When non-empty, this group is active only while at least one listed parent
+   * option id is selected. Omitted / empty = always visible (legacy packets).
+   */
+  dependsOnOptionIds?: string[];
 };
 
 export type ChoicesDefinitionOption = {

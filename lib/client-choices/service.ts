@@ -11,6 +11,7 @@ import {
   resolveSelectedOptions,
   choicesLineNotes,
 } from "@/lib/client-choices/apply-to-event-order";
+import { reconcileAnswersForDependencies } from "@/lib/client-choices/conditional-groups";
 import {
   amendBlocked,
   finalizeBlocked,
@@ -389,7 +390,13 @@ export async function finalizeClientChoices(
     const blocked = finalizeBlocked(row.status, opts);
     if (blocked) return blocked as FinalizeClientChoicesResult;
 
-    const lines = resolveSelectedOptions(row.definition, row.answers);
+    // Drop stale dependent answers before applying billable lines.
+    const answers = reconcileAnswersForDependencies(row.definition, row.answers);
+    if (JSON.stringify(answers) !== JSON.stringify(row.answers ?? {})) {
+      await repo.updateInstance(supabase, venueId, row.id, { answers });
+      row.answers = answers;
+    }
+    const lines = resolveSelectedOptions(row.definition, answers);
     const delta = financialDeltaFromLines(lines);
 
     // Ensure Event Order exists and is open for mutation.

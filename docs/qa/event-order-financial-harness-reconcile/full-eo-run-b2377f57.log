@@ -1,0 +1,26 @@
+PASS serving-sha — ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:b2377f578c48be0c226d5323c8a635cdd10c59b1
+PASS serving-digest — sha256:8902cc9488ea50ca5d2c768698dffbe3cccba2c6962c9a07970d3d57a6289c0d
+PASS fixture-booked — {"id":"ebf74f77-2944-474a-b735-48762ecb6842","status":"confirmed","booked_at":"2026-10-22","client_id":"b4e2764b-be33-4579-89e3-0c8e4a6dd5be","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}
+PASS isolated-to-financial-session-only — financial=true coupleOrPlanningRemoved=16 createdFinancial=false
+PASS venue-workspace-landed — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order-choices
+PASS stages-not-collapsed-details — choices=SECTION order=SECTION
+PASS template-select-visible — choices-template-select
+PASS rh-template-preview-visible — choices-template-preview
+PASS journey-no-generic-view — <h2 class="text-xs font-medium uppercase tracking-widest text-muted-foreground">Event Order</h2><p class="mt-2 text-sm font-medium text-heading">Commercial journey for this booked event</p><p class="m
+PASS prepare-or-active-packet — active packet
+PASS event-order-document-stage-visible — event-order-order
+PASS start-selections-did-not-error — no prepare button — existing packets
+FAIL preview-dialog — ArtifactReviewOverlay
+FAIL send-cta — count=0 body=Client selections
+Choose an Event Order template, review the complete offering, then send a selection request. Same composer pattern as Package/Proposal — sending does not finalize the Event Order or create an invoice.
+Event Order template
+Ceremony + Reception
+Wedding Reception
+Manage templates
+
+QA Default Template Scenario B
+
+Client Submitted · Venue to act · Couple submission (not y
+PASS restore-portal-sessions — restored=16
+Error: no send CTA
+    at main (/Users/jensmac/Developer/wevenu-website/docs/qa/event-order-workflow-correction/verify-browser.mts:328:13)

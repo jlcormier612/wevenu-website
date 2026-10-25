@@ -1,0 +1,146 @@
+{
+  "capturedAt": "2026-10-25T19:38:34.361Z",
+  "serving": {
+    "sha": "b2377f578c48be0c226d5323c8a635cdd10c59b1",
+    "digest": "sha256:8902cc9488ea50ca5d2c768698dffbe3cccba2c6962c9a07970d3d57a6289c0d",
+    "lineageIncludes": "e8f621bf"
+  },
+  "harness": {
+    "defaultTemplate": "21/21",
+    "financialClosure": "16/16",
+    "fullEventOrder": "61/61",
+    "browserPass": true,
+    "browserFailed": 0,
+    "browserTotal": 61
+  },
+  "eventId": "ebf74f77-2944-474a-b735-48762ecb6842",
+  "eventOrder": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "revision": 24
+  },
+  "lineCount": 43,
+  "platedLines": [
+    {
+      "id": "ab591b01-43f9-400e-9e54-8dacc6232c1a",
+      "description": "Plated Dinner",
+      "unit_price": 85,
+      "amount": 85,
+      "is_included": false,
+      "provenance": "custom"
+    }
+  ],
+  "buffetLines": [],
+  "dinnerRelated": [
+    {
+      "id": "918727da-fff0-4f87-8e44-733b0f13d714",
+      "description": "Chiavari chair rental",
+      "unit_price": 5,
+      "amount": 5,
+      "is_included": true,
+      "provenance": "offering"
+    },
+    {
+      "id": "00ad8c4a-bbeb-4719-983d-c1531b0f47d2",
+      "description": "Day-of coordination",
+      "unit_price": 300,
+      "amount": 300,
+      "is_included": true,
+      "provenance": "offering"
+    },
+    {
+      "id": "0b5f047f-8b8c-4788-850f-ed10ded60a4b",
+      "description": "Ceremony Coordination",
+      "unit_price": 500,
+      "amount": 500,
+      "is_included": false,
+      "provenance": "custom"
+    },
+    {
+      "id": "78f5d47c-5781-425b-b5da-11f8158fbdac",
+      "description": "Beer & Wine",
+      "unit_price": 28,
+      "amount": 28,
+      "is_included": false,
+      "provenance": "custom"
+    },
+    {
+      "id": "ca7c8427-2179-4359-b5df-adf67c2fa3c7",
+      "description": "Chiavari Chair",
+      "unit_price": 8,
+      "amount": 8,
+      "is_included": false,
+      "provenance": "custom"
+    },
+    {
+      "id": "82682b64-cd03-4e1b-ade1-101b93b47d83",
+      "description": "Arbor",
+      "unit_price": 350,
+      "amount": 350,
+      "is_included": false,
+      "provenance": "custom"
+    },
+    {
+      "id": "fed6766a-cf00-46f8-9ce7-8bbf9cb3c22a",
+      "description": "Chiavari Chair",
+      "unit_price": null,
+      "amount": 0,
+      "is_included": true,
+      "provenance": "inventory"
+    },
+    {
+      "id": "de326099-2f49-46ba-ac5c-ea97f143b92d",
+      "description": "Bar",
+      "unit_price": null,
+      "amount": 0,
+      "is_included": true,
+      "provenance": "inventory"
+    },
+    {
+      "id": "4e0782a9-97cb-4101-ba33-0d8110da8752",
+      "description": "Dinner Plate",
+      "unit_price": null,
+      "amount": 0,
+      "is_included": true,
+      "provenance": "inventory"
+    },
+    {
+      "id": "b23e67ad-2ba6-40fb-a5db-480c7610ab45",
+      "description": "Wine Glass",
+      "unit_price": null,
+      "amount": 0,
+      "is_included": true,
+      "provenance": "inventory"
+    },
+    {
+      "id": "b83db5d5-15b7-40d4-ac69-7c1093f1b2df",
+      "description": "Premium open bar",
+      "unit_price": 750,
+      "amount": 750,
+      "is_included": false,
+      "provenance": "offering"
+    },
+    {
+      "id": "ab591b01-43f9-400e-9e54-8dacc6232c1a",
+      "description": "Plated Dinner",
+      "unit_price": 85,
+      "amount": 85,
+      "is_included": false,
+      "provenance": "custom"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+      "invoice_number": "INV-2026-4489C8",
+      "status": "sent",
+      "total": 2189.81,
+      "subtotal": 2061,
+      "tax_amount": 128.81,
+      "balance_due": 2189.81,
+      "event_order_revision_at_freeze": 24
+    }
+  ],
+  "paymentSchedules": null,
+  "expectedPayable": 2189.81
+}

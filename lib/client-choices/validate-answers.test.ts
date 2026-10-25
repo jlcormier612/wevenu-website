@@ -82,4 +82,46 @@ describe("validateChoicesAnswers", () => {
     });
     assert.equal(result.ok, false);
   });
+
+  it("skips inactive required dependents and rejects orphan child answers", () => {
+    const withDeps: ChoicesDefinition = {
+      ...definition,
+      groups: [
+        ...definition.groups,
+        {
+          id: "g-plated",
+          sectionId: null,
+          name: "Plated dinner details",
+          instructions: null,
+          selectionMode: "single",
+          minSelect: 1,
+          maxSelect: 1,
+          allowQuantity: false,
+          sortOrder: 2,
+          dependsOnOptionIds: ["o-plated"],
+        },
+      ],
+      options: [
+        ...definition.options,
+        {
+          id: "o-detail", groupId: "g-plated", offeringId: null, label: "Detail",
+          description: null, isIncluded: false, unitPrice: 0, sortOrder: 0,
+        },
+      ],
+    };
+    // Buffet selected → plated child inactive → does not block.
+    assert.equal(
+      validateChoicesAnswers(withDeps, { "g-dinner": { optionIds: ["o-buffet"] } }).ok,
+      true,
+    );
+    // Plated without child → blocks.
+    const missing = validateChoicesAnswers(withDeps, { "g-dinner": { optionIds: ["o-plated"] } });
+    assert.equal(missing.ok, false);
+    // Orphan buffet child while plated active → rejected.
+    const orphan = validateChoicesAnswers(withDeps, {
+      "g-dinner": { optionIds: ["o-buffet"] },
+      "g-plated": { optionIds: ["o-detail"] },
+    });
+    assert.equal(orphan.ok, false);
+  });
 });

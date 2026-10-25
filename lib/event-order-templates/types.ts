@@ -68,6 +68,8 @@ export type EventOrderTemplateGroup = {
   minSelect: number;
   maxSelect: number | null;
   allowQuantity: boolean;
+  /** Parent option ids that activate this group; empty = always visible. */
+  dependsOnOptionIds: string[];
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -122,6 +124,7 @@ export type AddTemplateGroupInput = {
   minSelect: number;
   maxSelect: number | null;
   allowQuantity: boolean;
+  dependsOnOptionIds?: string[];
 };
 
 export type AddTemplateOptionInput = {

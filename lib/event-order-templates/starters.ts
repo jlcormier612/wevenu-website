@@ -41,6 +41,13 @@ export type EventOrderStarterChoiceGroup = {
   minSelect: number;
   maxSelect: number | null;
   allowQuantity?: boolean;
+  /**
+   * Parent option labels (same section / prior groups) that activate this group.
+   * Resolved to option UUIDs at provision. Empty / omitted = always visible.
+   * Do not invent catalog menu items — dependents may ship with zero options
+   * (honest empty) until the venue configures real follow-up choices.
+   */
+  dependsOnOptionNames?: string[];
   options: EventOrderStarterOption[];
 };
 
@@ -105,6 +112,26 @@ export const EVENT_ORDER_STARTER_MASTERS: readonly EventOrderStarterMaster[] = [
               { name: "Buffet Dinner", description: "Per person", unitPrice: 72 },
             ],
           },
+          {
+            name: "Plated dinner details",
+            instructions:
+              "Follow-up choices for plated service. None are pre-configured — your venue will add them here when ready.",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: null,
+            dependsOnOptionNames: ["Plated Dinner"],
+            options: [],
+          },
+          {
+            name: "Buffet dinner details",
+            instructions:
+              "Follow-up choices for buffet service. None are pre-configured — your venue will add them here when ready.",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: null,
+            dependsOnOptionNames: ["Buffet Dinner"],
+            options: [],
+          },
         ],
       },
       {
@@ -121,6 +148,26 @@ export const EVENT_ORDER_STARTER_MASTERS: readonly EventOrderStarterMaster[] = [
               { name: "Beer & Wine", description: "Per person", unitPrice: 28 },
               { name: "Full Bar", description: "Per person", unitPrice: 42 },
             ],
+          },
+          {
+            name: "Beer & Wine details",
+            instructions:
+              "Follow-up choices for Beer & Wine. None are pre-configured — your venue will add them here when ready.",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: null,
+            dependsOnOptionNames: ["Beer & Wine"],
+            options: [],
+          },
+          {
+            name: "Full Bar details",
+            instructions:
+              "Follow-up choices for Full Bar. None are pre-configured — your venue will add them here when ready.",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: null,
+            dependsOnOptionNames: ["Full Bar"],
+            options: [],
           },
         ],
       },
@@ -190,6 +237,26 @@ export const EVENT_ORDER_STARTER_MASTERS: readonly EventOrderStarterMaster[] = [
               { name: "Buffet Dinner", description: "Per person", unitPrice: 72 },
             ],
           },
+          {
+            name: "Plated dinner details",
+            instructions:
+              "Follow-up choices for plated service. None are pre-configured — your venue will add them here when ready.",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: null,
+            dependsOnOptionNames: ["Plated Dinner"],
+            options: [],
+          },
+          {
+            name: "Buffet dinner details",
+            instructions:
+              "Follow-up choices for buffet service. None are pre-configured — your venue will add them here when ready.",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: null,
+            dependsOnOptionNames: ["Buffet Dinner"],
+            options: [],
+          },
         ],
       },
       {
@@ -205,6 +272,16 @@ export const EVENT_ORDER_STARTER_MASTERS: readonly EventOrderStarterMaster[] = [
             options: [
               { name: "Beer & Wine", description: "Per person", unitPrice: 28 },
             ],
+          },
+          {
+            name: "Beer & Wine details",
+            instructions:
+              "Follow-up choices for Beer & Wine. None are pre-configured — your venue will add them here when ready.",
+            selectionMode: "single",
+            minSelect: 0,
+            maxSelect: null,
+            dependsOnOptionNames: ["Beer & Wine"],
+            options: [],
           },
         ],
       },

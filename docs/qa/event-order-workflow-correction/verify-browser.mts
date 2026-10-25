@@ -315,10 +315,29 @@ async function main() {
 
     let send = page.locator('[data-testid="choices-send-selection-request"]').first();
     if ((await send.count()) === 0) {
+      // Finalized packet → Amend reopens draft so Send returns.
       const amend = page.getByRole("button", { name: /^Amend$/ }).first();
       if ((await amend.count()) > 0) {
         await amend.click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(2500);
+        send = page.locator('[data-testid="choices-send-selection-request"]').first();
+      }
+    }
+    if ((await send.count()) === 0) {
+      // Submitted leftover (e.g. default-template QA packet) — start a fresh
+      // Ceremony + Reception selection request from the template select.
+      const tmpl = page.locator('[data-testid="choices-template-select"]');
+      if ((await tmpl.count()) > 0) {
+        await tmpl.selectOption({ label: /Ceremony \+ Reception/i }).catch(async () => {
+          await tmpl.click();
+          await page.getByRole("option", { name: /Ceremony \+ Reception/i }).first().click().catch(() => undefined);
+        });
+        await page.waitForTimeout(800);
+        const prepare = page.getByRole("button", { name: /Start selections|Prepare|Send selection/i }).first();
+        if ((await prepare.count()) > 0) {
+          await prepare.click();
+          await page.waitForTimeout(2000);
+        }
         send = page.locator('[data-testid="choices-send-selection-request"]').first();
       }
     }
@@ -751,9 +770,8 @@ async function main() {
       );
       const liveRev = Number(eoMeta?.revision ?? 0);
       if (liveRev > freezeRev) {
-        page.once("dialog", async (dialog: { accept: () => Promise<void> }) => {
-          await dialog.accept();
-        });
+        // staff context already auto-accepts confirm() dialogs — do not add a
+        // second page.once("dialog") handler (Playwright: already handled).
         await page.goto(`${APP}/invoices/${eoInvoice.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
         await page.waitForTimeout(1500);
         const updateDraft = page.getByRole("button", { name: /Update Draft Invoice/i });
@@ -841,27 +859,8 @@ async function main() {
       `payable=${expectedPayable.payableTotal} billable=${expectedPayable.billableSubtotal} tax=${expectedPayable.taxAmount}`,
     );
 
-    const { data: scheduleBefore } = eoInvoice?.id
-      ? await admin
-          .from("payment_schedules")
-          .select("id, total_amount")
-          .eq("invoice_id", eoInvoice.id)
-          .eq("venue_id", FANCY)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : { data: null };
-    const { count: planLinesBefore } = scheduleBefore?.id
-      ? await admin
-          .from("payment_line_items")
-          .select("id", { count: "exact", head: true })
-          .eq("schedule_id", scheduleBefore.id)
-      : { count: 0 };
-    record(
-      "payment-plan-reconciles-to-expected-payable",
-      Boolean(scheduleBefore) && moneyFiguresAgree(Number(scheduleBefore?.total_amount ?? 0), expectedPayable.payableTotal),
-      `schedule=${scheduleBefore?.total_amount} expected=${expectedPayable.payableTotal} lines=${planLinesBefore}`,
-    );
+    // Payment-plan reconcile is asserted after publish/freeze (schedule syncs
+    // on revert and freeze-on-send).
 
     // Publish invoice (freeze EO billable lines). Prefer Mark as issued so
     // portal publication does not depend on outbound email succeeding.
@@ -877,16 +876,13 @@ async function main() {
       record("invoice-detail-shows-projected-payable", projectedVisible, `${money} :: ${invBody.slice(0, 500)}`);
       await page.screenshot({ path: `${OUT}/shots/invoice-detail-before-publish-1280.png`, fullPage: false });
 
-      // After a prior email send, Send is permanently gated — Mark as issued
-      // freezes EO lines for portal without re-emailing. Prefer that when shown.
+      // Prefer Send when available (freezes EO + publishes). If a prior payment
+      // request blocks Send, Mark as issued freezes without re-emailing.
       const alreadySentNote = page.getByTestId("payment-request-already-sent");
       const sendBtn = page.getByTestId("send-invoice-and-payment-plan");
       const markIssued = page.getByRole("button", { name: /Mark as issued/i });
       if ((await alreadySentNote.count()) > 0 && (await markIssued.count()) > 0) {
         await markIssued.click();
-        await page.getByText(/Invoice marked as Issued|marked as Issued|Status updated to sent/i).first()
-          .waitFor({ timeout: 20_000 })
-          .catch(() => undefined);
         await page.waitForTimeout(2000);
       } else if ((await sendBtn.count()) > 0 && !(await sendBtn.isDisabled())) {
         await sendBtn.click();
@@ -894,30 +890,27 @@ async function main() {
         const confirm = page.getByTestId("confirm-send-invoice-and-payment-plan");
         await confirm.waitFor({ timeout: 15_000 });
         await confirm.click();
-        await page.getByText(/Invoice and payment plan sent|Sending…/i).first()
-          .waitFor({ timeout: 60_000 })
-          .catch(() => undefined);
-        await page.getByText(/Sent\. A new send is not available|Status updated to sent|Invoice and payment plan sent/i)
-          .first()
-          .waitFor({ timeout: 90_000 })
-          .catch(() => undefined);
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000);
       } else if ((await markIssued.count()) > 0) {
         await markIssued.click();
-        await page.getByText(/Invoice marked as Issued|marked as Issued|Status updated to sent/i).first()
-          .waitFor({ timeout: 20_000 })
-          .catch(() => undefined);
         await page.waitForTimeout(2000);
       }
 
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 20; i++) {
         const { data: probe } = await admin.from("invoices").select("status").eq("id", eoInvoice.id).maybeSingle();
         if (probe?.status && probe.status !== "draft") break;
         await page.waitForTimeout(1000);
-        if (i === 4) {
+        if (i === 5 || i === 12) {
           await page.reload({ waitUntil: "domcontentloaded" });
-          const retry = page.getByRole("button", { name: /Mark as issued/i });
-          if ((await retry.count()) > 0) await retry.click();
+          const retrySend = page.getByTestId("send-invoice-and-payment-plan");
+          const retryMark = page.getByRole("button", { name: /Mark as issued/i });
+          if ((await retrySend.count()) > 0 && !(await retrySend.isDisabled())) {
+            await retrySend.click();
+            const confirm = page.getByTestId("confirm-send-invoice-and-payment-plan");
+            if ((await confirm.count()) > 0) await confirm.click();
+          } else if ((await retryMark.count()) > 0) {
+            await retryMark.click();
+          }
         }
       }
       await page.reload({ waitUntil: "domcontentloaded" });
@@ -963,6 +956,27 @@ async function main() {
       "invoice-not-tax-only-after-send",
       Number(invAfterSend?.total ?? 0) > Number(invAfterSend?.tax_amount ?? 0) + 0.02,
       JSON.stringify(invAfterSend),
+    );
+    const { data: scheduleAfter } = eoInvoice?.id
+      ? await admin
+          .from("payment_schedules")
+          .select("id, total_amount")
+          .eq("invoice_id", eoInvoice.id)
+          .eq("venue_id", FANCY)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+    const { count: planLinesAfter } = scheduleAfter?.id
+      ? await admin
+          .from("payment_line_items")
+          .select("id", { count: "exact", head: true })
+          .eq("schedule_id", scheduleAfter.id)
+      : { count: 0 };
+    record(
+      "payment-plan-reconciles-to-expected-payable",
+      Boolean(scheduleAfter) && moneyFiguresAgree(Number(scheduleAfter?.total_amount ?? 0), expectedPayable.payableTotal),
+      `schedule=${scheduleAfter?.total_amount} expected=${expectedPayable.payableTotal} lines=${planLinesAfter}`,
     );
     persisted.invoiceAfterSend = invAfterSend;
     persisted.frozenLineCount = frozenEo.length;

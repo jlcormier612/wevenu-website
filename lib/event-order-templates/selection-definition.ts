@@ -39,6 +39,7 @@ export function selectionDefinitionFromEventOrderTemplate(
       maxSelect: g.maxSelect,
       allowQuantity: g.allowQuantity,
       sortOrder: g.sortOrder,
+      dependsOnOptionIds: g.dependsOnOptionIds ?? [],
     })),
     options: template.options.map((o) => ({
       id: o.id,

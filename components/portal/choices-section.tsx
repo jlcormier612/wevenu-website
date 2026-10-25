@@ -6,6 +6,10 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  orderedVisibleChoiceGroups,
+  reconcileAnswersForDependencies,
+} from "@/lib/client-choices/conditional-groups";
+import {
   clientChoicesDisplayLabel,
   isClientChoicesClientEditable,
 } from "@/lib/client-choices/constants";
@@ -40,7 +44,11 @@ export function ChoicesPortalSection({ token }: { token: string }) {
         setRows(list);
         const open = list.find((c) => isClientChoicesClientEditable(c.status)) ?? list[0];
         setActiveId(open?.id ?? null);
-        setAnswers(open?.answers ?? {});
+        setAnswers(
+          open
+            ? reconcileAnswersForDependencies(open.definition, open.answers ?? {})
+            : {},
+        );
       })
       .catch(() => setRows(null));
   }, [token]);
@@ -48,7 +56,9 @@ export function ChoicesPortalSection({ token }: { token: string }) {
   const active = rows?.find((r) => r.id === activeId) ?? null;
 
   useEffect(() => {
-    if (active) setAnswers(active.answers ?? {});
+    if (active) {
+      setAnswers(reconcileAnswersForDependencies(active.definition, active.answers ?? {}));
+    }
   }, [active?.id]);
 
   if (rows === undefined) {
@@ -71,6 +81,7 @@ export function ChoicesPortalSection({ token }: { token: string }) {
   }
 
   function toggleOption(groupId: string, optionId: string, mode: "single" | "multi") {
+    if (!active) return;
     setAnswers((prev) => {
       const current = prev[groupId]?.optionIds ?? [];
       let next: string[];
@@ -81,15 +92,17 @@ export function ChoicesPortalSection({ token }: { token: string }) {
           ? current.filter((id) => id !== optionId)
           : [...current, optionId];
       }
-      return { ...prev, [groupId]: { ...prev[groupId], optionIds: next } };
+      const tentative = { ...prev, [groupId]: { ...prev[groupId], optionIds: next } };
+      return reconcileAnswersForDependencies(active.definition, tentative);
     });
   }
 
   function save(submit: boolean) {
     if (!active) return;
     setMessage(null);
+    const reconciled = reconcileAnswersForDependencies(active.definition, answers);
     if (submit) {
-      const validated = validateChoicesAnswers(active.definition, answers);
+      const validated = validateChoicesAnswers(active.definition, reconciled);
       if (!validated.ok) {
         setMessage(validated.message);
         return;
@@ -100,7 +113,7 @@ export function ChoicesPortalSection({ token }: { token: string }) {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, choicesId: active.id, answers }),
+        body: JSON.stringify({ token, choicesId: active.id, answers: reconciled }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -114,6 +127,9 @@ export function ChoicesPortalSection({ token }: { token: string }) {
   }
 
   const editable = active ? isClientChoicesClientEditable(active.status) : false;
+  const visibleGroups = active
+    ? orderedVisibleChoiceGroups(active.definition, answers)
+    : [];
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
@@ -231,24 +247,36 @@ export function ChoicesPortalSection({ token }: { token: string }) {
             </div>
           ) : null}
 
-          {active.definition.groups
-            .slice()
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((group) => {
-              const opts = active.definition.options
-                .filter((o) => o.groupId === group.id)
-                .sort((a, b) => a.sortOrder - b.sortOrder);
-              const selected = answers[group.id]?.optionIds ?? [];
-              return (
-                <fieldset key={group.id} className="space-y-2 rounded-sm border border-border p-4" disabled={!editable}>
-                  <legend className="px-1 text-sm font-medium text-heading">{group.name}</legend>
-                  <p className="text-xs text-muted-foreground">
-                    {group.selectionMode === "single" ? "Pick one" : "Pick many"}
-                    {group.minSelect > 0 ? " · required" : " · optional"}
+          {visibleGroups.map((group) => {
+            const deps = group.dependsOnOptionIds ?? [];
+            const isDependent = deps.length > 0;
+            const opts = active.definition.options
+              .filter((o) => o.groupId === group.id)
+              .sort((a, b) => a.sortOrder - b.sortOrder);
+            const selected = answers[group.id]?.optionIds ?? [];
+            return (
+              <fieldset
+                key={group.id}
+                className={`space-y-2 rounded-sm border border-border p-4 ${isDependent ? "ml-3 border-l-2 border-l-heading/40" : ""}`}
+                disabled={!editable}
+                data-testid={isDependent ? "choices-dependent-group" : "choices-group"}
+                data-group-name={group.name}
+                data-dependent={isDependent ? "true" : "false"}
+              >
+                <legend className="px-1 text-sm font-medium text-heading">{group.name}</legend>
+                <p className="text-xs text-muted-foreground">
+                  {group.selectionMode === "single" ? "Pick one" : "Pick many"}
+                  {group.minSelect > 0 ? " · required" : " · optional"}
+                  {isDependent ? " · based on your selection above" : ""}
+                </p>
+                {group.instructions ? (
+                  <p className="text-xs text-muted-foreground">{group.instructions}</p>
+                ) : null}
+                {opts.length === 0 ? (
+                  <p className="text-xs text-muted-foreground" data-testid="choices-dependent-empty">
+                    No additional choices are configured for this selection yet.
                   </p>
-                  {group.instructions ? (
-                    <p className="text-xs text-muted-foreground">{group.instructions}</p>
-                  ) : null}
+                ) : (
                   <div className="space-y-2">
                     {opts.map((opt) => {
                       const checked = selected.includes(opt.id);
@@ -281,9 +309,10 @@ export function ChoicesPortalSection({ token }: { token: string }) {
                       );
                     })}
                   </div>
-                </fieldset>
-              );
-            })}
+                )}
+              </fieldset>
+            );
+          })}
 
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
