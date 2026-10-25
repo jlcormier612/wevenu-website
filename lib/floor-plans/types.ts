@@ -191,6 +191,8 @@ export type UpdateObjectInput = {
   notes?: string | null;
   locked?: boolean;
   displayShape?: DisplayShape | null;
+  /** Explicit inventory link — null clears. Never inferred from label. */
+  inventoryItemId?: string | null;
 };
 
 export type ReorderDirection = "forward" | "backward";

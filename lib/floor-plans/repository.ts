@@ -597,6 +597,7 @@ export async function updateObject(
   if ("notes" in input)             update.notes = input.notes;
   if (input.locked !== undefined)   update.locked = input.locked;
   if ("displayShape" in input)      update.display_shape = input.displayShape;
+  if ("inventoryItemId" in input)   update.inventory_item_id = input.inventoryItemId;
   if (Object.keys(update).length === 0) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("floor_plan_objects") as any)

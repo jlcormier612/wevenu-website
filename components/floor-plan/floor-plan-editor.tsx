@@ -79,7 +79,7 @@ import {
 import {
   DISPLAY_SHAPES, DISPLAY_SHAPE_LABELS, DISPLAY_SHAPE_STYLE, FloorPlanShapeSvg,
 } from "@/components/floor-plan/floor-plan-shapes";
-import { OBJECT_STYLE, OBJECT_TYPES, nextObjectLabel } from "@/lib/floor-plans/constants";
+import { OBJECT_STYLE, OBJECT_TYPES } from "@/lib/floor-plans/constants";
 import type {
   DisplayShape,
   FloorPlanCanvasObject,
@@ -90,6 +90,12 @@ import type {
 } from "@/lib/floor-plans/types";
 import { FloorPlanCapacityBanner } from "@/components/floor-plan/floor-plan-capacity-banner";
 import { isSeatingTableType } from "@/lib/floor-plans/capacity";
+import {
+  inventoryLinkStatus,
+  nextPlacementLabel,
+  resolveItemTypeLabel,
+  suggestedCapacityForPlacement,
+} from "@/lib/floor-plans/object-identity";
 import {
   floorPlanKeyboardTargetIsTextEntry,
   floorPlanNudgeStep,
@@ -317,7 +323,8 @@ function inventoryToAddSource(item: InventoryItem): AddSource {
   return {
     objectType,
     toolbarLabel: label,
-    fixedLabel: label,
+    // Placement IDs (C1, T1) are generated at insert — do not use the inventory
+    // name as the canvas label (that conflates item type with placement ID).
     width: item.width ?? undefined,
     height: item.length ?? undefined, // floor "length" (depth) becomes the canvas Y-extent
     color: item.color ?? undefined,
@@ -330,24 +337,50 @@ function inventoryToAddSource(item: InventoryItem): AddSource {
 
 function PropertiesPanel({
   obj,
+  inventoryItems = [],
   onUpdate,
   onDuplicate,
   onDelete,
   onReorder,
 }: {
   obj: FloorPlanCanvasObject;
+  inventoryItems?: InventoryItem[];
   onUpdate: (id: string, patch: Partial<FloorPlanCanvasObject>) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
   onReorder: (id: string, direction: "forward" | "backward") => void;
 }) {
+  const linkedItem = obj.inventoryItemId
+    ? inventoryItems.find((i) => i.id === obj.inventoryItemId) ?? null
+    : null;
+  const itemType = resolveItemTypeLabel(obj, linkedItem?.name ?? null);
+  const link = inventoryLinkStatus(obj.inventoryItemId, linkedItem?.name ?? null);
+  const linkable = inventoryItems.filter((i) => !i.isArchived && i.availableForFloorPlans);
+
   return (
-    <div className="space-y-3 p-3 border border-border bg-card rounded-xl">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {OBJECT_TYPES[obj.objectType].label}
-        </p>
-        {obj.locked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+    <div
+      className="space-y-3 p-3 border border-border bg-card rounded-xl"
+      data-testid="floor-plan-object-properties"
+      data-inventory-linked={link.kind}
+      data-item-type-source={itemType.source}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Item type
+          </p>
+          <p className="text-sm font-medium text-heading truncate" data-testid="floor-plan-object-item-type">
+            {itemType.label}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {itemType.source === "inventory"
+              ? "From linked inventory"
+              : itemType.source === "shape"
+                ? "From layout shape (not linked to inventory)"
+                : "From object category"}
+          </p>
+        </div>
+        {obj.locked && <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
       </div>
 
       {/* Actions */}
@@ -380,13 +413,18 @@ function PropertiesPanel({
       <div className="space-y-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
         <div className="space-y-1">
-          <Label className="text-xs">Label</Label>
+          <Label className="text-xs">Placement label</Label>
           <Input
             value={obj.label ?? ""}
             onChange={(e) => onUpdate(obj.id, { label: e.target.value })}
             className="h-7 text-xs"
             disabled={obj.locked}
+            placeholder="e.g. C1 or T3"
+            data-testid="floor-plan-object-placement-label"
           />
+          <p className="text-[10px] text-muted-foreground">
+            Canvas ID for this placement only — not the inventory item name.
+          </p>
         </div>
         {obj.objectType.startsWith("table") && (
           <div className="space-y-1">
@@ -398,10 +436,53 @@ function PropertiesPanel({
               className="h-7 text-xs w-20"
               placeholder="0"
               disabled={obj.locked}
+              data-testid="floor-plan-object-capacity"
             />
           </div>
         )}
       </div>
+
+      {/* Inventory link */}
+      {obj.objectType !== "text_label" ? (
+        <div className="space-y-2" data-testid="floor-plan-object-inventory-link">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Inventory
+          </p>
+          <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-object-inventory-status">
+            {link.summary}
+          </p>
+          {linkable.length > 0 ? (
+            <select
+              className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+              value={obj.inventoryItemId ?? ""}
+              disabled={obj.locked}
+              data-testid="floor-plan-object-inventory-select"
+              onChange={(e) => {
+                const next = e.target.value || null;
+                onUpdate(obj.id, { inventoryItemId: next });
+              }}
+            >
+              <option value="">Not linked (layout only)</option>
+              {linkable.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                  {item.quantityAvailable === 0 ? " · stock unset (0)" : ` · qty ${item.quantityAvailable}`}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              No Floor Plan–enabled inventory items yet.{" "}
+              <Link href="/library/inventory" className="underline hover:text-foreground">
+                Manage Inventory
+              </Link>
+            </p>
+          )}
+          <p className="text-[10px] text-muted-foreground">
+            Linking is explicit — similarly named items (Cocktail vs Round vs 60&quot; Round) stay distinct. Never matched by name.
+          </p>
+        </div>
+      ) : null}
 
       {/* Size & Rotation */}
       <div className="space-y-2">
@@ -837,13 +918,22 @@ export function FloorPlanEditor({
       const pos = toCanvas(e.clientX, e.clientY);
       const source = addSource!;
       const label = source.fixedLabel
-        ?? nextObjectLabel(objects.map((o) => ({ objectType: o.objectType, label: o.label })), source.objectType);
+        ?? nextPlacementLabel(
+          objects.map((o) => ({ label: o.label })),
+          source.displayShape ?? null,
+          source.objectType,
+        );
+      const capacity = suggestedCapacityForPlacement(
+        source.displayShape ?? null,
+        source.objectType,
+        source.width ?? OBJECT_TYPES[source.objectType].defaultWidth,
+      );
       void (async () => {
         const result = await boundActions.addObject(plan.id, {
           objectType: source.objectType,
           x: snapValue(pos.x), y: snapValue(pos.y),
           label,
-          capacity: OBJECT_TYPES[source.objectType].defaultCapacity ?? undefined,
+          capacity: capacity ?? undefined,
           width: source.width,
           height: source.height,
           color: source.color,
@@ -1502,6 +1592,7 @@ export function FloorPlanEditor({
         {selectedObj ? (
           <PropertiesPanel
             obj={selectedObj}
+            inventoryItems={inventoryItems}
             onUpdate={handlePropertyUpdate}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
@@ -1534,10 +1625,17 @@ export function FloorPlanEditor({
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inventory Usage</p>
           <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-inventory-usage-legend">
-            Available is this venue&apos;s inventory quantity on hand. Used counts objects on this
-            event&apos;s floor plans that are linked to that inventory item (not every canvas
-            object with a similar label). Remaining = Available − Used.
+            Available is the venue&apos;s configured inventory quantity (starters often remain 0 until
+            you set stock). Used counts only placements linked to that inventory item — not every
+            canvas object with a similar label, and not unlinked layout shapes. Remaining = Available − Used.
+            This is reporting only; it does not reserve or allocate stock.
           </p>
+          {liveUsage.some((u) => u.quantityAvailable === 0) ? (
+            <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-inventory-stock-unset-hint">
+              Some items show Available 0 — set quantity in Inventory if that should reflect real stock.
+              Remaining can look negative when linked placements exceed an unset (0) quantity.
+            </p>
+          ) : null}
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-muted-foreground">
