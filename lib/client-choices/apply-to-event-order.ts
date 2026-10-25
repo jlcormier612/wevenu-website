@@ -85,3 +85,55 @@ export function parseChoicesLineNotes(
   if (!m) return null;
   return { clientChoicesId: m[1], optionId: m[2] };
 }
+
+function normalizeLineDescription(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * Required pick-one groups must not leave prior billable dinner (etc.) lines
+ * alongside the newly selected option. Returns Event Order line ids whose
+ * description matches any option label in a single-select group that has an
+ * answer in this finalize — so applying "Plated Dinner" clears legacy
+ * "Buffet Dinner" / duplicate "Plated Dinner" from earlier package applies.
+ *
+ * Multi-select groups stay on appliedLineIds replacement only (venue-authored
+ * optional lines with the same name are not wiped by an empty multi answer).
+ */
+export function conflictingSingleSelectLineIds(input: {
+  definition: ChoicesDefinition;
+  answers: ChoicesAnswers;
+  eventOrderLines: Array<{ id: string; description: string }>;
+  /** Already scheduled for removal (prior appliedLineIds) — skipped here. */
+  alreadyRemovingIds?: Iterable<string>;
+}): string[] {
+  const already = new Set(input.alreadyRemovingIds ?? []);
+  const byId = new Map(input.definition.options.map((o) => [o.id, o]));
+  const conflictLabels = new Set<string>();
+
+  for (const group of input.definition.groups) {
+    if (group.selectionMode !== "single") continue;
+    const answer = input.answers[group.id];
+    if (!answer?.optionIds?.length) continue;
+    for (const opt of input.definition.options) {
+      if (opt.groupId !== group.id) continue;
+      conflictLabels.add(normalizeLineDescription(opt.label));
+    }
+    // Ensure selected option labels are included even if options array is sparse.
+    for (const optionId of answer.optionIds) {
+      const opt = byId.get(optionId);
+      if (opt) conflictLabels.add(normalizeLineDescription(opt.label));
+    }
+  }
+
+  if (conflictLabels.size === 0) return [];
+
+  const out: string[] = [];
+  for (const line of input.eventOrderLines) {
+    if (already.has(line.id)) continue;
+    if (conflictLabels.has(normalizeLineDescription(line.description))) {
+      out.push(line.id);
+    }
+  }
+  return out;
+}

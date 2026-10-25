@@ -431,11 +431,22 @@ async function main() {
       record("selection-link-renders-form", isChoices && !isInvoice, body.slice(0, 400));
       await couplePage.screenshot({ path: `${OUT}/shots/selection-link-1280.png`, fullPage: false });
 
-      const option = couplePage.locator('fieldset input[type="radio"], fieldset input[type="checkbox"]').first();
-      const submit = couplePage.getByRole("button", { name: /^Submit$/ }).first();
-      if ((await option.count()) > 0 && !(await option.isChecked().catch(() => false))) {
-        await option.click({ force: true });
+      // Required pick-one / pick-many groups must be satisfied before submit
+      // (EO-D-02 Dinner service is required). Click one control in each
+      // required fieldset; leave optional groups alone.
+      const fieldsets = couplePage.locator("fieldset");
+      const fieldsetCount = await fieldsets.count();
+      for (let i = 0; i < fieldsetCount; i += 1) {
+        const fs = fieldsets.nth(i);
+        const legend = await fs.innerText().catch(() => "");
+        if (!/required/i.test(legend)) continue;
+        const control = fs.locator('input[type="radio"], input[type="checkbox"]').first();
+        if ((await control.count()) > 0 && !(await control.isChecked().catch(() => false))) {
+          await control.click({ force: true });
+          await couplePage.waitForTimeout(200);
+        }
       }
+      const submit = couplePage.getByRole("button", { name: /^Submit$/ }).first();
       if ((await submit.count()) > 0 && (await submit.isEnabled())) {
         await submit.click();
         await couplePage.getByText(/Submitted|Thank you|received your choices/i).first()
@@ -705,7 +716,7 @@ async function main() {
     const { data: eoInvoices } = order?.id
       ? await admin
           .from("invoices")
-          .select("id, status, total, subtotal, tax_amount, balance_due, event_order_id, invoice_number")
+          .select("id, status, total, subtotal, tax_amount, balance_due, event_order_id, invoice_number, event_order_revision_at_freeze")
           .eq("event_order_id", order.id)
           .eq("venue_id", FANCY)
       : { data: [] };
@@ -726,11 +737,67 @@ async function main() {
     );
     persisted.eoInvoices = eoInvoices;
 
-    const eoInvoice = (eoInvoices ?? []).find((i) => i.status !== "void") ?? (eoInvoices ?? [])[0];
+    let eoInvoice = (eoInvoices ?? []).find((i) => i.status !== "void") ?? (eoInvoices ?? [])[0];
+    const { data: eoMeta } = order?.id
+      ? await admin.from("event_orders").select("id, revision").eq("id", order.id).maybeSingle()
+      : { data: null };
+
+    // Published invoices are immutable snapshots. When EO changed after freeze
+    // (e.g. choices finalize added a dinner line), reopen via the product
+    // "Update Draft Invoice" path so freeze/publish can match live EO.
+    if (eoInvoice?.id && eoInvoice.status === "sent") {
+      const freezeRev = Number(
+        (eoInvoice as { event_order_revision_at_freeze?: number | null }).event_order_revision_at_freeze ?? 0,
+      );
+      const liveRev = Number(eoMeta?.revision ?? 0);
+      if (liveRev > freezeRev) {
+        page.once("dialog", async (dialog: { accept: () => Promise<void> }) => {
+          await dialog.accept();
+        });
+        await page.goto(`${APP}/invoices/${eoInvoice.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+        await page.waitForTimeout(1500);
+        const updateDraft = page.getByRole("button", { name: /Update Draft Invoice/i });
+        const amendBtn = page.getByRole("button", { name: /Create Amended Invoice/i });
+        if ((await updateDraft.count()) > 0) {
+          await updateDraft.click();
+          for (let i = 0; i < 15; i++) {
+            const { data: probe } = await admin.from("invoices").select("status").eq("id", eoInvoice.id).maybeSingle();
+            if (probe?.status === "draft") break;
+            await page.waitForTimeout(1000);
+          }
+        } else if ((await amendBtn.count()) > 0) {
+          await amendBtn.click();
+          await page.waitForTimeout(2500);
+          const amendedId = page.url().match(/\/invoices\/([0-9a-f-]{36})/i)?.[1];
+          if (amendedId) {
+            const { data: amended } = await admin
+              .from("invoices")
+              .select(
+                "id, status, total, subtotal, tax_amount, balance_due, event_order_id, invoice_number, event_order_revision_at_freeze",
+              )
+              .eq("id", amendedId)
+              .maybeSingle();
+            if (amended) eoInvoice = amended;
+          }
+        }
+        const { data: refreshed } = await admin
+          .from("invoices")
+          .select(
+            "id, status, total, subtotal, tax_amount, balance_due, event_order_id, invoice_number, event_order_revision_at_freeze",
+          )
+          .eq("id", eoInvoice.id)
+          .maybeSingle();
+        if (refreshed) eoInvoice = refreshed;
+        console.log(
+          `invoice-resync-after-eo-drift status=${eoInvoice.status} liveRev=${liveRev} freezeRev=${freezeRev}`,
+        );
+      }
+    }
+
     const { data: eoLinesFull } = order?.id
       ? await admin
           .from("event_order_lines")
-          .select("id, amount, unit_price, is_included")
+          .select("id, amount, unit_price, is_included, description")
           .eq("event_order_id", order.id)
       : { data: [] };
     const { data: storedInvLinesBefore } = eoInvoice?.id
@@ -751,6 +818,9 @@ async function main() {
         .map((l) => ({ type: l.type as "tax" | "discount" | "fee" | "item", amount: Number(l.amount) })),
     });
     persisted.reconciliationBeforeSend = expectedPayable;
+    persisted.eoDinnerLines = (eoLinesFull ?? [])
+      .filter((l) => /plated|buffet|dinner/i.test(String(l.description ?? "")))
+      .map((l) => ({ id: l.id, description: l.description, amount: l.amount, is_included: l.is_included }));
     record(
       "eo-delivery-not-assumed-payable",
       expectedPayable.includedOrNonBillable === 0 ||
@@ -807,10 +877,18 @@ async function main() {
       record("invoice-detail-shows-projected-payable", projectedVisible, `${money} :: ${invBody.slice(0, 500)}`);
       await page.screenshot({ path: `${OUT}/shots/invoice-detail-before-publish-1280.png`, fullPage: false });
 
-      // When a payment plan exists, primary "Mark as issued" is hidden — Send publishes.
+      // After a prior email send, Send is permanently gated — Mark as issued
+      // freezes EO lines for portal without re-emailing. Prefer that when shown.
+      const alreadySentNote = page.getByTestId("payment-request-already-sent");
       const sendBtn = page.getByTestId("send-invoice-and-payment-plan");
       const markIssued = page.getByRole("button", { name: /Mark as issued/i });
-      if ((await sendBtn.count()) > 0 && !(await sendBtn.isDisabled())) {
+      if ((await alreadySentNote.count()) > 0 && (await markIssued.count()) > 0) {
+        await markIssued.click();
+        await page.getByText(/Invoice marked as Issued|marked as Issued|Status updated to sent/i).first()
+          .waitFor({ timeout: 20_000 })
+          .catch(() => undefined);
+        await page.waitForTimeout(2000);
+      } else if ((await sendBtn.count()) > 0 && !(await sendBtn.isDisabled())) {
         await sendBtn.click();
         await page.getByRole("heading", { name: /Preview and send/i }).waitFor({ timeout: 30_000 });
         const confirm = page.getByTestId("confirm-send-invoice-and-payment-plan");
@@ -826,7 +904,7 @@ async function main() {
         await page.waitForTimeout(2000);
       } else if ((await markIssued.count()) > 0) {
         await markIssued.click();
-        await page.getByText(/Invoice marked as Issued|marked as Issued/i).first()
+        await page.getByText(/Invoice marked as Issued|marked as Issued|Status updated to sent/i).first()
           .waitFor({ timeout: 20_000 })
           .catch(() => undefined);
         await page.waitForTimeout(2000);

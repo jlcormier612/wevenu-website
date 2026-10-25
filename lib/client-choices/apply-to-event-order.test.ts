@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  conflictingSingleSelectLineIds,
   financialDeltaFromLines,
   isPriceNeutralChange,
   resolveSelectedOptions,
 } from "@/lib/client-choices/apply-to-event-order";
-import type { ChoicesDefinition } from "@/lib/client-choices/types";
+import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
 
 const definition: ChoicesDefinition = {
   sections: [{ id: "s1", name: "Dinner", guidance: null, sortOrder: 0 }],
@@ -74,5 +75,49 @@ describe("resolveSelectedOptions / financial delta", () => {
       g2: { optionIds: ["o-snack", "o-linen"] },
     });
     assert.equal(financialDeltaFromLines(lines), 1150);
+  });
+});
+
+describe("conflictingSingleSelectLineIds", () => {
+  it("clears all option labels in an answered single-select group", () => {
+    const answers: ChoicesAnswers = { g1: { optionIds: ["o-salmon"] } };
+    const ids = conflictingSingleSelectLineIds({
+      definition,
+      answers,
+      eventOrderLines: [
+        { id: "legacy-chicken", description: "Chicken" },
+        { id: "legacy-salmon", description: "Salmon" },
+        { id: "arbor", description: "Arbor" },
+        { id: "snack", description: "Late Night Snack" },
+      ],
+    });
+    assert.deepEqual(ids.sort(), ["legacy-chicken", "legacy-salmon"].sort());
+  });
+
+  it("does not clear multi-select option labels when only single-select is answered", () => {
+    const answers: ChoicesAnswers = { g1: { optionIds: ["o-chicken"] } };
+    const ids = conflictingSingleSelectLineIds({
+      definition,
+      answers,
+      eventOrderLines: [
+        { id: "snack", description: "Late Night Snack" },
+        { id: "chicken", description: "Chicken" },
+      ],
+      alreadyRemovingIds: ["chicken"],
+    });
+    assert.deepEqual(ids, []);
+  });
+
+  it("ignores single-select groups with no answer", () => {
+    const answers: ChoicesAnswers = { g2: { optionIds: ["o-snack"] } };
+    const ids = conflictingSingleSelectLineIds({
+      definition,
+      answers,
+      eventOrderLines: [
+        { id: "chicken", description: "Chicken" },
+        { id: "salmon", description: "Salmon" },
+      ],
+    });
+    assert.deepEqual(ids, []);
   });
 });

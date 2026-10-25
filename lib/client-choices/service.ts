@@ -7,6 +7,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   financialDeltaFromLines,
+  conflictingSingleSelectLineIds,
   resolveSelectedOptions,
   choicesLineNotes,
 } from "@/lib/client-choices/apply-to-event-order";
@@ -421,6 +422,27 @@ export async function finalizeClientChoices(
     eo = await getEventOrder(row.eventId);
     if (!eo) {
       return { ok: false, message: "Event Order missing during apply." } as FinalizeClientChoicesResult;
+    }
+
+    // Required pick-one: clear any EO lines matching that group's option labels
+    // so legacy package dinners are not left beside the newly selected option.
+    const conflictIds = conflictingSingleSelectLineIds({
+      definition: row.definition,
+      answers: row.answers,
+      eventOrderLines: eo.lines.map((l) => ({ id: l.id, description: l.description })),
+      alreadyRemovingIds: row.appliedLineIds,
+    });
+    for (const lineId of conflictIds) {
+      const existing = eo.lines.find((l) => l.id === lineId);
+      if (existing) {
+        await removeLine(eo.id, lineId, existing.description);
+      }
+    }
+    if (conflictIds.length > 0) {
+      eo = await getEventOrder(row.eventId);
+      if (!eo) {
+        return { ok: false, message: "Event Order missing during apply." } as FinalizeClientChoicesResult;
+      }
     }
 
     const appliedIds: string[] = [];

@@ -63,6 +63,7 @@ describe("P2-B Create / Update Event Order CTA", () => {
     });
     assert.match(update, /Update the Event Order/);
     assert.match(update, /duplicate/i);
+    assert.match(update, /pick-one/i);
     assert.match(update, /Venue-authored fixed lines/i);
     assert.match(update, /Booking status does not change/i);
   });

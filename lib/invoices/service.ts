@@ -448,6 +448,8 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
             brandingSnapshot,
           });
           await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
+          const { syncPaymentPlanToInvoiceCommitment } = await import("@/lib/payments/service");
+          await syncPaymentPlanToInvoiceCommitment(invoiceId);
           void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
           return { ok: true } as InvoiceActionResult;
         }
@@ -483,6 +485,10 @@ export async function revertInvoiceToDraft(invoiceId: string): Promise<InvoiceAc
     }
     await repo.revertToDraft(c, venueId, invoiceId);
     await repo.insertActivity(c, venueId, invoiceId, "reverted_to_draft", "Reopened as Draft to reflect Event Order changes.");
+    // Draft again projects live EO — keep any unpaid payment plan aligned to
+    // the projected commitment before the coordinator re-sends.
+    const { syncPaymentPlanToInvoiceCommitment } = await import("@/lib/payments/service");
+    await syncPaymentPlanToInvoiceCommitment(invoiceId);
     return { ok: true } as InvoiceActionResult;
   });
   return result as InvoiceActionResult;

@@ -30,6 +30,7 @@ export function eventOrderApplyConfirmMessage(input: {
       "",
       "• Couple-selected options become Event Order lines (included/free stay informational — not unintended charges).",
       "• Prior lines from this choices packet are replaced so you do not get duplicate selection lines.",
+      "• Required pick-one groups also clear any existing Event Order lines that match that group’s option labels (so a new dinner choice does not sit beside a legacy package dinner).",
       "• Venue-authored fixed lines on the Event Order stay as they are.",
       "• Booking status does not change. Invoice and payment plan stay authoritative until you act separately.",
       "",
