@@ -227,7 +227,8 @@ async function main() {
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForTimeout(5000);
     await page.screenshot({ path: `${OUT}/shots/stage2-eo-after-ensure-1280.png`, fullPage: false });
-    record("stage2-browser-landed", /events\//.test(page.url()), page.url());
+    // Booked events often deep-link to /clients/{id} with the same commercial panels.
+    record("stage2-browser-landed", /\/(events|clients)\//.test(page.url()), page.url());
   } finally {
     await browser.close();
   }

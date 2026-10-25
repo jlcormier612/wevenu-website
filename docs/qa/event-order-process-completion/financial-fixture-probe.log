@@ -1,0 +1,106 @@
+node:internal/process/promises:332
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Error: Transform failed with 5 errors:
+/eval.ts:12:21: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:13:24: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:14:22: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:15:33: ERROR: Top-level await is currently not supported with the "cjs" output format
+/eval.ts:16:34: ERROR: Top-level await is currently not supported with the "cjs" output format
+    at failureErrorWithLog (/Users/jensmac/Developer/wevenu-website/node_modules/esbuild/lib/main.js:1748:15)
+    at /Users/jensmac/Developer/wevenu-website/node_modules/esbuild/lib/main.js:1017:50
+    at responseCallbacks.<computed> (/Users/jensmac/Developer/wevenu-website/node_modules/esbuild/lib/main.js:884:9)
+    at handleIncomingPacket (/Users/jensmac/Developer/wevenu-website/node_modules/esbuild/lib/main.js:939:12)
+    at Socket.readFromStdout (/Users/jensmac/Developer/wevenu-website/node_modules/esbuild/lib/main.js:862:7)
+    at Socket.emit (node:events:509:20)
+    at addChunk (node:internal/streams/readable:564:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:515:3)
+    at Readable.push (node:internal/streams/readable:395:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  errors: [
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 21,
+        file: '/eval.ts',
+        length: 5,
+        line: 12,
+        lineText: "const { data: eo } = await admin.from('event_orders').select('id,status,revision,shared_at').eq('event_id', EVENT).eq('venue_id', FANCY).maybeSingle();",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 24,
+        file: '/eval.ts',
+        length: 5,
+        line: 13,
+        lineText: "const { data: lines } = await admin.from('event_order_lines').select('description,quantity,unit_price,amount,is_included,provenance,offering_id,notes').eq('event_order_id', eo.id);",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 22,
+        file: '/eval.ts',
+        length: 5,
+        line: 14,
+        lineText: "const { data: inv } = await admin.from('invoices').select('id,status,total,subtotal,event_order_id,event_order_revision_at_freeze,issued_at').eq('event_order_id', eo.id).eq('venue_id', FANCY).order('created_at',{ascending:false}).limit(1).maybeSingle();",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 33,
+        file: '/eval.ts',
+        length: 5,
+        line: 15,
+        lineText: "const { data: invLines } = inv ? await admin.from('invoice_lines').select('description,amount,quantity,unit_price').eq('invoice_id', inv.id) : { data: [] };",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    },
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 34,
+        file: '/eval.ts',
+        length: 5,
+        line: 16,
+        lineText: "const { data: schedules } = inv ? await admin.from('payment_schedules').select('id,status,total_amount').eq('invoice_id', inv.id).eq('venue_id', FANCY) : { data: [] };",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    }
+  ],
+  warnings: []
+}
+
+Node.js v25.9.0
