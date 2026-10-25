@@ -1,0 +1,127 @@
+{
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:18b8964a7d46aa764b4657ec7dc31eb80b8fc342",
+  "digest": "sha256:fe3b44cfe081689a972ed5ea331a559fbc2a535ee43ff5ae4274a0a1d973e774",
+  "eventBefore": {
+    "id": "ebf74f77-2944-474a-b735-48762ecb6842",
+    "status": "confirmed",
+    "booked_at": "2026-10-22",
+    "client_id": "b4e2764b-be33-4579-89e3-0c8e4a6dd5be",
+    "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+  },
+  "invoicesBefore": 1,
+  "schedulesBefore": 1,
+  "sessionsBeforeLevels": [
+    "couple",
+    "financial",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple",
+    "couple"
+  ],
+  "eoBeforeSelectionSend": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-24T02:24:06.106+00:00",
+    "client_agreed_at": null,
+    "finalized_at": "2026-10-24T05:26:28.723+00:00",
+    "revision": 19
+  },
+  "eventBeforeSelectionSend": {
+    "id": "ebf74f77-2944-474a-b735-48762ecb6842",
+    "status": "confirmed",
+    "booked_at": "2026-10-22"
+  },
+  "invoicesBeforeSelectionSend": 1,
+  "eoAfterSelectionSend": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "finalized",
+    "shared_at": "2026-10-24T02:24:06.106+00:00",
+    "client_agreed_at": null,
+    "finalized_at": "2026-10-24T05:26:28.723+00:00",
+    "revision": 19
+  },
+  "selectionEmailStatus": "accepted",
+  "selectionUrlRedacted": "https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices",
+  "choicesAfterSubmit": [
+    {
+      "id": "2b5ddd72-7e48-448f-879f-857741bd8572",
+      "status": "submitted",
+      "submitted_at": "2026-10-25T17:18:03.363098+00:00"
+    },
+    {
+      "id": "d6809923-5735-415d-b00d-1204b4f64174",
+      "status": "draft",
+      "submitted_at": null
+    },
+    {
+      "id": "7bb76532-1f96-44c2-b925-3554ccc14057",
+      "status": "draft",
+      "submitted_at": null
+    }
+  ],
+  "eventOrder": {
+    "id": "624eceef-5096-4288-b104-62daa3a82d11",
+    "status": "open",
+    "shared_at": "2026-10-24T02:24:06.106+00:00",
+    "event_id": "ebf74f77-2944-474a-b735-48762ecb6842",
+    "revision": 19
+  },
+  "lineCount": 44,
+  "linesBeforeApplyCount": 321,
+  "orderShared": {
+    "status": "finalized",
+    "shared_at": "2026-10-24T02:24:06.106+00:00",
+    "client_agreed_at": null
+  },
+  "explicitSharePerformed": false,
+  "sharedAtWasPreexistingBeforeExplicitShare": true,
+  "eoInvoices": [
+    {
+      "id": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+      "status": "sent",
+      "total": 2266.31,
+      "subtotal": 2133,
+      "tax_amount": 133.31,
+      "balance_due": 2266.31,
+      "event_order_id": "624eceef-5096-4288-b104-62daa3a82d11",
+      "invoice_number": "INV-2026-4489C8"
+    }
+  ],
+  "reconciliationBeforeSend": {
+    "deliverySubtotal": 2453,
+    "billableSubtotal": 2133,
+    "includedOrNonBillable": 320,
+    "invoiceAdjustmentsSubtotal": 0,
+    "discountAmount": 0,
+    "taxAmount": 133.31,
+    "payableTotal": 2266.31
+  },
+  "invoiceAfterSend": {
+    "id": "4489c869-38fd-4ae1-8cad-cc7043d1d527",
+    "status": "sent",
+    "total": 2266.31,
+    "subtotal": 2133,
+    "tax_amount": 133.31,
+    "balance_due": 2266.31,
+    "event_order_revision_at_freeze": 17
+  },
+  "frozenLineCount": 10,
+  "portalPayments": {
+    "scheduleCount": 1,
+    "invoiceCount": 1,
+    "portalTotal": 2266.31,
+    "expectedPayable": 2266.31
+  },
+  "eventAfter": {
+    "status": "confirmed",
+    "booked_at": "2026-10-22"
+  }
+}

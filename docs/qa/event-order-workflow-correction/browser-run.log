@@ -1,7 +1,7 @@
-PASS serving-sha — ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a
-PASS serving-digest — sha256:f3ba33aadb64461398c690cda13085b5a7456db80641ebf6f5da8f25b29c8902
+PASS serving-sha — ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:18b8964a7d46aa764b4657ec7dc31eb80b8fc342
+PASS serving-digest — sha256:fe3b44cfe081689a972ed5ea331a559fbc2a535ee43ff5ae4274a0a1d973e774
 PASS fixture-booked — {"id":"ebf74f77-2944-474a-b735-48762ecb6842","status":"confirmed","booked_at":"2026-10-22","client_id":"b4e2764b-be33-4579-89e3-0c8e4a6dd5be","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}
-PASS isolated-to-financial-session-only — financial=true coupleOrPlanningRemoved=12 createdFinancial=false
+PASS isolated-to-financial-session-only — financial=true coupleOrPlanningRemoved=13 createdFinancial=false
 PASS venue-workspace-landed — https://app.sandbox.hellotocheers.com/clients/b4e2764b-be33-4579-89e3-0c8e4a6dd5be#event-order-choices
 PASS stages-not-collapsed-details — choices=SECTION order=SECTION
 PASS template-select-visible — choices-template-select
@@ -10,7 +10,7 @@ PASS journey-no-generic-view — <h2 class="text-xs font-medium uppercase tracki
 PASS prepare-or-active-packet — active packet
 PASS event-order-document-stage-visible — event-order-order
 PASS start-selections-did-not-error — no prepare button — existing packets
-FAIL preview-dialog — ArtifactReviewOverlay
+PASS preview-dialog — ArtifactReviewOverlay
 PASS send-cta — count=1 body=Client selections
 Choose an Event Order template, review the complete offering, then send a selection request. Same composer pattern as Package/Proposal — sending does not finalize the Event Order or create an invoice.
 Event Order template
@@ -29,7 +29,7 @@ PASS share-dialog — ShareDialog
 PASS send-finished — Selection request email submitted to b2p-simp-1792642396736@hellotocheers-test.invalid. Delivery is confirmed separately.
 PASS selection-send-does-not-change-eo-shared-at — before=2026-10-24T02:24:06.106+00:00 after=2026-10-24T02:24:06.106+00:00
 PASS selection-send-does-not-set-client-agreed — {"before":null,"after":null}
-PASS selection-send-does-not-finalize-eo — before=finalized/2026-10-24T03:22:06.683+00:00 after=finalized/2026-10-24T03:22:06.683+00:00
+PASS selection-send-does-not-finalize-eo — before=finalized/2026-10-24T05:26:28.723+00:00 after=finalized/2026-10-24T05:26:28.723+00:00
 PASS selection-send-does-not-create-invoice — before=1 after=1
 PASS selection-send-does-not-change-booking — {"before":{"id":"ebf74f77-2944-474a-b735-48762ecb6842","status":"confirmed","booked_at":"2026-10-22"},"after":{"id":"ebf74f77-2944-474a-b735-48762ecb6842","status":"confirmed","booked_at":"2026-10-22"}}
 PASS generated-selection-url — https://app.sandbox.hellotocheers.com/p/[redacted]?view=choices#choices
@@ -127,8 +127,8 @@ Your Choices
 Select options y
 PASS selection-submit-does-not-change-eo-shared-at — beforeSend=2026-10-24T02:24:06.106+00:00 afterSubmit=2026-10-24T02:24:06.106+00:00
 PASS selection-submit-does-not-accept-eo — {"client_agreed_at":null}
-PASS selection-submit-does-not-finalize-eo — before=2026-10-24T03:22:06.683+00:00 after=2026-10-24T03:22:06.683+00:00
-FAIL selection-form-shows-offering-context — B2P & Portal
+PASS selection-submit-does-not-finalize-eo — before=2026-10-24T05:26:28.723+00:00 after=2026-10-24T05:26:28.723+00:00
+PASS selection-form-shows-offering-context — B2P & Portal
 
 ·
 
@@ -171,7 +171,7 @@ Vendors
 Your Choices
 
 Select options your venue asked for. Submitting sends them for review — it i
-PASS selection-persisted — [{"id":"8edc95f2-585a-424c-81ae-496a1fc17e55","status":"submitted"},{"id":"dd1b6f18-d9ee-46e5-9c49-0c08cba29ff7","status":"finalized"},{"id":"2c2dbf0a-b62f-46be-ba25-bb799310c346","status":"finalized"}]
+PASS selection-persisted — [{"id":"2b5ddd72-7e48-448f-879f-857741bd8572","status":"submitted"},{"id":"d6809923-5735-415d-b00d-1204b4f64174","status":"draft"},{"id":"7bb76532-1f96-44c2-b925-3554ccc14057","status":"draft"}]
 PASS no-invoice-on-submit — 1→1
 PASS invoice-link-still-invoice — INVOICE & PAYMENT PLAN
 
@@ -252,8 +252,8 @@ EVENT ORDER
 Event Order
 Owner: Venue
 ·
-Updated Oct 24, 2026
-Amended · v18
+Updated Oct 25, 2026
+Amended · v19
 Finalize Event Order
 
 What this event is receiving. Delivery subtotal (for reference): $2,453 — amount due is on Invoice / Payments.
@@ -400,7 +400,7 @@ Share with venue
 + Upload document
 E
 PASS booking-unchanged — {"status":"confirmed","booked_at":"2026-10-22"}
-PASS restore-portal-sessions — restored=12
-PASS serving-sha-unchanged-during-run — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:4ef14218c5379f6e443a5b68e8e83689f90c979a
+PASS restore-portal-sessions — restored=13
+PASS serving-sha-unchanged-during-run — 405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:18b8964a7d46aa764b4657ec7dc31eb80b8fc342
 
-NOT GREEN 59/61
+GREEN 61/61
