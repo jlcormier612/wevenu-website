@@ -22,4 +22,13 @@ Client value-import of `canAdvanceToMergeFinalConfirm` from server `lib/leads/me
 
 ## Deploy / browser
 
-Pending after commit push.
+- Commit: `f5cc61e4429ebb69730888c7a579a300003e41a0`
+- Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/40258243938
+- Browser when serving:
+
+```bash
+EXPECTED_SHA=f5cc61e4429ebb69730888c7a579a300003e41a0 \
+  npx tsx docs/qa/merge-lead-discovery/verify-browser.mts
+```
+
+Until ECS serves this SHA, overall status remains **IN PROGRESS** (not GREEN).
