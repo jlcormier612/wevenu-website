@@ -1,6 +1,6 @@
 # Test results — Luv contextual intelligence
 
-## Command
+## Unit
 
 ```bash
 npx tsx --test \
@@ -12,16 +12,27 @@ npx tsx --test \
   lib/tours/early-completion-lifecycle.test.ts
 ```
 
-## Result
-
-**95 pass / 0 fail** (see `unit-test.log`)
+**95 pass / 0 fail** (`unit-test.log`) plus presence add-on in `presence-unit.log` (Calendar Focus + Tasks still surfaces Luv).
 
 Includes:
 - Failure A: Tasks Focus does not emit past-due aggregate; useful L1 still wins
 - Failure B: scheduled ≠ all-set; confirmation requested ≠ confirmed; confirmed all-set OK
+- Presence: Calendar Focus still surfaces Luv when overdue Tasks also exist
 - Adjacent: completed/cancelled silence; pipeline stage still not evidence
-- Early tour completion Calendar aggregate still works (non-Tasks)
 
-## Browser
+## Browser (Sandbox serving `ad4d5b8b`)
 
-Pending serving image of the fix commit — `verify-browser.mts` + `BROWSER-VERIFICATION.md`.
+Harness: `EXPECTED_SHA=ad4d5b8b52002a3a9154fe311d7d196878fb82e8 npx tsx docs/qa/luv-contextual-intelligence/verify-browser.mts`
+
+**GREEN** — `browser-results.json` / `BROWSER-VERIFICATION.md`
+
+| Check | Result |
+|-------|--------|
+| serving-sha / digest | PASS |
+| A — no redundant overdue Luv | PASS |
+| A — Focus still lists overdue | PASS |
+| Presence — Luv when Calendar Focus | PASS |
+| B — scheduled, confirmation actions, no all-set | PASS |
+| B — confirmed persisted + UI | PASS |
+
+Shots under `shots/`.

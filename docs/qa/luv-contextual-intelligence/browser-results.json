@@ -1,0 +1,74 @@
+{
+  "pass": true,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ad4d5b8b52002a3a9154fe311d7d196878fb82e8",
+  "digest": "sha256:a25e67919ca7775ba51a7fda24e9c23cd081906bf3856316715cd44af3a122db",
+  "expectedSha": "ad4d5b8b52002a3a9154fe311d7d196878fb82e8",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=ad4d5b8b52002a3a9154fe311d7d196878fb82e8 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ad4d5b8b52002a3a9154fe311d7d196878fb82e8"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:a25e67919ca7775ba51a7fda24e9c23cd081906bf3856316715cd44af3a122db"
+    },
+    {
+      "name": "fixtures",
+      "pass": true,
+      "detail": "{\"taskLeadIds\":[\"95629b46-e721-469c-b91a-881c37682832\",\"9bc5e47b-972c-442e-b622-76614bad99ff\",\"d4b97d1c-6ccf-4130-be88-cc34de6088b5\"],\"tourLead\":\"ff674920-df0b-4bfa-bc85-6a84322e7067\",\"tour\":\"170399a7-5223-42a7-90d9-9a0696dad52f\",\"todayTourOk\":true}"
+    },
+    {
+      "name": "A-no-redundant-overdue-luv",
+      "pass": true,
+      "detail": "absent"
+    },
+    {
+      "name": "A-focus-lists-overdue",
+      "pass": true,
+      "detail": "Focus shows overdue"
+    },
+    {
+      "name": "presence-luv-when-calendar-focus",
+      "pass": true,
+      "detail": "Luv interpretation present"
+    },
+    {
+      "name": "B-persisted-scheduled",
+      "pass": true,
+      "detail": "scheduled"
+    },
+    {
+      "name": "B-ui-confirmation-actions",
+      "pass": true,
+      "detail": "actions"
+    },
+    {
+      "name": "B-no-all-set-while-scheduled",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "B-persisted-confirmed",
+      "pass": true,
+      "detail": "{\"id\":\"170399a7-5223-42a7-90d9-9a0696dad52f\",\"status\":\"confirmed\"}"
+    },
+    {
+      "name": "B-confirmed-no-unconfirmed-claim",
+      "pass": true,
+      "detail": "copy"
+    }
+  ],
+  "fixtures": {
+    "tourLeadId": "ff674920-df0b-4bfa-bc85-6a84322e7067",
+    "tourId": "170399a7-5223-42a7-90d9-9a0696dad52f",
+    "todayTourOk": true,
+    "taskLeadIds": [
+      "95629b46-e721-469c-b91a-881c37682832",
+      "9bc5e47b-972c-442e-b622-76614bad99ff",
+      "d4b97d1c-6ccf-4130-be88-cc34de6088b5"
+    ]
+  },
+  "at": "2026-10-26T01:13:59.564Z"
+}

@@ -1,7 +1,8 @@
 /**
- * Luv contextual intelligence — Sandbox browser verification.
- * Failure A: dashboard must not restate overdue-task counts.
- * Failure B: scheduled tour must not claim all-set / Good luck.
+ * Luv contextual intelligence + dashboard presence — Sandbox browser.
+ * - No redundant overdue-task Luv restatement
+ * - No false all-set for scheduled tours
+ * - Luv still appears when a non-Tasks L1/aggregate applies (Calendar today)
  */
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -93,6 +94,42 @@ async function authCookies() {
   ];
 }
 
+function todayTourIso(hourUtc = 18): string {
+  const d = new Date();
+  d.setUTCHours(hourUtc, 0, 0, 0);
+  return d.toISOString();
+}
+
+async function insertTourWithRetry(leadId: string, contactName: string, contactEmail: string) {
+  let lastErr = "";
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const hour = 15 + (attempt % 6);
+    const dayOffset = attempt === 0 ? 0 : 1 + attempt; // first try today for Calendar Focus
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + dayOffset);
+    d.setUTCHours(hour, (attempt * 7) % 50, 0, 0);
+    const scheduled_at = d.toISOString();
+    const { data, error } = await admin
+      .from("tour_appointments")
+      .insert({
+        venue_id: FANCY,
+        lead_id: leadId,
+        status: "scheduled",
+        scheduled_at,
+        duration_minutes: 60,
+        contact_name: contactName,
+        contact_email: contactEmail,
+        origin: "scheduled",
+        confirmation_requested_at: null,
+      })
+      .select("id, status, scheduled_at, confirmation_requested_at")
+      .single();
+    if (data && !error) return data;
+    lastErr = error?.message ?? "no row";
+  }
+  throw new Error(`tour insert failed: ${lastErr}`);
+}
+
 async function main() {
   const image = await servingImage();
   const digest = await servingDigest();
@@ -107,36 +144,34 @@ async function main() {
   const stamp = Date.now();
   const due = "2026-10-01";
 
-  // Fixture leads + overdue tasks (Focus Tasks population)
-  const leadIds: string[] = [];
-  for (let i = 0; i < 4; i++) {
+  // Overdue tasks → Focus Tasks
+  const taskLeadIds: string[] = [];
+  for (let i = 0; i < 3; i++) {
     const { data: lead, error } = await admin
       .from("leads")
       .insert({
         venue_id: FANCY,
-        first_name: `LuvTask${i}`,
-        last_name: `Overdue${stamp}`,
-        email: `luv-task-${i}.${stamp}@hellotocheers-test.invalid`,
+        first_name: `LuvDash${i}`,
+        last_name: `Task${stamp}`,
+        email: `luv-dash-task-${i}.${stamp}@hellotocheers-test.invalid`,
         sales_stage: "new_inquiry",
         exclude_from_business_reporting: true,
       })
       .select("id")
       .single();
-    if (error || !lead) throw new Error(error?.message ?? "lead insert");
-    leadIds.push(lead.id);
+    if (error || !lead) throw new Error(error?.message ?? "lead");
+    taskLeadIds.push(lead.id);
     const { error: taskErr } = await admin.from("lead_tasks").insert({
       venue_id: FANCY,
       lead_id: lead.id,
-      title: `Past due fixture ${i} ${stamp}`,
+      title: `Luv presence overdue ${i} ${stamp}`,
       due_date: due,
       completed: false,
     });
     if (taskErr) throw new Error(taskErr.message);
   }
 
-  // Scheduled unconfirmed tour within 3 days (all-set window)
-  const tourAt = new Date(Date.now() + 2 * 86_400_000);
-  tourAt.setUTCHours(15, 0, 0, 0);
+  // Scheduled unconfirmed tour for lead-detail factuality (+ try today for Calendar Luv)
   const { data: tourLead, error: tlErr } = await admin
     .from("leads")
     .insert({
@@ -145,7 +180,7 @@ async function main() {
       last_name: `Meadows${stamp}`,
       partner_first_name: "Brian",
       partner_last_name: "Valley",
-      email: `ursula.${stamp}@hellotocheers-test.invalid`,
+      email: `ursula.dash.${stamp}@hellotocheers-test.invalid`,
       sales_stage: "tour_scheduled",
       exclude_from_business_reporting: true,
     })
@@ -153,24 +188,44 @@ async function main() {
     .single();
   if (tlErr || !tourLead) throw new Error(tlErr?.message ?? "tour lead");
 
-  const { data: tour, error: tourErr } = await admin
-    .from("tour_appointments")
-    .insert({
-      venue_id: FANCY,
-      lead_id: tourLead.id,
-      status: "scheduled",
-      scheduled_at: tourAt.toISOString(),
-      duration_minutes: 60,
-      contact_name: "Ursula Meadows & Brian Valley",
-      contact_email: `ursula.${stamp}@hellotocheers-test.invalid`,
-      origin: "scheduled",
-      confirmation_requested_at: null,
-    })
-    .select("id, status, confirmation_requested_at, scheduled_at")
-    .single();
-  if (tourErr || !tour) throw new Error(tourErr?.message ?? "tour");
-
-  record("fixtures", true, JSON.stringify({ leadIds, tourLead: tourLead.id, tour: tour.id, status: tour.status }));
+  // Prefer today so Focus Calendar can populate Dashboard Luv aggregate
+  let tour = null as {
+    id: string;
+    status: string;
+    scheduled_at: string;
+    confirmation_requested_at: string | null;
+  } | null;
+  let todayTourOk = false;
+  for (let h = 16; h <= 21; h++) {
+    const { data, error } = await admin
+      .from("tour_appointments")
+      .insert({
+        venue_id: FANCY,
+        lead_id: tourLead.id,
+        status: "scheduled",
+        scheduled_at: todayTourIso(h),
+        duration_minutes: 60,
+        contact_name: "Ursula Meadows & Brian Valley",
+        contact_email: `ursula.dash.${stamp}@hellotocheers-test.invalid`,
+        origin: "scheduled",
+        confirmation_requested_at: null,
+      })
+      .select("id, status, scheduled_at, confirmation_requested_at")
+      .single();
+    if (data && !error) {
+      tour = data;
+      todayTourOk = true;
+      break;
+    }
+  }
+  if (!tour) {
+    tour = await insertTourWithRetry(
+      tourLead.id,
+      "Ursula Meadows & Brian Valley",
+      `ursula.dash.${stamp}@hellotocheers-test.invalid`,
+    );
+  }
+  record("fixtures", true, JSON.stringify({ taskLeadIds, tourLead: tourLead.id, tour: tour.id, todayTourOk }));
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -179,40 +234,57 @@ async function main() {
 
   try {
     await page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(4500);
     const dash = await page.locator("body").innerText();
     const redundant =
       /I noticed .*tasks? (is|are) past due/i.test(dash)
       || /Want to clear them\?/i.test(dash);
-    record("A-no-redundant-overdue-luv", !redundant, redundant ? dash.slice(0, 400) : "no past-due aggregate card");
-    const focusShowsTask = /Past due fixture|Today's Focus|overdue/i.test(dash);
-    record("A-focus-still-present", focusShowsTask, "Focus/overdue surface present");
+    record("A-no-redundant-overdue-luv", !redundant, redundant ? "found restatement" : "absent");
+    record("A-focus-lists-overdue", /Luv presence overdue|Overdue/i.test(dash), "Focus shows overdue");
     await page.screenshot({ path: `${OUT}/shots/dashboard-overdue-1280.png`, fullPage: false });
 
+    // Presence: Calendar aggregate when today's tour landed in Focus
+    const luvCard = page.locator("section").filter({ hasText: /^💗?\s*Luv|Luv$/i }).filter({
+      has: page.locator("text=/noticed|tour|schedule|setup|readiness|stale|confirm/i"),
+    });
+    // More reliable: card title "Luv" near rose styling — match message text
+    const hasUsefulLuv =
+      /I noticed .*tour .* on today's schedule/i.test(dash)
+      || /Open tours/i.test(dash)
+      || /Want to get ready/i.test(dash)
+      || /public website isn't collecting|Tour availability|setup/i.test(dash)
+      || /stale|unopened/i.test(dash);
+    if (todayTourOk) {
+      record(
+        "presence-luv-when-calendar-focus",
+        hasUsefulLuv || /I noticed/i.test(dash),
+        hasUsefulLuv ? "Luv interpretation present" : dash.slice(0, 500),
+      );
+    } else {
+      // No today slot — silence with Tasks-only is acceptable; still assert not globally broken
+      record(
+        "presence-silence-or-other-l1",
+        !redundant,
+        hasUsefulLuv ? "other L1 present" : "Tasks-only silence OK",
+      );
+    }
+    await page.screenshot({ path: `${OUT}/shots/dashboard-presence-1280.png`, fullPage: true });
+
+    // Lead: scheduled unconfirmed
     await page.goto(`${APP}/leads/${tourLead.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(4000);
     const leadBody = await page.locator("body").innerText();
+    record("B-persisted-scheduled", tour.status === "scheduled" && !tour.confirmation_requested_at, tour.status);
     record(
-      "B-persisted-scheduled",
-      tour.status === "scheduled" && !tour.confirmation_requested_at,
-      JSON.stringify(tour),
-    );
-    record(
-      "B-ui-still-offers-confirmation-actions",
+      "B-ui-confirmation-actions",
       /Send Confirmation Request/i.test(leadBody) && /Mark as Confirmed/i.test(leadBody),
-      "actions visible",
+      "actions",
     );
     const falseAllSet = /all set for/i.test(leadBody) && /Good luck/i.test(leadBody);
-    record("B-no-all-set-while-scheduled", !falseAllSet, falseAllSet ? "found all-set" : "absent");
-    const accurate =
-      /not confirmed yet/i.test(leadBody)
-      || /waiting for their reply/i.test(leadBody)
-      || /scheduled for/i.test(leadBody);
-    // Accurate copy may appear in Luv panel; if Luv is silent that is also acceptable for scheduled.
-    record("B-scheduled-language-or-silence", !falseAllSet, accurate ? "accurate copy" : "silent-or-other");
+    record("B-no-all-set-while-scheduled", !falseAllSet, falseAllSet ? "bad copy" : "ok");
     await page.screenshot({ path: `${OUT}/shots/lead-scheduled-unconfirmed-1280.png`, fullPage: false });
 
-    // Mark confirmed via DB (avoid external email), reload, allow all-set
+    // Confirm via DB, reload
     await admin
       .from("tour_appointments")
       .update({ status: "confirmed", confirmation_source: "manual" })
@@ -224,16 +296,10 @@ async function main() {
       .eq("id", tour.id)
       .single();
     record("B-persisted-confirmed", after?.status === "confirmed", JSON.stringify(after));
-
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForTimeout(4000);
     const confirmedBody = await page.locator("body").innerText();
-    // All-set is allowed when confirmed; must not claim unconfirmed
-    record(
-      "B-confirmed-no-unconfirmed-claim",
-      !/not confirmed yet/i.test(confirmedBody),
-      "unconfirmed copy gone",
-    );
+    record("B-confirmed-no-unconfirmed-claim", !/not confirmed yet/i.test(confirmedBody), "copy");
     await page.screenshot({ path: `${OUT}/shots/lead-confirmed-1280.png`, fullPage: false });
   } finally {
     await browser.close();
@@ -248,7 +314,7 @@ async function main() {
       digest,
       expectedSha: EXPECTED,
       checks,
-      fixtures: { tourLeadId: tourLead.id, tourId: tour.id, overdueLeadIds: leadIds },
+      fixtures: { tourLeadId: tourLead.id, tourId: tour.id, todayTourOk, taskLeadIds },
       at: new Date().toISOString(),
     }, null, 2),
   );

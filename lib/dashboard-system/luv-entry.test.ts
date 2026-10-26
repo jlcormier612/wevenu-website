@@ -470,6 +470,22 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
     assert.equal(entry?.message, "Your public website isn't collecting inquiries yet.");
     assert.equal(entry?.actionHref, "/setup");
   });
+
+  it("Calendar Focus still surfaces Luv even when overdue Tasks also exist", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [
+        focusItem({ id: "t1", domain: "Tasks", href: "/leads/a?tab=tasks" }),
+        focusItem({ id: "t2", domain: "Tasks", href: "/leads/b?tab=tasks" }),
+        focusItem({ id: "c1", domain: "Calendar", href: "/tours" }),
+      ],
+      observations: [],
+      recommendations: [],
+    });
+    assert.ok(entry);
+    assert.match(entry!.message, /tour is on today's schedule/i);
+    assert.doesNotMatch(entry!.message, /past due|Want to clear/i);
+    assert.equal(entry!.actionHref, "/tours");
+  });
 });
 
 describe("Contextual intelligence S1–S4 stay off Dashboard L1", () => {
