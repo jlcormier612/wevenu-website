@@ -29,6 +29,7 @@ import {
   type MergePreview,
   type MergeSearchCandidate,
 } from "@/lib/leads/merge-client";
+import { formatPhoneDisplay } from "@/lib/sms/phone";
 import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -84,7 +85,7 @@ function CandidateSummary({
       </div>
       <div className="mt-0.5 space-y-0.5 text-xs text-muted-foreground">
         {candidate.email ? <p>{candidate.email}</p> : null}
-        {candidate.phone ? <p>{candidate.phone}</p> : null}
+        {candidate.phone ? <p>{formatPhoneDisplay(candidate.phone)}</p> : null}
         {candidate.partnerDisplayName || candidate.partnerEmail ? (
           <p>
             Partner: {[candidate.partnerDisplayName, candidate.partnerEmail].filter(Boolean).join(" · ")}
@@ -267,7 +268,8 @@ export function MergeLeadDialog({
       }
     }
     setFieldChoices(fills);
-    setTourCancelIds([]);
+    // Do not clear tourCancelIds here — survivor reorientation must keep cancel choices.
+    // selectCandidate / resetDiscoveryState clear them when the lead pair changes.
   }
 
   function selectCandidate(c: MergeSearchCandidate) {
@@ -647,7 +649,9 @@ export function MergeLeadDialog({
                         <span className="block text-muted-foreground">{preview.primary.email}</span>
                       ) : null}
                       {preview.primary.phone ? (
-                        <span className="block text-muted-foreground">{preview.primary.phone}</span>
+                        <span className="block text-muted-foreground">
+                          {formatPhoneDisplay(preview.primary.phone)}
+                        </span>
                       ) : null}
                       <span className="block text-xs text-muted-foreground">
                         Submitted {new Date(preview.primary.createdAt).toLocaleString()}
@@ -684,7 +688,9 @@ export function MergeLeadDialog({
                         <span className="block text-muted-foreground">{preview.secondary.email}</span>
                       ) : null}
                       {preview.secondary.phone ? (
-                        <span className="block text-muted-foreground">{preview.secondary.phone}</span>
+                        <span className="block text-muted-foreground">
+                          {formatPhoneDisplay(preview.secondary.phone)}
+                        </span>
                       ) : null}
                       <span className="block text-xs text-muted-foreground">
                         Submitted {new Date(preview.secondary.createdAt).toLocaleString()}
@@ -712,46 +718,78 @@ export function MergeLeadDialog({
                 </ul>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2" data-testid="merge-tour-section">
                 <p className="font-medium text-heading">Tour appointments</p>
                 {preview.tours.length === 0 ? (
                   <p className="text-muted-foreground">No tour appointments on either lead.</p>
                 ) : (
-                  <ul className="space-y-2">
-                    {preview.tours.map((t) => {
-                      const cancel = tourCancelIds.includes(t.id);
-                      return (
-                        <li key={t.id} className="rounded-md border border-border px-3 py-2">
-                          <p className="text-sm">
-                            {formatTour(t.scheduledAt, t.status)}
-                            {t.leadId === preview.primary.id ? " · on surviving lead" : " · on duplicate"}
-                          </p>
-                          {(t.status === "scheduled" || t.status === "confirmed") && (
-                            <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                              <input
-                                type="checkbox"
-                                checked={cancel}
-                                onChange={(e) => {
-                                  setTourCancelIds((ids) =>
-                                    e.target.checked
-                                      ? [...ids, t.id]
-                                      : ids.filter((id) => id !== t.id),
-                                  );
-                                }}
-                              />
-                              Cancel this tour (releases the slot). Leave unchecked to keep and
-                              reassociate to the surviving lead.
-                            </label>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <>
+                    <p className="text-xs text-muted-foreground" data-testid="merge-tour-policy">
+                      Each appointment below is a separate record. All are kept and reassociated to
+                      the surviving lead unless you cancel an active (scheduled or confirmed) tour.
+                      Completed and past appointments cannot be cancelled here.
+                    </p>
+                    <ul className="space-y-2">
+                      {preview.tours.map((t) => {
+                        const cancel = tourCancelIds.includes(t.id);
+                        const canCancel = t.status === "scheduled" || t.status === "confirmed";
+                        const ownership =
+                          t.leadId === preview.primary.id ? "on surviving lead" : "on duplicate";
+                        return (
+                          <li
+                            key={t.id}
+                            className="rounded-md border border-border px-3 py-2"
+                            data-testid="merge-tour-row"
+                            data-tour-id={t.id}
+                            data-tour-status={t.status}
+                            data-ownership={t.leadId === preview.primary.id ? "survivor" : "duplicate"}
+                          >
+                            <p className="text-sm">
+                              {formatTour(t.scheduledAt, t.status)}
+                              {" · "}
+                              {ownership}
+                            </p>
+                            {canCancel ? (
+                              <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5"
+                                  checked={cancel}
+                                  onChange={(e) => {
+                                    setTourCancelIds((ids) =>
+                                      e.target.checked
+                                        ? [...ids, t.id]
+                                        : ids.filter((id) => id !== t.id),
+                                    );
+                                  }}
+                                  data-testid="merge-tour-cancel"
+                                  data-tour-id={t.id}
+                                />
+                                <span>
+                                  {cancel
+                                    ? "Will cancel this tour and release the slot."
+                                    : "Keep and reassociate to the surviving lead (default). Check to cancel instead."}
+                                </span>
+                              </label>
+                            ) : (
+                              <p
+                                className="mt-2 text-xs text-muted-foreground"
+                                data-testid="merge-tour-keep-note"
+                              >
+                                Kept — will reassociate to the surviving lead. No choice needed for
+                                this status.
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
                 )}
                 {preview.occupyingTourConflict ? (
-                  <p className="text-xs text-muted-foreground">
-                    Both leads have active tours. Both will be kept on the surviving lead unless you
-                    cancel one above. Times are never chosen silently.
+                  <p className="text-xs text-muted-foreground" data-testid="merge-tour-occupying-hint">
+                    Both leads have active tours. Both stay on the surviving lead unless you cancel
+                    one above. Times are never chosen silently.
                   </p>
                 ) : null}
               </div>
@@ -776,10 +814,12 @@ export function MergeLeadDialog({
                   Marked merged: <span className="font-medium text-heading">{preview.secondary.displayName}</span>
                   {preview.secondary.email ? ` (${preview.secondary.email})` : ""}
                 </li>
-                <li>
+                <li data-testid="merge-final-tours">
                   {preview.tours.length === 0
                     ? "No tour appointments to reassociate."
-                    : `${preview.tours.length} tour appointment(s) will be reassociated to the surviving lead (not deleted).`}
+                    : tourCancelIds.length > 0
+                      ? `${preview.tours.length - tourCancelIds.length} tour appointment(s) reassociated; ${tourCancelIds.length} cancelled.`
+                      : `${preview.tours.length} tour appointment(s) will be reassociated to the surviving lead (not deleted). Separate appointments are not mutually exclusive.`}
                 </li>
                 <li>
                   Notes, tasks, and activity on the duplicate move to the surviving lead per the preview.

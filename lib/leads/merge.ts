@@ -21,6 +21,7 @@ import {
   type MergeSearchCandidate,
   type TourSummary,
 } from "@/lib/leads/merge-client";
+import { formatPhoneDisplay, normalizeVenuePhoneInput, phoneDigits } from "@/lib/sms/phone";
 
 export { KEEP_BOTH_INQUIRY_CHOICE, resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
 export {
@@ -239,6 +240,18 @@ const FK_STAFF_KEY: MergeFieldKey = "assigned_staff_id";
 const UNNAMED_SPACE = "Unnamed event space";
 const UNKNOWN_STAFF = "Unknown staff member";
 
+/** Phones that share the same dialable digits are the same contact number despite formatting. */
+function phonesDigitEquivalent(a: string, b: string): boolean {
+  const da = phoneDigits(a);
+  const db = phoneDigits(b);
+  if (!da || !db) return false;
+  // Compare last 10 digits (US/Canada national number) when both are long enough.
+  if (da.length >= 10 && db.length >= 10) {
+    return da.slice(-10) === db.slice(-10);
+  }
+  return da === db;
+}
+
 function buildFieldDiffs(primary: LeadSnap, secondary: LeadSnap): FieldDiff[] {
   const diffs: FieldDiff[] = [];
   for (const key of SCALAR_KEYS) {
@@ -250,7 +263,8 @@ function buildFieldDiffs(primary: LeadSnap, secondary: LeadSnap): FieldDiff[] {
       diffs.push({
         key, kind: "fill", primaryValue: null, secondaryValue: s, secondaryDisplay: s, label,
       });
-    } else if (p && s && p === s) {
+    } else if (p && s && (p === s || (key === "phone" && phonesDigitEquivalent(p, s)))) {
+      // Digit-equivalent phones: keep primary's stored form; display formats separately.
       diffs.push({ key, kind: "same", value: p, valueDisplay: p, label });
     } else if (p && s && p !== s) {
       diffs.push({
@@ -385,6 +399,38 @@ function applyFkDisplays(diffs: FieldDiff[], maps: FkLabelMaps): FieldDiff[] {
   });
 }
 
+/** Venue-facing phone labels via shared formatter; *Value stays the stored string. */
+function applyPhoneDisplays(diffs: FieldDiff[]): FieldDiff[] {
+  return diffs.map((d) => {
+    if (d.key !== "phone") return d;
+    if (d.kind === "fill") {
+      return { ...d, secondaryDisplay: formatPhoneDisplay(d.secondaryValue) };
+    }
+    if (d.kind === "same") {
+      return { ...d, valueDisplay: formatPhoneDisplay(d.value) };
+    }
+    if (d.kind === "conflict") {
+      return {
+        ...d,
+        primaryDisplay: formatPhoneDisplay(d.primaryValue),
+        secondaryDisplay: formatPhoneDisplay(d.secondaryValue),
+      };
+    }
+    if (d.kind === "keep_primary") {
+      return {
+        ...d,
+        primaryDisplay: d.primaryValue ? formatPhoneDisplay(d.primaryValue) : null,
+      };
+    }
+    return d;
+  });
+}
+
+/** Persist phone using the same storage normalizer as lead create/update. */
+function phonePatchValue(raw: string): string {
+  return normalizeVenuePhoneInput(raw) || raw;
+}
+
 function pickDefaultPrimary(a: LeadSnap, b: LeadSnap): { primary: LeadSnap; secondary: LeadSnap; tied: boolean } {
   const cmp = a.created_at.localeCompare(b.created_at);
   if (cmp < 0) return { primary: a, secondary: b, tied: false };
@@ -516,7 +562,7 @@ export async function previewMergeLeads(
   const rawDiffs = buildFieldDiffs(primary, secondary);
   const { spaceIds, staffIds } = collectFkIds(rawDiffs);
   const fkMaps = await loadFkLabelMaps(supabase, venue.id, spaceIds, staffIds);
-  const fieldDiffs = applyFkDisplays(rawDiffs, fkMaps);
+  const fieldDiffs = applyPhoneDisplays(applyFkDisplays(rawDiffs, fkMaps));
   const relatedSummary = [
     `${notesOnSecondary ?? 0} note(s) on secondary will move to the primary lead`,
     `${tasksOnSecondary ?? 0} task(s) on secondary will move to the primary lead`,
@@ -596,7 +642,10 @@ export async function confirmMergeLeads(
   for (const diff of preview.fieldDiffs) {
     if (diff.kind === "fill") {
       const chosen = input.fieldChoices[diff.key];
-      fieldPatch[diff.key] = chosen !== undefined ? chosen : diff.secondaryValue;
+      const raw = chosen !== undefined ? chosen : diff.secondaryValue;
+      fieldPatch[diff.key] = diff.key === "phone" && typeof raw === "string"
+        ? phonePatchValue(raw)
+        : raw;
     } else if (diff.kind === "conflict") {
       const chosen = input.fieldChoices[diff.key];
       if (chosen === undefined || chosen === null || chosen === "") {
@@ -610,6 +659,9 @@ export async function confirmMergeLeads(
         });
         fieldPatch[diff.key] = resolved.primaryFieldValue;
         preserveSecondaryInquiry = resolved.preserveSecondaryAsHistory;
+      } else if (diff.key === "phone" && typeof chosen === "string") {
+        // Choice still keys off the lead's stored string; persist via shared normalizer.
+        fieldPatch[diff.key] = phonePatchValue(chosen);
       } else {
         fieldPatch[diff.key] = chosen;
       }
@@ -687,8 +739,11 @@ export async function confirmMergeLeads(
 export const mergeTestHelpers = {
   buildFieldDiffs,
   applyFkDisplays,
+  applyPhoneDisplays,
   collectFkIds,
   pickDefaultPrimary,
+  phonesDigitEquivalent,
+  phonePatchValue,
   norm,
   FIELD_LABELS,
   UNNAMED_SPACE,

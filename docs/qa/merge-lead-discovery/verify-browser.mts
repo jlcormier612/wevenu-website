@@ -122,7 +122,6 @@ async function main() {
   const cancelEmail = `merge-cancel.${stamp}@hellotocheers-test.invalid`;
   const mergeEmail = `merge-ok.${stamp}@hellotocheers-test.invalid`;
   const phoneToken = `555${String(stamp).slice(-7)}`;
-  const mergePhone = `777${String(stamp).slice(-7)}`;
   const uniqueLast = `Discovery${stamp}`;
 
   // Authoritative space + staff labels for FK preview assertions
@@ -181,12 +180,16 @@ async function main() {
     assigned_staff_id: staffSecondaryId,
   });
 
-  // Confirm pair — default direction (earliest survives)
+  // Confirm pair — default direction (earliest survives).
+  // Mixed phone storage shapes (digits vs formatted) reproduce the preview defect.
+  const phoneDigitsStored = "6984238542";
+  const phoneFormattedStored = "(789) 543-6597";
+  const phoneDigitsDisplay = "(698) 423-8542";
   const mergeEarly = await insertLead({
     first_name: "MergeEarly",
     last_name: `Ok${stamp}`,
     email: mergeEmail,
-    phone: null,
+    phone: phoneDigitsStored,
     partner_first_name: "Sam",
     partner_last_name: "Partner",
     partner_email: `sam.partner.${stamp}@hellotocheers-test.invalid`,
@@ -199,7 +202,7 @@ async function main() {
     first_name: "MergeLate",
     last_name: `Ok${stamp}`,
     email: mergeEmail,
-    phone: mergePhone,
+    phone: phoneFormattedStored,
     inquiry_message: `merge-late ${stamp}`,
     planned_event_space_id: spaceId,
     assigned_staff_id: staffSecondaryId,
@@ -259,6 +262,7 @@ async function main() {
     contactName: string;
     contactEmail: string;
     dayOffset: number;
+    status?: "scheduled" | "confirmed" | "completed" | "cancelled";
   }) {
     let lastErr = "";
     for (let attempt = 0; attempt < 12; attempt++) {
@@ -270,7 +274,7 @@ async function main() {
         .insert({
           venue_id: FANCY,
           lead_id: opts.leadId,
-          status: "scheduled",
+          status: opts.status ?? "scheduled",
           scheduled_at: iso,
           duration_minutes: 60,
           contact_name: opts.contactName,
@@ -284,6 +288,22 @@ async function main() {
     }
     throw new Error(`tour fixture failed: ${lastErr}`);
   }
+
+  // Completed tours on cancel pair — prove keep-note (not a fake exclusive choice)
+  const { tour: completedOnEarly } = await insertTour({
+    leadId: cancelEarly.id,
+    contactName: `CancelEarly ${uniqueLast}`,
+    contactEmail: cancelEmail,
+    dayOffset: 9,
+    status: "completed",
+  });
+  const { tour: completedOnLate } = await insertTour({
+    leadId: cancelLate.id,
+    contactName: `CancelLate ${uniqueLast}`,
+    contactEmail: `alt-${cancelEmail}`,
+    dayOffset: 10,
+    status: "completed",
+  });
 
   const { tour, iso: tourIso } = await insertTour({
     leadId: mergeLate.id,
@@ -434,6 +454,16 @@ async function main() {
         && !staffText.includes(staffSecondaryId),
       staffText.slice(0, 240) || "missing staff conflict",
     );
+    // Tour appointments: distinct completed rows — keep notes, not exclusive radios
+    record("tour-policy-visible", await dlg.getByTestId("merge-tour-policy").isVisible(), "keep-both policy");
+    const tourRows = dlg.getByTestId("merge-tour-row");
+    record("tour-completed-rows", (await tourRows.count()) >= 2, `rows=${await tourRows.count()}`);
+    const keepNotes = dlg.getByTestId("merge-tour-keep-note");
+    record("tour-keep-notes-for-completed", (await keepNotes.count()) >= 2, `notes=${await keepNotes.count()}`);
+    record("tour-no-cancel-on-completed",
+      (await dlg.locator(`[data-testid="merge-tour-cancel"][data-tour-id="${completedOnEarly.id}"]`).count()) === 0
+      && (await dlg.locator(`[data-testid="merge-tour-cancel"][data-tour-id="${completedOnLate.id}"]`).count()) === 0,
+      "completed not cancellable");
     await page.screenshot({ path: `${OUT}/shots/preview-cancel-pair-1280.png`, fullPage: false });
 
     // Resolve conflicts before Continue (same gate as confirm path)
@@ -483,6 +513,16 @@ async function main() {
       && cEarlyAfter?.merged_into_lead_id == null
       && cLateAfter?.merged_into_lead_id == null,
       JSON.stringify({ early: cEarlyAfter, late: cLateAfter }));
+    const { data: completedEarlyAfter } = await admin.from("tour_appointments")
+      .select("id, lead_id, status").eq("id", completedOnEarly.id).single();
+    const { data: completedLateAfter } = await admin.from("tour_appointments")
+      .select("id, lead_id, status").eq("id", completedOnLate.id).single();
+    record("cancel-leaves-completed-tours",
+      completedEarlyAfter?.lead_id === cancelEarly.id
+      && completedEarlyAfter?.status === "completed"
+      && completedLateAfter?.lead_id === cancelLate.id
+      && completedLateAfter?.status === "completed",
+      JSON.stringify({ early: completedEarlyAfter, late: completedLateAfter }));
 
     // ——— Confirm path ———
     await page.goto(`${APP}/leads/${mergeLate.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
@@ -502,6 +542,19 @@ async function main() {
       "self not listed");
     await mergeCandidate.click();
     await dlg2.getByTestId("merge-preview-panel").waitFor({ state: "visible", timeout: 20_000 });
+
+    // Phone conflict: both choices display formatted; radio values remain stored strings
+    const phoneConflict = dlg2.getByTestId("merge-conflict-phone");
+    await phoneConflict.waitFor({ state: "visible", timeout: 10_000 });
+    const phoneConflictText = await phoneConflict.innerText();
+    record(
+      "preview-phone-both-formatted",
+      phoneConflictText.includes(phoneDigitsDisplay)
+        && phoneConflictText.includes(phoneFormattedStored)
+        && !phoneConflictText.includes(phoneDigitsStored),
+      phoneConflictText.slice(0, 400),
+    );
+    await page.screenshot({ path: `${OUT}/shots/phone-conflict-formatted-1280.png`, fullPage: false });
 
     // Resolve conflicts via label click so controlled React state updates (not force-check alone)
     {
@@ -575,7 +628,15 @@ async function main() {
       sec?.merged_into_lead_id === mergeEarly.id && !!sec?.merged_at,
       JSON.stringify(sec));
     record("primary-not-merged", prim?.merged_into_lead_id == null, JSON.stringify(prim));
-    record("phone-filled-on-survivor", prim?.phone === mergePhone, JSON.stringify(prim));
+    // Keep-primary phone: stored digits normalized to venue display form on persist
+    record("phone-kept-primary-normalized",
+      prim?.phone === phoneDigitsDisplay,
+      JSON.stringify({
+        got: prim?.phone,
+        expect: phoneDigitsDisplay,
+        choseStored: phoneDigitsStored,
+        secondaryStored: phoneFormattedStored,
+      }));
     record("partner-email-kept-on-survivor",
       prim?.partner_email === `sam.partner.${stamp}@hellotocheers-test.invalid`,
       prim?.partner_email ?? "");

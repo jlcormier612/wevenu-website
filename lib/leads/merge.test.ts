@@ -12,8 +12,11 @@ import { mergeTestHelpers, type MergeFieldKey } from "@/lib/leads/merge";
 const {
   buildFieldDiffs,
   applyFkDisplays,
+  applyPhoneDisplays,
   collectFkIds,
   pickDefaultPrimary,
+  phonesDigitEquivalent,
+  phonePatchValue,
   norm,
   UNNAMED_SPACE,
   UNKNOWN_STAFF,
@@ -120,6 +123,50 @@ describe("lead merge field reconciliation", () => {
   it("norm collapses channel arrays for comparison", () => {
     assert.equal(norm(["sms", "email"]), norm(["email", "sms"]));
     assert.equal(norm("  "), null);
+  });
+});
+
+describe("phone merge display + digit equivalence", () => {
+  it("formats both conflict choices via formatPhoneDisplay without changing stored values", () => {
+    const raw = buildFieldDiffs(
+      snap({ phone: "6984238542" }),
+      snap({ id: "b", phone: "(789) 543-6597" }),
+    );
+    const labeled = applyPhoneDisplays(raw);
+    const phone = labeled.find((d) => d.key === "phone");
+    assert.equal(phone?.kind, "conflict");
+    if (phone?.kind === "conflict") {
+      assert.equal(phone.primaryValue, "6984238542");
+      assert.equal(phone.secondaryValue, "(789) 543-6597");
+      assert.equal(phone.primaryDisplay, "(698) 423-8542");
+      assert.equal(phone.secondaryDisplay, "(789) 543-6597");
+    }
+  });
+
+  it("treats digit-equivalent phones as same (keeps primary stored form)", () => {
+    assert.equal(phonesDigitEquivalent("6984238542", "(698) 423-8542"), true);
+    const diffs = buildFieldDiffs(
+      snap({ phone: "6984238542" }),
+      snap({ id: "b", phone: "(698) 423-8542" }),
+    );
+    const phone = diffs.find((d) => d.key === "phone");
+    assert.equal(phone?.kind, "same");
+    if (phone?.kind === "same") {
+      assert.equal(phone.value, "6984238542");
+    }
+  });
+
+  it("phonePatchValue normalizes for storage without inventing digits", () => {
+    assert.equal(phonePatchValue("6984238542"), "(698) 423-8542");
+    assert.equal(phonePatchValue("(789) 543-6597"), "(789) 543-6597");
+    assert.equal(phonePatchValue("555-12"), "555-12");
+    assert.equal(phonePatchValue("+442071234567"), "+442071234567");
+  });
+
+  it("intake normalizeLeadInput stores phones via normalizeVenuePhoneInput", () => {
+    const normalizeSrc = readFileSync(resolve("lib/lead-intake/normalize.ts"), "utf8");
+    assert.match(normalizeSrc, /normalizeVenuePhoneInput/);
+    assert.match(normalizeSrc, /phoneNormalized/);
   });
 });
 
@@ -418,6 +465,19 @@ describe("lead merge safety contracts (source)", () => {
     assert.match(mergeTs, /primaryIsDefaultEarliest/);
   });
 
+  it("merge preview formats phones and keeps both distinct tours by default", () => {
+    assert.match(dialog, /formatPhoneDisplay/);
+    assert.match(mergeTs, /applyPhoneDisplays/);
+    assert.match(mergeTs, /phonesDigitEquivalent/);
+    assert.match(mergeTs, /phonePatchValue/);
+    assert.match(dialog, /merge-tour-policy/);
+    assert.match(dialog, /merge-tour-keep-note/);
+    assert.match(dialog, /Separate appointments are not mutually exclusive|All are kept and reassociated/);
+    assert.match(dialog, /merge-tour-cancel/);
+    // Cancel choices survive survivor reorientation
+    assert.match(dialog, /Do not clear tourCancelIds here/);
+  });
+
   it("RPC soft-marks secondary and reparents tours without drop", () => {
     assert.match(migration, /merged_into_lead_id/);
     assert.match(migration, /update public\.tour_appointments[\s\S]*lead_id = p_primary_id/);
@@ -440,7 +500,7 @@ describe("lead merge safety contracts (source)", () => {
     assert.match(dialog, /Confirm permanent merge/);
     assert.match(dialog, /conflict/);
     assert.match(dialog, /Tour appointments/);
-    assert.match(dialog, /Cancel this tour/);
+    assert.match(dialog, /Keep and reassociate to the surviving lead|Will cancel this tour/);
     assert.match(dialog, /void runPreview\(undefined, c\.id\)/);
   });
 
