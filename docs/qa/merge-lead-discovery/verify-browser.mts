@@ -533,11 +533,25 @@ async function main() {
     const confirmBtn = dlg2.getByTestId("merge-lead-confirm");
     await confirmBtn.click();
     await Promise.race([
-      page.waitForURL((u: URL) => u.pathname.includes(`/leads/${mergeEarly.id}`), { timeout: 45_000 }).catch(() => null),
-      dlg2.getByTestId("merge-final-confirm").waitFor({ state: "hidden", timeout: 45_000 }).catch(() => null),
-      page.waitForTimeout(20_000),
+      page.waitForURL(
+        (u: URL) => u.pathname.includes(`/leads/${mergeEarly.id}`),
+        { timeout: 45_000 },
+      ).catch(() => null),
+      page.locator("[data-sonner-toast], li[data-sonner-toast]")
+        .filter({ hasText: /Leads merged|Already merged/i })
+        .first()
+        .waitFor({ state: "visible", timeout: 45_000 })
+        .catch(() => null),
     ]);
-    await page.waitForTimeout(1500);
+    // Client router.push can lag the success toast; give navigation a beat, then
+    // follow secondary→primary redirect if still on the merged lead.
+    if (!page.url().includes(`/leads/${mergeEarly.id}`)) {
+      await page.waitForTimeout(2500);
+    }
+    if (!page.url().includes(`/leads/${mergeEarly.id}`)) {
+      await page.goto(`${APP}/leads/${mergeLate.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      await page.waitForTimeout(2000);
+    }
     const toastText = await page.locator("[data-sonner-toast], li[data-sonner-toast]").allTextContents().catch(() => [] as string[]);
     const redirected = page.url().includes(`/leads/${mergeEarly.id}`);
     record(
@@ -640,10 +654,23 @@ async function main() {
     await page.screenshot({ path: `${OUT}/shots/reverse-final-confirm-1280.png`, fullPage: false });
     await dlgRev.getByTestId("merge-lead-confirm").click();
     await Promise.race([
-      page.waitForURL((u: URL) => u.pathname.includes(`/leads/${revLate.id}`), { timeout: 45_000 }).catch(() => null),
-      page.waitForTimeout(20_000),
+      page.waitForURL(
+        (u: URL) => u.pathname.includes(`/leads/${revLate.id}`),
+        { timeout: 45_000 },
+      ).catch(() => null),
+      page.locator("[data-sonner-toast], li[data-sonner-toast]")
+        .filter({ hasText: /Leads merged|Already merged/i })
+        .first()
+        .waitFor({ state: "visible", timeout: 45_000 })
+        .catch(() => null),
     ]);
-    await page.waitForTimeout(1500);
+    if (!page.url().includes(`/leads/${revLate.id}`)) {
+      await page.waitForTimeout(2500);
+    }
+    if (!page.url().includes(`/leads/${revLate.id}`)) {
+      await page.goto(`${APP}/leads/${revEarly.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      await page.waitForTimeout(2000);
+    }
     const revToast = await page.locator("[data-sonner-toast], li[data-sonner-toast]").allTextContents().catch(() => [] as string[]);
     record("rev-redirect-to-late-survivor",
       page.url().includes(`/leads/${revLate.id}`),

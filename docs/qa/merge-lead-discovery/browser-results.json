@@ -1,23 +1,23 @@
 {
   "pass": true,
-  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:889f005e8529e79ec35129a41889712463058df5",
-  "digest": "sha256:307b519809123cb1a9174f7958a5d8acfcb1c4021c26882fa41f7acd8d5d3d47",
-  "expectedSha": "889f005e8529e79ec35129a41889712463058df5",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:1d8a7098f732ff78113362ceba101b89c6f5350a",
+  "digest": "sha256:5c392af2882e94402c852a86047e07b733a04d20eb5191edaa66a455a3b3f7bb",
+  "expectedSha": "1d8a7098f732ff78113362ceba101b89c6f5350a",
   "checks": [
     {
       "name": "serving-sha",
       "pass": true,
-      "detail": "expected=889f005e8529e79ec35129a41889712463058df5 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:889f005e8529e79ec35129a41889712463058df5"
+      "detail": "expected=1d8a7098f732ff78113362ceba101b89c6f5350a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:1d8a7098f732ff78113362ceba101b89c6f5350a"
     },
     {
       "name": "serving-digest",
       "pass": true,
-      "detail": "sha256:307b519809123cb1a9174f7958a5d8acfcb1c4021c26882fa41f7acd8d5d3d47"
+      "detail": "sha256:5c392af2882e94402c852a86047e07b733a04d20eb5191edaa66a455a3b3f7bb"
     },
     {
       "name": "fixtures",
       "pass": true,
-      "detail": "{\"cancelEarly\":\"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c\",\"cancelLate\":\"0cdd6335-8918-45b0-b5b3-1e8ccb56c887\",\"mergeEarly\":\"8c09ed9f-4a39-4164-b639-c3fec4d3013b\",\"mergeLate\":\"d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683\",\"decoy\":\"a95160e4-9e45-4de4-a13f-88418de85b76\",\"tour\":\"71cb6682-37a8-448d-baa2-1b7ccf331d21\",\"tourIso\":\"2030-03-12T14:00:00.000Z\"}"
+      "detail": "{\"cancelEarly\":\"d00ea464-4cab-4230-b23f-4f73fb86b817\",\"cancelLate\":\"56d58840-b775-4103-a9c7-00ccc18ed52f\",\"mergeEarly\":\"39167259-b33b-4db4-b4dc-f35390eef973\",\"mergeLate\":\"9daae749-a78b-457d-8be7-7f1ac261bcbd\",\"revEarly\":\"88498d68-0642-4a10-99c4-9152f52e2e79\",\"revLate\":\"b53a996d-be96-4943-b119-35235d549327\",\"decoy\":\"883c274d-1b06-4daa-a69f-0aae316502df\",\"tour\":\"8bb61fb0-007e-4ffd-863e-8f1bc13b3365\",\"tourIso\":\"2030-03-21T13:00:00.000Z\",\"revTour\":\"422363c2-c12e-4686-b611-c452ae270a17\",\"revTourIso\":\"2030-03-11T15:00:00.000Z\"}"
     },
     {
       "name": "dialog-search-first",
@@ -37,22 +37,22 @@
     {
       "name": "search-by-name-multiple",
       "pass": true,
-      "detail": "count=2 ids=a95160e4-9e45-4de4-a13f-88418de85b76,0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
+      "detail": "count=2 ids=883c274d-1b06-4daa-a69f-0aae316502df,56d58840-b775-4103-a9c7-00ccc18ed52f"
     },
     {
       "name": "current-lead-excluded",
       "pass": true,
-      "detail": "ids=a95160e4-9e45-4de4-a13f-88418de85b76,0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
+      "detail": "ids=883c274d-1b06-4daa-a69f-0aae316502df,56d58840-b775-4103-a9c7-00ccc18ed52f"
     },
     {
       "name": "search-includes-late",
       "pass": true,
-      "detail": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
+      "detail": "56d58840-b775-4103-a9c7-00ccc18ed52f"
     },
     {
       "name": "search-includes-decoy",
       "pass": true,
-      "detail": "a95160e4-9e45-4de4-a13f-88418de85b76"
+      "detail": "883c274d-1b06-4daa-a69f-0aae316502df"
     },
     {
       "name": "ambiguous-hint",
@@ -62,12 +62,12 @@
     {
       "name": "search-by-phone",
       "pass": true,
-      "detail": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
+      "detail": "56d58840-b775-4103-a9c7-00ccc18ed52f"
     },
     {
       "name": "search-by-email",
       "pass": true,
-      "detail": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
+      "detail": "56d58840-b775-4103-a9c7-00ccc18ed52f"
     },
     {
       "name": "select-shows-selected",
@@ -88,6 +88,31 @@
       "name": "preview-survivor-reason",
       "pass": true,
       "detail": "reason"
+    },
+    {
+      "name": "survivor-radiogroup-visible",
+      "pass": true,
+      "detail": "always selectable"
+    },
+    {
+      "name": "survivor-options-both-leads",
+      "pass": true,
+      "detail": "both lead radios"
+    },
+    {
+      "name": "survivor-default-checked-earliest",
+      "pass": true,
+      "detail": "earliest radio checked"
+    },
+    {
+      "name": "survivor-override-late-survives",
+      "pass": true,
+      "detail": "late is Survives"
+    },
+    {
+      "name": "survivor-restore-earliest",
+      "pass": true,
+      "detail": "earliest restored"
     },
     {
       "name": "preview-space-shows-name",
@@ -117,22 +142,22 @@
     {
       "name": "cancel-leaves-early-unmerged",
       "pass": true,
-      "detail": "{\"id\":\"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:23:02.722242+00:00\",\"email\":\"merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":null}"
+      "detail": "{\"id\":\"d00ea464-4cab-4230-b23f-4f73fb86b817\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:51:06.32462+00:00\",\"email\":\"merge-cancel.1792986660989@hellotocheers-test.invalid\",\"phone\":null}"
     },
     {
       "name": "cancel-leaves-late-unmerged",
       "pass": true,
-      "detail": "{\"id\":\"0cdd6335-8918-45b0-b5b3-1e8ccb56c887\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:22:58.474975+00:00\",\"email\":\"alt-merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":\"5554977820\"}"
+      "detail": "{\"id\":\"56d58840-b775-4103-a9c7-00ccc18ed52f\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:51:01.689999+00:00\",\"email\":\"alt-merge-cancel.1792986660989@hellotocheers-test.invalid\",\"phone\":\"5556660989\"}"
     },
     {
       "name": "cancel-identity-unchanged",
       "pass": true,
-      "detail": "{\"early\":{\"id\":\"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:23:02.722242+00:00\",\"email\":\"merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":null},\"late\":{\"id\":\"0cdd6335-8918-45b0-b5b3-1e8ccb56c887\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:22:58.474975+00:00\",\"email\":\"alt-merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":\"5554977820\"}}"
+      "detail": "{\"early\":{\"id\":\"d00ea464-4cab-4230-b23f-4f73fb86b817\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:51:06.32462+00:00\",\"email\":\"merge-cancel.1792986660989@hellotocheers-test.invalid\",\"phone\":null},\"late\":{\"id\":\"56d58840-b775-4103-a9c7-00ccc18ed52f\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:51:01.689999+00:00\",\"email\":\"alt-merge-cancel.1792986660989@hellotocheers-test.invalid\",\"phone\":\"5556660989\"}}"
     },
     {
       "name": "confirm-search-finds-early",
       "pass": true,
-      "detail": "8c09ed9f-4a39-4164-b639-c3fec4d3013b"
+      "detail": "39167259-b33b-4db4-b4dc-f35390eef973"
     },
     {
       "name": "confirm-self-excluded",
@@ -147,7 +172,7 @@
     {
       "name": "pre-merge-tour-on-secondary",
       "pass": true,
-      "detail": "{\"id\":\"71cb6682-37a8-448d-baa2-1b7ccf331d21\",\"lead_id\":\"d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-12T14:00:00+00:00\"}"
+      "detail": "{\"id\":\"8bb61fb0-007e-4ffd-863e-8f1bc13b3365\",\"lead_id\":\"9daae749-a78b-457d-8be7-7f1ac261bcbd\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-21T13:00:00+00:00\"}"
     },
     {
       "name": "confirm-continue-enabled",
@@ -157,27 +182,27 @@
     {
       "name": "redirect-to-survivor",
       "pass": true,
-      "detail": "https://app.sandbox.hellotocheers.com/leads/8c09ed9f-4a39-4164-b639-c3fec4d3013b | toast=[\"Leads merged. Opening the surviving lead.\"]"
+      "detail": "https://app.sandbox.hellotocheers.com/leads/39167259-b33b-4db4-b4dc-f35390eef973 | toast=[\"Leads merged. Opening the surviving lead.\"]"
     },
     {
       "name": "secondary-soft-marked",
       "pass": true,
-      "detail": "{\"merged_into_lead_id\":\"8c09ed9f-4a39-4164-b639-c3fec4d3013b\",\"merged_at\":\"2026-10-26T03:23:19.881099+00:00\",\"first_name\":\"MergeLate\",\"email\":\"merge-ok.1792984977820@hellotocheers-test.invalid\"}"
+      "detail": "{\"merged_into_lead_id\":\"39167259-b33b-4db4-b4dc-f35390eef973\",\"merged_at\":\"2026-10-26T03:51:26.647748+00:00\",\"first_name\":\"MergeLate\",\"email\":\"merge-ok.1792986660989@hellotocheers-test.invalid\"}"
     },
     {
       "name": "primary-not-merged",
       "pass": true,
-      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7774977820\",\"partner_email\":\"sam.partner.1792984977820@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792984977820@hellotocheers-test.invalid\",\"planned_event_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"}"
+      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7776660989\",\"partner_email\":\"sam.partner.1792986660989@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792986660989@hellotocheers-test.invalid\",\"planned_event_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"}"
     },
     {
       "name": "phone-filled-on-survivor",
       "pass": true,
-      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7774977820\",\"partner_email\":\"sam.partner.1792984977820@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792984977820@hellotocheers-test.invalid\",\"planned_event_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"}"
+      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7776660989\",\"partner_email\":\"sam.partner.1792986660989@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792986660989@hellotocheers-test.invalid\",\"planned_event_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"}"
     },
     {
       "name": "partner-email-kept-on-survivor",
       "pass": true,
-      "detail": "sam.partner.1792984977820@hellotocheers-test.invalid"
+      "detail": "sam.partner.1792986660989@hellotocheers-test.invalid"
     },
     {
       "name": "space-filled-on-survivor",
@@ -192,12 +217,67 @@
     {
       "name": "tour-reassociated-same-row",
       "pass": true,
-      "detail": "{\"id\":\"71cb6682-37a8-448d-baa2-1b7ccf331d21\",\"lead_id\":\"8c09ed9f-4a39-4164-b639-c3fec4d3013b\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-12T14:00:00+00:00\"}"
+      "detail": "{\"id\":\"8bb61fb0-007e-4ffd-863e-8f1bc13b3365\",\"lead_id\":\"39167259-b33b-4db4-b4dc-f35390eef973\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-21T13:00:00+00:00\"}"
     },
     {
       "name": "ui-after-reload-survivor",
       "pass": true,
-      "detail": "https://app.sandbox.hellotocheers.com/leads/8c09ed9f-4a39-4164-b639-c3fec4d3013b"
+      "detail": "https://app.sandbox.hellotocheers.com/leads/39167259-b33b-4db4-b4dc-f35390eef973"
+    },
+    {
+      "name": "rev-default-earliest-survives",
+      "pass": true,
+      "detail": "RevEarly default"
+    },
+    {
+      "name": "rev-override-late-survives-ui",
+      "pass": true,
+      "detail": "RevLate Survives / RevEarly Marked merged"
+    },
+    {
+      "name": "rev-switch-alone-no-mutation",
+      "pass": true,
+      "detail": "{\"early\":{\"merged_into_lead_id\":null},\"late\":{\"merged_into_lead_id\":null}}"
+    },
+    {
+      "name": "rev-final-confirm-survivor-id",
+      "pass": true,
+      "detail": "final confirm names late survivor"
+    },
+    {
+      "name": "rev-final-confirm-merged-id",
+      "pass": true,
+      "detail": "final confirm names early merged"
+    },
+    {
+      "name": "rev-redirect-to-late-survivor",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/b53a996d-be96-4943-b119-35235d549327?mergedFrom=88498d68-0642-4a10-99c4-9152f52e2e79 | toast=[]"
+    },
+    {
+      "name": "rev-early-soft-marked",
+      "pass": true,
+      "detail": "{\"merged_into_lead_id\":\"b53a996d-be96-4943-b119-35235d549327\",\"merged_at\":\"2026-10-26T03:51:40.989343+00:00\",\"first_name\":\"RevEarly\"}"
+    },
+    {
+      "name": "rev-late-survives-unmerged",
+      "pass": true,
+      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"RevLate\",\"phone\":\"6666660989\",\"planned_event_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"assigned_staff_id\":\"72495b35-c11b-4a84-8bcb-911135eac2bd\"}"
+    },
+    {
+      "name": "rev-phone-on-late-survivor",
+      "pass": true,
+      "detail": "6666660989"
+    },
+    {
+      "name": "rev-tour-on-late-survivor",
+      "pass": true,
+      "detail": "{\"id\":\"422363c2-c12e-4686-b611-c452ae270a17\",\"lead_id\":\"b53a996d-be96-4943-b119-35235d549327\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-11T15:00:00+00:00\"}"
+    },
+    {
+      "name": "rev-ui-after-reload",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/b53a996d-be96-4943-b119-35235d549327?mergedFrom=88498d68-0642-4a10-99c4-9152f52e2e79"
     },
     {
       "name": "self-merge-blocked",
@@ -211,13 +291,16 @@
     }
   ],
   "persisted": {
-    "cancelEarlyId": "0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c",
-    "cancelLateId": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887",
-    "mergeEarlyId": "8c09ed9f-4a39-4164-b639-c3fec4d3013b",
-    "mergeLateId": "d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683",
-    "tourId": "71cb6682-37a8-448d-baa2-1b7ccf331d21",
+    "cancelEarlyId": "d00ea464-4cab-4230-b23f-4f73fb86b817",
+    "cancelLateId": "56d58840-b775-4103-a9c7-00ccc18ed52f",
+    "mergeEarlyId": "39167259-b33b-4db4-b4dc-f35390eef973",
+    "mergeLateId": "9daae749-a78b-457d-8be7-7f1ac261bcbd",
+    "revEarlyId": "88498d68-0642-4a10-99c4-9152f52e2e79",
+    "revLateId": "b53a996d-be96-4943-b119-35235d549327",
+    "tourId": "8bb61fb0-007e-4ffd-863e-8f1bc13b3365",
+    "revTourId": "422363c2-c12e-4686-b611-c452ae270a17",
     "mergeEmailRedacted": "merge-ok.…@hellotocheers-test.invalid",
     "phoneTokenRedacted": "555…"
   },
-  "at": "2026-10-26T03:23:30.599Z"
+  "at": "2026-10-26T03:51:56.512Z"
 }
