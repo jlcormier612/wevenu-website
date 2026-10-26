@@ -68,7 +68,14 @@ function CandidateSummary({
           : "border-border hover:bg-muted/30",
       )}
     >
-      <p className="font-medium text-heading">{candidate.displayName}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium text-heading">{candidate.displayName}</p>
+        {selected ? (
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-heading">
+            Selected
+          </span>
+        ) : null}
+      </div>
       <div className="mt-0.5 space-y-0.5 text-xs text-muted-foreground">
         {candidate.email ? <p>{candidate.email}</p> : null}
         {candidate.phone ? <p>{candidate.phone}</p> : null}
@@ -78,10 +85,7 @@ function CandidateSummary({
           </p>
         ) : null}
         {candidate.eventDate ? <p>Event date: {candidate.eventDate}</p> : null}
-        <p>Submitted: {formatSubmitted(candidate.createdAt)}</p>
-        <p className="font-mono text-[10px] opacity-70" title="Lead ID for troubleshooting">
-          ID: {candidate.id}
-        </p>
+        {candidate.createdAt ? <p>Submitted: {formatSubmitted(candidate.createdAt)}</p> : null}
       </div>
     </button>
   );
@@ -125,16 +129,21 @@ export function MergeLeadDialog({
   const [selected, setSelected] = React.useState<MergeSearchCandidate | null>(null);
   const [otherId, setOtherId] = React.useState(initialOtherLeadId ?? "");
   const [preview, setPreview] = React.useState<MergePreview | null>(null);
+  const [previewError, setPreviewError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const [previewing, setPreviewing] = React.useState(false);
   const [fieldChoices, setFieldChoices] = React.useState<Record<string, string>>({});
   const [tourCancelIds, setTourCancelIds] = React.useState<string[]>([]);
   const [explicitPrimaryId, setExplicitPrimaryId] = React.useState<string | undefined>();
-  const [showAdvancedId, setShowAdvancedId] = React.useState(false);
+  const [finalConfirmOpen, setFinalConfirmOpen] = React.useState(false);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchGen = React.useRef(0);
+  const previewGen = React.useRef(0);
+  const submittingRef = React.useRef(false);
 
-  function resetDiscoveryState(keepInitial = false) {
+  function resetDiscoveryState() {
     setPreview(null);
+    setPreviewError(null);
     setFieldChoices({});
     setTourCancelIds([]);
     setExplicitPrimaryId(undefined);
@@ -143,13 +152,14 @@ export function MergeLeadDialog({
     setSearching(false);
     setSearchError(null);
     setSelected(null);
-    setShowAdvancedId(false);
-    if (!keepInitial || !initialOtherLeadId) setOtherId("");
+    setOtherId("");
+    setFinalConfirmOpen(false);
+    setPreviewing(false);
   }
 
   React.useEffect(() => {
     if (!open) {
-      resetDiscoveryState(false);
+      resetDiscoveryState();
       return;
     }
     if (initialOtherLeadId) {
@@ -172,8 +182,10 @@ export function MergeLeadDialog({
   function handleQueryChange(next: string) {
     setQuery(next);
     setPreview(null);
+    setPreviewError(null);
     setSelected(null);
     setOtherId("");
+    setFinalConfirmOpen(false);
     setSearchError(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!next.trim()) {
@@ -207,39 +219,40 @@ export function MergeLeadDialog({
     };
   }, [query, open, currentLeadId]);
 
-  function selectCandidate(c: MergeSearchCandidate) {
-    if (c.id === currentLeadId) {
-      toast.error("Choose a different lead — you cannot merge a lead into itself.");
-      return;
-    }
-    setSelected(c);
-    setOtherId(c.id);
-    setPreview(null);
-  }
-
   async function runPreview(primaryOverride?: string, otherOverride?: string) {
     const other = (otherOverride ?? otherId).trim();
     if (!other) {
-      toast.error("Select a duplicate lead before previewing the merge.");
+      setPreviewError("Select a duplicate lead to preview the merge.");
+      toast.error("Select a duplicate lead to preview the merge.");
       return;
     }
     if (other === currentLeadId) {
+      setPreview(null);
+      setPreviewError("Choose a different lead — you cannot merge a lead into itself.");
       toast.error("Choose a different lead — you cannot merge a lead into itself.");
       return;
     }
+    const gen = ++previewGen.current;
+    setPreviewing(true);
     setPending(true);
+    setPreviewError(null);
+    setFinalConfirmOpen(false);
     const result = await previewMergeLeadsAction(
       currentLeadId,
       other,
       primaryOverride ?? explicitPrimaryId,
     );
+    if (gen !== previewGen.current) return;
+    setPreviewing(false);
     setPending(false);
     if (!result.ok) {
       toast.error(result.message);
       setPreview(null);
+      setPreviewError(result.message);
       return;
     }
     setPreview(result);
+    setPreviewError(null);
     const fills: Record<string, string> = {};
     for (const d of result.fieldDiffs) {
       if (d.kind === "fill") fills[d.key] = d.secondaryValue;
@@ -251,15 +264,31 @@ export function MergeLeadDialog({
     setTourCancelIds([]);
   }
 
-  // When opened from duplicate review with a matched lead, load preview immediately.
+  function selectCandidate(c: MergeSearchCandidate) {
+    if (c.id === currentLeadId) {
+      toast.error("Choose a different lead — you cannot merge a lead into itself.");
+      return;
+    }
+    setSelected(c);
+    setOtherId(c.id);
+    setPreview(null);
+    setPreviewError(null);
+    setFinalConfirmOpen(false);
+    void runPreview(undefined, c.id);
+  }
+
+  // Duplicate-review banner: auto-preview matched lead.
   React.useEffect(() => {
     if (!open || !initialOtherLeadId) return;
     void runPreview(undefined, initialOtherLeadId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open with matched id
   }, [open, initialOtherLeadId, currentLeadId]);
 
-  async function confirm() {
-    if (!preview) return;
+  function openFinalConfirm() {
+    if (!preview) {
+      toast.error("Wait for the merge preview to finish loading.");
+      return;
+    }
     if (preview.blockers.length > 0) {
       toast.error(preview.blockers.map((b) => b.message).join(" "));
       return;
@@ -274,28 +303,57 @@ export function MergeLeadDialog({
         return;
       }
     }
-    setPending(true);
-    const result = await confirmMergeLeadsAction({
-      primaryId: preview.primary.id,
-      secondaryId: preview.secondary.id,
-      primaryUpdatedAt: preview.primary.updatedAt,
-      secondaryUpdatedAt: preview.secondary.updatedAt,
-      fieldChoices,
-      tourCancelIds,
-    });
-    setPending(false);
-    if (!result.ok) {
-      toast.error(result.message);
+    setFinalConfirmOpen(true);
+  }
+
+  async function confirmPermanentMerge() {
+    if (!preview || submittingRef.current) return;
+    if (preview.blockers.length > 0) {
+      toast.error(preview.blockers.map((b) => b.message).join(" "));
       return;
     }
-    toast.success(
-      result.alreadyMerged
-        ? "Already merged — opening the surviving lead."
-        : "Leads merged. Opening the surviving lead.",
-    );
-    onOpenChange(false);
-    router.push(`/leads/${result.primaryId}`);
-    router.refresh();
+    if (preview.needsExplicitPrimaryChoice && !explicitPrimaryId) {
+      toast.error("These leads have the same created time — choose which one survives.");
+      return;
+    }
+    for (const d of preview.fieldDiffs) {
+      if (d.kind === "conflict" && !fieldChoices[d.key]) {
+        toast.error(`Choose a value for ${d.label}.`);
+        return;
+      }
+    }
+    submittingRef.current = true;
+    setPending(true);
+    try {
+      const result = await confirmMergeLeadsAction({
+        primaryId: preview.primary.id,
+        secondaryId: preview.secondary.id,
+        primaryUpdatedAt: preview.primary.updatedAt,
+        secondaryUpdatedAt: preview.secondary.updatedAt,
+        fieldChoices,
+        tourCancelIds,
+      });
+      if (!result.ok) {
+        toast.error(result.message);
+        setFinalConfirmOpen(false);
+        // Refresh preview so stale timestamps / blockers surface clearly
+        const other =
+          preview.primary.id === currentLeadId ? preview.secondary.id : preview.primary.id;
+        void runPreview(preview.primary.id, other);
+        return;
+      }
+      toast.success(
+        result.alreadyMerged
+          ? "Already merged — opening the surviving lead."
+          : "Leads merged. Opening the surviving lead.",
+      );
+      onOpenChange(false);
+      router.push(`/leads/${result.primaryId}`);
+      router.refresh();
+    } finally {
+      submittingRef.current = false;
+      setPending(false);
+    }
   }
 
   function renderDiff(d: FieldDiff) {
@@ -408,6 +466,10 @@ export function MergeLeadDialog({
   const showResultsPanel = trimmedQuery.length > 0 && !searching;
   const noResults = showResultsPanel && !searchError && candidates.length === 0;
   const ambiguous = candidates.length > 1;
+  const previewReady = Boolean(preview && preview.blockers.length === 0);
+  const canContinueToFinal =
+    previewReady
+    && !(preview?.needsExplicitPrimaryChoice && !explicitPrimaryId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -415,13 +477,21 @@ export function MergeLeadDialog({
         <DialogHeader>
           <DialogTitle>Merge lead</DialogTitle>
           <DialogDescription>
-            Find a confirmed duplicate, preview what will happen, then confirm. The earliest
-            submission survives by default. Appointments are reassociated — not deleted and
-            recreated. This cannot be undone automatically.
+            Find the duplicate by name, email, or phone. Select it to preview what will happen.
+            The earliest submission survives by default. Appointments are reassociated — not
+            deleted and recreated. Merging permanently changes your records and cannot be undone
+            automatically.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
+          <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground" data-testid="merge-steps">
+            <li>Find the duplicate</li>
+            <li>Select the matching lead (preview loads automatically)</li>
+            <li>Review the preview</li>
+            <li>Confirm the permanent merge</li>
+          </ol>
+
           <div className="space-y-2">
             <Label htmlFor="merge-find-duplicate">Find the duplicate lead</Label>
             <div className="relative">
@@ -440,7 +510,8 @@ export function MergeLeadDialog({
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              Results are candidates only — select one, then preview. Current lead is excluded.
+              Candidates only — nothing merges until you confirm permanently. The current lead is
+              excluded.
             </p>
 
             {searchError ? (
@@ -473,71 +544,18 @@ export function MergeLeadDialog({
               </div>
             ) : null}
 
-            {selected && !preview ? (
-              <div
-                className="rounded-md border border-border bg-muted/20 px-3 py-2"
-                data-testid="merge-selected-candidate"
-              >
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Selected duplicate</p>
-                <p className="font-medium text-heading">{selected.displayName}</p>
-                {selected.email ? <p className="text-muted-foreground">{selected.email}</p> : null}
-                <div className="mt-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={pending || !otherId}
-                    onClick={() => void runPreview()}
-                    data-testid="merge-preview"
-                  >
-                    Preview merge
-                  </Button>
-                </div>
-              </div>
+            {selected && previewing ? (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="merge-preview-loading">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading merge preview for {selected.displayName}…
+              </p>
             ) : null}
 
-            <div>
-              <button
-                type="button"
-                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => setShowAdvancedId((v) => !v)}
-                data-testid="merge-advanced-id-toggle"
-              >
-                {showAdvancedId ? "Hide lead ID entry" : "Paste lead ID (troubleshooting)"}
-              </button>
-              {showAdvancedId ? (
-                <div className="mt-2 flex gap-2">
-                  <Input
-                    value={otherId}
-                    onChange={(e) => {
-                      const v = e.target.value.trim();
-                      setOtherId(v);
-                      setSelected(v ? {
-                        id: v,
-                        displayName: "Lead by ID",
-                        email: null,
-                        phone: null,
-                        partnerDisplayName: null,
-                        partnerEmail: null,
-                        eventDate: null,
-                        createdAt: "",
-                        salesStage: null,
-                      } : null);
-                      setPreview(null);
-                    }}
-                    placeholder="Duplicate lead UUID"
-                    data-testid="merge-other-lead-id"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={pending || !otherId.trim()}
-                    onClick={() => void runPreview()}
-                  >
-                    Preview
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+            {previewError ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm" data-testid="merge-preview-error">
+                {previewError}
+              </p>
+            ) : null}
           </div>
 
           {preview ? (
@@ -545,7 +563,7 @@ export function MergeLeadDialog({
               <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                 {preview.primaryIsDefaultEarliest && !preview.needsExplicitPrimaryChoice ? (
                   <p data-testid="merge-survivor-reason">
-                    Proposed survivor is the earliest submission (
+                    Surviving lead is the earliest submission (
                     {formatSubmitted(preview.primary.createdAt)}). You can choose the other lead
                     below if that is incorrect.
                   </p>
@@ -561,7 +579,7 @@ export function MergeLeadDialog({
               </div>
 
               {preview.blockers.length > 0 ? (
-                <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm" data-testid="merge-preview-blockers">
                   {preview.blockers.map((b) => (
                     <p key={b.code}>{b.message}</p>
                   ))}
@@ -610,23 +628,23 @@ export function MergeLeadDialog({
               )}
 
               <div className="grid gap-2 sm:grid-cols-2">
-                <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Survives (primary)</p>
+                <div className="rounded-md border border-border bg-muted/30 px-3 py-2" data-testid="merge-preview-survivor">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Survives</p>
                   <p className="font-medium text-heading">{preview.primary.displayName}</p>
-                  <p className="text-muted-foreground">{preview.primary.email}</p>
+                  {preview.primary.email ? <p className="text-muted-foreground">{preview.primary.email}</p> : null}
+                  {preview.primary.phone ? <p className="text-muted-foreground">{preview.primary.phone}</p> : null}
                   <p className="text-xs text-muted-foreground">
-                    Created {new Date(preview.primary.createdAt).toLocaleString()}
+                    Submitted {new Date(preview.primary.createdAt).toLocaleString()}
                   </p>
-                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">{preview.primary.id}</p>
                 </div>
-                <div className="rounded-md border border-border px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Merged away (secondary)</p>
+                <div className="rounded-md border border-border px-3 py-2" data-testid="merge-preview-secondary">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Marked merged</p>
                   <p className="font-medium text-heading">{preview.secondary.displayName}</p>
-                  <p className="text-muted-foreground">{preview.secondary.email}</p>
+                  {preview.secondary.email ? <p className="text-muted-foreground">{preview.secondary.email}</p> : null}
+                  {preview.secondary.phone ? <p className="text-muted-foreground">{preview.secondary.phone}</p> : null}
                   <p className="text-xs text-muted-foreground">
-                    Created {new Date(preview.secondary.createdAt).toLocaleString()}
+                    Submitted {new Date(preview.secondary.createdAt).toLocaleString()}
                   </p>
-                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">{preview.secondary.id}</p>
                 </div>
               </div>
 
@@ -660,7 +678,7 @@ export function MergeLeadDialog({
                         <li key={t.id} className="rounded-md border border-border px-3 py-2">
                           <p className="text-sm">
                             {formatTour(t.scheduledAt, t.status)}
-                            {t.leadId === preview.primary.id ? " · on primary" : " · on secondary"}
+                            {t.leadId === preview.primary.id ? " · on surviving lead" : " · on duplicate"}
                           </p>
                           {(t.status === "scheduled" || t.status === "confirmed") && (
                             <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -676,7 +694,7 @@ export function MergeLeadDialog({
                                 }}
                               />
                               Cancel this tour (releases the slot). Leave unchecked to keep and
-                              reassociate to the primary lead.
+                              reassociate to the surviving lead.
                             </label>
                           )}
                         </li>
@@ -686,28 +704,79 @@ export function MergeLeadDialog({
                 )}
                 {preview.occupyingTourConflict ? (
                   <p className="text-xs text-muted-foreground">
-                    Both leads have active tours. Both will be kept on the primary unless you
+                    Both leads have active tours. Both will be kept on the surviving lead unless you
                     cancel one above. Times are never chosen silently.
                   </p>
                 ) : null}
               </div>
             </div>
           ) : null}
+
+          {finalConfirmOpen && preview ? (
+            <div
+              className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-3"
+              data-testid="merge-final-confirm"
+            >
+              <p className="font-medium text-heading">Confirm permanent merge</p>
+              <p className="text-sm text-muted-foreground">
+                This permanently changes your records and cannot be undone automatically.
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                <li>
+                  Survives: <span className="font-medium text-heading">{preview.primary.displayName}</span>
+                  {preview.primary.email ? ` (${preview.primary.email})` : ""}
+                </li>
+                <li>
+                  Marked merged: <span className="font-medium text-heading">{preview.secondary.displayName}</span>
+                  {preview.secondary.email ? ` (${preview.secondary.email})` : ""}
+                </li>
+                <li>
+                  {preview.tours.length === 0
+                    ? "No tour appointments to reassociate."
+                    : `${preview.tours.length} tour appointment(s) will be reassociated to the surviving lead (not deleted).`}
+                </li>
+                <li>
+                  Notes, tasks, and activity on the duplicate move to the surviving lead per the preview.
+                </li>
+              </ul>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => setFinalConfirmOpen(false)}
+                  data-testid="merge-final-cancel"
+                >
+                  Cancel — keep both leads
+                </Button>
+                <Button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => void confirmPermanentMerge()}
+                  data-testid="merge-lead-confirm"
+                >
+                  {pending ? "Merging…" : "Confirm permanent merge"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={pending || !preview || preview.blockers.length > 0}
-            onClick={() => void confirm()}
-            data-testid="merge-lead-confirm"
-          >
-            Confirm merge
-          </Button>
-        </DialogFooter>
+        {!finalConfirmOpen ? (
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={pending || previewing || !canContinueToFinal}
+              onClick={() => openFinalConfirm()}
+              data-testid="merge-continue-to-confirm"
+            >
+              {previewing ? "Loading preview…" : "Continue to permanent merge"}
+            </Button>
+          </DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

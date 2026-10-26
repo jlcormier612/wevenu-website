@@ -1,0 +1,46 @@
+▶ lead merge field reconciliation
+  ✔ fills empty primary from populated secondary (0.65175ms)
+  ✔ treats identical values as one value (0.081375ms)
+  ✔ flags conflicting populated values without choosing (0.072541ms)
+  ✔ defaults primary to earliest created_at (8.056625ms)
+  ✔ marks identical created_at as needing explicit choice (0.086333ms)
+  ✔ norm collapses channel arrays for comparison (0.056916ms)
+✔ lead merge field reconciliation (9.55575ms)
+▶ inquiry message keep-both resolution
+  ✔ Keep both uses primary field and flags secondary history (0.136084ms)
+  ✔ Keep primary does not archive secondary (0.057834ms)
+  ✔ Use secondary sets primary field to secondary text (0.060459ms)
+  ✔ identical text with keep-both does not create redundant history (0.169625ms)
+  ✔ empty secondary with keep-both does not create history (0.073833ms)
+  ✔ inquiry conflict is detected when both differ (0.071834ms)
+  ✔ identical inquiry messages are same, not conflict (0.062416ms)
+  ✔ empty primary + populated secondary is fill, not keep-both (0.047ms)
+✔ inquiry message keep-both resolution (0.925458ms)
+▶ lead merge safety contracts (source)
+  ✔ confirm uses atomic RPC and revalidates stale timestamps (0.174209ms)
+  ✔ merge discovery searches name/email/phone and excludes current lead (0.147375ms)
+  ✔ dialog is search-first, auto-previews on select, and has no UUID paste UI (0.172792ms)
+  ✔ RPC soft-marks secondary and reparents tours without drop (0.080292ms)
+  ✔ RPC does not send messages or enroll sequences (0.122959ms)
+  ✔ blocks tour_protection and unauthorized callers (0.033917ms)
+  ✔ UI requires confirmation and surfaces conflicts/tours (0.057667ms)
+  ✔ secondary lead detail redirects to primary (0.033208ms)
+  ✔ list queries exclude merged secondaries (0.048959ms)
+  ✔ lead-received reporting also excludes soft-merged secondaries (0.112583ms)
+  ✔ duplicate banner no longer instructs manual copy/delete (0.104041ms)
+  ✔ idempotent already-merged path exists (0.038291ms)
+  ✔ preserve-inquiry migration archives secondary as activity, not a note or message send (0.098208ms)
+  ✔ confirm maps keep-both sentinel before RPC field patch (0.0455ms)
+  ✔ dialog offers keep-both as default for inquiry conflicts (0.052625ms)
+✔ lead merge safety contracts (source) (1.477125ms)
+▶ regression: duplicate detection still warn-only
+  ✔ duplicate-review still does not call merge on create (0.12425ms)
+✔ regression: duplicate detection still warn-only (0.160125ms)
+ℹ tests 30
+ℹ suites 4
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 447.688

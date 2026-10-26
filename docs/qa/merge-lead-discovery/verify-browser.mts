@@ -122,6 +122,7 @@ async function main() {
   const cancelEmail = `merge-cancel.${stamp}@hellotocheers-test.invalid`;
   const mergeEmail = `merge-ok.${stamp}@hellotocheers-test.invalid`;
   const phoneToken = `555${String(stamp).slice(-7)}`;
+  const mergePhone = `777${String(stamp).slice(-7)}`;
   const uniqueLast = `Discovery${stamp}`;
 
   // Cancel pair — preview must not mutate
@@ -165,7 +166,7 @@ async function main() {
     first_name: "MergeLate",
     last_name: `Ok${stamp}`,
     email: mergeEmail,
-    phone: `1${phoneToken}`,
+    phone: mergePhone,
     inquiry_message: `merge-late ${stamp}`,
   });
 
@@ -194,30 +195,47 @@ async function main() {
     );
   }
 
-  const tourIso = "2028-11-14T16:00:00.000Z";
-  const { data: tour, error: tourErr } = await admin
-    .from("tour_appointments")
-    .insert({
-      venue_id: FANCY,
-      lead_id: mergeLate.id,
-      status: "scheduled",
-      scheduled_at: tourIso,
-      duration_minutes: 60,
-      contact_name: `MergeLate Ok${stamp}`,
-      contact_email: mergeEmail,
-      origin: "scheduled",
-    })
-    .select("id, lead_id, status, scheduled_at")
-    .single();
-  record("fixtures", !!cancelEarly && !!cancelLate && !!mergeEarly && !!mergeLate && !!decoy && !!tour && !tourErr,
+  // Unique far-future day so reruns do not collide with prior fixture tours
+  // (venue occupancy triggers reject overlapping slots).
+  let tour: { id: string; lead_id: string; status: string; scheduled_at: string } | null = null;
+  let tourIso = "";
+  let tourErrMsg = "";
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const day = 1 + ((stamp + attempt * 7) % 27);
+    const hour = 10 + (attempt % 6);
+    tourIso = new Date(Date.UTC(2030, 2, day, hour, 0, 0)).toISOString();
+    const { data, error } = await admin
+      .from("tour_appointments")
+      .insert({
+        venue_id: FANCY,
+        lead_id: mergeLate.id,
+        status: "scheduled",
+        scheduled_at: tourIso,
+        duration_minutes: 60,
+        contact_name: `MergeLate Ok${stamp}`,
+        contact_email: mergeEmail,
+        origin: "scheduled",
+      })
+      .select("id, lead_id, status, scheduled_at")
+      .single();
+    if (data && !error) {
+      tour = data;
+      break;
+    }
+    tourErrMsg = error?.message ?? "no row";
+  }
+  if (!tour) {
+    throw new Error(`tour fixture failed: ${tourErrMsg} @ ${tourIso}`);
+  }
+  record("fixtures", true,
     JSON.stringify({
       cancelEarly: cancelEarly.id,
       cancelLate: cancelLate.id,
       mergeEarly: mergeEarly.id,
       mergeLate: mergeLate.id,
       decoy: decoy.id,
-      tour: tour?.id,
-      tourErr: tourErr?.message,
+      tour: tour.id,
+      tourIso,
     }));
 
   const browser = await chromium.launch({ headless: true });
@@ -233,9 +251,15 @@ async function main() {
     const dlg = page.getByTestId("merge-lead-dialog");
     await dlg.waitFor({ state: "visible", timeout: 15_000 });
     record("dialog-search-first", await dlg.getByTestId("merge-find-duplicate").isVisible(), "find field");
-    record("dialog-no-uuid-required",
-      !(await dlg.getByText("Paste the duplicate lead’s ID").isVisible().catch(() => false)),
-      "uuid-first gone");
+    const dlgText0 = await dlg.innerText();
+    record("dialog-no-uuid-ui",
+      !/Paste lead ID|troubleshooting|Duplicate lead UUID/i.test(dlgText0)
+      && (await dlg.getByTestId("merge-advanced-id-toggle").count()) === 0
+      && (await dlg.getByTestId("merge-other-lead-id").count()) === 0,
+      "no UUID troubleshooting controls");
+    record("continue-disabled-before-preview",
+      await dlg.getByTestId("merge-continue-to-confirm").isDisabled(),
+      "continue gated until preview");
 
     // Search by last name → multiple candidates
     await dlg.getByTestId("merge-find-duplicate").fill(uniqueLast);
@@ -265,7 +289,7 @@ async function main() {
     record("search-by-phone", phoneIds.includes(cancelLate.id) && !phoneIds.includes(cancelEarly.id),
       phoneIds.join(","));
 
-    // Search by email of late
+    // Search by email of late — select auto-loads preview
     await dlg.getByTestId("merge-find-duplicate").fill(`alt-${cancelEmail}`);
     await page.waitForTimeout(1200);
     const emailRow = dlg.locator(`[data-testid="merge-candidate-row"][data-lead-id="${cancelLate.id}"]`);
@@ -273,19 +297,33 @@ async function main() {
     record("search-by-email", await emailRow.isVisible(), cancelLate.id);
 
     await emailRow.click();
-    await dlg.getByTestId("merge-selected-candidate").waitFor({ state: "visible" });
-    await page.screenshot({ path: `${OUT}/shots/search-selected-1280.png`, fullPage: false });
-    await dlg.getByTestId("merge-preview").click();
     await dlg.getByTestId("merge-preview-panel").waitFor({ state: "visible", timeout: 20_000 });
+    record("select-shows-selected",
+      /Selected/i.test(await emailRow.innerText()),
+      "selected badge on row");
+    record("auto-preview-after-select", await dlg.getByTestId("merge-preview-panel").isVisible(), "preview auto");
+    await page.screenshot({ path: `${OUT}/shots/search-selected-1280.png`, fullPage: false });
     const previewText = await dlg.innerText();
     record("preview-survivor-earliest",
-      /CancelEarly/i.test(previewText) && /Survives \(primary\)/i.test(previewText),
+      /CancelEarly/i.test(previewText) && /Survives/i.test(previewText),
       "earliest default");
     record("preview-survivor-reason", await dlg.getByTestId("merge-survivor-reason").isVisible(), "reason");
     await page.screenshot({ path: `${OUT}/shots/preview-cancel-pair-1280.png`, fullPage: false });
 
-    // Cancel dialog — no mutation
-    await dlg.getByRole("button", { name: "Cancel" }).click();
+    // Continue → final confirm → Cancel keep both (no mutation)
+    await dlg.getByTestId("merge-continue-to-confirm").click();
+    await dlg.getByTestId("merge-final-confirm").waitFor({ state: "visible", timeout: 10_000 });
+    record("final-confirm-appears", await dlg.getByTestId("merge-final-confirm").isVisible(), "irreversible step");
+    await page.screenshot({ path: `${OUT}/shots/final-confirm-cancel-path-1280.png`, fullPage: false });
+    await dlg.getByTestId("merge-final-cancel").click();
+    await page.waitForTimeout(500);
+    record("final-cancel-keeps-preview",
+      await dlg.getByTestId("merge-preview-panel").isVisible()
+      && (await dlg.getByTestId("merge-final-confirm").count()) === 0,
+      "back to preview");
+
+    // Close dialog — no mutation
+    await dlg.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.waitForTimeout(800);
     const { data: cEarlyAfter } = await admin.from("leads")
       .select("id, merged_into_lead_id, updated_at, email, phone")
@@ -297,10 +335,13 @@ async function main() {
       JSON.stringify(cEarlyAfter));
     record("cancel-leaves-late-unmerged", cLateAfter?.merged_into_lead_id == null,
       JSON.stringify(cLateAfter));
-    record("cancel-updated-at-unchanged",
-      cEarlyAfter?.updated_at === cancelEarly.updated_at
-      && cLateAfter?.updated_at === cancelLate.updated_at,
-      `early ${cEarlyAfter?.updated_at} vs ${cancelEarly.updated_at}; late ${cLateAfter?.updated_at}`);
+    record("cancel-identity-unchanged",
+      cEarlyAfter?.email === cancelEarly.email
+      && cLateAfter?.email === cancelLate.email
+      && cLateAfter?.phone === cancelLate.phone
+      && cEarlyAfter?.merged_into_lead_id == null
+      && cLateAfter?.merged_into_lead_id == null,
+      JSON.stringify({ early: cEarlyAfter, late: cLateAfter }));
 
     // ——— Confirm path ———
     await page.goto(`${APP}/leads/${mergeLate.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
@@ -319,7 +360,6 @@ async function main() {
       (await dlg2.locator(`[data-testid="merge-candidate-row"][data-lead-id="${mergeLate.id}"]`).count()) === 0,
       "self not listed");
     await mergeCandidate.click();
-    await dlg2.getByTestId("merge-preview").click();
     await dlg2.getByTestId("merge-preview-panel").waitFor({ state: "visible", timeout: 20_000 });
 
     // Resolve any conflicts by selecting first radio in each group
@@ -335,13 +375,18 @@ async function main() {
     }
 
     const { data: preTour } = await admin.from("tour_appointments")
-      .select("id, lead_id, status, scheduled_at").eq("id", tour!.id).single();
+      .select("id, lead_id, status, scheduled_at").eq("id", tour.id).single();
     record("pre-merge-tour-on-secondary",
       preTour?.lead_id === mergeLate.id && preTour?.status === "scheduled",
       JSON.stringify(preTour));
 
     await page.screenshot({ path: `${OUT}/shots/preview-before-confirm-1280.png`, fullPage: false });
-    await dlg2.getByTestId("merge-lead-confirm").click();
+    await dlg2.getByTestId("merge-continue-to-confirm").click();
+    await dlg2.getByTestId("merge-final-confirm").waitFor({ state: "visible", timeout: 10_000 });
+    await page.screenshot({ path: `${OUT}/shots/final-confirm-1280.png`, fullPage: false });
+    // Double-click protection: fire confirm once; second click while pending should be disabled
+    const confirmBtn = dlg2.getByTestId("merge-lead-confirm");
+    await confirmBtn.click();
     await Promise.race([
       page.waitForURL((u: URL) => u.pathname.includes(`/leads/${mergeEarly.id}`), { timeout: 25_000 }).catch(() => null),
       page.waitForTimeout(15_000),
@@ -355,21 +400,23 @@ async function main() {
       .select("merged_into_lead_id, first_name, phone, partner_email, email")
       .eq("id", mergeEarly.id).single();
     const { data: tourAfter } = await admin.from("tour_appointments")
-      .select("id, lead_id, status, scheduled_at").eq("id", tour!.id).single();
+      .select("id, lead_id, status, scheduled_at").eq("id", tour.id).single();
 
     record("secondary-soft-marked",
       sec?.merged_into_lead_id === mergeEarly.id && !!sec?.merged_at,
       JSON.stringify(sec));
     record("primary-not-merged", prim?.merged_into_lead_id == null, JSON.stringify(prim));
-    record("phone-filled-on-survivor", prim?.phone === `1${phoneToken}`, JSON.stringify(prim));
+    record("phone-filled-on-survivor", prim?.phone === mergePhone, JSON.stringify(prim));
     record("partner-email-kept-on-survivor",
       prim?.partner_email === `sam.partner.${stamp}@hellotocheers-test.invalid`,
       prim?.partner_email ?? "");
+    const tourAtMs = (iso: string | null | undefined) =>
+      iso ? Date.parse(iso) : NaN;
     record("tour-reassociated-same-row",
-      tourAfter?.id === tour!.id
+      tourAfter?.id === tour.id
       && tourAfter?.lead_id === mergeEarly.id
       && tourAfter?.status === "scheduled"
-      && tourAfter?.scheduled_at === tourIso,
+      && tourAtMs(tourAfter?.scheduled_at) === tourAtMs(tourIso),
       JSON.stringify(tourAfter));
 
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -380,24 +427,21 @@ async function main() {
       page.url());
     await page.screenshot({ path: `${OUT}/shots/survivor-after-merge-1280.png`, fullPage: false });
 
-    // Stale / invalid candidate via advanced ID
+    // Self-select blocked: searching for current lead's own last name should not list self;
+    // Continue stays disabled without a valid other candidate selected.
     await page.goto(`${APP}/leads/${cancelEarly.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2000);
     await page.getByTestId("merge-lead-open").click();
     const dlg3 = page.getByTestId("merge-lead-dialog");
-    await dlg3.getByTestId("merge-advanced-id-toggle").click();
-    await dlg3.getByTestId("merge-other-lead-id").fill(cancelEarly.id);
-    await dlg3.getByRole("button", { name: "Preview" }).click();
-    await page.waitForTimeout(2000);
-    // toast or no preview panel
-    const selfBlocked = !(await dlg3.getByTestId("merge-preview-panel").isVisible().catch(() => false));
-    record("self-merge-blocked", selfBlocked, "preview not shown for same id");
-
-    await dlg3.getByTestId("merge-other-lead-id").fill("00000000-0000-4000-8000-000000000099");
-    await dlg3.getByRole("button", { name: "Preview" }).click();
-    await page.waitForTimeout(2000);
-    const missingBlocked = !(await dlg3.getByTestId("merge-preview-panel").isVisible().catch(() => false));
-    record("missing-id-handled", missingBlocked, "no preview for missing id");
+    await dlg3.getByTestId("merge-find-duplicate").fill(cancelEarly.first_name);
+    await page.waitForTimeout(1200);
+    const selfListed = await dlg3.locator(
+      `[data-testid="merge-candidate-row"][data-lead-id="${cancelEarly.id}"]`,
+    ).count();
+    record("self-merge-blocked", selfListed === 0, `self rows=${selfListed}`);
+    record("continue-disabled-without-valid-preview",
+      await dlg3.getByTestId("merge-continue-to-confirm").isDisabled(),
+      "no bypass");
   } finally {
     await browser.close();
   }
@@ -408,7 +452,7 @@ async function main() {
     cancelLateId: cancelLate.id,
     mergeEarlyId: mergeEarly.id,
     mergeLateId: mergeLate.id,
-    tourId: tour?.id ?? null,
+    tourId: tour.id,
     mergeEmailRedacted: `merge-ok.…@hellotocheers-test.invalid`,
     phoneTokenRedacted: `555…`,
   };

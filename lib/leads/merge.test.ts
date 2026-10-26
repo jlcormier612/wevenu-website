@@ -210,16 +210,21 @@ describe("lead merge safety contracts (source)", () => {
     assert.match(searchFn, /\.from\("leads"\)/);
   });
 
-  it("dialog is search-first and requires selection before preview", () => {
+  it("dialog is search-first, auto-previews on select, and has no UUID paste UI", () => {
     assert.match(dialog, /Find the duplicate lead/);
     assert.match(dialog, /merge-find-duplicate/);
     assert.match(dialog, /merge-candidate-row/);
-    assert.match(dialog, /Select a duplicate lead before previewing/);
-    assert.match(dialog, /Paste lead ID \(troubleshooting\)/);
+    assert.match(dialog, /preview loads automatically/);
+    assert.doesNotMatch(dialog, /Paste lead ID/);
+    assert.doesNotMatch(dialog, /merge-advanced-id-toggle|merge-other-lead-id/);
     assert.doesNotMatch(dialog, /Paste the duplicate lead’s ID/);
     assert.match(dialog, /cannot merge a lead into itself/);
     assert.match(dialog, /merge-survivor-reason/);
     assert.match(dialog, /earliest submission/);
+    assert.match(dialog, /merge-final-confirm/);
+    assert.match(dialog, /Confirm permanent merge/);
+    assert.match(dialog, /Cancel — keep both leads/);
+    assert.match(dialog, /Continue to permanent merge/);
   });
 
   it("RPC soft-marks secondary and reparents tours without drop", () => {
@@ -241,10 +246,11 @@ describe("lead merge safety contracts (source)", () => {
   });
 
   it("UI requires confirmation and surfaces conflicts/tours", () => {
-    assert.match(dialog, /Confirm merge/);
+    assert.match(dialog, /Confirm permanent merge/);
     assert.match(dialog, /conflict/);
     assert.match(dialog, /Tour appointments/);
     assert.match(dialog, /Cancel this tour/);
+    assert.match(dialog, /void runPreview\(undefined, c\.id\)/);
   });
 
   it("secondary lead detail redirects to primary", () => {
