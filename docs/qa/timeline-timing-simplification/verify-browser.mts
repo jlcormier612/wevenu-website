@@ -390,7 +390,7 @@ async function main() {
       // I — move Day 1 specific item → Day 2; time must stay 15:00; template untouched.
       const specificTitle = `QA-TT-${RUN}-specific`;
       const specificRow = page.getByTestId("timeline-setup-row").filter({
-        has: page.getByDisplayValue(specificTitle),
+        has: page.locator(`input[aria-label="Timeline item title"][value="${specificTitle}"]`),
       }).first();
       const specificVisible = await specificRow.isVisible().catch(() => false);
       record("I-specific-row-present", specificVisible, specificTitle);
@@ -430,7 +430,7 @@ async function main() {
           await page.getByTestId("timeline-setup-mode-customize").click().catch(() => null);
           await page.waitForTimeout(800);
           const reloadedRow = page.getByTestId("timeline-setup-row").filter({
-            has: page.getByDisplayValue(specificTitle),
+            has: page.locator(`input[aria-label="Timeline item title"][value="${specificTitle}"]`),
           }).first();
           const reloadedDay = await reloadedRow.getByTestId("timeline-setup-row-day").innerText().catch(() => "");
           record("I-day-persists-after-reload", /Day 2/i.test(reloadedDay), reloadedDay.slice(0, 200));
@@ -453,7 +453,7 @@ async function main() {
       }
       await page.screenshot({ path: `${OUT}/shots/event-setup-customize-1280.png`, fullPage: false });
     } catch (e) {
-      record("D-event-day-control-present", false, String(e).slice(0, 400));
+      record("I-event-day-edit-flow", false, String(e).slice(0, 400));
       await page.screenshot({ path: `${OUT}/shots/event-setup-customize-1280.png`, fullPage: false });
     }
 
