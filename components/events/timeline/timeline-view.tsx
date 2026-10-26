@@ -179,6 +179,7 @@ function TimelineEntryRow({
           lockState: entry.lockState,
           status: entry.status,
           assignedToStaffId: entry.assignedToStaffId,
+          timing: entry.timing,
         }}
         links={links} attachments={attachments} availableDocuments={availableDocuments}
         onLinksChanged={onLinksChanged} onAttachmentsChanged={onAttachmentsChanged}

@@ -398,6 +398,8 @@ describe("P1a boundaries in source", () => {
   const editor = readFileSync(resolve("components/events/event-timeline-setup-editor.tsx"), "utf8");
   const scheduleSync = readFileSync(resolve("lib/timeline/schedule-sync.ts"), "utf8");
   const eventsDir = readFileSync(resolve("lib/timeline/timing-provenance.ts"), "utf8");
+  const timelineView = readFileSync(resolve("components/events/timeline/timeline-view.tsx"), "utf8");
+  const entryForm = readFileSync(resolve("components/events/timeline/timeline-entry-form.tsx"), "utf8");
 
   it("template apply records provenance and does not update the library", () => {
     assert.match(apply, /provenanceFromTemplateApply/);
@@ -451,6 +453,13 @@ describe("P1a boundaries in source", () => {
     assert.doesNotMatch(body, /timing:/);
     assert.match(body, /persisted/);
     assert.match(editor, /reconcileSavedDraftRows/);
+  });
+
+  it("timeline edit form receives persisted timing for unknown and end attention", () => {
+    assert.match(timelineView, /timing:\s*entry\.timing/);
+    assert.match(entryForm, /timeline-timing-unknown/);
+    assert.match(entryForm, /timeline-timing-end-attention/);
+    assert.match(entryForm, /timeline-timing-controls/);
   });
 
   it("schedule sync uses the untyped timing rules and does not invent intent on insert", () => {
