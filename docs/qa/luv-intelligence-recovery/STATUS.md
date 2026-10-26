@@ -27,7 +27,14 @@ Unit **61 pass** — `TEST-RESULTS.md` / `unit-test.log`.
 
 ## Deploy
 
-Pending commit push + `deploy-sandbox.yml`. Browser not GREEN until serving SHA verified.
+- Product SHA: `1ba4ebacd1035e08196937a90b998ce901974e52`
+- Run: https://github.com/jlcormier612/wevenu-website/actions/runs/40257408611 (queued at dispatch)
+- Browser when serving:
+
+```bash
+EXPECTED_SHA=1ba4ebacd1035e08196937a90b998ce901974e52 \
+  npx tsx docs/qa/luv-intelligence-recovery/verify-browser.mts
+```
 
 ## Production
 
