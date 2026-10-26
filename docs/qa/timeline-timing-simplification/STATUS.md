@@ -1,52 +1,37 @@
 # STATUS — Timeline timing simplification
 
-**Verdict: IN PROGRESS**
+**Verdict: IN PROGRESS — not GREEN**
 
-Awaiting Sandbox serve of `62fa1f9eb208a9af8c0bc35a41aeb30a986c4e26`, then browser harness.
+## Deploy reality check (2026-10-26)
 
-## Root causes
+| Run | SHA | Venue-app | Notes |
+|-----|-----|-----------|-------|
+| [40256987860](https://github.com/jlcormier612/wevenu-website/actions/runs/40256987860) | `62fa1f9e…` (timeline tip) | **FAILED** | Same client `fs/promises` boundary as Merge Continue-gate; scheduler/workspace/marketing succeeded; Deploy skipped |
+| [40258243938](https://github.com/jlcormier612/wevenu-website/actions/runs/40258243938) | `f5cc61e4…` (boundary fix; **contains** timeline as ancestor) | **in_progress** | Venue-app still building; other images pushed |
+| Serving now | `8215db63…` | RUNNING | Last successful Merge Lead image — **does not** include timeline timing UX |
 
-1. Template editor showed clock time and raw **Relative Time (min)** together; the control did not name the reference.
-2. Event Timeline Setup used a bare **Day offset** number instead of this event’s calendar days.
-3. Relative apply invented **12:00 noon** when Day-of schedule start was missing.
+**Cannot** run browser against `EXPECTED_SHA=62fa1f9e…` — that venue-app image was never pushed.
 
-## Timing contract
+Next proof when `f5cc61e4…` (or later tip containing timeline + boundary fix) is serving:
 
-Documented in `TIMING-CONTRACT.md`:
-
-- Day = `day_offset` from `event_date` (Day 1 = event date).
-- Default = specific clock (`time_of_day` / `entry_time`).
-- Relative = minutes before/after **Day-of schedule start** (`events.start_time`) only; bake at apply; no live recalculation.
-- Missing start → no invented clock.
-
-## Files changed
-
-| File | Why |
-|------|-----|
-| `lib/timeline/timing-presentation.ts` | Shared labels, modes, relative phrases |
-| `lib/timeline/constants.ts` | Remove noon invent |
-| `lib/timeline-templates/constants.ts` | Plain day/relative labels |
-| `timeline-template-editor.tsx` | Timing modes + named anchor |
-| `event-timeline-setup-editor.tsx` | Day selector with dates |
-| `event-setup-panel.tsx` / `event-detail.tsx` | Pass `eventEndDate` |
-| `timeline-setup-card.tsx` | Honest missing-start copy |
-
-## Tests
-
-```text
-npx tsx --test lib/timeline/timing-presentation.test.ts \
-  lib/timeline/relative-time-anchor.test.ts \
-  lib/timeline-templates/starters.test.ts \
-  lib/timeline/chronological-order.test.ts \
-  lib/timeline/save-event-timeline-draft.test.ts
-→ 28 pass / 0 fail (unit-test.log)
+```bash
+EXPECTED_SHA=<serving-sha> \
+  npx tsx docs/qa/timeline-timing-simplification/verify-browser.mts
 ```
 
-## Deploy
+## Root causes (product)
 
-- Commit: `62fa1f9eb208a9af8c0bc35a41aeb30a986c4e26`
-- Run: https://github.com/jlcormier612/wevenu-website/actions/runs/40256987860 (queued)
-- Browser: `EXPECTED_SHA=62fa1f9eb208a9af8c0bc35a41aeb30a986c4e26 npx tsx docs/qa/timeline-timing-simplification/verify-browser.mts` — **not run yet** (image not serving)
+1. Template editor: clock + raw Relative Time (min) without named anchor in the control.
+2. Event setup: bare Day offset instead of calendar days.
+3. Relative apply invented noon when Day-of schedule start was missing.
+
+## Contract
+
+See `TIMING-CONTRACT.md`. Specific clock default; relative = Day-of schedule start only; no noon invent.
+
+## Unit
+
+28 pass (`unit-test.log`). Browser not run on a serving image that includes this work.
 
 ## Production
 
