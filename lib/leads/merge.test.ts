@@ -9,7 +9,13 @@ import {
 } from "@/lib/leads/merge-inquiry-choice";
 import { mergeTestHelpers, type MergeFieldKey } from "@/lib/leads/merge";
 
-const { buildFieldDiffs, pickDefaultPrimary, norm } = mergeTestHelpers;
+const {
+  buildFieldDiffs,
+  pickDefaultPrimary,
+  norm,
+  hasUnresolvedMergeFieldConflicts,
+  canAdvanceToMergeFinalConfirm,
+} = mergeTestHelpers;
 
 function snap(partial: Record<string, unknown>) {
   return {
@@ -95,6 +101,54 @@ describe("lead merge field reconciliation", () => {
   it("norm collapses channel arrays for comparison", () => {
     assert.equal(norm(["sms", "email"]), norm(["email", "sms"]));
     assert.equal(norm("  "), null);
+  });
+});
+
+describe("Continue / final-confirm gate", () => {
+  it("blocks Continue while conflict fields lack choices", () => {
+    const diffs = buildFieldDiffs(
+      snap({ email: "a@example.com", first_name: "Ann" }),
+      snap({ id: "b", email: "b@example.com", first_name: "Bob" }),
+    );
+    assert.equal(hasUnresolvedMergeFieldConflicts(diffs, {}), true);
+    assert.equal(
+      canAdvanceToMergeFinalConfirm({
+        preview: { blockers: [], needsExplicitPrimaryChoice: false, fieldDiffs: diffs },
+        explicitPrimaryId: null,
+        fieldChoices: {},
+      }),
+      false,
+    );
+    const email = diffs.find((d) => d.key === "email");
+    const first = diffs.find((d) => d.key === "first_name");
+    assert.ok(email?.kind === "conflict" && first?.kind === "conflict");
+    assert.equal(
+      canAdvanceToMergeFinalConfirm({
+        preview: { blockers: [], needsExplicitPrimaryChoice: false, fieldDiffs: diffs },
+        explicitPrimaryId: null,
+        fieldChoices: { email: email.primaryValue, first_name: first.primaryValue },
+      }),
+      true,
+    );
+  });
+
+  it("blocks Continue when tied created_at needs explicit survivor", () => {
+    assert.equal(
+      canAdvanceToMergeFinalConfirm({
+        preview: { blockers: [], needsExplicitPrimaryChoice: true, fieldDiffs: [] },
+        explicitPrimaryId: null,
+        fieldChoices: {},
+      }),
+      false,
+    );
+    assert.equal(
+      canAdvanceToMergeFinalConfirm({
+        preview: { blockers: [], needsExplicitPrimaryChoice: true, fieldDiffs: [] },
+        explicitPrimaryId: "a",
+        fieldChoices: {},
+      }),
+      true,
+    );
   });
 });
 

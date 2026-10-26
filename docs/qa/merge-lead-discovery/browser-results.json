@@ -1,0 +1,193 @@
+{
+  "pass": true,
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8215db63c2b21ecf715fff4954191546296c58cf",
+  "digest": "sha256:eec700aa2e7d3d8f5c9a20e2bf0ba384720aa54faeacba517aa521929916aaa5",
+  "expectedSha": "8215db63c2b21ecf715fff4954191546296c58cf",
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=8215db63c2b21ecf715fff4954191546296c58cf ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8215db63c2b21ecf715fff4954191546296c58cf"
+    },
+    {
+      "name": "serving-digest",
+      "pass": true,
+      "detail": "sha256:eec700aa2e7d3d8f5c9a20e2bf0ba384720aa54faeacba517aa521929916aaa5"
+    },
+    {
+      "name": "fixtures",
+      "pass": true,
+      "detail": "{\"cancelEarly\":\"fe0cea39-7e6a-41ba-a943-dafb1f6e1656\",\"cancelLate\":\"846e4972-158b-4d8e-8dbd-d953ed2b4753\",\"mergeEarly\":\"5e147a39-fcd8-49bc-a89e-28028e5abd16\",\"mergeLate\":\"18c61ad0-f041-4012-8907-64f22768f23d\",\"decoy\":\"65a41d3f-b8c8-4817-aee3-c8bbc872cec9\",\"tour\":\"bf529c48-c975-4bf9-aec0-5e07dd29e2a9\",\"tourIso\":\"2030-03-15T13:00:00.000Z\"}"
+    },
+    {
+      "name": "dialog-search-first",
+      "pass": true,
+      "detail": "find field"
+    },
+    {
+      "name": "dialog-no-uuid-ui",
+      "pass": true,
+      "detail": "no UUID troubleshooting controls"
+    },
+    {
+      "name": "continue-disabled-before-preview",
+      "pass": true,
+      "detail": "continue gated until preview"
+    },
+    {
+      "name": "search-by-name-multiple",
+      "pass": true,
+      "detail": "count=2 ids=65a41d3f-b8c8-4817-aee3-c8bbc872cec9,846e4972-158b-4d8e-8dbd-d953ed2b4753"
+    },
+    {
+      "name": "current-lead-excluded",
+      "pass": true,
+      "detail": "ids=65a41d3f-b8c8-4817-aee3-c8bbc872cec9,846e4972-158b-4d8e-8dbd-d953ed2b4753"
+    },
+    {
+      "name": "search-includes-late",
+      "pass": true,
+      "detail": "846e4972-158b-4d8e-8dbd-d953ed2b4753"
+    },
+    {
+      "name": "search-includes-decoy",
+      "pass": true,
+      "detail": "65a41d3f-b8c8-4817-aee3-c8bbc872cec9"
+    },
+    {
+      "name": "ambiguous-hint",
+      "pass": true,
+      "detail": "hint"
+    },
+    {
+      "name": "search-by-phone",
+      "pass": true,
+      "detail": "846e4972-158b-4d8e-8dbd-d953ed2b4753"
+    },
+    {
+      "name": "search-by-email",
+      "pass": true,
+      "detail": "846e4972-158b-4d8e-8dbd-d953ed2b4753"
+    },
+    {
+      "name": "select-shows-selected",
+      "pass": true,
+      "detail": "selected badge on row"
+    },
+    {
+      "name": "auto-preview-after-select",
+      "pass": true,
+      "detail": "preview auto"
+    },
+    {
+      "name": "preview-survivor-earliest",
+      "pass": true,
+      "detail": "earliest default"
+    },
+    {
+      "name": "preview-survivor-reason",
+      "pass": true,
+      "detail": "reason"
+    },
+    {
+      "name": "cancel-path-conflicts-resolved",
+      "pass": true,
+      "detail": "groups=5"
+    },
+    {
+      "name": "final-confirm-appears",
+      "pass": true,
+      "detail": "irreversible step"
+    },
+    {
+      "name": "final-cancel-keeps-preview",
+      "pass": true,
+      "detail": "back to preview"
+    },
+    {
+      "name": "cancel-leaves-early-unmerged",
+      "pass": true,
+      "detail": "{\"id\":\"fe0cea39-7e6a-41ba-a943-dafb1f6e1656\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:31.860789+00:00\",\"email\":\"merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":null}"
+    },
+    {
+      "name": "cancel-leaves-late-unmerged",
+      "pass": true,
+      "detail": "{\"id\":\"846e4972-158b-4d8e-8dbd-d953ed2b4753\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:28.416761+00:00\",\"email\":\"alt-merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":\"5558888007\"}"
+    },
+    {
+      "name": "cancel-identity-unchanged",
+      "pass": true,
+      "detail": "{\"early\":{\"id\":\"fe0cea39-7e6a-41ba-a943-dafb1f6e1656\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:31.860789+00:00\",\"email\":\"merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":null},\"late\":{\"id\":\"846e4972-158b-4d8e-8dbd-d953ed2b4753\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:28.416761+00:00\",\"email\":\"alt-merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":\"5558888007\"}}"
+    },
+    {
+      "name": "confirm-search-finds-early",
+      "pass": true,
+      "detail": "5e147a39-fcd8-49bc-a89e-28028e5abd16"
+    },
+    {
+      "name": "confirm-self-excluded",
+      "pass": true,
+      "detail": "self not listed"
+    },
+    {
+      "name": "pre-merge-tour-on-secondary",
+      "pass": true,
+      "detail": "{\"id\":\"bf529c48-c975-4bf9-aec0-5e07dd29e2a9\",\"lead_id\":\"18c61ad0-f041-4012-8907-64f22768f23d\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-15T13:00:00+00:00\"}"
+    },
+    {
+      "name": "redirect-to-survivor",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/5e147a39-fcd8-49bc-a89e-28028e5abd16"
+    },
+    {
+      "name": "secondary-soft-marked",
+      "pass": true,
+      "detail": "{\"merged_into_lead_id\":\"5e147a39-fcd8-49bc-a89e-28028e5abd16\",\"merged_at\":\"2026-10-26T01:41:48.792597+00:00\",\"first_name\":\"MergeLate\",\"email\":\"merge-ok.1792978888007@hellotocheers-test.invalid\"}"
+    },
+    {
+      "name": "primary-not-merged",
+      "pass": true,
+      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7778888007\",\"partner_email\":\"sam.partner.1792978888007@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792978888007@hellotocheers-test.invalid\"}"
+    },
+    {
+      "name": "phone-filled-on-survivor",
+      "pass": true,
+      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7778888007\",\"partner_email\":\"sam.partner.1792978888007@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792978888007@hellotocheers-test.invalid\"}"
+    },
+    {
+      "name": "partner-email-kept-on-survivor",
+      "pass": true,
+      "detail": "sam.partner.1792978888007@hellotocheers-test.invalid"
+    },
+    {
+      "name": "tour-reassociated-same-row",
+      "pass": true,
+      "detail": "{\"id\":\"bf529c48-c975-4bf9-aec0-5e07dd29e2a9\",\"lead_id\":\"5e147a39-fcd8-49bc-a89e-28028e5abd16\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-15T13:00:00+00:00\"}"
+    },
+    {
+      "name": "ui-after-reload-survivor",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/leads/5e147a39-fcd8-49bc-a89e-28028e5abd16"
+    },
+    {
+      "name": "self-merge-blocked",
+      "pass": true,
+      "detail": "self rows=0"
+    },
+    {
+      "name": "continue-disabled-without-valid-preview",
+      "pass": true,
+      "detail": "no bypass"
+    }
+  ],
+  "persisted": {
+    "cancelEarlyId": "fe0cea39-7e6a-41ba-a943-dafb1f6e1656",
+    "cancelLateId": "846e4972-158b-4d8e-8dbd-d953ed2b4753",
+    "mergeEarlyId": "5e147a39-fcd8-49bc-a89e-28028e5abd16",
+    "mergeLateId": "18c61ad0-f041-4012-8907-64f22768f23d",
+    "tourId": "bf529c48-c975-4bf9-aec0-5e07dd29e2a9",
+    "mergeEmailRedacted": "merge-ok.…@hellotocheers-test.invalid",
+    "phoneTokenRedacted": "555…"
+  },
+  "at": "2026-10-26T01:41:59.778Z"
+}

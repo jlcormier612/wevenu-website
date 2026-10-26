@@ -22,7 +22,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KEEP_BOTH_INQUIRY_CHOICE } from "@/lib/leads/merge-inquiry-choice";
-import type { FieldDiff, MergePreview, MergeSearchCandidate } from "@/lib/leads/merge";
+import {
+  canAdvanceToMergeFinalConfirm,
+  type FieldDiff,
+  type MergePreview,
+  type MergeSearchCandidate,
+} from "@/lib/leads/merge";
 import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -297,11 +302,12 @@ export function MergeLeadDialog({
       toast.error("These leads have the same created time — choose which one survives.");
       return;
     }
-    for (const d of preview.fieldDiffs) {
-      if (d.kind === "conflict" && !fieldChoices[d.key]) {
-        toast.error(`Choose a value for ${d.label}.`);
-        return;
-      }
+    if (!canAdvanceToMergeFinalConfirm({ preview, explicitPrimaryId, fieldChoices })) {
+      const unresolved = preview.fieldDiffs.find(
+        (d) => d.kind === "conflict" && !fieldChoices[d.key],
+      );
+      toast.error(unresolved ? `Choose a value for ${unresolved.label}.` : "Finish the merge preview first.");
+      return;
     }
     setFinalConfirmOpen(true);
   }
@@ -466,10 +472,11 @@ export function MergeLeadDialog({
   const showResultsPanel = trimmedQuery.length > 0 && !searching;
   const noResults = showResultsPanel && !searchError && candidates.length === 0;
   const ambiguous = candidates.length > 1;
-  const previewReady = Boolean(preview && preview.blockers.length === 0);
-  const canContinueToFinal =
-    previewReady
-    && !(preview?.needsExplicitPrimaryChoice && !explicitPrimaryId);
+  const canContinueToFinal = canAdvanceToMergeFinalConfirm({
+    preview,
+    explicitPrimaryId,
+    fieldChoices,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -310,6 +310,21 @@ async function main() {
     record("preview-survivor-reason", await dlg.getByTestId("merge-survivor-reason").isVisible(), "reason");
     await page.screenshot({ path: `${OUT}/shots/preview-cancel-pair-1280.png`, fullPage: false });
 
+    // Resolve conflicts before Continue (same gate as confirm path)
+    {
+      const radios = dlg.locator('input[type="radio"][name^="merge-field-"]');
+      const n = await radios.count();
+      const seen = new Set<string>();
+      for (let i = 0; i < n; i++) {
+        const radio = radios.nth(i);
+        const name = await radio.getAttribute("name");
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        await radio.check({ force: true });
+      }
+      record("cancel-path-conflicts-resolved", true, `groups=${seen.size}`);
+    }
+
     // Continue → final confirm → Cancel keep both (no mutation)
     await dlg.getByTestId("merge-continue-to-confirm").click();
     await dlg.getByTestId("merge-final-confirm").waitFor({ state: "visible", timeout: 10_000 });

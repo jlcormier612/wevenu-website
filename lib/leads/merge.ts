@@ -626,6 +626,31 @@ export async function confirmMergeLeads(
   };
 }
 
+/** True when any conflict field still lacks an explicit venue choice. */
+export function hasUnresolvedMergeFieldConflicts(
+  fieldDiffs: FieldDiff[],
+  fieldChoices: Record<string, string | undefined>,
+): boolean {
+  return fieldDiffs.some((d) => {
+    if (d.kind !== "conflict") return false;
+    const chosen = fieldChoices[d.key];
+    return chosen === undefined || chosen === "";
+  });
+}
+
+/** Footer Continue / final-confirm gate — matches confirmMergeLeads conflict rules. */
+export function canAdvanceToMergeFinalConfirm(input: {
+  preview: Pick<MergePreview, "blockers" | "needsExplicitPrimaryChoice" | "fieldDiffs"> | null;
+  explicitPrimaryId: string | null;
+  fieldChoices: Record<string, string | undefined>;
+}): boolean {
+  const { preview, explicitPrimaryId, fieldChoices } = input;
+  if (!preview || preview.blockers.length > 0) return false;
+  if (preview.needsExplicitPrimaryChoice && !explicitPrimaryId) return false;
+  if (hasUnresolvedMergeFieldConflicts(preview.fieldDiffs, fieldChoices)) return false;
+  return true;
+}
+
 /** Pure helpers exported for unit tests */
 export const mergeTestHelpers = {
   buildFieldDiffs,
@@ -633,4 +658,6 @@ export const mergeTestHelpers = {
   norm,
   FIELD_LABELS,
   resolveInquiryMessageChoice,
+  hasUnresolvedMergeFieldConflicts,
+  canAdvanceToMergeFinalConfirm,
 };
