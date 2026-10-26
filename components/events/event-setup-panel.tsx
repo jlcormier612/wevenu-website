@@ -77,6 +77,7 @@ export function EventSetupPanel({
   eventId,
   clientId,
   eventDate,
+  eventEndDate = null,
   eventName,
   clientName,
   clientEmail,
@@ -117,6 +118,7 @@ export function EventSetupPanel({
   eventId: string;
   clientId: string | null;
   eventDate: string;
+  eventEndDate?: string | null;
   eventName: string;
   clientName: string | null;
   clientEmail: string | null;
@@ -569,6 +571,8 @@ export function EventSetupPanel({
         onOpenChange={setTimelineEditorOpen}
         eventId={eventId}
         eventName={eventName}
+        eventDate={eventDate}
+        eventEndDate={eventEndDate}
         eventStartTime={eventStartTime}
         profileName={state.profileName ?? null}
         preferredTemplateId={inheritedRefs.timelineTemplateId ?? null}

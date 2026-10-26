@@ -40,6 +40,16 @@ import {
 } from "@/lib/timeline-templates/constants";
 import type { TimelineTemplateItem, TimelineTemplateItemInput } from "@/lib/timeline-templates/types";
 import type { TimelineAudience } from "@/lib/timeline/types";
+import {
+  DAY_OF_SCHEDULE_START_LABEL,
+  minutesFromRelativeForm,
+  previewRelativeClock,
+  relativeFormFromMinutes,
+  summarizeTemplateItemTiming,
+  templateHasConflictingTiming,
+  timingModeFromTemplateFields,
+  type TimingMode,
+} from "@/lib/timeline/timing-presentation";
 
 function emptyForm(sortOrder: number): TimelineTemplateItemInput {
   return {
@@ -57,12 +67,7 @@ function itemToForm(item: TimelineTemplateItem): TimelineTemplateItemInput {
 }
 
 function summarizeTiming(item: TimelineTemplateItem): string | null {
-  const parts: string[] = [];
-  if (item.timeOfDay) parts.push(item.timeOfDay);
-  if (item.minutesOffset !== null) {
-    parts.push(item.minutesOffset === 0 ? "at event start" : `${item.minutesOffset > 0 ? "+" : ""}${item.minutesOffset} min`);
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
+  return summarizeTemplateItemTiming(item);
 }
 
 export function TimelineTemplateEditor({ templateId, initialItems }: { templateId: string; initialItems: TimelineTemplateItem[] }) {
@@ -70,12 +75,58 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<TimelineTemplateItemInput>(() => emptyForm(0));
+  const [timingMode, setTimingMode] = React.useState<TimingMode>("specific");
+  const [relDirection, setRelDirection] = React.useState<"before" | "after" | "at">("before");
+  const [relMinutes, setRelMinutes] = React.useState(30);
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const saveUi = useLibrarySaveStatus();
   const sheetBaseline = React.useRef("");
   const sheetDirty = sheetOpen && JSON.stringify(form) !== sheetBaseline.current;
   const { confirmLeave } = useLibraryUnsavedGuard(sheetDirty);
+
+  function syncTimingUi(next: TimelineTemplateItemInput) {
+    const mode = timingModeFromTemplateFields(next.timeOfDay, next.minutesOffset);
+    setTimingMode(mode === "untimed" ? "specific" : mode);
+    if (next.minutesOffset !== null && next.minutesOffset !== undefined) {
+      const rel = relativeFormFromMinutes(next.minutesOffset);
+      setRelDirection(rel.direction);
+      setRelMinutes(rel.minutes || 30);
+    } else {
+      setRelDirection("before");
+      setRelMinutes(30);
+    }
+  }
+
+  function applyTimingMode(mode: TimingMode) {
+    setTimingMode(mode);
+    if (mode === "specific") {
+      setForm((p) => ({ ...p, minutesOffset: null }));
+    } else if (mode === "relative") {
+      setForm((p) => ({
+        ...p,
+        timeOfDay: null,
+        minutesOffset: minutesFromRelativeForm(relDirection, relMinutes),
+      }));
+    } else {
+      setForm((p) => ({ ...p, timeOfDay: null, minutesOffset: null }));
+    }
+  }
+
+  function applyRelativeFields(direction: "before" | "after" | "at", minutes: number) {
+    setRelDirection(direction);
+    setRelMinutes(minutes);
+    setForm((p) => ({
+      ...p,
+      timeOfDay: null,
+      minutesOffset: minutesFromRelativeForm(direction, minutes),
+    }));
+  }
+
+  const relativePreview = timingMode === "relative" && form.minutesOffset != null
+    ? previewRelativeClock(form.minutesOffset, null)
+    : null;
+  const legacyConflict = templateHasConflictingTiming(form.timeOfDay, form.minutesOffset);
 
   const dragIndex = React.useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
@@ -90,6 +141,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
     setEditingId(null);
     const next = emptyForm(items.length);
     setForm(next);
+    syncTimingUi(next);
     sheetBaseline.current = JSON.stringify(next);
     setSheetOpen(true);
   }
@@ -98,6 +150,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
     setEditingId(item.id);
     const next = itemToForm(item);
     setForm(next);
+    syncTimingUi(next);
     sheetBaseline.current = JSON.stringify(next);
     setSheetOpen(true);
   }
@@ -112,10 +165,29 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   async function handleSave() {
     if (!form.title.trim()) return;
     setSaving(true);
+    // Normalize to one timing mode so apply never sees conflicting fields.
+    let timeOfDay = form.timeOfDay;
+    let minutesOffset = form.minutesOffset;
+    if (timingMode === "specific") {
+      minutesOffset = null;
+      timeOfDay = timeOfDay && String(timeOfDay).trim() ? timeOfDay : null;
+    } else if (timingMode === "relative") {
+      timeOfDay = null;
+      minutesOffset = minutesFromRelativeForm(relDirection, relMinutes);
+    } else {
+      timeOfDay = null;
+      minutesOffset = null;
+    }
     // Saving through this form is itself the review — a coordinator who
     // opened an imported item and clicked Save has looked at its timing,
     // whether or not they changed it. needsReview always clears here.
-    const reviewed = { ...form, dayOffset: form.dayOffset ?? 0, needsReview: false };
+    const reviewed = {
+      ...form,
+      timeOfDay,
+      minutesOffset,
+      dayOffset: form.dayOffset ?? 0,
+      needsReview: false,
+    };
     if (editingId) {
       const result = await updateItemAction(editingId, templateId, reviewed);
       setSaving(false);
@@ -277,42 +349,127 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               <Label className="text-xs">Title</Label>
               <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Ceremony begins" className="h-9 text-sm" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Day</Label>
-                <Select
-                  value={String(form.dayOffset ?? 0)}
-                  onValueChange={(v) => setForm((p) => ({ ...p, dayOffset: Number(v) || 0 }))}
-                  items={dayOptions.map((d) => ({ value: String(d), label: formatTemplateDayLabel(d) }))}
-                >
-                  <SelectTrigger className="h-9 text-sm w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {dayOptions.map((d) => (
-                      <SelectItem key={d} value={String(d)}>{formatTemplateDayLabel(d)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Time</Label>
-                <Input
-                  type="time" value={form.timeOfDay ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, timeOfDay: e.target.value || null }))}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Relative Time (min)</Label>
-                <Input
-                  type="number" value={form.minutesOffset ?? ""}
-                  onChange={(e) => setForm((p) => ({ ...p, minutesOffset: e.target.value === "" ? null : Number(e.target.value) }))}
-                  placeholder="-30" className="h-9 text-sm"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Which day?</Label>
+              <Select
+                value={String(form.dayOffset ?? 0)}
+                onValueChange={(v) => setForm((p) => ({ ...p, dayOffset: Number(v) || 0 }))}
+                items={dayOptions.map((d) => ({ value: String(d), label: formatTemplateDayLabel(d) }))}
+              >
+                <SelectTrigger className="h-9 text-sm w-full" data-testid="timeline-template-day">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {dayOptions.map((d) => (
+                    <SelectItem key={d} value={String(d)}>{formatTemplateDayLabel(d)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Day 1 is the event&apos;s first calendar date when this template is applied. Extra days need a multi-day event date range.
+              </p>
             </div>
-            <p className="-mt-2 text-[11px] text-muted-foreground">
-              Day is relative to the event&apos;s calendar date (Day 1 = event date). Relative Time is minutes from the event&apos;s Day-of schedule Start time when you apply this template — not ceremony, reception, or getting-ready space times. A fixed Time overrides Relative Time. Offsets bake into clock times at apply; changing Start time later does not recalculate existing items.
-            </p>
+
+            <div className="space-y-2" data-testid="timeline-template-timing">
+              <Label className="text-xs">When does it happen?</Label>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { mode: "specific" as const, label: "Specific time" },
+                    { mode: "relative" as const, label: `Relative to ${DAY_OF_SCHEDULE_START_LABEL}` },
+                    { mode: "untimed" as const, label: "No time yet" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.mode}
+                    type="button"
+                    data-testid={`timeline-timing-mode-${opt.mode}`}
+                    onClick={() => applyTimingMode(opt.mode)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                      timingMode === opt.mode
+                        ? "border-primary bg-primary/10 font-medium text-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {legacyConflict ? (
+                <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] text-foreground" data-testid="timeline-timing-conflict">
+                  This item has both a clock time and a relative offset. Saving will keep the mode you select above and clear the other.
+                </p>
+              ) : null}
+
+              {timingMode === "specific" ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Clock time</Label>
+                  <Input
+                    type="time"
+                    value={form.timeOfDay ?? ""}
+                    onChange={(e) => setForm((p) => ({ ...p, timeOfDay: e.target.value || null, minutesOffset: null }))}
+                    className="h-9 text-sm w-40"
+                    data-testid="timeline-template-time-of-day"
+                  />
+                </div>
+              ) : null}
+
+              {timingMode === "relative" ? (
+                <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                  <p className="text-xs text-foreground">
+                    Reference: <span className="font-medium">{DAY_OF_SCHEDULE_START_LABEL}</span>
+                    {" "}(the event&apos;s Day-of schedule Start time — not ceremony or reception).
+                  </p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Minutes</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={relDirection === "at" ? 0 : relMinutes}
+                        disabled={relDirection === "at"}
+                        onChange={(e) => applyRelativeFields(relDirection, Number(e.target.value) || 0)}
+                        className="h-9 text-sm w-24"
+                        data-testid="timeline-template-rel-minutes"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Direction</Label>
+                      <Select
+                        value={relDirection}
+                        onValueChange={(v) => applyRelativeFields(v as "before" | "after" | "at", relMinutes)}
+                        items={[
+                          { value: "before", label: "before" },
+                          { value: "after", label: "after" },
+                          { value: "at", label: "at (same time)" },
+                        ]}
+                      >
+                        <SelectTrigger className="h-9 text-sm w-36" data-testid="timeline-template-rel-direction">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="before">before</SelectItem>
+                          <SelectItem value="after">after</SelectItem>
+                          <SelectItem value="at">at (same time)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {relativePreview ? (
+                    <p className="text-[11px] text-muted-foreground" data-testid="timeline-template-rel-preview">
+                      {relativePreview.label} Applied items become a fixed clock time; changing Start later does not recalculate them.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {timingMode === "untimed" ? (
+                <p className="text-[11px] text-muted-foreground">
+                  No clock time is stored. Set a specific time here or after applying the template to an event.
+                </p>
+              ) : null}
+            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>
               <Textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="min-h-16 text-sm" />

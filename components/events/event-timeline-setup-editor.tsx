@@ -20,7 +20,7 @@ import {
 import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { compareTimelineEntries } from "@/lib/timeline/constants";
+import { compareTimelineEntries, timelineDayOptions } from "@/lib/timeline/constants";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import { cn } from "@/lib/utils";
@@ -73,6 +73,8 @@ export function EventTimelineSetupEditor({
   onOpenChange,
   eventId,
   eventName,
+  eventDate,
+  eventEndDate = null,
   eventStartTime,
   profileName,
   preferredTemplateId,
@@ -83,6 +85,8 @@ export function EventTimelineSetupEditor({
   onOpenChange: (open: boolean) => void;
   eventId: string;
   eventName: string;
+  eventDate: string;
+  eventEndDate?: string | null;
   eventStartTime: string | null;
   profileName: string | null;
   preferredTemplateId: string | null;
@@ -90,6 +94,15 @@ export function EventTimelineSetupEditor({
   entries: TimelineEntry[];
 }) {
   const router = useRouter();
+  const dayOptions = React.useMemo(
+    () => timelineDayOptions(eventDate, eventEndDate),
+    [eventDate, eventEndDate],
+  );
+  const multiDay = dayOptions.length > 1;
+  const dayLabel = (offset: number) =>
+    dayOptions.find((d) => d.value === offset)?.label
+    ?? dayOptions[0]?.label
+    ?? `Day ${offset + 1}`;
   const activeTemplates = templates.filter((t) => !t.isArchived);
   const [mode, setMode] = React.useState<"template" | "customize">("customize");
   const [selectedTemplateId, setSelectedTemplateId] = React.useState(
@@ -263,8 +276,8 @@ export function EventTimelineSetupEditor({
       return;
     }
     const dayOffset = Number.parseInt(newDayOffset, 10);
-    if (!Number.isFinite(dayOffset) || dayOffset < 0) {
-      toast.error("Day offset must be zero or a positive number.");
+    if (!Number.isFinite(dayOffset) || dayOffset < 0 || dayOffset >= dayOptions.length) {
+      toast.error("Choose a day within this event’s date range.");
       return;
     }
     const row: DraftRow = {
@@ -300,8 +313,8 @@ export function EventTimelineSetupEditor({
     const pendingTitle = newTitle.trim();
     if (pendingTitle) {
       const dayOffset = Number.parseInt(newDayOffset, 10);
-      if (!Number.isFinite(dayOffset) || dayOffset < 0) {
-        toast.error("Day offset must be zero or a positive number.");
+      if (!Number.isFinite(dayOffset) || dayOffset < 0 || dayOffset >= dayOptions.length) {
+        toast.error("Choose a day within this event’s date range.");
         return;
       }
       const flushed: DraftRow = {
@@ -491,6 +504,15 @@ export function EventTimelineSetupEditor({
           </div>
         ) : (
           <div className="space-y-4" data-testid="timeline-setup-customize-path">
+            <p className="text-xs text-muted-foreground">
+              Times here are clock times for this event
+              {eventStartTime
+                ? ` (Day-of schedule start is ${eventStartTime.slice(0, 5)}).`
+                : " (set Day-of schedule start on the event if you apply relative template items)."}
+              {" "}Days use this event&apos;s actual dates
+              {multiDay ? ` (${dayOptions[0]?.isoDate}–${dayOptions[dayOptions.length - 1]?.isoDate}).` : ` (${eventDate}).`}
+              {" "}Edits do not change the Library template. Re-applying a template replaces venue-owned items.
+            </p>
             {visibleRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No timeline items on this event yet. Choose a template first, or add items below.
@@ -546,23 +568,44 @@ export function EventTimelineSetupEditor({
                         />
                       </label>
                       <label className="text-xs text-muted-foreground">
-                        Day offset
-                        <Input
-                          type="number"
-                          className="mt-1 w-24"
-                          value={row.dayOffset}
-                          disabled={pending || row.owner !== "venue" || row.pendingRemove}
-                          onChange={(e) => {
-                            const dayOffset = Number.parseInt(e.target.value, 10) || 0;
-                            setRows((prev) =>
-                              sortDraftRows(
-                                prev.map((r) =>
-                                  r.id === row.id ? { ...r, dayOffset, dirty: true } : r,
+                        Day
+                        {multiDay ? (
+                          <Select
+                            value={String(row.dayOffset)}
+                            disabled={pending || row.owner !== "venue" || row.pendingRemove}
+                            onValueChange={(v) => {
+                              const dayOffset = Number.parseInt(v, 10) || 0;
+                              setRows((prev) =>
+                                sortDraftRows(
+                                  prev.map((r) =>
+                                    r.id === row.id ? { ...r, dayOffset, dirty: true } : r,
+                                  ),
                                 ),
-                              ),
-                            );
-                          }}
-                        />
+                              );
+                            }}
+                            items={dayOptions.map((d) => ({ value: String(d.value), label: d.label }))}
+                          >
+                            <SelectTrigger
+                              className="mt-1 h-9 w-[12.5rem] text-sm"
+                              data-testid="timeline-setup-row-day"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {dayOptions.map((d) => (
+                                <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            className="mt-1 w-[12.5rem]"
+                            value={dayLabel(0)}
+                            disabled
+                            readOnly
+                            data-testid="timeline-setup-row-day"
+                          />
+                        )}
                       </label>
                       {row.owner === "venue" && !row.pendingRemove && !row.isNew ? (
                         <Button
@@ -627,14 +670,35 @@ export function EventTimelineSetupEditor({
                   />
                 </label>
                 <label className="text-xs text-muted-foreground">
-                  Day offset
-                  <Input
-                    type="number"
-                    className="mt-1 w-24"
-                    value={newDayOffset}
-                    disabled={pending}
-                    onChange={(e) => setNewDayOffset(e.target.value)}
-                  />
+                  Day
+                  {multiDay ? (
+                    <Select
+                      value={newDayOffset}
+                      disabled={pending}
+                      onValueChange={setNewDayOffset}
+                      items={dayOptions.map((d) => ({ value: String(d.value), label: d.label }))}
+                    >
+                      <SelectTrigger
+                        className="mt-1 h-9 w-[12.5rem] text-sm"
+                        data-testid="timeline-setup-new-day"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dayOptions.map((d) => (
+                          <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      className="mt-1 w-[12.5rem]"
+                      value={dayLabel(0)}
+                      disabled
+                      readOnly
+                      data-testid="timeline-setup-new-day"
+                    />
+                  )}
                 </label>
                 <Button
                   type="button"

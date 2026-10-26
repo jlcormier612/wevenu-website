@@ -1,4 +1,8 @@
 import {
+  formatRelativeToScheduleStart,
+  formatTemplateDayLabelClear,
+} from "@/lib/timeline/timing-presentation";
+import {
   CLIENT_TIMELINE_AUDIENCES,
   TIMELINE_AUDIENCES,
   VENUE_TIMELINE_AUDIENCES,
@@ -18,19 +22,17 @@ export function sanitizeVenueTemplateAudiences(audiences: TimelineAudience[]): T
   return audiences.filter((a) => allowed.has(a));
 }
 
-/** "+90 min" / "-30 min" / "At event start", for card and list display. */
+/** Plain relative phrase for cards/lists (Day-of schedule start). */
 export function formatMinutesOffset(minutes: number | null): string | null {
   if (minutes === null) return null;
-  if (minutes === 0) return "At event start";
-  const sign = minutes > 0 ? "+" : "-";
-  return `${sign}${Math.abs(minutes)} min`;
+  return formatRelativeToScheduleStart(minutes);
 }
 
 /** Template Day picker — no calendar dates; labels are Day 1 / Day 2 / … */
 export const TEMPLATE_DAY_OFFSET_OPTIONS = [0, 1, 2, 3, 4, 5, 6] as const;
 
 export function formatTemplateDayLabel(dayOffset: number): string {
-  return `Day ${Math.max(0, Math.trunc(dayOffset)) + 1}`;
+  return formatTemplateDayLabelClear(dayOffset);
 }
 
 /** Presentation labels for Wedding Weekend (TL-03) day bands — not calendar dates. */

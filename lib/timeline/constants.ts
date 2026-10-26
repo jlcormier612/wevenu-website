@@ -31,14 +31,17 @@ export const TIMELINE_TEMPLATES: TimelineTemplate[] = getBookingPickerStarters()
 
 /**
  * Resolve absolute entry_time from a template/starter offset.
- * When minutesOffset is null, returns null (never invents a clock time).
+ * Anchor is Day-of schedule start (`events.start_time`) only.
+ * When minutesOffset is null, or startTime is missing, returns null
+ * (never invents a clock time — including no silent noon fallback).
  */
 export function resolveEntryTimeFromOffset(
   minutesOffset: number | null | undefined,
   startTime: string | null,
 ): string | null {
   if (minutesOffset === null || minutesOffset === undefined) return null;
-  const baseMinutes = startTime ? timeToMinutes(startTime.slice(0, 5)) : 12 * 60;
+  if (!startTime || !String(startTime).trim()) return null;
+  const baseMinutes = timeToMinutes(startTime.slice(0, 5));
   const totalMinutes = baseMinutes + minutesOffset;
   if (totalMinutes < 0 || totalMinutes >= 24 * 60) return null;
   return minutesToTime(totalMinutes);

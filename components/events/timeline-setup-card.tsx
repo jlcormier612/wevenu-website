@@ -68,7 +68,9 @@ export function TimelineSetupCard({
           </Button>
         </div>
         {!eventStartTime && (
-          <p className="mt-2 text-[11px] text-muted-foreground">No start time set yet — times will be calculated from noon until you add one.</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            No Day-of schedule start yet — relative template items will stay without a clock time until you set one. Specific clock times still apply as written.
+          </p>
         )}
       </CardContent>
     </Card>

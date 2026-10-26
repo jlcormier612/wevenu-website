@@ -24,10 +24,11 @@ describe("timeline relative-time anchor (events.start_time)", () => {
     assert.equal(CEREMONY, EVENT_START); // coincidence in this fixture; still not a separate field
   });
 
-  it("null event start falls back to noon (12:00), not ceremony times", () => {
-    assert.equal(resolveEntryTimeFromOffset(0, null), "12:00");
-    assert.equal(resolveEntryTimeFromOffset(-30, null), "11:30");
-    assert.equal(resolveEntryTimeFromOffset(60, null), "13:00");
+  it("null event start does not invent a clock time (no noon fallback)", () => {
+    assert.equal(resolveEntryTimeFromOffset(0, null), null);
+    assert.equal(resolveEntryTimeFromOffset(-30, null), null);
+    assert.equal(resolveEntryTimeFromOffset(60, null), null);
+    assert.equal(resolveEntryTimeFromOffset(0, ""), null);
   });
 
   it("out-of-day offsets return null (no wrap inventing next day)", () => {

@@ -996,6 +996,7 @@ export function EventDetail({
             eventId={event.id}
             clientId={event.clientId}
             eventDate={event.eventDate}
+            eventEndDate={event.eventEndDate}
             eventName={event.name}
             clientName={event.clientName}
             clientEmail={coupleEmail}
