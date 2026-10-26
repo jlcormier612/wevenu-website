@@ -536,7 +536,8 @@ function ChooseLayoutSection({
       <div>
         <h2 className="text-lg font-semibold text-heading">Choose your layout</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Your venue has shared a few ways to arrange the space. Choose the one that works best for your celebration.
+          Your venue has offered layout options for this event. Choose one to save your selection. This is not a
+          multi-setup package — each option is a full layout for the celebration.
         </p>
       </div>
 
@@ -1077,7 +1078,7 @@ export default function FloorPlanSection({
                     {p.name}
                     {p.isCoupleSelected ? " · Your choice" : ""}
                     {p.isReady ? " · Ready" : ""}
-                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalId) ? " · Operational" : ""}
+                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalId) ? " · Working layout" : ""}
                   </button>
                 );
               })}

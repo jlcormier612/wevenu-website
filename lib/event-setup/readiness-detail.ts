@@ -173,7 +173,7 @@ function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
   const operationalNote =
     operational === 0
       ? " Working layout initializes from offered layouts when you save offers or open Floor Plans."
-      : ` ${operational} working layout${operational === 1 ? "" : "s"} on this booking (Open Floor Plans edits the operational plan).`;
+      : ` ${operational} working layout${operational === 1 ? "" : "s"} on this booking (Open Floor Plans edits the working layout).`;
 
   if (ctx.floorPlanOfferCount === 0) {
     if (ctx.inheritedRefs.defaultFloorPlanTemplateId || (ctx.inheritedRefs.floorPlanTemplateIds?.length ?? 0) > 0) {

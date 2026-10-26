@@ -297,7 +297,7 @@ export function FloorPlanPortalView({
                     {p.name}
                     {p.isCoupleSelected ? " · Your choice" : ""}
                     {p.isReady ? " · Ready" : ""}
-                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalFloorPlanId) ? " · Operational" : ""}
+                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalFloorPlanId) ? " · Working layout" : ""}
                   </button>
                 );
               })}

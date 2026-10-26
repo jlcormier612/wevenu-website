@@ -141,7 +141,7 @@ function ShareFloorPlanToggle({ eventId, plan }: { eventId: string; plan: FloorP
   );
 }
 
-/** Phase 1 — venue sets the durable operational Floor Plan for the event. */
+/** Phase 1 — venue sets the durable working-layout pointer for the event (not approval). */
 function SetOperationalToggle({
   eventId, plan, isOperational,
 }: {
@@ -156,7 +156,7 @@ function SetOperationalToggle({
     startTransition(async () => {
       const result = await setOperationalFloorPlanAction(eventId, isOperational ? null : plan.id);
       if (result.ok) router.refresh();
-      else toast.error(result.message ?? "Could not update operational Floor Plan.");
+      else toast.error(result.message ?? "Could not update working layout.");
     });
   }
 
@@ -167,13 +167,13 @@ function SetOperationalToggle({
           className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
             isOperational ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
           }`}>
-          {pending ? "…" : isOperational ? "Operational plan" : "Set as operational"}
+          {pending ? "…" : isOperational ? "Working layout" : "Set as working layout"}
         </button>
       } />
       <TooltipContent>
         {isOperational
-          ? "This is the event's operational Floor Plan. Click to clear."
-          : "Mark this as the Floor Plan this event is actually using."}
+          ? "This is the event's working layout pointer. Click to clear. Sharing and seating access stay separate."
+          : "Mark this as the working layout for venue prep. This is not approval, and does not grant seating access."}
       </TooltipContent>
     </Tooltip>
   );
@@ -282,7 +282,7 @@ function FloorPlanCard({
           )}
           {isOperational && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary">
-              Operational
+              Working layout
             </span>
           )}
         </div>
@@ -618,9 +618,11 @@ export function FloorPlanWorkspace({
           ? "Sketch the room for this client. Sharing a plan and client layout choice wait until this relationship is Booked."
           : (
             <>
-              Review offers, the event&apos;s <span className="font-medium text-foreground">working layout</span>, and
-              whether the client has selected a layout. Open a plan to edit arrangement and seating. Offer Library
-              layouts under Event setup → Change for this event.
+              Create, edit, and share layouts for this event. The{" "}
+              <span className="font-medium text-foreground">working layout</span> is for venue prep — sharing a
+              floor plan and seating access stay separate controls. Offer Library layouts under Event setup →
+              Change for this event. Multiple layouts may coexist; setup packages and preference review are not
+              part of this step.
             </>
           )}
       </p>
@@ -782,8 +784,12 @@ export function FloorPlanWorkspace({
             onDelete={() => handleDeletePlan(workingPlan)}
           />
           {otherPlans.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2" data-testid="floor-plan-other-layouts">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Other layouts on this event</p>
+              <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-multi-layout-note">
+                These layouts coexist on this event. They are independent copies — not a finished setup-package or
+                multi-phase system.
+              </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {otherPlans.map((plan) => (
                   <FloorPlanCard
