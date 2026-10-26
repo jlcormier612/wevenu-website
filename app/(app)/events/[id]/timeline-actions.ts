@@ -210,11 +210,30 @@ export async function replaceEventTimelineFromTemplateAction(
   }
 }
 
-/** Persist Client audience on venue-owned items — portal visibility, no email. */
+/** P1b: release venue working timeline to the couple (immutable snapshot). No email. */
 export async function shareTimelineWithCoupleAction(
   eventId: string,
 ): Promise<ShareTimelineWithCoupleResult> {
   const result = await shareTimelineWithCouple(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
+  return result;
+}
+
+export async function previewVenueTimelineReleaseAction(eventId: string) {
+  const { previewVenueTimelineRelease } = await import("@/lib/timeline/release-service");
+  return previewVenueTimelineRelease(eventId);
+}
+
+export async function confirmVenueTimelineReleaseAction(
+  eventId: string,
+  input: {
+    acknowledgedHoldOutIds: string[];
+    workingFingerprint: string;
+    idempotencyKey?: string | null;
+  },
+) {
+  const { confirmVenueTimelineRelease } = await import("@/lib/timeline/release-service");
+  const result = await confirmVenueTimelineRelease(eventId, input);
   if (result.ok) await revalidateTimelineSurfaces(eventId);
   return result;
 }

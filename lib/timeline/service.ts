@@ -239,21 +239,23 @@ export type ShareTimelineWithCoupleResult = TimelineActionResult & {
 };
 
 /**
- * Make venue-owned timeline items visible in the couple portal by ensuring
- * each has the Client audience tag. Distinct from applying a template and
- * from sending email/SMS.
+ * P1b: create an immutable venue→couple timeline release (not live audience tags).
+ * Distinct from applying a template and from sending email/SMS.
  */
 export async function shareTimelineWithCouple(
   eventId: string,
 ): Promise<ShareTimelineWithCoupleResult> {
-  const result = await withVenue(async (supabase, venueId) => {
-    const counts = await repo.shareVenueTimelineWithCouple(supabase, venueId, eventId);
-    if (counts.venueOwnedCount === 0) {
-      return { ok: false, message: "Add timeline items before sharing with the couple." } as ShareTimelineWithCoupleResult;
-    }
-    return { ok: true, ...counts } as ShareTimelineWithCoupleResult;
-  });
-  return result as ShareTimelineWithCoupleResult;
+  const { releaseVenueTimelineForPrepare } = await import("@/lib/timeline/release-service");
+  const released = await releaseVenueTimelineForPrepare(eventId);
+  if (!released.ok) {
+    return { ok: false, message: released.message };
+  }
+  return {
+    ok: true,
+    sharedCount: released.entryCount ?? 0,
+    alreadySharedCount: 0,
+    venueOwnedCount: released.entryCount ?? 0,
+  };
 }
 
 export async function shareClientTimelineWithCouple(

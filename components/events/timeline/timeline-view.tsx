@@ -38,8 +38,9 @@ import {
   reorderEntriesAction,
   reorderSectionsAction,
   setSectionClientCanAddAction,
+  confirmVenueTimelineReleaseAction,
+  previewVenueTimelineReleaseAction,
   shareClientTimelineWithCoupleAction,
-  shareTimelineWithCoupleAction,
   updateEntryAction,
 } from "@/app/(app)/events/[id]/timeline-actions";
 import {
@@ -901,49 +902,114 @@ export function TimelineView({
     .sort()
     .at(-1) ?? null;
   const clientShareStatus = computeVenueTimelineClientShareStatus(entries);
-  const needsCoupleShare =
-    clientShareStatus.kind === "not_shared" || clientShareStatus.kind === "partial";
+  const [releaseHint, setReleaseHint] = React.useState<{
+    hasPriorRelease: boolean;
+    lastReleasedAt: string | null;
+  } | null>(null);
+  React.useEffect(() => {
+    if (!eventId) {
+      setReleaseHint(null);
+      return;
+    }
+    let cancelled = false;
+    void previewVenueTimelineReleaseAction(eventId).then((preview) => {
+      if (cancelled || !preview.ok) return;
+      setReleaseHint({
+        hasPriorRelease: preview.hasPriorRelease,
+        lastReleasedAt: preview.lastReleasedAt,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+  const needsCoupleShare = planningClientId && !eventId
+    ? clientShareStatus.kind === "not_shared" || clientShareStatus.kind === "partial"
+    : !releaseHint?.hasPriorRelease;
 
   function handleShareWithCouple() {
     if (totalCount === 0) {
       toast.error("Add timeline items before sharing with the couple.");
       return;
     }
-    const privateCount = entries.filter(
-      (e) => e.owner === "venue" && !venueItemVisibleToClient(e.audiences),
-    ).length;
-    if (privateCount === 0) {
-      toast.message("Already shared with the couple.", {
-        description: "Venue timeline items tagged Client are live in their portal.",
+    // Pre-booking client planning (no event): keep legacy client-audience share.
+    if (planningClientId && !eventId) {
+      const ok = confirm(
+        "Share this planning timeline with the couple? Items tagged Client become visible in their portal. No email is sent.",
+      );
+      if (!ok) return;
+      startShare(async () => {
+        const result = await shareClientTimelineWithCoupleAction(planningClientId);
+        if (!result.ok) {
+          toast.error(result.message ?? "Could not share the timeline.");
+          return;
+        }
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.owner === "venue" && !venueItemVisibleToClient(e.audiences)
+              ? { ...e, audiences: audiencesWithClientShare(e.audiences), updatedAt: new Date().toISOString() }
+              : e,
+          ),
+        );
+        toast.success("Shared with the couple.");
+        router.refresh();
       });
       return;
     }
-    const ok = confirm(
-      privateCount === totalCount
-        ? "Share this timeline with the couple? Items tagged Client become visible in their portal right away. No email is sent."
-        : `Share ${privateCount} remaining venue-private item${privateCount === 1 ? "" : "s"} with the couple? Already-shared items stay as they are. No email is sent.`,
-    );
-    if (!ok) return;
+
     startShare(async () => {
-      const result = planningClientId && !eventId
-        ? await shareClientTimelineWithCoupleAction(planningClientId)
-        : await shareTimelineWithCoupleAction(eventId);
-      if (!result.ok) {
-        toast.error(result.message ?? "Could not share the timeline.");
+      const preview = await previewVenueTimelineReleaseAction(eventId);
+      if (!preview.ok) {
+        toast.error(preview.message ?? "Could not review what the couple will receive.");
         return;
       }
-      setEntries((prev) =>
-        prev.map((e) =>
-          e.owner === "venue" && !venueItemVisibleToClient(e.audiences)
-            ? { ...e, audiences: audiencesWithClientShare(e.audiences), updatedAt: new Date().toISOString() }
-            : e,
-        ),
+      setReleaseHint({
+        hasPriorRelease: preview.hasPriorRelease,
+        lastReleasedAt: preview.lastReleasedAt,
+      });
+      if (preview.blocksRelease.length > 0) {
+        const titles = preview.blocksRelease.map((b) => String(b.title ?? "Item")).slice(0, 5).join(", ");
+        toast.error("Fix or replace items already on the shared timeline before sharing again.", {
+          description: titles,
+        });
+        return;
+      }
+      if (!preview.canRelease) {
+        toast.error("Add resolved timeline items before sharing with the couple.");
+        return;
+      }
+      const holdTitles = preview.heldOut.map((h) => String(h.title ?? "Item"));
+      const soft = preview.softWarnings.length
+        ? `\n\nNote: ${preview.softWarnings.length} fixed date(s) are outside the usual planning window (informational only).`
+        : "";
+      const holdNote = holdTitles.length
+        ? `\n\nNot shared yet — needs your decision:\n- ${holdTitles.slice(0, 8).join("\n- ")}`
+        : "";
+      const ok = confirm(
+        `Review what the couple will receive.\n\nWill share: ${preview.willShare.length} item(s).${holdNote}${soft}\n\nNo email is sent. Continue?`,
       );
-      const newly = result.sharedCount ?? 0;
+      if (!ok) return;
+      const idempotencyKey =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `release-${Date.now()}`;
+      const result = await confirmVenueTimelineReleaseAction(eventId, {
+        acknowledgedHoldOutIds: preview.heldOut.map((h) => String(h.id)),
+        workingFingerprint: preview.workingFingerprint,
+        idempotencyKey,
+      });
+      if (!result.ok) {
+        toast.error(result.message ?? "Sharing didn't finish. The couple still has the previous shared timeline.");
+        return;
+      }
+      setReleaseHint({
+        hasPriorRelease: true,
+        lastReleasedAt: result.releasedAt ?? new Date().toISOString(),
+      });
       toast.success(
-        newly > 0
-          ? `Shared ${newly} item${newly === 1 ? "" : "s"} with the couple.`
-          : "Timeline is shared with the couple.",
+        result.idempotentReplay
+          ? "Shared with the couple."
+          : `Shared with the couple (${result.entryCount ?? preview.willShare.length} item${(result.entryCount ?? preview.willShare.length) === 1 ? "" : "s"}).`,
       );
       router.refresh();
     });
@@ -955,7 +1021,12 @@ export function TimelineView({
   if (totalCount === 0 && sections.length === 0 && addFormOpenFor === null) {
     return (
       <div className="space-y-4">
-        <TimelineSummaryBar itemCount={0} lastUpdated={lastUpdatedIso} clientShareStatus={clientShareStatus} />
+        <TimelineSummaryBar
+          itemCount={0}
+          lastUpdated={lastUpdatedIso}
+          clientShareStatus={clientShareStatus}
+          releaseStatus={eventId ? { ...releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null }, workingAheadOfRelease: false } : null}
+        />
         {dayOfWindowStrip}
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -987,7 +1058,12 @@ export function TimelineView({
 
   return (
     <div className="space-y-4">
-      <TimelineSummaryBar itemCount={totalCount} lastUpdated={lastUpdatedIso} clientShareStatus={clientShareStatus} />
+      <TimelineSummaryBar
+        itemCount={totalCount}
+        lastUpdated={lastUpdatedIso}
+        clientShareStatus={clientShareStatus}
+        releaseStatus={eventId ? { ...releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null }, workingAheadOfRelease: Boolean(releaseHint?.hasPriorRelease) } : null}
+      />
       {dayOfWindowStrip}
 
       {/* Toolbar */}
@@ -1008,13 +1084,18 @@ export function TimelineView({
             onClick={handleShareWithCouple}
             title={
               needsCoupleShare
-                ? "Make venue timeline items visible in the couple portal. Does not send email."
-                : "Venue timeline items tagged Client are already visible in their portal. Sharing does not send email."
+                ? "Review what the couple will receive, then share. Does not send email."
+                : "Update the couple's shared timeline from your working schedule. Does not send email."
             }
-            aria-label={needsCoupleShare ? "Share timeline with couple" : "Timeline already shared with couple"}
+            aria-label={needsCoupleShare ? "Share timeline with couple" : "Update shared timeline with couple"}
+            data-testid="timeline-share-with-couple"
           >
             <Share2 className="mr-1 h-3.5 w-3.5" />
-            {sharePending ? "Sharing…" : needsCoupleShare ? "Share with Couple" : "Shared with Couple"}
+            {sharePending
+              ? "Sharing…"
+              : needsCoupleShare
+                ? "Share with Couple"
+                : "Update shared timeline"}
           </Button>
           <TemplatePicker
             eventId={eventId}

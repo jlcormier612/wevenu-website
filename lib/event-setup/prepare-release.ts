@@ -148,15 +148,15 @@ export async function prepareAndReleasePortal(
       .limit(1);
     if (afterEntries && afterEntries.length > 0) {
       try {
-        const { shareTimelineWithCouple } = await import("@/lib/timeline/service");
-        const shared = await shareTimelineWithCouple(eventId);
+        const { releaseVenueTimelineForPrepare } = await import("@/lib/timeline/release-service");
+        const shared = await releaseVenueTimelineForPrepare(eventId);
         if (shared.ok === false) {
-          console.error("prepareAndReleasePortal timeline share:", shared.message);
+          console.error("prepareAndReleasePortal timeline release:", shared.message);
         } else {
           sharedTimeline = true;
         }
       } catch (err) {
-        console.error("prepareAndReleasePortal timeline share failed:", err);
+        console.error("prepareAndReleasePortal timeline release failed:", err);
       }
     }
   }

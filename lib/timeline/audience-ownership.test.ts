@@ -236,7 +236,29 @@ describe("timeline share vs apply template remain distinct", () => {
     assert.match(picker, /Apply Template/);
     assert.doesNotMatch(picker, />\s*Use Template\s*</);
     assert.match(view, /Share with Couple/);
-    assert.match(view, /shareTimelineWithCoupleAction/);
+    assert.match(view, /previewVenueTimelineReleaseAction/);
+    assert.match(view, /confirmVenueTimelineReleaseAction/);
     assert.match(view, /computeVenueTimelineClientShareStatus/);
+  });
+
+  it("event share path uses release preview/confirm; planning path keeps client-audience share", () => {
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const view = fs.readFileSync(
+      path.join(process.cwd(), "components/events/timeline/timeline-view.tsx"),
+      "utf8",
+    );
+    const prepare = fs.readFileSync(
+      path.join(process.cwd(), "lib/event-setup/prepare-release.ts"),
+      "utf8",
+    );
+    const service = fs.readFileSync(
+      path.join(process.cwd(), "lib/timeline/service.ts"),
+      "utf8",
+    );
+    assert.match(view, /shareClientTimelineWithCoupleAction/);
+    assert.match(prepare, /releaseVenueTimelineForPrepare/);
+    assert.match(service, /releaseVenueTimelineForPrepare/);
+    assert.doesNotMatch(prepare, /audiencesWithClientShare/);
   });
 });

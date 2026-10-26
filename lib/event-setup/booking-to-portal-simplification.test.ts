@@ -34,7 +34,7 @@ describe("booking-to-portal simplification", () => {
     const prepare = read("lib/event-setup/prepare-release.ts");
     const actions = read("app/(app)/events/[id]/setup-actions.ts");
     assert.match(prepare, /releasePlaybookApplication/);
-    assert.match(prepare, /shareTimelineWithCouple/);
+    assert.match(prepare, /releaseVenueTimelineForPrepare/);
     assert.doesNotMatch(prepare, /ensureEventInventory/);
     assert.doesNotMatch(prepare, /ensureEventOrder/);
     assert.match(prepare, /never from Setup release/);
