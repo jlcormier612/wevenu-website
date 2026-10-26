@@ -52,25 +52,25 @@ export function formatTemplateDayLabelClear(
   return `${abs} ${unit} after ${anchorPhrase}`;
 }
 
-/** Resolve template day rule to an event_date-relative offset for storage on entries. */
+/**
+ * Resolve template day rule to an event_date-relative offset.
+ * Returns null when an end anchor cannot be resolved — never a start-relative substitute.
+ * A same-day end date (end === start) is a valid span of 0. A missing end, or an end
+ * before the start, is unresolved.
+ */
 export function resolveTemplateDayToEventOffset(
   dayOffset: number,
   anchor: TimelineDayAnchor,
   eventDate: string | null | undefined,
   eventEndDate: string | null | undefined,
-): number {
+): number | null {
   const n = Math.trunc(dayOffset);
-  if (anchor === "event_end") {
-    if (!eventDate || !eventEndDate || eventEndDate <= eventDate) {
-      // Cannot resolve end anchor without a real end date — fall back to start.
-      return n;
-    }
-    const start = new Date(`${eventDate}T12:00:00`);
-    const end = new Date(`${eventEndDate}T12:00:00`);
-    const span = Math.round((end.getTime() - start.getTime()) / 86_400_000);
-    return span + n;
-  }
-  return n;
+  if (anchor !== "event_end") return n;
+  if (!eventDate || !eventEndDate || eventEndDate < eventDate) return null;
+  const start = new Date(`${eventDate}T12:00:00`);
+  const end = new Date(`${eventEndDate}T12:00:00`);
+  const span = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  return span + n;
 }
 
 /**

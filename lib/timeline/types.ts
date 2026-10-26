@@ -104,6 +104,8 @@ export type TimelineEntry = {
   assignedToStaffId: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Null when this row has no recorded timing intent (legacy). */
+  timing?: import("@/lib/timeline/timing-provenance").TimingProvenance;
 };
 
 export type TimelineEntryInput = {
@@ -119,6 +121,8 @@ export type TimelineEntryInput = {
   lockState?: TimelineLockState;
   status?: TimelineEntryStatus;
   assignedToStaffId?: string | null;
+  /** Present when this save records timing intent. Omitted saves do not reclassify legacy rows. */
+  timing?: import("@/lib/timeline/timing-provenance").TimingWrite;
 };
 
 /** Event-specific Timeline setup editor — one server round-trip for multi-row drafts. */
@@ -138,6 +142,13 @@ export type TimelineDraftBatchInput = {
   upserts: TimelineDraftUpsert[];
 };
 
+/** Day and clock actually written. The editor must show these, not a rejected draft day. */
+export type PersistedTimelineDraft = {
+  id: string;
+  dayOffset: number;
+  entryTime: string | null;
+};
+
 export type TimelineDraftBatchResult =
   | {
       ok: true;
@@ -146,6 +157,7 @@ export type TimelineDraftBatchResult =
       created: number;
       /** New rows keyed by client temp id when provided via upserts[].id starting with "new:". */
       createdIds: string[];
+      persisted: PersistedTimelineDraft[];
     }
   | { ok: false; message: string; errors?: TimelineErrors };
 

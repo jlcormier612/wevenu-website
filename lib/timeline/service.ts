@@ -13,6 +13,7 @@ import type {
   AddSectionResult,
   DuplicateSectionResult,
   TimelineActionResult,
+  PersistedTimelineDraft,
   TimelineDraftBatchInput,
   TimelineDraftBatchResult,
   TimelineEntry,
@@ -129,7 +130,7 @@ export async function saveEventTimelineDraft(
   const deleteIds = [...new Set(draft.deleteIds.filter(Boolean))];
   const upserts = draft.upserts ?? [];
   if (deleteIds.length === 0 && upserts.length === 0) {
-    return { ok: true, deleted: 0, updated: 0, created: 0, createdIds: [] };
+    return { ok: true, deleted: 0, updated: 0, created: 0, createdIds: [], persisted: [] };
   }
 
   for (const row of upserts) {
@@ -143,6 +144,7 @@ export async function saveEventTimelineDraft(
     let updated = 0;
     let created = 0;
     const createdIds: string[] = [];
+    const persisted: PersistedTimelineDraft[] = [];
 
     for (const id of deleteIds) {
       const outcome = await repo.deleteEntry(supabase, venueId, id);
@@ -162,7 +164,8 @@ export async function saveEventTimelineDraft(
       const existingId = row.id && !row.id.startsWith("new:") ? row.id : null;
       if (existingId) {
         try {
-          await repo.updateEntry(supabase, venueId, existingId, input);
+          const saved = await repo.updateEntry(supabase, venueId, existingId, input);
+          persisted.push({ id: existingId, dayOffset: saved.dayOffset, entryTime: saved.entryTime });
           updated += 1;
         } catch (e) {
           const message = e instanceof Error ? e.message : "Could not save this item.";
@@ -173,6 +176,7 @@ export async function saveEventTimelineDraft(
           const entry = await repo.insertEntry(supabase, venueId, eventId, input);
           created += 1;
           createdIds.push(entry.id);
+          persisted.push({ id: entry.id, dayOffset: entry.dayOffset, entryTime: entry.entryTime });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Could not add this item.";
           return { ok: false, message } as TimelineDraftBatchResult;
@@ -180,7 +184,7 @@ export async function saveEventTimelineDraft(
       }
     }
 
-    return { ok: true, deleted, updated, created, createdIds } as TimelineDraftBatchResult;
+    return { ok: true, deleted, updated, created, createdIds, persisted } as TimelineDraftBatchResult;
   });
 
   return result as TimelineDraftBatchResult;

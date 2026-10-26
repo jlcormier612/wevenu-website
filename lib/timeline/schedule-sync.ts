@@ -9,6 +9,12 @@
 import type { createClient } from "@/integrations/supabase/server";
 import { VENUE_OWNED_DEFAULT_AUDIENCES } from "@/lib/timeline/audience-ownership";
 import { clampDayOffset } from "@/lib/timeline/constants";
+import {
+  timingColumnsForUntypedDisplaySave,
+  type TimingClockIntent,
+  type TimingDayIntent,
+} from "@/lib/timeline/timing-provenance";
+import type { TimelineDayAnchor } from "@/lib/timeline/timing-presentation";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -124,6 +130,37 @@ export function planScheduleTimelineSync(input: {
   return { upserts, deleteIds };
 }
 
+function asDayIntent(value: string | null | undefined): TimingDayIntent | null {
+  return value === "relative" || value === "fixed" || value === "unknown" ? value : null;
+}
+
+function asDayAnchor(value: string | null | undefined): TimelineDayAnchor | null {
+  return value === "event_start" || value === "event_end" ? value : null;
+}
+
+function asClockIntent(value: string | null | undefined): TimingClockIntent | null {
+  return value === "relative" || value === "explicit" || value === "untimed" || value === "unknown"
+    ? value
+    : null;
+}
+
+/**
+ * Schedule sync is an untyped display write. It must not invent timing intent
+ * or detach a fixed date or wedding-end anchor. New generated rows omit timing.
+ */
+export function scheduleSyncWriteForExistingRow(
+  current: {
+    dayIntent: TimingDayIntent | null;
+    dayAnchor: TimelineDayAnchor | null;
+    clockIntent: TimingClockIntent | null;
+    dayOffset: number;
+    entryTime: string | null;
+  },
+  planned: { dayOffset: number; entryTime: string | null },
+) {
+  return timingColumnsForUntypedDisplaySave(current, planned);
+}
+
 export async function syncTimelineFromEventSpaceAssignments(
   client: DbClient,
   venueId: string,
@@ -166,21 +203,35 @@ export async function syncTimelineFromEventSpaceAssignments(
     };
   });
 
-  const { data: existingRows } = await client
+  const { data: existingRows, error: existingError } = await client
     .from("timeline_entries")
-    .select("id, source_space_use_key, lock_state")
+    .select("id, source_space_use_key, lock_state, day_offset, entry_time, timing_day_intent, timing_day_anchor, timing_clock_intent")
     .eq("event_id", eventId)
     .eq("venue_id", venueId)
     .not("source_space_use_key", "is", null);
+  if (existingError) throw existingError;
+
+  type ExistingGenerated = {
+    id: string;
+    source_space_use_key: string | null;
+    lock_state: string | null;
+    day_offset: number | null;
+    entry_time: string | null;
+    timing_day_intent: string | null;
+    timing_day_anchor: string | null;
+    timing_clock_intent: string | null;
+  };
+  const existing = (existingRows ?? []) as ExistingGenerated[];
+  const existingById = new Map(existing.map((row) => [row.id, row]));
 
   const plan = planScheduleTimelineSync({
     eventDate: event.event_date,
     eventEndDate: event.event_end_date,
     assignments,
-    existing: (existingRows ?? []).map((r) => ({
-      id: (r as { id: string }).id,
-      sourceSpaceUseKey: (r as { source_space_use_key: string | null }).source_space_use_key,
-      lockState: (r as { lock_state: string }).lock_state ?? "editable",
+    existing: existing.map((r) => ({
+      id: r.id,
+      sourceSpaceUseKey: r.source_space_use_key,
+      lockState: r.lock_state ?? "editable",
     })),
   });
 
@@ -208,15 +259,29 @@ export async function syncTimelineFromEventSpaceAssignments(
       status: "not_started" as const,
     };
     if (u.existingId) {
+      const current = existingById.get(u.existingId);
+      const decided = current
+        ? scheduleSyncWriteForExistingRow(
+          {
+            dayIntent: asDayIntent(current.timing_day_intent),
+            dayAnchor: asDayAnchor(current.timing_day_anchor),
+            clockIntent: asClockIntent(current.timing_clock_intent),
+            dayOffset: current.day_offset ?? 0,
+            entryTime: current.entry_time?.slice(0, 5) ?? null,
+          },
+          { dayOffset: u.dayOffset, entryTime: u.entryTime },
+        )
+        : { dayOffset: u.dayOffset, entryTime: u.entryTime, timingColumns: {} };
       const { error } = await client
         .from("timeline_entries")
         .update({
           title: payload.title,
           description: payload.description,
-          entry_time: payload.entry_time,
+          entry_time: decided.entryTime,
           end_time: payload.end_time,
-          day_offset: payload.day_offset,
+          day_offset: decided.dayOffset,
           sort_order: payload.sort_order,
+          ...decided.timingColumns,
         })
         .eq("id", u.existingId)
         .eq("venue_id", venueId)

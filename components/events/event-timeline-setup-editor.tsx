@@ -21,6 +21,7 @@ import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { compareTimelineEntries, timelineDayOptions } from "@/lib/timeline/constants";
+import { reconcileSavedDraftRows } from "@/lib/timeline/draft-save-state";
 import type { TimelineEntry } from "@/lib/timeline/types";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import { cn } from "@/lib/utils";
@@ -378,28 +379,26 @@ export function EventTimelineSetupEditor({
           toast.error(msg);
           return;
         }
-        // Keep editor open; map new temp ids → created server ids so a
-        // second save before refresh cannot duplicate inserts.
-        let createdIdx = 0;
+        // Show the day and clock that were written. A fixed or wedding-end
+        // day the server kept must not stay on screen as if the edit saved.
+        const keptDays = upserts.filter((u) => {
+          if (!u.id) return false;
+          const saved = result.persisted.find((row) => row.id === u.id);
+          return saved != null && saved.dayOffset !== u.dayOffset;
+        }).length;
         setRows((prev) =>
           sortDraftRows(
-            prev
-              .filter((r) => !r.pendingRemove)
-              .map((r) => {
-                if (r.isNew) {
-                  const realId = result.createdIds[createdIdx++] ?? r.id;
-                  return {
-                    ...r,
-                    id: realId,
-                    isNew: false,
-                    dirty: false,
-                    pendingRemove: false,
-                  };
-                }
-                return { ...r, dirty: false, pendingRemove: false };
-              }),
+            reconcileSavedDraftRows(prev, {
+              createdIds: result.createdIds,
+              persisted: result.persisted,
+            }),
           ),
         );
+        if (keptDays > 0) {
+          toast.message(keptDays === 1
+            ? "The saved day was not rewritten."
+            : "Saved days were not rewritten.");
+        }
         const parts: string[] = [];
         if (result.created) parts.push(`${result.created} added`);
         if (result.updated) parts.push(`${result.updated} updated`);

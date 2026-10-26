@@ -42,10 +42,19 @@ describe("timeline timing presentation", () => {
       resolveTemplateDayToEventOffset(1, "event_end", "2028-10-05", "2028-10-07"),
       3,
     );
-    // Missing / invalid end → fall back to start-relative offset (no invented end).
+    // Missing end → unresolved. Do not treat the end offset as start-relative.
     assert.equal(
       resolveTemplateDayToEventOffset(-1, "event_end", "2028-10-05", null),
-      -1,
+      null,
+    );
+    assert.equal(
+      resolveTemplateDayToEventOffset(0, "event_end", "2028-10-05", "2028-10-04"),
+      null,
+    );
+    // Explicit same-day end is a valid span of 0.
+    assert.equal(
+      resolveTemplateDayToEventOffset(0, "event_end", "2028-10-05", "2028-10-05"),
+      0,
     );
     assert.equal(
       resolveTemplateDayToEventOffset(0, "event_start", "2028-10-05", "2028-10-07"),

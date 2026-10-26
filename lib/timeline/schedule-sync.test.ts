@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import {
   dayOffsetForScheduledDate,
   planScheduleTimelineSync,
+  scheduleSyncWriteForExistingRow,
   spaceDescription,
 } from "@/lib/timeline/schedule-sync";
 
@@ -153,6 +154,36 @@ describe("schedule → timeline sync", () => {
     });
     assert.equal(plan.upserts[0]!.skipContent, true);
     assert.equal(plan.upserts[0]!.existingId, "locked-1");
+  });
+
+  it("preserves fixed, wedding-end, and unknown timing when the schedule day changes", () => {
+    const fixed = scheduleSyncWriteForExistingRow(
+      { dayIntent: "fixed", dayAnchor: null, clockIntent: "explicit", dayOffset: 0, entryTime: "18:00" },
+      { dayOffset: 2, entryTime: null },
+    );
+    assert.equal(fixed.dayOffset, 0);
+    assert.equal(fixed.entryTime, null);
+    assert.equal(fixed.timingColumns.timing_clock_intent, "untimed");
+    assert.equal("timing_day_intent" in fixed.timingColumns, false);
+
+    const endAnchored = scheduleSyncWriteForExistingRow(
+      { dayIntent: "relative", dayAnchor: "event_end", clockIntent: "untimed", dayOffset: 1, entryTime: null },
+      { dayOffset: 3, entryTime: "12:00" },
+    );
+    assert.equal(endAnchored.dayOffset, 1);
+    assert.equal(endAnchored.timingColumns.timing_clock_intent, "explicit");
+    assert.equal("timing_relative_day_offset" in endAnchored.timingColumns, false);
+
+    const unknown = scheduleSyncWriteForExistingRow(
+      { dayIntent: "unknown", dayAnchor: null, clockIntent: "unknown", dayOffset: 0, entryTime: "18:00" },
+      { dayOffset: 1, entryTime: "19:00" },
+    );
+    assert.equal(unknown.dayOffset, 1);
+    assert.deepEqual(unknown.timingColumns, {});
+
+    const sync = readFileSync(resolve("lib/timeline/schedule-sync.ts"), "utf8");
+    assert.match(sync, /scheduleSyncWriteForExistingRow/);
+    assert.doesNotMatch(sync, /projectTimingAfterEventDateChange/);
   });
 
   it("wires sync after schedule replace and on timeline load", () => {

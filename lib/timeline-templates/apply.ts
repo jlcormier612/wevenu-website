@@ -13,8 +13,8 @@
  */
 
 import { createClient } from "@/integrations/supabase/server";
-import { clampDayOffset, resolveEntryTimeFromOffset } from "@/lib/timeline/constants";
-import { resolveTemplateDayToEventOffset } from "@/lib/timeline/timing-presentation";
+import { clampDayOffset } from "@/lib/timeline/constants";
+import { provenanceFromTemplateApply } from "@/lib/timeline/timing-provenance";
 import * as timelineRepo from "@/lib/timeline/repository";
 import type { TimelineActionResult, TimelineAudience } from "@/lib/timeline/types";
 import { getItems } from "@/lib/timeline-templates/service";
@@ -36,18 +36,28 @@ async function loadEventDates(
   };
 }
 
-function entryDayOffsetFromTemplate(
+function timingFromTemplateItem(
   item: TimelineTemplateItem,
   eventDate: string | null,
   eventEndDate: string | null,
-): number {
-  const resolved = resolveTemplateDayToEventOffset(
-    item.dayOffset ?? 0,
-    item.dayAnchor ?? "event_start",
+  eventStartTime: string | null,
+) {
+  const write = provenanceFromTemplateApply({
+    dayOffset: item.dayOffset ?? 0,
+    dayAnchor: item.dayAnchor ?? "event_start",
+    timeOfDay: item.timeOfDay,
+    minutesOffset: item.minutesOffset,
     eventDate,
     eventEndDate,
-  );
-  return clampDayOffset(resolved, eventDate, eventEndDate);
+    eventStartTime,
+  });
+  return {
+    ...write,
+    dayOffset: write.attention
+      ? write.dayOffset
+      : clampDayOffset(write.dayOffset, eventDate, eventEndDate),
+    entryTime: write.entryTime ?? "",
+  };
 }
 
 /**
@@ -77,21 +87,17 @@ export async function applyTimelineTemplateToEvent(
 
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i]!;
-    // Prefer explicit clock anchors on the template item; otherwise resolve
-    // from minutesOffset. When both are null, entryTime stays empty — starters
-    // never invent fake times.
-    const entryTime = item.timeOfDay
-      ?? resolveEntryTimeFromOffset(item.minutesOffset, eventStartTime)
-      ?? "";
+    const timing = timingFromTemplateItem(item, eventDate, eventEndDate, eventStartTime);
     try {
       await timelineRepo.insertEntry(supabase, venue.id, eventId, {
         title: item.title,
         description: item.description ?? "",
         notes: item.notes ?? "",
-        entryTime,
-        dayOffset: entryDayOffsetFromTemplate(item, eventDate, eventEndDate),
+        entryTime: timing.entryTime,
+        dayOffset: timing.dayOffset,
         sortOrder: item.sortOrder ?? i,
         audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
+        timing,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : `Could not add "${item.title}".`;
@@ -133,18 +139,17 @@ export async function replaceEventTimelineFromTemplate(
 
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i]!;
-    const entryTime = item.timeOfDay
-      ?? resolveEntryTimeFromOffset(item.minutesOffset, eventStartTime)
-      ?? "";
+    const timing = timingFromTemplateItem(item, eventDate, eventEndDate, eventStartTime);
     try {
       await timelineRepo.insertEntry(supabase, venue.id, eventId, {
         title: item.title,
         description: item.description ?? "",
         notes: item.notes ?? "",
-        entryTime,
-        dayOffset: entryDayOffsetFromTemplate(item, eventDate, eventEndDate),
+        entryTime: timing.entryTime,
+        dayOffset: timing.dayOffset,
         sortOrder: item.sortOrder ?? i,
         audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
+        timing,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : `Could not add "${item.title}".`;
@@ -162,16 +167,24 @@ export async function applyTimelineTemplateToClient(
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
   const { addClientEntry } = await import("@/lib/timeline/service");
   for (const item of items) {
-    const entryTime = item.timeOfDay
-      ?? resolveEntryTimeFromOffset(item.minutesOffset, eventStartTime)
-      ?? "";
+    const timing = provenanceFromTemplateApply({
+      dayOffset: item.dayOffset ?? 0,
+      dayAnchor: item.dayAnchor ?? "event_start",
+      timeOfDay: item.timeOfDay,
+      minutesOffset: item.minutesOffset,
+      eventDate: null,
+      eventEndDate: null,
+      eventStartTime,
+      preserveDayOffset: item.dayOffset ?? 0,
+    });
     const result = await addClientEntry(clientId, {
       title: item.title,
       description: item.description ?? "",
       notes: item.notes ?? "",
-      entryTime,
-      dayOffset: item.dayOffset ?? 0,
+      entryTime: timing.entryTime ?? "",
+      dayOffset: timing.dayOffset,
       audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
+      timing,
     });
     if (!result.ok) return { ok: false, message: result.message ?? `Could not add "${item.title}".` };
   }

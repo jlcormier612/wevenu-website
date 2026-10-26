@@ -7,7 +7,6 @@ import {
   clampDayOffset,
   compareTimelineEntries,
   minutesToTime,
-  resolveEntryTimeFromOffset,
   timeToMinutes,
   type TimelineTemplate,
 } from "@/lib/timeline/constants";
@@ -17,6 +16,7 @@ import {
   venueItemVisibleToClient,
   VENUE_OWNED_DEFAULT_AUDIENCES,
 } from "@/lib/timeline/audience-ownership";
+import { provenanceFromTemplateApply, timingColumnsForUntypedDisplaySave, timingDbColumns, type TimingProvenance } from "@/lib/timeline/timing-provenance";
 import type {
   TimelineAudience, TimelineEntry, TimelineEntryAttachment, TimelineEntryInput,
   TimelineEntryLink, TimelineEntryStatus, TimelineLockState, TimelineOwner, TimelineRelatedLink, TimelineRelatedSourceType, TimelineSection,
@@ -33,11 +33,68 @@ type EntryRow = {
   status: TimelineEntryStatus;
   assigned_to_staff_id: string | null;
   created_at: string; updated_at: string;
+  timing_day_intent?: string | null;
+  timing_day_anchor?: string | null;
+  timing_relative_day_offset?: number | null;
+  timing_day_offset_overridden?: boolean | null;
+  timing_template_day_offset?: number | null;
+  timing_template_day_anchor?: string | null;
+  timing_fixed_date?: string | null;
+  timing_clock_intent?: string | null;
+  timing_relative_minutes?: number | null;
+  timing_clock_overridden?: boolean | null;
+  timing_attention?: string | null;
 };
 
 type SectionRow = { id: string; venue_id: string; event_id: string | null; client_id?: string | null; name: string; sort_order: number; client_can_add: boolean; created_at: string; updated_at: string; };
 type LinkRow = { id: string; venue_id: string; timeline_entry_id: string; url: string; label: string | null; sort_order: number; created_at: string; };
 type AttachmentRow = { id: string; venue_id: string; timeline_entry_id: string; document_id: string; sort_order: number; created_at: string; };
+
+function mapTiming(r: {
+  timing_day_intent?: string | null;
+  timing_day_anchor?: string | null;
+  timing_relative_day_offset?: number | null;
+  timing_day_offset_overridden?: boolean | null;
+  timing_template_day_offset?: number | null;
+  timing_template_day_anchor?: string | null;
+  timing_fixed_date?: string | null;
+  timing_clock_intent?: string | null;
+  timing_relative_minutes?: number | null;
+  timing_clock_overridden?: boolean | null;
+  timing_attention?: string | null;
+}): TimingProvenance | undefined {
+  if (r.timing_day_intent === undefined && r.timing_attention === undefined && r.timing_clock_intent === undefined) {
+    return undefined;
+  }
+  const dayIntent = r.timing_day_intent === "relative" || r.timing_day_intent === "fixed" || r.timing_day_intent === "unknown"
+    ? r.timing_day_intent
+    : null;
+  const anchor = r.timing_day_anchor === "event_end" || r.timing_day_anchor === "event_start" ? r.timing_day_anchor : null;
+  const templateAnchor = r.timing_template_day_anchor === "event_end" || r.timing_template_day_anchor === "event_start"
+    ? r.timing_template_day_anchor
+    : null;
+  const clock = r.timing_clock_intent === "relative" || r.timing_clock_intent === "explicit"
+    || r.timing_clock_intent === "untimed" || r.timing_clock_intent === "unknown"
+    ? r.timing_clock_intent
+    : null;
+  const attention = r.timing_attention === "missing_event_end" || r.timing_attention === "invalid_event_end"
+    || r.timing_attention === "unknown_intent"
+    ? r.timing_attention
+    : null;
+  return {
+    dayIntent,
+    dayAnchor: anchor,
+    relativeDayOffset: r.timing_relative_day_offset ?? null,
+    dayOffsetOverridden: Boolean(r.timing_day_offset_overridden),
+    templateDayOffset: r.timing_template_day_offset ?? null,
+    templateDayAnchor: templateAnchor,
+    fixedDate: r.timing_fixed_date ?? null,
+    clockIntent: clock,
+    relativeMinutes: r.timing_relative_minutes ?? null,
+    clockOverridden: Boolean(r.timing_clock_overridden),
+    attention,
+  };
+}
 
 function mapEntry(r: EntryRow): TimelineEntry {
   return {
@@ -53,6 +110,7 @@ function mapEntry(r: EntryRow): TimelineEntry {
     status: r.status ?? "not_started",
     assignedToStaffId: r.assigned_to_staff_id,
     createdAt: r.created_at, updatedAt: r.updated_at,
+    timing: mapTiming(r),
   };
 }
 
@@ -130,6 +188,21 @@ export async function getTimelineEntries(
     assignedToStaffId: (e.assignedToStaffId as string | null) ?? null,
     createdAt: (e.createdAt as string | null) ?? "",
     updatedAt: (e.updatedAt as string | null) ?? "",
+    timing: ("timingDayIntent" in e || "timingAttention" in e)
+      ? mapTiming({
+        timing_day_intent: (e.timingDayIntent as string | null) ?? null,
+        timing_day_anchor: (e.timingDayAnchor as string | null) ?? null,
+        timing_relative_day_offset: (e.timingRelativeDayOffset as number | null) ?? null,
+        timing_day_offset_overridden: (e.timingDayOffsetOverridden as boolean | null) ?? null,
+        timing_template_day_offset: (e.timingTemplateDayOffset as number | null) ?? null,
+        timing_template_day_anchor: (e.timingTemplateDayAnchor as string | null) ?? null,
+        timing_fixed_date: (e.timingFixedDate as string | null) ?? null,
+        timing_clock_intent: (e.timingClockIntent as string | null) ?? null,
+        timing_relative_minutes: (e.timingRelativeMinutes as number | null) ?? null,
+        timing_clock_overridden: (e.timingClockOverridden as boolean | null) ?? null,
+        timing_attention: (e.timingAttention as string | null) ?? null,
+      })
+      : undefined,
   }));
   entries.sort(compareTimelineEntries);
   return entries;
@@ -143,7 +216,7 @@ export async function getTimelineEntries(
 export async function insertEntry(
   client: DbClient, venueId: string, eventId: string, input: TimelineEntryInput,
 ): Promise<TimelineEntry> {
-  const dayOffset = await resolveClampedDayOffset(client, eventId, input.dayOffset);
+  const dayOffset = await resolveClampedDayOffset(client, eventId, input.timing?.dayOffset ?? input.dayOffset);
   const { data, error } = await client.from("timeline_entries")
     .insert({
       venue_id: venueId, event_id: eventId,
@@ -159,6 +232,7 @@ export async function insertEntry(
       lock_state: input.lockState ?? "locked",
       status: input.status ?? "not_started",
       assigned_to_staff_id: input.assignedToStaffId ?? null,
+      ...(input.timing ? timingDbColumns({ ...input.timing, dayOffset, entryTime: input.entryTime || null }) : {}),
     })
     .select().single<EntryRow>();
   if (error) throw error;
@@ -181,7 +255,7 @@ export async function getClientTimelineEntries(
 export async function insertClientEntry(
   client: DbClient, venueId: string, clientId: string, input: TimelineEntryInput,
 ): Promise<TimelineEntry> {
-  const dayOffset = await resolveClampedDayOffset(client, null, input.dayOffset, clientId);
+  const dayOffset = await resolveClampedDayOffset(client, null, input.timing?.dayOffset ?? input.dayOffset, clientId);
   const { data, error } = await client.from("timeline_entries")
     .insert({
       venue_id: venueId, event_id: null, client_id: clientId,
@@ -197,6 +271,7 @@ export async function insertClientEntry(
       lock_state: input.lockState ?? "locked",
       status: input.status ?? "not_started",
       assigned_to_staff_id: input.assignedToStaffId ?? null,
+      ...(input.timing ? timingDbColumns({ ...input.timing, dayOffset, entryTime: input.entryTime || null }) : {}),
     })
     .select().single<EntryRow>();
   if (error) throw error;
@@ -218,22 +293,63 @@ export async function insertClientEntry(
  */
 export async function updateEntry(
   client: DbClient, venueId: string, entryId: string, input: TimelineEntryInput,
-): Promise<void> {
+): Promise<{ dayOffset: number; entryTime: string | null }> {
   const { data: current } = await client.from("timeline_entries")
-    .select("owner, event_id, client_id, day_offset")
+    .select("owner, event_id, client_id, day_offset, entry_time, timing_day_intent, timing_day_anchor, timing_clock_intent")
     .eq("id", entryId).eq("venue_id", venueId)
-    .maybeSingle<{ owner: TimelineOwner; event_id: string | null; client_id: string | null; day_offset: number }>();
+    .maybeSingle<{
+      owner: TimelineOwner;
+      event_id: string | null;
+      client_id: string | null;
+      day_offset: number;
+      entry_time: string | null;
+      timing_day_intent: string | null;
+      timing_day_anchor: string | null;
+      timing_clock_intent: string | null;
+    }>();
   if (current?.owner !== "venue") throw new Error("This item belongs to the couple's own planning timeline and can't be edited here.");
 
+  const requestedDay = input.timing?.dayOffset ?? (input.dayOffset !== undefined ? input.dayOffset : current.day_offset);
+  const untyped = input.timing
+    ? null
+    : timingColumnsForUntypedDisplaySave(
+      {
+        dayIntent: current.timing_day_intent === "relative" || current.timing_day_intent === "fixed" || current.timing_day_intent === "unknown"
+          ? current.timing_day_intent
+          : null,
+        dayAnchor: current.timing_day_anchor === "event_end" || current.timing_day_anchor === "event_start"
+          ? current.timing_day_anchor
+          : null,
+        clockIntent: current.timing_clock_intent === "relative" || current.timing_clock_intent === "explicit"
+          || current.timing_clock_intent === "untimed" || current.timing_clock_intent === "unknown"
+          ? current.timing_clock_intent
+          : null,
+        dayOffset: current.day_offset,
+        entryTime: current.entry_time?.slice(0, 5) ?? null,
+      },
+      { dayOffset: requestedDay ?? current.day_offset, entryTime: input.entryTime || null },
+    );
   const dayOffset = await resolveClampedDayOffset(
-    client, current.event_id, input.dayOffset !== undefined ? input.dayOffset : current.day_offset, current.client_id,
+    client,
+    current.event_id,
+    untyped ? untyped.dayOffset : requestedDay,
+    current.client_id,
   );
+  if (untyped && untyped.timingColumns.timing_relative_day_offset != null) {
+    untyped.timingColumns.timing_relative_day_offset = dayOffset;
+  }
+  const entryTime = untyped ? untyped.entryTime : (input.entryTime || null);
   const patch: Record<string, unknown> = {
     title: input.title.trim(),
     description: input.description.trim() || null,
-    entry_time: input.entryTime || null,
+    entry_time: entryTime,
     day_offset: dayOffset,
   };
+  if (input.timing) {
+    Object.assign(patch, timingDbColumns({ ...input.timing, dayOffset, entryTime: input.entryTime || null }));
+  } else if (untyped) {
+    Object.assign(patch, untyped.timingColumns);
+  }
   if (input.notes !== undefined) patch.notes = input.notes.trim() || null;
   if (input.sectionId !== undefined) patch.section_id = input.sectionId;
   if (input.lockState !== undefined) patch.lock_state = input.lockState;
@@ -245,6 +361,7 @@ export async function updateEntry(
     .update(patch)
     .eq("id", entryId).eq("venue_id", venueId);
   if (error) throw error;
+  return { dayOffset, entryTime };
 }
 
 /**
@@ -390,19 +507,27 @@ export async function shiftEntriesAfter(
 
   const { data: rows, error: fetchError } = await client
     .from("timeline_entries")
-    .select("id, entry_time, day_offset")
+    .select("id, entry_time, day_offset, timing_clock_intent")
     .eq("venue_id", venueId).eq("event_id", eventId).eq("owner", "venue")
     .eq("day_offset", anchorDay)
     .not("entry_time", "is", null)
     .gt("entry_time", anchor.entry_time);
   if (fetchError) throw fetchError;
 
-  const toShift = (rows ?? []) as { id: string; entry_time: string }[];
+  const toShift = (rows ?? []) as { id: string; entry_time: string; timing_clock_intent: string | null }[];
   for (const row of toShift) {
     const newTime = minutesToTime(timeToMinutes(row.entry_time.slice(0, 5)) + minutesDelta);
+    const patch: Record<string, unknown> = {
+      entry_time: newTime,
+      timing_clock_overridden: true,
+    };
+    if (row.timing_clock_intent === "relative") {
+      patch.timing_clock_intent = "explicit";
+      patch.timing_relative_minutes = null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client.from("timeline_entries") as any)
-      .update({ entry_time: newTime }).eq("id", row.id).eq("venue_id", venueId);
+      .update(patch).eq("id", row.id).eq("venue_id", venueId);
     if (error) throw error;
   }
   return { shiftedCount: toShift.length };
@@ -487,15 +612,25 @@ export async function applyTemplate(
   client: DbClient, venueId: string, eventId: string,
   template: TimelineTemplate, startTime: string | null,
 ): Promise<void> {
-  const rows = template.entries.map((te, i) => ({
-    venue_id: venueId,
-    event_id: eventId,
-    title: te.title,
-    description: te.description ?? null,
-    entry_time: resolveEntryTimeFromOffset(te.minutesOffset, startTime),
-    day_offset: Math.trunc(te.dayOffset ?? 0),
-    sort_order: i,
-  }));
+  const rows = template.entries.map((te, i) => {
+    const timing = provenanceFromTemplateApply({
+      dayOffset: te.dayOffset ?? 0,
+      dayAnchor: "event_start",
+      timeOfDay: null,
+      minutesOffset: te.minutesOffset,
+      eventDate: null,
+      eventEndDate: null,
+      eventStartTime: startTime,
+    });
+    return {
+      venue_id: venueId,
+      event_id: eventId,
+      title: te.title,
+      description: te.description ?? null,
+      sort_order: i,
+      ...timingDbColumns(timing),
+    };
+  });
 
   const { error } = await client.from("timeline_entries").insert(rows);
   if (error) throw error;
@@ -505,17 +640,27 @@ export async function applyTemplateToClient(
   client: DbClient, venueId: string, clientId: string,
   template: TimelineTemplate, startTime: string | null,
 ): Promise<void> {
-  const rows = template.entries.map((te, i) => ({
-    venue_id: venueId,
-    event_id: null,
-    client_id: clientId,
-    title: te.title,
-    description: te.description ?? null,
-    entry_time: resolveEntryTimeFromOffset(te.minutesOffset, startTime),
-    day_offset: Math.trunc(te.dayOffset ?? 0),
-    sort_order: i,
-    owner: "venue" as const,
-  }));
+  const rows = template.entries.map((te, i) => {
+    const timing = provenanceFromTemplateApply({
+      dayOffset: te.dayOffset ?? 0,
+      dayAnchor: "event_start",
+      timeOfDay: null,
+      minutesOffset: te.minutesOffset,
+      eventDate: null,
+      eventEndDate: null,
+      eventStartTime: startTime,
+    });
+    return {
+      venue_id: venueId,
+      event_id: null,
+      client_id: clientId,
+      title: te.title,
+      description: te.description ?? null,
+      sort_order: i,
+      owner: "venue" as const,
+      ...timingDbColumns(timing),
+    };
+  });
   const { error } = await client.from("timeline_entries").insert(rows);
   if (error) throw error;
 }
@@ -605,6 +750,19 @@ export async function duplicateSection(
     section_id: newSection.id,
     title: e.title, description: e.description, notes: e.notes, entry_time: e.entryTime,
     day_offset: e.dayOffset ?? 0,
+    ...(e.timing ? {
+      timing_day_intent: e.timing.dayIntent,
+      timing_day_anchor: e.timing.dayAnchor,
+      timing_relative_day_offset: e.timing.relativeDayOffset,
+      timing_day_offset_overridden: e.timing.dayOffsetOverridden,
+      timing_template_day_offset: e.timing.templateDayOffset,
+      timing_template_day_anchor: e.timing.templateDayAnchor,
+      timing_fixed_date: e.timing.fixedDate,
+      timing_clock_intent: e.timing.clockIntent,
+      timing_relative_minutes: e.timing.relativeMinutes,
+      timing_clock_overridden: e.timing.clockOverridden,
+      timing_attention: e.timing.attention,
+    } : {}),
     audiences: sanitizeVenueAudiences(e.audiences), owner: "venue" as const, lock_state: e.lockState,
     assigned_to_staff_id: e.assignedToStaffId, status: "not_started" as const,
     sort_order: i,
