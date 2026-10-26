@@ -7,17 +7,50 @@ import {
   minutesFromRelativeForm,
   previewRelativeClock,
   relativeFormFromMinutes,
+  resolveTemplateDayToEventOffset,
   summarizeTemplateItemTiming,
   templateHasConflictingTiming,
   timingModeFromTemplateFields,
 } from "@/lib/timeline/timing-presentation";
-import { resolveEntryTimeFromOffset } from "@/lib/timeline/constants";
+import {
+  clampDayOffset,
+  formatEventDayOptionLabel,
+  resolveEntryTimeFromOffset,
+  timelineDayOptions,
+} from "@/lib/timeline/constants";
 
 describe("timeline timing presentation", () => {
-  it("labels template days relative to event date without inventing ceremony days", () => {
-    assert.equal(formatTemplateDayLabelClear(0), "Day 1 — event date");
-    assert.equal(formatTemplateDayLabelClear(1), "Day 2 — day after event date");
-    assert.match(formatTemplateDayLabelClear(2), /Day 3/);
+  it("labels template days with explicit start/end anchors and signed offsets", () => {
+    assert.equal(formatTemplateDayLabelClear(0, "event_start"), "Day 1 — event start date");
+    assert.equal(formatTemplateDayLabelClear(-2, "event_start"), "2 days before event start");
+    assert.equal(formatTemplateDayLabelClear(2, "event_start"), "2 days after event start");
+    assert.equal(formatTemplateDayLabelClear(0, "event_end"), "On the event’s last day");
+    assert.equal(formatTemplateDayLabelClear(-1, "event_end"), "1 day before event end");
+    assert.equal(formatTemplateDayLabelClear(1, "event_end"), "1 day after event end");
+  });
+
+  it("resolves event-end anchors against a multi-day span without inventing an end", () => {
+    assert.equal(
+      resolveTemplateDayToEventOffset(0, "event_end", "2028-10-05", "2028-10-07"),
+      2,
+    );
+    assert.equal(
+      resolveTemplateDayToEventOffset(-1, "event_end", "2028-10-05", "2028-10-07"),
+      1,
+    );
+    assert.equal(
+      resolveTemplateDayToEventOffset(1, "event_end", "2028-10-05", "2028-10-07"),
+      3,
+    );
+    // Missing / invalid end → fall back to start-relative offset (no invented end).
+    assert.equal(
+      resolveTemplateDayToEventOffset(-1, "event_end", "2028-10-05", null),
+      -1,
+    );
+    assert.equal(
+      resolveTemplateDayToEventOffset(0, "event_start", "2028-10-05", "2028-10-07"),
+      0,
+    );
   });
 
   it("names Day-of schedule start in relative phrases", () => {
@@ -50,5 +83,28 @@ describe("timeline timing presentation", () => {
     const known = previewRelativeClock(-30, "16:00");
     assert.equal(known.clock, "15:30");
     assert.match(known.label, /3:30\s*PM/i);
+  });
+
+  it("clamps signed day offsets with a planning pad and never invents an end date", () => {
+    assert.equal(clampDayOffset(-2, "2028-10-05", null), -2);
+    assert.equal(clampDayOffset(-20, "2028-10-05", null), -14);
+    assert.equal(clampDayOffset(20, "2028-10-05", null), 14);
+    assert.equal(clampDayOffset(3, "2028-10-05", "2028-10-07"), 3);
+    assert.equal(clampDayOffset(20, "2028-10-05", "2028-10-07"), 16); // spanMax 2 + pad 14
+  });
+
+  it("builds event day options with before/during/after labels", () => {
+    const opts = timelineDayOptions("2028-10-05", "2028-10-06", { padBefore: 2, padAfter: 1 });
+    assert.deepEqual(
+      opts.map((o) => o.value),
+      [-2, -1, 0, 1, 2],
+    );
+    assert.match(opts[0]!.label, /2 days before/i);
+    assert.match(opts[2]!.label, /Day 1 ·/);
+    assert.match(opts[3]!.label, /Day 2 ·/);
+    assert.match(opts[4]!.label, /1 day after/i);
+
+    const single = formatEventDayOptionLabel("2028-10-05", 0, null);
+    assert.match(single.label, /Day 1 ·/);
   });
 });

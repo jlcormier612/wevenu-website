@@ -493,7 +493,7 @@ export async function applyTemplate(
     title: te.title,
     description: te.description ?? null,
     entry_time: resolveEntryTimeFromOffset(te.minutesOffset, startTime),
-    day_offset: Math.max(0, Math.trunc(te.dayOffset ?? 0)),
+    day_offset: Math.trunc(te.dayOffset ?? 0),
     sort_order: i,
   }));
 
@@ -512,7 +512,7 @@ export async function applyTemplateToClient(
     title: te.title,
     description: te.description ?? null,
     entry_time: resolveEntryTimeFromOffset(te.minutesOffset, startTime),
-    day_offset: Math.max(0, Math.trunc(te.dayOffset ?? 0)),
+    day_offset: Math.trunc(te.dayOffset ?? 0),
     sort_order: i,
     owner: "venue" as const,
   }));

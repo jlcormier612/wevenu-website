@@ -91,7 +91,9 @@ export function TimelineEntryForm({
   const [assignedToStaffId, setAssignedToStaffId] = React.useState(initial.assignedToStaffId ?? NO_ASSIGNEE);
 
   const dayOptions = eventDate ? timelineDayOptions(eventDate, eventEndDate) : [];
-  const showDayPicker = dayOptions.length > 1;
+  // Always offer the planning-day selector when the event has a start date
+  // (includes prep/loadout days outside the event span).
+  const showDayPicker = Boolean(eventDate) && dayOptions.length > 0;
 
   function toggleAudience(a: TimelineAudience) {
     setAudiences(prev =>

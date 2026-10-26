@@ -28,11 +28,24 @@ export function formatMinutesOffset(minutes: number | null): string | null {
   return formatRelativeToScheduleStart(minutes);
 }
 
-/** Template Day picker — no calendar dates; labels are Day 1 / Day 2 / … */
-export const TEMPLATE_DAY_OFFSET_OPTIONS = [0, 1, 2, 3, 4, 5, 6] as const;
+/**
+ * Quick-pick offsets for the template day control (signed).
+ * Full range is editable via the relative-day number field (±TEMPLATE_DAY_OFFSET_MAX).
+ */
+export const TEMPLATE_DAY_OFFSET_OPTIONS = [
+  -3, -2, -1, 0, 1, 2, 3,
+] as const;
 
-export function formatTemplateDayLabel(dayOffset: number): string {
-  return formatTemplateDayLabelClear(dayOffset);
+/** Soft validation for template relative-day offsets (not a hard product limit of 7). */
+export const TEMPLATE_DAY_OFFSET_MAX = 30;
+
+export type { TimelineDayAnchor } from "@/lib/timeline/timing-presentation";
+
+export function formatTemplateDayLabel(
+  dayOffset: number,
+  anchor: import("@/lib/timeline/timing-presentation").TimelineDayAnchor = "event_start",
+): string {
+  return formatTemplateDayLabelClear(dayOffset, anchor);
 }
 
 /** Presentation labels for Wedding Weekend (TL-03) day bands — not calendar dates. */
@@ -54,7 +67,7 @@ export function groupTimelineItemsByDay<T extends { dayOffset?: number | null; t
 ): { dayOffset: number; items: T[] }[] {
   const map = new Map<number, T[]>();
   for (const item of items) {
-    const d = Math.max(0, Math.trunc(item.dayOffset ?? 0));
+    const d = Math.trunc(item.dayOffset ?? 0);
     const list = map.get(d) ?? [];
     list.push(item);
     map.set(d, list);

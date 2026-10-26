@@ -15,7 +15,12 @@ type TemplateRow = {
   is_default: boolean; is_archived: boolean; source_master_key: string | null;
   created_at: string; updated_at: string;
 };
-type ItemRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; notes: string | null; time_of_day: string | null; minutes_offset: number | null; day_offset: number; needs_review: boolean; audiences: string[]; sort_order: number; created_at: string; updated_at: string; };
+type ItemRow = {
+  id: string; template_id: string; venue_id: string; title: string; description: string | null;
+  notes: string | null; time_of_day: string | null; minutes_offset: number | null; day_offset: number;
+  day_anchor?: string | null;
+  needs_review: boolean; audiences: string[]; sort_order: number; created_at: string; updated_at: string;
+};
 
 const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
   id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, spaceId: r.space_id,
@@ -23,10 +28,16 @@ const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
+function mapDayAnchor(raw: string | null | undefined): TimelineTemplateItem["dayAnchor"] {
+  return raw === "event_end" ? "event_end" : "event_start";
+}
+
 const mapItem = (r: ItemRow): TimelineTemplateItem => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description,
   notes: r.notes, timeOfDay: r.time_of_day, minutesOffset: r.minutes_offset,
-  dayOffset: r.day_offset ?? 0, needsReview: r.needs_review,
+  dayOffset: Math.trunc(r.day_offset ?? 0),
+  dayAnchor: mapDayAnchor(r.day_anchor),
+  needsReview: r.needs_review,
   audiences: r.audiences as TimelineAudience[], sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -159,7 +170,8 @@ export async function duplicateTemplateInto(client: DbClient, venueId: string, s
   for (const item of items) {
     await insertItem(client, venueId, newTemplateId, {
       title: item.title, description: item.description, notes: item.notes,
-      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, dayOffset: item.dayOffset,
+      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset,
+      dayOffset: item.dayOffset, dayAnchor: item.dayAnchor,
       needsReview: item.needsReview,
       audiences: sanitizeVenueTemplateAudiences(item.audiences), sortOrder: item.sortOrder,
     });
@@ -183,7 +195,8 @@ export async function insertItem(client: DbClient, venueId: string, templateId: 
     template_id: templateId, venue_id: venueId, title: input.title.trim(),
     description: input.description?.trim() || null, notes: input.notes?.trim() || null,
     time_of_day: input.timeOfDay || null, minutes_offset: input.minutesOffset,
-    day_offset: Math.max(0, Math.trunc(input.dayOffset ?? 0)),
+    day_offset: Math.trunc(input.dayOffset ?? 0),
+    day_anchor: input.dayAnchor === "event_end" ? "event_end" : "event_start",
     needs_review: input.needsReview ?? false,
     audiences: sanitizeVenueTemplateAudiences(input.audiences), sort_order: input.sortOrder,
   }).select("id").single<{ id: string }>();
@@ -202,7 +215,10 @@ export async function updateItem(client: DbClient, venueId: string, itemId: stri
   if (patch.notes !== undefined) row.notes = patch.notes?.trim() || null;
   if (patch.timeOfDay !== undefined) row.time_of_day = patch.timeOfDay || null;
   if (patch.minutesOffset !== undefined) row.minutes_offset = patch.minutesOffset;
-  if (patch.dayOffset !== undefined) row.day_offset = Math.max(0, Math.trunc(patch.dayOffset));
+  if (patch.dayOffset !== undefined) row.day_offset = Math.trunc(patch.dayOffset);
+  if (patch.dayAnchor !== undefined) {
+    row.day_anchor = patch.dayAnchor === "event_end" ? "event_end" : "event_start";
+  }
   if (patch.needsReview !== undefined) row.needs_review = patch.needsReview;
   if (patch.audiences !== undefined) row.audiences = sanitizeVenueTemplateAudiences(patch.audiences);
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;

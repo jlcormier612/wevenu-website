@@ -65,10 +65,16 @@ export function TimelinePortalPreviewView({
     );
   }
 
-  const multiDay = isMultiDayEvent(eventDate, eventEndDate);
-  const dayOffsets = multiDay && eventDate
-    ? Array.from({ length: maxDayOffset(eventDate, eventEndDate) + 1 }, (_, i) => i)
-    : [null as number | null];
+  const multiDay = isMultiDayEvent(eventDate, eventEndDate)
+    || entries.some((e) => (e.dayOffset ?? 0) !== 0);
+  const dayOffsets: (number | null)[] = (() => {
+    if (!multiDay || !eventDate) return [null];
+    const set = new Set<number>();
+    const spanMax = maxDayOffset(eventDate, eventEndDate);
+    for (let i = 0; i <= spanMax; i += 1) set.add(i);
+    for (const e of entries) set.add(e.dayOffset ?? 0);
+    return [...set].sort((a, b) => a - b);
+  })();
 
   function entriesForDay(day: number | null) {
     return entries

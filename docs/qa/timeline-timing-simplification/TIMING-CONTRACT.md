@@ -1,50 +1,39 @@
-# Timing contract
+# Timeline timing contract
 
-## Questions every item must answer
+## Two axes (always separate)
 
-1. **Which day?** → `day_offset` relative to `event_date` (0 = first event day).
-2. **When?** → either a **specific clock time** or **relative to Day-of schedule start**.
+1. **Which day?** → `day_offset` relative to `event_date` after resolve (0 = first event day). Negative = before the event starts; values past the last event day = after the event ends.
+2. **What time that day?** → Specific clock (`time_of_day` / `entry_time`) **or** relative minutes from **Day-of schedule start** (`events.start_time`). Never invent noon or another fake clock when the anchor is missing.
 
-## Day rules
+## Template vs event
 
-| Context | Representation | UI |
-|---------|----------------|---|
-| Template | Abstract day index `day_offset` | “Day 1 — event date”, “Day 2 — day after event date”, … |
-| Event / apply | Same index, clamped to `[0, maxDayOffset(event_date, event_end_date)]` | Select showing weekday + calendar date from actual event range |
-| TL-03 labels | Presentation aliases for offsets 0/1/2 | Day Before / Wedding Day / Day After — only when `source_master_key = TL-03`; storage unchanged |
+| Layer | Day model | Time model |
+| --- | --- | --- |
+| Template item | Signed `day_offset` + `day_anchor` (`event_start` \| `event_end`) | `time_of_day` **or** `minutes_offset` (mutually exclusive in the editor) |
+| Event entry | Start-relative signed `day_offset` (anchor already resolved on apply) | Baked `entry_time` clock only |
 
-- Do not invent rehearsal or brunch dates. Only days inside the event’s date range are selectable on events.
-- If an item’s offset is outside the event span, clamp on write and show the clamped day — do not silently map to wedding day under a false label.
-- Templates are not bound to calendar dates; resolution happens at apply.
+### Day anchors
 
-## Specific clock time (default)
+- **event_start** — offset from the first calendar day (`event_date`).
+- **event_end** — offset from the final calendar day (`event_end_date`). On apply, converted to start-relative `day_offset`. If end date is missing/invalid, **do not invent an end** — fall back to treating the offset as start-relative.
 
-- Template: store `time_of_day`; clear `minutes_offset` when saving in specific mode.
-- Apply: copy `time_of_day` → `entry_time`.
-- Event editor: edit `entry_time` only (already concrete). No offset math.
+### Labels
 
-## Relative timing (optional)
+- Template: “2 days before event start”, “On the event’s last day”, “1 day after event end”, …
+- Event planning: “Day 1 · Thu, Oct 5”, “1 day before · Wed, Oct 4”, “1 day after · Sat, Oct 7”, … using the event’s real dates plus a ±14 planning pad.
 
-| Rule | Contract |
-|------|----------|
-| Named reference | **Day-of schedule start** = `events.start_time` only |
-| Storage | `minutes_offset` (negative = before, positive = after, 0 = at start) |
-| Apply | Bake into `entry_time` via `resolveEntryTimeFromOffset` |
-| Missing start | **Do not invent noon.** Leave `entry_time` empty; UI explains that Day-of schedule start is required |
-| After apply | Snapshot — changing start later does **not** recalculate |
-| Precedence | If both `time_of_day` and `minutes_offset` exist on a legacy row, specific time wins at apply; editor surfaces dual-set for review |
+### Soft clamp
 
-## Not supported (no silent fake)
+Entries clamp to `[-14, spanMax + 14]` (`TIMELINE_DAY_PAD`). Templates accept ±30 in the UI; apply still clamps onto the event.
 
-- Relative to ceremony / cocktail / reception / getting-ready space times.
-- Circular item-to-item anchors (no schema).
-- Fabricating multi-day dates beyond `event_end_date`.
+## Relative minutes
 
-## Preview language
+- Anchor name in UI: **Day-of schedule start**.
+- Apply prefers `time_of_day` when both legacy fields exist; UI surfaces the conflict.
+- `resolveEntryTimeFromOffset(minutes, null)` → `null` (no invent).
 
-- Relative: “30 minutes before Day-of schedule start” (+ “becomes 3:00 PM when start is 3:30 PM” when start known).
-- After apply / event editor: clock time only; optional note that the value was baked from the template.
+## Event-specific overrides
 
-## Reapply
-
-`replaceEventTimelineFromTemplate` replaces venue-owned rows from the template. Event-specific venue edits are discarded by that action — not silently merged. Client-owned entries remain.
+- **Change for this event** may edit day and clock for venue-owned items **without** mutating the Library template.
+- Changing day must not silently reset clock time.
+- Released / published client schedules follow the existing publish/republish workflow; this contract does not invent a parallel publish path.

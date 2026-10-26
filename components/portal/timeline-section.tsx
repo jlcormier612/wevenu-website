@@ -535,12 +535,18 @@ export function TimelineSection({
   const [lastSubmittedAt, setLastSubmittedAt] = React.useState(initialLastSubmittedAt);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = React.useState(initialHasUnpublishedChanges);
 
-  const multiDay = isMultiDayEvent(eventDate, eventEndDate);
+  const multiDay = React.useMemo(() => {
+    if (isMultiDayEvent(eventDate, eventEndDate)) return true;
+    return entries.some((e) => (e.dayOffset ?? 0) !== 0);
+  }, [eventDate, eventEndDate, entries]);
   const dayOffsets = React.useMemo(() => {
     if (!multiDay) return [null] as (number | null)[];
-    const max = maxDayOffset(eventDate, eventEndDate);
-    return Array.from({ length: max + 1 }, (_, i) => i);
-  }, [multiDay, eventDate, eventEndDate]);
+    const set = new Set<number>();
+    const spanMax = maxDayOffset(eventDate, eventEndDate);
+    for (let i = 0; i <= spanMax; i += 1) set.add(i);
+    for (const e of entries) set.add(e.dayOffset ?? 0);
+    return [...set].sort((a, b) => a - b) as (number | null)[];
+  }, [multiDay, eventDate, eventEndDate, entries]);
 
   const refresh = React.useCallback(() => {
     fetch(`/api/portal/timeline?token=${token}`)

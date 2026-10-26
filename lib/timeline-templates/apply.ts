@@ -13,11 +13,42 @@
  */
 
 import { createClient } from "@/integrations/supabase/server";
-import { resolveEntryTimeFromOffset } from "@/lib/timeline/constants";
+import { clampDayOffset, resolveEntryTimeFromOffset } from "@/lib/timeline/constants";
+import { resolveTemplateDayToEventOffset } from "@/lib/timeline/timing-presentation";
 import * as timelineRepo from "@/lib/timeline/repository";
 import type { TimelineActionResult, TimelineAudience } from "@/lib/timeline/types";
 import { getItems } from "@/lib/timeline-templates/service";
+import type { TimelineTemplateItem } from "@/lib/timeline-templates/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+
+async function loadEventDates(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventId: string,
+): Promise<{ eventDate: string | null; eventEndDate: string | null }> {
+  const { data } = await supabase
+    .from("events")
+    .select("event_date, event_end_date")
+    .eq("id", eventId)
+    .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
+  return {
+    eventDate: data?.event_date ?? null,
+    eventEndDate: data?.event_end_date ?? null,
+  };
+}
+
+function entryDayOffsetFromTemplate(
+  item: TimelineTemplateItem,
+  eventDate: string | null,
+  eventEndDate: string | null,
+): number {
+  const resolved = resolveTemplateDayToEventOffset(
+    item.dayOffset ?? 0,
+    item.dayAnchor ?? "event_start",
+    eventDate,
+    eventEndDate,
+  );
+  return clampDayOffset(resolved, eventDate, eventEndDate);
+}
 
 /**
  * Library template items historically stored audience tag "venue" to mean
@@ -42,6 +73,7 @@ export async function applyTimelineTemplateToEvent(
   const supabase = await createClient();
   const items = await getItems(templateId);
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
+  const { eventDate, eventEndDate } = await loadEventDates(supabase, eventId);
 
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i]!;
@@ -57,7 +89,7 @@ export async function applyTimelineTemplateToEvent(
         description: item.description ?? "",
         notes: item.notes ?? "",
         entryTime,
-        dayOffset: item.dayOffset ?? 0,
+        dayOffset: entryDayOffsetFromTemplate(item, eventDate, eventEndDate),
         sortOrder: item.sortOrder ?? i,
         audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
       });
@@ -92,6 +124,7 @@ export async function replaceEventTimelineFromTemplate(
 
   const items = await getItems(templateId);
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
+  const { eventDate, eventEndDate } = await loadEventDates(supabase, eventId);
 
   const cleared = await timelineRepo.deleteVenueOwnedEntriesForEvent(supabase, venue.id, eventId);
   if (!cleared.ok) {
@@ -109,7 +142,7 @@ export async function replaceEventTimelineFromTemplate(
         description: item.description ?? "",
         notes: item.notes ?? "",
         entryTime,
-        dayOffset: item.dayOffset ?? 0,
+        dayOffset: entryDayOffsetFromTemplate(item, eventDate, eventEndDate),
         sortOrder: item.sortOrder ?? i,
         audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
       });

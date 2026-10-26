@@ -1,4 +1,7 @@
+import type { TimelineDayAnchor } from "@/lib/timeline/timing-presentation";
 import type { TimelineAudience } from "@/lib/timeline/types";
+
+export type { TimelineDayAnchor };
 
 export type TimelineTemplate = {
   id: string;
@@ -32,9 +35,10 @@ export type TimelineTemplateItem = {
   notes: string | null;
   timeOfDay: string | null; // "HH:MM" or null — an absolute clock anchor, independent of minutesOffset
   minutesOffset: number | null; // minutes relative to the event's start time; null = untimed
-  // 0-based day relative to event start when applied (Day 1 = 0). Templates
-  // have no calendar range, so the editor labels these "Day 1", "Day 2", …
+  /** Signed offset relative to dayAnchor (event start or end). */
   dayOffset: number;
+  /** Which date the dayOffset is measured from. Resolved to event_date-relative on apply. */
+  dayAnchor: TimelineDayAnchor;
   // True when this item's timing was estimated (or never set) by an import,
   // rather than confirmed by a coordinator — surfaced in the editor until
   // touched. Added 2026-07-22 per template-import review: previously this
@@ -54,6 +58,7 @@ export type TimelineTemplateItemInput = {
   timeOfDay: string | null;
   minutesOffset: number | null;
   dayOffset?: number;
+  dayAnchor?: TimelineDayAnchor;
   // Optional at the write boundary — omitted by every hand-authored item
   // (defaults to false at the repository layer); only the import path sets
   // this explicitly.

@@ -81,6 +81,12 @@ export function addDaysToIsoDate(iso: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+/**
+ * Planning pad around the event span for before/after items.
+ * Must stay in sync with timeline_clamp_day_offset SQL (±14).
+ */
+export const TIMELINE_DAY_PAD = 14;
+
 /** Inclusive day count for an event range (1 for single-day). */
 export function eventDayCount(eventDate: string | null | undefined, eventEndDate?: string | null): number {
   if (!eventDate) return 1;
@@ -90,7 +96,7 @@ export function eventDayCount(eventDate: string | null | undefined, eventEndDate
   return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
 }
 
-/** Max valid day_offset (0 for single-day). */
+/** Max day_offset inside the event span (0 for single-day). */
 export function maxDayOffset(eventDate: string | null | undefined, eventEndDate?: string | null): number {
   return eventDayCount(eventDate, eventEndDate) - 1;
 }
@@ -99,34 +105,74 @@ export function isMultiDayEvent(eventDate: string | null | undefined, eventEndDa
   return maxDayOffset(eventDate, eventEndDate) > 0;
 }
 
-/** Soft-clamp day_offset into the event span. */
+/**
+ * Soft-clamp signed day_offset relative to event_date.
+ * Allows TIMELINE_DAY_PAD days before start and after the last event day.
+ * Does not invent an end date when missing.
+ */
 export function clampDayOffset(
   offset: number | null | undefined,
   eventDate: string | null | undefined,
   eventEndDate?: string | null,
 ): number {
   const n = Number.isFinite(offset as number) ? Math.trunc(offset as number) : 0;
-  const max = maxDayOffset(eventDate, eventEndDate);
-  return Math.max(0, Math.min(max, n));
+  const max = maxDayOffset(eventDate, eventEndDate) + TIMELINE_DAY_PAD;
+  return Math.max(-TIMELINE_DAY_PAD, Math.min(max, n));
 }
 
-/** Calendar day options for a multi-day Day dropdown (Day 1 · Fri Oct 17). */
+/** Human label for an event-relative day_offset (start-based). */
+export function formatEventDayOptionLabel(
+  eventDate: string,
+  dayOffset: number,
+  eventEndDate?: string | null,
+): { label: string; isoDate: string } {
+  const isoDate = addDaysToIsoDate(eventDate, dayOffset);
+  const short = new Date(`${isoDate}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
+  const spanMax = maxDayOffset(eventDate, eventEndDate);
+  if (dayOffset < 0) {
+    const abs = Math.abs(dayOffset);
+    return {
+      isoDate,
+      label: abs === 1
+        ? `1 day before · ${short}`
+        : `${abs} days before · ${short}`,
+    };
+  }
+  if (dayOffset <= spanMax) {
+    return { isoDate, label: `Day ${dayOffset + 1} · ${short}` };
+  }
+  const after = dayOffset - spanMax;
+  return {
+    isoDate,
+    label: after === 1
+      ? `1 day after · ${short}`
+      : `${after} days after · ${short}`,
+  };
+}
+
+/**
+ * Calendar day options for event planning (before / during / after).
+ * Always includes the event span plus a planning pad so single-day events
+ * can still assign prep/loadout days without inventing an end date.
+ */
 export function timelineDayOptions(
   eventDate: string,
   eventEndDate?: string | null,
+  opts?: { padBefore?: number; padAfter?: number },
 ): { value: number; label: string; isoDate: string }[] {
-  const count = eventDayCount(eventDate, eventEndDate);
-  return Array.from({ length: count }, (_, dayOffset) => {
-    const isoDate = addDaysToIsoDate(eventDate, dayOffset);
-    const short = new Date(`${isoDate}T12:00:00`).toLocaleDateString("en-US", {
-      weekday: "short", month: "short", day: "numeric",
-    });
-    return {
-      value: dayOffset,
-      label: `Day ${dayOffset + 1} · ${short}`,
-      isoDate,
-    };
-  });
+  const padBefore = opts?.padBefore ?? TIMELINE_DAY_PAD;
+  const padAfter = opts?.padAfter ?? TIMELINE_DAY_PAD;
+  const spanMax = maxDayOffset(eventDate, eventEndDate);
+  const from = -padBefore;
+  const to = spanMax + padAfter;
+  const out: { value: number; label: string; isoDate: string }[] = [];
+  for (let dayOffset = from; dayOffset <= to; dayOffset += 1) {
+    const { label, isoDate } = formatEventDayOptionLabel(eventDate, dayOffset, eventEndDate);
+    out.push({ value: dayOffset, label, isoDate });
+  }
+  return out;
 }
 
 /** Day band header — "Saturday, Oct 18". */

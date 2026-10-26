@@ -9,9 +9,9 @@
  * primitives as the Pipeline Template stage editor and Pipeline Board — no
  * new dependency.
  *
- * day_offset (2026-08): templates aren't bound to a calendar range, so the
- * Day field uses "Day 1" / "Day 2" labels. Applied bookings clamp against
- * the event's actual end date.
+ * day_offset + day_anchor: templates store a signed relative-day rule
+ * (event start or event end). Apply resolves to event_date-relative
+ * day_offset on the event schedule; entries clamp with a planning pad.
  */
 
 import * as React from "react";
@@ -34,6 +34,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  TEMPLATE_DAY_OFFSET_MAX,
   TEMPLATE_DAY_OFFSET_OPTIONS,
   VENUE_TIMELINE_AUDIENCES,
   formatTemplateDayLabel,
@@ -49,21 +50,29 @@ import {
   templateHasConflictingTiming,
   timingModeFromTemplateFields,
   type TimingMode,
+  type TimelineDayAnchor,
 } from "@/lib/timeline/timing-presentation";
 
 function emptyForm(sortOrder: number): TimelineTemplateItemInput {
   return {
     title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null,
-    dayOffset: 0, needsReview: false, audiences: ["client"], sortOrder,
+    dayOffset: 0, dayAnchor: "event_start", needsReview: false, audiences: ["client"], sortOrder,
   };
 }
 
 function itemToForm(item: TimelineTemplateItem): TimelineTemplateItemInput {
   return {
     title: item.title, description: item.description, notes: item.notes,
-    timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, dayOffset: item.dayOffset ?? 0,
+    timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset,
+    dayOffset: item.dayOffset ?? 0,
+    dayAnchor: item.dayAnchor ?? "event_start",
     needsReview: item.needsReview, audiences: item.audiences, sortOrder: item.sortOrder,
   };
+}
+
+function clampTemplateDayOffset(raw: number): number {
+  const n = Number.isFinite(raw) ? Math.trunc(raw) : 0;
+  return Math.max(-TEMPLATE_DAY_OFFSET_MAX, Math.min(TEMPLATE_DAY_OFFSET_MAX, n));
 }
 
 function summarizeTiming(item: TimelineTemplateItem): string | null {
@@ -131,12 +140,6 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   const dragIndex = React.useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
 
-  const dayOptions = React.useMemo(() => {
-    const maxUsed = items.reduce((m, it) => Math.max(m, it.dayOffset ?? 0), 0);
-    const max = Math.max(TEMPLATE_DAY_OFFSET_OPTIONS[TEMPLATE_DAY_OFFSET_OPTIONS.length - 1], maxUsed, form.dayOffset ?? 0);
-    return Array.from({ length: max + 1 }, (_, i) => i);
-  }, [items, form.dayOffset]);
-
   function openAdd() {
     setEditingId(null);
     const next = emptyForm(items.length);
@@ -181,11 +184,14 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
     // Saving through this form is itself the review — a coordinator who
     // opened an imported item and clicked Save has looked at its timing,
     // whether or not they changed it. needsReview always clears here.
+    const dayOffset = clampTemplateDayOffset(form.dayOffset ?? 0);
+    const dayAnchor: TimelineDayAnchor = form.dayAnchor === "event_end" ? "event_end" : "event_start";
     const reviewed = {
       ...form,
       timeOfDay,
       minutesOffset,
-      dayOffset: form.dayOffset ?? 0,
+      dayOffset,
+      dayAnchor,
       needsReview: false,
     };
     if (editingId) {
@@ -194,7 +200,14 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
       if (result.ok) {
         setItems((p) => p
           .map((it) => (it.id === editingId
-            ? { ...it, ...reviewed, description: reviewed.description, notes: reviewed.notes, dayOffset: reviewed.dayOffset ?? 0 }
+            ? {
+              ...it,
+              ...reviewed,
+              description: reviewed.description,
+              notes: reviewed.notes,
+              dayOffset: reviewed.dayOffset ?? 0,
+              dayAnchor: reviewed.dayAnchor ?? "event_start",
+            }
             : it))
           .sort((a, b) => (a.dayOffset ?? 0) - (b.dayOffset ?? 0) || a.sortOrder - b.sortOrder));
         setSheetOpen(false);
@@ -210,7 +223,9 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
         setItems((p) => [...p, {
           id: result.itemId!, templateId, venueId: "", title: reviewed.title, description: reviewed.description,
           notes: reviewed.notes, timeOfDay: reviewed.timeOfDay, minutesOffset: reviewed.minutesOffset,
-          dayOffset: reviewed.dayOffset ?? 0, needsReview: false,
+          dayOffset: reviewed.dayOffset ?? 0,
+          dayAnchor: reviewed.dayAnchor ?? "event_start",
+          needsReview: false,
           audiences: reviewed.audiences, sortOrder: reviewed.sortOrder, createdAt: now, updatedAt: now,
         }].sort((a, b) => (a.dayOffset ?? 0) - (b.dayOffset ?? 0) || a.sortOrder - b.sortOrder));
         setSheetOpen(false);
@@ -254,7 +269,11 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
     });
   }
 
-  const multiDayTemplate = items.some((it) => (it.dayOffset ?? 0) > 0);
+  const showDayBadges = items.some(
+    (it) => (it.dayOffset ?? 0) !== 0 || (it.dayAnchor ?? "event_start") === "event_end",
+  );
+  const formDayAnchor: TimelineDayAnchor = form.dayAnchor === "event_end" ? "event_end" : "event_start";
+  const formDayPreview = formatTemplateDayLabel(form.dayOffset ?? 0, formDayAnchor);
 
   return (
     <div className="space-y-4">
@@ -278,7 +297,9 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
         <div className="space-y-2">
           {items.map((item, index) => {
             const timing = summarizeTiming(item);
-            const showDayBadge = multiDayTemplate || (item.dayOffset ?? 0) > 0;
+            const showDayBadge = showDayBadges
+              || (item.dayOffset ?? 0) !== 0
+              || (item.dayAnchor ?? "event_start") === "event_end";
             return (
               <div
                 key={item.id}
@@ -298,7 +319,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                   <div className="flex flex-wrap items-center gap-2">
                     {showDayBadge && (
                       <Badge variant="secondary" className="text-[10px] font-medium">
-                        {formatTemplateDayLabel(item.dayOffset ?? 0)}
+                        {formatTemplateDayLabel(item.dayOffset ?? 0, item.dayAnchor ?? "event_start")}
                       </Badge>
                     )}
                     <p className="text-sm font-medium text-foreground">{item.title}</p>
@@ -349,24 +370,80 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               <Label className="text-xs">Title</Label>
               <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Ceremony begins" className="h-9 text-sm" />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2" data-testid="timeline-template-day-rule">
               <Label className="text-xs">Which day?</Label>
-              <Select
-                value={String(form.dayOffset ?? 0)}
-                onValueChange={(v) => setForm((p) => ({ ...p, dayOffset: Number(v) || 0 }))}
-                items={dayOptions.map((d) => ({ value: String(d), label: formatTemplateDayLabel(d) }))}
-              >
-                <SelectTrigger className="h-9 text-sm w-full" data-testid="timeline-template-day">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {dayOptions.map((d) => (
-                    <SelectItem key={d} value={String(d)}>{formatTemplateDayLabel(d)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Day 1 is the event&apos;s first calendar date when this template is applied. Extra days need a multi-day event date range.
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-muted-foreground" htmlFor="timeline-template-day-anchor">
+                    Measured from
+                  </Label>
+                  <Select
+                    value={formDayAnchor}
+                    onValueChange={(v) => setForm((p) => ({
+                      ...p,
+                      dayAnchor: v === "event_end" ? "event_end" : "event_start",
+                    }))}
+                    items={[
+                      { value: "event_start", label: "Event start date" },
+                      { value: "event_end", label: "Event end date" },
+                    ]}
+                  >
+                    <SelectTrigger
+                      id="timeline-template-day-anchor"
+                      className="h-9 text-sm w-full"
+                      data-testid="timeline-template-day-anchor"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="event_start">Event start date</SelectItem>
+                      <SelectItem value="event_end">Event end date</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-muted-foreground" htmlFor="timeline-template-day-offset">
+                    Days from that date
+                  </Label>
+                  <Input
+                    id="timeline-template-day-offset"
+                    type="number"
+                    inputMode="numeric"
+                    step={1}
+                    min={-TEMPLATE_DAY_OFFSET_MAX}
+                    max={TEMPLATE_DAY_OFFSET_MAX}
+                    className="h-9 text-sm"
+                    data-testid="timeline-template-day-offset"
+                    value={form.dayOffset ?? 0}
+                    onChange={(e) => {
+                      const raw = Number.parseInt(e.target.value, 10);
+                      setForm((p) => ({
+                        ...p,
+                        dayOffset: Number.isFinite(raw) ? clampTemplateDayOffset(raw) : 0,
+                      }));
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5" data-testid="timeline-template-day-quick">
+                {TEMPLATE_DAY_OFFSET_OPTIONS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, dayOffset: d }))}
+                    className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                      (form.dayOffset ?? 0) === d
+                        ? "border-primary bg-primary/10 font-medium text-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {d > 0 ? `+${d}` : String(d)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground" data-testid="timeline-template-day-preview">
+                {formDayPreview}. Negative = before that date; 0 = on that date; positive = after.
+                Event-end anchors need a multi-day event end date when applied (otherwise they fall back to the start date).
               </p>
             </div>
 

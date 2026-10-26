@@ -32,12 +32,45 @@ export function templateHasConflictingTiming(
   return hasTime && hasOffset;
 }
 
-/** "Day 1 — event date", "Day 2 — day after event date", … */
-export function formatTemplateDayLabelClear(dayOffset: number): string {
-  const n = Math.max(0, Math.trunc(dayOffset));
-  if (n === 0) return "Day 1 — event date";
-  if (n === 1) return "Day 2 — day after event date";
-  return `Day ${n + 1} — ${n} days after event date`;
+export type TimelineDayAnchor = "event_start" | "event_end";
+
+/** Template day label with explicit anchor (signed offsets supported). */
+export function formatTemplateDayLabelClear(
+  dayOffset: number,
+  anchor: TimelineDayAnchor = "event_start",
+): string {
+  const n = Math.trunc(dayOffset);
+  const anchorPhrase = anchor === "event_end" ? "event end" : "event start";
+  if (n === 0) {
+    return anchor === "event_end"
+      ? "On the event’s last day"
+      : "Day 1 — event start date";
+  }
+  const abs = Math.abs(n);
+  const unit = abs === 1 ? "day" : "days";
+  if (n < 0) return `${abs} ${unit} before ${anchorPhrase}`;
+  return `${abs} ${unit} after ${anchorPhrase}`;
+}
+
+/** Resolve template day rule to an event_date-relative offset for storage on entries. */
+export function resolveTemplateDayToEventOffset(
+  dayOffset: number,
+  anchor: TimelineDayAnchor,
+  eventDate: string | null | undefined,
+  eventEndDate: string | null | undefined,
+): number {
+  const n = Math.trunc(dayOffset);
+  if (anchor === "event_end") {
+    if (!eventDate || !eventEndDate || eventEndDate <= eventDate) {
+      // Cannot resolve end anchor without a real end date — fall back to start.
+      return n;
+    }
+    const start = new Date(`${eventDate}T12:00:00`);
+    const end = new Date(`${eventEndDate}T12:00:00`);
+    const span = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+    return span + n;
+  }
+  return n;
 }
 
 /**

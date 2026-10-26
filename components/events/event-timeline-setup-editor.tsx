@@ -98,11 +98,20 @@ export function EventTimelineSetupEditor({
     () => timelineDayOptions(eventDate, eventEndDate),
     [eventDate, eventEndDate],
   );
-  const multiDay = dayOptions.length > 1;
-  const dayLabel = (offset: number) =>
-    dayOptions.find((d) => d.value === offset)?.label
-    ?? dayOptions[0]?.label
-    ?? `Day ${offset + 1}`;
+  const dayOptionValues = React.useMemo(
+    () => new Set(dayOptions.map((d) => d.value)),
+    [dayOptions],
+  );
+  const isValidDayOffset = React.useCallback(
+    (dayOffset: number) => dayOptionValues.has(dayOffset),
+    [dayOptionValues],
+  );
+  const dayRangeHint = React.useMemo(() => {
+    const first = dayOptions[0];
+    const last = dayOptions[dayOptions.length - 1];
+    if (!first || !last) return eventDate;
+    return `${first.isoDate}–${last.isoDate}`;
+  }, [dayOptions, eventDate]);
   const activeTemplates = templates.filter((t) => !t.isArchived);
   const [mode, setMode] = React.useState<"template" | "customize">("customize");
   const [selectedTemplateId, setSelectedTemplateId] = React.useState(
@@ -276,8 +285,8 @@ export function EventTimelineSetupEditor({
       return;
     }
     const dayOffset = Number.parseInt(newDayOffset, 10);
-    if (!Number.isFinite(dayOffset) || dayOffset < 0 || dayOffset >= dayOptions.length) {
-      toast.error("Choose a day within this event’s date range.");
+    if (!Number.isFinite(dayOffset) || !isValidDayOffset(dayOffset)) {
+      toast.error("Choose a day within this event’s planning range.");
       return;
     }
     const row: DraftRow = {
@@ -313,8 +322,8 @@ export function EventTimelineSetupEditor({
     const pendingTitle = newTitle.trim();
     if (pendingTitle) {
       const dayOffset = Number.parseInt(newDayOffset, 10);
-      if (!Number.isFinite(dayOffset) || dayOffset < 0 || dayOffset >= dayOptions.length) {
-        toast.error("Choose a day within this event’s date range.");
+      if (!Number.isFinite(dayOffset) || !isValidDayOffset(dayOffset)) {
+        toast.error("Choose a day within this event’s planning range.");
         return;
       }
       const flushed: DraftRow = {
@@ -509,8 +518,7 @@ export function EventTimelineSetupEditor({
               {eventStartTime
                 ? ` (Day-of schedule start is ${eventStartTime.slice(0, 5)}).`
                 : " (set Day-of schedule start on the event if you apply relative template items)."}
-              {" "}Days use this event&apos;s actual dates
-              {multiDay ? ` (${dayOptions[0]?.isoDate}–${dayOptions[dayOptions.length - 1]?.isoDate}).` : ` (${eventDate}).`}
+              {" "}Days use this event&apos;s actual dates plus prep/loadout days ({dayRangeHint}).
               {" "}Edits do not change the Library template. Re-applying a template replaces venue-owned items.
             </p>
             {visibleRows.length === 0 ? (
@@ -569,43 +577,34 @@ export function EventTimelineSetupEditor({
                       </label>
                       <label className="text-xs text-muted-foreground">
                         Day
-                        {multiDay ? (
-                          <Select
-                            value={String(row.dayOffset)}
-                            disabled={pending || row.owner !== "venue" || row.pendingRemove}
-                            onValueChange={(v) => {
-                              const dayOffset = Number.parseInt(v, 10) || 0;
-                              setRows((prev) =>
-                                sortDraftRows(
-                                  prev.map((r) =>
-                                    r.id === row.id ? { ...r, dayOffset, dirty: true } : r,
-                                  ),
+                        <Select
+                          value={String(row.dayOffset)}
+                          disabled={pending || row.owner !== "venue" || row.pendingRemove}
+                          onValueChange={(v) => {
+                            const dayOffset = Number.parseInt(v, 10);
+                            if (!Number.isFinite(dayOffset)) return;
+                            setRows((prev) =>
+                              sortDraftRows(
+                                prev.map((r) =>
+                                  r.id === row.id ? { ...r, dayOffset, dirty: true } : r,
                                 ),
-                              );
-                            }}
-                            items={dayOptions.map((d) => ({ value: String(d.value), label: d.label }))}
-                          >
-                            <SelectTrigger
-                              className="mt-1 h-9 w-[12.5rem] text-sm"
-                              data-testid="timeline-setup-row-day"
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {dayOptions.map((d) => (
-                                <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Input
-                            className="mt-1 w-[12.5rem]"
-                            value={dayLabel(0)}
-                            disabled
-                            readOnly
+                              ),
+                            );
+                          }}
+                          items={dayOptions.map((d) => ({ value: String(d.value), label: d.label }))}
+                        >
+                          <SelectTrigger
+                            className="mt-1 h-9 w-[14rem] text-sm"
                             data-testid="timeline-setup-row-day"
-                          />
-                        )}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dayOptions.map((d) => (
+                              <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </label>
                       {row.owner === "venue" && !row.pendingRemove && !row.isNew ? (
                         <Button
@@ -671,34 +670,24 @@ export function EventTimelineSetupEditor({
                 </label>
                 <label className="text-xs text-muted-foreground">
                   Day
-                  {multiDay ? (
-                    <Select
-                      value={newDayOffset}
-                      disabled={pending}
-                      onValueChange={setNewDayOffset}
-                      items={dayOptions.map((d) => ({ value: String(d.value), label: d.label }))}
-                    >
-                      <SelectTrigger
-                        className="mt-1 h-9 w-[12.5rem] text-sm"
-                        data-testid="timeline-setup-new-day"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dayOptions.map((d) => (
-                          <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      className="mt-1 w-[12.5rem]"
-                      value={dayLabel(0)}
-                      disabled
-                      readOnly
+                  <Select
+                    value={newDayOffset}
+                    disabled={pending}
+                    onValueChange={setNewDayOffset}
+                    items={dayOptions.map((d) => ({ value: String(d.value), label: d.label }))}
+                  >
+                    <SelectTrigger
+                      className="mt-1 h-9 w-[14rem] text-sm"
                       data-testid="timeline-setup-new-day"
-                    />
-                  )}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dayOptions.map((d) => (
+                        <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </label>
                 <Button
                   type="button"
