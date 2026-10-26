@@ -1,23 +1,23 @@
 {
   "pass": true,
-  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8215db63c2b21ecf715fff4954191546296c58cf",
-  "digest": "sha256:eec700aa2e7d3d8f5c9a20e2bf0ba384720aa54faeacba517aa521929916aaa5",
-  "expectedSha": "8215db63c2b21ecf715fff4954191546296c58cf",
+  "image": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:889f005e8529e79ec35129a41889712463058df5",
+  "digest": "sha256:307b519809123cb1a9174f7958a5d8acfcb1c4021c26882fa41f7acd8d5d3d47",
+  "expectedSha": "889f005e8529e79ec35129a41889712463058df5",
   "checks": [
     {
       "name": "serving-sha",
       "pass": true,
-      "detail": "expected=8215db63c2b21ecf715fff4954191546296c58cf ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8215db63c2b21ecf715fff4954191546296c58cf"
+      "detail": "expected=889f005e8529e79ec35129a41889712463058df5 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:889f005e8529e79ec35129a41889712463058df5"
     },
     {
       "name": "serving-digest",
       "pass": true,
-      "detail": "sha256:eec700aa2e7d3d8f5c9a20e2bf0ba384720aa54faeacba517aa521929916aaa5"
+      "detail": "sha256:307b519809123cb1a9174f7958a5d8acfcb1c4021c26882fa41f7acd8d5d3d47"
     },
     {
       "name": "fixtures",
       "pass": true,
-      "detail": "{\"cancelEarly\":\"fe0cea39-7e6a-41ba-a943-dafb1f6e1656\",\"cancelLate\":\"846e4972-158b-4d8e-8dbd-d953ed2b4753\",\"mergeEarly\":\"5e147a39-fcd8-49bc-a89e-28028e5abd16\",\"mergeLate\":\"18c61ad0-f041-4012-8907-64f22768f23d\",\"decoy\":\"65a41d3f-b8c8-4817-aee3-c8bbc872cec9\",\"tour\":\"bf529c48-c975-4bf9-aec0-5e07dd29e2a9\",\"tourIso\":\"2030-03-15T13:00:00.000Z\"}"
+      "detail": "{\"cancelEarly\":\"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c\",\"cancelLate\":\"0cdd6335-8918-45b0-b5b3-1e8ccb56c887\",\"mergeEarly\":\"8c09ed9f-4a39-4164-b639-c3fec4d3013b\",\"mergeLate\":\"d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683\",\"decoy\":\"a95160e4-9e45-4de4-a13f-88418de85b76\",\"tour\":\"71cb6682-37a8-448d-baa2-1b7ccf331d21\",\"tourIso\":\"2030-03-12T14:00:00.000Z\"}"
     },
     {
       "name": "dialog-search-first",
@@ -37,22 +37,22 @@
     {
       "name": "search-by-name-multiple",
       "pass": true,
-      "detail": "count=2 ids=65a41d3f-b8c8-4817-aee3-c8bbc872cec9,846e4972-158b-4d8e-8dbd-d953ed2b4753"
+      "detail": "count=2 ids=a95160e4-9e45-4de4-a13f-88418de85b76,0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
     },
     {
       "name": "current-lead-excluded",
       "pass": true,
-      "detail": "ids=65a41d3f-b8c8-4817-aee3-c8bbc872cec9,846e4972-158b-4d8e-8dbd-d953ed2b4753"
+      "detail": "ids=a95160e4-9e45-4de4-a13f-88418de85b76,0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
     },
     {
       "name": "search-includes-late",
       "pass": true,
-      "detail": "846e4972-158b-4d8e-8dbd-d953ed2b4753"
+      "detail": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
     },
     {
       "name": "search-includes-decoy",
       "pass": true,
-      "detail": "65a41d3f-b8c8-4817-aee3-c8bbc872cec9"
+      "detail": "a95160e4-9e45-4de4-a13f-88418de85b76"
     },
     {
       "name": "ambiguous-hint",
@@ -62,12 +62,12 @@
     {
       "name": "search-by-phone",
       "pass": true,
-      "detail": "846e4972-158b-4d8e-8dbd-d953ed2b4753"
+      "detail": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
     },
     {
       "name": "search-by-email",
       "pass": true,
-      "detail": "846e4972-158b-4d8e-8dbd-d953ed2b4753"
+      "detail": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887"
     },
     {
       "name": "select-shows-selected",
@@ -90,9 +90,19 @@
       "detail": "reason"
     },
     {
+      "name": "preview-space-shows-name",
+      "pass": true,
+      "detail": "Planned event space — fill empty primary from secondary: Barn"
+    },
+    {
+      "name": "preview-staff-shows-names",
+      "pass": true,
+      "detail": "Assigned staff — choose one\n\nKeep primary: Jen Fancy\nUse secondary: Ron Cormier"
+    },
+    {
       "name": "cancel-path-conflicts-resolved",
       "pass": true,
-      "detail": "groups=5"
+      "detail": "groups=6"
     },
     {
       "name": "final-confirm-appears",
@@ -107,22 +117,22 @@
     {
       "name": "cancel-leaves-early-unmerged",
       "pass": true,
-      "detail": "{\"id\":\"fe0cea39-7e6a-41ba-a943-dafb1f6e1656\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:31.860789+00:00\",\"email\":\"merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":null}"
+      "detail": "{\"id\":\"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:23:02.722242+00:00\",\"email\":\"merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":null}"
     },
     {
       "name": "cancel-leaves-late-unmerged",
       "pass": true,
-      "detail": "{\"id\":\"846e4972-158b-4d8e-8dbd-d953ed2b4753\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:28.416761+00:00\",\"email\":\"alt-merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":\"5558888007\"}"
+      "detail": "{\"id\":\"0cdd6335-8918-45b0-b5b3-1e8ccb56c887\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:22:58.474975+00:00\",\"email\":\"alt-merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":\"5554977820\"}"
     },
     {
       "name": "cancel-identity-unchanged",
       "pass": true,
-      "detail": "{\"early\":{\"id\":\"fe0cea39-7e6a-41ba-a943-dafb1f6e1656\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:31.860789+00:00\",\"email\":\"merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":null},\"late\":{\"id\":\"846e4972-158b-4d8e-8dbd-d953ed2b4753\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T01:41:28.416761+00:00\",\"email\":\"alt-merge-cancel.1792978888007@hellotocheers-test.invalid\",\"phone\":\"5558888007\"}}"
+      "detail": "{\"early\":{\"id\":\"0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:23:02.722242+00:00\",\"email\":\"merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":null},\"late\":{\"id\":\"0cdd6335-8918-45b0-b5b3-1e8ccb56c887\",\"merged_into_lead_id\":null,\"updated_at\":\"2026-10-26T03:22:58.474975+00:00\",\"email\":\"alt-merge-cancel.1792984977820@hellotocheers-test.invalid\",\"phone\":\"5554977820\"}}"
     },
     {
       "name": "confirm-search-finds-early",
       "pass": true,
-      "detail": "5e147a39-fcd8-49bc-a89e-28028e5abd16"
+      "detail": "8c09ed9f-4a39-4164-b639-c3fec4d3013b"
     },
     {
       "name": "confirm-self-excluded",
@@ -130,44 +140,64 @@
       "detail": "self not listed"
     },
     {
+      "name": "confirm-path-conflicts-resolved",
+      "pass": true,
+      "detail": "groups=3"
+    },
+    {
       "name": "pre-merge-tour-on-secondary",
       "pass": true,
-      "detail": "{\"id\":\"bf529c48-c975-4bf9-aec0-5e07dd29e2a9\",\"lead_id\":\"18c61ad0-f041-4012-8907-64f22768f23d\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-15T13:00:00+00:00\"}"
+      "detail": "{\"id\":\"71cb6682-37a8-448d-baa2-1b7ccf331d21\",\"lead_id\":\"d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-12T14:00:00+00:00\"}"
+    },
+    {
+      "name": "confirm-continue-enabled",
+      "pass": true,
+      "detail": "Continue ready after conflict choices"
     },
     {
       "name": "redirect-to-survivor",
       "pass": true,
-      "detail": "https://app.sandbox.hellotocheers.com/leads/5e147a39-fcd8-49bc-a89e-28028e5abd16"
+      "detail": "https://app.sandbox.hellotocheers.com/leads/8c09ed9f-4a39-4164-b639-c3fec4d3013b | toast=[\"Leads merged. Opening the surviving lead.\"]"
     },
     {
       "name": "secondary-soft-marked",
       "pass": true,
-      "detail": "{\"merged_into_lead_id\":\"5e147a39-fcd8-49bc-a89e-28028e5abd16\",\"merged_at\":\"2026-10-26T01:41:48.792597+00:00\",\"first_name\":\"MergeLate\",\"email\":\"merge-ok.1792978888007@hellotocheers-test.invalid\"}"
+      "detail": "{\"merged_into_lead_id\":\"8c09ed9f-4a39-4164-b639-c3fec4d3013b\",\"merged_at\":\"2026-10-26T03:23:19.881099+00:00\",\"first_name\":\"MergeLate\",\"email\":\"merge-ok.1792984977820@hellotocheers-test.invalid\"}"
     },
     {
       "name": "primary-not-merged",
       "pass": true,
-      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7778888007\",\"partner_email\":\"sam.partner.1792978888007@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792978888007@hellotocheers-test.invalid\"}"
+      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7774977820\",\"partner_email\":\"sam.partner.1792984977820@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792984977820@hellotocheers-test.invalid\",\"planned_event_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"}"
     },
     {
       "name": "phone-filled-on-survivor",
       "pass": true,
-      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7778888007\",\"partner_email\":\"sam.partner.1792978888007@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792978888007@hellotocheers-test.invalid\"}"
+      "detail": "{\"merged_into_lead_id\":null,\"first_name\":\"MergeEarly\",\"phone\":\"7774977820\",\"partner_email\":\"sam.partner.1792984977820@hellotocheers-test.invalid\",\"email\":\"merge-ok.1792984977820@hellotocheers-test.invalid\",\"planned_event_space_id\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"assigned_staff_id\":\"67458154-e6fe-41e3-830e-ea39844e4e19\"}"
     },
     {
       "name": "partner-email-kept-on-survivor",
       "pass": true,
-      "detail": "sam.partner.1792978888007@hellotocheers-test.invalid"
+      "detail": "sam.partner.1792984977820@hellotocheers-test.invalid"
+    },
+    {
+      "name": "space-filled-on-survivor",
+      "pass": true,
+      "detail": "{\"got\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"expect\":\"3b36ec69-b17d-4351-8186-68d96dd6dfe7\",\"name\":\"Barn\"}"
+    },
+    {
+      "name": "staff-kept-primary-on-survivor",
+      "pass": true,
+      "detail": "{\"got\":\"67458154-e6fe-41e3-830e-ea39844e4e19\",\"expect\":\"67458154-e6fe-41e3-830e-ea39844e4e19\",\"name\":\"Jen Fancy\"}"
     },
     {
       "name": "tour-reassociated-same-row",
       "pass": true,
-      "detail": "{\"id\":\"bf529c48-c975-4bf9-aec0-5e07dd29e2a9\",\"lead_id\":\"5e147a39-fcd8-49bc-a89e-28028e5abd16\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-15T13:00:00+00:00\"}"
+      "detail": "{\"id\":\"71cb6682-37a8-448d-baa2-1b7ccf331d21\",\"lead_id\":\"8c09ed9f-4a39-4164-b639-c3fec4d3013b\",\"status\":\"scheduled\",\"scheduled_at\":\"2030-03-12T14:00:00+00:00\"}"
     },
     {
       "name": "ui-after-reload-survivor",
       "pass": true,
-      "detail": "https://app.sandbox.hellotocheers.com/leads/5e147a39-fcd8-49bc-a89e-28028e5abd16"
+      "detail": "https://app.sandbox.hellotocheers.com/leads/8c09ed9f-4a39-4164-b639-c3fec4d3013b"
     },
     {
       "name": "self-merge-blocked",
@@ -181,13 +211,13 @@
     }
   ],
   "persisted": {
-    "cancelEarlyId": "fe0cea39-7e6a-41ba-a943-dafb1f6e1656",
-    "cancelLateId": "846e4972-158b-4d8e-8dbd-d953ed2b4753",
-    "mergeEarlyId": "5e147a39-fcd8-49bc-a89e-28028e5abd16",
-    "mergeLateId": "18c61ad0-f041-4012-8907-64f22768f23d",
-    "tourId": "bf529c48-c975-4bf9-aec0-5e07dd29e2a9",
+    "cancelEarlyId": "0a8e3f74-0fa1-4880-bfd4-28cfa5a3841c",
+    "cancelLateId": "0cdd6335-8918-45b0-b5b3-1e8ccb56c887",
+    "mergeEarlyId": "8c09ed9f-4a39-4164-b639-c3fec4d3013b",
+    "mergeLateId": "d2f3ad3e-e3da-41a0-98fc-ae7c23fe7683",
+    "tourId": "71cb6682-37a8-448d-baa2-1b7ccf331d21",
     "mergeEmailRedacted": "merge-ok.…@hellotocheers-test.invalid",
     "phoneTokenRedacted": "555…"
   },
-  "at": "2026-10-26T01:41:59.778Z"
+  "at": "2026-10-26T03:23:30.599Z"
 }
