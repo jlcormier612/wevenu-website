@@ -25,6 +25,7 @@ import {
 export { KEEP_BOTH_INQUIRY_CHOICE, resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
 export {
   canAdvanceToMergeFinalConfirm,
+  fieldDiffShown,
   hasUnresolvedMergeFieldConflicts,
   type FieldDiff,
   type MergeBlocker,
@@ -233,6 +234,11 @@ function card(row: LeadSnap): MergeLeadCard {
   };
 }
 
+const FK_SPACE_KEY: MergeFieldKey = "planned_event_space_id";
+const FK_STAFF_KEY: MergeFieldKey = "assigned_staff_id";
+const UNNAMED_SPACE = "Unnamed event space";
+const UNKNOWN_STAFF = "Unknown staff member";
+
 function buildFieldDiffs(primary: LeadSnap, secondary: LeadSnap): FieldDiff[] {
   const diffs: FieldDiff[] = [];
   for (const key of SCALAR_KEYS) {
@@ -241,13 +247,20 @@ function buildFieldDiffs(primary: LeadSnap, secondary: LeadSnap): FieldDiff[] {
     const label = FIELD_LABELS[key];
     if (!p && !s) continue;
     if (!p && s) {
-      diffs.push({ key, kind: "fill", primaryValue: null, secondaryValue: s, label });
+      diffs.push({
+        key, kind: "fill", primaryValue: null, secondaryValue: s, secondaryDisplay: s, label,
+      });
     } else if (p && s && p === s) {
-      diffs.push({ key, kind: "same", value: p, label });
+      diffs.push({ key, kind: "same", value: p, valueDisplay: p, label });
     } else if (p && s && p !== s) {
-      diffs.push({ key, kind: "conflict", primaryValue: p, secondaryValue: s, label });
+      diffs.push({
+        key, kind: "conflict",
+        primaryValue: p, secondaryValue: s,
+        primaryDisplay: p, secondaryDisplay: s,
+        label,
+      });
     } else {
-      diffs.push({ key, kind: "keep_primary", primaryValue: p, label });
+      diffs.push({ key, kind: "keep_primary", primaryValue: p, primaryDisplay: p, label });
     }
   }
   const pCh = norm(primary.preferred_communication_channels);
@@ -259,6 +272,7 @@ function buildFieldDiffs(primary: LeadSnap, secondary: LeadSnap): FieldDiff[] {
       kind: "fill",
       primaryValue: null,
       secondaryValue: sCh,
+      secondaryDisplay: sCh,
       label: chLabel,
     });
   } else if (pCh && sCh && pCh !== sCh) {
@@ -267,10 +281,108 @@ function buildFieldDiffs(primary: LeadSnap, secondary: LeadSnap): FieldDiff[] {
       kind: "conflict",
       primaryValue: pCh,
       secondaryValue: sCh,
+      primaryDisplay: pCh,
+      secondaryDisplay: sCh,
       label: chLabel,
     });
   }
   return diffs;
+}
+
+type FkLabelMaps = {
+  spaces: Map<string, string>;
+  staff: Map<string, string>;
+};
+
+function collectFkIds(diffs: FieldDiff[]): { spaceIds: string[]; staffIds: string[] } {
+  const spaceIds = new Set<string>();
+  const staffIds = new Set<string>();
+  for (const d of diffs) {
+    const take = (key: MergeFieldKey, id: string | null | undefined) => {
+      if (!id) return;
+      if (key === FK_SPACE_KEY) spaceIds.add(id);
+      if (key === FK_STAFF_KEY) staffIds.add(id);
+    };
+    if (d.kind === "fill") take(d.key, d.secondaryValue);
+    else if (d.kind === "same") take(d.key, d.value);
+    else if (d.kind === "conflict") {
+      take(d.key, d.primaryValue);
+      take(d.key, d.secondaryValue);
+    } else if (d.kind === "keep_primary") take(d.key, d.primaryValue);
+  }
+  return { spaceIds: [...spaceIds], staffIds: [...staffIds] };
+}
+
+async function loadFkLabelMaps(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  spaceIds: string[],
+  staffIds: string[],
+): Promise<FkLabelMaps> {
+  const spaces = new Map<string, string>();
+  const staff = new Map<string, string>();
+  await Promise.all([
+    spaceIds.length
+      ? supabase
+          .from("venue_spaces")
+          .select("id, name")
+          .eq("venue_id", venueId)
+          .in("id", spaceIds)
+          .then(({ data }) => {
+            for (const row of (data ?? []) as Array<{ id: string; name: string | null }>) {
+              const name = row.name?.trim();
+              spaces.set(row.id, name && name.length > 0 ? name : UNNAMED_SPACE);
+            }
+          })
+      : Promise.resolve(),
+    staffIds.length
+      ? supabase
+          .from("venue_staff")
+          .select("id, full_name")
+          .eq("venue_id", venueId)
+          .in("id", staffIds)
+          .then(({ data }) => {
+            for (const row of (data ?? []) as Array<{ id: string; full_name: string | null }>) {
+              const name = row.full_name?.trim();
+              staff.set(row.id, name && name.length > 0 ? name : UNKNOWN_STAFF);
+            }
+          })
+      : Promise.resolve(),
+  ]);
+  return { spaces, staff };
+}
+
+function fkDisplay(key: MergeFieldKey, id: string, maps: FkLabelMaps): string {
+  if (key === FK_SPACE_KEY) return maps.spaces.get(id) ?? UNNAMED_SPACE;
+  if (key === FK_STAFF_KEY) return maps.staff.get(id) ?? UNKNOWN_STAFF;
+  return id;
+}
+
+/** Replace FK UUID displays with authoritative names; keep underlying IDs unchanged. */
+function applyFkDisplays(diffs: FieldDiff[], maps: FkLabelMaps): FieldDiff[] {
+  return diffs.map((d) => {
+    if (d.key !== FK_SPACE_KEY && d.key !== FK_STAFF_KEY) return d;
+    if (d.kind === "fill") {
+      return { ...d, secondaryDisplay: fkDisplay(d.key, d.secondaryValue, maps) };
+    }
+    if (d.kind === "same") {
+      return { ...d, valueDisplay: fkDisplay(d.key, d.value, maps) };
+    }
+    if (d.kind === "conflict") {
+      return {
+        ...d,
+        primaryDisplay: fkDisplay(d.key, d.primaryValue, maps),
+        secondaryDisplay: fkDisplay(d.key, d.secondaryValue, maps),
+      };
+    }
+    if (d.kind === "keep_primary") {
+      return {
+        ...d,
+        primaryDisplay: d.primaryValue ? fkDisplay(d.key, d.primaryValue, maps) : null,
+      };
+    }
+    return d;
+  });
 }
 
 function pickDefaultPrimary(a: LeadSnap, b: LeadSnap): { primary: LeadSnap; secondary: LeadSnap; tied: boolean } {
@@ -401,7 +513,10 @@ export async function previewMergeLeads(
   const occupyingOnBoth =
     occupying.some((t) => t.leadId === primary.id) && occupying.some((t) => t.leadId === secondary.id);
 
-  const fieldDiffs = buildFieldDiffs(primary, secondary);
+  const rawDiffs = buildFieldDiffs(primary, secondary);
+  const { spaceIds, staffIds } = collectFkIds(rawDiffs);
+  const fkMaps = await loadFkLabelMaps(supabase, venue.id, spaceIds, staffIds);
+  const fieldDiffs = applyFkDisplays(rawDiffs, fkMaps);
   const relatedSummary = [
     `${notesOnSecondary ?? 0} note(s) on secondary will move to the primary lead`,
     `${tasksOnSecondary ?? 0} task(s) on secondary will move to the primary lead`,
@@ -571,9 +686,13 @@ export async function confirmMergeLeads(
 /** Pure helpers exported for unit tests */
 export const mergeTestHelpers = {
   buildFieldDiffs,
+  applyFkDisplays,
+  collectFkIds,
   pickDefaultPrimary,
   norm,
   FIELD_LABELS,
+  UNNAMED_SPACE,
+  UNKNOWN_STAFF,
   resolveInquiryMessageChoice,
   hasUnresolvedMergeFieldConflicts,
   canAdvanceToMergeFinalConfirm,

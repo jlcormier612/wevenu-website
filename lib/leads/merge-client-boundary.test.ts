@@ -27,6 +27,7 @@ describe("merge-client is browser-safe", () => {
     assert.match(src, /from "@\/lib\/leads\/merge-client"/);
     assert.doesNotMatch(src, /from "@\/lib\/leads\/merge"/);
     assert.match(src, /canAdvanceToMergeFinalConfirm/);
+    assert.match(src, /fieldDiffShown/);
   });
 
   it("Continue stays disabled until conflict choices resolve", () => {
@@ -36,6 +37,8 @@ describe("merge-client is browser-safe", () => {
         kind: "conflict" as const,
         primaryValue: "a@example.com",
         secondaryValue: "b@example.com",
+        primaryDisplay: "a@example.com",
+        secondaryDisplay: "b@example.com",
         label: "Email",
       },
     ];

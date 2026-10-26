@@ -11,8 +11,12 @@ import { mergeTestHelpers, type MergeFieldKey } from "@/lib/leads/merge";
 
 const {
   buildFieldDiffs,
+  applyFkDisplays,
+  collectFkIds,
   pickDefaultPrimary,
   norm,
+  UNNAMED_SPACE,
+  UNKNOWN_STAFF,
   hasUnresolvedMergeFieldConflicts,
   canAdvanceToMergeFinalConfirm,
 } = mergeTestHelpers;
@@ -101,6 +105,99 @@ describe("lead merge field reconciliation", () => {
   it("norm collapses channel arrays for comparison", () => {
     assert.equal(norm(["sms", "email"]), norm(["email", "sms"]));
     assert.equal(norm("  "), null);
+  });
+});
+
+describe("FK preview labels (event space + staff)", () => {
+  const SPACE_A = "56a70756-5ee3-4e08-8e1b-d1713c5bbbec";
+  const SPACE_B = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+  const STAFF_A = "5f62cf3c-bc2b-4756-b76e-120f4eecfb8c";
+  const STAFF_B = "f452dfef-9328-490b-9318-9bbe6cf22f70";
+
+  it("shows event-space names on fill while keeping the underlying id", () => {
+    const raw = buildFieldDiffs(
+      snap({ planned_event_space_id: null }),
+      snap({ id: "b", planned_event_space_id: SPACE_A }),
+    );
+    const filled = applyFkDisplays(raw, {
+      spaces: new Map([[SPACE_A, "Barn"]]),
+      staff: new Map(),
+    });
+    const space = filled.find((d) => d.key === "planned_event_space_id");
+    assert.equal(space?.kind, "fill");
+    if (space?.kind === "fill") {
+      assert.equal(space.secondaryValue, SPACE_A);
+      assert.equal(space.secondaryDisplay, "Barn");
+      assert.doesNotMatch(space.secondaryDisplay, /[0-9a-f-]{36}/i);
+    }
+  });
+
+  it("shows staff names on conflict choices while keeping both ids", () => {
+    const raw = buildFieldDiffs(
+      snap({ assigned_staff_id: STAFF_A }),
+      snap({ id: "b", assigned_staff_id: STAFF_B }),
+    );
+    const labeled = applyFkDisplays(raw, {
+      spaces: new Map(),
+      staff: new Map([
+        [STAFF_A, "Jordan Lee"],
+        [STAFF_B, "Sam Rivera"],
+      ]),
+    });
+    const staff = labeled.find((d) => d.key === "assigned_staff_id");
+    assert.equal(staff?.kind, "conflict");
+    if (staff?.kind === "conflict") {
+      assert.equal(staff.primaryValue, STAFF_A);
+      assert.equal(staff.secondaryValue, STAFF_B);
+      assert.equal(staff.primaryDisplay, "Jordan Lee");
+      assert.equal(staff.secondaryDisplay, "Sam Rivera");
+    }
+    // Continue gate still keys off underlying IDs
+    assert.equal(
+      canAdvanceToMergeFinalConfirm({
+        preview: { blockers: [], needsExplicitPrimaryChoice: false, fieldDiffs: labeled },
+        explicitPrimaryId: null,
+        fieldChoices: {},
+      }),
+      false,
+    );
+    assert.equal(
+      canAdvanceToMergeFinalConfirm({
+        preview: { blockers: [], needsExplicitPrimaryChoice: false, fieldDiffs: labeled },
+        explicitPrimaryId: null,
+        fieldChoices: { assigned_staff_id: STAFF_B },
+      }),
+      true,
+    );
+  });
+
+  it("uses readable fallbacks when related rows are missing", () => {
+    const raw = buildFieldDiffs(
+      snap({ planned_event_space_id: SPACE_A, assigned_staff_id: STAFF_A }),
+      snap({ id: "b", planned_event_space_id: SPACE_B, assigned_staff_id: STAFF_B }),
+    );
+    const labeled = applyFkDisplays(raw, { spaces: new Map(), staff: new Map() });
+    const space = labeled.find((d) => d.key === "planned_event_space_id");
+    const staff = labeled.find((d) => d.key === "assigned_staff_id");
+    assert.ok(space?.kind === "conflict" && staff?.kind === "conflict");
+    if (space.kind === "conflict" && staff.kind === "conflict") {
+      assert.equal(space.primaryDisplay, UNNAMED_SPACE);
+      assert.equal(space.secondaryDisplay, UNNAMED_SPACE);
+      assert.equal(staff.primaryDisplay, UNKNOWN_STAFF);
+      assert.equal(staff.secondaryDisplay, UNKNOWN_STAFF);
+      assert.equal(space.primaryValue, SPACE_A);
+      assert.equal(staff.secondaryValue, STAFF_B);
+    }
+  });
+
+  it("collects only FK ids that appear in diffs", () => {
+    const diffs = buildFieldDiffs(
+      snap({ planned_event_space_id: SPACE_A, email: "a@example.com" }),
+      snap({ id: "b", assigned_staff_id: STAFF_B, email: "b@example.com" }),
+    );
+    const { spaceIds, staffIds } = collectFkIds(diffs);
+    assert.deepEqual(spaceIds, [SPACE_A]);
+    assert.deepEqual(staffIds, [STAFF_B]);
   });
 });
 

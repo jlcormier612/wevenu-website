@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { KEEP_BOTH_INQUIRY_CHOICE } from "@/lib/leads/merge-inquiry-choice";
 import {
   canAdvanceToMergeFinalConfirm,
+  fieldDiffShown,
   type FieldDiff,
   type MergePreview,
   type MergeSearchCandidate,
@@ -366,23 +367,23 @@ export function MergeLeadDialog({
     if (d.kind === "same") {
       return (
         <p key={d.key} className="text-xs text-muted-foreground">
-          {d.label}: identical ({d.value})
+          {d.label}: identical ({fieldDiffShown(d, "value")})
         </p>
       );
     }
     if (d.kind === "keep_primary") {
       return (
         <p key={d.key} className="text-xs text-muted-foreground">
-          {d.label}: keeping primary ({d.primaryValue ?? "empty"})
+          {d.label}: keeping primary ({fieldDiffShown(d, "primary")})
         </p>
       );
     }
     if (d.kind === "fill") {
       return (
-        <p key={d.key} className="text-sm">
+        <p key={d.key} className="text-sm" data-testid={`merge-fill-${d.key}`}>
           <span className="font-medium text-heading">{d.label}</span>
           {" — fill empty primary from secondary: "}
-          <span className="text-muted-foreground">{d.secondaryValue}</span>
+          <span className="text-muted-foreground">{fieldDiffShown(d, "secondary")}</span>
         </p>
       );
     }
@@ -409,7 +410,7 @@ export function MergeLeadDialog({
             <span>
               <span className="font-medium">Keep both messages</span>
               <span className="block text-xs text-muted-foreground">
-                Recommended — primary inquiry stays: {d.primaryValue}. Secondary is kept as
+                Recommended — primary inquiry stays: {fieldDiffShown(d, "primary")}. Secondary is kept as
                 additional inquiry history.
               </span>
             </span>
@@ -424,7 +425,7 @@ export function MergeLeadDialog({
             />
             <span>
               Keep primary message only
-              <span className="block text-xs text-muted-foreground">{d.primaryValue}</span>
+              <span className="block text-xs text-muted-foreground">{fieldDiffShown(d, "primary")}</span>
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
@@ -437,14 +438,19 @@ export function MergeLeadDialog({
             />
             <span>
               Use secondary message as primary inquiry
-              <span className="block text-xs text-muted-foreground">{d.secondaryValue}</span>
+              <span className="block text-xs text-muted-foreground">{fieldDiffShown(d, "secondary")}</span>
             </span>
           </label>
         </div>
       );
     }
+    if (d.kind !== "conflict") return null;
     return (
-      <div key={d.key} className="space-y-1 rounded-md border border-border px-3 py-2">
+      <div
+        key={d.key}
+        className="space-y-1 rounded-md border border-border px-3 py-2"
+        data-testid={`merge-conflict-${d.key}`}
+      >
         <p className="text-sm font-medium text-heading">{d.label} — choose one</p>
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -453,7 +459,7 @@ export function MergeLeadDialog({
             checked={fieldChoices[d.key] === d.primaryValue}
             onChange={() => setFieldChoices((c) => ({ ...c, [d.key]: d.primaryValue }))}
           />
-          <span>Keep primary: {d.primaryValue}</span>
+          <span>Keep primary: {fieldDiffShown(d, "primary")}</span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -462,7 +468,7 @@ export function MergeLeadDialog({
             checked={fieldChoices[d.key] === d.secondaryValue}
             onChange={() => setFieldChoices((c) => ({ ...c, [d.key]: d.secondaryValue }))}
           />
-          <span>Use secondary: {d.secondaryValue}</span>
+          <span>Use secondary: {fieldDiffShown(d, "secondary")}</span>
         </label>
       </div>
     );

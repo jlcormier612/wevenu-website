@@ -125,7 +125,36 @@ async function main() {
   const mergePhone = `777${String(stamp).slice(-7)}`;
   const uniqueLast = `Discovery${stamp}`;
 
+  // Authoritative space + staff labels for FK preview assertions
+  const { data: spaces } = await admin
+    .from("venue_spaces")
+    .select("id, name")
+    .eq("venue_id", FANCY)
+    .order("name")
+    .limit(2);
+  const { data: staffRows } = await admin
+    .from("venue_staff")
+    .select("id, full_name")
+    .eq("venue_id", FANCY)
+    .eq("is_active", true)
+    .order("full_name")
+    .limit(2);
+  if (!spaces?.[0]?.id || !spaces[0].name?.trim()) {
+    throw new Error("need at least one named venue_spaces row for FK label proof");
+  }
+  if (!staffRows?.[0]?.id || !staffRows[0].full_name?.trim()
+    || !staffRows?.[1]?.id || !staffRows[1].full_name?.trim()) {
+    throw new Error("need at least two named active venue_staff rows for FK label proof");
+  }
+  const spaceId = spaces[0].id as string;
+  const spaceName = String(spaces[0].name).trim();
+  const staffPrimaryId = staffRows[0].id as string;
+  const staffPrimaryName = String(staffRows[0].full_name).trim();
+  const staffSecondaryId = staffRows[1].id as string;
+  const staffSecondaryName = String(staffRows[1].full_name).trim();
+
   // Cancel pair — preview must not mutate
+  // Late has space (fill into empty early) + conflicting staff vs early.
   const cancelEarly = await insertLead({
     first_name: "CancelEarly",
     last_name: uniqueLast,
@@ -136,6 +165,7 @@ async function main() {
     partner_email: `pat.early.${stamp}@hellotocheers-test.invalid`,
     event_date: "2027-05-01",
     inquiry_message: `cancel-early ${stamp}`,
+    assigned_staff_id: staffPrimaryId,
   });
   await new Promise((r) => setTimeout(r, 60));
   const cancelLate = await insertLead({
@@ -147,9 +177,11 @@ async function main() {
     partner_last_name: "Late",
     event_date: "2027-06-01",
     inquiry_message: `cancel-late ${stamp}`,
+    planned_event_space_id: spaceId,
+    assigned_staff_id: staffSecondaryId,
   });
 
-  // Confirm pair — actual merge
+  // Confirm pair — actual merge (same FK shape so chosen staff/space persist)
   const mergeEarly = await insertLead({
     first_name: "MergeEarly",
     last_name: `Ok${stamp}`,
@@ -160,6 +192,7 @@ async function main() {
     partner_email: `sam.partner.${stamp}@hellotocheers-test.invalid`,
     event_date: "2027-08-15",
     inquiry_message: `merge-early ${stamp}`,
+    assigned_staff_id: staffPrimaryId,
   });
   await new Promise((r) => setTimeout(r, 60));
   const mergeLate = await insertLead({
@@ -168,6 +201,8 @@ async function main() {
     email: mergeEmail,
     phone: mergePhone,
     inquiry_message: `merge-late ${stamp}`,
+    planned_event_space_id: spaceId,
+    assigned_staff_id: staffSecondaryId,
   });
 
   // Decoy for ambiguous last-name search on cancel pair
@@ -308,6 +343,24 @@ async function main() {
       /CancelEarly/i.test(previewText) && /Survives/i.test(previewText),
       "earliest default");
     record("preview-survivor-reason", await dlg.getByTestId("merge-survivor-reason").isVisible(), "reason");
+    // FK labels — names shown, raw UUIDs not exposed in customer-facing preview text
+    const fillSpace = dlg.getByTestId("merge-fill-planned_event_space_id");
+    const conflictStaff = dlg.getByTestId("merge-conflict-assigned_staff_id");
+    const fillSpaceText = await fillSpace.innerText().catch(() => "");
+    const staffText = await conflictStaff.innerText().catch(() => "");
+    record(
+      "preview-space-shows-name",
+      fillSpaceText.includes(spaceName) && !fillSpaceText.includes(spaceId),
+      fillSpaceText.slice(0, 240) || "missing fill row",
+    );
+    record(
+      "preview-staff-shows-names",
+      staffText.includes(staffPrimaryName)
+        && staffText.includes(staffSecondaryName)
+        && !staffText.includes(staffPrimaryId)
+        && !staffText.includes(staffSecondaryId),
+      staffText.slice(0, 240) || "missing staff conflict",
+    );
     await page.screenshot({ path: `${OUT}/shots/preview-cancel-pair-1280.png`, fullPage: false });
 
     // Resolve conflicts before Continue (same gate as confirm path)
@@ -412,7 +465,7 @@ async function main() {
     const { data: sec } = await admin.from("leads")
       .select("merged_into_lead_id, merged_at, first_name, email").eq("id", mergeLate.id).single();
     const { data: prim } = await admin.from("leads")
-      .select("merged_into_lead_id, first_name, phone, partner_email, email")
+      .select("merged_into_lead_id, first_name, phone, partner_email, email, planned_event_space_id, assigned_staff_id")
       .eq("id", mergeEarly.id).single();
     const { data: tourAfter } = await admin.from("tour_appointments")
       .select("id, lead_id, status, scheduled_at").eq("id", tour.id).single();
@@ -425,6 +478,11 @@ async function main() {
     record("partner-email-kept-on-survivor",
       prim?.partner_email === `sam.partner.${stamp}@hellotocheers-test.invalid`,
       prim?.partner_email ?? "");
+    // Fill from secondary space; keep-primary staff (first radio in each group)
+    record("space-filled-on-survivor", prim?.planned_event_space_id === spaceId,
+      JSON.stringify({ got: prim?.planned_event_space_id, expect: spaceId, name: spaceName }));
+    record("staff-kept-primary-on-survivor", prim?.assigned_staff_id === staffPrimaryId,
+      JSON.stringify({ got: prim?.assigned_staff_id, expect: staffPrimaryId, name: staffPrimaryName }));
     const tourAtMs = (iso: string | null | undefined) =>
       iso ? Date.parse(iso) : NaN;
     record("tour-reassociated-same-row",

@@ -28,11 +28,56 @@ export type MergeFieldKey =
   | "source"
   | "preferred_communication_channels";
 
+/**
+ * `*Value` fields are the merge-persisted identifiers/text.
+ * `*Display` fields are venue-facing labels (names for FK fields; same as value otherwise).
+ * Never show raw UUIDs from `*Value` in the merge preview UI — use `*Display`.
+ */
 export type FieldDiff =
-  | { key: MergeFieldKey; kind: "fill"; primaryValue: string | null; secondaryValue: string; label: string }
-  | { key: MergeFieldKey; kind: "same"; value: string; label: string }
-  | { key: MergeFieldKey; kind: "conflict"; primaryValue: string; secondaryValue: string; label: string }
-  | { key: MergeFieldKey; kind: "keep_primary"; primaryValue: string | null; label: string };
+  | {
+      key: MergeFieldKey;
+      kind: "fill";
+      primaryValue: string | null;
+      secondaryValue: string;
+      secondaryDisplay: string;
+      label: string;
+    }
+  | {
+      key: MergeFieldKey;
+      kind: "same";
+      value: string;
+      valueDisplay: string;
+      label: string;
+    }
+  | {
+      key: MergeFieldKey;
+      kind: "conflict";
+      primaryValue: string;
+      secondaryValue: string;
+      primaryDisplay: string;
+      secondaryDisplay: string;
+      label: string;
+    }
+  | {
+      key: MergeFieldKey;
+      kind: "keep_primary";
+      primaryValue: string | null;
+      primaryDisplay: string | null;
+      label: string;
+    };
+
+/** Customer-facing label for a diff value — never falls back to exposing a UUID FK. */
+export function fieldDiffShown(
+  d: FieldDiff,
+  which: "primary" | "secondary" | "value",
+): string {
+  if (d.kind === "fill" && which === "secondary") return d.secondaryDisplay;
+  if (d.kind === "same" && which === "value") return d.valueDisplay;
+  if (d.kind === "conflict" && which === "primary") return d.primaryDisplay;
+  if (d.kind === "conflict" && which === "secondary") return d.secondaryDisplay;
+  if (d.kind === "keep_primary" && which === "primary") return d.primaryDisplay ?? "empty";
+  return "";
+}
 
 export type TourSummary = {
   id: string;
