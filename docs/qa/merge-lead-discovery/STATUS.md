@@ -37,7 +37,9 @@ Confirm was gated on a successful Preview, but Preview required a separate click
 
 ## Continue-gate hardening (follow-on)
 
-Serving `8215db63` allowed Continue while conflict fields were unresolved (`openFinalConfirm` toasted only). Harness now resolves conflicts; product aligns Continue `disabled` with conflict/survivor gates via `canAdvanceToMergeFinalConfirm` (ships in the next Sandbox deploy after this STATUS).
+Serving `8215db63` allowed Continue while conflict fields were unresolved (`openFinalConfirm` toasted only). Harness now resolves conflicts before Continue.
+
+Product aligns Continue `disabled` with conflict/survivor gates via `canAdvanceToMergeFinalConfirm` in `796fe9149b1a21d74997f45d4869d87718e22c69` — Sandbox deploy [40255549328](https://github.com/jlcormier612/wevenu-website/actions/runs/40255549328) (queued). Re-run browser on that image when ECS serves it; workflow GREEN already proven on `8215db63`.
 
 ## Production
 
