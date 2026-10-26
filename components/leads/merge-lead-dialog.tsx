@@ -27,7 +27,7 @@ import {
   type FieldDiff,
   type MergePreview,
   type MergeSearchCandidate,
-} from "@/lib/leads/merge";
+} from "@/lib/leads/merge-client";
 import { cn } from "@/lib/utils";
 
 const SEARCH_DEBOUNCE_MS = 300;

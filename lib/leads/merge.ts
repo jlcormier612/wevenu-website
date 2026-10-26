@@ -1,97 +1,39 @@
 /**
- * Venue-controlled Merge Lead — preview + confirm.
+ * Venue-controlled Merge Lead — preview + confirm (server only).
  * Primary defaults to earliest created_at. Never hard-deletes.
  * Atomic confirm via merge_leads_v1 RPC. No customer messages on merge.
+ *
+ * Client UI must import types/gate helpers from `@/lib/leads/merge-client`
+ * only — this module pulls venue/service → product-sync → Node fs.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
+import {
+  canAdvanceToMergeFinalConfirm,
+  hasUnresolvedMergeFieldConflicts,
+  type FieldDiff,
+  type MergeBlocker,
+  type MergeFieldKey,
+  type MergeLeadCard,
+  type MergePreview,
+  type MergeSearchCandidate,
+  type TourSummary,
+} from "@/lib/leads/merge-client";
 
 export { KEEP_BOTH_INQUIRY_CHOICE, resolveInquiryMessageChoice } from "@/lib/leads/merge-inquiry-choice";
-
-export type MergeFieldKey =
-  | "first_name"
-  | "last_name"
-  | "email"
-  | "phone"
-  | "partner_first_name"
-  | "partner_last_name"
-  | "partner_email"
-  | "event_type"
-  | "event_date"
-  | "end_date"
-  | "guest_count"
-  | "estimated_budget"
-  | "inquiry_message"
-  | "next_action_text"
-  | "next_action_due"
-  | "follow_up_date"
-  | "planned_event_space_id"
-  | "assigned_staff_id"
-  | "source"
-  | "preferred_communication_channels";
-
-export type FieldDiff =
-  | { key: MergeFieldKey; kind: "fill"; primaryValue: string | null; secondaryValue: string; label: string }
-  | { key: MergeFieldKey; kind: "same"; value: string; label: string }
-  | { key: MergeFieldKey; kind: "conflict"; primaryValue: string; secondaryValue: string; label: string }
-  | { key: MergeFieldKey; kind: "keep_primary"; primaryValue: string | null; label: string };
-
-export type TourSummary = {
-  id: string;
-  leadId: string;
-  status: string;
-  scheduledAt: string | null;
-  isArchived: boolean;
-};
-
-export type MergeBlocker = {
-  code: "tour_protection" | "same_lead" | "cross_venue" | "already_merged" | "primary_is_merged" | "not_found";
-  message: string;
-};
-
-export type MergePreview = {
-  ok: true;
-  venueId: string;
-  primary: MergeLeadCard;
-  secondary: MergeLeadCard;
-  primaryIsDefaultEarliest: boolean;
-  needsExplicitPrimaryChoice: boolean;
-  fieldDiffs: FieldDiff[];
-  notesOnSecondary: number;
-  tasksOnSecondary: number;
-  activitiesOnSecondary: number;
-  tours: TourSummary[];
-  occupyingTourConflict: boolean;
-  blockers: MergeBlocker[];
-  relatedSummary: string[];
-};
-
-export type MergeLeadCard = {
-  id: string;
-  displayName: string;
-  email: string | null;
-  phone: string | null;
-  createdAt: string;
-  updatedAt: string;
-  salesStage: string | null;
-  source: string | null;
-  mergedIntoLeadId: string | null;
-};
-
-/** Concise row for Merge Lead search — discovery only; never auto-merges. */
-export type MergeSearchCandidate = {
-  id: string;
-  displayName: string;
-  email: string | null;
-  phone: string | null;
-  partnerDisplayName: string | null;
-  partnerEmail: string | null;
-  eventDate: string | null;
-  createdAt: string;
-  salesStage: string | null;
-};
+export {
+  canAdvanceToMergeFinalConfirm,
+  hasUnresolvedMergeFieldConflicts,
+  type FieldDiff,
+  type MergeBlocker,
+  type MergeFieldKey,
+  type MergeLeadCard,
+  type MergePreview,
+  type MergeSearchCandidate,
+  type TourSummary,
+} from "@/lib/leads/merge-client";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -624,31 +566,6 @@ export async function confirmMergeLeads(
     secondaryId: result.secondaryId ?? input.secondaryId,
     alreadyMerged: result.alreadyMerged === true,
   };
-}
-
-/** True when any conflict field still lacks an explicit venue choice. */
-export function hasUnresolvedMergeFieldConflicts(
-  fieldDiffs: FieldDiff[],
-  fieldChoices: Record<string, string | undefined>,
-): boolean {
-  return fieldDiffs.some((d) => {
-    if (d.kind !== "conflict") return false;
-    const chosen = fieldChoices[d.key];
-    return chosen === undefined || chosen === "";
-  });
-}
-
-/** Footer Continue / final-confirm gate — matches confirmMergeLeads conflict rules. */
-export function canAdvanceToMergeFinalConfirm(input: {
-  preview: Pick<MergePreview, "blockers" | "needsExplicitPrimaryChoice" | "fieldDiffs"> | null;
-  explicitPrimaryId: string | null;
-  fieldChoices: Record<string, string | undefined>;
-}): boolean {
-  const { preview, explicitPrimaryId, fieldChoices } = input;
-  if (!preview || preview.blockers.length > 0) return false;
-  if (preview.needsExplicitPrimaryChoice && !explicitPrimaryId) return false;
-  if (hasUnresolvedMergeFieldConflicts(preview.fieldDiffs, fieldChoices)) return false;
-  return true;
 }
 
 /** Pure helpers exported for unit tests */
