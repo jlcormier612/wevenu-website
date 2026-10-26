@@ -416,7 +416,7 @@ begin
     order by te.day_offset, te.entry_time asc nulls last, te.sort_order, te.created_at
   loop
     v_snapshot := v_snapshot || jsonb_build_array(
-      public._venue_timeline_entry_release_json(v_entry, v_venue_id)
+      public._venue_timeline_entry_release_json(v_entry.id, v_venue_id)
     );
     v_count := v_count + 1;
   end loop;
@@ -694,7 +694,7 @@ begin
       order by te.day_offset, te.entry_time asc nulls last, te.sort_order, te.created_at
     loop
       v_snapshot := v_snapshot || jsonb_build_array(
-        public._venue_timeline_entry_release_json(v_entry, v_event.venue_id)
+        public._venue_timeline_entry_release_json(v_entry.id, v_event.venue_id)
       );
       v_count := v_count + 1;
     end loop;
