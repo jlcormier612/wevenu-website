@@ -208,19 +208,33 @@ describe("Phase 3B — Dashboard L1 critical path (locked live sources)", () => 
     );
   });
 
-  it("6. Focus aggregate remains the fallback", () => {
+  it("6. Focus aggregate remains the fallback for non-Tasks domains", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [
-        focusItem({ id: "t1", href: "/tasks?a=1" }),
-        focusItem({ id: "t2", href: "/tasks?b=1" }),
+        focusItem({ id: "p1", domain: "Payments", href: "/payments?a=1" }),
+        focusItem({ id: "p2", domain: "Payments", href: "/payments?b=1" }),
       ],
       observations: [],
       recommendations: [recommendation()],
     });
-    assert.equal(entry?.message, "I noticed two tasks are past due.");
-    assert.equal(entry?.actionHref, "/tasks");
+    assert.equal(entry?.message, "I noticed two payments need attention.");
+    assert.equal(entry?.actionHref, "/payments?filter=attention");
     assert.equal(entry?.dismissObservationId, undefined);
     assert.equal(entry?.dismissRecommendationId, undefined);
+  });
+
+  it("6b. Tasks Focus does not produce a redundant overdue-count card", () => {
+    assert.equal(
+      selectLuvDashboardEntry({
+        focusItems: [
+          focusItem({ id: "t1", domain: "Tasks", href: "/tasks?a=1" }),
+          focusItem({ id: "t2", domain: "Tasks", href: "/tasks?b=1" }),
+        ],
+        observations: [],
+        recommendations: [recommendation()],
+      }),
+      null,
+    );
   });
 
   it("7. no valid L1 candidate results in no L1 card", () => {

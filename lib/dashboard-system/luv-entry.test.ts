@@ -399,16 +399,26 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
     assert.equal(entry, null);
   });
 
-  it("picks the domain with the most work among non-Leads aggregates", () => {
+  it("does not restate overdue Tasks already listed in Today's Focus", () => {
     const entry = aggregateFocusEntry([
       focusItem({ id: "l1", domain: "Leads", href: "/leads/a" }),
       focusItem({ id: "t1", domain: "Tasks", href: "/leads/b?tab=tasks" }),
       focusItem({ id: "t2", domain: "Tasks", href: "/leads/c?tab=tasks" }),
       focusItem({ id: "t3", domain: "Tasks", href: "/leads/d?tab=tasks" }),
     ]);
+    assert.equal(entry, null);
+  });
 
-    assert.equal(entry?.message, "I noticed three tasks are past due.");
-    assert.equal(entry?.actionHref, "/tasks");
+  it("picks the domain with the most work among non-Leads/non-Tasks aggregates", () => {
+    const entry = aggregateFocusEntry([
+      focusItem({ id: "l1", domain: "Leads", href: "/leads/a" }),
+      focusItem({ id: "t1", domain: "Tasks", href: "/leads/b?tab=tasks" }),
+      focusItem({ id: "p1", domain: "Payments", href: "/payments/a" }),
+      focusItem({ id: "p2", domain: "Payments", href: "/payments/b" }),
+    ]);
+
+    assert.equal(entry?.message, "I noticed two payments need attention.");
+    assert.equal(entry?.actionHref, "/payments?filter=attention");
   });
 
   it("reads Event Readiness as bookings with something outstanding", () => {
@@ -429,14 +439,14 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
   // Luv offers to take the owner to the work; it must not promise to perform
   // an action no Dashboard control actually performs.
   it("does not promise to send or draft anything", () => {
-    for (const domain of ["Tasks", "Event Readiness", "Calendar", "Payments"]) {
+    for (const domain of ["Event Readiness", "Calendar", "Payments"]) {
       const entry = aggregateFocusEntry([focusItem({ domain })]);
       assert.ok(entry, `${domain} should have an aggregate`);
       assert.doesNotMatch(`${entry.suggestion} ${entry.actionLabel}`, /draft|send|write it|for you/i);
     }
   });
 
-  it("Focus aggregate still fills the slot when only Level-3 observations exist", () => {
+  it("Tasks-only Focus stays quiet rather than repeating the overdue count", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [
         focusItem({ id: "t1", domain: "Tasks", href: "/tasks" }),
@@ -445,8 +455,20 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
       observations: [level3LeadObservation()],
       recommendations: [],
     });
-    assert.equal(entry?.message, "I noticed two tasks are past due.");
-    assert.equal(entry?.actionHref, "/tasks");
+    assert.equal(entry, null);
+  });
+
+  it("useful live L1 still wins when Focus has overdue tasks", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [
+        focusItem({ id: "t1", domain: "Tasks", href: "/leads/a?tab=tasks" }),
+        focusItem({ id: "t2", domain: "Tasks", href: "/leads/b?tab=tasks" }),
+      ],
+      observations: [level1SetupObservation()],
+      recommendations: [],
+    });
+    assert.equal(entry?.message, "Your public website isn't collecting inquiries yet.");
+    assert.equal(entry?.actionHref, "/setup");
   });
 });
 

@@ -4,6 +4,8 @@ import { describe, it } from "node:test";
 import {
   TOUR_ALL_SET_MAX_DAYS,
   buildTourAllSetObservation,
+  buildTourScheduledUnconfirmedObservation,
+  buildUpcomingTourStatusObservation,
   coordinatorAddressName,
   hasQualifyingCustomerContact,
   isCustomerFacingContactMessage,
@@ -66,8 +68,8 @@ describe("optional CTA — no dead same-page link", () => {
   });
 });
 
-describe("tour all-set — contextual, no CTA, 3-day window", () => {
-  it("silence when more than 3 days out or not scheduled/confirmed", () => {
+describe("tour all-set — confirmed only, no CTA, 3-day window", () => {
+  it("silence when more than 3 days out, cancelled, or only scheduled", () => {
     assert.equal(TOUR_ALL_SET_MAX_DAYS, 3);
     assert.equal(
       buildTourAllSetObservation({
@@ -91,13 +93,24 @@ describe("tour all-set — contextual, no CTA, 3-day window", () => {
       }),
       null,
     );
+    assert.equal(
+      buildTourAllSetObservation({
+        tourId: "t1",
+        scheduledAt: "2026-10-02T15:00:00Z",
+        status: "scheduled",
+        contactName: "Ursula Meadows & Brian Valley",
+        leadId: "L1",
+        daysUntil: 2,
+      }),
+      null,
+    );
   });
 
-  it("positive all-set within 3 days has no recommendation CTA", () => {
+  it("positive all-set only when status is confirmed", () => {
     const obs = buildTourAllSetObservation({
       tourId: "t1",
       scheduledAt: "2026-10-02T15:00:00Z",
-      status: "scheduled",
+      status: "confirmed",
       contactName: "Casey Morgan",
       leadId: "L1",
       daysUntil: 2,
@@ -107,6 +120,52 @@ describe("tour all-set — contextual, no CTA, 3-day window", () => {
     assert.equal(obs!.recommendation, undefined);
     assert.equal(obs!.actionLabel, undefined);
     assert.equal(obs!.id, "tour-upcoming-t1");
+  });
+});
+
+describe("scheduled but unconfirmed tour factuality", () => {
+  const base = {
+    tourId: "t1",
+    scheduledAt: "2026-10-28T15:00:00Z",
+    status: "scheduled" as const,
+    contactName: "Ursula Meadows & Brian Valley",
+    leadId: "L1",
+    daysUntil: 2,
+  };
+
+  it("does not claim all-set / good luck for scheduled tours", () => {
+    const obs = buildTourScheduledUnconfirmedObservation(base);
+    assert.ok(obs);
+    assert.doesNotMatch(obs!.message, /all set|Good luck/i);
+    assert.match(obs!.message, /not confirmed yet/i);
+  });
+
+  it("confirmation requested is still not recipient confirmation", () => {
+    const obs = buildTourScheduledUnconfirmedObservation({
+      ...base,
+      confirmationRequestedAt: "2026-10-20T12:00:00Z",
+    });
+    assert.ok(obs);
+    assert.doesNotMatch(obs!.message, /all set|confirmed their|Good luck/i);
+    assert.match(obs!.message, /waiting for their reply/i);
+  });
+
+  it("completed and cancelled stay silent via dispatcher", () => {
+    assert.equal(
+      buildUpcomingTourStatusObservation({ ...base, status: "completed" }),
+      null,
+    );
+    assert.equal(
+      buildUpcomingTourStatusObservation({ ...base, status: "cancelled" }),
+      null,
+    );
+  });
+
+  it("dispatcher routes confirmed vs scheduled correctly", () => {
+    const confirmed = buildUpcomingTourStatusObservation({ ...base, status: "confirmed" });
+    assert.match(confirmed!.message, /all set/);
+    const scheduled = buildUpcomingTourStatusObservation(base);
+    assert.doesNotMatch(scheduled!.message, /all set/);
   });
 });
 

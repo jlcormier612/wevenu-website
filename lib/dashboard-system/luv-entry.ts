@@ -58,14 +58,13 @@ type Aggregate = { summary: (count: number) => string; suggestion: string; actio
  * Leads are intentionally omitted: aggregating Focus lead rows into a
  * "/leads?attention=stale_contact" CTA duplicates Today's Focus and the Leads
  * filter rather than interpreting anything new.
+ *
+ * Tasks are likewise omitted: Today's Focus already lists overdue tasks with
+ * lead names. "I noticed N tasks are past due. Want to clear them?" restates
+ * that list without prioritizing or enabling a workflow the Focus row does
+ * not already open. Silence (or a distinct live L1 observation) is preferred.
  */
 const DOMAIN_AGGREGATE: Record<string, Aggregate> = {
-  Tasks: {
-    summary: (n) => `${countWord(n, "task")} ${n === 1 ? "is" : "are"} past due.`,
-    suggestion: "Want to clear them?",
-    actionLabel: "Open tasks",
-    href: "/tasks",
-  },
   "Event Readiness": {
     summary: (n) => `${countWord(n, "booking")} ${n === 1 ? "has" : "have"} something still outstanding.`,
     suggestion: "Want to see what's missing?",

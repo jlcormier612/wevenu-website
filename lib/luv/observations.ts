@@ -49,7 +49,7 @@ import {
   buildS3UnattendedInquiryObservation,
 } from "@/lib/luv/contextual-signals";
 import { evaluateCompletedTour } from "@/lib/luv/completed-tour-intelligence";
-import { buildTourAllSetObservation } from "@/lib/luv/observation-quality";
+import { buildUpcomingTourStatusObservation } from "@/lib/luv/observation-quality";
 import { isAuthoritativeProposalSentRecord } from "@/lib/luv/pipeline-stage-evidence";
 import { loadUnattendedInquiryContactEvidence } from "@/lib/luv/unattended-inquiry-contact";
 import { getInvoices } from "@/lib/invoices/repository";
@@ -341,11 +341,11 @@ export async function getLuvObservations(
       .lte("expires_at", soon30)
       .order("expires_at"),
 
-    // 10: Upcoming tours (within 7 days) — high-value observation
+    // 10: Upcoming tours (within 7 days) — status-aware observation
     wantLead
       ? (() => {
           let q = supabase.from("tour_appointments")
-            .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id, status")
+            .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id, status, confirmation_requested_at")
             .eq("venue_id", venueId)
             .in("status", ["scheduled", "confirmed"])
             .gte("scheduled_at", today)
@@ -854,18 +854,25 @@ export async function getLuvObservations(
 
   // ── Upcoming tour appointments ───────────────────────────────────────────
   // Authoritative source: tour_appointments. Never sales_stage.
-  // Confirmed/scheduled with no unresolved issue → contextual all-set (no CTA)
-  // or silence. Do not manufacture "Make first contact" / "Prepare for the tour".
+  // Confirmed → all-set. Scheduled → unconfirmed language (never "all set").
+  // Completed / cancelled / no_show → silence here.
   const upcomingTours = (upcomingToursRes.data ?? []) as {
-    id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null; status: string | null;
+    id: string;
+    scheduled_at: string;
+    contact_name: string | null;
+    duration_minutes: number;
+    lead_id: string | null;
+    status: string | null;
+    confirmation_requested_at: string | null;
   }[];
   for (const tour of upcomingTours) {
     const tourDate = new Date(tour.scheduled_at);
     const du = Math.ceil((tourDate.getTime() - Date.now()) / 86_400_000);
-    const ready = buildTourAllSetObservation({
+    const ready = buildUpcomingTourStatusObservation({
       tourId: tour.id,
       scheduledAt: tour.scheduled_at,
       status: tour.status,
+      confirmationRequestedAt: tour.confirmation_requested_at,
       contactName: tour.contact_name,
       leadId: tour.lead_id,
       daysUntil: du,
