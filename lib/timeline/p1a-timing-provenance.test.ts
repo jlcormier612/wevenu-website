@@ -457,6 +457,8 @@ describe("P1a boundaries in source", () => {
 
   it("timeline edit form receives persisted timing for unknown and end attention", () => {
     assert.match(timelineView, /timing:\s*entry\.timing/);
+    assert.match(entryForm, /TimelineEntryFormInitial/);
+    assert.match(entryForm, /timing\?: TimingProvenance/);
     assert.match(entryForm, /timeline-timing-unknown/);
     assert.match(entryForm, /timeline-timing-end-attention/);
     assert.match(entryForm, /timeline-timing-controls/);

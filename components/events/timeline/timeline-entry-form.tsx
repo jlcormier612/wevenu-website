@@ -36,13 +36,21 @@ import type {
 import { VENUE_OWNED_DEFAULT_AUDIENCES } from "@/lib/timeline/audience-ownership";
 import { VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
 import { addDaysToIsoDate, timelineDayOptions } from "@/lib/timeline/constants";
-import { provenanceFromVenueChoice } from "@/lib/timeline/timing-provenance";
+import {
+  provenanceFromVenueChoice,
+  type TimingProvenance,
+} from "@/lib/timeline/timing-provenance";
 import type { TimelineDayAnchor } from "@/lib/timeline/timing-presentation";
 import type { StaffMember } from "@/lib/team/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
 
 const NO_SECTION = "__none__";
 const NO_ASSIGNEE = "__none__";
+
+/** Form seed: display fields plus read-model provenance (not a TimingWrite). */
+type TimelineEntryFormInitial = Omit<TimelineEntryInput, "timing"> & {
+  timing?: TimingProvenance;
+};
 
 export function TimelineEntryForm({
   eventId, venueId, entryId, sections, initial, onSave, onCancel, pending, submitLabel,
@@ -55,7 +63,7 @@ export function TimelineEntryForm({
   venueId: string;
   entryId: string | null;
   sections: TimelineSection[];
-  initial: TimelineEntryInput;
+  initial: TimelineEntryFormInitial;
   onSave: (input: TimelineEntryInput) => void;
   onCancel: () => void;
   pending: boolean;
