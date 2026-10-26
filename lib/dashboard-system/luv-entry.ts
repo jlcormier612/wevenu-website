@@ -59,10 +59,9 @@ type Aggregate = { summary: (count: number) => string; suggestion: string; actio
  * "/leads?attention=stale_contact" CTA duplicates Today's Focus and the Leads
  * filter rather than interpreting anything new.
  *
- * Tasks are likewise omitted: Today's Focus already lists overdue tasks with
- * lead names. "I noticed N tasks are past due. Want to clear them?" restates
- * that list without prioritizing or enabling a workflow the Focus row does
- * not already open. Silence (or a distinct live L1 observation) is preferred.
+ * Tasks are not count-aggregated ("N tasks are past due") — that restates
+ * Focus. When Tasks dominate and no other L1 wins, `interpretOverdueTaskPriority`
+ * may still offer a prioritized next step from Focus facts.
  */
 const DOMAIN_AGGREGATE: Record<string, Aggregate> = {
   "Event Readiness": {
@@ -250,6 +249,45 @@ export function aggregateFocusEntry(focusItems: ClassifiedItem[]): LuvDashboardE
   };
 }
 
+/**
+ * When overdue Tasks already appear in Today's Focus, do not restate the count.
+ * Instead pick the most time-sensitive overdue task (oldest due date) and offer
+ * that as a prioritized next step — interpretation Focus does not provide.
+ *
+ * Requires ≥2 overdue Focus Tasks with due dates so the priority is meaningful
+ * (a single listed task needs no ranking). Uses only Focus-published facts.
+ */
+export function interpretOverdueTaskPriority(
+  focusItems: ClassifiedItem[],
+): LuvDashboardEntry | null {
+  const tasks = focusItems.filter(
+    (i) =>
+      i.domain === "Tasks"
+      && i.rightLabel === "Overdue"
+      && typeof i.sortDate === "string"
+      && i.sortDate.length > 0
+      && i.label.trim().length > 0
+      && /\/leads\/[^/?#]+/i.test(i.href),
+  );
+  if (tasks.length < 2) return null;
+
+  const ranked = [...tasks].sort((a, b) => {
+    const da = a.sortDate!;
+    const db = b.sortDate!;
+    if (da !== db) return da < db ? -1 : 1;
+    return focusItems.indexOf(a) - focusItems.indexOf(b);
+  });
+  const pick = ranked[0]!;
+  const leadBit = pick.detail?.trim() ? ` for ${pick.detail.trim()}` : "";
+  return {
+    message:
+      `Among your overdue tasks, “${pick.label.trim()}”${leadBit} looks most time-sensitive.`,
+    suggestion: "Want to start there?",
+    actionLabel: "Open task",
+    actionHref: pick.href,
+  };
+}
+
 export function selectLuvDashboardEntry({
   focusItems,
   observations,
@@ -325,13 +363,27 @@ export function selectLuvDashboardEntry({
       candidate: aggregate.actionHref,
       path: "selectLuvDashboardEntry.focus_aggregate",
     });
-  } else {
-    forensicRecordL1({
-      source: "NONE",
-      type: null,
-      candidate: null,
-      path: "selectLuvDashboardEntry.none",
-    });
+    return aggregate;
   }
-  return aggregate;
+
+  // 4. Overdue Tasks already listed — prioritize the most time-sensitive one
+  //    instead of restating the count or going silent by default.
+  const tasksPriority = interpretOverdueTaskPriority(focusItems);
+  if (tasksPriority) {
+    forensicRecordL1({
+      source: "focus_aggregate",
+      type: "tasks_priority",
+      candidate: tasksPriority.actionHref,
+      path: "selectLuvDashboardEntry.tasks_priority",
+    });
+    return tasksPriority;
+  }
+
+  forensicRecordL1({
+    source: "NONE",
+    type: null,
+    candidate: null,
+    path: "selectLuvDashboardEntry.none",
+  });
+  return null;
 }

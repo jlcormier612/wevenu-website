@@ -1,0 +1,97 @@
+▶ Luv does not restate Today's Focus
+  ✔ skips an observation about a lead already listed in Today's Focus (1.393042ms)
+  ✔ still shows a Level-1 observation when Today's Focus covers other work (0.20075ms)
+  ✔ ignores query strings and fragments when deciding what is a repeat (0.07625ms)
+  ✔ does not let a persisted recommendation occupy L1 when a live source is present (0.488291ms)
+  ✔ observations carry a persistable observation dismiss id, not a recommendation id (0.101542ms)
+  ✔ skips a recently dismissed recommendation so refresh cannot resurrect it (0.10925ms)
+  ✔ skips the Leads stale-contact filter recommendation instead of duplicating Leads (0.072958ms)
+  ✔ skips a recommendation that only points back at a Focus row (0.070291ms)
+  ✔ says nothing at all when there is nothing to add (0.075834ms)
+  ✔ does not surface persisted tour_followup_pattern; Focus Calendar aggregate remains the fallback (0.165209ms)
+✔ Luv does not restate Today's Focus (3.746416ms)
+▶ Dashboard Level-1 eligibility (Product Lock attention model)
+  ✔ A. Level-3 single-lead observation cannot win when no Level-1 item exists (0.142834ms)
+  ✔ B. Level-1 item still wins the Dashboard slot (0.073583ms)
+  ✔ C. Level-3 item does not displace a valid Level-1 item (0.047666ms)
+  ✔ D. One Dashboard card maximum remains enforced (0.110334ms)
+  ✔ E. Focus duplicate suppression remains intact (0.051667ms)
+  ✔ F. tour-upcoming-* cannot surface as the global Dashboard card (0.11175ms)
+  ✔ G. V2 tour-no-followup suppression/cooldown unchanged when pattern is dismissed (0.062ms)
+  ✔ H. Level-3 intelligence is still present in the observation list (relocation, not deletion) (0.05075ms)
+  ✔ persisted recommendation cannot produce L1 over a Level-3 observation (0.0405ms)
+  ✔ record-scoped recommendation CTA is not Dashboard Level-1 (0.05825ms)
+✔ Dashboard Level-1 eligibility (Product Lock attention model) (0.87825ms)
+▶ Luv interprets Today's Focus when it has nothing new
+  ✔ does not aggregate Leads-only Focus into a stale-contact filter CTA (0.095125ms)
+  ✔ does not restate overdue Tasks already listed in Today's Focus (0.042333ms)
+  ✔ picks the domain with the most work among non-Leads/non-Tasks aggregates (0.063375ms)
+  ✔ reads Event Readiness as bookings with something outstanding (0.048333ms)
+  ✔ returns nothing for domains it has no interpretation for (0.043791ms)
+  ✔ does not promise to send or draft anything (0.121417ms)
+  ✔ Tasks-only Focus without lead task rows stays quiet (no inventable priority) (0.046583ms)
+  ✔ Tasks-only Focus with multiple overdue lead tasks prioritizes the oldest due (0.147708ms)
+  ✔ useful live L1 still wins when Focus has overdue tasks (0.066458ms)
+  ✔ Calendar Focus still surfaces Luv even when overdue Tasks also exist (0.073584ms)
+✔ Luv interprets Today's Focus when it has nothing new (0.859584ms)
+▶ Contextual intelligence S1–S4 stay off Dashboard L1
+  ✔ each S1–S4 observation fails the Level-1 gate (0.053167ms)
+  ✔ S1–S4 alone never occupy the Dashboard Luv card (0.032209ms)
+  ✔ Level-1 setup still wins when contextual L3 signals are present (0.067209ms)
+✔ Contextual intelligence S1–S4 stay off Dashboard L1 (0.199417ms)
+▶ Failure A — overdue tasks already on Focus
+  ✔ does not emit redundant past-due count + Want to clear them (0.810666ms)
+  ✔ still allows a distinct live L1 observation alongside overdue tasks (0.251292ms)
+✔ Failure A — overdue tasks already on Focus (1.534334ms)
+▶ Failure B — scheduled is not confirmed
+  ✔ scheduled cannot produce all-set / Good luck (13.86125ms)
+  ✔ confirmation request sent still does not claim recipient confirmed (0.1815ms)
+  ✔ confirmed may use all-set within the window (0.17225ms)
+  ✔ completed and cancelled do not surface as upcoming all-set (0.065917ms)
+✔ Failure B — scheduled is not confirmed (14.413041ms)
+▶ source locks — no parallel factuality engine
+  ✔ observations engine uses status dispatcher and confirmation_requested_at (1.709167ms)
+  ✔ all-set builder requires isAuthoritativeTourConfirmed (0.120584ms)
+  ✔ Tasks omitted from Focus aggregate map (priority path is separate) (0.142708ms)
+✔ source locks — no parallel factuality engine (2.078917ms)
+▶ intelligence recovery — overdue task priority
+  ✔ picks oldest due among Focus overdue tasks without restating the count (0.73825ms)
+  ✔ stays silent for a single overdue task (Focus already shows it) (0.070792ms)
+  ✔ selectLuvDashboardEntry uses tasks priority when Focus is Tasks-only (0.283958ms)
+✔ intelligence recovery — overdue task priority (1.760208ms)
+▶ intelligence recovery — confirmed tour celebration
+  ✔ celebrates confirmed tours with a logistics next step (15.265084ms)
+  ✔ still refuses celebration for scheduled-only (0.097458ms)
+✔ intelligence recovery — confirmed tour celebration (15.457958ms)
+▶ customer-facing contact evidence
+  ✔ internal notes are not contact (0.625667ms)
+  ✔ staff / system / customer messages on a real channel qualify (0.095625ms)
+  ✔ hasQualifyingCustomerContact uses records, not stage (0.102833ms)
+✔ customer-facing contact evidence (1.824125ms)
+▶ optional CTA — no dead same-page link
+  ✔ keeps a CTA that leaves the current record (0.18575ms)
+  ✔ omits a CTA that points at the current lead path (1.435458ms)
+  ✔ omits when there is no label (0.087458ms)
+✔ optional CTA — no dead same-page link (1.835167ms)
+▶ tour all-set — confirmed only, celebration + next step, 3-day window
+  ✔ silence when more than 3 days out, cancelled, or only scheduled (0.150916ms)
+  ✔ positive all-set only when status is confirmed, with logistics next step (57.698292ms)
+✔ tour all-set — confirmed only, celebration + next step, 3-day window (58.23325ms)
+▶ scheduled but unconfirmed tour factuality
+  ✔ does not claim all-set / good luck for scheduled tours (0.581833ms)
+  ✔ confirmation requested is still not recipient confirmation (0.257ms)
+  ✔ completed and cancelled stay silent via dispatcher (0.131583ms)
+  ✔ dispatcher routes confirmed vs scheduled correctly (0.24375ms)
+✔ scheduled but unconfirmed tour factuality (1.333041ms)
+▶ coordinator address
+  ✔ solo staff uses current user; multi uses owner when present (0.11025ms)
+  ✔ prefixes once (0.04725ms)
+✔ coordinator address (0.204334ms)
+ℹ tests 61
+ℹ suites 14
+ℹ pass 61
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 472.566667

@@ -147,9 +147,10 @@ describe("source locks — no parallel factuality engine", () => {
     assert.doesNotMatch(body, /isAuthoritativeTourScheduled/);
   });
 
-  it("Tasks omitted from Focus aggregate map", () => {
+  it("Tasks omitted from Focus aggregate map (priority path is separate)", () => {
     const src = readFileSync(resolve("lib/dashboard-system/luv-entry.ts"), "utf8");
-    assert.match(src, /Tasks are likewise omitted/);
+    assert.match(src, /Tasks are not count-aggregated/);
+    assert.match(src, /interpretOverdueTaskPriority/);
     assert.doesNotMatch(src, /Tasks:\s*\{\s*summary:/);
   });
 });

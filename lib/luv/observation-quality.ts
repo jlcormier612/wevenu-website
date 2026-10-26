@@ -134,12 +134,20 @@ export function buildTourAllSetObservation(input: {
     : weekdayLabelFromIso(input.scheduledAt, input.timeZone);
   const verb = couple.includes(" and ") || couple.includes("&") ? "are" : "is";
   const sentence = `${couple} ${verb} all set for ${when}. Good luck!`;
+  const href = input.leadId ? `/leads/${input.leadId}` : "/leads";
   return {
     id: `tour-upcoming-${input.tourId}`,
-    kind: "fact",
+    kind: "celebration",
     priority: input.daysUntil === 0 ? "high" : "medium",
     message: withCoordinatorAddress(input.coordinatorFirstName ?? null, sentence),
-    link: input.leadId ? `/leads/${input.leadId}` : "/leads",
+    detail: "Tour is confirmed — a quick logistics check on the lead keeps the day smooth.",
+    link: href,
+    actionLabel: "Open Lead →",
+    recommendation: {
+      label: "Review tour logistics",
+      link: href,
+      type: "navigate",
+    },
   };
 }
 

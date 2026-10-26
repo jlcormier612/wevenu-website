@@ -68,7 +68,7 @@ describe("optional CTA — no dead same-page link", () => {
   });
 });
 
-describe("tour all-set — confirmed only, no CTA, 3-day window", () => {
+describe("tour all-set — confirmed only, celebration + next step, 3-day window", () => {
   it("silence when more than 3 days out, cancelled, or only scheduled", () => {
     assert.equal(TOUR_ALL_SET_MAX_DAYS, 3);
     assert.equal(
@@ -106,7 +106,7 @@ describe("tour all-set — confirmed only, no CTA, 3-day window", () => {
     );
   });
 
-  it("positive all-set only when status is confirmed", () => {
+  it("positive all-set only when status is confirmed, with logistics next step", () => {
     const obs = buildTourAllSetObservation({
       tourId: "t1",
       scheduledAt: "2026-10-02T15:00:00Z",
@@ -116,9 +116,11 @@ describe("tour all-set — confirmed only, no CTA, 3-day window", () => {
       daysUntil: 2,
     });
     assert.ok(obs);
+    assert.equal(obs!.kind, "celebration");
     assert.match(obs!.message, /all set/);
-    assert.equal(obs!.recommendation, undefined);
-    assert.equal(obs!.actionLabel, undefined);
+    assert.match(obs!.detail ?? "", /confirmed/i);
+    assert.equal(obs!.actionLabel, "Open Lead →");
+    assert.equal(obs!.recommendation?.link, "/leads/L1");
     assert.equal(obs!.id, "tour-upcoming-t1");
   });
 });

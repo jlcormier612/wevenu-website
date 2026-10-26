@@ -446,7 +446,7 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
     }
   });
 
-  it("Tasks-only Focus stays quiet rather than repeating the overdue count", () => {
+  it("Tasks-only Focus without lead task rows stays quiet (no inventable priority)", () => {
     const entry = selectLuvDashboardEntry({
       focusItems: [
         focusItem({ id: "t1", domain: "Tasks", href: "/tasks" }),
@@ -456,6 +456,39 @@ describe("Luv interprets Today's Focus when it has nothing new", () => {
       recommendations: [],
     });
     assert.equal(entry, null);
+  });
+
+  it("Tasks-only Focus with multiple overdue lead tasks prioritizes the oldest due", () => {
+    const entry = selectLuvDashboardEntry({
+      focusItems: [
+        focusItem({
+          id: "t-new",
+          domain: "Tasks",
+          label: "Send floor plan",
+          detail: "Casey",
+          href: "/leads/a?tab=tasks",
+          rightLabel: "Overdue",
+          sortDate: "2026-10-20",
+        }),
+        focusItem({
+          id: "t-old",
+          domain: "Tasks",
+          label: "Call florist",
+          detail: "Morgan",
+          href: "/leads/b?tab=tasks",
+          rightLabel: "Overdue",
+          sortDate: "2026-10-01",
+        }),
+      ],
+      observations: [],
+      recommendations: [],
+    });
+    assert.ok(entry);
+    assert.match(entry!.message, /Call florist/i);
+    assert.match(entry!.message, /most time-sensitive/i);
+    assert.doesNotMatch(entry!.message, /past due|Want to clear/i);
+    assert.equal(entry!.actionHref, "/leads/b?tab=tasks");
+    assert.equal(entry!.suggestion, "Want to start there?");
   });
 
   it("useful live L1 still wins when Focus has overdue tasks", () => {
