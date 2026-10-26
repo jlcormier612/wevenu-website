@@ -663,33 +663,65 @@ async function main() {
     const page = await context.newPage();
     await page.goto(`${APP}/clients/${fx.clientId}`, { waitUntil: "domcontentloaded", timeout: 120_000 });
     await page.waitForTimeout(2500);
+    if ((await page.getByTestId("event-setup-panel").count()) === 0) {
+      const show = page.getByRole("button", { name: /Show setup/i });
+      if ((await show.count()) > 0) {
+        await show.click();
+        await page.waitForTimeout(1000);
+      }
+    }
+    await page.getByTestId("event-setup-panel").waitFor({ timeout: 30_000 }).catch(() => null);
     const prepareBtn = page.getByTestId("prepare-and-release-portal");
     const prepareVisible = await prepareBtn.count();
-    record("browser-prepare-control", prepareVisible > 0, `count=${prepareVisible} url=${page.url()}`);
+    record(
+      "browser-prepare-control",
+      prepareVisible > 0 || (await page.getByTestId("event-setup-panel").count()) > 0,
+      `prepare=${prepareVisible} panel=${await page.getByTestId("event-setup-panel").count()} url=${page.url()}`,
+    );
     if (prepareVisible > 0) {
+      // Ensure working has a content change so prepare creates a new release.
+      await admin
+        .from("timeline_entries")
+        .update({ title: `${PREFIX}doors-PREP` })
+        .eq("id", doors.id)
+        .eq("venue_id", FANCY);
       const { count: beforePrep } = await admin
         .from("venue_timeline_releases")
         .select("id", { count: "exact", head: true })
         .eq("event_id", fx.eventId);
+      const pointerBefore = (
+        await admin.from("events").select("active_venue_timeline_release_id").eq("id", fx.eventId).single()
+      ).data?.active_venue_timeline_release_id;
       await prepareBtn.click();
-      await page.waitForTimeout(4000);
+      await page.waitForTimeout(5000);
       await page.screenshot({ path: `${OUT}/shots/prepare-release-1280.png`, fullPage: true });
       const { count: afterPrep } = await admin
         .from("venue_timeline_releases")
         .select("id", { count: "exact", head: true })
         .eq("event_id", fx.eventId);
-      // Prepare may create a new release or no-op if already shared / blocked
+      const pointerAfter = (
+        await admin.from("events").select("active_venue_timeline_release_id").eq("id", fx.eventId).single()
+      ).data?.active_venue_timeline_release_id;
       record(
-        "browser-prepare-release-ran",
-        afterPrep !== null && afterPrep >= beforePrep!,
-        `before=${beforePrep} after=${afterPrep}`,
+        "browser-prepare-release-persisted",
+        (afterPrep ?? 0) > (beforePrep ?? 0) && pointerAfter !== null && pointerAfter !== pointerBefore,
+        `before=${beforePrep} after=${afterPrep} pointerBefore=${pointerBefore} pointerAfter=${pointerAfter}`,
+      );
+      const prepPortal = await portalVenueTitles(portalToken);
+      record(
+        "browser-prepare-portal-updated",
+        prepPortal.venue.some((e) => String(e.title).includes("doors")),
+        JSON.stringify(prepPortal.venue.map((e) => e.title)),
       );
       const body = await page.locator("body").innerText();
       record(
-        "browser-prepare-no-false-success-on-error",
-        !/Sharing didn't finish/i.test(body) || !/Shared with the couple/i.test(body),
+        "browser-prepare-truthful-feedback",
+        !(/Sharing didn't finish/i.test(body) && /Shared with the couple/i.test(body)),
         body.slice(0, 300),
       );
+    } else {
+      record("browser-prepare-release-persisted", false, "prepare button missing");
+      record("browser-prepare-portal-updated", false, "prepare button missing");
     }
 
     // Summary bar language after reload
