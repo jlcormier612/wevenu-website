@@ -2,29 +2,52 @@
 
 **Verdict: IN PROGRESS**
 
+Awaiting Sandbox serve of `62fa1f9eb208a9af8c0bc35a41aeb30a986c4e26`, then browser harness.
+
 ## Root causes
 
-1. Template editor exposed clock time and raw “Relative Time (min)” together without naming the anchor in the control.
-2. Event Timeline Setup used a bare “Day offset” number instead of event calendar days.
-3. Relative apply invented **noon** when Day-of schedule start was missing.
+1. Template editor showed clock time and raw **Relative Time (min)** together; the control did not name the reference.
+2. Event Timeline Setup used a bare **Day offset** number instead of this event’s calendar days.
+3. Relative apply invented **12:00 noon** when Day-of schedule start was missing.
 
-## Contract
+## Timing contract
 
-See `TIMING-CONTRACT.md`. Relative = Day-of schedule start only; bake at apply; specific clock is default.
+Documented in `TIMING-CONTRACT.md`:
 
-## Code (local; pending Sandbox serve)
+- Day = `day_offset` from `event_date` (Day 1 = event date).
+- Default = specific clock (`time_of_day` / `entry_time`).
+- Relative = minutes before/after **Day-of schedule start** (`events.start_time`) only; bake at apply; no live recalculation.
+- Missing start → no invented clock.
 
-- `lib/timeline/timing-presentation.ts` (+ tests)
-- `lib/timeline/constants.ts` — no noon invent
-- `lib/timeline-templates/constants.ts` — plain labels
-- `components/timeline-templates/timeline-template-editor.tsx` — timing modes
-- `components/events/event-timeline-setup-editor.tsx` + panel/detail props — day selector
-- `components/events/timeline-setup-card.tsx` — copy
+## Files changed
+
+| File | Why |
+|------|-----|
+| `lib/timeline/timing-presentation.ts` | Shared labels, modes, relative phrases |
+| `lib/timeline/constants.ts` | Remove noon invent |
+| `lib/timeline-templates/constants.ts` | Plain day/relative labels |
+| `timeline-template-editor.tsx` | Timing modes + named anchor |
+| `event-timeline-setup-editor.tsx` | Day selector with dates |
+| `event-setup-panel.tsx` / `event-detail.tsx` | Pass `eventEndDate` |
+| `timeline-setup-card.tsx` | Honest missing-start copy |
 
 ## Tests
 
-Unit: timing-presentation + relative-time-anchor (PASS locally). Browser: pending serving image.
+```text
+npx tsx --test lib/timeline/timing-presentation.test.ts \
+  lib/timeline/relative-time-anchor.test.ts \
+  lib/timeline-templates/starters.test.ts \
+  lib/timeline/chronological-order.test.ts \
+  lib/timeline/save-event-timeline-draft.test.ts
+→ 28 pass / 0 fail (unit-test.log)
+```
+
+## Deploy
+
+- Commit: `62fa1f9eb208a9af8c0bc35a41aeb30a986c4e26`
+- Run: https://github.com/jlcormier612/wevenu-website/actions/runs/40256987860 (queued)
+- Browser: `EXPECTED_SHA=62fa1f9eb208a9af8c0bc35a41aeb30a986c4e26 npx tsx docs/qa/timeline-timing-simplification/verify-browser.mts` — **not run yet** (image not serving)
 
 ## Production
 
-Untouched.
+**Untouched.**
