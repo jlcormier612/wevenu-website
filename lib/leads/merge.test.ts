@@ -333,6 +333,10 @@ describe("lead merge safety contracts (source)", () => {
     resolve("supabase/migrations/20261420400000_merge_preserve_inquiry.sql"),
     "utf8",
   );
+  const uuidFkMig = readFileSync(
+    resolve("supabase/migrations/20261423400000_merge_leads_uuid_fk_cast.sql"),
+    "utf8",
+  );
   const dialog = readFileSync(resolve("components/leads/merge-lead-dialog.tsx"), "utf8");
   const page = readFileSync(resolve("app/(app)/leads/[id]/page.tsx"), "utf8");
   const repo = readFileSync(resolve("lib/leads/repository.ts"), "utf8");
@@ -343,6 +347,12 @@ describe("lead merge safety contracts (source)", () => {
     assert.match(mergeTs, /stale/);
     assert.match(mergeTs, /fieldChoices/);
     assert.match(mergeTs, /tourCancelIds/);
+  });
+
+  it("merge_leads_v1 casts UUID FK patch columns (space + staff)", () => {
+    assert.match(uuidFkMig, /planned_event_space_id',\s*'assigned_staff_id'/);
+    assert.match(uuidFkMig, /\$1::uuid/);
+    assert.match(uuidFkMig, /create or replace function public\.merge_leads_v1/);
   });
 
   it("merge discovery searches name/email/phone and excludes current lead", () => {

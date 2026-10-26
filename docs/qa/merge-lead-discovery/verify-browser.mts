@@ -430,16 +430,15 @@ async function main() {
     await mergeCandidate.click();
     await dlg2.getByTestId("merge-preview-panel").waitFor({ state: "visible", timeout: 20_000 });
 
-    // Resolve any conflicts by selecting first radio in each group
-    const radios = dlg2.locator('input[type="radio"][name^="merge-field-"]');
-    const n = await radios.count();
-    const seen = new Set<string>();
-    for (let i = 0; i < n; i++) {
-      const radio = radios.nth(i);
-      const name = await radio.getAttribute("name");
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-      await radio.check({ force: true });
+    // Resolve conflicts via label click so controlled React state updates (not force-check alone)
+    {
+      const conflictBoxes = dlg2.locator('[data-testid^="merge-conflict-"], [data-testid="merge-inquiry-choices"]');
+      const conflictCount = await conflictBoxes.count();
+      for (let i = 0; i < conflictCount; i++) {
+        const firstLabel = conflictBoxes.nth(i).locator("label").first();
+        await firstLabel.click({ timeout: 5_000 });
+      }
+      record("confirm-path-conflicts-resolved", conflictCount > 0, `groups=${conflictCount}`);
     }
 
     const { data: preTour } = await admin.from("tour_appointments")
@@ -449,6 +448,11 @@ async function main() {
       JSON.stringify(preTour));
 
     await page.screenshot({ path: `${OUT}/shots/preview-before-confirm-1280.png`, fullPage: false });
+    record(
+      "confirm-continue-enabled",
+      !(await dlg2.getByTestId("merge-continue-to-confirm").isDisabled()),
+      "Continue ready after conflict choices",
+    );
     await dlg2.getByTestId("merge-continue-to-confirm").click();
     await dlg2.getByTestId("merge-final-confirm").waitFor({ state: "visible", timeout: 10_000 });
     await page.screenshot({ path: `${OUT}/shots/final-confirm-1280.png`, fullPage: false });
@@ -456,11 +460,21 @@ async function main() {
     const confirmBtn = dlg2.getByTestId("merge-lead-confirm");
     await confirmBtn.click();
     await Promise.race([
-      page.waitForURL((u: URL) => u.pathname.includes(`/leads/${mergeEarly.id}`), { timeout: 25_000 }).catch(() => null),
-      page.waitForTimeout(15_000),
+      page.waitForURL((u: URL) => u.pathname.includes(`/leads/${mergeEarly.id}`), { timeout: 45_000 }).catch(() => null),
+      dlg2.getByTestId("merge-final-confirm").waitFor({ state: "hidden", timeout: 45_000 }).catch(() => null),
+      page.waitForTimeout(20_000),
     ]);
     await page.waitForTimeout(1500);
-    record("redirect-to-survivor", page.url().includes(`/leads/${mergeEarly.id}`), page.url());
+    const toastText = await page.locator("[data-sonner-toast], li[data-sonner-toast]").allTextContents().catch(() => [] as string[]);
+    const redirected = page.url().includes(`/leads/${mergeEarly.id}`);
+    record(
+      "redirect-to-survivor",
+      redirected,
+      `${page.url()} | toast=${JSON.stringify(toastText)}`,
+    );
+    if (!redirected) {
+      await page.screenshot({ path: `${OUT}/shots/confirm-failed-1280.png`, fullPage: false });
+    }
 
     const { data: sec } = await admin.from("leads")
       .select("merged_into_lead_id, merged_at, first_name, email").eq("id", mergeLate.id).single();
