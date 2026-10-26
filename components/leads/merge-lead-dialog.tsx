@@ -280,7 +280,18 @@ export function MergeLeadDialog({
     setPreview(null);
     setPreviewError(null);
     setFinalConfirmOpen(false);
+    setExplicitPrimaryId(undefined);
+    setFieldChoices({});
+    setTourCancelIds([]);
     void runPreview(undefined, c.id);
+  }
+
+  function selectSurvivor(leadId: string) {
+    if (!preview || pending || previewing) return;
+    if (leadId === preview.primary.id) return;
+    setExplicitPrimaryId(leadId);
+    setFinalConfirmOpen(false);
+    void runPreview(leadId);
   }
 
   // Duplicate-review banner: auto-preview matched lead.
@@ -574,19 +585,20 @@ export function MergeLeadDialog({
           {preview ? (
             <div className="space-y-4" data-testid="merge-preview-panel">
               <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                {preview.primaryIsDefaultEarliest && !preview.needsExplicitPrimaryChoice ? (
-                  <p data-testid="merge-survivor-reason">
-                    Surviving lead is the earliest submission (
-                    {formatSubmitted(preview.primary.createdAt)}). You can choose the other lead
-                    below if that is incorrect.
-                  </p>
-                ) : preview.needsExplicitPrimaryChoice ? (
+                {preview.needsExplicitPrimaryChoice && !explicitPrimaryId ? (
                   <p data-testid="merge-survivor-reason">
                     Created times match — choose which lead survives before confirming.
                   </p>
+                ) : preview.primaryIsDefaultEarliest ? (
+                  <p data-testid="merge-survivor-reason">
+                    Surviving lead defaults to the earliest submission (
+                    {formatSubmitted(preview.primary.createdAt)}). Select the other lead below if
+                    that is incorrect.
+                  </p>
                 ) : (
                   <p data-testid="merge-survivor-reason">
-                    You overrode the earliest-submission default. Confirm the survivor below.
+                    You selected a survivor other than the earliest submission. Field choices below
+                    use this survivor as primary.
                   </p>
                 )}
               </div>
@@ -599,66 +611,87 @@ export function MergeLeadDialog({
                 </div>
               ) : null}
 
-              {(preview.needsExplicitPrimaryChoice || !preview.primaryIsDefaultEarliest) && (
-                <div className="space-y-2 rounded-md border border-border px-3 py-2">
-                  <p className="font-medium text-heading">Which lead survives?</p>
-                  {preview.needsExplicitPrimaryChoice ? (
-                    <p className="text-xs text-muted-foreground">
-                      Created times match — you must choose explicitly.
-                    </p>
-                  ) : null}
-                  <label className="flex gap-2">
+              <div
+                className="grid gap-2 sm:grid-cols-2"
+                role="radiogroup"
+                aria-label="Which lead survives"
+                data-testid="merge-survivor-radiogroup"
+              >
+                <label
+                  className={cn(
+                    "cursor-pointer rounded-md border px-3 py-2 transition-colors",
+                    "border-heading bg-muted/30 ring-1 ring-heading/30",
+                  )}
+                  data-testid="merge-preview-survivor"
+                  data-lead-id={preview.primary.id}
+                  data-role="survives"
+                >
+                  <span className="flex items-start gap-2">
                     <input
                       type="radio"
                       name="merge-primary"
-                      checked={preview.primary.id === (explicitPrimaryId ?? preview.primary.id)
-                        && (explicitPrimaryId === preview.primary.id || !explicitPrimaryId)}
-                      onChange={() => {
-                        setExplicitPrimaryId(preview.primary.id);
-                        void runPreview(preview.primary.id);
-                      }}
+                      className="mt-1"
+                      checked
+                      disabled={pending || previewing}
+                      onChange={() => selectSurvivor(preview.primary.id)}
+                      data-testid="merge-survivor-radio"
+                      data-lead-id={preview.primary.id}
                     />
-                    <span>
-                      {preview.primary.displayName} (created {new Date(preview.primary.createdAt).toLocaleString()})
-                      {preview.primaryIsDefaultEarliest ? " — earliest" : ""}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Survives
+                        {preview.primaryIsDefaultEarliest ? " · earliest" : ""}
+                      </span>
+                      <span className="block font-medium text-heading">{preview.primary.displayName}</span>
+                      {preview.primary.email ? (
+                        <span className="block text-muted-foreground">{preview.primary.email}</span>
+                      ) : null}
+                      {preview.primary.phone ? (
+                        <span className="block text-muted-foreground">{preview.primary.phone}</span>
+                      ) : null}
+                      <span className="block text-xs text-muted-foreground">
+                        Submitted {new Date(preview.primary.createdAt).toLocaleString()}
+                      </span>
                     </span>
-                  </label>
-                  <label className="flex gap-2">
+                  </span>
+                </label>
+                <label
+                  className={cn(
+                    "cursor-pointer rounded-md border px-3 py-2 transition-colors",
+                    "border-border hover:bg-muted/30",
+                  )}
+                  data-testid="merge-preview-secondary"
+                  data-lead-id={preview.secondary.id}
+                  data-role="marked-merged"
+                >
+                  <span className="flex items-start gap-2">
                     <input
                       type="radio"
                       name="merge-primary"
-                      checked={explicitPrimaryId === preview.secondary.id}
-                      onChange={() => {
-                        setExplicitPrimaryId(preview.secondary.id);
-                        void runPreview(preview.secondary.id);
-                      }}
+                      className="mt-1"
+                      checked={false}
+                      disabled={pending || previewing}
+                      onChange={() => selectSurvivor(preview.secondary.id)}
+                      data-testid="merge-survivor-radio"
+                      data-lead-id={preview.secondary.id}
                     />
-                    <span>
-                      {preview.secondary.displayName} (created {new Date(preview.secondary.createdAt).toLocaleString()})
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Marked merged
+                      </span>
+                      <span className="block font-medium text-heading">{preview.secondary.displayName}</span>
+                      {preview.secondary.email ? (
+                        <span className="block text-muted-foreground">{preview.secondary.email}</span>
+                      ) : null}
+                      {preview.secondary.phone ? (
+                        <span className="block text-muted-foreground">{preview.secondary.phone}</span>
+                      ) : null}
+                      <span className="block text-xs text-muted-foreground">
+                        Submitted {new Date(preview.secondary.createdAt).toLocaleString()}
+                      </span>
                     </span>
-                  </label>
-                </div>
-              )}
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="rounded-md border border-border bg-muted/30 px-3 py-2" data-testid="merge-preview-survivor">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Survives</p>
-                  <p className="font-medium text-heading">{preview.primary.displayName}</p>
-                  {preview.primary.email ? <p className="text-muted-foreground">{preview.primary.email}</p> : null}
-                  {preview.primary.phone ? <p className="text-muted-foreground">{preview.primary.phone}</p> : null}
-                  <p className="text-xs text-muted-foreground">
-                    Submitted {new Date(preview.primary.createdAt).toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-md border border-border px-3 py-2" data-testid="merge-preview-secondary">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Marked merged</p>
-                  <p className="font-medium text-heading">{preview.secondary.displayName}</p>
-                  {preview.secondary.email ? <p className="text-muted-foreground">{preview.secondary.email}</p> : null}
-                  {preview.secondary.phone ? <p className="text-muted-foreground">{preview.secondary.phone}</p> : null}
-                  <p className="text-xs text-muted-foreground">
-                    Submitted {new Date(preview.secondary.createdAt).toLocaleString()}
-                  </p>
-                </div>
+                  </span>
+                </label>
               </div>
 
               <div className="space-y-2">
@@ -735,11 +768,11 @@ export function MergeLeadDialog({
                 This permanently changes your records and cannot be undone automatically.
               </p>
               <ul className="list-disc space-y-1 pl-5 text-sm">
-                <li>
+                <li data-testid="merge-final-survivor" data-lead-id={preview.primary.id}>
                   Survives: <span className="font-medium text-heading">{preview.primary.displayName}</span>
                   {preview.primary.email ? ` (${preview.primary.email})` : ""}
                 </li>
-                <li>
+                <li data-testid="merge-final-merged" data-lead-id={preview.secondary.id}>
                   Marked merged: <span className="font-medium text-heading">{preview.secondary.displayName}</span>
                   {preview.secondary.email ? ` (${preview.secondary.email})` : ""}
                 </li>

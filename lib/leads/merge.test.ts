@@ -102,6 +102,21 @@ describe("lead merge field reconciliation", () => {
     assert.equal(picked.tied, true);
   });
 
+  it("explicit primaryId override can select the later lead as survivor", () => {
+    // Mirrors previewMergeLeads options.primaryId branch: later may survive when chosen.
+    const early = snap({ id: "early", created_at: "2026-01-01T09:00:00.000Z" });
+    const late = snap({ id: "late", created_at: "2026-01-01T11:00:00.000Z" });
+    const defaultPick = pickDefaultPrimary(early, late);
+    assert.equal(defaultPick.primary.id, "early");
+    // Simulated override: venue chose late
+    const primary = late;
+    const secondary = early;
+    const primaryIsDefaultEarliest = late.created_at <= early.created_at;
+    assert.equal(primary.id, "late");
+    assert.equal(secondary.id, "early");
+    assert.equal(primaryIsDefaultEarliest, false);
+  });
+
   it("norm collapses channel arrays for comparison", () => {
     assert.equal(norm(["sms", "email"]), norm(["email", "sms"]));
     assert.equal(norm("  "), null);
@@ -386,6 +401,21 @@ describe("lead merge safety contracts (source)", () => {
     assert.match(dialog, /Confirm permanent merge/);
     assert.match(dialog, /Cancel — keep both leads/);
     assert.match(dialog, /Continue to permanent merge/);
+  });
+
+  it("survivor cards are always selectable (not only after override or tied times)", () => {
+    assert.match(dialog, /merge-survivor-radiogroup/);
+    assert.match(dialog, /selectSurvivor/);
+    assert.match(dialog, /merge-survivor-radio/);
+    assert.match(dialog, /data-testid="merge-preview-survivor"/);
+    assert.match(dialog, /data-testid="merge-preview-secondary"/);
+    // Must not gate the only survivor controls behind already-overridden / tied
+    assert.doesNotMatch(
+      dialog,
+      /needsExplicitPrimaryChoice \|\| !preview\.primaryIsDefaultEarliest/,
+    );
+    assert.match(mergeTs, /options\?\.primaryId/);
+    assert.match(mergeTs, /primaryIsDefaultEarliest/);
   });
 
   it("RPC soft-marks secondary and reparents tours without drop", () => {

@@ -181,7 +181,7 @@ async function main() {
     assigned_staff_id: staffSecondaryId,
   });
 
-  // Confirm pair — actual merge (same FK shape so chosen staff/space persist)
+  // Confirm pair — default direction (earliest survives)
   const mergeEarly = await insertLead({
     first_name: "MergeEarly",
     last_name: `Ok${stamp}`,
@@ -201,6 +201,28 @@ async function main() {
     email: mergeEmail,
     phone: mergePhone,
     inquiry_message: `merge-late ${stamp}`,
+    planned_event_space_id: spaceId,
+    assigned_staff_id: staffSecondaryId,
+  });
+
+  // Reverse pair — later lead chosen as survivor
+  const revEmail = `merge-rev.${stamp}@hellotocheers-test.invalid`;
+  const revPhone = `666${String(stamp).slice(-7)}`;
+  const revEarly = await insertLead({
+    first_name: "RevEarly",
+    last_name: `Rev${stamp}`,
+    email: revEmail,
+    phone: null,
+    inquiry_message: `rev-early ${stamp}`,
+    assigned_staff_id: staffPrimaryId,
+  });
+  await new Promise((r) => setTimeout(r, 60));
+  const revLate = await insertLead({
+    first_name: "RevLate",
+    last_name: `Rev${stamp}`,
+    email: revEmail,
+    phone: revPhone,
+    inquiry_message: `rev-late ${stamp}`,
     planned_event_space_id: spaceId,
     assigned_staff_id: staffSecondaryId,
   });
@@ -232,45 +254,62 @@ async function main() {
 
   // Unique far-future day so reruns do not collide with prior fixture tours
   // (venue occupancy triggers reject overlapping slots).
-  let tour: { id: string; lead_id: string; status: string; scheduled_at: string } | null = null;
-  let tourIso = "";
-  let tourErrMsg = "";
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const day = 1 + ((stamp + attempt * 7) % 27);
-    const hour = 10 + (attempt % 6);
-    tourIso = new Date(Date.UTC(2030, 2, day, hour, 0, 0)).toISOString();
-    const { data, error } = await admin
-      .from("tour_appointments")
-      .insert({
-        venue_id: FANCY,
-        lead_id: mergeLate.id,
-        status: "scheduled",
-        scheduled_at: tourIso,
-        duration_minutes: 60,
-        contact_name: `MergeLate Ok${stamp}`,
-        contact_email: mergeEmail,
-        origin: "scheduled",
-      })
-      .select("id, lead_id, status, scheduled_at")
-      .single();
-    if (data && !error) {
-      tour = data;
-      break;
+  async function insertTour(opts: {
+    leadId: string;
+    contactName: string;
+    contactEmail: string;
+    dayOffset: number;
+  }) {
+    let lastErr = "";
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const day = 1 + ((stamp + opts.dayOffset + attempt * 7) % 27);
+      const hour = 10 + (attempt % 6);
+      const iso = new Date(Date.UTC(2030, 2, day, hour, 0, 0)).toISOString();
+      const { data, error } = await admin
+        .from("tour_appointments")
+        .insert({
+          venue_id: FANCY,
+          lead_id: opts.leadId,
+          status: "scheduled",
+          scheduled_at: iso,
+          duration_minutes: 60,
+          contact_name: opts.contactName,
+          contact_email: opts.contactEmail,
+          origin: "scheduled",
+        })
+        .select("id, lead_id, status, scheduled_at")
+        .single();
+      if (data && !error) return { tour: data, iso };
+      lastErr = error?.message ?? "no row";
     }
-    tourErrMsg = error?.message ?? "no row";
+    throw new Error(`tour fixture failed: ${lastErr}`);
   }
-  if (!tour) {
-    throw new Error(`tour fixture failed: ${tourErrMsg} @ ${tourIso}`);
-  }
+
+  const { tour, iso: tourIso } = await insertTour({
+    leadId: mergeLate.id,
+    contactName: `MergeLate Ok${stamp}`,
+    contactEmail: mergeEmail,
+    dayOffset: 0,
+  });
+  const { tour: revTour, iso: revTourIso } = await insertTour({
+    leadId: revEarly.id,
+    contactName: `RevEarly Rev${stamp}`,
+    contactEmail: revEmail,
+    dayOffset: 3,
+  });
   record("fixtures", true,
     JSON.stringify({
       cancelEarly: cancelEarly.id,
       cancelLate: cancelLate.id,
       mergeEarly: mergeEarly.id,
       mergeLate: mergeLate.id,
+      revEarly: revEarly.id,
+      revLate: revLate.id,
       decoy: decoy.id,
       tour: tour.id,
       tourIso,
+      revTour: revTour.id,
+      revTourIso,
     }));
 
   const browser = await chromium.launch({ headless: true });
@@ -343,6 +382,40 @@ async function main() {
       /CancelEarly/i.test(previewText) && /Survives/i.test(previewText),
       "earliest default");
     record("preview-survivor-reason", await dlg.getByTestId("merge-survivor-reason").isVisible(), "reason");
+    // Survivor selection always available (default earliest path)
+    const survivorGroup = dlg.getByTestId("merge-survivor-radiogroup");
+    record("survivor-radiogroup-visible", await survivorGroup.isVisible(), "always selectable");
+    const earlySurvivorRadio = dlg.locator(
+      `[data-testid="merge-survivor-radio"][data-lead-id="${cancelEarly.id}"]`,
+    );
+    const lateSurvivorRadio = dlg.locator(
+      `[data-testid="merge-survivor-radio"][data-lead-id="${cancelLate.id}"]`,
+    );
+    record("survivor-options-both-leads",
+      (await earlySurvivorRadio.count()) === 1 && (await lateSurvivorRadio.count()) === 1,
+      "both lead radios");
+    record("survivor-default-checked-earliest",
+      await earlySurvivorRadio.isChecked(),
+      "earliest radio checked");
+    // Switch to later lead as survivor — preview must reorient (no DB mutation yet)
+    await lateSurvivorRadio.click({ force: true });
+    await page.waitForTimeout(1500);
+    await dlg.getByTestId("merge-preview-panel").waitFor({ state: "visible", timeout: 20_000 });
+    const afterOverride = await dlg.innerText();
+    record("survivor-override-late-survives",
+      (await dlg.getByTestId("merge-preview-survivor").getAttribute("data-lead-id")) === cancelLate.id
+      && (await dlg.getByTestId("merge-preview-secondary").getAttribute("data-lead-id")) === cancelEarly.id
+      && /You selected a survivor other than the earliest/i.test(afterOverride),
+      "late is Survives");
+    await page.screenshot({ path: `${OUT}/shots/survivor-override-1280.png`, fullPage: false });
+    // Switch back to earliest — original direction restored
+    await dlg.locator(`[data-testid="merge-survivor-radio"][data-lead-id="${cancelEarly.id}"]`)
+      .click({ force: true });
+    await page.waitForTimeout(1500);
+    record("survivor-restore-earliest",
+      (await dlg.getByTestId("merge-preview-survivor").getAttribute("data-lead-id")) === cancelEarly.id
+      && (await dlg.getByTestId("merge-preview-secondary").getAttribute("data-lead-id")) === cancelLate.id,
+      "earliest restored");
     // FK labels — names shown, raw UUIDs not exposed in customer-facing preview text
     const fillSpace = dlg.getByTestId("merge-fill-planned_event_space_id");
     const conflictStaff = dlg.getByTestId("merge-conflict-assigned_staff_id");
@@ -514,6 +587,94 @@ async function main() {
       page.url());
     await page.screenshot({ path: `${OUT}/shots/survivor-after-merge-1280.png`, fullPage: false });
 
+    // ——— Reverse direction: later lead selected as survivor ———
+    await page.goto(`${APP}/leads/${revEarly.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.waitForTimeout(2500);
+    await page.getByTestId("merge-lead-open").click();
+    const dlgRev = page.getByTestId("merge-lead-dialog");
+    await dlgRev.waitFor({ state: "visible" });
+    await dlgRev.getByTestId("merge-find-duplicate").fill(revEmail);
+    await page.waitForTimeout(1200);
+    const revCandidate = dlgRev.locator(
+      `[data-testid="merge-candidate-row"][data-lead-id="${revLate.id}"]`,
+    );
+    await revCandidate.waitFor({ state: "visible", timeout: 15_000 });
+    await revCandidate.click();
+    await dlgRev.getByTestId("merge-preview-panel").waitFor({ state: "visible", timeout: 20_000 });
+    record("rev-default-earliest-survives",
+      (await dlgRev.getByTestId("merge-preview-survivor").getAttribute("data-lead-id")) === revEarly.id,
+      "RevEarly default");
+    // Choose later lead as survivor
+    await dlgRev.locator(`[data-testid="merge-survivor-radio"][data-lead-id="${revLate.id}"]`)
+      .click({ force: true });
+    await page.waitForTimeout(1500);
+    await dlgRev.getByTestId("merge-preview-panel").waitFor({ state: "visible", timeout: 20_000 });
+    record("rev-override-late-survives-ui",
+      (await dlgRev.getByTestId("merge-preview-survivor").getAttribute("data-lead-id")) === revLate.id
+      && (await dlgRev.getByTestId("merge-preview-secondary").getAttribute("data-lead-id")) === revEarly.id,
+      "RevLate Survives / RevEarly Marked merged");
+    await page.screenshot({ path: `${OUT}/shots/reverse-survivor-preview-1280.png`, fullPage: false });
+    // Switching survivor alone must not mutate DB
+    const { data: revEarlyMid } = await admin.from("leads")
+      .select("merged_into_lead_id").eq("id", revEarly.id).single();
+    const { data: revLateMid } = await admin.from("leads")
+      .select("merged_into_lead_id").eq("id", revLate.id).single();
+    record("rev-switch-alone-no-mutation",
+      revEarlyMid?.merged_into_lead_id == null && revLateMid?.merged_into_lead_id == null,
+      JSON.stringify({ early: revEarlyMid, late: revLateMid }));
+    {
+      const conflictBoxes = dlgRev.locator('[data-testid^="merge-conflict-"], [data-testid="merge-inquiry-choices"]');
+      const conflictCount = await conflictBoxes.count();
+      for (let i = 0; i < conflictCount; i++) {
+        await conflictBoxes.nth(i).locator("label").first().click({ timeout: 5_000 });
+      }
+    }
+    await dlgRev.getByTestId("merge-continue-to-confirm").click();
+    await dlgRev.getByTestId("merge-final-confirm").waitFor({ state: "visible", timeout: 10_000 });
+    record("rev-final-confirm-survivor-id",
+      (await dlgRev.getByTestId("merge-final-survivor").getAttribute("data-lead-id")) === revLate.id,
+      "final confirm names late survivor");
+    record("rev-final-confirm-merged-id",
+      (await dlgRev.getByTestId("merge-final-merged").getAttribute("data-lead-id")) === revEarly.id,
+      "final confirm names early merged");
+    await page.screenshot({ path: `${OUT}/shots/reverse-final-confirm-1280.png`, fullPage: false });
+    await dlgRev.getByTestId("merge-lead-confirm").click();
+    await Promise.race([
+      page.waitForURL((u: URL) => u.pathname.includes(`/leads/${revLate.id}`), { timeout: 45_000 }).catch(() => null),
+      page.waitForTimeout(20_000),
+    ]);
+    await page.waitForTimeout(1500);
+    const revToast = await page.locator("[data-sonner-toast], li[data-sonner-toast]").allTextContents().catch(() => [] as string[]);
+    record("rev-redirect-to-late-survivor",
+      page.url().includes(`/leads/${revLate.id}`),
+      `${page.url()} | toast=${JSON.stringify(revToast)}`);
+    const { data: revSec } = await admin.from("leads")
+      .select("merged_into_lead_id, merged_at, first_name").eq("id", revEarly.id).single();
+    const { data: revPrim } = await admin.from("leads")
+      .select("merged_into_lead_id, first_name, phone, planned_event_space_id, assigned_staff_id")
+      .eq("id", revLate.id).single();
+    const { data: revTourAfter } = await admin.from("tour_appointments")
+      .select("id, lead_id, status, scheduled_at").eq("id", revTour.id).single();
+    record("rev-early-soft-marked",
+      revSec?.merged_into_lead_id === revLate.id && !!revSec?.merged_at,
+      JSON.stringify(revSec));
+    record("rev-late-survives-unmerged",
+      revPrim?.merged_into_lead_id == null && revPrim?.first_name === "RevLate",
+      JSON.stringify(revPrim));
+    record("rev-phone-on-late-survivor", revPrim?.phone === revPhone, revPrim?.phone ?? "");
+    record("rev-tour-on-late-survivor",
+      revTourAfter?.id === revTour.id
+      && revTourAfter?.lead_id === revLate.id
+      && revTourAfter?.status === "scheduled"
+      && tourAtMs(revTourAfter?.scheduled_at) === tourAtMs(revTourIso),
+      JSON.stringify(revTourAfter));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2000);
+    record("rev-ui-after-reload",
+      /RevLate/i.test(await page.locator("body").innerText()) && page.url().includes(revLate.id),
+      page.url());
+    await page.screenshot({ path: `${OUT}/shots/reverse-survivor-after-merge-1280.png`, fullPage: false });
+
     // Self-select blocked: searching for current lead's own last name should not list self;
     // Continue stays disabled without a valid other candidate selected.
     await page.goto(`${APP}/leads/${cancelEarly.id}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
@@ -539,7 +700,10 @@ async function main() {
     cancelLateId: cancelLate.id,
     mergeEarlyId: mergeEarly.id,
     mergeLateId: mergeLate.id,
+    revEarlyId: revEarly.id,
+    revLateId: revLate.id,
     tourId: tour.id,
+    revTourId: revTour.id,
     mergeEmailRedacted: `merge-ok.…@hellotocheers-test.invalid`,
     phoneTokenRedacted: `555…`,
   };
