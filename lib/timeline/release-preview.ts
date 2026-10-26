@@ -161,3 +161,24 @@ export function holdOutIdsMatch(
   }
   return true;
 }
+
+/**
+ * Working is "ahead of release" only when there is a prior release and the
+ * working fingerprint differs from the fingerprint stored on that release.
+ * Held-out unresolved items are included in the fingerprint (they are working
+ * state) but are not claimed as released.
+ */
+export function workingAheadOfReleaseStatus(input: {
+  hasPriorRelease: boolean;
+  workingFingerprint: string;
+  lastWorkingFingerprint: string | null | undefined;
+}): { hasPriorRelease: boolean; workingAheadOfRelease: boolean } {
+  if (!input.hasPriorRelease) {
+    return { hasPriorRelease: false, workingAheadOfRelease: false };
+  }
+  const last = input.lastWorkingFingerprint ?? null;
+  return {
+    hasPriorRelease: true,
+    workingAheadOfRelease: last == null || last !== input.workingFingerprint,
+  };
+}

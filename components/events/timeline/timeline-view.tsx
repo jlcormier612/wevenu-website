@@ -905,6 +905,7 @@ export function TimelineView({
   const [releaseHint, setReleaseHint] = React.useState<{
     hasPriorRelease: boolean;
     lastReleasedAt: string | null;
+    workingAheadOfRelease: boolean;
   } | null>(null);
   React.useEffect(() => {
     if (!eventId) {
@@ -917,6 +918,7 @@ export function TimelineView({
       setReleaseHint({
         hasPriorRelease: preview.hasPriorRelease,
         lastReleasedAt: preview.lastReleasedAt,
+        workingAheadOfRelease: preview.workingAheadOfRelease,
       });
     });
     return () => {
@@ -966,6 +968,7 @@ export function TimelineView({
       setReleaseHint({
         hasPriorRelease: preview.hasPriorRelease,
         lastReleasedAt: preview.lastReleasedAt,
+        workingAheadOfRelease: preview.workingAheadOfRelease,
       });
       if (preview.blocksRelease.length > 0) {
         const titles = preview.blocksRelease.map((b) => String(b.title ?? "Item")).slice(0, 5).join(", ");
@@ -1005,6 +1008,7 @@ export function TimelineView({
       setReleaseHint({
         hasPriorRelease: true,
         lastReleasedAt: result.releasedAt ?? new Date().toISOString(),
+        workingAheadOfRelease: false,
       });
       toast.success(
         result.idempotentReplay
@@ -1025,7 +1029,7 @@ export function TimelineView({
           itemCount={0}
           lastUpdated={lastUpdatedIso}
           clientShareStatus={clientShareStatus}
-          releaseStatus={eventId ? { ...releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null }, workingAheadOfRelease: false } : null}
+          releaseStatus={eventId ? (releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null, workingAheadOfRelease: false }) : null}
         />
         {dayOfWindowStrip}
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
@@ -1062,7 +1066,7 @@ export function TimelineView({
         itemCount={totalCount}
         lastUpdated={lastUpdatedIso}
         clientShareStatus={clientShareStatus}
-        releaseStatus={eventId ? { ...releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null }, workingAheadOfRelease: Boolean(releaseHint?.hasPriorRelease) } : null}
+        releaseStatus={eventId ? (releaseHint ?? { hasPriorRelease: false, lastReleasedAt: null, workingAheadOfRelease: false }) : null}
       />
       {dayOfWindowStrip}
 

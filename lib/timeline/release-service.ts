@@ -16,6 +16,8 @@ export type TimelineReleasePreviewResult =
       canRelease: boolean;
       lastReleasedAt: string | null;
       workingFingerprint: string;
+      lastWorkingFingerprint: string | null;
+      workingAheadOfRelease: boolean;
       hasPriorRelease: boolean;
     }
   | { ok: false; message: string; error?: string; detail?: unknown };
@@ -64,6 +66,9 @@ export async function previewVenueTimelineRelease(
     canRelease: Boolean(d.canRelease),
     lastReleasedAt: (d.lastReleasedAt as string | null) ?? null,
     workingFingerprint: String(d.workingFingerprint ?? ""),
+    lastWorkingFingerprint:
+      typeof d.lastWorkingFingerprint === "string" ? d.lastWorkingFingerprint : null,
+    workingAheadOfRelease: Boolean(d.workingAheadOfRelease),
     hasPriorRelease: Boolean(d.hasPriorRelease),
   };
 }

@@ -12,6 +12,7 @@ import {
   holdOutIdsMatch,
   isUnresolvedTimingAttention,
   UNRESOLVED_ATTENTIONS,
+  workingAheadOfReleaseStatus,
   workingTimelineFingerprint,
   type ReleasePreviewItem,
 } from "@/lib/timeline/release-preview";
@@ -163,6 +164,65 @@ describe("G1-A classifyVenueTimelineReleasePreview", () => {
     assert.equal(workingTimelineFingerprint(a), workingTimelineFingerprint(b));
     const changed = [item({ id: "1", title: "A!", updatedAt: "t1" }), item({ id: "2", title: "B", updatedAt: "t2" })];
     assert.notEqual(workingTimelineFingerprint(a), workingTimelineFingerprint(changed));
+  });
+});
+
+describe("workingAheadOfReleaseStatus", () => {
+  it("no prior release → not ahead", () => {
+    assert.deepEqual(
+      workingAheadOfReleaseStatus({
+        hasPriorRelease: false,
+        workingFingerprint: "abc",
+        lastWorkingFingerprint: null,
+      }),
+      { hasPriorRelease: false, workingAheadOfRelease: false },
+    );
+  });
+
+  it("identical fingerprints → in sync", () => {
+    assert.deepEqual(
+      workingAheadOfReleaseStatus({
+        hasPriorRelease: true,
+        workingFingerprint: "abc",
+        lastWorkingFingerprint: "abc",
+      }),
+      { hasPriorRelease: true, workingAheadOfRelease: false },
+    );
+  });
+
+  it("changed fingerprint → working ahead", () => {
+    assert.deepEqual(
+      workingAheadOfReleaseStatus({
+        hasPriorRelease: true,
+        workingFingerprint: "abc",
+        lastWorkingFingerprint: "old",
+      }),
+      { hasPriorRelease: true, workingAheadOfRelease: true },
+    );
+  });
+
+  it("prior release with missing last fingerprint → treat as ahead", () => {
+    assert.equal(
+      workingAheadOfReleaseStatus({
+        hasPriorRelease: true,
+        workingFingerprint: "abc",
+        lastWorkingFingerprint: null,
+      }).workingAheadOfRelease,
+      true,
+    );
+  });
+});
+
+describe("P1b gap-closure migration source", () => {
+  it("adds working-ahead preview fields, entry locks, and sandbox fault wrapper", () => {
+    const mig = read("supabase/migrations/20261423900000_venue_timeline_release_gap_closure.sql");
+    assert.match(mig, /workingAheadOfRelease/);
+    assert.match(mig, /lastWorkingFingerprint/);
+    assert.match(mig, /for update/i);
+    assert.match(mig, /htc\.venue_timeline_release_force_fail/);
+    assert.match(mig, /confirm_venue_timeline_release_sandbox_fault/);
+    assert.match(mig, /grant execute on function public\.confirm_venue_timeline_release_sandbox_fault.*service_role/);
+    assert.doesNotMatch(mig, /grant execute on function public\.confirm_venue_timeline_release_sandbox_fault.*authenticated/);
   });
 });
 
