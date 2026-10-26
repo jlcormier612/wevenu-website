@@ -64,7 +64,7 @@ comment on column public.events.active_venue_timeline_release_id is
 -- ── Snapshot builder for one venue-owned working row ─────────────────────────
 
 create or replace function public._venue_timeline_entry_release_json(
-  p_entry public.timeline_entries,
+  p_entry_id uuid,
   p_venue_id uuid
 )
 returns jsonb
@@ -73,25 +73,25 @@ stable
 set search_path = public
 as $$
   select jsonb_build_object(
-    'id', p_entry.id,
-    'title', p_entry.title,
-    'description', p_entry.description,
-    'entryTime', p_entry.entry_time,
-    'endTime', p_entry.end_time,
-    'dayOffset', coalesce(p_entry.day_offset, 0),
-    'sectionId', p_entry.section_id,
-    'sortOrder', p_entry.sort_order,
-    'owner', p_entry.owner,
-    'lockState', p_entry.lock_state,
-    'audiences', to_jsonb(p_entry.audiences),
-    'timingDayIntent', p_entry.timing_day_intent,
-    'timingDayAnchor', p_entry.timing_day_anchor,
-    'timingRelativeDayOffset', p_entry.timing_relative_day_offset,
-    'timingFixedDate', p_entry.timing_fixed_date,
-    'timingClockIntent', p_entry.timing_clock_intent,
-    'timingRelativeMinutes', p_entry.timing_relative_minutes,
-    'timingAttention', p_entry.timing_attention,
-    'updatedAt', p_entry.updated_at,
+    'id', te.id,
+    'title', te.title,
+    'description', te.description,
+    'entryTime', te.entry_time,
+    'endTime', te.end_time,
+    'dayOffset', coalesce(te.day_offset, 0),
+    'sectionId', te.section_id,
+    'sortOrder', te.sort_order,
+    'owner', te.owner,
+    'lockState', te.lock_state,
+    'audiences', to_jsonb(te.audiences),
+    'timingDayIntent', te.timing_day_intent,
+    'timingDayAnchor', te.timing_day_anchor,
+    'timingRelativeDayOffset', te.timing_relative_day_offset,
+    'timingFixedDate', te.timing_fixed_date,
+    'timingClockIntent', te.timing_clock_intent,
+    'timingRelativeMinutes', te.timing_relative_minutes,
+    'timingAttention', te.timing_attention,
+    'updatedAt', te.updated_at,
     'links', (
       select coalesce(
         jsonb_agg(jsonb_build_object(
@@ -100,7 +100,7 @@ as $$
         '[]'::jsonb
       )
       from public.timeline_entry_links l
-      where l.timeline_entry_id = p_entry.id and l.venue_id = p_venue_id
+      where l.timeline_entry_id = te.id and l.venue_id = p_venue_id
     ),
     'attachments', (
       select coalesce(
@@ -113,9 +113,11 @@ as $$
       )
       from public.timeline_entry_attachments a
       join public.documents d on d.id = a.document_id
-      where a.timeline_entry_id = p_entry.id and a.venue_id = p_venue_id
+      where a.timeline_entry_id = te.id and a.venue_id = p_venue_id
     )
-  );
+  )
+  from public.timeline_entries te
+  where te.id = p_entry_id and te.venue_id = p_venue_id;
 $$;
 
 -- ── Classification helpers ───────────────────────────────────────────────────
