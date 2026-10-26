@@ -456,6 +456,14 @@ export async function keepDuplicateSeparateAction(leadId: string) {
   return result;
 }
 
+export async function searchMergeLeadCandidatesAction(
+  currentLeadId: string,
+  query: string,
+) {
+  const { searchMergeLeadCandidates } = await import("@/lib/leads/merge");
+  return searchMergeLeadCandidates(currentLeadId, query);
+}
+
 export async function previewMergeLeadsAction(
   leadAId: string,
   leadBId: string,

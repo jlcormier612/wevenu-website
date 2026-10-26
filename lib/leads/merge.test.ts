@@ -185,12 +185,41 @@ describe("lead merge safety contracts (source)", () => {
   const dialog = readFileSync(resolve("components/leads/merge-lead-dialog.tsx"), "utf8");
   const page = readFileSync(resolve("app/(app)/leads/[id]/page.tsx"), "utf8");
   const repo = readFileSync(resolve("lib/leads/repository.ts"), "utf8");
+  const actions = readFileSync(resolve("app/(app)/leads/[id]/actions.ts"), "utf8");
 
   it("confirm uses atomic RPC and revalidates stale timestamps", () => {
     assert.match(mergeTs, /merge_leads_v1/);
     assert.match(mergeTs, /stale/);
     assert.match(mergeTs, /fieldChoices/);
     assert.match(mergeTs, /tourCancelIds/);
+  });
+
+  it("merge discovery searches name/email/phone and excludes current lead", () => {
+    assert.match(mergeTs, /searchMergeLeadCandidates/);
+    assert.match(mergeTs, /phone\.ilike/);
+    assert.match(mergeTs, /partner_email\.ilike/);
+    assert.match(mergeTs, /neq\("id", currentLeadId\)/);
+    assert.match(mergeTs, /merged_into_lead_id/);
+    assert.match(actions, /searchMergeLeadCandidatesAction/);
+    const searchFn = mergeTs.slice(
+      mergeTs.indexOf("export async function searchMergeLeadCandidates"),
+      mergeTs.indexOf("export type ConfirmMergeInput"),
+    );
+    assert.ok(searchFn.length > 200);
+    assert.doesNotMatch(searchFn, /merge_leads_v1|confirmMergeLeads|\.rpc\(/);
+    assert.match(searchFn, /\.from\("leads"\)/);
+  });
+
+  it("dialog is search-first and requires selection before preview", () => {
+    assert.match(dialog, /Find the duplicate lead/);
+    assert.match(dialog, /merge-find-duplicate/);
+    assert.match(dialog, /merge-candidate-row/);
+    assert.match(dialog, /Select a duplicate lead before previewing/);
+    assert.match(dialog, /Paste lead ID \(troubleshooting\)/);
+    assert.doesNotMatch(dialog, /Paste the duplicate lead’s ID/);
+    assert.match(dialog, /cannot merge a lead into itself/);
+    assert.match(dialog, /merge-survivor-reason/);
+    assert.match(dialog, /earliest submission/);
   });
 
   it("RPC soft-marks secondary and reparents tours without drop", () => {

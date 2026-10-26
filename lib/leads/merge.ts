@@ -80,6 +80,121 @@ export type MergeLeadCard = {
   mergedIntoLeadId: string | null;
 };
 
+/** Concise row for Merge Lead search — discovery only; never auto-merges. */
+export type MergeSearchCandidate = {
+  id: string;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+  partnerDisplayName: string | null;
+  partnerEmail: string | null;
+  eventDate: string | null;
+  createdAt: string;
+  salesStage: string | null;
+};
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const MERGE_SEARCH_SELECT =
+  "id, first_name, last_name, email, phone, partner_first_name, partner_last_name, partner_email, event_date, created_at, sales_stage";
+
+type MergeSearchRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  partner_first_name: string | null;
+  partner_last_name: string | null;
+  partner_email: string | null;
+  event_date: string | null;
+  created_at: string;
+  sales_stage: string | null;
+};
+
+function mapSearchCandidate(row: MergeSearchRow): MergeSearchCandidate {
+  const partnerParts = [row.partner_first_name, row.partner_last_name].filter(Boolean);
+  return {
+    id: row.id,
+    displayName: leadDisplayName(
+      row.first_name,
+      row.last_name,
+      row.partner_first_name,
+      row.partner_last_name,
+    ),
+    email: row.email,
+    phone: row.phone,
+    partnerDisplayName: partnerParts.length ? partnerParts.join(" ") : null,
+    partnerEmail: row.partner_email,
+    eventDate: row.event_date,
+    createdAt: row.created_at,
+    salesStage: row.sales_stage,
+  };
+}
+
+/**
+ * Venue-scoped lead search for Merge Lead discovery.
+ * Read-only. Excludes the current lead and soft-merged secondaries.
+ * Does not merge — caller must select a candidate and confirm separately.
+ */
+export async function searchMergeLeadCandidates(
+  currentLeadId: string,
+  query: string,
+): Promise<{ ok: true; candidates: MergeSearchCandidate[] } | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired. Please sign in again." };
+
+  const q = query.trim();
+  if (!q) return { ok: true, candidates: [] };
+  if (q.length < 2 && !UUID_RE.test(q)) {
+    return { ok: true, candidates: [] };
+  }
+
+  // Same ilike shape as getLeads / schedule relation search, plus phone + partner_email
+  // so venue users can find duplicates the way they talk about them.
+  const pattern = `%${q}%`;
+  const orClause = [
+    `first_name.ilike.${pattern}`,
+    `last_name.ilike.${pattern}`,
+    `email.ilike.${pattern}`,
+    `phone.ilike.${pattern}`,
+    `partner_first_name.ilike.${pattern}`,
+    `partner_last_name.ilike.${pattern}`,
+    `partner_email.ilike.${pattern}`,
+  ].join(",");
+
+  let qb = supabase
+    .from("leads")
+    .select(MERGE_SEARCH_SELECT)
+    .eq("venue_id", venue.id)
+    .is("merged_into_lead_id", null)
+    .neq("id", currentLeadId);
+
+  if (UUID_RE.test(q)) {
+    qb = qb.or(`id.eq.${q},${orClause}`);
+  } else {
+    qb = qb.or(orClause);
+  }
+
+  const { data, error } = await qb
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    return { ok: false, message: error.message || "Search failed." };
+  }
+
+  const candidates = ((data ?? []) as MergeSearchRow[])
+    .filter((row) => row.id !== currentLeadId)
+    .map(mapSearchCandidate);
+
+  return { ok: true, candidates };
+}
+
 export type ConfirmMergeInput = {
   primaryId: string;
   secondaryId: string;
