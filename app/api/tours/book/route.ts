@@ -6,6 +6,10 @@ import type { BookingResult } from "@/lib/tours/types";
 type BookPayload = {
   key: string; slotStart: string;
   firstName: string; lastName: string; partnerName: string;
+  /** Optional structured partner fields from the shared inquiry/tour form. */
+  partnerFirst?: string | null;
+  partnerLast?: string | null;
+  partnerEmail?: string | null;
   email: string; phone: string; eventType: string;
   eventDate: string; guestCount: number | null; notes: string;
   turnstileToken?: string | null;
@@ -25,7 +29,12 @@ export async function POST(request: Request) {
     const forwardedFor = request.headers.get("x-forwarded-for");
     const ipAddress = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
     const result: BookingResult = await bookTour(body.key, body.slotStart, {
-      firstName: body.firstName, lastName: body.lastName, partnerName: body.partnerName ?? "",
+      firstName: body.firstName,
+      lastName: body.lastName,
+      partnerName: body.partnerName ?? "",
+      partnerFirst: body.partnerFirst ?? null,
+      partnerLast: body.partnerLast ?? null,
+      partnerEmail: body.partnerEmail ?? null,
       email: body.email, phone: body.phone ?? "", eventType: body.eventType ?? "",
       eventDate: body.eventDate ?? "", guestCount: body.guestCount ?? null, notes: body.notes ?? "",
     }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null, sourceData: body.sourceData ?? {}, originToken: body.originToken ?? null });

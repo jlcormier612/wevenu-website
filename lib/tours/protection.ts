@@ -115,6 +115,9 @@ export async function startProtectedTour(opts: {
     firstName: string;
     lastName: string;
     partnerName: string;
+    partnerFirst?: string | null;
+    partnerLast?: string | null;
+    partnerEmail?: string | null;
     email: string;
     phone: string;
     eventType: string;
@@ -179,7 +182,9 @@ export async function startProtectedTour(opts: {
       input: {
         firstName: opts.fields.firstName,
         lastName: opts.fields.lastName,
-        partnerFirstName: opts.fields.partnerName,
+        partnerFirstName: opts.fields.partnerFirst?.trim() || opts.fields.partnerName || null,
+        partnerLastName: opts.fields.partnerLast?.trim() || null,
+        partnerEmail: opts.fields.partnerEmail?.trim() || null,
         email: opts.fields.email,
         phone: opts.fields.phone,
         eventType: opts.fields.eventType,
@@ -195,6 +200,8 @@ export async function startProtectedTour(opts: {
             firstName: normalized.firstName,
             lastName: normalized.lastName,
             partnerFirstName: normalized.partnerFirstName ?? opts.fields.partnerName,
+            partnerLastName: normalized.partnerLastName ?? opts.fields.partnerLast ?? "",
+            partnerEmail: normalized.partnerEmail ?? opts.fields.partnerEmail ?? "",
             email: normalized.email ?? "",
             phone: normalized.phone ?? "",
             eventType: normalized.eventType ?? "",

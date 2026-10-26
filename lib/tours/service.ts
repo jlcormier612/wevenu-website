@@ -431,10 +431,48 @@ async function bookPublicTourOntoExistingLead(opts: {
   };
 }
 
+export type PublicTourBookFields = {
+  firstName: string;
+  lastName: string;
+  partnerName: string;
+  partnerFirst?: string | null;
+  partnerLast?: string | null;
+  partnerEmail?: string | null;
+  email: string;
+  phone: string;
+  eventType: string;
+  eventDate: string;
+  guestCount: number | null;
+  notes: string;
+};
+
+/**
+ * book_tour historically stores a single partnerName into partner_first_name.
+ * When the shared inquiry/tour form sends structured partner fields (including
+ * partner email), persist them onto the lead after create — column already exists.
+ */
+async function applyStructuredPartnerFieldsToLead(
+  admin: ReturnType<typeof createAdminClient>,
+  venueId: string,
+  leadId: string,
+  fields: PublicTourBookFields,
+): Promise<void> {
+  const partnerFirst = fields.partnerFirst?.trim() || null;
+  const partnerLast = fields.partnerLast?.trim() || null;
+  const partnerEmail = fields.partnerEmail?.trim().toLowerCase() || null;
+  if (!partnerFirst && !partnerLast && !partnerEmail) return;
+  const update: Record<string, string | null> = {};
+  if (partnerFirst) update.partner_first_name = partnerFirst;
+  if (partnerLast) update.partner_last_name = partnerLast;
+  if (partnerEmail) update.partner_email = partnerEmail;
+  if (Object.keys(update).length === 0) return;
+  await admin.from("leads").update(update).eq("id", leadId).eq("venue_id", venueId);
+}
+
 export async function bookTour(
   key: string,
   slotStart: string,
-  fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: number | null; notes: string },
+  fields: PublicTourBookFields,
   opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null; sourceData?: Record<string, unknown>; originToken?: string | null },
 ): Promise<BookingResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
@@ -511,7 +549,9 @@ export async function bookTour(
     input: {
       firstName: fields.firstName,
       lastName: fields.lastName,
-      partnerFirstName: fields.partnerName,
+      partnerFirstName: fields.partnerFirst?.trim() || fields.partnerName || null,
+      partnerLastName: fields.partnerLast?.trim() || null,
+      partnerEmail: fields.partnerEmail?.trim() || null,
       email: fields.email,
       phone: fields.phone,
       eventType: fields.eventType,
@@ -547,6 +587,7 @@ export async function bookTour(
         .update({ inquiry_message_origin: "customer" })
         .eq("id", d.leadId as string)
         .eq("venue_id", venueRow.id);
+      await applyStructuredPartnerFieldsToLead(admin, venueRow.id, d.leadId as string, fields);
       if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
       const { count } = await admin.from("leads")
         .select("id", { count: "exact", head: true })

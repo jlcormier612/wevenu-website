@@ -366,6 +366,7 @@ export function InquiryForm({
   const [phone, setPhone] = React.useState(existingLeadTour?.phone ?? "");
   const [partnerFirst, setPartnerFirst] = React.useState("");
   const [partnerLast, setPartnerLast] = React.useState("");
+  const [partnerEmail, setPartnerEmail] = React.useState("");
   const [eventType, setEventType] = React.useState(existingLeadTour?.eventType ?? "");
   const seededDate = (() => {
     // Existing-lead preferred date is display-only. Never seed it into mutable
@@ -570,7 +571,7 @@ export function InquiryForm({
           body: JSON.stringify({
             embedKey,
             firstName, lastName, email, phone,
-            partnerFirst, partnerLast,
+            partnerFirst, partnerLast, partnerEmail: partnerEmail.trim() || null,
             eventType, eventDate,
             guestCount: guestCount ? parseInt(guestCount, 10) : null,
             estimatedBudget: budget ? parseFloat(budget.replace(/[$,]/g, "")) : null,
@@ -604,6 +605,8 @@ export function InquiryForm({
             slotStart: selectedTourSlot.start,
             firstName, lastName,
             partnerName: [partnerFirst, partnerLast].filter(Boolean).join(" "),
+            partnerFirst, partnerLast,
+            partnerEmail: partnerEmail.trim() || null,
             email, phone, eventType, eventDate: submitEventDate,
             guestCount: guestCount ? parseInt(guestCount, 10) : null,
             notes: message,
@@ -791,11 +794,40 @@ export function InquiryForm({
             </div>
 
             {fields.partner !== "hidden" && (
-              <div className="border-t border-gray-100 pt-4 space-y-1.5">
+              <div className="border-t border-gray-100 pt-4 space-y-1.5" data-testid="inquiry-partner-fields">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{fieldLabel("Partner / Co-host", fields.partner)}</p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <input placeholder="Partner first name" value={partnerFirst} onChange={(e) => setPartnerFirst(e.target.value)} className={inputClass} />
-                  <input placeholder="Partner last name" value={partnerLast} onChange={(e) => setPartnerLast(e.target.value)} className={inputClass} />
+                  <input
+                    placeholder="Partner first name"
+                    value={partnerFirst}
+                    onChange={(e) => setPartnerFirst(e.target.value)}
+                    className={inputClass}
+                    data-testid="inquiry-partner-first"
+                    autoComplete="off"
+                  />
+                  <input
+                    placeholder="Partner last name"
+                    value={partnerLast}
+                    onChange={(e) => setPartnerLast(e.target.value)}
+                    className={inputClass}
+                    data-testid="inquiry-partner-last"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-foreground" htmlFor="inquiry-partner-email">
+                    Partner email
+                  </label>
+                  <input
+                    id="inquiry-partner-email"
+                    type="email"
+                    placeholder="partner@example.com"
+                    value={partnerEmail}
+                    onChange={(e) => setPartnerEmail(e.target.value)}
+                    className={inputClass}
+                    data-testid="inquiry-partner-email"
+                    autoComplete="off"
+                  />
                 </div>
                 {fieldErrors.partner && <p className="text-xs text-red-600">{fieldErrors.partner}</p>}
               </div>
