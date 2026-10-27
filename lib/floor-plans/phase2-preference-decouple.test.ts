@@ -78,6 +78,10 @@ describe("Phase 2 — ensureWorkingLayoutForEvent decoupling", () => {
     );
     assert.match(ensure, /ambiguous_offers/);
     assert.match(ensure, /shared_with_couple: true/);
+    // Share must succeed before the working pointer is written (§9.2).
+    const soleSeed = ensure.slice(ensure.indexOf("Sole-offer simple path"));
+    assert.match(soleSeed, /shared_with_couple: true[\s\S]+operational_floor_plan_id: floorPlanId/);
+    assert.match(soleSeed, /Sole-offer seed could not set layout share/);
     assert.doesNotMatch(ensure, /client_access:\s*"view"/);
     assert.doesNotMatch(ensure, /couple_selected_floor_plan_id:\s*floorPlanId/);
   });

@@ -176,20 +176,28 @@ export async function ensureWorkingLayoutForEvent(
     created = true;
   }
 
-  // Sole-offer simple path: seed working + layout share only.
+  // Sole-offer simple path: seed layout share first, then working pointer.
   // Do not set couple_selected, preference approval, or seating (client_access).
-  await supabase
-    .from("events")
-    .update({ operational_floor_plan_id: floorPlanId })
-    .eq("id", eventId)
-    .eq("venue_id", venueId);
-
-  await supabase
+  // Share before operational so a failed share cannot leave a working layout unshared.
+  const { data: sharedRow, error: shareError } = await supabase
     .from("floor_plans")
     .update({ shared_with_couple: true })
     .eq("id", floorPlanId)
     .eq("venue_id", venueId)
-    .eq("event_id", eventId);
+    .eq("event_id", eventId)
+    .select("id, shared_with_couple")
+    .maybeSingle<{ id: string; shared_with_couple: boolean }>();
+  if (shareError) throw shareError;
+  if (!sharedRow || sharedRow.shared_with_couple !== true) {
+    throw new Error("Sole-offer seed could not set layout share on the working plan.");
+  }
+
+  const { error: operationalError } = await supabase
+    .from("events")
+    .update({ operational_floor_plan_id: floorPlanId })
+    .eq("id", eventId)
+    .eq("venue_id", venueId);
+  if (operationalError) throw operationalError;
 
   return {
     ok: true,
