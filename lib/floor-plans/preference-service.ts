@@ -116,9 +116,13 @@ export async function decideCoupleFloorPlanPreference(
     );
     const operationalId = row.operational_floor_plan_id;
     const currentSeatCount = operationalId
-      ? await repo.countGuestSeatAssignments(supabase, operationalId)
+      ? await repo.countGuestSeatAssignments(supabase, operationalId, venueId)
       : 0;
-    const preferredSeatCount = await repo.countGuestSeatAssignments(supabase, preferredId);
+    const preferredSeatCount = await repo.countGuestSeatAssignments(
+      supabase,
+      preferredId,
+      venueId,
+    );
     const approvalCase = classifyPreferenceApprovalCase({
       currentOperationalId: operationalId,
       preferredId,

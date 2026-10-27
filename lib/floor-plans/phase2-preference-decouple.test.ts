@@ -248,6 +248,18 @@ describe("Phase 2 — venue UX + authorization surface", () => {
     assert.match(preferenceService, /FLOOR_PLAN_EDIT_DENIED|canEditFloorPlans/);
   });
 
+  it("seat counts authorize via floor_plans then read assignments with admin (staff RLS gap)", () => {
+    const repoSrc = readFileSync(
+      new URL("./repository.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(repoSrc, /countGuestSeatAssignmentsForEvent/);
+    assert.match(repoSrc, /createAdminClient/);
+    assert.match(repoSrc, /staff JWT cannot read guest_seat_assignments/);
+    assert.match(preferenceService, /countGuestSeatAssignments\(\s*supabase,\s*operationalId,\s*venueId/);
+    assert.match(preferenceService, /countGuestSeatAssignments\(\s*supabase,\s*preferredId,\s*venueId/);
+  });
+
   it("schema adds preference lifecycle + seating-in-use distinct from client_layout_status", () => {
     assert.match(migration, /couple_preference_status/);
     assert.match(migration, /couple_approved_floor_plan_id/);

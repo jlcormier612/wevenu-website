@@ -342,11 +342,30 @@ export async function updateEventFloorPlanPreferenceState(
   if (error) throw error;
 }
 
-/** Count seat assignments on a plan — for Case A/B/C classification only. */
+/**
+ * Count seat assignments on a plan — for Case A/B/C classification only.
+ *
+ * `guest_seat_assignments` is RLS-enabled with no usable venue staff policy after
+ * the floor-plan seating rewrite (legacy policy still keyed off removed table_id).
+ * Authorize via the caller's client (floor_plans venue scope), then count with the
+ * service-role client. Never call without a prior venue/plan membership check.
+ */
 export async function countGuestSeatAssignments(
-  client: DbClient, floorPlanId: string,
+  client: DbClient, floorPlanId: string, venueId?: string,
 ): Promise<number> {
-  const { count, error } = await client
+  if (venueId) {
+    const { data: plan, error: planError } = await client
+      .from("floor_plans")
+      .select("id")
+      .eq("id", floorPlanId)
+      .eq("venue_id", venueId)
+      .maybeSingle();
+    if (planError) throw planError;
+    if (!plan) return 0;
+  }
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const admin = createAdminClient();
+  const { count, error } = await admin
     .from("guest_seat_assignments")
     .select("guest_id", { count: "exact", head: true })
     .eq("floor_plan_id", floorPlanId);
@@ -368,7 +387,10 @@ export async function countGuestSeatAssignmentsForEvent(
   const out: Record<string, number> = {};
   for (const id of ids) out[id] = 0;
   if (ids.length === 0) return out;
-  const { data: rows, error } = await client
+  // See countGuestSeatAssignments — staff JWT cannot read guest_seat_assignments directly.
+  const { createAdminClient } = await import("@/integrations/supabase/admin");
+  const admin = createAdminClient();
+  const { data: rows, error } = await admin
     .from("guest_seat_assignments")
     .select("floor_plan_id")
     .in("floor_plan_id", ids);
