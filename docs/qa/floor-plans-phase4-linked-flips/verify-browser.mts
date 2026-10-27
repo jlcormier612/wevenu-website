@@ -439,7 +439,7 @@ async function main() {
     persisted.beforeLink = beforeLinkSnap;
 
     await context.addCookies(await staffCookies());
-    await page.goto(`${APP}/events/${eventId}/floor-plans`, { waitUntil: "networkidle", timeout: 120_000 });
+    await page.goto(`${APP}/events/${eventId}?tab=floorplan`, { waitUntil: "networkidle", timeout: 120_000 });
     await page.waitForSelector('[data-testid="floor-plan-flip-panel"]', { timeout: 60_000 });
 
     // P4-6 / P4-7: panel present but collapsed; no forced warning on load
@@ -586,7 +586,7 @@ async function main() {
     );
 
     // Portal UI: no notes / no auto flip claim
-    await page.goto(`${APP}/portal/${token}`, { waitUntil: "networkidle", timeout: 120_000 });
+    await page.goto(`${APP}/p/${token}`, { waitUntil: "networkidle", timeout: 120_000 });
     const portalText = await page.locator("body").innerText();
     record(
       "P4-9_portal_ui_no_notes_no_auto",
@@ -596,7 +596,7 @@ async function main() {
     await page.screenshot({ path: `${OUT}/shots/portal-1280.png`, fullPage: true });
 
     // Unlink
-    await page.goto(`${APP}/events/${eventId}/floor-plans`, { waitUntil: "networkidle", timeout: 120_000 });
+    await page.goto(`${APP}/events/${eventId}?tab=floorplan`, { waitUntil: "networkidle", timeout: 120_000 });
     await page.waitForSelector('[data-testid="floor-plan-flip-panel"]', { timeout: 60_000 });
     if ((await page.locator('[data-testid="floor-plan-flip-unlink"]').count()) === 0) {
       await page.click('[data-testid="floor-plan-flip-toggle"]');
@@ -660,7 +660,7 @@ async function main() {
     simpleLeadId = simple.leadId;
     simplePlanId = await insertPlan(simpleEventId, `${PREFIX}Only Layout`, TPL_A, { shared: true });
     createdPlanIds.push(simplePlanId);
-    await page.goto(`${APP}/events/${simpleEventId}/floor-plans`, {
+    await page.goto(`${APP}/events/${simpleEventId}?tab=floorplan`, {
       waitUntil: "networkidle",
       timeout: 120_000,
     });
@@ -695,7 +695,7 @@ async function main() {
     }
 
     // Retry unlink when already gone (idempotent)
-    await page.goto(`${APP}/events/${eventId}/floor-plans`, { waitUntil: "networkidle", timeout: 120_000 });
+    await page.goto(`${APP}/events/${eventId}?tab=floorplan`, { waitUntil: "networkidle", timeout: 120_000 });
     await page.waitForSelector('[data-testid="floor-plan-flip-panel"]', { timeout: 60_000 });
     await page.click('[data-testid="floor-plan-flip-toggle"]');
     // Should show form (unlinked), not error partial state
