@@ -182,6 +182,15 @@ export async function updateTemplate_(id: string, input: TemplateInput): Promise
   const errors = validateTemplateInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    const existing = await repo.getTemplate(supabase, venueId, id);
+    if (!existing) return { ok: false, message: "Template not found." } as ContractActionResult;
+    if (existing.sourceMasterKey) {
+      return {
+        ok: false,
+        message:
+          "Customize this Hello to Cheers starter to create your venue’s editable copy. The original starter stays unchanged.",
+      } as ContractActionResult;
+    }
     await repo.updateTemplate(supabase, venueId, id, input);
     return { ok: true } as ContractActionResult;
   });

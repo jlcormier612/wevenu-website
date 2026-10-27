@@ -184,12 +184,17 @@ export async function insertTemplate(client: DbClient, venueId: string, input: T
 }
 
 export async function updateTemplate(client: DbClient, venueId: string, id: string, input: TemplateInput): Promise<void> {
+  const existing = await getTemplate(client, venueId, id);
+  if (!existing) throw new Error("Template not found.");
+  // HTC starters stay immutable — Customize (duplicate without master key) is
+  // the ownership path. Never clear source_master_key while editing the starter
+  // row in place; that would mutate the original starter.
+  if (existing.sourceMasterKey) {
+    throw new Error("STARTER_PROTECTED");
+  }
   if (input.isDefault) {
     await client.from("contract_templates").update({ is_default: false }).eq("venue_id", venueId).neq("id", id);
   }
-  // First venue edit clears source_master_key so CTR-01 means an uncustomized
-  // system-provided starter. Setup-ready counts and the Starter badge follow
-  // that meaning. Provision refresh never uses the key alone to overwrite.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contract_templates") as any)
     .update({
@@ -197,7 +202,6 @@ export async function updateTemplate(client: DbClient, venueId: string, id: stri
       description: input.description.trim() || null,
       content: input.content,
       is_default: input.isDefault,
-      source_master_key: null,
     })
     .eq("id", id).eq("venue_id", venueId);
   if (error) throw error;

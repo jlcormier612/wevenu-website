@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DeleteTemplateButton } from "@/components/communication/delete-template-button";
+import { MessageStarterEditGate } from "@/components/communication/message-starter-edit-gate";
 import { TemplateForm } from "@/components/communication/template-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,21 @@ export default async function EditMessageTemplatePage({ params, searchParams }: 
   const returnTo = safeReturnTo(sp.returnTo);
   const template = await getTemplate(id);
   if (!template) notFound();
+
+  const isStarter = Boolean(template.sourceMasterKey);
+
+  if (isStarter) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={template.name}
+          description="Hello to Cheers starter — customize to create your venue’s editable copy."
+        />
+        <MessageStarterEditGate templateId={template.id} templateName={template.name} />
+      </div>
+    );
+  }
+
   const [attachments, venueDocuments] = await Promise.all([
     getTemplateAttachments(id),
     getVenueDocuments(),
