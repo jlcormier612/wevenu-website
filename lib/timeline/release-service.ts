@@ -13,8 +13,10 @@ export type TimelineReleasePreviewResult =
       heldOut: Array<Record<string, unknown>>;
       blocksRelease: Array<Record<string, unknown>>;
       softWarnings: Array<Record<string, unknown>>;
+      removedFromRelease: Array<Record<string, unknown>>;
       canRelease: boolean;
       lastReleasedAt: string | null;
+      releaseBaselineId: string | null;
       workingFingerprint: string;
       lastWorkingFingerprint: string | null;
       workingAheadOfRelease: boolean;
@@ -63,8 +65,13 @@ export async function previewVenueTimelineRelease(
     softWarnings: Array.isArray(d.softWarnings)
       ? (d.softWarnings as Array<Record<string, unknown>>)
       : [],
+    removedFromRelease: Array.isArray(d.removedFromRelease)
+      ? (d.removedFromRelease as Array<Record<string, unknown>>)
+      : [],
     canRelease: Boolean(d.canRelease),
     lastReleasedAt: (d.lastReleasedAt as string | null) ?? null,
+    releaseBaselineId:
+      typeof d.releaseBaselineId === "string" ? d.releaseBaselineId : null,
     workingFingerprint: String(d.workingFingerprint ?? ""),
     lastWorkingFingerprint:
       typeof d.lastWorkingFingerprint === "string" ? d.lastWorkingFingerprint : null,

@@ -8,9 +8,11 @@ import { describe, it } from "node:test";
 
 import {
   classifyVenueTimelineReleasePreview,
+  computeRemovedFromRelease,
   fixedDateOutsidePlanningPad,
   holdOutIdsMatch,
   isUnresolvedTimingAttention,
+  previewConfirmFingerprint,
   UNRESOLVED_ATTENTIONS,
   workingAheadOfReleaseStatus,
   workingTimelineFingerprint,
@@ -167,6 +169,70 @@ describe("G1-A classifyVenueTimelineReleasePreview", () => {
   });
 });
 
+describe("computeRemovedFromRelease", () => {
+  it("lists last-release ids absent from working by identity only", () => {
+    const removed = computeRemovedFromRelease(
+      [
+        { id: "keep", title: "Keep me" },
+        { id: "gone", title: "Remove me" },
+      ],
+      new Set(["keep", "held"]),
+    );
+    assert.deepEqual(removed, [{ id: "gone", title: "Remove me" }]);
+  });
+
+  it("returns empty with no prior release items", () => {
+    assert.deepEqual(computeRemovedFromRelease([], new Set(["a"])), []);
+  });
+
+  it("does not treat never-released or retained working items as removals", () => {
+    const removed = computeRemovedFromRelease(
+      [{ id: "released", title: "Still there" }],
+      new Set(["released", "brand-new"]),
+    );
+    assert.equal(removed.length, 0);
+  });
+
+  it("does not classify held-out / blocked working rows as removals", () => {
+    const last = [{ id: "prior", title: "Was shared" }];
+    // prior still exists in working (e.g. blocked unresolved) → not a removal
+    assert.deepEqual(computeRemovedFromRelease(last, new Set(["prior"])), []);
+    const classified = classifyVenueTimelineReleasePreview(
+      [item({ id: "prior", title: "Was shared", timingAttention: "unknown_intent" })],
+      new Set(["prior"]),
+      "2026-10-10",
+    );
+    assert.equal(classified.blocksRelease.length, 1);
+    assert.equal(
+      computeRemovedFromRelease(last, new Set(classified.blocksRelease.map((b) => b.id))).length,
+      0,
+    );
+  });
+
+  it("never matches removals by title", () => {
+    const removed = computeRemovedFromRelease(
+      [{ id: "id-1", title: "Ceremony" }],
+      new Set(["id-2"]), // different id, same title would be wrong to match
+    );
+    assert.deepEqual(removed, [{ id: "id-1", title: "Ceremony" }]);
+    assert.equal(
+      computeRemovedFromRelease([{ id: "id-1", title: "Ceremony" }], new Set(["id-1"])).length,
+      0,
+    );
+  });
+});
+
+describe("previewConfirmFingerprint", () => {
+  it("embeds release baseline so pointer changes invalidate confirm tokens", () => {
+    assert.equal(previewConfirmFingerprint("abc", null), "abc|");
+    assert.equal(previewConfirmFingerprint("abc", "rel-1"), "abc|rel-1");
+    assert.notEqual(
+      previewConfirmFingerprint("abc", "rel-1"),
+      previewConfirmFingerprint("abc", "rel-2"),
+    );
+  });
+});
+
 describe("workingAheadOfReleaseStatus", () => {
   it("no prior release → not ahead", () => {
     assert.deepEqual(
@@ -223,6 +289,24 @@ describe("P1b gap-closure migration source", () => {
     assert.match(mig, /confirm_venue_timeline_release_sandbox_fault/);
     assert.match(mig, /grant execute on function public\.confirm_venue_timeline_release_sandbox_fault.*service_role/);
     assert.doesNotMatch(mig, /grant execute on function public\.confirm_venue_timeline_release_sandbox_fault.*authenticated/);
+  });
+});
+
+describe("T3 removal-preview migration source", () => {
+  it("adds removedFromRelease and baseline-bound confirm fingerprint", () => {
+    const mig = read("supabase/migrations/20261424200000_venue_timeline_release_removal_preview.sql");
+    assert.match(mig, /removedFromRelease/);
+    assert.match(mig, /releaseBaselineId/);
+    assert.match(mig, /v_fp_confirm := v_fp_working \|\| '\|' \|\| coalesce/);
+    assert.match(mig, /nullif\(trim\(coalesce\(p_idempotency_key, ''\)\), ''\), v_fp_working/);
+    assert.doesNotMatch(mig, /title\s+ilike|lower\(\s*.*title/i);
+  });
+
+  it("UI discloses removals in the existing confirm dialog", () => {
+    const view = read("components/events/timeline/timeline-view.tsx");
+    assert.match(view, /removedFromRelease/);
+    assert.match(view, /Items being removed from the couple/);
+    assert.match(view, /Confirming this release will remove these items/);
   });
 });
 

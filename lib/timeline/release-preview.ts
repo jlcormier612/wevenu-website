@@ -126,6 +126,44 @@ export function classifyVenueTimelineReleasePreview(
   };
 }
 
+export type RemovedFromReleaseItem = {
+  id: string;
+  title: string;
+};
+
+/**
+ * Previously released items absent from current working (deleted) — identity only.
+ * Held-out / blocked rows still present in working are NOT removals.
+ * No prior release → empty. Never matches by title.
+ */
+export function computeRemovedFromRelease(
+  lastReleasedItems: readonly Pick<RemovedFromReleaseItem, "id" | "title">[],
+  workingIds: ReadonlySet<string>,
+): RemovedFromReleaseItem[] {
+  if (lastReleasedItems.length === 0) return [];
+  const out: RemovedFromReleaseItem[] = [];
+  const seen = new Set<string>();
+  for (const item of lastReleasedItems) {
+    const id = String(item.id ?? "");
+    if (!id || seen.has(id) || workingIds.has(id)) continue;
+    seen.add(id);
+    out.push({ id, title: String(item.title ?? "Item") });
+  }
+  return out;
+}
+
+/**
+ * Confirm token = working fingerprint + last-release baseline id.
+ * Stored release.working_fingerprint remains working-only for workingAhead.
+ * Must stay in sync with SQL preview/confirm.
+ */
+export function previewConfirmFingerprint(
+  workingFingerprint: string,
+  releaseBaselineId: string | null | undefined,
+): string {
+  return `${workingFingerprint}|${releaseBaselineId ?? ""}`;
+}
+
 /** Fingerprint used to reject stale confirmations (must match SQL helper). */
 export function workingTimelineFingerprint(
   working: readonly Pick<

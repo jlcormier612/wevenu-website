@@ -988,8 +988,14 @@ export function TimelineView({
       const holdNote = holdTitles.length
         ? `\n\nNot shared yet — needs your decision:\n- ${holdTitles.slice(0, 8).join("\n- ")}`
         : "";
+      const removalTitles = preview.removedFromRelease.map((r) => String(r.title ?? "Item"));
+      const removalNote = removalTitles.length
+        ? `\n\nItems being removed from the couple’s schedule:\n- ${removalTitles.slice(0, 12).join("\n- ")}${
+            removalTitles.length > 12 ? `\n- …and ${removalTitles.length - 12} more` : ""
+          }\n\nConfirming this release will remove these items from the schedule the couple sees.`
+        : "";
       const ok = confirm(
-        `Review what the couple will receive.\n\nWill share: ${preview.willShare.length} item(s).${holdNote}${soft}\n\nNo email is sent. Continue?`,
+        `Review what the couple will receive.\n\nWill share: ${preview.willShare.length} item(s).${holdNote}${removalNote}${soft}\n\nNo email is sent. Continue?`,
       );
       if (!ok) return;
       const idempotencyKey =
