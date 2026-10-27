@@ -529,6 +529,103 @@ export function emptyDependentGroupInput(
   };
 }
 
+/**
+ * Plain-language selection rule → existing group fields.
+ * Exact N (required): minSelect = maxSelect = N.
+ * Choose one (required): single / 1 / 1.
+ * Optional with a cap: multi / 0 / N.
+ * Optional any number: multi / 0 / null.
+ */
+export type PlainSelectionRuleInput = {
+  /** How many the couple should select. Null = any number (optional path). */
+  selectCount: number | null;
+  required: boolean;
+};
+
+export function resolvePlainSelectionRule(input: PlainSelectionRuleInput): {
+  selectionMode: "single" | "multi";
+  minSelect: number;
+  maxSelect: number | null;
+} {
+  const count =
+    input.selectCount != null && Number.isFinite(input.selectCount) && input.selectCount > 0
+      ? Math.floor(input.selectCount)
+      : null;
+  if (count === 1) {
+    return {
+      selectionMode: "single",
+      minSelect: input.required ? 1 : 0,
+      maxSelect: 1,
+    };
+  }
+  if (count != null && count > 1) {
+    return {
+      selectionMode: "multi",
+      minSelect: input.required ? count : 0,
+      maxSelect: count,
+    };
+  }
+  // Any number
+  return {
+    selectionMode: "multi",
+    minSelect: input.required ? 1 : 0,
+    maxSelect: null,
+  };
+}
+
+/** Venue-owner-facing summary of an existing group's selection rule. */
+export function plainSelectionRuleLabel(
+  g: Pick<EventOrderTemplateGroup, "selectionMode" | "minSelect" | "maxSelect">,
+): string {
+  if (g.selectionMode === "single") {
+    if (g.minSelect > 0) return "Choose 1";
+    return "Optional — choose up to 1";
+  }
+  if (g.minSelect > 0 && g.maxSelect != null && g.minSelect === g.maxSelect) {
+    return `Choose ${g.minSelect}`;
+  }
+  if (g.minSelect > 0 && g.maxSelect != null) {
+    return `Choose ${g.minSelect}–${g.maxSelect}`;
+  }
+  if (g.minSelect > 0 && g.maxSelect == null) {
+    return `Choose at least ${g.minSelect}`;
+  }
+  if (g.minSelect === 0 && g.maxSelect != null) {
+    return `Optional — choose up to ${g.maxSelect}`;
+  }
+  return "Optional — choose any";
+}
+
+/** Build a follow-up category under a primary option (reuses depends_on_option_ids). */
+export function dependentCategoryGroupInput(
+  sectionId: string,
+  parentOption: EventOrderTemplateOption,
+  categoryName: string,
+  rule: PlainSelectionRuleInput,
+): {
+  sectionId: string;
+  name: string;
+  instructions: string;
+  selectionMode: "single" | "multi";
+  minSelect: number;
+  maxSelect: number | null;
+  allowQuantity: boolean;
+  dependsOnOptionIds: string[];
+} {
+  const resolved = resolvePlainSelectionRule(rule);
+  const name = categoryName.trim() || `${parentOption.label} choices`;
+  return {
+    sectionId,
+    name,
+    instructions: `Shown only after the client chooses “${parentOption.label}”.`,
+    selectionMode: resolved.selectionMode,
+    minSelect: resolved.minSelect,
+    maxSelect: resolved.maxSelect,
+    allowQuantity: false,
+    dependsOnOptionIds: [parentOption.id],
+  };
+}
+
 export type WizardProgress = {
   phase: WizardPhase;
   categoryIndex: number;

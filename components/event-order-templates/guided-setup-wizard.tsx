@@ -362,12 +362,9 @@ export function GuidedSetupWizard({
     if (!activeSection) return;
     const option = template.options.find((o) => o.id === optionId);
     if (!option) return;
-    const existing = branchGuideForSection(template, activeSection.id)
-      .find((b) => b.optionId === optionId);
-    if (existing && existing.dependents.length > 0) {
-      toast.message("Follow-up choices already exist for this option.");
-      return;
-    }
+    // Multiple follow-up categories per option are allowed (e.g. Entrées + Sides under Buffet).
+    // Creation of named categories with select counts happens in the nested choice editor;
+    // this path seeds an empty dependent only when the venue uses the quick action.
     onPersist("saving");
     const r = await addEventOrderTemplateGroupAction(
       template.id,
@@ -632,18 +629,18 @@ export function GuidedSetupWizard({
           {substep === "choices" ? (
             <div className="space-y-4" data-testid="eo-guided-step-choices">
               <h2 className="font-heading text-xl text-heading">
-                Main client-facing choices — {activeSection.name}
+                Primary question — {activeSection.name}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Define the options clients see first. Select a reusable Offering or add a custom /
-                template-only option. Prices come from your catalog or what you enter — we never invent
-                them. Additional prices for optional extras must be visible before a client chooses.
+                Start with the main question couples answer first — for example “Dinner service” with
+                Buffet and Plated dinner. Add each service option here. Prices come from your catalog or
+                what you enter — we never invent them.
               </p>
               {patternDraft.includes("choose_one") ? (
                 <p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                  After you add primary options (for example Plated Dinner and Buffet Dinner), the next
-                  step asks what happens when a client selects each option — including follow-up choices
-                  that appear only for that option.
+                  Next, you will add follow-up menu categories under each option (for example Entrées
+                  under Plated dinner, Side dishes under Buffet). Choosing Buffet will not show Plated
+                  dinner’s questions.
                 </p>
               ) : null}
               <EventOrderTemplateChoiceGroups
@@ -663,12 +660,12 @@ export function GuidedSetupWizard({
           {substep === "branches" ? (
             <div className="space-y-4" data-testid="eo-guided-step-branches">
               <h2 className="font-heading text-xl text-heading">
-                Follow-up choices for {activeSection.name}
+                Choices under each {activeSection.name} option
               </h2>
               <p className="text-sm text-muted-foreground">
-                For each primary option, choose what happens next. Follow-up lists appear only when that
-                option is selected — for example, plated entrée choices after Plated Dinner, not after
-                Buffet Dinner.
+                Under each service option, add the categories and menu items that apply only when the
+                couple selects that option. Tell them how many to select. Buffet follow-ups stay under
+                Buffet; Plated dinner follow-ups stay under Plated dinner.
               </p>
               {branchGuideForSection(template, activeSection.id).map((branch) => (
                 <div
@@ -713,7 +710,8 @@ export function GuidedSetupWizard({
                   ) : (
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        Showing additional options when the client selects “{branch.optionLabel}”.
+                        Categories shown when the couple selects “{branch.optionLabel}”. Add another
+                        category under this option in the editor below — each stays scoped here only.
                       </p>
                       {branch.dependents.map((d) => {
                         const optCount = template.options.filter((o) => o.groupId === d.id).length;
@@ -723,8 +721,8 @@ export function GuidedSetupWizard({
                             <p className="text-xs text-muted-foreground">
                               Triggered by “{branch.optionLabel}”
                               {optCount === 0
-                                ? " — no options yet. Add options below or remove this follow-up."
-                                : ` · ${optCount} option(s)`}
+                                ? " — no menu items yet. Add items in the editor below or remove this category."
+                                : ` · ${optCount} item(s)`}
                             </p>
                             {optCount === 0 ? (
                               <Button
@@ -740,25 +738,32 @@ export function GuidedSetupWizard({
                           </div>
                         );
                       })}
-                      <EventOrderTemplateChoiceGroups
-                        template={template}
-                        catalogOfferings={catalogOfferings}
-                        onPersist={onPersist}
-                        lockedSectionId={activeSection.id}
-                        compact
-                        showPreview={false}
-                        nestBranches
-                        guidedOrdinary
-                      />
                     </div>
                   )}
                 </div>
               ))}
-              {branchGuideForSection(template, activeSection.id).length === 0 ? (
+              {branchGuideForSection(template, activeSection.id).length > 0 ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Use “Add choices for couples who select …” under each option to create categories
+                    with a select count. You can add several categories per option.
+                  </p>
+                  <EventOrderTemplateChoiceGroups
+                    template={template}
+                    catalogOfferings={catalogOfferings}
+                    onPersist={onPersist}
+                    lockedSectionId={activeSection.id}
+                    compact
+                    showPreview={false}
+                    nestBranches
+                    guidedOrdinary
+                  />
+                </>
+              ) : (
                 <p className="text-sm text-muted-foreground">
                   Add main choices in the previous step before configuring follow-ups.
                 </p>
-              ) : null}
+              )}
             </div>
           ) : null}
 

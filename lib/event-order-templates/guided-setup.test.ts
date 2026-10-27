@@ -5,11 +5,14 @@ import {
   SUGGESTED_CATEGORIES,
   branchGuideForSection,
   buildReviewSummary,
+  dependentCategoryGroupInput,
   detectPatternsForSection,
   emptyDependentGroupInput,
   matchSuggestedCategory,
   nextConfigureSubstep,
   patternsPayloadFromDrafts,
+  plainSelectionRuleLabel,
+  resolvePlainSelectionRule,
   seedPatternDraftsFromTemplate,
   selectedCategoryKeysFromTemplate,
   togglePatternInDraft,
@@ -573,5 +576,50 @@ describe("guided setup — review summary", () => {
     assert.equal(review[0]!.fixedLines[0]!.included, true);
     assert.equal(review[0]!.fixedLines[0]!.catalog, false);
     assert.equal(review[0]!.fixedLines[0]!.description, "Ceremony arbor");
+  });
+
+  it("plain selection rules map onto existing min/max/mode without a new model", () => {
+    assert.deepEqual(resolvePlainSelectionRule({ selectCount: 1, required: true }), {
+      selectionMode: "single",
+      minSelect: 1,
+      maxSelect: 1,
+    });
+    assert.deepEqual(resolvePlainSelectionRule({ selectCount: 3, required: true }), {
+      selectionMode: "multi",
+      minSelect: 3,
+      maxSelect: 3,
+    });
+    assert.deepEqual(resolvePlainSelectionRule({ selectCount: 2, required: false }), {
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: 2,
+    });
+    assert.deepEqual(resolvePlainSelectionRule({ selectCount: null, required: false }), {
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: null,
+    });
+    assert.equal(
+      plainSelectionRuleLabel({ selectionMode: "multi", minSelect: 3, maxSelect: 3 }),
+      "Choose 3",
+    );
+    assert.equal(
+      plainSelectionRuleLabel({ selectionMode: "single", minSelect: 1, maxSelect: 1 }),
+      "Choose 1",
+    );
+  });
+
+  it("dependent category input scopes follows to one parent option", () => {
+    const parent = option({ id: "opt-buffet", groupId: "g-dinner", label: "Buffet" });
+    const input = dependentCategoryGroupInput("sec-catering", parent, "Side dishes", {
+      selectCount: 3,
+      required: true,
+    });
+    assert.equal(input.name, "Side dishes");
+    assert.deepEqual(input.dependsOnOptionIds, ["opt-buffet"]);
+    assert.equal(input.selectionMode, "multi");
+    assert.equal(input.minSelect, 3);
+    assert.equal(input.maxSelect, 3);
+    assert.match(input.instructions, /Buffet/);
   });
 });

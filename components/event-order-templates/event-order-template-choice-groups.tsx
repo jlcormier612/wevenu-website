@@ -39,6 +39,11 @@ import {
   parentOptionCandidates,
   sanitizeDependsOnOptionIds,
 } from "@/lib/event-order-templates/group-dependencies";
+import {
+  dependentCategoryGroupInput,
+  plainSelectionRuleLabel,
+  resolvePlainSelectionRule,
+} from "@/lib/event-order-templates/guided-setup";
 import { optionsForGroup } from "@/lib/event-order-templates/offerings";
 import {
   defaultAnswersFromEventOrderTemplate,
@@ -65,11 +70,23 @@ function formatOptionPrice(o: { isIncluded: boolean; unitPrice: number | null })
   return "Unpriced";
 }
 
-function groupRulesLabel(g: EventOrderTemplateGroup): string {
+function groupRulesLabel(g: EventOrderTemplateGroup, ordinary = false): string {
+  if (ordinary) {
+    const rule = plainSelectionRuleLabel(g);
+    const qty = g.allowQuantity ? " · quantities allowed" : "";
+    return `${rule}${qty}`;
+  }
   const mode = g.selectionMode === "single" ? "Pick one" : "Pick many";
   const req = g.minSelect > 0 ? "required" : "optional";
   const qty = g.allowQuantity ? " · quantities" : "";
   return `${mode} · ${req}${qty}`;
+}
+
+function selectCountFromGroup(g: EventOrderTemplateGroup): string {
+  if (g.selectionMode === "single") return "1";
+  if (g.maxSelect != null && g.maxSelect > 0) return String(g.maxSelect);
+  if (g.minSelect > 1) return String(g.minSelect);
+  return "";
 }
 
 function DependsOnPicker({
@@ -276,6 +293,20 @@ export function EventOrderTemplateChoiceGroups({
   const [moreAllowQuantity, setMoreAllowQuantity] = React.useState(false);
   const [moreMaxSelect, setMoreMaxSelect] = React.useState("");
 
+  /** Ordinary guided: inline “how many to select” on a category card. */
+  const [ruleEditGroupId, setRuleEditGroupId] = React.useState<string | null>(null);
+  const [ruleSelectCount, setRuleSelectCount] = React.useState("1");
+  const [ruleRequired, setRuleRequired] = React.useState(true);
+
+  /** Ordinary guided: add a follow-up category under a primary option. */
+  const [followUpForOptionId, setFollowUpForOptionId] = React.useState<string | null>(null);
+  const [followUpName, setFollowUpName] = React.useState("");
+  const [followUpCount, setFollowUpCount] = React.useState("1");
+  const [followUpRequired, setFollowUpRequired] = React.useState(true);
+
+  /** Ordinary guided: primary question add form defaults to choose-one. */
+  const [primarySelectCount, setPrimarySelectCount] = React.useState("1");
+
   React.useEffect(() => {
     if (lockedSectionId) setGroupSectionId(lockedSectionId);
     else if (showUnassignedOnly) setGroupSectionId("");
@@ -381,7 +412,66 @@ export function EventOrderTemplateChoiceGroups({
     setMoreMaxSelect(g.maxSelect != null ? String(g.maxSelect) : "");
   }
 
+  function openRuleEdit(g: EventOrderTemplateGroup) {
+    setRuleEditGroupId(g.id);
+    setRuleSelectCount(selectCountFromGroup(g) || "1");
+    setRuleRequired(g.minSelect > 0);
+  }
+
+  function savePlainRule(g: EventOrderTemplateGroup) {
+    const parsed = ruleSelectCount.trim() === "" ? null : Number(ruleSelectCount);
+    const resolved = resolvePlainSelectionRule({
+      selectCount: parsed != null && Number.isFinite(parsed) ? parsed : null,
+      required: ruleRequired,
+    });
+    startTransition(async () => {
+      onPersist("saving");
+      const r = await updateEventOrderTemplateGroupAction(template.id, g.id, {
+        sectionId: g.sectionId,
+        name: g.name,
+        instructions: g.instructions ?? undefined,
+        selectionMode: resolved.selectionMode,
+        minSelect: resolved.minSelect,
+        maxSelect: resolved.maxSelect,
+        allowQuantity: g.allowQuantity,
+        dependsOnOptionIds: g.dependsOnOptionIds ?? [],
+      });
+      if (!r.ok) {
+        onPersist("error", r.message ?? "Could not update how many clients select.");
+        return;
+      }
+      onPersist("saved");
+      setRuleEditGroupId(null);
+      refresh();
+    });
+  }
+
   function saveMoreSettings(g: EventOrderTemplateGroup) {
+    // Ordinary guided: More settings only toggles quantities — preserve the
+    // plain-language select count already stored on the group.
+    if (guidedOrdinary) {
+      startTransition(async () => {
+        onPersist("saving");
+        const r = await updateEventOrderTemplateGroupAction(template.id, g.id, {
+          sectionId: g.sectionId,
+          name: g.name,
+          instructions: g.instructions ?? undefined,
+          selectionMode: g.selectionMode,
+          minSelect: g.minSelect,
+          maxSelect: g.maxSelect,
+          allowQuantity: moreAllowQuantity,
+          dependsOnOptionIds: g.dependsOnOptionIds ?? [],
+        });
+        if (!r.ok) {
+          onPersist("error", r.message ?? "Could not update group settings.");
+          return;
+        }
+        onPersist("saved");
+        setMoreSettingsGroupId(null);
+        refresh();
+      });
+      return;
+    }
     const maxParsed = moreMaxSelect.trim() === "" ? null : Number(moreMaxSelect);
     const maxSelect =
       moreMode === "single"
@@ -409,6 +499,50 @@ export function EventOrderTemplateChoiceGroups({
       setMoreSettingsGroupId(null);
       refresh();
     });
+  }
+
+  function beginAddFollowUp(option: EventOrderTemplateOption) {
+    setFollowUpForOptionId(option.id);
+    setFollowUpName("");
+    setFollowUpCount("1");
+    setFollowUpRequired(true);
+  }
+
+  function submitFollowUpCategory(option: EventOrderTemplateOption) {
+    if (!lockedSectionId || !followUpName.trim()) return;
+    const parsed = followUpCount.trim() === "" ? null : Number(followUpCount);
+    const input = dependentCategoryGroupInput(
+      lockedSectionId,
+      option,
+      followUpName,
+      {
+        selectCount: parsed != null && Number.isFinite(parsed) ? parsed : null,
+        required: followUpRequired,
+      },
+    );
+    startTransition(async () => {
+      onPersist("saving");
+      const r = await addEventOrderTemplateGroupAction(template.id, input);
+      if (!r.ok) {
+        onPersist("error", r.message ?? "Could not add choices for this option.");
+        return;
+      }
+      onPersist("saved");
+      setFollowUpForOptionId(null);
+      setFollowUpName("");
+      setFollowUpCount("1");
+      setFollowUpRequired(true);
+      refresh();
+    });
+  }
+
+  function beginAddOptionToGroup(groupId: string) {
+    setOptionGroupId(groupId);
+    setOptionMode("custom");
+    setOptionLabel("");
+    setOptionIncluded(true);
+    setOptionPrice("");
+    setOptionDefault(false);
   }
 
   function saveDeps(g: EventOrderTemplateGroup) {
@@ -487,6 +621,10 @@ export function EventOrderTemplateChoiceGroups({
             const editing = editingDepsGroupId === g.id;
             const candidates = parentOptionCandidates(template.groups, template.options, g.id);
             const emptyDependent = dependent && opts.length === 0;
+            const parentLabels = (g.dependsOnOptionIds ?? [])
+              .map((id) => template.options.find((o) => o.id === id)?.label)
+              .filter((x): x is string => Boolean(x));
+            const parentLabel = parentLabels[0] ?? null;
             return (
               <li
                 key={g.id}
@@ -496,35 +634,64 @@ export function EventOrderTemplateChoiceGroups({
                 data-testid={`eo-choice-group-${g.id}`}
                 data-dependent={dependent ? "true" : "false"}
                 data-branch-depth={depth}
+                data-primary-question={guidedOrdinary && depth === 0 ? "true" : "false"}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    {depth > 0 ? (
+                    {guidedOrdinary && depth === 0 ? (
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Primary question
+                      </p>
+                    ) : null}
+                    {guidedOrdinary && depth > 0 ? (
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        {parentLabel
+                          ? `If the couple chooses ${parentLabel}`
+                          : "Follow-up choices"}
+                      </p>
+                    ) : depth > 0 && !guidedOrdinary ? (
                       <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                         Follow-up branch
                       </p>
                     ) : null}
                     <p className="text-sm font-medium text-heading">{g.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {groupRulesLabel(g)}
+                      {groupRulesLabel(g, guidedOrdinary)}
                       {sectionName && !lockedSectionId ? ` · ${sectionName}` : ""}
                     </p>
-                    <p
-                      className="mt-1 text-xs font-medium text-heading"
-                      data-testid={`eo-depends-summary-${g.id}`}
-                    >
-                      {dependsSummary}
-                    </p>
+                    {!guidedOrdinary || specialistMode ? (
+                      <p
+                        className="mt-1 text-xs font-medium text-heading"
+                        data-testid={`eo-depends-summary-${g.id}`}
+                      >
+                        {dependsSummary}
+                      </p>
+                    ) : dependent && parentLabel ? (
+                      <p
+                        className="mt-1 text-xs font-medium text-heading"
+                        data-testid={`eo-depends-summary-${g.id}`}
+                      >
+                        Shown when the couple selects “{parentLabel}”
+                      </p>
+                    ) : guidedOrdinary && !dependent ? (
+                      <p
+                        className="mt-1 text-xs text-muted-foreground"
+                        data-testid={`eo-depends-summary-${g.id}`}
+                      >
+                        Clients answer this first. Follow-up questions attach under each option.
+                      </p>
+                    ) : null}
                     {emptyDependent ? (
                       <p
                         className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-1.5 text-xs text-heading"
                         data-testid={`eo-incomplete-branch-${g.id}`}
                       >
-                        Incomplete: no follow-up options configured. Clients will see an empty branch when
-                        the parent option is selected. Add options below — nothing is invented automatically.
+                        {guidedOrdinary
+                          ? "Add offerings or menu items for this category. Couples will see an empty list until you do."
+                          : "Incomplete: no follow-up options configured. Clients will see an empty branch when the parent option is selected. Add options below — nothing is invented automatically."}
                       </p>
                     ) : null}
-                    {g.instructions ? (
+                    {g.instructions && !guidedOrdinary ? (
                       <p className="mt-1 text-sm text-muted-foreground">{g.instructions}</p>
                     ) : null}
                   </div>
@@ -547,6 +714,84 @@ export function EventOrderTemplateChoiceGroups({
                 </div>
 
                 {guidedOrdinary ? (
+                  <div
+                    className="rounded-md border border-border/70 bg-muted/10 p-3 space-y-2"
+                    data-testid={`eo-select-count-${g.id}`}
+                  >
+                    <p className="text-xs font-medium text-heading">
+                      How many can the couple select?
+                    </p>
+                    {ruleEditGroupId === g.id ? (
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs" htmlFor={`eo-rule-count-${g.id}`}>
+                            Number to select
+                          </Label>
+                          <Input
+                            id={`eo-rule-count-${g.id}`}
+                            value={ruleSelectCount}
+                            onChange={(e) => setRuleSelectCount(e.target.value)}
+                            placeholder="e.g. 3"
+                            inputMode="numeric"
+                            className="w-24"
+                            data-testid={`eo-rule-count-input-${g.id}`}
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 text-sm pb-2">
+                          <input
+                            type="checkbox"
+                            checked={ruleRequired}
+                            onChange={(e) => setRuleRequired(e.target.checked)}
+                            data-testid={`eo-rule-required-${g.id}`}
+                          />
+                          Required
+                        </label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={pending}
+                          data-testid={`eo-rule-save-${g.id}`}
+                          onClick={() => savePlainRule(g)}
+                        >
+                          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                          Save
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={pending}
+                          onClick={() => setRuleEditGroupId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm text-heading" data-testid={`eo-rule-summary-${g.id}`}>
+                          {plainSelectionRuleLabel(g)}
+                          {g.minSelect > 0 ? " · required" : " · optional"}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending}
+                          data-testid={`eo-rule-edit-${g.id}`}
+                          onClick={() => openRuleEdit(g)}
+                        >
+                          Change
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-[0.7rem] text-muted-foreground">
+                      Example: enter 3 and keep Required to make couples select exactly three items from
+                      this category.
+                    </p>
+                  </div>
+                ) : null}
+
+                {guidedOrdinary ? (
                   <details
                     className="rounded-md border border-border/70 bg-muted/10 p-2"
                     data-testid={`eo-more-settings-${g.id}`}
@@ -562,58 +807,17 @@ export function EventOrderTemplateChoiceGroups({
                     </summary>
                     <div className="mt-2 space-y-2">
                       <p className="text-[0.7rem] text-muted-foreground">
-                        Occasional group settings. Required means clients must pick before continuing.
-                        Quantities let clients choose how many of an option. Maximum selection limits
-                        multi-select lists.
+                        Occasional settings. Quantities let clients choose how many of a single option
+                        (for example, two of the same side dish).
                       </p>
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name={`eo-more-mode-${g.id}`}
-                            checked={moreMode === "single"}
-                            onChange={() => setMoreMode("single")}
-                          />
-                          Choose one
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name={`eo-more-mode-${g.id}`}
-                            checked={moreMode === "multi"}
-                            onChange={() => setMoreMode("multi")}
-                          />
-                          Choose multiple
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={moreRequired}
-                            onChange={(e) => setMoreRequired(e.target.checked)}
-                          />
-                          Required
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={moreAllowQuantity}
-                            onChange={(e) => setMoreAllowQuantity(e.target.checked)}
-                          />
-                          Allow quantity
-                        </label>
-                      </div>
-                      {moreMode === "multi" ? (
-                        <div className="space-y-1">
-                          <Label className="text-xs">Maximum selections (optional)</Label>
-                          <Input
-                            value={moreMaxSelect}
-                            onChange={(e) => setMoreMaxSelect(e.target.value)}
-                            placeholder="No maximum"
-                            inputMode="numeric"
-                            data-testid={`eo-more-max-${g.id}`}
-                          />
-                        </div>
-                      ) : null}
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={moreAllowQuantity}
+                          onChange={(e) => setMoreAllowQuantity(e.target.checked)}
+                        />
+                        Allow quantity on individual options
+                      </label>
                       <Button
                         type="button"
                         size="sm"
@@ -690,21 +894,17 @@ export function EventOrderTemplateChoiceGroups({
                       {dependent ? "Edit when this appears" : "Only show when…"}
                     </Button>
                   )
-                ) : dependent ? (
-                  <p className="text-xs text-muted-foreground">
-                    {dependsSummary === "Always shown"
-                      ? "Follow-up choice group."
-                      : dependsSummary.replace(/^Depends on:\s*/i, "Shown after the client selects ")}
-                  </p>
                 ) : null}
 
                 <ul className="space-y-1 pl-1">
-                  {opts.length === 0 && !dependent ? (
+                  {opts.length === 0 && (guidedOrdinary || !dependent) ? (
                     <li
                       className="text-sm text-muted-foreground"
                       data-testid={`eo-group-empty-${g.id}`}
                     >
-                      No options yet.
+                      {guidedOrdinary
+                        ? "No offerings or menu items in this category yet."
+                        : "No options yet."}
                     </li>
                   ) : null}
                   {opts.map((o) => {
@@ -937,19 +1137,124 @@ export function EventOrderTemplateChoiceGroups({
                             </div>
                           ) : null}
 
-                          {branchGroups.length > 0 ? (
-                            <ul className="mt-2 space-y-2" data-testid={`eo-option-branches-${o.id}`}>
-                              {branchGroups.map((branch) => renderGroupCard(branch, depth + 1))}
-                            </ul>
-                          ) : nestBranches && !dependent ? (
-                            <p className="text-[0.7rem] text-muted-foreground">
-                              No follow-up branch on this option yet. Add a choice group that depends on “{o.label}”.
-                            </p>
+                          {nestBranches && !dependent ? (
+                            <div
+                              className="mt-2 space-y-2 rounded-md border border-dashed border-border/80 bg-muted/5 p-3"
+                              data-testid={`eo-option-followups-${o.id}`}
+                            >
+                              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                                If the couple chooses {o.label}
+                              </p>
+                              {branchGroups.length > 0 ? (
+                                <ul className="space-y-2" data-testid={`eo-option-branches-${o.id}`}>
+                                  {branchGroups.map((branch) => renderGroupCard(branch, depth + 1))}
+                                </ul>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  No follow-up questions for this option yet. Couples who select “{o.label}”
+                                  will not see additional categories.
+                                </p>
+                              )}
+                              {guidedOrdinary ? (
+                                followUpForOptionId === o.id ? (
+                                  <div
+                                    className="space-y-2 rounded-md border border-border bg-background p-3"
+                                    data-testid={`eo-followup-form-${o.id}`}
+                                  >
+                                    <p className="text-sm font-medium text-heading">
+                                      Add choices for couples who select {o.label}
+                                    </p>
+                                    <Input
+                                      placeholder="Category name (e.g. Entrées, Side dishes, Desserts)"
+                                      value={followUpName}
+                                      onChange={(e) => setFollowUpName(e.target.value)}
+                                      data-testid={`eo-followup-name-${o.id}`}
+                                    />
+                                    <div className="flex flex-wrap items-end gap-3">
+                                      <div className="space-y-1">
+                                        <Label className="text-xs">
+                                          How many can the couple select?
+                                        </Label>
+                                        <Input
+                                          value={followUpCount}
+                                          onChange={(e) => setFollowUpCount(e.target.value)}
+                                          placeholder="e.g. 2"
+                                          inputMode="numeric"
+                                          className="w-24"
+                                          data-testid={`eo-followup-count-${o.id}`}
+                                        />
+                                      </div>
+                                      <label className="flex items-center gap-2 text-sm pb-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={followUpRequired}
+                                          onChange={(e) => setFollowUpRequired(e.target.checked)}
+                                        />
+                                        Required
+                                      </label>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={pending || !followUpName.trim()}
+                                        data-testid={`eo-followup-save-${o.id}`}
+                                        onClick={() => submitFollowUpCategory(o)}
+                                      >
+                                        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                        Add category
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        disabled={pending}
+                                        onClick={() => setFollowUpForOptionId(null)}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={pending || !lockedSectionId}
+                                    data-testid={`eo-add-choices-for-${o.id}`}
+                                    onClick={() => beginAddFollowUp(o)}
+                                  >
+                                    <Plus className="mr-1 h-4 w-4" />
+                                    Add choices for couples who select {o.label}
+                                  </Button>
+                                )
+                              ) : (
+                                <p className="text-[0.7rem] text-muted-foreground">
+                                  Add a choice group that depends on “{o.label}”.
+                                </p>
+                              )}
+                            </div>
                           ) : null}
                         </li>
                       );
                     })}
                 </ul>
+
+                {guidedOrdinary ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      data-testid={`eo-add-item-to-group-${g.id}`}
+                      onClick={() => beginAddOptionToGroup(g.id)}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      Add offering or menu item
+                    </Button>
+                  </div>
+                ) : null}
               </li>
             );
   }
@@ -964,6 +1269,17 @@ export function EventOrderTemplateChoiceGroups({
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Selectable commercial groups for this section. Fixed offerings stay above. Options may link to a
             catalog Offering explicitly, or stay template-only — never matched by name.
+          </p>
+        </div>
+      ) : guidedOrdinary ? (
+        <div>
+          <h3 className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            {rootsOnly ? "Primary question" : "Service options and follow-up choices"}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {rootsOnly
+              ? "Start with the main question couples answer first — for example Dinner service with Buffet and Plated dinner. You will add follow-up menu categories under each option next."
+              : "Under each service option, add the categories and menu items that apply only when the couple selects that option. Set how many they must choose."}
           </p>
         </div>
       ) : (
@@ -1034,61 +1350,52 @@ export function EventOrderTemplateChoiceGroups({
         </ul>
       )}
 
-      <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Add choice group</p>
-        <Input
-          placeholder="Group name (e.g. Dinner service)"
-          value={groupName}
-          onChange={(e) => setGroupName(e.target.value)}
-          data-testid="eo-add-group-name"
-        />
-        {lockedSectionId || showUnassignedOnly ? (
-          <p className="text-xs text-muted-foreground" data-testid="eo-add-group-section-locked">
-            {lockedSectionName
-              ? `Adds to section “${lockedSectionName}”.`
-              : "Adds without a section (unassigned)."}
+      {guidedOrdinary && !specialistMode ? (
+        <div
+          className="rounded-lg border border-dashed border-border p-4 space-y-3"
+          data-testid="eo-add-primary-question"
+        >
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Add a primary question
           </p>
-        ) : (
-          <select
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            value={groupSectionId}
-            onChange={(e) => setGroupSectionId(e.target.value)}
-          >
-            <option value="">No section</option>
-            {template.sections.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        )}
-        <div className="flex flex-wrap gap-4 text-sm">
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="eo-group-mode"
-              checked={groupMode === "single"}
-              onChange={() => setGroupMode("single")}
-            />
-            Pick one
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="eo-group-mode"
-              checked={groupMode === "multi"}
-              onChange={() => setGroupMode("multi")}
-            />
-            Pick many
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={groupRequired}
-              onChange={(e) => setGroupRequired(e.target.checked)}
-            />
-            Required
-          </label>
-        </div>
-        {guidedOrdinary && !specialistMode ? (
+          <p className="text-sm text-muted-foreground">
+            This is the first choice couples make — for example “Dinner service” with Buffet and Plated
+            dinner. Follow-up menu categories belong under each option, not here.
+          </p>
+          <Input
+            placeholder="Question name (e.g. Dinner service)"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            data-testid="eo-add-group-name"
+          />
+          {lockedSectionId || showUnassignedOnly ? (
+            <p className="text-xs text-muted-foreground" data-testid="eo-add-group-section-locked">
+              {lockedSectionName
+                ? `Adds to “${lockedSectionName}”.`
+                : "Adds without a section (unassigned)."}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">How many can the couple select?</Label>
+              <Input
+                value={primarySelectCount}
+                onChange={(e) => setPrimarySelectCount(e.target.value)}
+                placeholder="1"
+                inputMode="numeric"
+                className="w-24"
+                data-testid="eo-add-primary-count"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm pb-2">
+              <input
+                type="checkbox"
+                checked={groupRequired}
+                onChange={(e) => setGroupRequired(e.target.checked)}
+              />
+              Required
+            </label>
+          </div>
           <details className="rounded-md border border-border/60 p-2" data-testid="eo-add-group-more-settings">
             <summary className="cursor-pointer text-xs font-medium text-heading">More settings</summary>
             <div className="mt-2 space-y-2">
@@ -1098,22 +1405,102 @@ export function EventOrderTemplateChoiceGroups({
                   checked={groupAllowQuantity}
                   onChange={(e) => setGroupAllowQuantity(e.target.checked)}
                 />
-                Allow quantity
+                Allow quantity on individual options
               </label>
-              {groupMode === "multi" ? (
-                <div className="space-y-1">
-                  <Label className="text-xs">Maximum selections (optional)</Label>
-                  <Input
-                    value={groupMaxSelect}
-                    onChange={(e) => setGroupMaxSelect(e.target.value)}
-                    placeholder="No maximum"
-                    inputMode="numeric"
-                  />
-                </div>
-              ) : null}
             </div>
           </details>
-        ) : (
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending || !groupName.trim()}
+            data-testid="eo-add-choice-group"
+            onClick={() => startTransition(async () => {
+              onPersist("saving");
+              const parsed = primarySelectCount.trim() === "" ? 1 : Number(primarySelectCount);
+              const resolved = resolvePlainSelectionRule({
+                selectCount: Number.isFinite(parsed) && parsed > 0 ? parsed : 1,
+                required: groupRequired,
+              });
+              const resolvedSectionId = lockedSectionId
+                ?? (showUnassignedOnly ? null : (groupSectionId || null));
+              const r = await addEventOrderTemplateGroupAction(template.id, {
+                sectionId: resolvedSectionId,
+                name: groupName,
+                selectionMode: resolved.selectionMode,
+                minSelect: resolved.minSelect,
+                maxSelect: resolved.maxSelect,
+                allowQuantity: groupAllowQuantity,
+                dependsOnOptionIds: [],
+              });
+              if (!r.ok) onPersist("error", r.errors?.name ?? r.message ?? "Could not add question.");
+              else {
+                onPersist("saved");
+                setGroupName("");
+                setGroupAllowQuantity(false);
+                setPrimarySelectCount("1");
+                refresh();
+              }
+            })}
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add primary question
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Add choice group</p>
+          <Input
+            placeholder="Group name (e.g. Dinner service)"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            data-testid="eo-add-group-name"
+          />
+          {lockedSectionId || showUnassignedOnly ? (
+            <p className="text-xs text-muted-foreground" data-testid="eo-add-group-section-locked">
+              {lockedSectionName
+                ? `Adds to section “${lockedSectionName}”.`
+                : "Adds without a section (unassigned)."}
+            </p>
+          ) : (
+            <select
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={groupSectionId}
+              onChange={(e) => setGroupSectionId(e.target.value)}
+            >
+              <option value="">No section</option>
+              {template.sections.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="eo-group-mode"
+                checked={groupMode === "single"}
+                onChange={() => setGroupMode("single")}
+              />
+              Pick one
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="eo-group-mode"
+                checked={groupMode === "multi"}
+                onChange={() => setGroupMode("multi")}
+              />
+              Pick many
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={groupRequired}
+                onChange={(e) => setGroupRequired(e.target.checked)}
+              />
+              Required
+            </label>
+          </div>
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">When this group appears (optional)</p>
             <DependsOnPicker
@@ -1132,71 +1519,80 @@ export function EventOrderTemplateChoiceGroups({
               Allow quantity
             </label>
           </div>
-        )}
-        <Button
-          type="button"
-          size="sm"
-          disabled={pending || !groupName.trim()}
-          data-testid="eo-add-choice-group"
-          onClick={() => startTransition(async () => {
-            onPersist("saving");
-            const dependsOnOptionIds =
-              guidedOrdinary && !specialistMode
-                ? []
-                : sanitizeDependsOnOptionIds(
-                    groupDependsOn,
-                    template.options,
-                    null,
-                  );
-            const maxParsed = groupMaxSelect.trim() === "" ? null : Number(groupMaxSelect);
-            const resolvedSectionId = lockedSectionId
-              ?? (showUnassignedOnly ? null : (groupSectionId || null));
-            const r = await addEventOrderTemplateGroupAction(template.id, {
-              sectionId: resolvedSectionId,
-              name: groupName,
-              selectionMode: groupMode,
-              minSelect: groupRequired ? 1 : 0,
-              maxSelect:
-                groupMode === "single"
-                  ? 1
-                  : maxParsed != null && Number.isFinite(maxParsed) && maxParsed > 0
-                    ? maxParsed
-                    : null,
-              allowQuantity: groupAllowQuantity,
-              dependsOnOptionIds,
-            });
-            if (!r.ok) onPersist("error", r.errors?.name ?? r.message ?? "Could not add group.");
-            else {
-              onPersist("saved");
-              setGroupName("");
-              setGroupDependsOn([]);
-              setGroupAllowQuantity(false);
-              setGroupMaxSelect("");
-              refresh();
-            }
-          })}
-        >
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Add group
-        </Button>
-      </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending || !groupName.trim()}
+            data-testid="eo-add-choice-group"
+            onClick={() => startTransition(async () => {
+              onPersist("saving");
+              const dependsOnOptionIds = sanitizeDependsOnOptionIds(
+                groupDependsOn,
+                template.options,
+                null,
+              );
+              const maxParsed = groupMaxSelect.trim() === "" ? null : Number(groupMaxSelect);
+              const resolvedSectionId = lockedSectionId
+                ?? (showUnassignedOnly ? null : (groupSectionId || null));
+              const r = await addEventOrderTemplateGroupAction(template.id, {
+                sectionId: resolvedSectionId,
+                name: groupName,
+                selectionMode: groupMode,
+                minSelect: groupRequired ? 1 : 0,
+                maxSelect:
+                  groupMode === "single"
+                    ? 1
+                    : maxParsed != null && Number.isFinite(maxParsed) && maxParsed > 0
+                      ? maxParsed
+                      : null,
+                allowQuantity: groupAllowQuantity,
+                dependsOnOptionIds,
+              });
+              if (!r.ok) onPersist("error", r.errors?.name ?? r.message ?? "Could not add group.");
+              else {
+                onPersist("saved");
+                setGroupName("");
+                setGroupDependsOn([]);
+                setGroupAllowQuantity(false);
+                setGroupMaxSelect("");
+                refresh();
+              }
+            })}
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add group
+          </Button>
+        </div>
+      )}
 
-      <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Add option</p>
+      <div
+        className="rounded-lg border border-dashed border-border p-4 space-y-3"
+        data-testid="eo-add-option-panel"
+      >
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          {guidedOrdinary ? "Add offering or menu item" : "Add option"}
+        </p>
         <p className="text-xs text-muted-foreground">
-          Prefer a reusable Offering when the choice is something you sell across event orders. Use a
-          custom / template-only option when it belongs only on this template. Offerings are not Inventory —
-          linking them elsewhere does not reserve stock. New catalog picks snapshot label and price once;
-          later catalog edits do not rewrite this option.
+          {guidedOrdinary
+            ? "Add items to a primary option or to a follow-up category. Prefer a reusable Offering when you sell it across event orders; otherwise use a template-only item. Offerings are not Inventory and do not reserve stock."
+            : "Prefer a reusable Offering when the choice is something you sell across event orders. Use a custom / template-only option when it belongs only on this template. Offerings are not Inventory — linking them elsewhere does not reserve stock. New catalog picks snapshot label and price once; later catalog edits do not rewrite this option."}
         </p>
         <select
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           value={optionGroupId}
           onChange={(e) => setOptionGroupId(e.target.value)}
+          data-testid="eo-add-option-group"
         >
-          <option value="">Select group…</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>{g.name}</option>
+          <option value="">
+            {guidedOrdinary ? "Select question or category…" : "Select group…"}
+          </option>
+          {/* When nesting branches, include dependents so follow-up categories can receive items. */}
+          {(rootsOnly ? groups : nestBranches ? scopedGroups : groups).map((g) => (
+            <option key={g.id} value={g.id}>
+              {isDependentGroup(g)
+                ? `${g.name} (follow-up)`
+                : g.name}
+            </option>
           ))}
         </select>
 

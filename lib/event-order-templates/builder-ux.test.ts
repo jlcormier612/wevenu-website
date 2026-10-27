@@ -85,6 +85,29 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /eo-guided-item-source-help/);
   });
 
+  it("ordinary guided catering flow uses primary question + under-option follow-ups", () => {
+    const groups = readFileSync(
+      join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
+      "utf8",
+    );
+    const wizard = readFileSync(
+      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+      "utf8",
+    );
+    assert.match(groups, /Add a primary question/);
+    assert.match(groups, /How many can the couple select\?/);
+    assert.match(groups, /Add choices for couples who select/);
+    assert.match(groups, /eo-add-choices-for-/);
+    assert.match(groups, /eo-select-count-/);
+    assert.match(groups, /eo-add-primary-question/);
+    assert.match(groups, /dependentCategoryGroupInput/);
+    assert.match(groups, /resolvePlainSelectionRule/);
+    assert.match(groups, /If the couple chooses/);
+    assert.match(groups, /Clients answer this first/);
+    assert.match(wizard, /Primary question/);
+    assert.match(wizard, /Add choices for couples who select/);
+  });
+
   it("offering and line editors explain Offerings vs Inventory vs template-only", () => {
     const sheet = readFileSync(
       join(root, "components/event-order-templates/offering-editor-sheet.tsx"),
