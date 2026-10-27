@@ -821,7 +821,14 @@ export default function FloorPlanSection({
               hasSetups?: boolean;
               error?: string;
             },
-          })).catch(() => ({ ok: false, body: { setups: [], hasSetups: false } })),
+          })).catch(() => ({
+            ok: false,
+            body: {
+              setups: [] as PortalSetupPackage[],
+              hasSetups: false,
+              error: "unavailable",
+            },
+          })),
         ]);
 
         if (cancelled) return;
