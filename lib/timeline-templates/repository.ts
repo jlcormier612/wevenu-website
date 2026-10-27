@@ -151,6 +151,25 @@ export async function renameTemplate(client: DbClient, venueId: string, id: stri
   if (error) throw error;
 }
 
+/** Template-level metadata only — does not touch items or source_master_key. */
+export async function updateTemplateDetails(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  input: { name: string; eventType: string | null; spaceId: string | null },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("timeline_templates") as any)
+    .update({
+      name: input.name.trim(),
+      event_type: input.eventType || null,
+      space_id: input.spaceId || null,
+    })
+    .eq("id", id)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 // Clear-then-set within the same (venue, event_type, space) group so the
 // unique partial index (timeline_templates_default) never sees two defaults
 // at once.

@@ -321,6 +321,24 @@ export async function setTemplateArchived(client: DbClient, venueId: string, id:
   if (error) throw error;
 }
 
+/** Template-level name / description only — does not touch items or source_master_key. */
+export async function updateTemplateDetails(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  input: { name: string; description: string | null },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("inventory_templates") as any)
+    .update({
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+    })
+    .eq("id", id)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 export async function insertTemplateItem(client: DbClient, venueId: string, templateId: string, input: InventoryItemInput, sortOrder: number): Promise<InventoryTemplateItem> {
   const quantity = parseFloat(input.quantity) || 1;
   const unitPrice = input.unitPrice?.trim() ? parseFloat(input.unitPrice.replace(/[$,]/g, "")) : null;

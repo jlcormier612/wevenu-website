@@ -64,6 +64,18 @@ export async function renameTemplate_(id: string, name: string): Promise<Timelin
   return result as TimelineTemplateActionResult;
 }
 
+export async function updateTemplateDetails_(
+  id: string,
+  input: { name: string; eventType: string | null; spaceId: string | null },
+): Promise<TimelineTemplateActionResult> {
+  if (!input.name.trim()) return { ok: false, message: "Template name is required." };
+  const result = await withVenue(async (c, venueId) => {
+    await repo.updateTemplateDetails(c, venueId, id, input);
+    return { ok: true } as TimelineTemplateActionResult;
+  });
+  return result as TimelineTemplateActionResult;
+}
+
 export async function setTemplateDefault_(id: string): Promise<TimelineTemplateActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const template = await repo.getTemplate(c, venueId, id);

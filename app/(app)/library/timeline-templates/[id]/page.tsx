@@ -4,9 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { TimelineTemplateEditor } from "@/components/timeline-templates/timeline-template-editor";
-import { Badge } from "@/components/ui/badge";
+import { TimelineTemplateEditorHeader } from "@/components/timeline-templates/timeline-template-editor-header";
 import { getSpaces } from "@/lib/availability/service";
-import { eventTypeLabel } from "@/lib/leads/constants";
 import { getTimelineStarterMaster } from "@/lib/timeline-templates/starters";
 import { getItems, getTemplate } from "@/lib/timeline-templates/service";
 
@@ -30,24 +29,19 @@ export default async function TimelineTemplateEditorPage({ params }: Props) {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="space-y-1">
-        <Link href="/library/timeline-templates" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-3.5 w-3.5" /> Timeline Templates
-        </Link>
-        <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="font-heading text-2xl font-medium text-heading">{template.name}</h1>
-          {template.sourceMasterKey && !template.isArchived && (
-            <Badge variant="muted">Starter</Badge>
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {template.eventType ? eventTypeLabel(template.eventType) : "Any event type"}
-          {spaceName ? ` · ${spaceName}` : ""} · {items.length} item{items.length !== 1 ? "s" : ""}
-        </p>
-        {master?.description && (
-          <p className="text-sm text-muted-foreground">{master.description}</p>
-        )}
-      </div>
+      <Link
+        href="/library/timeline-templates"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Timeline Templates
+      </Link>
+      <TimelineTemplateEditorHeader
+        template={template}
+        spaces={spaces}
+        spaceName={spaceName ?? null}
+        itemCount={items.length}
+        masterDescription={master?.description ?? null}
+      />
       <TimelineTemplateEditor templateId={id} initialItems={items} />
     </div>
   );

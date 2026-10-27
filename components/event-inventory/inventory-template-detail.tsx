@@ -8,11 +8,15 @@ import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addInventoryTemplateItemAction, deleteInventoryTemplateAction, removeInventoryTemplateItemAction,
+  addInventoryTemplateItemAction, deleteInventoryTemplateAction, duplicateInventoryTemplateAction,
+  removeInventoryTemplateItemAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
-import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { InventoryTemplateDetailsSheet } from "@/components/event-inventory/inventory-template-details-sheet";
 import { TemplateItemEditSheet } from "@/components/event-inventory/template-item-edit-sheet";
+import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { StarterOwnershipBanner } from "@/components/library/starter-ownership-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -207,9 +211,11 @@ export function InventoryTemplateDetail({
   catalogItems: InventoryItemWithCategory[];
 }) {
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [deleting, startDelete] = React.useTransition();
   const router = useRouter();
   const saveUi = useLibrarySaveStatus();
+  const isStarter = Boolean(template.sourceMasterKey);
 
   function onPersist(phase: "saving" | "saved" | "error", message?: string) {
     if (phase === "saving") saveUi.markSaving();
@@ -245,13 +251,48 @@ export function InventoryTemplateDetail({
         title={template.name}
         status={
           <>
-            {template.sourceMasterKey && !template.isArchived && <Badge variant="muted">Starter</Badge>}
-            {template.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+            {isStarter && !template.isArchived && <Badge variant="muted">{LIBRARY_LABELS.starter}</Badge>}
+            {!isStarter && !template.isArchived && <Badge variant="outline">{LIBRARY_LABELS.yourTemplate}</Badge>}
+            {template.isArchived ? <Badge variant="muted">{LIBRARY_LABELS.archived}</Badge> : null}
           </>
         }
         lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        primaryAction={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="inventory-template-edit-details"
+            onClick={() => setDetailsOpen(true)}
+          >
+            {LIBRARY_LABELS.editDetails}
+          </Button>
+        }
       />
       {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
+      {isStarter ? (
+        <StarterOwnershipBanner
+          templateName={template.name}
+          itemNoun="items"
+          customizeHref={(id) => `/library/inventory-templates/${id}`}
+          onCustomize={async () => {
+            const suggested = template.name.replace(/\s*\(Starter\)\s*$/i, "").trim() || template.name;
+            const result = await duplicateInventoryTemplateAction(
+              template.id,
+              `${suggested} — ${new Date().getFullYear()}`,
+            );
+            if (result.ok && result.templateId) {
+              return { ok: true as const, templateId: result.templateId };
+            }
+            return { ok: false as const, message: (result as { message?: string }).message };
+          }}
+        />
+      ) : null}
+      <InventoryTemplateDetailsSheet
+        template={template}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
 
       <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
         Add items from{" "}

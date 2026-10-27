@@ -61,7 +61,8 @@ describe("Library Planning starter duplication UX", () => {
     const section = readFileSync(resolve("components/settings/playbooks-section.tsx"), "utf8");
     assert.match(section, /LIBRARY_LABELS\.useTemplate/);
     assert.match(section, /LIBRARY_LABELS\.preview/);
-    assert.match(section, /LIBRARY_LABELS\.edit/);
+    assert.match(section, /LIBRARY_LABELS\.customize/);
+    assert.match(section, /LIBRARY_LABELS\.editDetails/);
     assert.match(section, /onUse=\{\(\) => setUsing\(t\)\}/);
   });
 
@@ -72,6 +73,8 @@ describe("Library Planning starter duplication UX", () => {
     assert.match(section, /handleAddAnotherCopy/);
     assert.match(section, /createStandardClientPlanningTemplateAction/);
     assert.match(section, /createStandardVenueWorkflowTemplateAction/);
+    // Must remain distinct from Duplicate / Customize (clone of this Library row).
+    assert.match(section, /Distinct from Duplicate/);
 
     const labels = readFileSync(resolve("components/library/labels.ts"), "utf8");
     assert.match(labels, /addAnotherCopy:\s*"Add another copy"/);

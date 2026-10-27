@@ -27,6 +27,7 @@ import {
   type TemplateApplyEventTarget,
 } from "@/components/library/template-apply-target-picker";
 import { partitionArchived } from "@/components/library/partition-archived";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -278,6 +279,7 @@ function TemplateCard({
       else toast.success(template.isArchived ? "Template restored." : "Template archived.");
     });
   }
+  const isStarter = Boolean(template.sourceMasterKey);
   return (
     <LibraryAssetCard
       layout="row"
@@ -285,8 +287,9 @@ function TemplateCard({
       description={template.description}
       meta={`Updated ${formatRelative(template.updatedAt)}`}
       href={archivedView ? undefined : `/library/inventory-templates/${template.id}`}
-      isStarter={Boolean(template.sourceMasterKey)}
+      isStarter={isStarter}
       isArchived={template.isArchived}
+      badges={!isStarter ? <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge> : undefined}
       primaryActions={archivedView
         ? [
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
@@ -294,18 +297,27 @@ function TemplateCard({
           ]
         : [
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
-            { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" },
+            ...(isStarter
+              ? [
+                  { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const },
+                  { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/inventory-templates/${template.id}`, emphasis: "preview" as const },
+                ]
+              : [
+                  { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" as const },
+                ]),
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
             { id: "send", label: LIBRARY_LABELS.sendToClient, onClick: onSend, emphasis: "use" },
           ]}
       overflowPending={pending}
       overflowItems={archivedView ? [] : [
-        {
-          id: "duplicate",
-          label: LIBRARY_LABELS.duplicate,
-          onClick: onDuplicate,
-          icon: <Copy className="mr-2 h-3.5 w-3.5" />,
-        },
+        ...(!isStarter
+          ? [{
+              id: "duplicate",
+              label: LIBRARY_LABELS.duplicate,
+              onClick: onDuplicate,
+              icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+            }]
+          : []),
         {
           id: "archive",
           label: archiveToggleLabel(template.isArchived),

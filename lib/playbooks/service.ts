@@ -70,6 +70,23 @@ export async function renameTemplate_(id: string, name: string): Promise<Playboo
   return result as PlaybookActionResult;
 }
 
+export async function updateTemplateDetails_(
+  id: string,
+  input: { name: string; eventType: string | null; description: string | null },
+): Promise<PlaybookActionResult> {
+  if (!input.name.trim()) return { ok: false, message: "Template name is required." };
+  const result = await withVenue(async (c, venueId) => {
+    const existing = await repo.getTemplate(c, venueId, id);
+    if (!existing) return { ok: false, message: "Template not found." } as PlaybookActionResult;
+    await repo.updateTemplateDetails(c, venueId, id, input);
+    if (existing.isDefault) {
+      await repo.setTemplateDefault(c, venueId, id, input.eventType, existing.kind);
+    }
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
 export async function setTemplateDefault_(id: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const template = await repo.getTemplate(c, venueId, id);

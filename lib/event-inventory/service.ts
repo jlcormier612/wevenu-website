@@ -510,6 +510,18 @@ export async function setTemplateArchived(id: string, isArchived: boolean): Prom
   return result as EventInventoryActionResult;
 }
 
+export async function updateTemplateDetails(
+  id: string,
+  input: { name: string; description: string | null },
+): Promise<EventInventoryActionResult> {
+  if (!input.name.trim()) return { ok: false, errors: { name: "Name is required." } };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateTemplateDetails(supabase, venueId, id, input);
+    return { ok: true } as EventInventoryActionResult;
+  });
+  return result as EventInventoryActionResult;
+}
+
 export async function addTemplateItem(templateId: string, input: InventoryItemInput): Promise<AddTemplateItemResult> {
   if (!input.name.trim()) return { ok: false, errors: { name: "Item name is required." } };
   const result = await withVenue(async (supabase, venueId) => {

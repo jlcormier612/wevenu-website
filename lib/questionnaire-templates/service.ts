@@ -153,6 +153,28 @@ export async function createTemplate(
   return { ok: true, template: mapTemplate(data) };
 }
 
+/** Template-level name / purpose only — does not touch fields or source_master_key. */
+export async function updateTemplateDetails(
+  id: string,
+  input: { name: string; description: string | null },
+): Promise<{ ok: boolean; message?: string }> {
+  if (!input.name.trim()) return { ok: false, message: "Name is required." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("questionnaire_templates").select("id")
+    .eq("id", id).eq("venue_id", venue.id).maybeSingle<{ id: string }>();
+  if (!existing) return { ok: false, message: "Template not found." };
+  const { error } = await supabase.from("questionnaire_templates")
+    .update({
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+    } as never)
+    .eq("id", id).eq("venue_id", venue.id);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
 /**
  * Persist Library authoring (name, purpose, include/require, wording, customs, order).
  * Kind is immutable once created (especially for starters).

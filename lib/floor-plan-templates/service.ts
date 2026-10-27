@@ -104,6 +104,24 @@ export async function renameTemplate_(id: string, name: string): Promise<FloorPl
   return result as FloorPlanTemplateActionResult;
 }
 
+export async function updateTemplateDetails_(
+  id: string,
+  input: { name: string; eventType: string | null; spaceId: string | null },
+): Promise<FloorPlanTemplateActionResult> {
+  if (!input.name.trim()) return { ok: false, message: "Template name is required." };
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const existing = await repo.getTemplate(supabase, venueId, id);
+    if (!existing) return { ok: false, message: "Template not found." } as FloorPlanTemplateActionResult;
+    await repo.updateTemplateDetails(supabase, venueId, id, input);
+    // Keep the unique default index valid when scope changes on a default template.
+    if (existing.isDefault) {
+      await repo.setTemplateDefault(supabase, venueId, id, input.eventType, input.spaceId);
+    }
+    return { ok: true } as FloorPlanTemplateActionResult;
+  });
+  return result as FloorPlanTemplateActionResult;
+}
+
 export async function setTemplateDefault_(id: string): Promise<FloorPlanTemplateActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
     const template = await repo.getTemplate(supabase, venueId, id);

@@ -15,9 +15,10 @@ import { toast } from "sonner";
 import { addFloorPlanStarterAgainAction } from "@/app/(app)/library/floor-plan-templates/actions";
 import { applyTemplateAction } from "@/app/(app)/events/[id]/floor-plan-actions";
 import {
-  deleteTemplateAction, duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
+  deleteTemplateAction, duplicateTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/floor-plan-templates/actions";
 import { FloorPlanLayoutPreview } from "@/components/floor-plan/floor-plan-layout-preview";
+import { FloorPlanTemplateDetailsSheet } from "@/components/floor-plan-templates/floor-plan-template-details-sheet";
 import { FloorPlanTemplateStarterPicker } from "@/components/floor-plan-templates/floor-plan-template-starter-picker";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
@@ -228,6 +229,7 @@ function TemplateCard({
   const starterDescription = starterMaster?.description ?? null;
   const isSpecializedFlip = starterMaster?.key === "FP-SR";
 
+  const isStarter = Boolean(template.sourceMasterKey);
   const primaryActions = archivedView
     ? [
         { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
@@ -237,9 +239,14 @@ function TemplateCard({
       ]
     : [
         { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
-        ...(canEdit
-          ? [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const }]
-          : []),
+        ...(canEdit && isStarter
+          ? [
+              { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const, disabled: busy },
+              { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/floor-plan-templates/${template.id}`, emphasis: "preview" as const },
+            ]
+          : canEdit
+            ? [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const }]
+            : []),
         { id: "use", label: LIBRARY_LABELS.useFloorPlan, onClick: onUse, emphasis: "use" as const },
       ];
 
@@ -248,8 +255,10 @@ function TemplateCard({
     : [
         ...(canEdit
           ? [
-              { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
-              { id: "rename", label: "Rename", onClick: onRename },
+              ...(!isStarter
+                ? [{ id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate }]
+                : []),
+              { id: "rename", label: LIBRARY_LABELS.editDetails, onClick: onRename },
               ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
               { id: "archive", label: LIBRARY_LABELS.archive, onClick: onArchiveToggle, separatorBefore: true },
             ]
@@ -267,10 +276,13 @@ function TemplateCard({
       layout="row"
       title={template.name}
       description={starterDescription}
-      isStarter={Boolean(template.sourceMasterKey)}
+      isStarter={isStarter}
       isArchived={template.isArchived}
       badges={
         <>
+          {!isStarter && (
+            <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>
+          )}
           <Badge variant="outline" className="text-[10px]" title="Booking event type">
             {eventType}
           </Badge>
@@ -341,6 +353,7 @@ export function FloorPlanTemplatesSection({
     [acceptedEventTypes],
   );
   const [using, setUsing] = React.useState<FloorPlanTemplateWithStats | null>(null);
+  const [detailsTemplate, setDetailsTemplate] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const router = useRouter();
@@ -370,11 +383,8 @@ export function FloorPlanTemplatesSection({
     }
   }
 
-  async function handleRename(id: string, currentName: string) {
-    const name = window.prompt("Rename template", currentName);
-    if (!name || !name.trim() || name.trim() === currentName) return;
-    const result = await withBusy(id, () => renameTemplateAction(id, name.trim()));
-    if (result.ok) setTemplates((p) => p.map((t) => (t.id === id ? { ...t, name: name.trim() } : t)));
+  function handleEditDetails(template: FloorPlanTemplateWithStats) {
+    setDetailsTemplate(template);
   }
 
   async function handleSetDefault(id: string, template: FloorPlanTemplateWithStats) {
@@ -450,7 +460,7 @@ export function FloorPlanTemplatesSection({
         key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
         canEdit={canEdit}
         canDelete={canDelete}
-        onRename={() => handleRename(t.id, t.name)}
+        onRename={() => handleEditDetails(t)}
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
         onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
@@ -550,6 +560,17 @@ export function FloorPlanTemplatesSection({
         open={!!using}
         onOpenChange={(o) => { if (!o) setUsing(null); }}
       />
+      {detailsTemplate ? (
+        <FloorPlanTemplateDetailsSheet
+          template={detailsTemplate}
+          spaces={spaces}
+          acceptedEventTypes={acceptedEventTypes}
+          open={!!detailsTemplate}
+          onOpenChange={(o) => {
+            if (!o) setDetailsTemplate(null);
+          }}
+        />
+      ) : null}
       <LibraryDeleteConfirmDialog
         open={!!deleting}
         itemName={deleting?.name ?? ""}

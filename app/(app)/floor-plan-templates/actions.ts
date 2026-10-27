@@ -6,6 +6,7 @@ import {
   addObject, clearTemplate, createTemplate, createTemplateFromPaste, deleteObject_, deleteTemplate_,
   duplicateTemplate, renameTemplate_, reorderObject, setBackgroundLocked, setTemplateArchived_,
   setTemplateDefault_, attachBackgroundDocument, updateBackground, updateObject_, updateRoomSettings,
+  updateTemplateDetails_,
 } from "@/lib/floor-plan-templates/service";
 import type {
   CreateFloorPlanTemplateResult, FloorPlanTemplateActionResult, FloorPlanTemplateObject, ImportFloorPlanTemplateResult,
@@ -29,6 +30,19 @@ export async function createTemplateAction(
 export async function renameTemplateAction(id: string, name: string): Promise<FloorPlanTemplateActionResult> {
   const result = await renameTemplate_(id, name);
   if (result.ok) revalidateLibrary();
+  return result;
+}
+
+export async function updateTemplateDetailsAction(
+  id: string,
+  input: { name: string; eventType: string | null; spaceId: string | null },
+): Promise<FloorPlanTemplateActionResult> {
+  const result = await updateTemplateDetails_(id, input);
+  if (result.ok) {
+    revalidateLibrary();
+    revalidatePath(`/library/floor-plan-templates/${id}`);
+    revalidatePath(`/library/floor-plan-templates/${id}/preview`);
+  }
   return result;
 }
 

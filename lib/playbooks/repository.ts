@@ -120,6 +120,25 @@ export async function renameTemplate(client: DbClient, venueId: string, id: stri
   if (error) throw error;
 }
 
+/** Template-level metadata only — does not touch milestones/tasks or source_master_key. Kind is immutable. */
+export async function updateTemplateDetails(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  input: { name: string; eventType: string | null; description: string | null },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("playbook_templates") as any)
+    .update({
+      name: input.name.trim(),
+      event_type: input.eventType || null,
+      description: input.description?.trim() || null,
+    })
+    .eq("id", id)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 // Clear-then-set within the same (venue, event_type, kind) group so the
 // unique partial index (playbook_templates_default) is never asked to hold
 // two defaults at once.

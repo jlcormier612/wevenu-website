@@ -27,6 +27,7 @@ import {
   type TemplateApplyEventTarget,
 } from "@/components/library/template-apply-target-picker";
 import { partitionArchived } from "@/components/library/partition-archived";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -370,12 +371,24 @@ function TemplateCard({
     else toast.success(template.isArchived ? "Template restored." : "Template archived.");
   }
 
+  const isStarter = Boolean(template.sourceMasterKey);
+
   async function handleDuplicate() {
     setPendingId(template.id);
-    const result = await duplicateEventOrderTemplateAction(template.id, `${template.name} (Copy)`);
+    const suggested = template.name.replace(/\s*\(Copy\)\s*$/i, "").trim() || template.name;
+    const result = await duplicateEventOrderTemplateAction(
+      template.id,
+      `${suggested} — ${new Date().getFullYear()}`,
+    );
     setPendingId(null);
-    if (result.ok) { toast.success("Template duplicated."); router.push(`/library/event-order-templates/${result.templateId}`); }
-    else toast.error(result.message ?? "Could not duplicate template.");
+    if (result.ok) {
+      toast.success(
+        isStarter
+          ? "Created your venue’s copy. The original starter is unchanged."
+          : "Template duplicated.",
+      );
+      router.push(`/library/event-order-templates/${result.templateId}`);
+    } else toast.error(result.message ?? "Could not duplicate template.");
   }
 
   return (
@@ -385,8 +398,9 @@ function TemplateCard({
       description={template.description}
       meta={`Updated ${formatRelative(template.updatedAt)}`}
       href={archivedView ? undefined : `/library/event-order-templates/${template.id}`}
-      isStarter={Boolean(template.sourceMasterKey)}
+      isStarter={isStarter}
       isArchived={template.isArchived}
+      badges={!isStarter ? <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge> : undefined}
       primaryActions={archivedView
         ? [
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/event-order-templates/${template.id}/preview`, emphasis: "preview" },
@@ -394,7 +408,14 @@ function TemplateCard({
           ]
         : [
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/event-order-templates/${template.id}/preview`, emphasis: "preview" },
-            { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" },
+            ...(isStarter
+              ? [
+                  { id: "customize", label: LIBRARY_LABELS.customize, onClick: handleDuplicate, emphasis: "edit" as const },
+                  { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/event-order-templates/${template.id}`, emphasis: "preview" as const },
+                ]
+              : [
+                  { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" as const },
+                ]),
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
             // Path B only when the template has selectable groups. Fixed-only
             // templates use Use → Finalize → Share (Path A).
@@ -404,7 +425,9 @@ function TemplateCard({
           ]}
       overflowPending={pendingId === template.id}
       overflowItems={archivedView ? [] : [
-        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: handleDuplicate, icon: <Copy className="mr-2 h-3.5 w-3.5" /> },
+        ...(!isStarter
+          ? [{ id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: handleDuplicate, icon: <Copy className="mr-2 h-3.5 w-3.5" /> }]
+          : []),
         {
           id: "archive",
           label: archiveToggleLabel(template.isArchived),

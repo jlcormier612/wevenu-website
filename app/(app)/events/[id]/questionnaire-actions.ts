@@ -200,6 +200,19 @@ export async function saveQuestionnaireAuthoringAction(
   return result;
 }
 
+export async function updateQuestionnaireTemplateDetailsAction(
+  id: string,
+  input: { name: string; description: string | null },
+) {
+  const result = await templates.updateTemplateDetails(id, input);
+  if (result.ok) {
+    revalidatePath("/library/questionnaire-templates");
+    revalidatePath(`/library/questionnaire-templates/${id}`);
+    revalidatePath(`/library/questionnaire-templates/${id}/preview`);
+  }
+  return result;
+}
+
 export async function setQuestionnaireTemplateArchivedAction(id: string, isArchived: boolean) {
   const result = await templates.setTemplateArchived(id, isArchived);
   if (result.ok) {

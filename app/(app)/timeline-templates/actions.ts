@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   addItem, createTemplate, createTemplateFromImport, deleteItem_, deleteTemplate_, duplicateTemplate,
   renameTemplate_, reorderItems_, setTemplateArchived_, setTemplateDefault_, updateItem_,
+  updateTemplateDetails_,
 } from "@/lib/timeline-templates/service";
 import type {
   CreateTimelineTemplateResult, ImportTimelineTemplateResult, TimelineTemplateActionResult, TimelineTemplateItemInput,
@@ -19,6 +20,19 @@ export async function createTemplateAction(name: string, eventType: string | nul
 export async function renameTemplateAction(id: string, name: string): Promise<TimelineTemplateActionResult> {
   const result = await renameTemplate_(id, name);
   if (result.ok) revalidatePath("/library/timeline-templates");
+  return result;
+}
+
+export async function updateTemplateDetailsAction(
+  id: string,
+  input: { name: string; eventType: string | null; spaceId: string | null },
+): Promise<TimelineTemplateActionResult> {
+  const result = await updateTemplateDetails_(id, input);
+  if (result.ok) {
+    revalidatePath("/library/timeline-templates");
+    revalidatePath(`/library/timeline-templates/${id}`);
+    revalidatePath(`/library/timeline-templates/${id}/preview`);
+  }
   return result;
 }
 

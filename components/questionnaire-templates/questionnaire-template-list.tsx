@@ -307,6 +307,7 @@ function TemplateCard({
     getQuestionnaireMasterByKind(template.kind).fields.length + template.customFields.length
   );
 
+  const isStarter = Boolean(template.sourceMasterKey);
   const primaryActions = archivedView
     ? [
         {
@@ -333,12 +334,40 @@ function TemplateCard({
           href: `/library/questionnaire-templates/${template.id}/preview`,
           emphasis: "preview" as const,
         },
-        {
-          id: "edit",
-          label: LIBRARY_LABELS.edit,
-          href: `/library/questionnaire-templates/${template.id}`,
-          emphasis: "edit" as const,
-        },
+        ...(isStarter
+          ? [
+              {
+                id: "customize",
+                label: LIBRARY_LABELS.customize,
+                onClick: () => startTransition(async () => {
+                  const suggested = template.name.replace(/\s*\(Copy\)\s*$/i, "").trim() || template.name;
+                  const result = await duplicateQuestionnaireTemplateAction(
+                    template.id,
+                    `${suggested} — ${new Date().getFullYear()}`,
+                  );
+                  if (result.ok) {
+                    toast.success("Created your venue’s copy. The original starter is unchanged.");
+                    if (result.templateId) router.push(`/library/questionnaire-templates/${result.templateId}`);
+                    else router.refresh();
+                  } else toast.error(result.message ?? "Could not customize.");
+                }),
+                emphasis: "edit" as const,
+              },
+              {
+                id: "edit",
+                label: LIBRARY_LABELS.editActivities,
+                href: `/library/questionnaire-templates/${template.id}`,
+                emphasis: "preview" as const,
+              },
+            ]
+          : [
+              {
+                id: "edit",
+                label: LIBRARY_LABELS.edit,
+                href: `/library/questionnaire-templates/${template.id}`,
+                emphasis: "edit" as const,
+              },
+            ]),
         {
           id: "use",
           label: LIBRARY_LABELS.useQuestionnaire,
@@ -354,25 +383,32 @@ function TemplateCard({
         title={template.name}
         description={template.description}
         meta={`${count} questions · Updated ${formatRelative(template.updatedAt)}`}
-        isStarter={Boolean(template.sourceMasterKey)}
+        isStarter={isStarter}
         isArchived={template.isArchived}
-        badges={<Badge variant="muted" className="text-[10px]">{kindLabel(template.kind)}</Badge>}
+        badges={
+          <>
+            {!isStarter && <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>}
+            <Badge variant="muted" className="text-[10px]">{kindLabel(template.kind)}</Badge>
+          </>
+        }
         primaryActions={primaryActions}
         overflowPending={pending}
         overflowItems={archivedView ? [] : [
-          {
-            id: "duplicate",
-            label: LIBRARY_LABELS.duplicate,
-            onClick: () => startTransition(async () => {
-              const result = await duplicateQuestionnaireTemplateAction(template.id, `${template.name} (Copy)`);
-              if (result.ok) {
-                toast.success("Duplicated.");
-                if (result.templateId) router.push(`/library/questionnaire-templates/${result.templateId}`);
-                else router.refresh();
-              } else toast.error(result.message ?? "Could not duplicate.");
-            }),
-            icon: <Copy className="mr-2 h-3.5 w-3.5" />,
-          },
+          ...(!isStarter
+            ? [{
+                id: "duplicate",
+                label: LIBRARY_LABELS.duplicate,
+                onClick: () => startTransition(async () => {
+                  const result = await duplicateQuestionnaireTemplateAction(template.id, `${template.name} (Copy)`);
+                  if (result.ok) {
+                    toast.success("Duplicated.");
+                    if (result.templateId) router.push(`/library/questionnaire-templates/${result.templateId}`);
+                    else router.refresh();
+                  } else toast.error(result.message ?? "Could not duplicate.");
+                }),
+                icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+              }]
+            : []),
           {
             id: "archive",
             label: archiveToggleLabel(template.isArchived),

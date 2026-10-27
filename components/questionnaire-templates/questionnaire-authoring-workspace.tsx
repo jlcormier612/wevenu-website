@@ -14,10 +14,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { saveQuestionnaireAuthoringAction } from "@/app/(app)/events/[id]/questionnaire-actions";
+import {
+  duplicateQuestionnaireTemplateAction,
+  saveQuestionnaireAuthoringAction,
+} from "@/app/(app)/events/[id]/questionnaire-actions";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { StarterOwnershipBanner } from "@/components/library/starter-ownership-banner";
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
+import { QuestionnaireTemplateDetailsSheet } from "@/components/questionnaire-templates/questionnaire-template-details-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -110,6 +115,8 @@ export function QuestionnaireAuthoringWorkspace({
   const [error, setError] = React.useState("");
   const [pending, startTransition] = React.useTransition();
   const [savedFlash, setSavedFlash] = React.useState(false);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const isStarter = Boolean(template.sourceMasterKey);
   const dirty = JSON.stringify(state) !== baseline;
   const { confirmLeave } = useLibraryUnsavedGuard(dirty && !pending);
   // Sandbox E2E finding (2026-08-17): clicking "Add question" correctly
@@ -275,13 +282,29 @@ export function QuestionnaireAuthoringWorkspace({
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-medium tracking-tight text-heading">Edit questionnaire</h1>
-            {template.sourceMasterKey && (
+            <h1 className="text-2xl font-medium tracking-tight text-heading">{state.name || template.name}</h1>
+            {isStarter && (
               <Badge variant="muted" className="text-[10px]">{LIBRARY_LABELS.starter}</Badge>
             )}
+            {!isStarter && (
+              <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground truncate">{state.name || template.name}</p>
+          <p className="text-sm text-muted-foreground truncate">
+            {state.description || "Edit questions on this reusable questionnaire"}
+          </p>
           <LibrarySaveStatus status={saveStatus} model="explicit" />
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="questionnaire-template-edit-details"
+              onClick={() => setDetailsOpen(true)}
+            >
+              {LIBRARY_LABELS.editDetails}
+            </Button>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Button
@@ -312,29 +335,42 @@ export function QuestionnaireAuthoringWorkspace({
         </div>
       </header>
 
+      {isStarter ? (
+        <StarterOwnershipBanner
+          templateName={template.name}
+          itemNoun="questions"
+          customizeHref={(id) => `/library/questionnaire-templates/${id}`}
+          onCustomize={async () => {
+            const suggested = template.name.replace(/\s*\(Copy\)\s*$/i, "").trim() || template.name;
+            const result = await duplicateQuestionnaireTemplateAction(
+              template.id,
+              `${suggested} — ${new Date().getFullYear()}`,
+            );
+            if (result.ok && result.templateId) {
+              return { ok: true as const, templateId: result.templateId };
+            }
+            return { ok: false as const, message: (result as { message?: string }).message };
+          }}
+        />
+      ) : null}
+
       <p className="text-sm text-muted-foreground">
         Changes here update this reusable questionnaire. Working forms already sent to couples are not changed.
+        Use Edit details for name and purpose; Save changes below applies question edits.
       </p>
 
-      <div className="space-y-4 rounded-sm border border-border p-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="q-name">Name</Label>
-          <Input
-            id="q-name"
-            value={state.name}
-            onChange={(e) => patch({ name: e.target.value })}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="q-purpose">Purpose</Label>
-          <Textarea
-            id="q-purpose"
-            rows={2}
-            value={state.description}
-            onChange={(e) => patch({ description: e.target.value })}
-          />
-        </div>
-      </div>
+      <QuestionnaireTemplateDetailsSheet
+        template={{ ...template, name: state.name, description: state.description || null }}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        onSaved={(next) => {
+          patch(next);
+          setBaseline((prev) => {
+            const parsed = JSON.parse(prev) as EditorState;
+            return JSON.stringify({ ...parsed, name: next.name, description: next.description });
+          });
+        }}
+      />
 
       <div className="space-y-6">
         {sections.map((section) => (
