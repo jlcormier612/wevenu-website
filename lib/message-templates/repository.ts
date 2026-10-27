@@ -109,6 +109,13 @@ export async function uniqueTemplateName(
 }
 
 export async function updateTemplate(client: DbClient, venueId: string, id: string, input: MessageTemplateInput): Promise<void> {
+  const existing = await getTemplate(client, venueId, id);
+  if (!existing) throw new Error("Template not found.");
+  // HTC starters stay immutable — Customize (duplicate without master key) is
+  // the ownership path. Never mutate starter content in place.
+  if (existing.sourceMasterKey) {
+    throw new Error("STARTER_PROTECTED");
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("message_templates") as any)
     .update({

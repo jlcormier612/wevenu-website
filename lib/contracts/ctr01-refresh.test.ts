@@ -299,11 +299,21 @@ describe("CTR-01 migration 108 additional_event_spaces SQL safety", () => {
   });
 });
 
-describe("updateTemplate clears source_master_key on venue edit", () => {
-  it("repository update sets source_master_key null", () => {
+describe("updateTemplate protects HTC starters (Customize ownership model)", () => {
+  it("repository rejects starter rows and does not clear source_master_key in place", () => {
     const repo = readFileSync(resolve("lib/contracts/repository.ts"), "utf8");
     const fn = repo.slice(repo.indexOf("export async function updateTemplate"));
     const body = fn.slice(0, fn.indexOf("export async function deleteTemplate"));
-    assert.match(body, /source_master_key:\s*null/);
+    assert.match(body, /STARTER_PROTECTED/);
+    assert.match(body, /sourceMasterKey/);
+    assert.doesNotMatch(body, /source_master_key:\s*null/);
+  });
+
+  it("service returns Customize guidance instead of mutating the starter", () => {
+    const service = readFileSync(resolve("lib/contracts/service.ts"), "utf8");
+    const fn = service.slice(service.indexOf("export async function updateTemplate_"));
+    const body = fn.slice(0, fn.indexOf("export async function deleteTemplate_"));
+    assert.match(body, /existing\.sourceMasterKey/);
+    assert.match(body, /Customize this Hello to Cheers starter/);
   });
 });

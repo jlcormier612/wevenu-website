@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ContractStarterEditGate } from "@/components/contracts/contract-starter-edit-gate";
 import { TemplateForm } from "@/components/contracts/template-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,19 @@ export default async function EditTemplatePage({ params }: Props) {
   const { id } = await params;
   const template = await getTemplate(id);
   if (!template) notFound();
+
+  if (template.sourceMasterKey) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={template.name}
+          description="Hello to Cheers starter — customize to create your venue’s editable copy."
+        />
+        <ContractStarterEditGate templateId={template.id} templateName={template.name} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader title={`Edit · ${template.name}`} description="Update the template content and merge fields." />

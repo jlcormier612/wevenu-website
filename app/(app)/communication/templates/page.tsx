@@ -24,7 +24,7 @@ export default async function MessageTemplatesPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Message Templates"
-        description="Reusable email and text messages for couples — including Hello to Cheers starters you can edit to sound like your venue."
+        description="Reusable email and text messages for couples — including Hello to Cheers starters you can Customize into your venue’s own editable copies."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <MessageTemplateStarterPicker existingTemplates={active} />

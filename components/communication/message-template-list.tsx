@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Message Templates list — active Primary Edit; Archived Preview/Restore (edit only).
- * Templates never send from the Library list — send happens in Messaging with confirmation.
+ * Message Templates list — Customize for HTC starters (venue-owned copy);
+ * Edit/Duplicate for venue-owned templates. Never send from the Library list.
  */
 
 import * as React from "react";
@@ -53,6 +53,19 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
     else toast.error(result.message ?? "Could not duplicate template.");
   }
 
+  async function handleCustomize(t: MessageTemplate) {
+    setPendingId(t.id);
+    const suggested = t.name.replace(/\s*\(Starter\)\s*$/i, "").trim() || t.name;
+    const result = await duplicateTemplateAction(t.id, `${suggested} — ${new Date().getFullYear()}`);
+    setPendingId(null);
+    if (result.ok && result.templateId) {
+      toast.success("Created your venue’s copy. The original starter is unchanged.");
+      router.push(`/communication/templates/${result.templateId}/edit`);
+    } else {
+      toast.error(result.message ?? "Could not create a copy.");
+    }
+  }
+
   async function handleDeleteConfirmed() {
     if (!deleting) return;
     setDeletePending(true);
@@ -68,42 +81,61 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
   }
 
   function cardFor(t: MessageTemplate, archivedView: boolean) {
+    const isStarter = Boolean(t.sourceMasterKey);
+    const primaryActions = archivedView
+      ? [
+          { id: "preview", label: LIBRARY_LABELS.preview, href: `/communication/templates/${t.id}/preview`, emphasis: "preview" as const },
+          { id: "restore", label: LIBRARY_LABELS.restore, onClick: () => handleToggleArchived(t), emphasis: "edit" as const },
+        ]
+      : isStarter
+        ? [
+            { id: "preview", label: LIBRARY_LABELS.preview, href: `/communication/templates/${t.id}/preview`, emphasis: "preview" as const },
+            {
+              id: "customize",
+              label: LIBRARY_LABELS.customize,
+              onClick: () => handleCustomize(t),
+              emphasis: "edit" as const,
+              disabled: pendingId === t.id,
+            },
+          ]
+        : [
+            { id: "preview", label: LIBRARY_LABELS.preview, href: `/communication/templates/${t.id}/preview`, emphasis: "preview" as const },
+            { id: "edit", label: LIBRARY_LABELS.edit, href: `/communication/templates/${t.id}/edit`, emphasis: "edit" as const },
+          ];
+
     return (
       <LibraryAssetCard
         key={t.id}
         title={t.name}
         description={categoryLabel(t.category)}
-        isStarter={Boolean(t.sourceMasterKey)}
+        isStarter={isStarter}
         isArchived={t.isArchived}
         badges={
           <>
+            {!isStarter && !t.isArchived && (
+              <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>
+            )}
             {t.emailBody && <Badge variant="muted" className="text-[10px]">Email</Badge>}
             {t.smsBody && <Badge variant="muted" className="text-[10px]">Text</Badge>}
           </>
         }
-        primaryActions={archivedView
-          ? [
-              { id: "edit", label: LIBRARY_LABELS.edit, href: `/communication/templates/${t.id}/edit`, emphasis: "edit" },
-              { id: "restore", label: LIBRARY_LABELS.restore, onClick: () => handleToggleArchived(t), emphasis: "edit" },
-            ]
-          : [
-              { id: "preview", label: LIBRARY_LABELS.preview, href: `/communication/templates/${t.id}/preview`, emphasis: "preview" },
-              { id: "edit", label: LIBRARY_LABELS.edit, href: `/communication/templates/${t.id}/edit`, emphasis: "edit" },
-            ]}
+        primaryActions={primaryActions}
         overflowPending={pendingId === t.id}
         overflowItems={archivedView ? [] : [
-          {
-            id: "edit",
-            label: LIBRARY_LABELS.edit,
-            href: `/communication/templates/${t.id}/edit`,
-            icon: <Pencil className="mr-2 h-3.5 w-3.5" />,
-          },
-          {
-            id: "duplicate",
-            label: LIBRARY_LABELS.duplicate,
-            onClick: () => handleDuplicate(t),
-            icon: <Copy className="mr-2 h-3.5 w-3.5" />,
-          },
+          ...(!isStarter
+            ? [{
+                id: "edit",
+                label: LIBRARY_LABELS.edit,
+                href: `/communication/templates/${t.id}/edit`,
+                icon: <Pencil className="mr-2 h-3.5 w-3.5" />,
+              },
+              {
+                id: "duplicate",
+                label: LIBRARY_LABELS.duplicate,
+                onClick: () => handleDuplicate(t),
+                icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+              }]
+            : []),
           {
             id: "archive",
             label: archiveToggleLabel(t.isArchived),
@@ -128,7 +160,9 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Editing a template never sends a message. Send from Messaging after you review the draft.
+        Customize a Hello to Cheers starter to create your venue’s editable copy — the original starter
+        stays unchanged. Editing a venue-owned template never sends a message; send from Messaging after
+        you review the draft.
       </p>
       <div className="space-y-2">
         {active.map((t) => cardFor(t, false))}
