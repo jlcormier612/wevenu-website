@@ -1,26 +1,29 @@
 # Event Order — Authoring UX Redesign (S0–S2)
 
-## Verdict: **NOT GREEN** (awaiting Sandbox deploy + browser acceptance)
+## Verdict: **GREEN**
 
-## Scope
-
-Implements approved S0 + S1 + S2:
+## Scope delivered
 
 - Plain-English template landing and detail orientation
-- Remove preliminary selection-pattern quiz from ordinary path
+- Preliminary selection-pattern quiz removed from ordinary path
 - Single contextual category workspace (included + primary + under-option follow-ups)
-- Preserve Catering Simplify behaviors (`depends_on_option_ids`, exact-N, review/preview)
-- Specialist rules accessible outside preview; no second dependency system; no migration
+- Catering Simplify foundations preserved (`depends_on_option_ids`, exact-N, review / non-sending preview)
+- Specialist rules mount only when opened; hidden on preview
+- No migration; no second dependency system
 
-## Commits / deploy
+## Commits / serving
 
 | Item | Value |
 |---|---|
-| Feature commit | _(pending)_ |
-| Deploy ref | _(pending)_ |
+| Feature tip / serving | `0813e225979c0dc795ac2b3d99480858538adf0c` |
+| Deploy ref | `sandbox-deploy/eo-authoring-ux-0813e225` |
+| Deploy run | https://github.com/jlcormier612/wevenu-website/actions/runs/40585322948 |
+| ECS / `data-dpl-id` | `0813e225979c0dc795ac2b3d99480858538adf0c` |
+| Health | ok · env+supabase ok |
+| Migrations | None |
 | Production | Untouched |
 
-## Automated tests (local)
+## Automated tests
 
 ```bash
 npx tsx --test \
@@ -33,3 +36,32 @@ npx tsx --test \
   lib/client-choices/validate-answers.test.ts
 → 85 pass / 0 fail
 ```
+
+## Browser harness
+
+```bash
+EXPECTED_SHA=0813e225979c0dc795ac2b3d99480858538adf0c \
+  npx tsx docs/qa/event-order-authoring-ux-redesign/verify-browser.mts
+→ GREEN — 35 pass / 0 fail
+```
+
+Evidence: `browser-results.json`, `browser-run.log`, `persisted-state.json`, `after-cleanup.json`, `shots/`
+
+### Critical scenarios
+
+| Scenario | Result |
+|---|---|
+| Landing plain English + example | PASS |
+| No pattern quiz / no “Step 1 of 7” | PASS |
+| Included + choices same workspace | PASS |
+| Buffet / Plated under-option follow-ups | PASS |
+| Exact-3 Side dishes persisted (min=max=3) | PASS |
+| Preview Buffet ≠ Plated dependents | PASS |
+| Under-select 2 of 3 → validation “Side dishes requires at least 3” | PASS |
+| Preview non-sending; specialist hidden on preview | PASS |
+| Persist / reopen / Fancy ownership | PASS |
+| Cleanup EOAR-* ; template count restored | PASS |
+
+## Out of scope preserved
+
+Floor Plans, Timeline, Production, unrelated dirty tree (~1186).

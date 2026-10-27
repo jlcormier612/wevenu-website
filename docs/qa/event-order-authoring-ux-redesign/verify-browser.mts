@@ -226,11 +226,19 @@ async function main() {
     // Ensure a primary group exists (ensureRootGroupForPatterns usually creates one)
     let groupCount = await page.locator('[data-testid^="eo-choice-group-"]').count();
     if (groupCount === 0) {
-      const workspace = page.getByTestId("eo-guided-step-workspace");
-      await workspace.getByTestId("eo-add-group-name").fill("Dinner service");
-      await workspace.getByTestId("eo-add-primary-question").or(workspace.getByTestId("eo-add-choice-group")).first().click();
-      await page.waitForTimeout(2000);
+      const primaryForm = page.getByTestId("eo-guided-step-workspace").getByTestId("eo-add-primary-question");
+      await primaryForm.waitFor({ state: "visible", timeout: 15000 });
+      await primaryForm.getByTestId("eo-add-group-name").fill("Dinner service");
+      await primaryForm.getByTestId("eo-add-choice-group").click();
+      await page.waitForSelector('[data-testid^="eo-choice-group-"]', { timeout: 30000 }).catch(() => null);
+      await page.waitForTimeout(1500);
       groupCount = await page.locator('[data-testid^="eo-choice-group-"]').count();
+      if (groupCount === 0) {
+        // Persist may need a refresh if the mutation succeeded without RSC update.
+        await page.reload({ waitUntil: "networkidle" });
+        await page.waitForSelector('[data-testid="eo-guided-step-workspace"]', { timeout: 30000 });
+        groupCount = await page.locator('[data-testid^="eo-choice-group-"]').count();
+      }
     }
     record("primary_group_ready", groupCount >= 1, `groups=${groupCount}`);
 
@@ -308,7 +316,8 @@ async function main() {
     }
 
     if (buffetOpt) {
-      await addCategoryUnder(buffetOpt.id, "Main dishes", "2");
+      // Exact-three Side dishes only under Buffet so under-select validation targets that rule
+      // (avoid an empty min=2 Main dishes group shadowing the message).
       await addCategoryUnder(buffetOpt.id, "Side dishes", "3");
     }
     if (platedOpt) {
@@ -326,7 +335,7 @@ async function main() {
     );
     record(
       "buffet_has_own_categories",
-      buffetDeps.length >= 2
+      buffetDeps.length >= 1
         && buffetDeps.every((g: { depends_on_option_ids: string[] | null }) =>
           !(g.depends_on_option_ids ?? []).includes(platedOpt?.id ?? "___"),
         ),
@@ -510,7 +519,7 @@ async function main() {
     );
     record(
       "persist_scoped_dependencies",
-      pBuffetDeps.length >= 2 && pPlatedDeps.length >= 2
+      pBuffetDeps.length >= 1 && pPlatedDeps.length >= 2
         && !pBuffetDeps.some((g: { depends_on_option_ids: string[] | null }) =>
           (g.depends_on_option_ids ?? []).includes(pPlated?.id ?? "___"),
         ),

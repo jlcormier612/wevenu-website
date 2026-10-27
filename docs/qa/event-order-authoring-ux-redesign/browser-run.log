@@ -1,0 +1,159 @@
+PASS serving_sha — expected=0813e225979c0dc795ac2b3d99480858538adf0c ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0813e225979c0dc795ac2b3d99480858538adf0c
+PASS api_health — {"status":200,"body":{"ok":true,"checks":{"env":"ok","supabase":"ok"}}}
+PASS html_dpl — dpl=0813e225979c0dc795ac2b3d99480858538adf0c
+PASS landing_plain_english — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+85
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+13
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+Templates
+Event Order Templates
+
+Reusable packages for a wedding’s Event Order — what you include automatically, and what the couple cho
+PASS landing_example_present — example block
+PASS fixture_created — id=37844ae4-d7d0-4a53-a77d-cbb0170d538d
+PASS detail_intro_plain — detail orientation
+PASS no_pattern_quiz — pattern quiz absent on ordinary path
+PASS no_false_step_of_seven — Category 1 of 1: Catering
+PASS ux_primary_question_framing — primary question framing in workspace
+PASS ux_how_many_control — select-count control present
+PASS included_and_choices_same_workspace — included + choices co-located
+PASS primary_group_ready — groups=1
+PASS service_options_added — Buffet + Plated dinner on primary question
+PASS ux_under_option_cta — under-option add-choices CTA in same workspace
+PASS ux_if_couple_chooses — parent-child relationship copy
+PASS no_duplicate_branch_step — separate branches step removed
+PASS options_persisted — {"buffet":"13d53a53-d7d8-4d73-ac0b-d268f592fc01","plated":"42f75b17-d696-49c6-9287-b1d3e4cd5f5d"}
+PASS buffet_has_own_categories — [{"name":"Side dishes","min":3,"max":3,"mode":"multi"}]
+PASS plated_has_own_categories — [{"name":"Entrée","min":1,"max":1},{"name":"Dessert","min":1,"max":1}]
+PASS choose_exactly_three_sides — {"id":"29f4c189-b6b8-4c5e-b67d-31d4e716f5fb","section_id":"3699335c-1d67-4e7f-b6be-657c9d8e372f","name":"Side dishes","selection_mode":"multi","min_select":3,"max_select":3,"depends_on_option_ids":["13d53a53-d7d8-4d73-ac0b-d268f592fc01"],"venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}
+PASS choose_one_entree — {"id":"ece80641-85a5-4b50-ad4d-931957fb208c","section_id":"3699335c-1d67-4e7f-b6be-657c9d8e372f","name":"Entrée","selection_mode":"single","min_select":1,"max_select":1,"depends_on_option_ids":["42f75b17-d696-49c6-9287-b1d3e4cd5f5d"],"venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}
+PASS narrow_workspace_usable — workspace at 390
+PASS review_nests_buffet_and_plated — Review your complete setup
+
+Included items, primary choices, follow-ups under the option that triggers them, and optional extras. Return to a category to edit.
+
+Catering
+Edit category
+
+“Dessert” has no follow-up options yet — clients will see an empty branch when its parent is selected. — use Edit category to finish this configuration.
+
+Dinner service
+
+Choose one · required
+
+Buffet · additional $65 · template-only
+
+Follow-up: Side dishes
+
+Choose multiple · required · shown after: Buffet
+
+Roasted
+PASS preview_non_sending — non-sending banner
+PASS preview_plated_shows_entree_not_buffet_sides — CATERING
+Dinner service
+
+Pick one · required
+
+Buffet
++$65.00
+Plated dinner
++$85.00
+Entrée
+
+Pick one · required · based on your selection above
+
+Shown only after the client chooses “Plated dinner”.
+
+Chicken entrée
+Included
+Steak entrée
+Included
+Dessert
+
+Pick one · required · based on your selection above
+
+Shown only after the client chooses “Plated dinner”.
+
+No additional choices are configured for this selection yet.
+PASS preview_buffet_shows_sides_not_plated_entree — CATERING
+Dinner service
+
+Pick one · required
+
+Buffet
++$65.00
+Plated dinner
++$85.00
+Side dishes
+
+Pick many · required · based on your selection above
+
+Shown only after the client chooses “Buffet”.
+
+Roasted potatoes
+Included
+Green beans
+Included
+Mac and cheese
+Included
+Salad
+Included
+PASS exact_three_underselect_picked_two — clicked=2
+PASS exact_three_underselect_validation — “Side dishes” requires at least 3 selections.
+PASS preview_commercial_guidance_intact — commercial category still in preview
+PASS specialist_hidden_on_preview — specialist not on preview path
+PASS persist_scoped_dependencies — {"buffetDeps":[{"id":"29f4c189-b6b8-4c5e-b67d-31d4e716f5fb","section_id":"3699335c-1d67-4e7f-b6be-657c9d8e372f","name":"Side dishes","selection_mode":"multi","min_select":3,"max_select":3,"depends_on_option_ids":["13d53a53-d7d8-4d73-ac0b-d268f592fc01"],"venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}],"platedDeps":[{"id":"ece80641-85a5-4b50-ad4d-931957fb208c","section_id":"3699335c-1d67-4e7f-b6be-657c9d8e372f","name":"Entrée","selection_mode":"single","min_select":1,"max_select":1,"depends_on_
+PASS persist_fancy_ownership — all rows Fancy
+PASS reopen_wizard_present — wizard after refresh
+PASS cleanup_complete — leftovers=0 before=7 after=7
+
+GREEN — 35 pass / 0 fail

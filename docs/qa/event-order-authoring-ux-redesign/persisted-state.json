@@ -1,0 +1,133 @@
+{
+  "sections": [
+    {
+      "id": "3699335c-1d67-4e7f-b6be-657c9d8e372f",
+      "name": "Catering",
+      "sort_order": 0,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    }
+  ],
+  "groups": [
+    {
+      "id": "a6ea475e-95f3-4497-a773-876480bdef76",
+      "section_id": "3699335c-1d67-4e7f-b6be-657c9d8e372f",
+      "name": "Dinner service",
+      "selection_mode": "single",
+      "min_select": 1,
+      "max_select": 1,
+      "depends_on_option_ids": [],
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "29f4c189-b6b8-4c5e-b67d-31d4e716f5fb",
+      "section_id": "3699335c-1d67-4e7f-b6be-657c9d8e372f",
+      "name": "Side dishes",
+      "selection_mode": "multi",
+      "min_select": 3,
+      "max_select": 3,
+      "depends_on_option_ids": [
+        "13d53a53-d7d8-4d73-ac0b-d268f592fc01"
+      ],
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "ece80641-85a5-4b50-ad4d-931957fb208c",
+      "section_id": "3699335c-1d67-4e7f-b6be-657c9d8e372f",
+      "name": "Entrée",
+      "selection_mode": "single",
+      "min_select": 1,
+      "max_select": 1,
+      "depends_on_option_ids": [
+        "42f75b17-d696-49c6-9287-b1d3e4cd5f5d"
+      ],
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "f5ac8702-0c0f-4f8f-a703-1c1b580ffaa2",
+      "section_id": "3699335c-1d67-4e7f-b6be-657c9d8e372f",
+      "name": "Dessert",
+      "selection_mode": "single",
+      "min_select": 1,
+      "max_select": 1,
+      "depends_on_option_ids": [
+        "42f75b17-d696-49c6-9287-b1d3e4cd5f5d"
+      ],
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    }
+  ],
+  "options": [
+    {
+      "id": "13d53a53-d7d8-4d73-ac0b-d268f592fc01",
+      "group_id": "a6ea475e-95f3-4497-a773-876480bdef76",
+      "label": "Buffet",
+      "unit_price": 65,
+      "is_included": false,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "42f75b17-d696-49c6-9287-b1d3e4cd5f5d",
+      "group_id": "a6ea475e-95f3-4497-a773-876480bdef76",
+      "label": "Plated dinner",
+      "unit_price": 85,
+      "is_included": false,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "19f36863-88b3-4829-97a8-086e1782efd1",
+      "group_id": "29f4c189-b6b8-4c5e-b67d-31d4e716f5fb",
+      "label": "Roasted potatoes",
+      "unit_price": 0,
+      "is_included": true,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "09e1f9ee-0678-406c-a01f-3623d6188246",
+      "group_id": "29f4c189-b6b8-4c5e-b67d-31d4e716f5fb",
+      "label": "Green beans",
+      "unit_price": 0,
+      "is_included": true,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "11bf57e6-9253-4fd7-b875-50c2f6109901",
+      "group_id": "29f4c189-b6b8-4c5e-b67d-31d4e716f5fb",
+      "label": "Mac and cheese",
+      "unit_price": 0,
+      "is_included": true,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "63266271-77cc-471e-929e-35221797d094",
+      "group_id": "29f4c189-b6b8-4c5e-b67d-31d4e716f5fb",
+      "label": "Salad",
+      "unit_price": 0,
+      "is_included": true,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "73d3b195-6a33-4e44-9924-e8893bc62767",
+      "group_id": "ece80641-85a5-4b50-ad4d-931957fb208c",
+      "label": "Chicken entrée",
+      "unit_price": 0,
+      "is_included": true,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "feb6fdce-2c02-4016-964e-81ce293d65fc",
+      "group_id": "ece80641-85a5-4b50-ad4d-931957fb208c",
+      "label": "Steak entrée",
+      "unit_price": 0,
+      "is_included": true,
+      "offering_id": null,
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    }
+  ],
+  "lines": []
+}

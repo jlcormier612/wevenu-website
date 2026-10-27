@@ -1,0 +1,182 @@
+{
+  "expectedSha": "0813e225979c0dc795ac2b3d99480858538adf0c",
+  "pass": 35,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=0813e225979c0dc795ac2b3d99480858538adf0c ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0813e225979c0dc795ac2b3d99480858538adf0c"
+    },
+    {
+      "name": "api_health",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}"
+    },
+    {
+      "name": "html_dpl",
+      "pass": true,
+      "detail": "dpl=0813e225979c0dc795ac2b3d99480858538adf0c"
+    },
+    {
+      "name": "landing_plain_english",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n85\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nTemplates\nEvent Order Templates\n\nReusable packages for a wedding’s Event Order — what you include automatically, and what the couple cho"
+    },
+    {
+      "name": "landing_example_present",
+      "pass": true,
+      "detail": "example block"
+    },
+    {
+      "name": "fixture_created",
+      "pass": true,
+      "detail": "id=37844ae4-d7d0-4a53-a77d-cbb0170d538d"
+    },
+    {
+      "name": "detail_intro_plain",
+      "pass": true,
+      "detail": "detail orientation"
+    },
+    {
+      "name": "no_pattern_quiz",
+      "pass": true,
+      "detail": "pattern quiz absent on ordinary path"
+    },
+    {
+      "name": "no_false_step_of_seven",
+      "pass": true,
+      "detail": "Category 1 of 1: Catering"
+    },
+    {
+      "name": "ux_primary_question_framing",
+      "pass": true,
+      "detail": "primary question framing in workspace"
+    },
+    {
+      "name": "ux_how_many_control",
+      "pass": true,
+      "detail": "select-count control present"
+    },
+    {
+      "name": "included_and_choices_same_workspace",
+      "pass": true,
+      "detail": "included + choices co-located"
+    },
+    {
+      "name": "primary_group_ready",
+      "pass": true,
+      "detail": "groups=1"
+    },
+    {
+      "name": "service_options_added",
+      "pass": true,
+      "detail": "Buffet + Plated dinner on primary question"
+    },
+    {
+      "name": "ux_under_option_cta",
+      "pass": true,
+      "detail": "under-option add-choices CTA in same workspace"
+    },
+    {
+      "name": "ux_if_couple_chooses",
+      "pass": true,
+      "detail": "parent-child relationship copy"
+    },
+    {
+      "name": "no_duplicate_branch_step",
+      "pass": true,
+      "detail": "separate branches step removed"
+    },
+    {
+      "name": "options_persisted",
+      "pass": true,
+      "detail": "{\"buffet\":\"13d53a53-d7d8-4d73-ac0b-d268f592fc01\",\"plated\":\"42f75b17-d696-49c6-9287-b1d3e4cd5f5d\"}"
+    },
+    {
+      "name": "buffet_has_own_categories",
+      "pass": true,
+      "detail": "[{\"name\":\"Side dishes\",\"min\":3,\"max\":3,\"mode\":\"multi\"}]"
+    },
+    {
+      "name": "plated_has_own_categories",
+      "pass": true,
+      "detail": "[{\"name\":\"Entrée\",\"min\":1,\"max\":1},{\"name\":\"Dessert\",\"min\":1,\"max\":1}]"
+    },
+    {
+      "name": "choose_exactly_three_sides",
+      "pass": true,
+      "detail": "{\"id\":\"29f4c189-b6b8-4c5e-b67d-31d4e716f5fb\",\"section_id\":\"3699335c-1d67-4e7f-b6be-657c9d8e372f\",\"name\":\"Side dishes\",\"selection_mode\":\"multi\",\"min_select\":3,\"max_select\":3,\"depends_on_option_ids\":[\"13d53a53-d7d8-4d73-ac0b-d268f592fc01\"],\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}"
+    },
+    {
+      "name": "choose_one_entree",
+      "pass": true,
+      "detail": "{\"id\":\"ece80641-85a5-4b50-ad4d-931957fb208c\",\"section_id\":\"3699335c-1d67-4e7f-b6be-657c9d8e372f\",\"name\":\"Entrée\",\"selection_mode\":\"single\",\"min_select\":1,\"max_select\":1,\"depends_on_option_ids\":[\"42f75b17-d696-49c6-9287-b1d3e4cd5f5d\"],\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}"
+    },
+    {
+      "name": "narrow_workspace_usable",
+      "pass": true,
+      "detail": "workspace at 390"
+    },
+    {
+      "name": "review_nests_buffet_and_plated",
+      "pass": true,
+      "detail": "Review your complete setup\n\nIncluded items, primary choices, follow-ups under the option that triggers them, and optional extras. Return to a category to edit.\n\nCatering\nEdit category\n\n“Dessert” has no follow-up options yet — clients will see an empty branch when its parent is selected. — use Edit category to finish this configuration.\n\nDinner service\n\nChoose one · required\n\nBuffet · additional $65 · template-only\n\nFollow-up: Side dishes\n\nChoose multiple · required · shown after: Buffet\n\nRoasted"
+    },
+    {
+      "name": "preview_non_sending",
+      "pass": true,
+      "detail": "non-sending banner"
+    },
+    {
+      "name": "preview_plated_shows_entree_not_buffet_sides",
+      "pass": true,
+      "detail": "CATERING\nDinner service\n\nPick one · required\n\nBuffet\n+$65.00\nPlated dinner\n+$85.00\nEntrée\n\nPick one · required · based on your selection above\n\nShown only after the client chooses “Plated dinner”.\n\nChicken entrée\nIncluded\nSteak entrée\nIncluded\nDessert\n\nPick one · required · based on your selection above\n\nShown only after the client chooses “Plated dinner”.\n\nNo additional choices are configured for this selection yet."
+    },
+    {
+      "name": "preview_buffet_shows_sides_not_plated_entree",
+      "pass": true,
+      "detail": "CATERING\nDinner service\n\nPick one · required\n\nBuffet\n+$65.00\nPlated dinner\n+$85.00\nSide dishes\n\nPick many · required · based on your selection above\n\nShown only after the client chooses “Buffet”.\n\nRoasted potatoes\nIncluded\nGreen beans\nIncluded\nMac and cheese\nIncluded\nSalad\nIncluded"
+    },
+    {
+      "name": "exact_three_underselect_picked_two",
+      "pass": true,
+      "detail": "clicked=2"
+    },
+    {
+      "name": "exact_three_underselect_validation",
+      "pass": true,
+      "detail": "“Side dishes” requires at least 3 selections."
+    },
+    {
+      "name": "preview_commercial_guidance_intact",
+      "pass": true,
+      "detail": "commercial category still in preview"
+    },
+    {
+      "name": "specialist_hidden_on_preview",
+      "pass": true,
+      "detail": "specialist not on preview path"
+    },
+    {
+      "name": "persist_scoped_dependencies",
+      "pass": true,
+      "detail": "{\"buffetDeps\":[{\"id\":\"29f4c189-b6b8-4c5e-b67d-31d4e716f5fb\",\"section_id\":\"3699335c-1d67-4e7f-b6be-657c9d8e372f\",\"name\":\"Side dishes\",\"selection_mode\":\"multi\",\"min_select\":3,\"max_select\":3,\"depends_on_option_ids\":[\"13d53a53-d7d8-4d73-ac0b-d268f592fc01\"],\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}],\"platedDeps\":[{\"id\":\"ece80641-85a5-4b50-ad4d-931957fb208c\",\"section_id\":\"3699335c-1d67-4e7f-b6be-657c9d8e372f\",\"name\":\"Entrée\",\"selection_mode\":\"single\",\"min_select\":1,\"max_select\":1,\"depends_on_option_ids\":[\"42f75b17-d696-49c6-9287-b1d3e4cd5f5d\"],\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"},{\"id\":\"f5ac8702-0c0f-4f8f-a703-1c1b580ffaa2\",\"section_id\":\"3699335c-1d67-4e7f-b6be-657c9d8e372f\",\"name\":\"Dessert\",\"selection_mode\":\"single\",\"min_select\":1,\"max_select\":1,\"depends_on_option_ids\":[\"42f75b17-d696-49c6-9287-b1d3e4cd5f5d\"],\"venue_id\":\"a415ac52-cd74-42a6-8df7-7a8f6e71d080\"}]}"
+    },
+    {
+      "name": "persist_fancy_ownership",
+      "pass": true,
+      "detail": "all rows Fancy"
+    },
+    {
+      "name": "reopen_wizard_present",
+      "pass": true,
+      "detail": "wizard after refresh"
+    },
+    {
+      "name": "cleanup_complete",
+      "pass": true,
+      "detail": "leftovers=0 before=7 after=7"
+    }
+  ]
+}
