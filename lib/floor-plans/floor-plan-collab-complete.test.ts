@@ -19,8 +19,13 @@ const moveRoute = readFileSync(resolve("app/api/portal/floor-plans/move-object/r
 const ensureRoute = readFileSync(resolve("app/api/portal/floor-plans/ensure-assignment/route.ts"), "utf8");
 const addRoute = readFileSync(resolve("app/api/portal/floor-plans/add-table/route.ts"), "utf8");
 
+const phase2Migration = readFileSync(
+  resolve("supabase/migrations/20261424600000_floor_plans_phase2_preference_decouple.sql"),
+  "utf8",
+);
+
 describe("Floor plan collaboration complete (auto-assign, seating, couple move)", () => {
-  it("select RPC shares layout AND enables seating (client_access=view)", () => {
+  it("historical 222 select shared layout AND seating; Phase 2 migration decouples preference", () => {
     assert.match(migration, /create or replace function public\.select_portal_floor_plan_offer/);
     assert.match(migration, /shared_with_couple,\s*client_access\s*\)\s*values\s*\([\s\S]*?true,\s*'view'/);
     assert.match(
@@ -28,15 +33,21 @@ describe("Floor plan collaboration complete (auto-assign, seating, couple move)"
       /update public\.floor_plans\s+set\s+shared_with_couple = true,\s*client_access = 'view'/,
     );
     assert.doesNotMatch(migration, /client_access\s*=\s*'edit'/);
+    assert.match(phase2Migration, /couple_preference_status = 'pending'/);
+    assert.match(phase2Migration, /Does not set operational_floor_plan_id, shared_with_couple, or client_access/);
   });
 
-  it("ensure_portal_floor_plan_assignment covers zero / sole / multi / already_selected", () => {
-    assert.match(migration, /ensure_portal_floor_plan_assignment/);
-    assert.match(migration, /reason', 'no_offers'/);
-    assert.match(migration, /reason', 'needs_selection'/);
-    assert.match(migration, /reason', 'sole_offer'/);
-    assert.match(migration, /reason', 'already_selected'/);
-    assert.match(migration, /select_portal_floor_plan_offer\(p_token, v_offer_id\)/);
+  it("Phase 2 ensure_portal reports state without auto-select; route still wired", () => {
+    assert.match(phase2Migration, /ensure_portal_floor_plan_assignment/);
+    assert.match(phase2Migration, /reason', 'no_offers'/);
+    assert.match(phase2Migration, /reason', 'needs_selection'/);
+    assert.match(phase2Migration, /reason', 'already_selected'/);
+    assert.match(phase2Migration, /sole_offer_shared|sole_offer_awaiting_share/);
+    assert.doesNotMatch(
+      phase2Migration.split("create or replace function public.ensure_portal_floor_plan_assignment")[1]!
+        .split("create or replace function public.get_portal_floor_plans")[0]!,
+      /select_portal_floor_plan_offer\(/,
+    );
     assert.match(ensureRoute, /ensure_portal_floor_plan_assignment/);
   });
 
@@ -62,18 +73,19 @@ describe("Floor plan collaboration complete (auto-assign, seating, couple move)"
     assert.match(migration, /'locked', coalesce\(o\.locked/);
   });
 
-  it("sole-offer venue ensure shares layout, seating, and couple_selected", () => {
-    assert.match(ensure, /couple_selected_floor_plan_id/);
+  it("sole-offer venue ensure may seed working + layout share without preference or seating", () => {
     assert.match(ensure, /shared_with_couple: true/);
-    assert.match(ensure, /client_access: "view"/);
-    assert.match(ensure, /soleOffer/);
+    assert.doesNotMatch(ensure, /client_access: "view"/);
+    assert.doesNotMatch(ensure, /couple_selected_floor_plan_id:\s*floorPlanId/);
+    assert.match(ensure, /sole_offer|ambiguous_offers/);
   });
 
-  it("portal UX: waiting state, skip chooser for sole, working edit + seating hint", () => {
+  it("portal UX: waiting state, multi-offer preference chooser, working edit + seating hint", () => {
     assert.match(portalSection, /floor-plan-waiting-no-offer/);
     assert.match(portalSection, /Waiting on a layout from your venue/);
     assert.match(portalSection, /ensure-assignment/);
-    assert.match(portalSection, /needsChooser = offers\.length > 1 && !coupleSelectedId/);
+    assert.match(portalSection, /needsChooser = offers\.length > 1/);
+    assert.match(portalSection, /Save as preference|preferred layout/);
     assert.match(portalSection, /Your Floor Plan/);
     assert.match(portalSection, /floor-plan-working-canvas/);
     assert.match(portalSection, /move-object/);
@@ -87,11 +99,11 @@ describe("Floor plan collaboration complete (auto-assign, seating, couple move)"
     assert.match(portalView, /Seating is available now/);
   });
 
-  it("venue workspace no longer requires Share for Seating as the ordinary next step", () => {
-    assert.match(workspace, /floor-plan-next-mark-ready/);
+  it("venue workspace keeps seating toggles and sole-offer simple-path guidance", () => {
+    assert.match(workspace, /floor-plan-next-mark-ready|floor-plan-preference-awaiting-share/);
     assert.match(workspace, /floor-plan-ready-confirmed/);
     assert.match(workspace, /Seating open|Seating paused/);
-    assert.match(workspace, /sole offered layout is assigned/i);
+    assert.match(workspace, /Sole offered layout/i);
     assert.doesNotMatch(
       workspace,
       /then\s+<span[^>]*>Share for Seating<\/span>\s+so the couple can assign/,

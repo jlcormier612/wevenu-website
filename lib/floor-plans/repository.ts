@@ -283,6 +283,102 @@ export async function setEventOperationalFloorPlan(
   if (error) throw error;
 }
 
+/** Phase 2 — explicit seating-in-use designation (C1). Does not move assignments. */
+export async function setEventSeatingInUseFloorPlan(
+  client: DbClient, venueId: string, eventId: string, floorPlanId: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update({ seating_in_use_floor_plan_id: floorPlanId })
+    .eq("id", eventId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export type EventFloorPlanPreferenceRow = {
+  operational_floor_plan_id: string | null;
+  couple_selected_floor_plan_id: string | null;
+  couple_preference_status: string | null;
+  couple_approved_floor_plan_id: string | null;
+  seating_in_use_floor_plan_id: string | null;
+};
+
+export async function getEventFloorPlanPreferenceState(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<EventFloorPlanPreferenceRow | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("events") as any)
+    .select(
+      "operational_floor_plan_id, couple_selected_floor_plan_id, couple_preference_status, couple_approved_floor_plan_id, seating_in_use_floor_plan_id",
+    )
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as EventFloorPlanPreferenceRow | null) ?? null;
+}
+
+/**
+ * Phase 2 — persist preference decision pointers only.
+ * Never updates guest_seat_assignments or floor_plan_objects.
+ */
+export async function updateEventFloorPlanPreferenceState(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  patch: {
+    couple_selected_floor_plan_id?: string | null;
+    couple_preference_status?: string | null;
+    couple_approved_floor_plan_id?: string | null;
+    operational_floor_plan_id?: string | null;
+    seating_in_use_floor_plan_id?: string | null;
+  },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update(patch)
+    .eq("id", eventId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Count seat assignments on a plan — for Case A/B/C classification only. */
+export async function countGuestSeatAssignments(
+  client: DbClient, floorPlanId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("guest_seat_assignments")
+    .select("guest_id", { count: "exact", head: true })
+    .eq("floor_plan_id", floorPlanId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Seat assignment counts for every floor plan on an event (Phase 2 Case B/C). */
+export async function countGuestSeatAssignmentsForEvent(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<Record<string, number>> {
+  const { data: plans, error: planError } = await client
+    .from("floor_plans")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("venue_id", venueId);
+  if (planError) throw planError;
+  const ids = ((plans ?? []) as { id: string }[]).map((p) => p.id);
+  const out: Record<string, number> = {};
+  for (const id of ids) out[id] = 0;
+  if (ids.length === 0) return out;
+  const { data: rows, error } = await client
+    .from("guest_seat_assignments")
+    .select("floor_plan_id")
+    .in("floor_plan_id", ids);
+  if (error) throw error;
+  for (const row of (rows ?? []) as { floor_plan_id: string }[]) {
+    out[row.floor_plan_id] = (out[row.floor_plan_id] ?? 0) + 1;
+  }
+  return out;
+}
+
 /**
  * Sprint 1 — Vendor Event Assets, vendor side. Vendors have no RLS read on
  * floor_plans (same reasoning as every other vendor-facing table in this

@@ -11,7 +11,7 @@ import { EventVendorsSection } from "@/components/events/vendors/event-vendors-s
 import { VenueVendorDirectorySummary } from "@/components/events/vendors/venue-vendor-directory-summary";
 import { getClientTasks } from "@/lib/playbooks/service";
 import { getClientTimelineEntries, getClientSections } from "@/lib/timeline/service";
-import { getFloorPlansForClient } from "@/lib/floor-plans/service";
+import { getFloorPlansForClient, getFloorPlanSeatCountsForEvent } from "@/lib/floor-plans/service";
 import { getEventOrderForClient } from "@/lib/event-orders/service";
 import { getClientVendorAssignments } from "@/lib/vendors/service";
 import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
@@ -430,7 +430,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
     spaces, contractTemplates, contracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
-    floorPlanTemplates, inventoryUsage, eventInventory, inventoryTemplates, inventoryCatalogItems,
+    floorPlanTemplates, inventoryUsage, floorPlanSeatCounts, eventInventory, inventoryTemplates, inventoryCatalogItems,
     staffRole, questionnaireTemplates, floorPlanOffers, spaceAssignments, sessions,
     guestSummary, seatingSummary,
     eventOrder, packages, eventOrderTemplates, packagesWithItems, selectedPackage, bookingJourney, offerings, paymentSchedules,
@@ -445,7 +445,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), venuePromise, getOrEnsureEventRecommendations(eventId),
     getSpaces(), getContractTemplates(), contractsPromise, getTimelineTemplatesForLibrary(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
-    getFloorPlanTemplates(), getUsageForEvent(eventId),
+    getFloorPlanTemplates(), getUsageForEvent(eventId), getFloorPlanSeatCountsForEvent(eventId),
     // D5A — Event Inventory is not feature-flagged (unlike Event Order):
     // it's additive to the venue-wide catalog every venue already has.
     getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
@@ -719,6 +719,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
       floorPlanCanEdit={floorPlanCanEdit}
       floorPlanCanDelete={floorPlanCanDelete}
       inventoryUsage={inventoryUsage}
+      floorPlanSeatCounts={floorPlanSeatCounts}
       teamMembers={teamMembers}
       requestsByTaskId={requestsByTaskId}
       requests={eventRequests}

@@ -1,6 +1,7 @@
 /**
  * Floor Plans Phase 1 contract invariants (F1–F7 / C1–C9 Phase 1 exit).
- * Source-level guards — no Phase 2 preference review, B1/B3/C, or seating-in-use.
+ * Phase 2 preference review is authorized separately; Phase 1 share/working/seating
+ * independence and truthful working-layout labels must still hold.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -24,7 +25,7 @@ describe("Floor Plans Phase 1 — truthful working-layout labels", () => {
   });
 
   it("portal chooser uses Working layout, not Operational", () => {
-    assert.match(portalSection, / · Working layout/);
+    assert.match(portalSection, / · Venue working layout| · Working layout/);
     assert.match(portalView, / · Working layout/);
     assert.doesNotMatch(portalSection, / · Operational/);
     assert.doesNotMatch(portalView, / · Operational/);
@@ -60,7 +61,7 @@ describe("Floor Plans Phase 1 — multi-layout coexistence without package claim
   it("surfaces other layouts with progressive, non-package guidance", () => {
     assert.match(workspace, /floor-plan-multi-layout-note/);
     assert.match(workspace, /not a finished setup-package or\s+multi-phase system/);
-    assert.match(workspace, /setup packages and preference review are not\s+part of this step/);
+    assert.match(workspace, /Multiple layouts may coexist without a setup\s+package/);
     assert.match(workspace, /\+ Additional layout/);
   });
 
@@ -100,9 +101,8 @@ describe("Floor Plans Phase 1 — library isolation and seating preservation", (
   });
 });
 
-describe("Floor Plans Phase 1 — no Phase 2–5 product surface", () => {
-  it("workspace does not introduce preference-review or B1/B3/C case UX", () => {
-    assert.doesNotMatch(workspace, /Case B1|Case B3|seating-in-use|Approve preference|Decline preference/);
+describe("Floor Plans Phase 1 — Phase 3–5 product surface still deferred", () => {
+  it("workspace does not introduce linked flip or booking-review Phase 3–5 claims", () => {
     assert.doesNotMatch(workspace, /linked flip|booking-review flag|setup-scoped portal/);
   });
 });

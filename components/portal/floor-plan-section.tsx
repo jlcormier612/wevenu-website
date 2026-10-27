@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Couple Floor Plan section:
- * - Zero offers → waiting state
- * - Sole offer → auto-assign (ensure) → working plan + seating
- * - Multiple offers → choose → working plan + seating
+ * Couple Floor Plan section (Phase 2):
+ * - Zero offers / no shared plans → waiting state
+ * - Shared plans appear when the venue shares (preference does not auto-share)
+ * - Multiple offers → save preference only (pending venue review)
  * - Move unlocked furniture; add permitted tables (server-enforced)
  */
 
@@ -24,6 +24,10 @@ import {
   clientMaySubmitLayout,
   normalizeClientLayoutStatus,
 } from "@/lib/floor-plans/client-layout-review";
+import {
+  couplePreferenceStatusCopy,
+  normalizeCouplePreferenceStatus,
+} from "@/lib/floor-plans/preference-lifecycle";
 import type { DisplayShape, ObjectType } from "@/lib/floor-plans/types";
 import type {
   PortalFloorPlanCatalogItem,
@@ -516,14 +520,14 @@ function ChooseLayoutSection({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, offerId }),
       });
-      const d = await r.json() as { ok?: boolean; error?: string };
+      const d = await r.json() as { ok?: boolean; error?: string; preferenceStatus?: string };
       if (!r.ok || !d.ok) {
-        setSelectError(d.error ?? "Could not save your choice.");
+        setSelectError(d.error ?? "Could not save your preference.");
         return;
       }
       onSelected();
     } catch {
-      setSelectError("Could not save your choice.");
+      setSelectError("Could not save your preference. Nothing was changed — you can try again.");
     } finally {
       setSelecting(false);
     }
@@ -534,10 +538,11 @@ function ChooseLayoutSection({
   return (
     <section className="space-y-3" data-testid="floor-plan-choose-layout">
       <div>
-        <h2 className="text-lg font-semibold text-heading">Choose your layout</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Your venue has offered layout options for this event. Choose one to save your selection. This is not a
-          multi-setup package — each option is a full layout for the celebration.
+        <h2 className="text-lg font-semibold text-heading">Choose your preferred layout</h2>
+        <p className="text-xs text-muted-foreground mt-0.5" data-testid="floor-plan-choose-preference-copy">
+          Save a preference for your venue to review. This does not approve the layout or change what the venue
+          uses, and it does not share seating by itself. This is not a multi-setup package — each option is a
+          full layout for the celebration.
         </p>
       </div>
 
@@ -592,10 +597,10 @@ function ChooseLayoutSection({
               style={{ background: SAGE }}
             >
               {active?.isCurrentSelection
-                ? "Selected"
+                ? "Current preference"
                 : selecting
                   ? "Saving…"
-                  : "Choose this layout"}
+                  : "Save as preference"}
             </button>
           </div>
           <LayoutPreviewSvg
@@ -625,6 +630,9 @@ export default function FloorPlanSection({
   const [list, setList] = React.useState<PortalFloorPlanSummary[]>([]);
   const [offers, setOffers] = React.useState<PortalFloorPlanOfferSummary[]>([]);
   const [operationalId, setOperationalId] = React.useState<string | null>(null);
+  const [coupleSelectedIdFromApi, setCoupleSelectedIdFromApi] = React.useState<string | null>(null);
+  const [preferenceStatus, setPreferenceStatus] = React.useState<string | null>(null);
+  const [approvedId, setApprovedId] = React.useState<string | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [detail, setDetail] = React.useState<PortalFloorPlanDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -659,6 +667,8 @@ export default function FloorPlanSection({
               floorPlans?: PortalFloorPlanSummary[];
               operationalFloorPlanId?: string | null;
               coupleSelectedFloorPlanId?: string | null;
+              couplePreferenceStatus?: string | null;
+              coupleApprovedFloorPlanId?: string | null;
               error?: string;
             },
           })),
@@ -681,6 +691,9 @@ export default function FloorPlanSection({
           setList(plans);
           setOperationalId(plansRes.body.operationalFloorPlanId ?? null);
           const coupleSelected = plansRes.body.coupleSelectedFloorPlanId ?? null;
+          setCoupleSelectedIdFromApi(coupleSelected);
+          setPreferenceStatus(plansRes.body.couplePreferenceStatus ?? null);
+          setApprovedId(plansRes.body.coupleApprovedFloorPlanId ?? null);
           const preferred =
             (coupleSelected && plans.find((p) => p.id === coupleSelected)?.id)
             ?? (plansRes.body.operationalFloorPlanId
@@ -883,8 +896,29 @@ export default function FloorPlanSection({
   const objects = detail?.objects ?? [];
   const hasOffers = offers.length > 0;
   const hasShared = list.length > 0;
-  const coupleSelectedId = list.find((p) => p.isCoupleSelected)?.id ?? null;
-  const needsChooser = offers.length > 1 && !coupleSelectedId;
+  const coupleSelectedId =
+    coupleSelectedIdFromApi
+    ?? list.find((p) => p.isCoupleSelected)?.id
+    ?? null;
+  const needsChooser = offers.length > 1;
+  const normalizedPreferenceStatus = normalizeCouplePreferenceStatus(
+    preferenceStatus,
+    coupleSelectedId,
+  );
+  const preferenceIsPending = normalizedPreferenceStatus === "pending" && Boolean(coupleSelectedId);
+  const preferredOfferName =
+    offers.find((o) => o.isCurrentSelection)?.name
+    ?? list.find((p) => p.id === coupleSelectedId)?.name
+    ?? null;
+  const preferenceCopy = couplePreferenceStatusCopy({
+    status: normalizedPreferenceStatus,
+    preferredName: preferredOfferName,
+    approvedAndShared: Boolean(
+      normalizedPreferenceStatus === "approved"
+      && approvedId
+      && list.some((p) => p.id === approvedId),
+    ),
+  });
   const selectedSummary = list.find((p) => p.id === selectedId) ?? null;
   const selectedIsCoupleChoice = Boolean(plan?.isCoupleSelected ?? selectedSummary?.isCoupleSelected);
   const selectedIsReady = Boolean(
@@ -913,9 +947,9 @@ export default function FloorPlanSection({
       <div className="text-center py-16 text-muted-foreground" data-testid="floor-plan-waiting-no-offer">
         <div className="text-3xl mb-3">🗺️</div>
         <p className="text-sm font-medium text-heading">Waiting on a layout from your venue</p>
-        <p className="text-xs mt-1 max-w-sm mx-auto">
-          Your venue has not offered a floor plan for this event yet. Once they do, your working layout
-          and seating will open here automatically.
+        <p className="text-xs mt-1 max-w-sm mx-auto" data-testid="floor-plan-waiting-copy">
+          Your venue has not offered or shared a floor plan for this event yet. When they share one, it
+          appears here. Saving a preference later does not by itself mean they approved it.
         </p>
       </div>
     );
@@ -935,6 +969,29 @@ export default function FloorPlanSection({
           offers={offers}
           onSelected={() => setReloadTick((n) => n + 1)}
         />
+      )}
+
+      {normalizedPreferenceStatus && (
+        <div
+          className={`rounded-xl border px-4 py-3 space-y-1 ${
+            preferenceIsPending
+              ? "border-amber-200 bg-amber-50/80"
+              : "border-border bg-muted/20"
+          }`}
+          data-testid={
+            preferenceIsPending
+              ? "floor-plan-preference-pending-banner"
+              : `floor-plan-preference-${normalizedPreferenceStatus}-banner`
+          }
+        >
+          <p className="text-sm font-medium text-heading">{preferenceCopy.headline}</p>
+          <p className="text-xs text-muted-foreground">{preferenceCopy.detail}</p>
+          {preferenceIsPending && needsChooser && (
+            <p className="text-xs text-muted-foreground">
+              Choose another option above if you want to change your preference.
+            </p>
+          )}
+        </div>
       )}
 
       {hasShared && (
@@ -958,14 +1015,29 @@ export default function FloorPlanSection({
             data-testid="floor-plan-guidance"
           >
             <p className="text-sm font-medium text-heading">
-              {selectedSummary?.name ?? plan?.name ?? "Your selected layout"}
-              {selectedIsCoupleChoice ? " · Your choice" : ""}
+              {selectedSummary?.name ?? plan?.name ?? "Shared layout"}
+              {selectedIsCoupleChoice ? " · Your preference" : ""}
+              {normalizedPreferenceStatus === "approved" && (plan?.isCoupleApproved || selectedId === approvedId)
+                ? " · Venue approved"
+                : ""}
             </p>
             <p className="text-xs text-muted-foreground" data-testid="floor-plan-guidance-copy">
-              {selectedIsReady
-                ? "Your venue marked this layout Ready. Placement and furniture adds are locked."
-                : clientLayoutStatusHint(layoutStatus)}
+              {selectedIsCoupleChoice && normalizedPreferenceStatus === "pending"
+                ? "Your preference is waiting on venue review. It does not mean they approved it or will use it yet — sharing and seating stay separate."
+                : normalizedPreferenceStatus === "approved"
+                  && (plan?.isCoupleApproved || selectedId === approvedId)
+                  && (plan?.isOperational || selectedId === operationalId)
+                  && selectedSummary
+                  ? "Your venue approved this preference and it is their working layout. You see it because they also shared it."
+                  : selectedIsReady
+                    ? "Your venue marked this layout Ready. Placement and furniture adds are locked."
+                    : clientLayoutStatusHint(layoutStatus)}
             </p>
+            {preferenceIsPending && selectedIsCoupleChoice && (
+              <p className="text-xs text-muted-foreground" data-testid="floor-plan-preference-pending-on-shared">
+                Your preference on this shared layout is still pending venue review.
+              </p>
+            )}
             {layoutStatus === "changes_requested" && reviewNote?.trim() && (
               <p
                 className="text-xs rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-amber-950"
@@ -1076,9 +1148,10 @@ export default function FloorPlanSection({
                     style={active ? { background: SAGE } : undefined}
                   >
                     {p.name}
-                    {p.isCoupleSelected ? " · Your choice" : ""}
+                    {p.isCoupleSelected ? " · Your preference" : ""}
+                    {p.isCoupleApproved ? " · Approved" : ""}
                     {p.isReady ? " · Ready" : ""}
-                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalId) ? " · Working layout" : ""}
+                    {!p.isCoupleSelected && (p.isOperational || p.id === operationalId) ? " · Venue working layout" : ""}
                   </button>
                 );
               })}

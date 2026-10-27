@@ -1,15 +1,13 @@
 /**
  * Connect offered floor-plan layouts to the event's working (operational) layout.
  *
- * Product rules (locked):
- * - One offered layout → clone (or reuse) and set events.operational_floor_plan_id.
- * - Multiple offers → initialize working layout from preferred/default when operational is unset.
- * - Client portal selection → couple_selected_floor_plan_id wins; reconcile operational to that plan.
- * - Never delete existing floor_plans or seating; retarget pointers only.
+ * Floor Plans Phase 2 (v1.5 §9.2 / F1 / F6):
+ * - Never retarget operational from couple preference (couple_selected does not win).
+ * - Sole offered template may seed working layout + layout share when operational is unset
+ *   (simple one-layout path). Does NOT set couple preference, preference approval, or seating.
+ * - Multiple offers with unset operational → leave unset (no preferred/first-offer fallback).
+ * - Never delete floor_plans or seating; retarget pointers only when explicitly seeding sole offer.
  * - Idempotent: repeated calls do not create duplicate clones for the same source template.
- * - Sole eligible offer: set couple_selected, share layout, and enable seating
- *   so the couple skips the chooser and can seat guests without a second venue action.
- * - Multiple offers: do not set couple_selected (couple must choose).
  */
 import type { createClient } from "@/integrations/supabase/server";
 
@@ -21,26 +19,22 @@ export type EnsureWorkingLayoutResult = {
   created: boolean;
   retargetedOperational: boolean;
   reason:
-    | "couple_selected"
     | "sole_offer"
-    | "preferred_offer"
     | "already_set"
     | "no_offers"
+    | "ambiguous_offers"
     | "skipped";
 };
 
-/** Pure: which template should seed the working layout when the client has not chosen. */
+/** Pure: sole offer only may seed working layout. Multi-offer → null (venue must choose). */
 export function resolveWorkingTemplateId(input: {
   offeredTemplateIds: string[];
-  preferredTemplateId: string | null;
+  preferredTemplateId?: string | null;
 }): string | null {
   const offered = input.offeredTemplateIds.filter(Boolean);
-  if (offered.length === 0) return null;
   if (offered.length === 1) return offered[0]!;
-  if (input.preferredTemplateId && offered.includes(input.preferredTemplateId)) {
-    return input.preferredTemplateId;
-  }
-  return offered[0]!;
+  // preferredTemplateId is ignored for auto-seed — preference ≠ working designation.
+  return null;
 }
 
 /** Pure: earliest clone for a source template, or null. */
@@ -55,14 +49,14 @@ export function resolveExistingCloneId(
 }
 
 /**
- * Ensure the event has a working layout derived from offers / client selection.
+ * Ensure the event has a working layout when the simple sole-offer path applies.
  * Safe to call from inherit, prepare-release, offer upsert, and the Floor Plans tab.
  */
 export async function ensureWorkingLayoutForEvent(
   supabase: DbClient,
   venueId: string,
   eventId: string,
-  opts?: { preferredTemplateId?: string | null },
+  _opts?: { preferredTemplateId?: string | null },
 ): Promise<EnsureWorkingLayoutResult> {
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -79,36 +73,7 @@ export async function ensureWorkingLayoutForEvent(
     return { ok: true, floorPlanId: null, created: false, retargetedOperational: false, reason: "skipped" };
   }
 
-  // Client confirmed selection always wins for operational reconciliation.
-  if (event.couple_selected_floor_plan_id) {
-    const selectedId = event.couple_selected_floor_plan_id;
-    const { data: selectedPlan } = await supabase
-      .from("floor_plans")
-      .select("id")
-      .eq("id", selectedId)
-      .eq("event_id", eventId)
-      .eq("venue_id", venueId)
-      .maybeSingle<{ id: string }>();
-    if (selectedPlan) {
-      let retargeted = false;
-      if (event.operational_floor_plan_id !== selectedId) {
-        await supabase
-          .from("events")
-          .update({ operational_floor_plan_id: selectedId })
-          .eq("id", eventId)
-          .eq("venue_id", venueId);
-        retargeted = true;
-      }
-      return {
-        ok: true,
-        floorPlanId: selectedId,
-        created: false,
-        retargetedOperational: retargeted,
-        reason: "couple_selected",
-      };
-    }
-  }
-
+  // Preference must never rewrite the working-layout pointer.
   if (event.operational_floor_plan_id) {
     return {
       ok: true,
@@ -140,12 +105,15 @@ export async function ensureWorkingLayoutForEvent(
     return { ok: true, floorPlanId: null, created: false, retargetedOperational: false, reason: "no_offers" };
   }
 
-  const templateId = resolveWorkingTemplateId({
-    offeredTemplateIds,
-    preferredTemplateId: opts?.preferredTemplateId ?? null,
-  });
+  const templateId = resolveWorkingTemplateId({ offeredTemplateIds });
   if (!templateId) {
-    return { ok: true, floorPlanId: null, created: false, retargetedOperational: false, reason: "no_offers" };
+    return {
+      ok: true,
+      floorPlanId: null,
+      created: false,
+      retargetedOperational: false,
+      reason: "ambiguous_offers",
+    };
   }
 
   const { data: planRows, error: planError } = await supabase
@@ -208,35 +176,26 @@ export async function ensureWorkingLayoutForEvent(
     created = true;
   }
 
-  const soleOffer = offeredTemplateIds.length === 1;
-  const eventPatch: {
-    operational_floor_plan_id: string;
-    couple_selected_floor_plan_id?: string;
-  } = { operational_floor_plan_id: floorPlanId };
-  if (soleOffer) {
-    eventPatch.couple_selected_floor_plan_id = floorPlanId;
-  }
-
+  // Sole-offer simple path: seed working + layout share only.
+  // Do not set couple_selected, preference approval, or seating (client_access).
   await supabase
     .from("events")
-    .update(eventPatch)
+    .update({ operational_floor_plan_id: floorPlanId })
     .eq("id", eventId)
     .eq("venue_id", venueId);
 
-  if (soleOffer && floorPlanId) {
-    await supabase
-      .from("floor_plans")
-      .update({ shared_with_couple: true, client_access: "view" })
-      .eq("id", floorPlanId)
-      .eq("venue_id", venueId)
-      .eq("event_id", eventId);
-  }
+  await supabase
+    .from("floor_plans")
+    .update({ shared_with_couple: true })
+    .eq("id", floorPlanId)
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
 
   return {
     ok: true,
     floorPlanId,
     created,
     retargetedOperational: true,
-    reason: soleOffer ? "sole_offer" : "preferred_offer",
+    reason: "sole_offer",
   };
 }

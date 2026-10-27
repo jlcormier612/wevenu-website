@@ -46,6 +46,12 @@ export type VenueEvent = {
   operationalFloorPlanId: string | null;
   /** Phase 2 — couple-selected event floor plan (independent of operational). */
   coupleSelectedFloorPlanId: string | null;
+  /** Phase 2 — preference lifecycle for coupleSelectedFloorPlanId. */
+  couplePreferenceStatus?: string | null;
+  /** Phase 2 — last approved preference (preserved across decline/defer/withdraw/supersede). */
+  coupleApprovedFloorPlanId?: string | null;
+  /** Phase 2 — explicit seating-in-use designation (C1). */
+  seatingInUseFloorPlanId?: string | null;
   /** Post-book ceremony location outside the venue. Null until set. */
   externalCeremonyLocation: string | null;
   /** Post-book reception location outside the venue. Null until set. */

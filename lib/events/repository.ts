@@ -60,6 +60,9 @@ type EventRow = {
   booked_at: string | null;
   operational_floor_plan_id: string | null;
   couple_selected_floor_plan_id: string | null;
+  couple_preference_status?: string | null;
+  couple_approved_floor_plan_id?: string | null;
+  seating_in_use_floor_plan_id?: string | null;
   external_ceremony_location?: string | null;
   external_reception_location?: string | null;
   // embedded client name from join
@@ -82,6 +85,9 @@ function mapEvent(r: EventRow): VenueEvent {
     bookedAt: r.booked_at ?? null,
     operationalFloorPlanId: r.operational_floor_plan_id ?? null,
     coupleSelectedFloorPlanId: r.couple_selected_floor_plan_id ?? null,
+    couplePreferenceStatus: r.couple_preference_status ?? null,
+    coupleApprovedFloorPlanId: r.couple_approved_floor_plan_id ?? null,
+    seatingInUseFloorPlanId: r.seating_in_use_floor_plan_id ?? null,
     externalCeremonyLocation: r.external_ceremony_location?.trim() || null,
     externalReceptionLocation: r.external_reception_location?.trim() || null,
     createdAt: r.created_at, updatedAt: r.updated_at,

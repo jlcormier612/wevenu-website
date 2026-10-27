@@ -115,7 +115,24 @@ export async function updateEventFloorPlanOffer(
 /** Withdraw from chooser — does not clear selection or delete event clone. */
 export async function withdrawEventFloorPlanOffer(offerId: string): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
+    const { data: offer } = await supabase
+      .from("event_floor_plan_offers")
+      .select("id, event_id, floor_plan_template_id")
+      .eq("id", offerId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ id: string; event_id: string; floor_plan_template_id: string }>();
     await repo.withdrawOffer(supabase, venueId, offerId);
+    if (offer) {
+      const { markPreferenceWithdrawnIfOfferClone } = await import(
+        "@/lib/floor-plans/preference-service"
+      );
+      await markPreferenceWithdrawnIfOfferClone(
+        supabase,
+        venueId,
+        offer.event_id,
+        offer.floor_plan_template_id,
+      );
+    }
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;

@@ -166,6 +166,8 @@ export type PortalFloorPlanSummary = {
   name: string;
   isOperational: boolean;
   isCoupleSelected?: boolean;
+  isCoupleApproved?: boolean;
+  isSeatingInUse?: boolean;
   isReady?: boolean;
   clientLayoutStatus?: string;
   clientSubmittedAt?: string | null;
@@ -238,6 +240,8 @@ export type PortalFloorPlanDetail = {
     spaceId: string | null;
     isOperational: boolean;
     isCoupleSelected?: boolean;
+    isCoupleApproved?: boolean;
+    isSeatingInUse?: boolean;
     isReady?: boolean;
     /** When true, couple may add table objects on this working plan. */
     coupleMayAddTables?: boolean;

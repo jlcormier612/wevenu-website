@@ -25,9 +25,11 @@ import {
   renameFloorPlanAction,
   requestClientFloorPlanChangesAction,
   setClientAccessAction,
+  decideCoupleFloorPlanPreferenceAction,
   setCoupleShareAction,
   setFloorPlanCoupleMayAddTablesAction,
   setOperationalFloorPlanAction,
+  setSeatingInUseFloorPlanAction,
   setVendorAccessAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import {
@@ -35,6 +37,11 @@ import {
   normalizeClientLayoutStatus,
   venueMayReviewSubmission,
 } from "@/lib/floor-plans/client-layout-review";
+import {
+  classifyPreferenceApprovalCase,
+  normalizeCouplePreferenceStatus,
+  venuePreferenceStatusCopy,
+} from "@/lib/floor-plans/preference-lifecycle";
 import {
   applyClientFloorPlanTemplateAction,
   createClientFloorPlanAction,
@@ -277,7 +284,7 @@ function FloorPlanCard({
           )}
           {isCoupleSelected && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground">
-              Couple selected
+              Couple preference
             </span>
           )}
           {isOperational && (
@@ -420,9 +427,294 @@ function ClientSubmissionReviewPanel({
   );
 }
 
+function PreferenceReviewPanel({
+  eventId,
+  floorPlans,
+  operationalFloorPlanId,
+  coupleSelectedFloorPlanId,
+  couplePreferenceStatus,
+  coupleApprovedFloorPlanId,
+  seatingInUseFloorPlanId,
+  seatCounts,
+  canEdit,
+}: {
+  eventId: string;
+  floorPlans: FloorPlan[];
+  operationalFloorPlanId: string | null;
+  coupleSelectedFloorPlanId: string | null;
+  couplePreferenceStatus: string | null;
+  coupleApprovedFloorPlanId: string | null;
+  seatingInUseFloorPlanId: string | null;
+  seatCounts: Record<string, number>;
+  canEdit: boolean;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  const [caseCChoice, setCaseCChoice] = React.useState<string>("");
+  const [confirmB3, setConfirmB3] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const status = normalizeCouplePreferenceStatus(
+    couplePreferenceStatus,
+    coupleSelectedFloorPlanId,
+  );
+  const preferred = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId) ?? null;
+  const approved = floorPlans.find((p) => p.id === coupleApprovedFloorPlanId) ?? null;
+  const working = floorPlans.find((p) => p.id === operationalFloorPlanId) ?? null;
+  const preferredShared = Boolean(preferred?.sharedWithCouple);
+  const copy = venuePreferenceStatusCopy({
+    status,
+    preferredName: preferred?.name ?? null,
+    approvedName: approved?.name ?? null,
+    shared: preferredShared,
+    isWorking: Boolean(operationalFloorPlanId),
+  });
+
+  const currentSeats = operationalFloorPlanId ? (seatCounts[operationalFloorPlanId] ?? 0) : 0;
+  const preferredSeats = coupleSelectedFloorPlanId ? (seatCounts[coupleSelectedFloorPlanId] ?? 0) : 0;
+  const approvalCase =
+    status === "pending" && coupleSelectedFloorPlanId
+      ? classifyPreferenceApprovalCase({
+          currentOperationalId: operationalFloorPlanId,
+          preferredId: coupleSelectedFloorPlanId,
+          currentHasSeats: currentSeats > 0,
+          preferredHasSeats: preferredSeats > 0,
+        })
+      : null;
+
+  function runDecision(
+    input:
+      | { decision: "decline" }
+      | { decision: "defer" }
+      | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
+  ) {
+    if (!canEdit || !eventId) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await decideCoupleFloorPlanPreferenceAction(eventId, input);
+      if (!result.ok) {
+        setError(result.message ?? "Could not save that decision.");
+        toast.error(result.message ?? "Could not save that decision.");
+        return;
+      }
+      setConfirmB3(false);
+      toast.success(
+        input.decision === "approve"
+          ? "Preference approved. Sharing stays a separate control."
+          : input.decision === "decline"
+            ? "Preference declined. Prior approved preference preserved."
+            : "Preference deferred. Prior approved preference preserved.",
+      );
+      router.refresh();
+    });
+  }
+
+  return (
+    <div
+      className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-3 text-xs text-foreground space-y-2"
+      data-testid="floor-plan-preference-review"
+    >
+      <p className="text-sm font-medium text-heading" data-testid="floor-plan-preference-headline">
+        {copy.headline}
+      </p>
+      <p className="text-muted-foreground" data-testid="floor-plan-preference-detail">
+        {copy.detail}
+      </p>
+      <p className="text-muted-foreground" data-testid="floor-plan-preference-next">
+        {copy.nextStep}
+      </p>
+      {working && (
+        <p className="text-muted-foreground" data-testid="floor-plan-preference-working">
+          Current working layout: <span className="font-medium text-foreground">{working.name}</span>
+          {currentSeats > 0 ? ` · ${currentSeats} seated guest${currentSeats === 1 ? "" : "s"}` : " · no seating yet"}
+        </p>
+      )}
+      {!working && (
+        <p className="text-muted-foreground" data-testid="floor-plan-preference-no-working">
+          No working layout is designated. Use <span className="font-medium text-foreground">Set as working layout</span> on a plan — preference alone does not set it.
+        </p>
+      )}
+
+      {status === "pending" && preferred && canEdit && (
+        <div className="space-y-2 pt-1" data-testid="floor-plan-preference-actions">
+          {approvalCase === "B" && (
+            <div className="rounded border border-border bg-background/80 px-2 py-2 space-y-2" data-testid="floor-plan-case-b">
+              <p className="text-muted-foreground">
+                The current working layout has seating. Approving the preference keeps those seats on{" "}
+                <span className="font-medium text-foreground">{working?.name ?? "the current layout"}</span>
+                {" "}and starts seating work on{" "}
+                <span className="font-medium text-foreground">{preferred.name}</span>
+                {" "}(empty for new assignments). Decline or defer to keep the current arrangement without approving.
+              </p>
+              {!confirmB3 ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={pending}
+                  data-testid="floor-plan-approve-b3-prompt"
+                  onClick={() => setConfirmB3(true)}
+                >
+                  Approve and start seating on {preferred.name}
+                </Button>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={pending}
+                    data-testid="floor-plan-approve-b3-confirm"
+                    onClick={() => runDecision({ decision: "approve", seatingChoice: "start_on_preferred" })}
+                  >
+                    {pending ? "Saving…" : "Confirm approve"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    data-testid="floor-plan-approve-b3-cancel"
+                    onClick={() => setConfirmB3(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          {approvalCase === "C" && operationalFloorPlanId && (
+            <div className="rounded border border-border bg-background/80 px-2 py-2 space-y-2" data-testid="floor-plan-case-c">
+              <p className="text-muted-foreground">
+                Both layouts have seating. Choose which seating arrangement is in use. Both layouts and both assignment sets are preserved.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {[{ id: operationalFloorPlanId, name: working?.name ?? "Current working", seats: currentSeats },
+                  { id: preferred.id, name: preferred.name, seats: preferredSeats }].map((opt) => (
+                  <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="seating-in-use"
+                      value={opt.id}
+                      checked={caseCChoice === opt.id}
+                      onChange={() => setCaseCChoice(opt.id)}
+                      data-testid={`floor-plan-case-c-option-${opt.id}`}
+                    />
+                    <span>
+                      {opt.name}
+                      {opt.seats > 0 ? ` · ${opt.seats} seated` : ""}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending || !caseCChoice}
+                data-testid="floor-plan-approve-case-c"
+                onClick={() =>
+                  runDecision({ decision: "approve", seatingInUseFloorPlanId: caseCChoice })
+                }
+              >
+                {pending ? "Saving…" : "Approve preference with this seating in use"}
+              </Button>
+            </div>
+          )}
+          {approvalCase === "A" && (
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending}
+              data-testid="floor-plan-approve-preference"
+              onClick={() => runDecision({ decision: "approve" })}
+            >
+              {pending ? "Saving…" : "Approve preference"}
+            </Button>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              data-testid="floor-plan-decline-preference"
+              onClick={() => runDecision({ decision: "decline" })}
+            >
+              Decline
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              data-testid="floor-plan-defer-preference"
+              onClick={() => runDecision({ decision: "defer" })}
+            >
+              Defer
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {floorPlans.filter((p) => (seatCounts[p.id] ?? 0) > 0).length > 1 && canEdit && (
+        <div className="pt-2 border-t border-border/60 space-y-1.5" data-testid="floor-plan-seating-in-use">
+          <p className="font-medium text-heading">Seating arrangement in use</p>
+          <p className="text-muted-foreground">
+            Multiple layouts have seats. Designate which seating arrangement is currently in use. This does not move or clear assignments.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {floorPlans
+              .filter((p) => (seatCounts[p.id] ?? 0) > 0)
+              .map((p) => {
+                const active = seatingInUseFloorPlanId === p.id;
+                return (
+                  <Button
+                    key={p.id}
+                    type="button"
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    disabled={pending}
+                    data-testid={`floor-plan-set-seating-in-use-${p.id}`}
+                    onClick={() => {
+                      startTransition(async () => {
+                        const result = await setSeatingInUseFloorPlanAction(
+                          eventId,
+                          active ? null : p.id,
+                        );
+                        if (!result.ok) {
+                          toast.error(result.message ?? "Could not update seating in use.");
+                          return;
+                        }
+                        toast.success(
+                          active
+                            ? "Cleared seating-in-use designation."
+                            : `Seating in use: ${p.name}`,
+                        );
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    {active ? `In use: ${p.name}` : `Use seating on ${p.name}`}
+                  </Button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-destructive" data-testid="floor-plan-preference-error">
+          {error} You can retry — prior state was not partially rewritten.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function FloorPlanWorkspace({
   eventId, planningClientId = null, floorPlans, templates, offers = [], spaces, eventSpaceId,
-  operationalFloorPlanId = null, coupleSelectedFloorPlanId = null, inventoryUsage = [],
+  operationalFloorPlanId = null, coupleSelectedFloorPlanId = null,
+  couplePreferenceStatus = null, coupleApprovedFloorPlanId = null, seatingInUseFloorPlanId = null,
+  seatCounts = {},
+  inventoryUsage = [],
   canEdit = true, canDelete = true,
 }: {
   eventId: string;
@@ -434,8 +726,13 @@ export function FloorPlanWorkspace({
   eventSpaceId: string | null;
   /** Durable SoR pointer from events.operational_floor_plan_id (working layout). */
   operationalFloorPlanId?: string | null;
-  /** Client's confirmed layout choice — may match operational after portal select. */
+  /** Couple preference pointer — independent of working layout. */
   coupleSelectedFloorPlanId?: string | null;
+  couplePreferenceStatus?: string | null;
+  coupleApprovedFloorPlanId?: string | null;
+  seatingInUseFloorPlanId?: string | null;
+  /** guest_seat_assignments counts keyed by floor_plan_id (venue page). */
+  seatCounts?: Record<string, number>;
   /** Reporting only (Inventory Foundation task) — never blocks or reserves anything. */
   inventoryUsage?: InventoryUsage[];
   /** Owner/Manager/Coordinator — create, edit, share. Staff: false. */
@@ -620,9 +917,9 @@ export function FloorPlanWorkspace({
             <>
               Create, edit, and share layouts for this event. The{" "}
               <span className="font-medium text-foreground">working layout</span> is for venue prep — sharing a
-              floor plan and seating access stay separate controls. Offer Library layouts under Event setup →
-              Change for this event. Multiple layouts may coexist; setup packages and preference review are not
-              part of this step.
+              floor plan, seating access, and couple preference approval stay separate controls. Offer Library
+              layouts under Event setup → Change for this event. Multiple layouts may coexist without a setup
+              package.
             </>
           )}
       </p>
@@ -635,75 +932,90 @@ export function FloorPlanWorkspace({
           {coupleSelectedFloorPlanId ? (
             <>
               <p data-testid="floor-plan-client-selected">
-                Client selected:{" "}
+                Couple preference:{" "}
                 <span className="font-medium text-foreground">
                   {floorPlans.find((p) => p.id === coupleSelectedFloorPlanId)?.name ?? "Saved layout"}
                 </span>
-                {" "}(working layout view is shared with the couple).
+                {" "}
+                (
+                {normalizeCouplePreferenceStatus(couplePreferenceStatus, coupleSelectedFloorPlanId)
+                  ?? "pending"}
+                ). Preference is not the same as working layout, sharing, or seating access.
               </p>
               {(() => {
                 const selected = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);
                 if (!selected) return null;
                 const seatingOpen = selected.clientAccess !== "hidden";
                 const ready = Boolean(selected.finalizedAt);
-                const status = normalizeClientLayoutStatus(selected.clientLayoutStatus);
-                if (status === "submitted") {
+                const layoutStatus = normalizeClientLayoutStatus(selected.clientLayoutStatus);
+                if (layoutStatus === "submitted") {
                   return (
                     <p data-testid="floor-plan-next-review-submission">
-                      Client submitted this layout for review ({clientLayoutStatusLabel(status)}).
-                      Use the review panel below to approve or request changes before{" "}
-                      <span className="font-medium text-foreground">Mark as Ready</span>.
+                      Client submitted furniture placement for review ({clientLayoutStatusLabel(layoutStatus)}).
+                      That furniture review is separate from preference approval. Use the review panel below
+                      before <span className="font-medium text-foreground">Mark as Ready</span>.
                     </p>
                   );
                 }
-                if (!seatingOpen) {
+                if (selected.sharedWithCouple && !seatingOpen) {
                   return (
                     <p data-testid="floor-plan-next-share-seating">
-                      Seating was paused on this layout. Re-open seating from the plan card if the couple should assign guests again.
+                      Layout is shared; seating is paused on this plan. Re-open seating from the plan card if the couple should assign guests again.
                     </p>
                   );
                 }
-                if (status === "changes_requested") {
+                if (layoutStatus === "changes_requested") {
                   return (
                     <p data-testid="floor-plan-next-awaiting-resubmit">
-                      You asked the couple for updates. They can edit again and resubmit.
+                      You asked the couple for furniture updates. They can edit again and resubmit.
                     </p>
                   );
                 }
-                if (status === "approved" && !ready) {
+                if (layoutStatus === "approved" && !ready) {
                   return (
                     <p data-testid="floor-plan-next-mark-ready-after-approve">
-                      Client layout is approved. When print/setup-ready, open it and{" "}
+                      Furniture layout is approved. When print/setup-ready, open it and{" "}
                       <span className="font-medium text-foreground">Mark as Ready</span>.
                     </p>
                   );
                 }
-                if (!ready) {
+                if (selected.sharedWithCouple && seatingOpen && !ready) {
                   return (
                     <p data-testid="floor-plan-next-mark-ready">
-                      Layout and seating are available to the couple. They can rearrange unlocked furniture and submit
-                      when ready. When the arrangement is print/setup-ready, open it and{" "}
+                      This layout is shared and seating is open. Furniture review and preference approval stay separate.
+                      When print/setup-ready, open it and{" "}
                       <span className="font-medium text-foreground">Mark as Ready</span>.
+                    </p>
+                  );
+                }
+                if (ready) {
+                  return (
+                    <p data-testid="floor-plan-ready-confirmed">
+                      Working layout is <span className="font-medium text-foreground">Ready</span> for the event.
+                      Couple edits are locked until you Make Changes.
                     </p>
                   );
                 }
                 return (
-                  <p data-testid="floor-plan-ready-confirmed">
-                    Working layout is <span className="font-medium text-foreground">Ready</span> for the event.
-                    Couple edits are locked until you Make Changes.
+                  <p data-testid="floor-plan-preference-awaiting-share">
+                    Preference is recorded. Share the floor plan and open seating only when you intend those
+                    controls — neither follows automatically from preference.
                   </p>
                 );
               })()}
             </>
           ) : activeOffers.length === 1 ? (
             <p data-testid="floor-plan-sole-offer-working">
-              Sole offered layout is assigned as the working layout
-              {workingPlan ? ` (${workingPlan.name})` : ""}. Layout and seating open automatically for the couple.
+              Sole offered layout
+              {workingPlan ? ` seeds the working layout (${workingPlan.name}) and can share layout view` : " can seed the working layout when unset"}
+              . Seating access and preference approval stay venue-controlled — a sole offer is not approval.
             </p>
           ) : activeOffers.length > 1 ? (
             <p data-testid="floor-plan-client-pending">
-              Client has not selected a layout yet. Working layout
-              {workingPlan ? ` is ${workingPlan.name}` : " will initialize from the preferred offer"} for venue prep.
+              Client has not saved a preference yet.
+              {workingPlan
+                ? ` Working layout is ${workingPlan.name}.`
+                : " No working layout is designated — set one explicitly; multiple offers will not invent a fallback."}
             </p>
           ) : (
             <p data-testid="floor-plan-no-offers-status">
@@ -711,6 +1023,20 @@ export function FloorPlanWorkspace({
             </p>
           )}
         </div>
+      )}
+
+      {!preBooking && eventId && (
+        <PreferenceReviewPanel
+          eventId={eventId}
+          floorPlans={floorPlans}
+          operationalFloorPlanId={operationalFloorPlanId}
+          coupleSelectedFloorPlanId={coupleSelectedFloorPlanId}
+          couplePreferenceStatus={couplePreferenceStatus}
+          coupleApprovedFloorPlanId={coupleApprovedFloorPlanId}
+          seatingInUseFloorPlanId={seatingInUseFloorPlanId}
+          seatCounts={seatCounts}
+          canEdit={canEdit}
+        />
       )}
 
       {!preBooking && coupleSelectedFloorPlanId && (() => {
@@ -757,9 +1083,11 @@ export function FloorPlanWorkspace({
         >
           <p className="text-sm font-medium text-heading">No working layout for this event yet</p>
           <p className="max-w-md text-xs text-muted-foreground">
-            {activeOffers.length > 0
-              ? "A working layout should initialize from the offered layouts. Refresh, or open Event setup → Change for this event if it does not appear."
-              : "Offer a Library layout under Event setup → Change for this event. That establishes the working layout so you can edit and assign seats here."}
+            {activeOffers.length === 1
+              ? "A sole offered layout can seed the working layout. Refresh, or open Event setup → Change for this event if it does not appear."
+              : activeOffers.length > 1
+                ? "Several layouts are offered. Set a working layout explicitly on a plan card — the system will not pick one from preference or offer count."
+                : "Offer a Library layout under Event setup → Change for this event. A sole offer can seed the working layout so you can edit and assign seats here."}
           </p>
           {canEdit && (
             <Button type="button" size="sm" className="mt-2" variant="outline" onClick={() => { reset(); setOpen(true); }}>

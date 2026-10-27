@@ -360,3 +360,37 @@ export async function requestClientFloorPlanChangesAction(
   if (result.ok) revalidateEvent(eventId);
   return result;
 }
+
+/**
+ * Phase 2 — venue preference review (approve / decline / defer).
+ * Approval does not change sharing. Seating assignments are never rewritten.
+ */
+export async function decideCoupleFloorPlanPreferenceAction(
+  eventId: string,
+  input:
+    | { decision: "decline" }
+    | { decision: "defer" }
+    | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
+): Promise<FloorPlanActionResult> {
+  const { decideCoupleFloorPlanPreference } = await import("@/lib/floor-plans/preference-service");
+  const result = await decideCoupleFloorPlanPreference(eventId, input);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+/** Phase 2 — explicit seating-in-use designation (C1). */
+export async function setSeatingInUseFloorPlanAction(
+  eventId: string,
+  floorPlanId: string | null,
+): Promise<FloorPlanActionResult> {
+  const { setSeatingInUseFloorPlan } = await import("@/lib/floor-plans/preference-service");
+  const result = await setSeatingInUseFloorPlan(eventId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}

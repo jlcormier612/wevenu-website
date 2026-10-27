@@ -408,6 +408,7 @@ export function EventDetail({
   floorPlanOffers = [],
   spaces = [],
   inventoryUsage = [],
+  floorPlanSeatCounts = {},
   floorPlanCanEdit = true,
   floorPlanCanDelete = true,
   teamMembers = [],
@@ -488,6 +489,8 @@ export function EventDetail({
   floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
   spaces?: VenueSpace[];
   inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
+  /** Phase 2 — guest_seat_assignments counts by floor_plan_id for Case B/C. */
+  floorPlanSeatCounts?: Record<string, number>;
   /** Floor plan permissions — Staff view-only; Coordinator cannot delete plans. */
   floorPlanCanEdit?: boolean;
   floorPlanCanDelete?: boolean;
@@ -1238,6 +1241,10 @@ export function EventDetail({
                 eventSpaceId={event.spaceId}
                 operationalFloorPlanId={event.operationalFloorPlanId}
                 coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
+                couplePreferenceStatus={event.couplePreferenceStatus ?? null}
+                coupleApprovedFloorPlanId={event.coupleApprovedFloorPlanId ?? null}
+                seatingInUseFloorPlanId={event.seatingInUseFloorPlanId ?? null}
+                seatCounts={floorPlanSeatCounts}
                 inventoryUsage={inventoryUsage}
                 canEdit={floorPlanCanEdit}
                 canDelete={floorPlanCanDelete}

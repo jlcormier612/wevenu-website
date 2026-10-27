@@ -67,6 +67,16 @@ async function withVenuePlanDeleter<T>(
 }
 
 /** The Booking Floor Plan Workspace's card grid — every floor plan this booking owns. */
+/** Phase 2 — seating assignment counts per floor plan on an event. */
+export async function getFloorPlanSeatCountsForEvent(
+  eventId: string,
+): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured) return {};
+  const venue = await getCurrentVenue();
+  if (!venue) return {};
+  return repo.countGuestSeatAssignmentsForEvent(await createClient(), venue.id, eventId);
+}
+
 export async function getFloorPlansByEvent(eventId: string): Promise<FloorPlan[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();

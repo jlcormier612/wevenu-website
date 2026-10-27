@@ -8,7 +8,7 @@ import {
   resolveWorkingTemplateId,
 } from "@/lib/floor-plans/ensure-working-layout";
 
-describe("ensure-working-layout rules", () => {
+describe("ensure-working-layout rules (Phase 2)", () => {
   it("sole offered template becomes the working seed", () => {
     assert.equal(
       resolveWorkingTemplateId({
@@ -19,23 +19,13 @@ describe("ensure-working-layout rules", () => {
     );
   });
 
-  it("preferred template wins among multiple offers", () => {
+  it("multiple offers do not auto-pick preferred or first offer", () => {
     assert.equal(
       resolveWorkingTemplateId({
         offeredTemplateIds: ["t-a", "t-b", "t-c"],
         preferredTemplateId: "t-b",
       }),
-      "t-b",
-    );
-  });
-
-  it("falls back to first offer when preferred is not offered", () => {
-    assert.equal(
-      resolveWorkingTemplateId({
-        offeredTemplateIds: ["t-a", "t-b"],
-        preferredTemplateId: "t-missing",
-      }),
-      "t-a",
+      null,
     );
   });
 
@@ -53,15 +43,15 @@ describe("ensure-working-layout rules", () => {
     );
   });
 
-  it("wires offer upsert / ensure / inherit / prepare-release / portal select to working layout", () => {
+  it("wires offer upsert / ensure / inherit / prepare-release / portal select without preference→operational coupling", () => {
     const ensure = readFileSync(join(process.cwd(), "lib/floor-plans/ensure-working-layout.ts"), "utf8");
     const offers = readFileSync(join(process.cwd(), "lib/floor-plan-offers/service.ts"), "utf8");
     const inherit = readFileSync(join(process.cwd(), "lib/event-setup/inherit.ts"), "utf8");
     const prepare = readFileSync(join(process.cwd(), "lib/event-setup/prepare-release.ts"), "utf8");
     const actions = readFileSync(join(process.cwd(), "app/(app)/events/[id]/floor-plan-actions.ts"), "utf8");
     const workspace = readFileSync(join(process.cwd(), "components/events/floor-plan-workspace.tsx"), "utf8");
-    const migration = readFileSync(
-      join(process.cwd(), "supabase/migrations/20261422000000_floor_plan_select_sets_operational.sql"),
+    const phase2Migration = readFileSync(
+      join(process.cwd(), "supabase/migrations/20261424600000_floor_plans_phase2_preference_decouple.sql"),
       "utf8",
     );
 
@@ -72,6 +62,7 @@ describe("ensure-working-layout rules", () => {
     assert.match(actions, /ensureWorkingFloorPlanAction/);
     assert.match(workspace, /ensureWorkingFloorPlanAction/);
     assert.doesNotMatch(workspace, /Offer layouts to couple/);
-    assert.match(migration, /operational_floor_plan_id = v_plan_id/);
+    assert.match(phase2Migration, /couple_preference_status = 'pending'/);
+    assert.doesNotMatch(ensure, /couple_selected_floor_plan_id:\s*floorPlanId/);
   });
 });
