@@ -24,7 +24,9 @@ import { ChoicesDefinitionView } from "@/components/client-choices/choices-defin
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { orderedVisibleChoiceGroups } from "@/lib/client-choices/conditional-groups";
 import type { ChoicesAnswers } from "@/lib/client-choices/types";
+import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
 import {
   attachOfferingPreservingSnapshot,
   choicesOptionDraftFromOffering,
@@ -155,58 +157,81 @@ export function ConditionalChoicePreview({
     () => selectionDefinitionFromEventOrderTemplate(template),
     [template],
   );
-  const hasDeps = template.groups.some((g) => isDependentGroup(g));
+  const hasChoices = template.groups.length > 0;
   const [answers, setAnswers] = React.useState<ChoicesAnswers>(() =>
     defaultAnswersFromEventOrderTemplate(template),
   );
+  const [validationMessage, setValidationMessage] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setAnswers(defaultAnswersFromEventOrderTemplate(template));
+    setValidationMessage(null);
   }, [template]);
 
-  if (!hasDeps) {
+  if (!hasChoices) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="eo-choice-preview-no-deps">
-        No follow-up choices yet. When a primary option shows additional options, you can preview that
-        reveal behavior here. Preview does not send or finalize an Event Order.
+        No couple choices yet. When you add a primary question and follow-ups, you can preview that
+        experience here. Preview does not send or finalize an Event Order.
       </p>
     );
   }
 
-  const rootGroups = [...template.groups]
-    .filter((g) => !isDependentGroup(g))
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const visibleGroups = orderedVisibleChoiceGroups(definition, answers);
 
-  function toggleOption(group: EventOrderTemplateGroup, optionId: string) {
+  function toggleOption(groupId: string, selectionMode: "single" | "multi", optionId: string) {
+    setValidationMessage(null);
     setAnswers((prev) => {
-      const current = prev[group.id]?.optionIds ?? [];
+      const current = prev[groupId]?.optionIds ?? [];
       let nextIds: string[];
-      if (group.selectionMode === "single") {
+      if (selectionMode === "single") {
         nextIds = current.includes(optionId) ? [] : [optionId];
       } else if (current.includes(optionId)) {
         nextIds = current.filter((id) => id !== optionId);
       } else {
         nextIds = [...current, optionId];
       }
-      return { ...prev, [group.id]: { optionIds: nextIds } };
+      return { ...prev, [groupId]: { optionIds: nextIds } };
     });
+  }
+
+  function checkSelections() {
+    const result = validateChoicesAnswers(definition, answers);
+    if (result.ok) {
+      setValidationMessage(null);
+      return;
+    }
+    setValidationMessage(result.message);
   }
 
   return (
     <div className="space-y-4" data-testid="eo-choice-conditional-preview">
       <p className="text-sm text-muted-foreground">
-        Try parent selections below. Follow-up choices appear the same way they will for the client.
-        This preview does not send or finalize an Event Order.
+        Try selections below the same way a couple would. Follow-up choices appear only for the active
+        path. Check selections to see the same min/max validation couples get before submit. This
+        preview does not send or finalize an Event Order.
       </p>
       <div className="space-y-3 rounded-md border border-border bg-muted/10 p-3">
-        {rootGroups.map((g) => {
-          const opts = optionsForGroup(template.options, g.id);
+        {visibleGroups.map((g) => {
+          const opts = definition.options
+            .filter((o) => o.groupId === g.id)
+            .sort((a, b) => a.sortOrder - b.sortOrder);
           if (opts.length === 0) return null;
           const selected = new Set(answers[g.id]?.optionIds ?? []);
+          const isDependent = (g.dependsOnOptionIds?.length ?? 0) > 0;
           return (
-            <div key={g.id} className="space-y-1.5">
+            <div
+              key={g.id}
+              className={`space-y-1.5 ${isDependent ? "ml-3 border-l-2 border-l-heading/40 pl-3" : ""}`}
+              data-testid={isDependent ? `eo-preview-dependent-${g.id}` : `eo-preview-group-${g.id}`}
+              data-group-name={g.name}
+            >
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {g.name}
+                {g.minSelect > 1 ? ` · choose ${g.minSelect}` : g.minSelect === 1 ? " · choose 1" : ""}
+                {g.maxSelect != null && g.maxSelect === g.minSelect && g.minSelect > 1
+                  ? " (exact)"
+                  : ""}
               </p>
               <ul className="flex flex-wrap gap-2">
                 {opts.map((o) => {
@@ -218,8 +243,12 @@ export function ConditionalChoicePreview({
                         size="sm"
                         variant={on ? "default" : "outline"}
                         aria-pressed={on}
-                        data-testid={`eo-preview-parent-${o.id}`}
-                        onClick={() => toggleOption(g, o.id)}
+                        data-testid={
+                          isDependent
+                            ? `eo-preview-option-${o.id}`
+                            : `eo-preview-parent-${o.id}`
+                        }
+                        onClick={() => toggleOption(g.id, g.selectionMode, o.id)}
                       >
                         {o.label}
                       </Button>
@@ -230,6 +259,30 @@ export function ConditionalChoicePreview({
             </div>
           );
         })}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-testid="eo-preview-check-selections"
+          onClick={checkSelections}
+        >
+          Check selections
+        </Button>
+        {validationMessage ? (
+          <p
+            className="text-sm text-destructive"
+            data-testid="eo-preview-validation-message"
+            role="alert"
+          >
+            {validationMessage}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground" data-testid="eo-preview-validation-ok-hint">
+            Uses the same selection rules as couple submit.
+          </p>
+        )}
       </div>
       <ChoicesDefinitionView
         definition={definition}

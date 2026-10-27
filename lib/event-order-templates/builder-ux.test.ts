@@ -9,63 +9,58 @@ import { join } from "node:path";
 const root = process.cwd();
 
 describe("EO template builder — guided setup UX seams", () => {
-  it("detail hosts the guided setup wizard", () => {
+  it("detail hosts the guided setup wizard with plain-language orientation", () => {
     const detail = readFileSync(
       join(root, "components/event-order-templates/event-order-template-detail.tsx"),
       "utf8",
     );
     assert.match(detail, /GuidedSetupWizard/);
-    assert.match(detail, /guided setup asks what you offer/i);
+    assert.match(detail, /eo-template-detail-intro/);
+    assert.match(detail, /included automatically/i);
+    assert.match(detail, /follow-up questions nested under each option/i);
+    assert.doesNotMatch(detail, /commercial build sheet/i);
   });
 
-  it("wizard covers categories → patterns → choices → branches → review → preview", () => {
+  it("landing page explains templates without jargon-heavy intro", () => {
+    const page = readFileSync(
+      join(root, "app/(app)/library/event-order-templates/page.tsx"),
+      "utf8",
+    );
+    assert.match(page, /Reusable packages for a wedding/i);
+    assert.match(page, /eo-templates-landing-example/);
+    assert.match(page, /included automatically/i);
+    assert.match(page, /Preview shows the couple experience without sending/i);
+    assert.doesNotMatch(page, /commercial build sheets/i);
+  });
+
+  it("wizard covers categories → workspace → review → preview without pattern quiz", () => {
     const wizard = readFileSync(
       join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
       "utf8",
     );
     assert.match(wizard, /eo-guided-setup-wizard/);
     assert.match(wizard, /eo-guided-step-categories/);
-    assert.match(wizard, /eo-guided-step-patterns/);
+    assert.match(wizard, /eo-guided-step-workspace/);
+    assert.match(wizard, /eo-guided-step-fixed/);
     assert.match(wizard, /eo-guided-step-choices/);
-    assert.match(wizard, /eo-guided-step-branches/);
     assert.match(wizard, /eo-guided-step-review/);
     assert.match(wizard, /eo-guided-step-preview/);
-    assert.match(wizard, /What does your venue offer/);
-    assert.match(wizard, /How should clients make their selections\?/);
-    assert.match(wizard, /What happens when a client selects this option\?/);
-    assert.match(wizard, /Nothing else — this is a complete choice/);
-    assert.match(wizard, /Show additional options/);
+    assert.match(wizard, /What does this package include/);
+    assert.match(wizard, /Set up \{activeSection\.name\}/);
     assert.match(wizard, /Specialist selection rules/);
     assert.match(wizard, /eo-specialist-selection-rules/);
     assert.match(wizard, /eo-guided-preview-non-sending/);
     assert.match(wizard, /Preview only — no send, no finalize/);
+    assert.match(wizard, /phase !== "preview"/);
+    assert.doesNotMatch(wizard, /eo-guided-step-patterns/);
+    assert.doesNotMatch(wizard, /eo-guided-step-branches/);
+    assert.doesNotMatch(wizard, /How should clients make their selections/);
+    assert.doesNotMatch(wizard, /What happens when a client selects this option/);
+    assert.doesNotMatch(wizard, /Step 1 of 7/);
     assert.doesNotMatch(wizard, /depends_on_option_ids/);
     assert.doesNotMatch(wizard, /Advanced editor/i);
-    assert.doesNotMatch(wizard, /eo-guided-pattern-choose_then_related/);
-  });
-
-  it("pattern copy distinguishes included, choose-one, multi, and optional extras", () => {
-    const setup = readFileSync(
-      join(root, "lib/event-order-templates/guided-setup.ts"),
-      "utf8",
-    );
-    assert.match(setup, /Included automatically/);
-    assert.match(setup, /Choose one option/);
-    assert.match(setup, /Choose multiple options/);
-    assert.match(setup, /Optional extras/);
-    assert.match(
-      setup,
-      /Clients receive these items or services as part of their package/,
-    );
-    assert.match(
-      setup,
-      /Show any additional price before they choose/,
-    );
-    // Top-level choose_then_related card retired from CONFIG_PATTERNS list.
-    assert.doesNotMatch(
-      setup,
-      /id: "choose_then_related",\s*\n\s*title:/,
-    );
+    assert.doesNotMatch(wizard, /patternDraftBySection/);
+    assert.doesNotMatch(wizard, /eo-guided-pattern-choose_one/);
   });
 
   it("ordinary guided flow exposes More settings without requiring specialist rules", () => {
@@ -83,6 +78,7 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /guidedOrdinary/);
     assert.match(wizard, /specialistMode/);
     assert.match(wizard, /eo-guided-item-source-help/);
+    assert.match(wizard, /nestBranches/);
   });
 
   it("ordinary guided catering flow uses primary question + under-option follow-ups", () => {
@@ -104,8 +100,20 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(groups, /resolvePlainSelectionRule/);
     assert.match(groups, /If the couple chooses/);
     assert.match(groups, /Clients answer this first/);
-    assert.match(wizard, /Primary question/);
-    assert.match(wizard, /Add choices for couples who select/);
+    assert.match(wizard, /Choices for \{activeSection\.name\}/);
+    assert.match(wizard, /categories belong under each option/i);
+    assert.match(wizard, /Under each option, add the follow-up categories/i);
+  });
+
+  it("preview validates under-selection with the shared choices validator", () => {
+    const groups = readFileSync(
+      join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
+      "utf8",
+    );
+    assert.match(groups, /validateChoicesAnswers/);
+    assert.match(groups, /eo-preview-check-selections/);
+    assert.match(groups, /eo-preview-validation-message/);
+    assert.match(groups, /orderedVisibleChoiceGroups/);
   });
 
   it("offering and line editors explain Offerings vs Inventory vs template-only", () => {
@@ -117,39 +125,6 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(sheet, /does not reserve stock/);
     assert.match(sheet, /never matched by name/);
     assert.match(sheet, /reusable Offerings list/);
-  });
-
-  it("pattern selections are owned per section and survive category tab changes", () => {
-    const wizard = readFileSync(
-      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
-      "utf8",
-    );
-    assert.match(wizard, /patternDraftBySection/);
-    assert.match(wizard, /seedPatternDraftsFromTemplate/);
-    assert.match(wizard, /togglePatternInDraft/);
-    assert.match(wizard, /patternsPayloadFromDrafts/);
-    assert.match(wizard, /data-pattern-payload/);
-    // Must not reset a single shared draft from detect on every active section change.
-    assert.doesNotMatch(
-      wizard,
-      /setPatternDraft\(detectPatternsForSection/,
-    );
-  });
-
-  it("empty Continue names the active category and does not wipe drafts on failure", () => {
-    const wizard = readFileSync(
-      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
-      "utf8",
-    );
-    assert.match(
-      wizard,
-      /Select at least one way clients will experience \$\{activeSection\.name\}/,
-    );
-    // Validation / group-create failure paths return without clearing patternDraftBySection.
-    assert.match(wizard, /if \(patternDraft\.length === 0\)/);
-    assert.match(wizard, /Could not create choice group/);
-    assert.doesNotMatch(wizard, /setPatternDraftBySection\(\s*\{\s*\}\s*\)/);
-    assert.doesNotMatch(wizard, /setPatternDraftBySection\(\s*\(\)\s*=>\s*\{\s*\}\s*\)/);
   });
 
   it("choice groups nest branches and flag incomplete dependents", () => {

@@ -10,6 +10,7 @@ import {
   emptyDependentGroupInput,
   matchSuggestedCategory,
   nextConfigureSubstep,
+  prevConfigureSubstep,
   patternsPayloadFromDrafts,
   plainSelectionRuleLabel,
   resolvePlainSelectionRule,
@@ -146,29 +147,11 @@ describe("guided setup — patterns and branches", () => {
     assert.match(input.name, /Plated Dinner/);
   });
 
-  it("advances configure substeps based on selected patterns", () => {
-    assert.equal(nextConfigureSubstep("patterns", ["included"]), "fixed");
-    assert.equal(nextConfigureSubstep("fixed", ["included", "choose_one"]), "choices");
-    assert.equal(nextConfigureSubstep("choices", ["choose_one"]), "branches");
-    assert.equal(nextConfigureSubstep("branches", ["choose_one"]), "done");
-    assert.equal(nextConfigureSubstep("patterns", ["choose_one"]), "choices");
-    // Legacy choose_then_related normalizes to choose_one → still gets branches.
-    assert.equal(nextConfigureSubstep("choices", ["choose_then_related"]), "branches");
-  });
-
-  it("allows multiple combinable patterns in one category", () => {
-    assert.equal(
-      nextConfigureSubstep("patterns", ["included", "choose_one", "optional_add"]),
-      "fixed",
-    );
-    assert.equal(
-      nextConfigureSubstep("fixed", ["included", "choose_one", "optional_add"]),
-      "choices",
-    );
-    assert.equal(
-      nextConfigureSubstep("choices", ["included", "choose_one", "optional_add"]),
-      "branches",
-    );
+  it("ordinary configure path is a single workspace (no pattern ladder)", () => {
+    assert.equal(nextConfigureSubstep("workspace", ["included"]), "done");
+    assert.equal(nextConfigureSubstep("workspace", ["choose_one"]), "done");
+    assert.equal(nextConfigureSubstep("workspace", ["included", "choose_one", "optional_add"]), "done");
+    assert.equal(prevConfigureSubstep("workspace", ["choose_one"]), "categories");
   });
 });
 

@@ -133,7 +133,20 @@ export function normalizePatternIds(patterns: ConfigPatternId[]): ConfigPatternI
 
 export type WizardPhase = "categories" | "configure" | "review" | "preview";
 
-export type CategoryConfigureSubstep = "patterns" | "fixed" | "choices" | "branches";
+/**
+ * Ordinary configure path is a single contextual workspace (included items +
+ * primary choices + under-option follow-ups). Legacy pattern/fixed/choices/branches
+ * ladder is retired from the venue-facing flow.
+ */
+export type CategoryConfigureSubstep = "workspace";
+
+/** @deprecated Kept for draft-normalization helpers only — not an ordinary UI step. */
+export type LegacyCategoryConfigureSubstep =
+  | "patterns"
+  | "fixed"
+  | "choices"
+  | "branches"
+  | "workspace";
 
 export function normalizeCategoryLabel(value: string): string {
   return value
@@ -633,32 +646,21 @@ export type WizardProgress = {
   sectionIdsInOrder: string[];
 };
 
-function configureSubstepOrder(patterns: ConfigPatternId[]): CategoryConfigureSubstep[] {
-  const p = normalizePatternIds(patterns);
-  const order: CategoryConfigureSubstep[] = ["patterns"];
-  if (sectionNeedsFixedConfiguration(p)) order.push("fixed");
-  if (sectionNeedsChoiceConfiguration(p)) order.push("choices");
-  if (sectionNeedsBranchConfiguration(p)) order.push("branches");
-  return order;
+/** Ordinary path: one workspace per category (no preliminary pattern quiz). */
+function configureSubstepOrder(_patterns?: ConfigPatternId[]): CategoryConfigureSubstep[] {
+  return ["workspace"];
 }
 
 export function nextConfigureSubstep(
-  current: CategoryConfigureSubstep,
-  patterns: ConfigPatternId[],
+  _current: CategoryConfigureSubstep,
+  _patterns?: ConfigPatternId[],
 ): CategoryConfigureSubstep | "done" {
-  const order = configureSubstepOrder(patterns);
-  const idx = order.indexOf(current);
-  if (idx < 0) return order[0] ?? "done";
-  if (idx >= order.length - 1) return "done";
-  return order[idx + 1]!;
+  return "done";
 }
 
 export function prevConfigureSubstep(
-  current: CategoryConfigureSubstep,
-  patterns: ConfigPatternId[],
+  _current: CategoryConfigureSubstep,
+  _patterns?: ConfigPatternId[],
 ): CategoryConfigureSubstep | "categories" {
-  const order = configureSubstepOrder(patterns);
-  const idx = order.indexOf(current);
-  if (idx <= 0) return "categories";
-  return order[idx - 1]!;
+  return "categories";
 }

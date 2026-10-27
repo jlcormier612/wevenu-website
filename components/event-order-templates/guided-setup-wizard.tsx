@@ -8,10 +8,11 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addEventOrderTemplateGroupAction,
   addEventOrderTemplateSectionAction,
-  removeEventOrderTemplateGroupAction,
   removeEventOrderTemplateSectionAction,
+  addEventOrderTemplateLineAction,
+  removeEventOrderTemplateLineAction,
+  updateEventOrderTemplateLineAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { ConditionalChoicePreview } from "@/components/event-order-templates/event-order-template-choice-groups";
 import { EventOrderTemplateChoiceGroups } from "@/components/event-order-templates/event-order-template-choice-groups";
@@ -20,26 +21,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  CONFIG_PATTERNS,
   SUGGESTED_CATEGORIES,
-  branchGuideForSection,
   buildReviewSummary,
   canonicalSectionNameForSuggested,
-  defaultGroupInputForPattern,
-  emptyDependentGroupInput,
   matchSuggestedCategory,
-  nextConfigureSubstep,
-  patternsPayloadFromDrafts,
-  prevConfigureSubstep,
-  sectionNeedsChoiceConfiguration,
-  seedPatternDraftsFromTemplate,
   selectedCategoryKeysFromTemplate,
-  togglePatternInDraft,
   type CategoryConfigureSubstep,
-  type ConfigPatternId,
-  type PatternDraftBySection,
   type SuggestedCategoryKey,
   type WizardPhase,
 } from "@/lib/event-order-templates/guided-setup";
@@ -50,11 +38,6 @@ import type {
   EventOrderTemplateLine,
   EventOrderTemplateWithDetails,
 } from "@/lib/event-order-templates/types";
-import {
-  addEventOrderTemplateLineAction,
-  removeEventOrderTemplateLineAction,
-  updateEventOrderTemplateLineAction,
-} from "@/app/(app)/library/event-order-templates/actions";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 type Props = {
@@ -79,38 +62,14 @@ export function GuidedSetupWizard({
   const [customNames, setCustomNames] = React.useState<string[]>(() => existing.customNames);
   const [customDraft, setCustomDraft] = React.useState("");
   const [categoryIndex, setCategoryIndex] = React.useState(0);
-  const [substep, setSubstep] = React.useState<CategoryConfigureSubstep>("patterns");
-  const [patternDraftBySection, setPatternDraftBySection] = React.useState<PatternDraftBySection>(
-    () =>
-      seedPatternDraftsFromTemplate(
-        template,
-        [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => s.id),
-        {},
-      ),
-  );
+  const [substep, setSubstep] = React.useState<CategoryConfigureSubstep>("workspace");
   const [pending, startTransition] = React.useTransition();
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editingLine, setEditingLine] = React.useState<EventOrderTemplateLine | null>(null);
   const [editorPending, startEditor] = React.useTransition();
 
   const sectionsOrdered = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
-  const sectionIdsKey = sectionsOrdered.map((s) => s.id).join("|");
   const activeSection = sectionsOrdered[categoryIndex] ?? null;
-  const patternDraft: ConfigPatternId[] = activeSection
-    ? (patternDraftBySection[activeSection.id] ?? [])
-    : [];
-  /** All categories' pattern picks — used when Continue must include every section. */
-  const allCategoryPatternPayload = patternsPayloadFromDrafts(
-    patternDraftBySection,
-    sectionsOrdered.map((s) => s.id),
-  );
-
-  React.useEffect(() => {
-    const ids = sectionIdsKey.length > 0 ? sectionIdsKey.split("|") : [];
-    // seedPatternDraftsFromTemplate never overwrites an existing section draft, so
-    // template refreshes and category tab changes cannot discard unpersisted picks.
-    setPatternDraftBySection((prev) => seedPatternDraftsFromTemplate(template, ids, prev));
-  }, [sectionIdsKey, template]);
 
   React.useEffect(() => {
     if (categoryIndex >= sectionsOrdered.length && sectionsOrdered.length > 0) {
@@ -150,7 +109,6 @@ export function GuidedSetupWizard({
       const match = matchSuggestedCategory(s.name);
       if (match && suggestedSelected.includes(match.key)) return false;
       if (customNames.some((n) => n.toLowerCase() === s.name.toLowerCase())) return false;
-      // Keep if name is in desired list (canonical rename edge)
       if (desiredNorm.has(s.name.toLowerCase())) return false;
       return true;
     });
@@ -179,7 +137,6 @@ export function GuidedSetupWizard({
           (s) => s.name.toLowerCase() === name.toLowerCase()
             || matchSuggestedCategory(s.name)?.name.toLowerCase() === name.toLowerCase(),
         );
-        // Also treat alias match as exists (e.g. section "Bar" for "Bar Service")
         const aliasExists = template.sections.some((s) => {
           const m = matchSuggestedCategory(s.name);
           const want = matchSuggestedCategory(name);
@@ -194,95 +151,10 @@ export function GuidedSetupWizard({
       }
       onPersist("saved");
       setCategoryIndex(0);
-      setSubstep("patterns");
+      setSubstep("workspace");
       setPhase(desiredNames.length === 0 ? "review" : "configure");
       router.refresh();
     });
-  }
-
-  function togglePattern(id: ConfigPatternId) {
-    if (!activeSection) return;
-    setPatternDraftBySection((prev) => togglePatternInDraft(prev, activeSection.id, id));
-  }
-
-  async function ensureRootGroupForPatterns() {
-    if (!activeSection) return true;
-    const needsChoice = sectionNeedsChoiceConfiguration(patternDraft);
-    if (!needsChoice) return true;
-    const roots = rootGroupsInList(groupsForSection(template.groups, activeSection.id));
-    if (roots.length > 0) return true;
-    const pattern =
-      patternDraft.find((p) => p === "choose_one")
-      ?? patternDraft.find((p) => p === "choose_many")
-      ?? patternDraft.find((p) => p === "optional_add");
-    if (!pattern) return true;
-    const input = defaultGroupInputForPattern(pattern, activeSection.id, activeSection.name);
-    if (!input) return true;
-    onPersist("saving");
-    const r = await addEventOrderTemplateGroupAction(template.id, input);
-    if (!r.ok) {
-      onPersist("error", r.message ?? "Could not create choice group.");
-      return false;
-    }
-    onPersist("saved");
-    router.refresh();
-    return true;
-  }
-
-  async function advanceFromSubstep() {
-    if (!activeSection) return;
-    if (substep === "patterns") {
-      if (patternDraft.length === 0) {
-        toast.error(
-          `Select at least one way clients will experience ${activeSection.name}, or go back and skip the category.`,
-        );
-        return;
-      }
-      const next = nextConfigureSubstep("patterns", patternDraft);
-      if (next === "done") {
-        goNextCategory();
-        return;
-      }
-      if (next === "choices" || next === "branches") {
-        const ok = await ensureRootGroupForPatterns();
-        if (!ok) return;
-      }
-      setSubstep(next);
-      return;
-    }
-    if (substep === "fixed") {
-      const next = nextConfigureSubstep("fixed", patternDraft);
-      if (next === "done") {
-        goNextCategory();
-        return;
-      }
-      if (next === "choices" || next === "branches") {
-        const ok = await ensureRootGroupForPatterns();
-        if (!ok) return;
-      }
-      setSubstep(next);
-      return;
-    }
-    if (substep === "choices") {
-      const roots = rootGroupsInList(groupsForSection(template.groups, activeSection.id));
-      const emptyRoot = roots.find(
-        (g) => template.options.filter((o) => o.groupId === g.id).length === 0,
-      );
-      if (emptyRoot) {
-        toast.error(`Add at least one option to “${emptyRoot.name}” before continuing.`);
-        return;
-      }
-      const next = nextConfigureSubstep("choices", patternDraft);
-      if (next === "done") {
-        goNextCategory();
-        return;
-      }
-      setSubstep(next);
-      return;
-    }
-    if (substep === "branches") {
-      goNextCategory();
-    }
   }
 
   function goNextCategory() {
@@ -291,7 +163,20 @@ export function GuidedSetupWizard({
       return;
     }
     setCategoryIndex((i) => i + 1);
-    setSubstep("patterns");
+    setSubstep("workspace");
+  }
+
+  function advanceFromWorkspace() {
+    if (!activeSection) return;
+    const roots = rootGroupsInList(groupsForSection(template.groups, activeSection.id));
+    const emptyRoot = roots.find(
+      (g) => template.options.filter((o) => o.groupId === g.id).length === 0,
+    );
+    if (emptyRoot) {
+      toast.error(`Add at least one option to “${emptyRoot.name}” before continuing.`);
+      return;
+    }
+    goNextCategory();
   }
 
   function goBack() {
@@ -306,21 +191,16 @@ export function GuidedSetupWizard({
       }
       setPhase("configure");
       setCategoryIndex(Math.max(0, sectionsOrdered.length - 1));
-      setSubstep("patterns");
+      setSubstep("workspace");
       return;
     }
     if (phase === "configure" && activeSection) {
-      const prev = prevConfigureSubstep(substep, patternDraft);
-      if (prev === "categories") {
-        if (categoryIndex > 0) {
-          setCategoryIndex((i) => i - 1);
-          setSubstep("patterns");
-        } else {
-          setPhase("categories");
-        }
-        return;
+      if (categoryIndex > 0) {
+        setCategoryIndex((i) => i - 1);
+        setSubstep("workspace");
+      } else {
+        setPhase("categories");
       }
-      setSubstep(prev);
       return;
     }
     setPhase("categories");
@@ -345,83 +225,42 @@ export function GuidedSetupWizard({
     });
   }
 
-  async function removeEmptyDependent(groupId: string, name: string) {
-    if (!confirm(`Remove empty follow-up “${name}”? Clients will not see a branch for this parent.`)) {
-      return;
-    }
-    onPersist("saving");
-    const r = await removeEventOrderTemplateGroupAction(template.id, groupId);
-    if (!r.ok) onPersist("error", r.message ?? "Could not remove.");
-    else {
-      onPersist("saved");
-      router.refresh();
-    }
-  }
-
-  async function addFollowUpForOption(optionId: string) {
-    if (!activeSection) return;
-    const option = template.options.find((o) => o.id === optionId);
-    if (!option) return;
-    // Multiple follow-up categories per option are allowed (e.g. Entrées + Sides under Buffet).
-    // Creation of named categories with select counts happens in the nested choice editor;
-    // this path seeds an empty dependent only when the venue uses the quick action.
-    onPersist("saving");
-    const r = await addEventOrderTemplateGroupAction(
-      template.id,
-      emptyDependentGroupInput(activeSection.id, option),
-    );
-    if (!r.ok) onPersist("error", r.message ?? "Could not create follow-up group.");
-    else {
-      onPersist("saved");
-      router.refresh();
-    }
-  }
-
   const review = buildReviewSummary(template);
   const progressLabel = (() => {
-    if (phase === "categories") return "Step 1 of 7 — What you offer";
+    if (phase === "categories") return "What you offer";
     if (phase === "configure" && activeSection) {
       const catN = categoryIndex + 1;
       const catTotal = sectionsOrdered.length || 1;
-      const subLabels: Record<CategoryConfigureSubstep, string> = {
-        patterns: "How clients choose",
-        fixed: "Included items",
-        choices: "Main choices",
-        branches: "Follow-up choices",
-      };
-      return `Category ${catN}/${catTotal}: ${activeSection.name} — ${subLabels[substep]}`;
+      return `Category ${catN} of ${catTotal}: ${activeSection.name}`;
     }
     if (phase === "review") return "Review complete setup";
     return "Preview client experience";
   })();
 
   return (
-    <div
-      className="space-y-6"
-      data-testid="eo-guided-setup-wizard"
-      data-pattern-payload={JSON.stringify(allCategoryPatternPayload)}
-    >
+    <div className="space-y-6" data-testid="eo-guided-setup-wizard">
       <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
         <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          Guided Event Order setup
+          Event Order package setup
         </p>
         <p className="mt-1 text-sm font-medium text-heading" data-testid="eo-guided-progress">
           {progressLabel}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Answer plain questions about what you offer and how clients choose. Ordinary setup stays in
-          these steps — specialist selection rules are only for unusual cases.
+          Choose what the package includes, then configure each category in place — included items,
+          couple choices, and follow-ups under each option. Specialist rules stay available for unusual
+          cases.
         </p>
       </div>
 
       {phase === "categories" ? (
         <section className="space-y-4" data-testid="eo-guided-step-categories">
           <div>
-            <h2 className="font-heading text-xl text-heading">What does your venue offer?</h2>
+            <h2 className="font-heading text-xl text-heading">What does this package include?</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Select only the commercial categories you provide or want clients to configure through
-              this Event Order. Skip categories you do not manage — for example, outside catering or
-              bar. Skipping does not block other Event Order features.
+              Select the commercial categories you provide through this Event Order. Skip categories you
+              do not manage — for example, outside catering or bar. You will configure included items and
+              couple choices inside each category next.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -452,8 +291,7 @@ export function GuidedSetupWizard({
           <div className="space-y-2 rounded-lg border border-dashed border-border p-4">
             <Label>Other / custom category</Label>
             <p className="text-xs text-muted-foreground">
-              Add a category you define yourself (for example a specialty service). It is not forced into
-              Catering, Bar, Rentals, or Services.
+              Add a category you define yourself (for example a specialty service).
             </p>
             <div className="flex flex-wrap gap-2">
               <Input
@@ -524,7 +362,7 @@ export function GuidedSetupWizard({
                 }`}
                 onClick={() => {
                   setCategoryIndex(i);
-                  setSubstep("patterns");
+                  setSubstep("workspace");
                 }}
               >
                 {s.name}
@@ -532,238 +370,90 @@ export function GuidedSetupWizard({
             ))}
           </div>
 
-          {substep === "patterns" ? (
-            <div className="space-y-4" data-testid="eo-guided-step-patterns">
-              <h2 className="font-heading text-xl text-heading">
-                How should clients make their selections?
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Choose what clients need to select, what they receive automatically, and which
-                additional choices or questions appear along the way. Pick every pattern that applies
-                for {activeSection.name} — patterns can be combined.
-              </p>
-              <div className="space-y-2">
-                {CONFIG_PATTERNS.map((p) => {
-                  const on = patternDraft.includes(p.id);
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      data-testid={`eo-guided-pattern-${p.id}`}
-                      aria-pressed={on}
-                      onClick={() => togglePattern(p.id)}
-                      className={`w-full rounded-lg border p-4 text-left ${
-                        on ? "border-heading bg-heading/5" : "border-border bg-background"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium text-heading">{p.title}</p>
-                        {on ? <Check className="h-4 w-4 text-heading" /> : null}
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">{p.clientExperience}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
-          {substep === "fixed" ? (
-            <div className="space-y-4" data-testid="eo-guided-step-fixed">
-              <h2 className="font-heading text-xl text-heading">
-                Included items for {activeSection.name}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Clients receive these items or services as part of their package. They don&apos;t need
-                to select them — and they are not presented as optional extras.
-              </p>
-              <div
-                className="space-y-2 rounded-md border border-border/70 bg-muted/15 px-3 py-2 text-xs text-muted-foreground"
-                data-testid="eo-guided-item-source-help"
-              >
-                <p>
-                  <span className="font-medium text-heading">Offerings</span> — products and services
-                  your venue provides or sells, such as catering packages, bar service, rentals, and
-                  upgrades. You can use the same Offering in multiple event orders.
-                </p>
-                <p>
-                  <span className="font-medium text-heading">Inventory</span> — tracks physical items
-                  your venue owns or manages, such as chairs, tables, and ceremony arbors. Inventory
-                  can support floor plan placement and usage reporting. It is not a source for lines
-                  here.
-                </p>
-                <p>
-                  <span className="font-medium text-heading">Custom / template-only line</span> — add an
-                  item or service directly to this event order when you don&apos;t need it in your
-                  reusable Offerings list.
-                </p>
-                <p>
-                  Linking an Offering to Inventory (elsewhere) does not reserve stock or guarantee
-                  availability.
+          {substep === "workspace" ? (
+            <div className="space-y-8" data-testid="eo-guided-step-workspace">
+              <div>
+                <h2 className="font-heading text-xl text-heading">
+                  Set up {activeSection.name}
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Add items included automatically, then the main choices couples make. Follow-up
+                  categories belong under each option — for example sides under Buffet and entrée under
+                  Plated dinner. Set how many they must choose right on each category.
                 </p>
               </div>
-              <FixedLinesPanel
-                template={template}
-                sectionId={activeSection.id}
-                onEdit={(line) => {
-                  setEditingLine(line);
-                  setEditorOpen(true);
-                }}
-                onAdd={() => {
-                  setEditingLine(null);
-                  setEditorOpen(true);
-                }}
-                onRemove={async (lineId) => {
-                  onPersist("saving");
-                  const r = await removeEventOrderTemplateLineAction(template.id, lineId);
-                  if (!r.ok) onPersist("error", r.message);
-                  else {
-                    onPersist("saved");
-                    router.refresh();
-                  }
-                }}
-              />
-            </div>
-          ) : null}
 
-          {substep === "choices" ? (
-            <div className="space-y-4" data-testid="eo-guided-step-choices">
-              <h2 className="font-heading text-xl text-heading">
-                Primary question — {activeSection.name}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Start with the main question couples answer first — for example “Dinner service” with
-                Buffet and Plated dinner. Add each service option here. Prices come from your catalog or
-                what you enter — we never invent them.
-              </p>
-              {patternDraft.includes("choose_one") ? (
-                <p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                  Next, you will add follow-up menu categories under each option (for example Entrées
-                  under Plated dinner, Side dishes under Buffet). Choosing Buffet will not show Plated
-                  dinner’s questions.
-                </p>
-              ) : null}
-              <EventOrderTemplateChoiceGroups
-                template={template}
-                catalogOfferings={catalogOfferings}
-                onPersist={onPersist}
-                lockedSectionId={activeSection.id}
-                compact
-                showPreview={false}
-                nestBranches={false}
-                rootsOnly
-                guidedOrdinary
-              />
-            </div>
-          ) : null}
-
-          {substep === "branches" ? (
-            <div className="space-y-4" data-testid="eo-guided-step-branches">
-              <h2 className="font-heading text-xl text-heading">
-                Choices under each {activeSection.name} option
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Under each service option, add the categories and menu items that apply only when the
-                couple selects that option. Tell them how many to select. Buffet follow-ups stay under
-                Buffet; Plated dinner follow-ups stay under Plated dinner.
-              </p>
-              {branchGuideForSection(template, activeSection.id).map((branch) => (
-                <div
-                  key={branch.optionId}
-                  className="rounded-lg border border-border p-4 space-y-3"
-                  data-testid={`eo-guided-branch-${branch.optionId}`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-heading">
-                        What happens when a client selects this option?
-                      </p>
-                      <p className="text-sm text-heading">“{branch.optionLabel}”</p>
-                      <p className="text-xs text-muted-foreground">From “{branch.parentGroupName}”</p>
-                    </div>
-                    {branch.incomplete ? (
-                      <Badge variant="outline" className="border-amber-600 text-amber-800">
-                        Incomplete
-                      </Badge>
-                    ) : null}
-                  </div>
-                  {branch.dependents.length === 0 ? (
-                    <div className="flex flex-wrap gap-2" data-testid={`eo-guided-followup-actions-${branch.optionId}`}>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        data-testid={`eo-guided-followup-none-${branch.optionId}`}
-                      >
-                        Nothing else — this is a complete choice.
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        data-testid={`eo-guided-add-followup-${branch.optionId}`}
-                        onClick={() => void addFollowUpForOption(branch.optionId)}
-                      >
-                        Show additional options.
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Categories shown when the couple selects “{branch.optionLabel}”. Add another
-                        category under this option in the editor below — each stays scoped here only.
-                      </p>
-                      {branch.dependents.map((d) => {
-                        const optCount = template.options.filter((o) => o.groupId === d.id).length;
-                        return (
-                          <div key={d.id} className="rounded-md border border-border/80 p-3">
-                            <p className="text-sm font-medium text-heading">{d.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Triggered by “{branch.optionLabel}”
-                              {optCount === 0
-                                ? " — no menu items yet. Add items in the editor below or remove this category."
-                                : ` · ${optCount} item(s)`}
-                            </p>
-                            {optCount === 0 ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="mt-2"
-                                onClick={() => void removeEmptyDependent(d.id, d.name)}
-                              >
-                                Remove empty follow-up
-                              </Button>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {branchGuideForSection(template, activeSection.id).length > 0 ? (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Use “Add choices for couples who select …” under each option to create categories
-                    with a select count. You can add several categories per option.
-                  </p>
-                  <EventOrderTemplateChoiceGroups
-                    template={template}
-                    catalogOfferings={catalogOfferings}
-                    onPersist={onPersist}
-                    lockedSectionId={activeSection.id}
-                    compact
-                    showPreview={false}
-                    nestBranches
-                    guidedOrdinary
-                  />
-                </>
-              ) : (
+              <div className="space-y-4" data-testid="eo-guided-step-fixed">
+                <h3 className="font-heading text-lg text-heading">
+                  Included in {activeSection.name}
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  Add main choices in the previous step before configuring follow-ups.
+                  Clients receive these as part of the package. They do not need to select them.
                 </p>
-              )}
+                <div
+                  className="space-y-2 rounded-md border border-border/70 bg-muted/15 px-3 py-2 text-xs text-muted-foreground"
+                  data-testid="eo-guided-item-source-help"
+                >
+                  <p>
+                    <span className="font-medium text-heading">Offerings</span> — reusable products and
+                    services you sell across event orders.
+                  </p>
+                  <p>
+                    <span className="font-medium text-heading">Inventory</span> — tracks physical items.
+                    It is not a source for lines here.
+                  </p>
+                  <p>
+                    <span className="font-medium text-heading">Custom / template-only</span> — add an item
+                    only on this template when you do not need it in Offerings.
+                  </p>
+                  <p>
+                    Linking an Offering to Inventory elsewhere does not reserve stock or guarantee
+                    availability.
+                  </p>
+                </div>
+                <FixedLinesPanel
+                  template={template}
+                  sectionId={activeSection.id}
+                  onEdit={(line) => {
+                    setEditingLine(line);
+                    setEditorOpen(true);
+                  }}
+                  onAdd={() => {
+                    setEditingLine(null);
+                    setEditorOpen(true);
+                  }}
+                  onRemove={async (lineId) => {
+                    onPersist("saving");
+                    const r = await removeEventOrderTemplateLineAction(template.id, lineId);
+                    if (!r.ok) onPersist("error", r.message);
+                    else {
+                      onPersist("saved");
+                      router.refresh();
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="space-y-4" data-testid="eo-guided-step-choices">
+                <h3 className="font-heading text-lg text-heading">
+                  Choices for {activeSection.name}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Start with the main question couples answer first — for example “Dinner service” with
+                  Buffet and Plated dinner. Under each option, add the follow-up categories that apply
+                  only when that option is selected.
+                </p>
+                <EventOrderTemplateChoiceGroups
+                  template={template}
+                  catalogOfferings={catalogOfferings}
+                  onPersist={onPersist}
+                  lockedSectionId={activeSection.id}
+                  compact
+                  showPreview={false}
+                  nestBranches
+                  guidedOrdinary
+                />
+              </div>
             </div>
           ) : null}
 
@@ -776,7 +466,7 @@ export function GuidedSetupWizard({
               type="button"
               disabled={pending}
               data-testid="eo-guided-continue"
-              onClick={() => void advanceFromSubstep()}
+              onClick={() => advanceFromWorkspace()}
             >
               Continue
               <ChevronRight className="ml-1 h-4 w-4" />
@@ -788,11 +478,9 @@ export function GuidedSetupWizard({
       {phase === "review" ? (
         <section className="space-y-4" data-testid="eo-guided-step-review">
           <h2 className="font-heading text-xl text-heading">Review your complete setup</h2>
-          <p className="text-sm text-muted-foreground">
-            Organized in the order a client will encounter each commercial category. Included items,
-            primary choices, follow-ups under the option that triggers them, and optional extras with
-            their additional prices. This reflects saved server state — unsaved pattern drafts are not
-            shown as persisted. Return to a category to edit.
+          <p className="mt-2 text-sm text-muted-foreground">
+            Included items, primary choices, follow-ups under the option that triggers them, and optional
+            extras. Return to a category to edit.
           </p>
           {review.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
@@ -812,7 +500,7 @@ export function GuidedSetupWizard({
                     const idx = sectionsOrdered.findIndex((s) => s.id === cat.sectionId);
                     if (idx >= 0) {
                       setCategoryIndex(idx);
-                      setSubstep("patterns");
+                      setSubstep("workspace");
                       setPhase("configure");
                     }
                   }}
@@ -874,7 +562,7 @@ export function GuidedSetupWizard({
         <section className="space-y-4" data-testid="eo-guided-step-preview">
           <h2 className="font-heading text-xl text-heading">Preview the client experience</h2>
           <p className="text-sm text-muted-foreground">
-            Interactive preview of the saved template. Try commercial-category paths such as{" "}
+            Interactive preview of the saved template. Try paths such as{" "}
             <span className="font-medium text-heading">Catering → Plated Dinner → Entrée choice</span>.
             This preview does not send an Event Order to a client and does not finalize anything.
           </p>
@@ -921,32 +609,32 @@ export function GuidedSetupWizard({
         onSave={persistLine}
       />
 
-      {/* Specialist controls only — ordinary setup lives in guided steps above */}
-      <details
-        className="rounded-lg border border-border/60 p-3 text-sm text-muted-foreground"
-        data-testid="eo-specialist-selection-rules"
-      >
-        <summary className="cursor-pointer font-medium text-heading">Specialist selection rules</summary>
-        <p className="mt-2 mb-3">
-          Unusual cross-group relationships, unassigned groups, and other specialist controls. You can
-          complete ordinary included items, primary choices, follow-ups, and optional extras without
-          opening this section.
-        </p>
-        {activeSection ? (
-          <EventOrderTemplateChoiceGroups
-            template={template}
-            catalogOfferings={catalogOfferings}
-            onPersist={onPersist}
-            lockedSectionId={activeSection.id}
-            compact
-            showPreview={false}
-            nestBranches
-            specialistMode
-          />
-        ) : (
-          <p>Select or create a category in Step 1 first.</p>
-        )}
-      </details>
+      {phase !== "preview" ? (
+        <details
+          className="rounded-lg border border-border/60 p-3 text-sm text-muted-foreground"
+          data-testid="eo-specialist-selection-rules"
+        >
+          <summary className="cursor-pointer font-medium text-heading">Specialist selection rules</summary>
+          <p className="mt-2 mb-3">
+            Unusual cross-group relationships, unassigned groups, and other specialist controls. Ordinary
+            included items, primary choices, and under-option follow-ups do not require this section.
+          </p>
+          {activeSection ? (
+            <EventOrderTemplateChoiceGroups
+              template={template}
+              catalogOfferings={catalogOfferings}
+              onPersist={onPersist}
+              lockedSectionId={activeSection.id}
+              compact
+              showPreview={false}
+              nestBranches
+              specialistMode
+            />
+          ) : (
+            <p>Select or create a category first.</p>
+          )}
+        </details>
+      ) : null}
     </div>
   );
 }

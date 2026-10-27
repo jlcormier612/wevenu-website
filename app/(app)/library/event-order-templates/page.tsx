@@ -30,17 +30,31 @@ export default async function EventOrderTemplatesPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Event Order Templates"
-        description="Reusable commercial build sheets — fixed offerings and selectable choice groups. Use applies to an event’s Event Order (then Finalize & Share on the event). Send is only for templates with client choice groups. Neither creates an invoice. Distinct from sales Packages."
+        description="Reusable packages for a wedding’s Event Order — what you include automatically, and what the couple chooses."
         actions={<NewEventOrderTemplateButton />}
       />
       <LibraryHowItWorks>
-        Assemble a reusable delivery configuration once. Use applies fixed offerings (and any venue-filled choices) into that event&apos;s Event Order — Finalize and Share on the event Event Order tab. Send freezes choice groups for the client to select (portal Your Choices); it is hidden on fixed-only templates. Sales Packages live under Packages, not here.
+        An Event Order template is the reusable package you apply to a booked event. You decide what is
+        included automatically (no couple action), what the couple must choose (for example Buffet or
+        Plated dinner), and any follow-up questions that appear only after a choice. Customize a starter
+        or build your own; Preview shows the couple experience without sending anything. Use applies the
+        template to an event&apos;s Event Order; Send is only for templates with couple choices.
       </LibraryHowItWorks>
+      <div
+        className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground space-y-1.5"
+        data-testid="eo-templates-landing-example"
+      >
+        <p className="font-medium text-heading">Example</p>
+        <p>
+          Package includes ceremony coordination. Couples choose dinner service (Buffet or Plated). Under
+          Buffet they choose three sides — those questions stay under Buffet only.
+        </p>
+      </div>
       <LibraryDependencyNote
-        detail="When you edit a template, select offerings from your catalog first for fixed lines and choice options. Add a custom line or option only when something is not already in Offerings. Applying copies a snapshot into the event — later catalog price changes do not rewrite existing event orders."
+        detail="Prefer reusable Offerings for items you sell across events; use a template-only line when it belongs only here. Linking an Offering to Inventory elsewhere does not reserve stock. Applying copies a snapshot — later catalog price edits do not rewrite existing event orders."
         action={{ href: "/library/offerings", label: "Manage Offerings" }}
       >
-        Built from your Offerings catalog — fixed lines and selectable groups.
+        Templates can use your Offerings catalog or template-only items.
       </LibraryDependencyNote>
       <EventOrderTemplateList
         templates={templates}
