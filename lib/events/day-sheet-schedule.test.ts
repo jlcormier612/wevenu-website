@@ -6,6 +6,7 @@ import { join } from "node:path";
 import {
   buildDaySheetSchedule,
   normalizeDaySheetEntryTime,
+  selectDaySheetTimelineEntries,
 } from "@/lib/events/day-sheet-schedule";
 import type { TimelineEntry } from "@/lib/timeline/types";
 
@@ -114,6 +115,50 @@ describe("buildDaySheetSchedule", () => {
     assert.equal(cleared.unscheduled[0]!.title, "Reception");
   });
 
+  it("excludes client-owned entries from the day-of sheet while keeping venue-owned", () => {
+    const schedule = buildDaySheetSchedule(
+      [
+        entry({ id: "v1", title: "Ceremony", entryTime: "16:00", sortOrder: 0, owner: "venue" }),
+        entry({
+          id: "c1",
+          title: "First look photos",
+          entryTime: "14:00",
+          sortOrder: 1,
+          owner: "client",
+        }),
+        entry({
+          id: "c2",
+          title: "Couple untimed note",
+          entryTime: null,
+          sortOrder: 2,
+          owner: "client",
+        }),
+        entry({
+          id: "v2",
+          title: "Vendor load-in",
+          entryTime: null,
+          sortOrder: 3,
+          owner: "venue",
+        }),
+      ],
+      "2028-06-10",
+    );
+    assert.deepEqual(
+      schedule.timedGroups[0]!.entries.map((e) => e.title),
+      ["Ceremony"],
+    );
+    assert.deepEqual(
+      schedule.unscheduled.map((e) => e.title),
+      ["Vendor load-in"],
+    );
+    assert.equal(
+      selectDaySheetTimelineEntries([
+        entry({ id: "c1", title: "x", entryTime: "10:00", sortOrder: 0, owner: "client" }),
+      ]).length,
+      0,
+    );
+  });
+
   it("day-sheet document uses schedule helper and timeline actions revalidate day-sheet", () => {
     const doc = readFileSync(
       join(process.cwd(), "components/events/day-sheet/day-sheet-document.tsx"),
@@ -125,6 +170,8 @@ describe("buildDaySheetSchedule", () => {
     );
     assert.match(doc, /buildDaySheetSchedule/);
     assert.match(doc, /day-sheet-unscheduled/);
+    assert.match(doc, /day-sheet-venue-scope-note/);
+    assert.match(doc, /Venue Timeline items only/);
     assert.match(actions, /\/events\/\$\{eventId\}\/day-sheet/);
     assert.match(actions, /\/events\/\$\{eventId\}\/timeline-print/);
   });

@@ -179,6 +179,9 @@ export function DaySheetDocument({
         <div className="px-10 pt-6 pb-2" data-testid="day-sheet-schedule">
           <Rule />
           <SectionLabel>Schedule</SectionLabel>
+          <p className="mb-3 text-xs text-gray-400" data-testid="day-sheet-venue-scope-note">
+            Venue Timeline items only. Couple-submitted ideas stay on the Timeline tab until you add them as your own venue items.
+          </p>
           <div className="space-y-4">
             {schedule.timedGroups.map((group) => (
               <div key={`day-${group.dayOffset}`} className="space-y-2.5">

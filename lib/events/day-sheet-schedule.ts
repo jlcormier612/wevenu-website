@@ -4,6 +4,13 @@
  *
  * Timed entries → chronological Schedule (compareTimelineEntries).
  * Untimed entries → separate Unscheduled items list (no fabricated times).
+ *
+ * Venue control (locked product decision): the day-of sheet is an operational
+ * venue document. Only venue-owned Timeline entries are eligible. Client-
+ * submitted rows remain on the shared Timeline (merged view / Timeline print)
+ * but are not auto-included here. The venue includes an item by keeping or
+ * adding a venue-owned entry on the Timeline tab — without converting the
+ * couple's own row.
  */
 
 import {
@@ -12,6 +19,11 @@ import {
   formatTimelineDayHeader,
 } from "@/lib/timeline/constants";
 import type { TimelineEntry } from "@/lib/timeline/types";
+
+/** Venue-owned rows only — client-submitted collaboration stays off the sheet. */
+export function selectDaySheetTimelineEntries(entries: TimelineEntry[]): TimelineEntry[] {
+  return entries.filter((e) => e.owner === "venue");
+}
 
 export type DaySheetScheduleGroup = {
   dayOffset: number;
@@ -46,7 +58,8 @@ export function buildDaySheetSchedule(
   eventDate: string,
   eventEndDate?: string | null,
 ): DaySheetSchedule {
-  const normalized = entries.map((e) => ({
+  const venueOwned = selectDaySheetTimelineEntries(entries);
+  const normalized = venueOwned.map((e) => ({
     ...e,
     entryTime: normalizeDaySheetEntryTime(e.entryTime) || null,
   }));
