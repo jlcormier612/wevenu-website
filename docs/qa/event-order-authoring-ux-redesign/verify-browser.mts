@@ -226,8 +226,9 @@ async function main() {
     // Ensure a primary group exists (ensureRootGroupForPatterns usually creates one)
     let groupCount = await page.locator('[data-testid^="eo-choice-group-"]').count();
     if (groupCount === 0) {
-      await page.getByTestId("eo-add-group-name").fill("Dinner service");
-      await page.getByTestId("eo-add-choice-group").click();
+      const workspace = page.getByTestId("eo-guided-step-workspace");
+      await workspace.getByTestId("eo-add-group-name").fill("Dinner service");
+      await workspace.getByTestId("eo-add-primary-question").or(workspace.getByTestId("eo-add-choice-group")).first().click();
       await page.waitForTimeout(2000);
       groupCount = await page.locator('[data-testid^="eo-choice-group-"]').count();
     }

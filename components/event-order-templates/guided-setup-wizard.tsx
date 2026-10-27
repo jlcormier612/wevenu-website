@@ -67,6 +67,7 @@ export function GuidedSetupWizard({
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editingLine, setEditingLine] = React.useState<EventOrderTemplateLine | null>(null);
   const [editorPending, startEditor] = React.useTransition();
+  const [specialistOpen, setSpecialistOpen] = React.useState(false);
 
   const sectionsOrdered = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   const activeSection = sectionsOrdered[categoryIndex] ?? null;
@@ -613,13 +614,15 @@ export function GuidedSetupWizard({
         <details
           className="rounded-lg border border-border/60 p-3 text-sm text-muted-foreground"
           data-testid="eo-specialist-selection-rules"
+          open={specialistOpen}
+          onToggle={(e) => setSpecialistOpen((e.target as HTMLDetailsElement).open)}
         >
           <summary className="cursor-pointer font-medium text-heading">Specialist selection rules</summary>
           <p className="mt-2 mb-3">
             Unusual cross-group relationships, unassigned groups, and other specialist controls. Ordinary
             included items, primary choices, and under-option follow-ups do not require this section.
           </p>
-          {activeSection ? (
+          {specialistOpen && activeSection ? (
             <EventOrderTemplateChoiceGroups
               template={template}
               catalogOfferings={catalogOfferings}
@@ -630,9 +633,9 @@ export function GuidedSetupWizard({
               nestBranches
               specialistMode
             />
-          ) : (
+          ) : specialistOpen ? (
             <p>Select or create a category first.</p>
-          )}
+          ) : null}
         </details>
       ) : null}
     </div>
