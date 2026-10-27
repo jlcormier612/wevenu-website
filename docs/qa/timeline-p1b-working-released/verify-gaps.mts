@@ -816,17 +816,30 @@ async function main() {
       record("browser-prepare-portal-updated", false, "prepare button missing");
     }
 
-    // Summary bar language after reload
-    await page.goto(`${APP}/clients/${fx.clientId}?tab=timeline`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    // Summary bar language on booked EventDetail Timeline tab (hash routing).
+    await page.goto(`${APP}/clients/${fx.clientId}#timeline`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2500);
-    await page.screenshot({ path: `${OUT}/shots/summary-bar-1280.png`, fullPage: false });
+    const timelineTab = page.getByRole("tab", { name: /^Timeline$/i });
+    if ((await timelineTab.count()) > 0) {
+      await timelineTab.first().click().catch(() => null);
+      await page.waitForTimeout(1200);
+    }
+    await page.getByTestId("timeline-share-with-couple").waitFor({ timeout: 60_000 }).catch(() => null);
+    // releaseHint loads async via preview RPC — wait for P1b summary copy.
+    await page.getByText(/Shared with the couple/i).first().waitFor({ timeout: 30_000 }).catch(() => null);
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${OUT}/shots/summary-bar-1280.png`, fullPage: true });
     const summaryText = await page.locator("body").innerText();
     const sharedLine = summaryText.match(/Shared with the couple[^\n]*/i)?.[0] ?? "";
+    // RPC truth after prepare: working fingerprint must match last release.
+    const { data: prevUi } = await staff.rpc("preview_venue_timeline_release", { p_event_id: fx.eventId });
+    const uiPrev = prevUi as Record<string, unknown>;
     record(
       "browser-summary-not-always-ahead",
-      /Shared with the couple/i.test(summaryText)
+      uiPrev.workingAheadOfRelease === false
+        && /Shared with the couple/i.test(summaryText)
         && !/working changes not shared yet/i.test(sharedLine),
-      `line=${sharedLine || summaryText.slice(0, 400)}`,
+      `rpcAhead=${String(uiPrev.workingAheadOfRelease)} shareBtn=${await page.getByTestId("timeline-share-with-couple").count()} line=${sharedLine || "missing"} url=${page.url()}`,
     );
 
     await browser.close();
