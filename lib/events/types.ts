@@ -132,8 +132,17 @@ export type TeamMemberInput = {
 
 export type EventErrors = Record<string, string>;
 
+/** P1c — after Edit Event save, offer working-timeline review when dates/start changed. */
+export type EventTimingRecalcHint = {
+  dateChanged: boolean;
+  startChanged: boolean;
+  previousEventDate: string;
+  previousEventEndDate: string | null;
+  previousStartTime: string | null;
+};
+
 export type EventActionResult =
-  | { ok: true }
+  | { ok: true; timingRecalc?: EventTimingRecalcHint }
   | { ok: false; errors?: EventErrors; message?: string; code?: OccupancyCode };
 
 export type CreateEventResult =

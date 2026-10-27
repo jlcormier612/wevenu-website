@@ -198,6 +198,28 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       });
     }
 
+    // P1c — event save succeeds independently of timeline recalculation.
+    // Return a review hint when wedding dates or Day-of start changed.
+    const prevStart = before?.startTime?.slice(0, 5) ?? null;
+    const nextStart = input.startTime?.slice(0, 5) || null;
+    const dateChanged = Boolean(
+      before
+      && (before.eventDate !== input.eventDate || (before.eventEndDate ?? null) !== (nextEnd ?? null)),
+    );
+    const startChanged = Boolean(before && prevStart !== nextStart);
+    if (before && (dateChanged || startChanged)) {
+      return {
+        ok: true,
+        timingRecalc: {
+          dateChanged,
+          startChanged,
+          previousEventDate: before.eventDate,
+          previousEventEndDate: before.eventEndDate ?? null,
+          previousStartTime: prevStart,
+        },
+      } as EventActionResult;
+    }
+
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;

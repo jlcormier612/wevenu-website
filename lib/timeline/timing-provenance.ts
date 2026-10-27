@@ -178,9 +178,16 @@ export type DateChangeProjection = {
 };
 
 /**
- * What a future date change would do. Shared schedules are never shifted.
- * Unknown intent is never guessed. Fixed dates do not move.
+ * What a future date change would do to a **working** timeline entry.
+ * Unknown intent is never guessed. Fixed calendar dates stay on that calendar
+ * day (display day_offset is re-anchored to the new wedding start).
  * This function does not write.
+ *
+ * P1b release snapshots protect the couple-facing schedule. Legacy
+ * `sharedWithCouple` is ignored for eligibility — do not block working
+ * recalculation based on audience tags. Callers should surface
+ * "on the couple's last shared timeline" separately when an entry id is in
+ * the active release snapshot.
  */
 export function projectTimingAfterEventDateChange(
   timing: TimingProvenance,
@@ -189,9 +196,12 @@ export function projectTimingAfterEventDateChange(
     previousEventDate: string;
     nextEventDate: string;
     nextEndDate: string | null;
-    sharedWithCouple: boolean;
+    /** @deprecated Ignored after P1b. Couple protection is release snapshots. */
+    sharedWithCouple?: boolean;
   },
 ): DateChangeProjection {
+  void change.sharedWithCouple;
+  void change.previousEventDate;
   const held: DateChangeProjection = {
     eligible: false,
     blockedReason: null,
@@ -202,9 +212,6 @@ export function projectTimingAfterEventDateChange(
     clockRecalcEligible: false,
   };
 
-  if (change.sharedWithCouple) {
-    return { ...held, blockedReason: "shared_schedule" };
-  }
   if (isUnknownDayIntent(timing.dayIntent)) {
     return { ...held, blockedReason: "unknown_intent", attention: timing.attention ?? "unknown_intent" };
   }
@@ -247,6 +254,64 @@ export function projectTimingAfterEventDateChange(
     entryTime: display.entryTime,
     attention: null,
     clockRecalcEligible: clockRecalcEligible(timing),
+  };
+}
+
+export type DayOfStartProjection = {
+  eligible: boolean;
+  blockedReason: null | "unknown_intent" | "not_relative_clock" | "missing_day_of_start" | "out_of_range";
+  entryTime: string | null;
+  attention: TimingAttention | null;
+};
+
+/**
+ * What a Day-of start-time change would do to a working entry's clock.
+ * Only relative, non-overridden clocks with retained minutes are eligible.
+ * Fixed/explicit/unknown clocks are never guessed. Does not write.
+ */
+export function projectClockAfterDayOfStartChange(
+  timing: TimingProvenance,
+  display: { entryTime: string | null },
+  change: { nextStartTime: string | null },
+): DayOfStartProjection {
+  if (!clockRecalcEligible(timing)) {
+    if (isUnknownClockIntent(timing.clockIntent)) {
+      return {
+        eligible: false,
+        blockedReason: "unknown_intent",
+        entryTime: display.entryTime,
+        attention: timing.attention ?? "unknown_intent",
+      };
+    }
+    return {
+      eligible: false,
+      blockedReason: "not_relative_clock",
+      entryTime: display.entryTime,
+      attention: null,
+    };
+  }
+  if (!change.nextStartTime || !String(change.nextStartTime).trim()) {
+    return {
+      eligible: false,
+      blockedReason: "missing_day_of_start",
+      entryTime: display.entryTime,
+      attention: null,
+    };
+  }
+  const next = resolveEntryTimeFromOffset(timing.relativeMinutes, change.nextStartTime);
+  if (next == null) {
+    return {
+      eligible: false,
+      blockedReason: "out_of_range",
+      entryTime: display.entryTime,
+      attention: null,
+    };
+  }
+  return {
+    eligible: true,
+    blockedReason: null,
+    entryTime: next,
+    attention: null,
   };
 }
 

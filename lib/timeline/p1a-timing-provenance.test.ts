@@ -228,7 +228,7 @@ describe("P1a timing provenance", () => {
     assert.equal(unknown.dayIntent, null);
   });
 
-  it("does not shift an already-shared schedule (T4)", () => {
+  it("P1b+P1c: legacy sharedWithCouple does not block working date projection", () => {
     const projected = projectTimingAfterEventDateChange(
       relativeStart(),
       { dayOffset: 2, entryTime: "15:00" },
@@ -239,8 +239,9 @@ describe("P1a timing provenance", () => {
         sharedWithCouple: true,
       },
     );
-    assert.equal(projected.eligible, false);
-    assert.equal(projected.blockedReason, "shared_schedule");
+    // Couple protection is release snapshots (P1b), not audience tags.
+    assert.equal(projected.eligible, true);
+    assert.equal(projected.blockedReason, null);
     assert.equal(projected.dayOffset, 2);
     assert.equal(projected.entryTime, "15:00");
   });
