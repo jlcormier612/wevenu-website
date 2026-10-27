@@ -387,7 +387,7 @@ async function main() {
       p_items: tplPayload,
     });
     const co = coupleOk as Record<string, unknown>;
-    const coupleStill = await admin
+    const { data: coupleStill } = await admin
       .from("timeline_entries")
       .select("id,owner")
       .eq("id", coupleRow!.id)
@@ -535,18 +535,22 @@ async function main() {
     // ——— 11. Atomicity: invalid mid-list item rolls back (no partial insert) ———
     const atomFx = await makeFixture(FANCY, "atomic");
     fixtures.push({ ...atomFx, venueId: FANCY });
-    const { data: atomFail } = await staff.rpc("replace_venue_timeline_from_template_items", {
+    const { data: atomFail, error: atomErr } = await staff.rpc("replace_venue_timeline_from_template_items", {
       p_event_id: atomFx.eventId,
       p_items: [
         { ...tplPayload[0], title: `${PREFIX}atom-ok` },
-        { ...tplPayload[0], title: "" }, // invalid — should abort whole txn
+        { ...tplPayload[0], title: "" }, // invalid — must RAISE and roll back prior inserts
       ],
     });
     const atomCount = await countOwner(atomFx.eventId, FANCY, "venue");
+    const atomFailed =
+      Boolean(atomErr)
+      || (atomFail && (atomFail as { ok?: boolean }).ok === false)
+      || /title/i.test(String(atomErr?.message ?? atomFail ?? ""));
     record(
       "atomic-invalid-item-no-partial",
-      (atomFail as { ok?: boolean })?.ok === false && atomCount === 0,
-      JSON.stringify({ rpc: atomFail, atomCount }),
+      atomFailed && atomCount === 0,
+      JSON.stringify({ rpc: atomFail, atomErr: atomErr?.message, atomCount }),
     );
 
     // ——— 12. Additive apply still works with existing venue rows ———

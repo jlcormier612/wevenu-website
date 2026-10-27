@@ -48,6 +48,12 @@ describe("P2 / D5 replace guard migration + callers", () => {
     assert.match(replaceOnly, /insert into public\.timeline_entries/i);
   });
 
+  it("atomic rollback migration raises on invalid items instead of returning after inserts", () => {
+    const fix = read("supabase/migrations/20261424400000_fix_replace_guard_atomic_rollback.sql");
+    assert.match(fix, /raise exception 'Every template item needs a title.'/i);
+    assert.match(fix, /errcode = 'check_violation'/);
+  });
+
   it("bulk-delete helper refuses when venue-owned rows exist", () => {
     assert.match(mig, /delete_venue_owned_timeline_entries_if_empty/);
     assert.match(repo, /delete_venue_owned_timeline_entries_if_empty/);
