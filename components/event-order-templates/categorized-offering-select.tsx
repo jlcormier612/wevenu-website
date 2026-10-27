@@ -9,11 +9,23 @@ import {
   uniqueOfferingCategories,
   type OfferingCategoryFilter,
 } from "@/lib/event-order-templates/section-workspace";
+import {
+  filterOfferingsForAuthoringContext,
+  majorOfferingIds,
+  offeringRole,
+  offeringRoleLabel,
+} from "@/lib/offerings/hierarchy";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
+
+export type OfferingAuthoringScope =
+  | { kind: "primary" }
+  | { kind: "underMajor"; parentOfferingId: string; parentLabel?: string }
+  | { kind: "all" };
 
 /**
  * Contextual Offering picker — starts in the current commercial category,
  * with an explicit All categories escape. Selection uses offering id only.
+ * Optional hierarchy scope prefers major choices vs associated items.
  */
 export function CategorizedOfferingSelect({
   offerings,
@@ -24,6 +36,7 @@ export function CategorizedOfferingSelect({
   testId,
   disabled,
   emptyLabel = "Choose an offering…",
+  authoringScope = { kind: "all" },
 }: {
   offerings: OfferingWithCategory[];
   sectionName: string | null;
@@ -33,18 +46,21 @@ export function CategorizedOfferingSelect({
   testId?: string;
   disabled?: boolean;
   emptyLabel?: string;
+  authoringScope?: OfferingAuthoringScope;
 }) {
   const categories = React.useMemo(() => uniqueOfferingCategories(offerings), [offerings]);
   const [filter, setFilter] = React.useState<OfferingCategoryFilter>("preferred");
   const [query, setQuery] = React.useState("");
+  const majors = React.useMemo(() => majorOfferingIds(offerings), [offerings]);
 
   React.useEffect(() => {
     setFilter("preferred");
     setQuery("");
-  }, [sectionName]);
+  }, [sectionName, authoringScope.kind, authoringScope.kind === "underMajor" ? authoringScope.parentOfferingId : ""]);
 
+  const hierarchy = filterOfferingsForAuthoringContext(offerings, authoringScope);
   const { items, preferredEmpty } = filterOfferingsForSectionPicker(
-    offerings,
+    hierarchy.items,
     sectionName,
     filter,
   );
@@ -53,10 +69,19 @@ export function CategorizedOfferingSelect({
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((o) => {
-      const hay = `${o.name} ${o.categoryName ?? ""}`.toLowerCase();
+      const hay = `${o.name} ${o.categoryName ?? ""} ${o.parentOfferingName ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [items, query]);
+
+  const scopeHint =
+    authoringScope.kind === "primary"
+      ? "Showing top-level major choices and standalone offerings (not nested menu items)."
+      : authoringScope.kind === "underMajor"
+        ? hierarchy.usedFallback
+          ? `No catalog items are nested under “${authoringScope.parentLabel ?? "this choice"}” yet — showing other top-level offerings in this category. Add associated items on the Offerings page for a cleaner list.`
+          : `Showing items associated with “${authoringScope.parentLabel ?? "this major choice"}” in your catalog.`
+        : null;
 
   return (
     <div className="space-y-2" data-testid={testId ?? "eo-categorized-offering-select"}>
@@ -97,6 +122,14 @@ export function CategorizedOfferingSelect({
           />
         </div>
       </div>
+      {scopeHint ? (
+        <p
+          className={`text-xs ${hierarchy.usedFallback ? "text-amber-800" : "text-muted-foreground"}`}
+          data-testid="eo-offering-hierarchy-hint"
+        >
+          {scopeHint}
+        </p>
+      ) : null}
       {filter === "preferred" && preferredEmpty && sectionName ? (
         <p className="text-xs text-amber-800" data-testid="eo-offering-filter-empty">
           No catalog Offerings match “{sectionName}” yet. Switch to All categories or another
@@ -124,6 +157,7 @@ export function CategorizedOfferingSelect({
       >
         <option value="">{emptyLabel}</option>
         {visible.map((off) => {
+          const role = offeringRole(off, majors);
           const cross =
             filter === "all"
             && sectionName
@@ -131,7 +165,9 @@ export function CategorizedOfferingSelect({
             && !off.categoryName.toLowerCase().includes(sectionName.split(" ")[0]!.toLowerCase());
           return (
             <option key={off.id} value={off.id}>
+              {off.parentOfferingName ? `${off.parentOfferingName} › ` : ""}
               {off.name}
+              {` · ${offeringRoleLabel(role)}`}
               {off.categoryName ? ` · ${off.categoryName}` : " · uncategorized"}
               {off.defaultUnitPrice != null
                 ? ` · $${off.defaultUnitPrice.toFixed(2)}`
@@ -143,7 +179,7 @@ export function CategorizedOfferingSelect({
       </select>
       {visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No active Offerings in this filter. Create catalog items, clear search, or switch category.
+          No active Offerings in this filter. Create catalog items on the Offerings page, clear search, or switch category.
         </p>
       ) : null}
     </div>

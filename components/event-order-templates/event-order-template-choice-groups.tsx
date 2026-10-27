@@ -19,7 +19,10 @@ import {
   updateEventOrderTemplateGroupAction,
   updateEventOrderTemplateOptionAction,
 } from "@/app/(app)/library/event-order-templates/actions";
-import { CategorizedOfferingSelect } from "@/components/event-order-templates/categorized-offering-select";
+import {
+  CategorizedOfferingSelect,
+  type OfferingAuthoringScope,
+} from "@/components/event-order-templates/categorized-offering-select";
 import { ChoicesDefinitionView } from "@/components/client-choices/choices-definition-view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,6 +92,24 @@ function selectCountFromGroup(g: EventOrderTemplateGroup): string {
   if (g.maxSelect != null && g.maxSelect > 0) return String(g.maxSelect);
   if (g.minSelect > 1) return String(g.minSelect);
   return "";
+}
+
+/** Prefer catalog children when adding under a follow-up tied to a major offering option. */
+function authoringScopeForGroup(
+  group: EventOrderTemplateGroup | undefined,
+  options: EventOrderTemplateOption[],
+): OfferingAuthoringScope {
+  if (!group) return { kind: "all" };
+  if (!isDependentGroup(group)) return { kind: "primary" };
+  const parentOpt = options.find((o) => group.dependsOnOptionIds.includes(o.id) && o.offeringId);
+  if (parentOpt?.offeringId) {
+    return {
+      kind: "underMajor",
+      parentOfferingId: parentOpt.offeringId,
+      parentLabel: parentOpt.label,
+    };
+  }
+  return { kind: "all" };
 }
 
 function DependsOnPicker({
@@ -395,6 +416,11 @@ export function EventOrderTemplateChoiceGroups({
     if (!g?.sectionId) return lockedSectionName;
     return template.sections.find((s) => s.id === g.sectionId)?.name ?? lockedSectionName;
   }, [template.groups, template.sections, optionGroupId, lockedSectionName]);
+
+  const optionAuthoringScope = React.useMemo(() => {
+    const g = template.groups.find((x) => x.id === optionGroupId);
+    return authoringScopeForGroup(g, template.options);
+  }, [template.groups, template.options, optionGroupId]);
 
   const scopedGroups = React.useMemo(() => {
     if (showUnassignedOnly) return groupsForSection(template.groups, null);
@@ -1034,6 +1060,7 @@ export function EventOrderTemplateChoiceGroups({
                                   }
                                   value={linkOfferingId}
                                   onChange={setLinkOfferingId}
+                                  authoringScope={authoringScopeForGroup(g, template.options)}
                                   testId={`eo-option-link-select-${o.id}`}
                                   disabled={pending}
                                 />
@@ -1331,8 +1358,8 @@ export function EventOrderTemplateChoiceGroups({
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {rootsOnly
-              ? "Start with the main question couples answer first — for example Dinner service with Buffet and Plated dinner. You will add follow-up menu categories under each option next."
-              : "Under each service option, add the categories and menu items that apply only when the couple selects that option. Set how many they must choose."}
+              ? "Add major choices from your Offerings catalog for this service category. Option labels should be the real offerings you sell — not a generic placeholder question."
+              : "Under each major choice, add follow-up categories and the associated catalog items that apply only for that choice. Set how many the couple must select."}
           </p>
         </div>
       ) : (
@@ -1623,11 +1650,11 @@ export function EventOrderTemplateChoiceGroups({
         data-testid="eo-add-option-panel"
       >
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          {guidedOrdinary ? "Add offering or menu item" : "Add option"}
+          {guidedOrdinary ? "Add from your Offerings catalog" : "Add option"}
         </p>
         <p className="text-xs text-muted-foreground">
           {guidedOrdinary
-            ? "Add items to a primary option or to a follow-up category. Prefer a reusable Offering when you sell it across event orders; otherwise use a template-only item. Offerings are not Inventory and do not reserve stock."
+            ? "Pick the destination in this category, then select a catalog offering. Primary destinations use major choices; follow-ups under a linked major choice prefer that choice’s associated catalog items. Template-only items remain available when something is not in the catalog. Offerings are not Inventory and do not reserve stock."
             : "Prefer a reusable Offering when the choice is something you sell across event orders. Use a custom / template-only option when it belongs only on this template. Offerings are not Inventory — linking them elsewhere does not reserve stock. New catalog picks snapshot label and price once; later catalog edits do not rewrite this option."}
         </p>
         <select
@@ -1637,14 +1664,14 @@ export function EventOrderTemplateChoiceGroups({
           data-testid="eo-add-option-group"
         >
           <option value="">
-            {guidedOrdinary ? "Select question or category…" : "Select group…"}
+            {guidedOrdinary ? "Select where this belongs…" : "Select group…"}
           </option>
           {/* When nesting branches, include dependents so follow-up categories can receive items. */}
           {(rootsOnly ? groups : nestBranches ? scopedGroups : groups).map((g) => (
             <option key={g.id} value={g.id}>
               {isDependentGroup(g)
-                ? `${g.name} (follow-up)`
-                : g.name}
+                ? `${g.name} (under selected major choice)`
+                : `${g.name} (major choices)`}
             </option>
           ))}
         </select>
@@ -1686,6 +1713,7 @@ export function EventOrderTemplateChoiceGroups({
               onChange={pickOffering}
               testId="eo-add-option-offering"
               disabled={pending}
+              authoringScope={optionAuthoringScope}
             />
             <Input
               placeholder="Customer-facing label"

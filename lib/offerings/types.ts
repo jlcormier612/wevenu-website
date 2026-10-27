@@ -16,6 +16,8 @@ export type Offering = {
   id: string;
   venueId: string;
   categoryId: string | null;
+  /** Top-level major/standalone when null; associated item when set. */
+  parentOfferingId: string | null;
   name: string;
   description: string | null;
   unit: string | null;
@@ -29,11 +31,13 @@ export type Offering = {
 
 export type OfferingWithCategory = Offering & {
   categoryName: string | null;
+  parentOfferingName?: string | null;
 };
 
 export type OfferingInput = {
   name: string;
   categoryId: string | null;
+  parentOfferingId: string | null;
   description: string;
   unit: string;
   defaultUnitPrice: string;

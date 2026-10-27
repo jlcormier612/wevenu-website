@@ -482,9 +482,11 @@ export function defaultGroupInputForPattern(
   if (pattern === "included") return null;
   if (pattern === "choose_one" || pattern === "choose_then_related") {
     // choose_then_related is legacy-only; same root group shape as choose_one.
+    // Use the service category name — not a generic “Catering choices” label.
+    // Option labels should be the venue’s major catalog offerings.
     return {
       sectionId,
-      name: `${sectionName} choices`,
+      name: sectionName.trim() || "Service options",
       instructions: "Choose one option.",
       selectionMode: "single",
       minSelect: 1,
@@ -495,7 +497,7 @@ export function defaultGroupInputForPattern(
   if (pattern === "choose_many") {
     return {
       sectionId,
-      name: `${sectionName} selections`,
+      name: sectionName.trim() || "Selections",
       instructions: "Choose any that apply.",
       selectionMode: "multi",
       minSelect: 0,
@@ -506,7 +508,7 @@ export function defaultGroupInputForPattern(
   if (pattern === "optional_add") {
     return {
       sectionId,
-      name: `Optional ${sectionName.toLowerCase()}`,
+      name: sectionName.trim() ? `Optional ${sectionName.trim()}` : "Optional extras",
       instructions: "Add any optional items.",
       selectionMode: "multi",
       minSelect: 0,
@@ -626,7 +628,7 @@ export function dependentCategoryGroupInput(
   dependsOnOptionIds: string[];
 } {
   const resolved = resolvePlainSelectionRule(rule);
-  const name = categoryName.trim() || `${parentOption.label} choices`;
+  const name = categoryName.trim() || `${parentOption.label} menu`;
   return {
     sectionId,
     name,

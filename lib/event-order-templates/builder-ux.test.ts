@@ -81,7 +81,7 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /nestBranches/);
   });
 
-  it("ordinary guided catering flow uses primary question + under-option follow-ups", () => {
+  it("ordinary guided catering flow uses major catalog choices + under-option follow-ups", () => {
     const groups = readFileSync(
       join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
       "utf8",
@@ -99,10 +99,12 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(groups, /dependentCategoryGroupInput/);
     assert.match(groups, /resolvePlainSelectionRule/);
     assert.match(groups, /If the couple chooses/);
-    assert.match(groups, /Clients answer this first/);
+    assert.match(groups, /Select where this belongs/);
+    assert.match(groups, /authoringScope/);
     assert.match(wizard, /Choices for \{activeSection\.name\}/);
-    assert.match(wizard, /categories belong under each option/i);
-    assert.match(wizard, /Under each option, add the follow-up categories/i);
+    assert.match(wizard, /major choices from your Offerings catalog/i);
+    assert.match(wizard, /follow-up menu categories/i);
+    assert.doesNotMatch(wizard, /Under each option, add the follow-up categories/i);
   });
 
   it("preview validates under-selection with the shared choices validator", () => {

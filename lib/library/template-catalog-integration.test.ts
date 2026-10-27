@@ -51,6 +51,7 @@ const offering: Offering = {
   id: "off-1",
   venueId: "v1",
   categoryId: null,
+  parentOfferingId: null,
   name: "Premium Open Bar",
   description: "Full bar",
   unit: null,

@@ -440,9 +440,9 @@ export function GuidedSetupWizard({
                   Choices for {activeSection.name}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Start with the main question couples answer first — for example “Dinner service” with
-                  Buffet and Plated dinner. Under each option, add the follow-up categories that apply
-                  only when that option is selected.
+                  Add major choices from your Offerings catalog for this category (the styles or
+                  packages you actually sell). Under each major choice, add follow-up menu categories
+                  and associated catalog items — not a second generic “choices” question.
                 </p>
                 <EventOrderTemplateChoiceGroups
                   template={template}

@@ -12,7 +12,9 @@ type CategoryRow = {
 };
 
 type OfferingRow = {
-  id: string; venue_id: string; category_id: string | null; name: string;
+  id: string; venue_id: string; category_id: string | null;
+  parent_offering_id: string | null;
+  name: string;
   description: string | null; unit: string | null;
   default_unit_price: number | null; inventory_item_id: string | null;
   is_archived: boolean; sort_order: number;
@@ -25,7 +27,9 @@ const mapCategory = (r: CategoryRow): OfferingCategory => ({
 });
 
 const mapOffering = (r: OfferingRow): Offering => ({
-  id: r.id, venueId: r.venue_id, categoryId: r.category_id, name: r.name,
+  id: r.id, venueId: r.venue_id, categoryId: r.category_id,
+  parentOfferingId: r.parent_offering_id ?? null,
+  name: r.name,
   description: r.description, unit: r.unit,
   defaultUnitPrice: r.default_unit_price != null ? Number(r.default_unit_price) : null,
   inventoryItemId: r.inventory_item_id, isArchived: r.is_archived, sortOrder: r.sort_order,
@@ -65,9 +69,13 @@ export async function getOfferingsWithCategory(
     getCategories(client, venueId),
   ]);
   const names = new Map(categories.map((c) => [c.id, c.name]));
+  const offeringNames = new Map(items.map((o) => [o.id, o.name]));
   return items.map((o) => ({
     ...o,
     categoryName: o.categoryId ? names.get(o.categoryId) ?? null : null,
+    parentOfferingName: o.parentOfferingId
+      ? offeringNames.get(o.parentOfferingId) ?? null
+      : null,
   }));
 }
 
@@ -83,6 +91,7 @@ function offeringRow(input: OfferingInput) {
   return {
     name: input.name.trim(),
     category_id: input.categoryId,
+    parent_offering_id: input.parentOfferingId,
     description: input.description.trim() || null,
     unit: input.unit.trim() || null,
     default_unit_price: defaultUnitPrice != null && !Number.isNaN(defaultUnitPrice) ? defaultUnitPrice : null,
