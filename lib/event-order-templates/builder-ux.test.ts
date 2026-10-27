@@ -34,6 +34,39 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.doesNotMatch(wizard, /depends_on_option_ids/);
   });
 
+  it("pattern selections are owned per section and survive category tab changes", () => {
+    const wizard = readFileSync(
+      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+      "utf8",
+    );
+    assert.match(wizard, /patternDraftBySection/);
+    assert.match(wizard, /seedPatternDraftsFromTemplate/);
+    assert.match(wizard, /togglePatternInDraft/);
+    assert.match(wizard, /patternsPayloadFromDrafts/);
+    assert.match(wizard, /data-pattern-payload/);
+    // Must not reset a single shared draft from detect on every active section change.
+    assert.doesNotMatch(
+      wizard,
+      /setPatternDraft\(detectPatternsForSection/,
+    );
+  });
+
+  it("empty Continue names the active category and does not wipe drafts on failure", () => {
+    const wizard = readFileSync(
+      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+      "utf8",
+    );
+    assert.match(
+      wizard,
+      /Select at least one way clients will experience \$\{activeSection\.name\}/,
+    );
+    // Validation / group-create failure paths return without clearing patternDraftBySection.
+    assert.match(wizard, /if \(patternDraft\.length === 0\)/);
+    assert.match(wizard, /Could not create choice group/);
+    assert.doesNotMatch(wizard, /setPatternDraftBySection\(\s*\{\s*\}\s*\)/);
+    assert.doesNotMatch(wizard, /setPatternDraftBySection\(\s*\(\)\s*=>\s*\{\s*\}\s*\)/);
+  });
+
   it("choice groups nest branches and flag incomplete dependents", () => {
     const groups = readFileSync(
       join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),

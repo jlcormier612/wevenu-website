@@ -28,15 +28,18 @@ import {
   buildReviewSummary,
   canonicalSectionNameForSuggested,
   defaultGroupInputForPattern,
-  detectPatternsForSection,
   emptyDependentGroupInput,
   matchSuggestedCategory,
   nextConfigureSubstep,
+  patternsPayloadFromDrafts,
   prevConfigureSubstep,
   sectionNeedsChoiceConfiguration,
+  seedPatternDraftsFromTemplate,
   selectedCategoryKeysFromTemplate,
+  togglePatternInDraft,
   type CategoryConfigureSubstep,
   type ConfigPatternId,
+  type PatternDraftBySection,
   type SuggestedCategoryKey,
   type WizardPhase,
 } from "@/lib/event-order-templates/guided-setup";
@@ -77,19 +80,37 @@ export function GuidedSetupWizard({
   const [customDraft, setCustomDraft] = React.useState("");
   const [categoryIndex, setCategoryIndex] = React.useState(0);
   const [substep, setSubstep] = React.useState<CategoryConfigureSubstep>("patterns");
-  const [patternDraft, setPatternDraft] = React.useState<ConfigPatternId[]>([]);
+  const [patternDraftBySection, setPatternDraftBySection] = React.useState<PatternDraftBySection>(
+    () =>
+      seedPatternDraftsFromTemplate(
+        template,
+        [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder).map((s) => s.id),
+        {},
+      ),
+  );
   const [pending, startTransition] = React.useTransition();
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editingLine, setEditingLine] = React.useState<EventOrderTemplateLine | null>(null);
   const [editorPending, startEditor] = React.useTransition();
 
   const sectionsOrdered = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sectionIdsKey = sectionsOrdered.map((s) => s.id).join("|");
   const activeSection = sectionsOrdered[categoryIndex] ?? null;
+  const patternDraft: ConfigPatternId[] = activeSection
+    ? (patternDraftBySection[activeSection.id] ?? [])
+    : [];
+  /** All categories' pattern picks — used when Continue must include every section. */
+  const allCategoryPatternPayload = patternsPayloadFromDrafts(
+    patternDraftBySection,
+    sectionsOrdered.map((s) => s.id),
+  );
 
   React.useEffect(() => {
-    if (!activeSection) return;
-    setPatternDraft(detectPatternsForSection(template, activeSection.id));
-  }, [activeSection?.id, template]);
+    const ids = sectionIdsKey.length > 0 ? sectionIdsKey.split("|") : [];
+    // seedPatternDraftsFromTemplate never overwrites an existing section draft, so
+    // template refreshes and category tab changes cannot discard unpersisted picks.
+    setPatternDraftBySection((prev) => seedPatternDraftsFromTemplate(template, ids, prev));
+  }, [sectionIdsKey, template]);
 
   React.useEffect(() => {
     if (categoryIndex >= sectionsOrdered.length && sectionsOrdered.length > 0) {
@@ -180,9 +201,8 @@ export function GuidedSetupWizard({
   }
 
   function togglePattern(id: ConfigPatternId) {
-    setPatternDraft((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-    );
+    if (!activeSection) return;
+    setPatternDraftBySection((prev) => togglePatternInDraft(prev, activeSection.id, id));
   }
 
   async function ensureRootGroupForPatterns() {
@@ -214,7 +234,9 @@ export function GuidedSetupWizard({
     if (!activeSection) return;
     if (substep === "patterns") {
       if (patternDraft.length === 0) {
-        toast.error("Select at least one way clients will experience this category, or go back and skip the category.");
+        toast.error(
+          `Select at least one way clients will experience ${activeSection.name}, or go back and skip the category.`,
+        );
         return;
       }
       const next = nextConfigureSubstep("patterns", patternDraft);
@@ -378,7 +400,11 @@ export function GuidedSetupWizard({
   })();
 
   return (
-    <div className="space-y-6" data-testid="eo-guided-setup-wizard">
+    <div
+      className="space-y-6"
+      data-testid="eo-guided-setup-wizard"
+      data-pattern-payload={JSON.stringify(allCategoryPatternPayload)}
+    >
       <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
         <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           Guided Event Order setup

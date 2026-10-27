@@ -189,6 +189,60 @@ export function detectPatternsForSection(
   return [...found];
 }
 
+/** Wizard-owned pattern selections keyed by section — survives category tab switches. */
+export type PatternDraftBySection = Record<string, ConfigPatternId[]>;
+
+/**
+ * Seed drafts for sections that have no entry yet (from persisted template content).
+ * Never overwrite an existing draft — tab switches and template refreshes must not
+ * discard unpersisted pattern picks.
+ */
+export function seedPatternDraftsFromTemplate(
+  template: EventOrderTemplateWithDetails,
+  sectionIds: string[],
+  existing: PatternDraftBySection,
+): PatternDraftBySection {
+  let changed = false;
+  const next: PatternDraftBySection = { ...existing };
+  const idSet = new Set(sectionIds);
+  for (const id of sectionIds) {
+    if (next[id] === undefined) {
+      next[id] = detectPatternsForSection(template, id);
+      changed = true;
+    }
+  }
+  for (const key of Object.keys(next)) {
+    if (!idSet.has(key)) {
+      delete next[key];
+      changed = true;
+    }
+  }
+  return changed ? next : existing;
+}
+
+export function togglePatternInDraft(
+  drafts: PatternDraftBySection,
+  sectionId: string,
+  patternId: ConfigPatternId,
+): PatternDraftBySection {
+  const cur = drafts[sectionId] ?? [];
+  const patterns = cur.includes(patternId)
+    ? cur.filter((p) => p !== patternId)
+    : [...cur, patternId];
+  return { ...drafts, [sectionId]: patterns };
+}
+
+/** Snapshot of all category pattern selections for Continue / review / tests. */
+export function patternsPayloadFromDrafts(
+  drafts: PatternDraftBySection,
+  sectionIds: string[],
+): Array<{ sectionId: string; patterns: ConfigPatternId[] }> {
+  return sectionIds.map((sectionId) => ({
+    sectionId,
+    patterns: [...(drafts[sectionId] ?? [])],
+  }));
+}
+
 export type BranchGuideItem = {
   optionId: string;
   optionLabel: string;
