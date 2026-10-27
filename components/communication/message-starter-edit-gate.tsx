@@ -28,7 +28,7 @@ export function MessageStarterEditGate({
         if (result.ok && result.templateId) {
           return { ok: true as const, templateId: result.templateId };
         }
-        return { ok: false as const, message: result.message };
+        return { ok: false as const, message: (result as { message?: string }).message };
       }}
     />
   );

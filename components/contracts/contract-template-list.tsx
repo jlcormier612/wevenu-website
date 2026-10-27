@@ -74,7 +74,7 @@ export function ContractTemplateList({
       toast.success("Created your venue’s copy. The original starter is unchanged.");
       router.push(`/contracts/templates/${result.templateId}/edit`);
     } else {
-      toast.error(result.message ?? "Could not create a copy.");
+      toast.error((result as { message?: string }).message ?? "Could not create a copy.");
     }
   }
 
