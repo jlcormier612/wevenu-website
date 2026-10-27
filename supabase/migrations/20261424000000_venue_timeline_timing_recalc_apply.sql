@@ -73,7 +73,7 @@ begin
     set
       day_offset = coalesce((v_update->>'day_offset')::int, te.day_offset),
       entry_time = case
-        when v_update ? 'entry_time' then nullif(v_update->>'entry_time', '')
+        when v_update ? 'entry_time' then nullif(v_update->>'entry_time', '')::time
         else te.entry_time
       end,
       timing_day_intent = case

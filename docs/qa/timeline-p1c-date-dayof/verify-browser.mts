@@ -116,9 +116,25 @@ async function portalTitles(token: string) {
   const { data, error } = await anon.rpc("get_portal_run_of_show", { p_token: token });
   if (error) throw error;
   const entries = Array.isArray((data as { entries?: unknown })?.entries)
-    ? ((data as { entries: Array<{ title?: string; owner?: string; entry_time?: string; day_offset?: number }> }).entries)
+    ? ((data as {
+      entries: Array<{
+        title?: string;
+        owner?: string;
+        entryTime?: string;
+        entry_time?: string;
+        dayOffset?: number;
+        day_offset?: number;
+      }>
+    }).entries)
     : [];
-  return entries.filter((e) => e.owner === "venue");
+  return entries
+    .filter((e) => e.owner === "venue")
+    .map((e) => ({
+      title: e.title,
+      owner: e.owner,
+      entry_time: e.entryTime ?? e.entry_time ?? null,
+      day_offset: e.dayOffset ?? e.day_offset ?? null,
+    }));
 }
 
 function mapEntry(row: Record<string, unknown>): TimelineEntry {
@@ -411,8 +427,9 @@ async function main() {
     record("t4-working-relative-updated", brunchAfter?.day_offset === 2, JSON.stringify(brunchAfter));
     record(
       "t4-working-fixed-calendar",
-      hairAfter?.timing_fixed_date === "2028-06-09" && hairAfter?.day_offset !== 1,
-      JSON.stringify(hairAfter),
+      hairAfter?.timing_fixed_date === "2028-06-09"
+        && hairAfter?.day_offset === hair?.proposedDayOffset,
+      JSON.stringify({ hairAfter, proposed: hair?.proposedDayOffset }),
     );
 
     const { data: evPtr } = await admin
@@ -440,9 +457,15 @@ async function main() {
       JSON.stringify({ before: portalBefore.length, after: portalAfterDate.length }),
     );
 
-    // Stale fingerprint: mutate working then expect confirm path to rebuild differently
+    // Stale fingerprint: mutate a fingerprinted field (day_offset) on an eligible row.
     const staleFp = datePreview.fingerprint;
-    await admin.from("timeline_entries").update({ title: `${PREFIX}brunch-STALE` }).eq("id", relative.id);
+    const brunchDayBeforeStale = (
+      await admin.from("timeline_entries").select("day_offset").eq("id", relative.id).single()
+    ).data?.day_offset;
+    await admin
+      .from("timeline_entries")
+      .update({ day_offset: Number(brunchDayBeforeStale ?? 2) + 5 })
+      .eq("id", relative.id);
     const { data: staleRows } = await admin.from("timeline_entries").select("*").eq("event_id", eventId);
     const stalePreview = buildTimingRecalcPreview({
       eventId: eventId!,
@@ -456,8 +479,16 @@ async function main() {
       nextEndDate: "2028-07-12",
       nextStartTime: "11:00",
     });
-    record("t4-stale-fingerprint-differs", stalePreview.fingerprint !== staleFp, `stale=${staleFp.slice(0, 12)} now=${stalePreview.fingerprint.slice(0, 12)}`);
-    await admin.from("timeline_entries").update({ title: `${PREFIX}brunch` }).eq("id", relative.id);
+    record(
+      "t4-stale-fingerprint-differs",
+      stalePreview.fingerprint !== staleFp,
+      `stale=${staleFp.slice(0, 12)} now=${stalePreview.fingerprint.slice(0, 12)}`,
+    );
+    // Restore the confirmed working day so later T7/rerelease assertions stay coherent.
+    await admin
+      .from("timeline_entries")
+      .update({ day_offset: brunch?.proposedDayOffset ?? 2 })
+      .eq("id", relative.id);
 
     // ——— T7 Day-of start ———
     await admin.from("events").update({ start_time: "13:00" }).eq("id", eventId).eq("venue_id", FANCY);
