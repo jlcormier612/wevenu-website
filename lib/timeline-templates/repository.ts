@@ -1,5 +1,8 @@
 import { createClient } from "@/integrations/supabase/server";
-import { sanitizeVenueTemplateAudiences } from "@/lib/timeline-templates/constants";
+import {
+  sanitizeVenueTemplateAudiences,
+  sortTimelineTemplateItems,
+} from "@/lib/timeline-templates/constants";
 import type { TimelineAudience } from "@/lib/timeline/types";
 import type {
   TimelineTemplate,
@@ -65,7 +68,9 @@ export async function getTemplate(client: DbClient, venueId: string, id: string)
 export async function getTemplatesWithStats(client: DbClient, venueId: string): Promise<TimelineTemplateWithStats[]> {
   const [{ data: templateRows, error: templateError }, { data: itemRows, error: itemError }, { data: spaceRows, error: spaceError }] = await Promise.all([
     client.from("timeline_templates").select("*").eq("venue_id", venueId).order("name"),
-    client.from("timeline_template_items").select("template_id, title, day_offset, sort_order").eq("venue_id", venueId)
+    client.from("timeline_template_items")
+      .select("template_id, title, day_offset, day_anchor, minutes_offset, time_of_day, sort_order")
+      .eq("venue_id", venueId)
       .order("day_offset", { ascending: true })
       .order("sort_order", { ascending: true }),
     client.from("venue_spaces").select("id, name").eq("venue_id", venueId),
@@ -74,11 +79,37 @@ export async function getTemplatesWithStats(client: DbClient, venueId: string): 
   if (itemError) throw itemError;
   if (spaceError) throw spaceError;
 
+  type PreviewRow = {
+    template_id: string;
+    title: string;
+    day_offset: number;
+    day_anchor: string | null;
+    minutes_offset: number | null;
+    time_of_day: string | null;
+    sort_order: number;
+  };
   const previewByTemplate = new Map<string, { title: string; dayOffset: number }[]>();
-  for (const row of itemRows as { template_id: string; title: string; day_offset: number }[]) {
-    const list = previewByTemplate.get(row.template_id) ?? [];
-    list.push({ title: row.title, dayOffset: row.day_offset ?? 0 });
-    previewByTemplate.set(row.template_id, list);
+  const rawByTemplate = new Map<string, PreviewRow[]>();
+  for (const row of itemRows as PreviewRow[]) {
+    const list = rawByTemplate.get(row.template_id) ?? [];
+    list.push(row);
+    rawByTemplate.set(row.template_id, list);
+  }
+  for (const [templateId, rows] of rawByTemplate) {
+    const sorted = sortTimelineTemplateItems(
+      rows.map((r) => ({
+        title: r.title,
+        dayOffset: r.day_offset ?? 0,
+        dayAnchor: r.day_anchor === "event_end" ? "event_end" as const : "event_start" as const,
+        minutesOffset: r.minutes_offset,
+        timeOfDay: r.time_of_day,
+        sortOrder: r.sort_order ?? 0,
+      })),
+    );
+    previewByTemplate.set(
+      templateId,
+      sorted.map((r) => ({ title: r.title, dayOffset: r.dayOffset ?? 0 })),
+    );
   }
 
   const spaceNames = new Map<string, string>();
@@ -187,7 +218,21 @@ export async function getItems(client: DbClient, venueId: string, templateId: st
     .order("day_offset", { ascending: true })
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  return (data as ItemRow[]).map(mapItem);
+  return sortTimelineTemplateItems((data as ItemRow[]).map(mapItem));
+}
+
+/**
+ * Rewrite sort_order to match chronological order (earliest → latest).
+ * Called after add/edit so persistence, preview, and apply agree.
+ */
+export async function rechronoItems(
+  client: DbClient,
+  venueId: string,
+  templateId: string,
+): Promise<TimelineTemplateItem[]> {
+  const items = await getItems(client, venueId, templateId);
+  await reorderItems(client, venueId, items.map((it) => it.id));
+  return items.map((it, i) => ({ ...it, sortOrder: i }));
 }
 
 export async function insertItem(client: DbClient, venueId: string, templateId: string, input: TimelineTemplateItemInput): Promise<string> {

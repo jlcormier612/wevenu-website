@@ -38,6 +38,7 @@ import {
   TEMPLATE_DAY_OFFSET_OPTIONS,
   VENUE_TIMELINE_AUDIENCES,
   formatTemplateDayLabel,
+  sortTimelineTemplateItems,
 } from "@/lib/timeline-templates/constants";
 import type { TimelineTemplateItem, TimelineTemplateItemInput } from "@/lib/timeline-templates/types";
 import type { TimelineAudience } from "@/lib/timeline/types";
@@ -80,7 +81,7 @@ function summarizeTiming(item: TimelineTemplateItem): string | null {
 }
 
 export function TimelineTemplateEditor({ templateId, initialItems }: { templateId: string; initialItems: TimelineTemplateItem[] }) {
-  const [items, setItems] = React.useState(initialItems);
+  const [items, setItems] = React.useState(() => sortTimelineTemplateItems(initialItems));
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<TimelineTemplateItemInput>(() => emptyForm(0));
@@ -198,7 +199,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
       const result = await updateItemAction(editingId, templateId, reviewed);
       setSaving(false);
       if (result.ok) {
-        setItems((p) => p
+        setItems((p) => sortTimelineTemplateItems(p
           .map((it) => (it.id === editingId
             ? {
               ...it,
@@ -208,8 +209,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               dayOffset: reviewed.dayOffset ?? 0,
               dayAnchor: reviewed.dayAnchor ?? "event_start",
             }
-            : it))
-          .sort((a, b) => (a.dayOffset ?? 0) - (b.dayOffset ?? 0) || a.sortOrder - b.sortOrder));
+            : it))).map((it, i) => ({ ...it, sortOrder: i })));
         setSheetOpen(false);
         toast.success(librarySavedToastMessage());
       } else {
@@ -220,14 +220,14 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
       setSaving(false);
       if (result.ok && result.itemId) {
         const now = new Date().toISOString();
-        setItems((p) => [...p, {
+        setItems((p) => sortTimelineTemplateItems([...p, {
           id: result.itemId!, templateId, venueId: "", title: reviewed.title, description: reviewed.description,
           notes: reviewed.notes, timeOfDay: reviewed.timeOfDay, minutesOffset: reviewed.minutesOffset,
           dayOffset: reviewed.dayOffset ?? 0,
           dayAnchor: reviewed.dayAnchor ?? "event_start",
           needsReview: false,
           audiences: reviewed.audiences, sortOrder: reviewed.sortOrder, createdAt: now, updatedAt: now,
-        }].sort((a, b) => (a.dayOffset ?? 0) - (b.dayOffset ?? 0) || a.sortOrder - b.sortOrder));
+        }]).map((it, i) => ({ ...it, sortOrder: i })));
         setSheetOpen(false);
       } else {
         toast.error((result as { message?: string }).message ?? "Could not add item.");
@@ -255,17 +255,26 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
     setItems((p) => {
       const next = [...p];
       const [moved] = next.splice(from, 1);
+      if (!moved) return p;
       next.splice(index, 0, moved);
+      // Capture drag order as sortOrder first so equal-time / untimed ties keep the
+      // intentional override; distinct times still win via chronological compare.
+      const dragged = next.map((it, i) => ({ ...it, sortOrder: i }));
+      const chrono = sortTimelineTemplateItems(dragged).map((it, i) => ({ ...it, sortOrder: i }));
+      const orderChangedFromDrag = chrono.some((it, i) => it.id !== dragged[i]?.id);
       saveUi.markSaving();
-      reorderItemsAction(templateId, next.map((it) => it.id)).then((result) => {
+      reorderItemsAction(templateId, chrono.map((it) => it.id)).then((result) => {
         if (!result.ok) {
           saveUi.markError();
           toast.error(result.message ?? "Could not save the new order.");
         } else {
           saveUi.markSaved();
+          if (orderChangedFromDrag) {
+            toast.message("Activities with different times stay in chronological order.");
+          }
         }
       });
-      return next;
+      return chrono;
     });
   }
 
@@ -280,7 +289,9 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="font-heading text-lg font-medium text-heading">Timeline Items</h2>
-          <p className="text-xs text-muted-foreground">Item edits use Save changes. Reordering saves automatically.</p>
+          <p className="text-xs text-muted-foreground">
+            Item edits use Save changes. Activities with times sort chronologically; drag to order matching or untimed activities (saves automatically).
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <LibrarySaveStatus status={saveUi.status} model="autosave" />

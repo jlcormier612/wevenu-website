@@ -132,6 +132,8 @@ export async function getItems(templateId: string): Promise<TimelineTemplateItem
 export async function addItem(templateId: string, input: TimelineTemplateItemInput): Promise<TimelineTemplateActionResult & { itemId?: string }> {
   const result = await withVenue(async (c, venueId) => {
     const itemId = await repo.insertItem(c, venueId, templateId, input);
+    // Persist chronological sort_order so preview/apply match the editor.
+    await repo.rechronoItems(c, venueId, templateId);
     return { ok: true, itemId } as TimelineTemplateActionResult & { itemId?: string };
   });
   return result as TimelineTemplateActionResult & { itemId?: string };
@@ -140,6 +142,23 @@ export async function addItem(templateId: string, input: TimelineTemplateItemInp
 export async function updateItem_(itemId: string, patch: Partial<TimelineTemplateItemInput>): Promise<TimelineTemplateActionResult> {
   const result = await withVenue(async (c, venueId) => {
     await repo.updateItem(c, venueId, itemId, patch);
+    const timingTouched =
+      patch.minutesOffset !== undefined ||
+      patch.timeOfDay !== undefined ||
+      patch.dayOffset !== undefined ||
+      patch.dayAnchor !== undefined;
+    if (timingTouched) {
+      // Locate template id from the updated row.
+      const { data } = await c
+        .from("timeline_template_items")
+        .select("template_id")
+        .eq("id", itemId)
+        .eq("venue_id", venueId)
+        .maybeSingle<{ template_id: string }>();
+      if (data?.template_id) {
+        await repo.rechronoItems(c, venueId, data.template_id);
+      }
+    }
     return { ok: true } as TimelineTemplateActionResult;
   });
   return result as TimelineTemplateActionResult;

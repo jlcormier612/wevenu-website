@@ -84,7 +84,8 @@ export async function applyTimelineTemplateToEvent(
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
-  const items = await getItems(templateId);
+  const { sortTimelineTemplateItems } = await import("@/lib/timeline-templates/constants");
+  const items = sortTimelineTemplateItems(await getItems(templateId));
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
   const { eventDate, eventEndDate } = await loadEventDates(supabase, eventId);
 
@@ -98,7 +99,7 @@ export async function applyTimelineTemplateToEvent(
         notes: item.notes ?? "",
         entryTime: timing.entryTime,
         dayOffset: timing.dayOffset,
-        sortOrder: item.sortOrder ?? i,
+        sortOrder: i,
         audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
         timing,
       });
@@ -126,7 +127,8 @@ export async function replaceEventTimelineFromTemplate(
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
 
-  const items = await getItems(templateId);
+  const { sortTimelineTemplateItems } = await import("@/lib/timeline-templates/constants");
+  const items = sortTimelineTemplateItems(await getItems(templateId));
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
   const { eventDate, eventEndDate } = await loadEventDates(supabase, eventId);
 
@@ -143,7 +145,7 @@ export async function replaceEventTimelineFromTemplate(
       notes: item.notes ?? "",
       entry_time: timing.entryTime || null,
       day_offset: timing.dayOffset,
-      sort_order: item.sortOrder ?? i,
+      sort_order: i,
       audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences) ?? ["client"],
       lock_state: "locked",
       status: "not_started",
@@ -182,7 +184,8 @@ export async function replaceEventTimelineFromTemplate(
 export async function applyTimelineTemplateToClient(
   clientId: string, templateId: string, eventStartTime: string | null,
 ): Promise<TimelineActionResult> {
-  const items = await getItems(templateId);
+  const { sortTimelineTemplateItems } = await import("@/lib/timeline-templates/constants");
+  const items = sortTimelineTemplateItems(await getItems(templateId));
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
   const { addClientEntry } = await import("@/lib/timeline/service");
   for (const item of items) {

@@ -1,3 +1,4 @@
+import { timeToMinutes } from "@/lib/timeline/constants";
 import {
   formatRelativeToScheduleStart,
   formatTemplateDayLabelClear,
@@ -8,6 +9,7 @@ import {
   VENUE_TIMELINE_AUDIENCES,
 } from "@/lib/timeline/types";
 import type { TimelineAudience } from "@/lib/timeline/types";
+import type { TimelineDayAnchor } from "@/lib/timeline/timing-presentation";
 
 export { CLIENT_TIMELINE_AUDIENCES, TIMELINE_AUDIENCES, VENUE_TIMELINE_AUDIENCES };
 export type { TimelineAudience };
@@ -61,12 +63,84 @@ export function formatStarterTimelineDayLabel(
   return formatTemplateDayLabel(dayOffset);
 }
 
-/** Group template/starter items by dayOffset for library preview. */
-export function groupTimelineItemsByDay<T extends { dayOffset?: number | null; title: string }>(
+/**
+ * Chronological sort key for a template activity (earliest → latest).
+ *
+ * Order:
+ * 1. Relative day (dayOffset), earlier days first
+ * 2. Day anchor: event_start before event_end on the same numeric offset
+ * 3. Clock within the day:
+ *    - relative minutesOffset (more negative = earlier)
+ *    - then absolute timeOfDay
+ *    - untimed last (do not invent a time)
+ * 4. sortOrder (intentional tie-break / manual order among equals or untimed)
+ * 5. createdAt when present
+ *
+ * Manual drag remains available as a tie-breaker among equal-time or untimed
+ * activities. Distinct times always win over drag order so venues are not
+ * forced to hand-sort 20–30 timed items.
+ */
+export type TimelineTemplateChronoFields = {
+  dayOffset?: number | null;
+  dayAnchor?: TimelineDayAnchor | null;
+  minutesOffset?: number | null;
+  timeOfDay?: string | null;
+  sortOrder?: number | null;
+  createdAt?: string | null;
+};
+
+function templateClockRank(item: TimelineTemplateChronoFields): {
+  kind: number;
+  value: number;
+} {
+  if (item.minutesOffset !== null && item.minutesOffset !== undefined) {
+    return { kind: 0, value: item.minutesOffset };
+  }
+  const tod = item.timeOfDay?.trim();
+  if (tod) {
+    return { kind: 1, value: timeToMinutes(tod) };
+  }
+  return { kind: 2, value: 0 };
+}
+
+export function compareTimelineTemplateItems(
+  a: TimelineTemplateChronoFields,
+  b: TimelineTemplateChronoFields,
+): number {
+  const da = Math.trunc(a.dayOffset ?? 0);
+  const db = Math.trunc(b.dayOffset ?? 0);
+  if (da !== db) return da - db;
+
+  const anchorA = a.dayAnchor === "event_end" ? 1 : 0;
+  const anchorB = b.dayAnchor === "event_end" ? 1 : 0;
+  if (anchorA !== anchorB) return anchorA - anchorB;
+
+  const clockA = templateClockRank(a);
+  const clockB = templateClockRank(b);
+  if (clockA.kind !== clockB.kind) return clockA.kind - clockB.kind;
+  if (clockA.kind < 2 && clockA.value !== clockB.value) return clockA.value - clockB.value;
+
+  const sa = a.sortOrder ?? 0;
+  const sb = b.sortOrder ?? 0;
+  if (sa !== sb) return sa - sb;
+
+  if (a.createdAt && b.createdAt && a.createdAt !== b.createdAt) {
+    return a.createdAt < b.createdAt ? -1 : 1;
+  }
+  return 0;
+}
+
+export function sortTimelineTemplateItems<T extends TimelineTemplateChronoFields>(items: T[]): T[] {
+  return [...items].sort(compareTimelineTemplateItems);
+}
+
+/** Group template/starter items by dayOffset for library preview (chrono within day). */
+export function groupTimelineItemsByDay<T extends { dayOffset?: number | null; title: string } & TimelineTemplateChronoFields>(
   items: T[],
 ): { dayOffset: number; items: T[] }[] {
+  const sorted = sortTimelineTemplateItems(items);
   const map = new Map<number, T[]>();
-  for (const item of items) {
+  for (const item of sorted) {
     const d = Math.trunc(item.dayOffset ?? 0);
     const list = map.get(d) ?? [];
     list.push(item);
