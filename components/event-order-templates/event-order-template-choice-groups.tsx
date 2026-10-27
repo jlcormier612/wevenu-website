@@ -150,7 +150,8 @@ export function ConditionalChoicePreview({
   if (!hasDeps) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="eo-choice-preview-no-deps">
-        No dependent groups yet. When a group depends on a parent option, you can preview reveal behavior here.
+        No follow-up choices yet. When a primary option shows additional options, you can preview that
+        reveal behavior here. Preview does not send or finalize an Event Order.
       </p>
     );
   }
@@ -177,7 +178,8 @@ export function ConditionalChoicePreview({
   return (
     <div className="space-y-4" data-testid="eo-choice-conditional-preview">
       <p className="text-sm text-muted-foreground">
-        Try parent selections below. Dependent groups appear the same way they will for the client after Send.
+        Try parent selections below. Follow-up choices appear the same way they will for the client.
+        This preview does not send or finalize an Event Order.
       </p>
       <div className="space-y-3 rounded-md border border-border bg-muted/10 p-3">
         {rootGroups.map((g) => {
@@ -232,6 +234,8 @@ export function EventOrderTemplateChoiceGroups({
   showPreview = true,
   nestBranches = true,
   rootsOnly = false,
+  guidedOrdinary = false,
+  specialistMode = false,
 }: {
   template: EventOrderTemplateWithDetails;
   catalogOfferings: OfferingWithCategory[];
@@ -246,6 +250,10 @@ export function EventOrderTemplateChoiceGroups({
   nestBranches?: boolean;
   /** Guided “main choices” step — hide dependents until the branch step. */
   rootsOnly?: boolean;
+  /** Ordinary guided flow — occasional settings under “More settings”. */
+  guidedOrdinary?: boolean;
+  /** Specialist selection rules — full dependency and unassigned tooling. */
+  specialistMode?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -256,10 +264,17 @@ export function EventOrderTemplateChoiceGroups({
   );
   const [groupMode, setGroupMode] = React.useState<"single" | "multi">("single");
   const [groupRequired, setGroupRequired] = React.useState(true);
+  const [groupAllowQuantity, setGroupAllowQuantity] = React.useState(false);
+  const [groupMaxSelect, setGroupMaxSelect] = React.useState("");
   const [groupDependsOn, setGroupDependsOn] = React.useState<string[]>([]);
 
   const [editingDepsGroupId, setEditingDepsGroupId] = React.useState<string | null>(null);
   const [editingDepsIds, setEditingDepsIds] = React.useState<string[]>([]);
+  const [moreSettingsGroupId, setMoreSettingsGroupId] = React.useState<string | null>(null);
+  const [moreRequired, setMoreRequired] = React.useState(true);
+  const [moreMode, setMoreMode] = React.useState<"single" | "multi">("single");
+  const [moreAllowQuantity, setMoreAllowQuantity] = React.useState(false);
+  const [moreMaxSelect, setMoreMaxSelect] = React.useState("");
 
   React.useEffect(() => {
     if (lockedSectionId) setGroupSectionId(lockedSectionId);
@@ -356,6 +371,44 @@ export function EventOrderTemplateChoiceGroups({
   function beginEditDeps(g: EventOrderTemplateGroup) {
     setEditingDepsGroupId(g.id);
     setEditingDepsIds([...(g.dependsOnOptionIds ?? [])]);
+  }
+
+  function openMoreSettings(g: EventOrderTemplateGroup) {
+    setMoreSettingsGroupId(g.id);
+    setMoreRequired(g.minSelect > 0);
+    setMoreMode(g.selectionMode);
+    setMoreAllowQuantity(g.allowQuantity);
+    setMoreMaxSelect(g.maxSelect != null ? String(g.maxSelect) : "");
+  }
+
+  function saveMoreSettings(g: EventOrderTemplateGroup) {
+    const maxParsed = moreMaxSelect.trim() === "" ? null : Number(moreMaxSelect);
+    const maxSelect =
+      moreMode === "single"
+        ? 1
+        : maxParsed != null && Number.isFinite(maxParsed) && maxParsed > 0
+          ? maxParsed
+          : null;
+    startTransition(async () => {
+      onPersist("saving");
+      const r = await updateEventOrderTemplateGroupAction(template.id, g.id, {
+        sectionId: g.sectionId,
+        name: g.name,
+        instructions: g.instructions ?? undefined,
+        selectionMode: moreMode,
+        minSelect: moreRequired ? 1 : 0,
+        maxSelect,
+        allowQuantity: moreAllowQuantity,
+        dependsOnOptionIds: g.dependsOnOptionIds ?? [],
+      });
+      if (!r.ok) {
+        onPersist("error", r.message ?? "Could not update group settings.");
+        return;
+      }
+      onPersist("saved");
+      setMoreSettingsGroupId(null);
+      refresh();
+    });
   }
 
   function saveDeps(g: EventOrderTemplateGroup) {
@@ -493,67 +546,157 @@ export function EventOrderTemplateChoiceGroups({
                   </Button>
                 </div>
 
-                {editing ? (
-                  <div className="space-y-2 rounded-md border border-dashed border-border p-3">
-                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                      When this group appears
-                    </p>
-                    <DependsOnPicker
-                      idPrefix={`edit-${g.id}`}
-                      candidates={candidates}
-                      selectedIds={editingDepsIds}
-                      disabled={pending}
-                      onChange={setEditingDepsIds}
-                    />
-                    <div className="flex flex-wrap gap-2">
+                {guidedOrdinary ? (
+                  <details
+                    className="rounded-md border border-border/70 bg-muted/10 p-2"
+                    data-testid={`eo-more-settings-${g.id}`}
+                    open={moreSettingsGroupId === g.id}
+                    onToggle={(e) => {
+                      const open = (e.target as HTMLDetailsElement).open;
+                      if (open) openMoreSettings(g);
+                      else if (moreSettingsGroupId === g.id) setMoreSettingsGroupId(null);
+                    }}
+                  >
+                    <summary className="cursor-pointer text-xs font-medium text-heading">
+                      More settings
+                    </summary>
+                    <div className="mt-2 space-y-2">
+                      <p className="text-[0.7rem] text-muted-foreground">
+                        Occasional group settings. Required means clients must pick before continuing.
+                        Quantities let clients choose how many of an option. Maximum selection limits
+                        multi-select lists.
+                      </p>
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name={`eo-more-mode-${g.id}`}
+                            checked={moreMode === "single"}
+                            onChange={() => setMoreMode("single")}
+                          />
+                          Choose one
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name={`eo-more-mode-${g.id}`}
+                            checked={moreMode === "multi"}
+                            onChange={() => setMoreMode("multi")}
+                          />
+                          Choose multiple
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={moreRequired}
+                            onChange={(e) => setMoreRequired(e.target.checked)}
+                          />
+                          Required
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={moreAllowQuantity}
+                            onChange={(e) => setMoreAllowQuantity(e.target.checked)}
+                          />
+                          Allow quantity
+                        </label>
+                      </div>
+                      {moreMode === "multi" ? (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Maximum selections (optional)</Label>
+                          <Input
+                            value={moreMaxSelect}
+                            onChange={(e) => setMoreMaxSelect(e.target.value)}
+                            placeholder="No maximum"
+                            inputMode="numeric"
+                            data-testid={`eo-more-max-${g.id}`}
+                          />
+                        </div>
+                      ) : null}
                       <Button
                         type="button"
                         size="sm"
                         disabled={pending}
-                        data-testid={`eo-save-deps-${g.id}`}
-                        onClick={() => saveDeps(g)}
+                        data-testid={`eo-more-settings-save-${g.id}`}
+                        onClick={() => saveMoreSettings(g)}
                       >
                         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                        Save
+                        Save settings
                       </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
+                    </div>
+                  </details>
+                ) : null}
+
+                {!guidedOrdinary || specialistMode ? (
+                  editing ? (
+                    <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        When this group appears
+                      </p>
+                      <DependsOnPicker
+                        idPrefix={`edit-${g.id}`}
+                        candidates={candidates}
+                        selectedIds={editingDepsIds}
                         disabled={pending}
-                        onClick={() => {
-                          setEditingDepsGroupId(null);
-                          setEditingDepsIds([]);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      {(g.dependsOnOptionIds?.length ?? 0) > 0 ? (
+                        onChange={setEditingDepsIds}
+                      />
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           type="button"
                           size="sm"
-                          variant="outline"
                           disabled={pending}
-                          data-testid={`eo-clear-deps-${g.id}`}
-                          onClick={() => setEditingDepsIds([])}
+                          data-testid={`eo-save-deps-${g.id}`}
+                          onClick={() => saveDeps(g)}
                         >
-                          Always show (clear)
+                          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                          Save
                         </Button>
-                      ) : null}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={pending}
+                          onClick={() => {
+                            setEditingDepsGroupId(null);
+                            setEditingDepsIds([]);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        {(g.dependsOnOptionIds?.length ?? 0) > 0 ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={pending}
+                            data-testid={`eo-clear-deps-${g.id}`}
+                            onClick={() => setEditingDepsIds([])}
+                          >
+                            Always show (clear)
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={pending}
-                    data-testid={`eo-edit-deps-${g.id}`}
-                    onClick={() => beginEditDeps(g)}
-                  >
-                    {dependent ? "Edit when this appears" : "Only show when…"}
-                  </Button>
-                )}
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      data-testid={`eo-edit-deps-${g.id}`}
+                      onClick={() => beginEditDeps(g)}
+                    >
+                      {dependent ? "Edit when this appears" : "Only show when…"}
+                    </Button>
+                  )
+                ) : dependent ? (
+                  <p className="text-xs text-muted-foreground">
+                    {dependsSummary === "Always shown"
+                      ? "Follow-up choice group."
+                      : dependsSummary.replace(/^Depends on:\s*/i, "Shown after the client selects ")}
+                  </p>
+                ) : null}
 
                 <ul className="space-y-1 pl-1">
                   {opts.length === 0 && !dependent ? (
@@ -945,16 +1088,51 @@ export function EventOrderTemplateChoiceGroups({
             Required
           </label>
         </div>
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">When this group appears (optional)</p>
-          <DependsOnPicker
-            idPrefix="add-group"
-            candidates={addGroupCandidates}
-            selectedIds={groupDependsOn}
-            disabled={pending}
-            onChange={setGroupDependsOn}
-          />
-        </div>
+        {guidedOrdinary && !specialistMode ? (
+          <details className="rounded-md border border-border/60 p-2" data-testid="eo-add-group-more-settings">
+            <summary className="cursor-pointer text-xs font-medium text-heading">More settings</summary>
+            <div className="mt-2 space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={groupAllowQuantity}
+                  onChange={(e) => setGroupAllowQuantity(e.target.checked)}
+                />
+                Allow quantity
+              </label>
+              {groupMode === "multi" ? (
+                <div className="space-y-1">
+                  <Label className="text-xs">Maximum selections (optional)</Label>
+                  <Input
+                    value={groupMaxSelect}
+                    onChange={(e) => setGroupMaxSelect(e.target.value)}
+                    placeholder="No maximum"
+                    inputMode="numeric"
+                  />
+                </div>
+              ) : null}
+            </div>
+          </details>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">When this group appears (optional)</p>
+            <DependsOnPicker
+              idPrefix="add-group"
+              candidates={addGroupCandidates}
+              selectedIds={groupDependsOn}
+              disabled={pending}
+              onChange={setGroupDependsOn}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={groupAllowQuantity}
+                onChange={(e) => setGroupAllowQuantity(e.target.checked)}
+              />
+              Allow quantity
+            </label>
+          </div>
+        )}
         <Button
           type="button"
           size="sm"
@@ -962,11 +1140,15 @@ export function EventOrderTemplateChoiceGroups({
           data-testid="eo-add-choice-group"
           onClick={() => startTransition(async () => {
             onPersist("saving");
-            const dependsOnOptionIds = sanitizeDependsOnOptionIds(
-              groupDependsOn,
-              template.options,
-              null,
-            );
+            const dependsOnOptionIds =
+              guidedOrdinary && !specialistMode
+                ? []
+                : sanitizeDependsOnOptionIds(
+                    groupDependsOn,
+                    template.options,
+                    null,
+                  );
+            const maxParsed = groupMaxSelect.trim() === "" ? null : Number(groupMaxSelect);
             const resolvedSectionId = lockedSectionId
               ?? (showUnassignedOnly ? null : (groupSectionId || null));
             const r = await addEventOrderTemplateGroupAction(template.id, {
@@ -974,8 +1156,13 @@ export function EventOrderTemplateChoiceGroups({
               name: groupName,
               selectionMode: groupMode,
               minSelect: groupRequired ? 1 : 0,
-              maxSelect: groupMode === "single" ? 1 : null,
-              allowQuantity: false,
+              maxSelect:
+                groupMode === "single"
+                  ? 1
+                  : maxParsed != null && Number.isFinite(maxParsed) && maxParsed > 0
+                    ? maxParsed
+                    : null,
+              allowQuantity: groupAllowQuantity,
               dependsOnOptionIds,
             });
             if (!r.ok) onPersist("error", r.errors?.name ?? r.message ?? "Could not add group.");
@@ -983,6 +1170,8 @@ export function EventOrderTemplateChoiceGroups({
               onPersist("saved");
               setGroupName("");
               setGroupDependsOn([]);
+              setGroupAllowQuantity(false);
+              setGroupMaxSelect("");
               refresh();
             }
           })}
@@ -995,9 +1184,10 @@ export function EventOrderTemplateChoiceGroups({
       <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Add option</p>
         <p className="text-xs text-muted-foreground">
-          Prefer a catalog Offering when the choice is a reusable sellable. Use a template-only option when
-          the wording is package-specific or should not live in the global catalog. New catalog picks snapshot
-          label and price once; later catalog edits do not rewrite this option.
+          Prefer a reusable Offering when the choice is something you sell across event orders. Use a
+          custom / template-only option when it belongs only on this template. Offerings are not Inventory —
+          linking them elsewhere does not reserve stock. New catalog picks snapshot label and price once;
+          later catalog edits do not rewrite this option.
         </p>
         <select
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"

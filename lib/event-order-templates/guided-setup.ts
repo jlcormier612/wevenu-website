@@ -73,7 +73,11 @@ export const SUGGESTED_CATEGORIES: readonly SuggestedCategory[] = [
   },
 ] as const;
 
-/** Plain-language configuration patterns (maps onto lines + choice groups). */
+/**
+ * Plain-language configuration patterns (maps onto lines + choice groups).
+ * Legacy `choose_then_related` remains in the union for draft normalization only —
+ * it is no longer a top-level selectable pattern (follow-ups are contextual on options).
+ */
 export type ConfigPatternId =
   | "included"
   | "choose_one"
@@ -82,7 +86,7 @@ export type ConfigPatternId =
   | "optional_add";
 
 export type ConfigPattern = {
-  id: ConfigPatternId;
+  id: Exclude<ConfigPatternId, "choose_then_related">;
   title: string;
   clientExperience: string;
 };
@@ -90,32 +94,42 @@ export type ConfigPattern = {
 export const CONFIG_PATTERNS: readonly ConfigPattern[] = [
   {
     id: "included",
-    title: "One or more items are already included",
+    title: "Included automatically",
     clientExperience:
-      "Clients see these as included with the package — not as extra charges they must pick.",
+      "Clients receive these items or services as part of their package. They don't need to select them.",
   },
   {
     id: "choose_one",
-    title: "The client chooses one option",
-    clientExperience: "Example: choose Plated Dinner or Buffet Dinner — one selection.",
+    title: "Choose one option",
+    clientExperience:
+      "Clients choose one option, such as a plated dinner or buffet. Each option can have its own follow-up choices.",
   },
   {
     id: "choose_many",
-    title: "The client can choose multiple options",
-    clientExperience: "Example: select several rental products from a list.",
-  },
-  {
-    id: "choose_then_related",
-    title: "The client chooses a main option, then sees related options",
+    title: "Choose multiple options",
     clientExperience:
-      "Example: choosing Plated Dinner reveals only plated follow-ups; Buffet reveals buffet follow-ups.",
+      "Clients can select several items or services, such as multiple appetizers or additional rental items.",
   },
   {
     id: "optional_add",
-    title: "The client can optionally add items",
-    clientExperience: "Example: optional upgrades or rentals — none required.",
+    title: "Optional extras",
+    clientExperience:
+      "Clients can add extras if they want them. Show any additional price before they choose.",
   },
 ] as const;
+
+/** Map retired top-level follow-up pattern onto choose_one (contextual follow-ups). */
+export function normalizePatternIds(patterns: ConfigPatternId[]): ConfigPatternId[] {
+  const next = new Set<ConfigPatternId>();
+  for (const p of patterns) {
+    if (p === "choose_then_related") {
+      next.add("choose_one");
+      continue;
+    }
+    next.add(p);
+  }
+  return [...next];
+}
 
 export type WizardPhase = "categories" | "configure" | "review" | "preview";
 
@@ -173,7 +187,8 @@ export function detectPatternsForSection(
     const hasDependent = template.options
       .filter((o) => o.groupId === g.id)
       .some((o) => dependentGroupsForOption(groups, o.id).length > 0);
-    if (hasDependent) found.add("choose_then_related");
+    // Follow-ups are contextual on primary options — seed choose_one, not a separate pattern.
+    if (hasDependent) found.add("choose_one");
 
     if (g.minSelect === 0 && g.selectionMode === "multi") {
       found.add("optional_add");
@@ -186,7 +201,7 @@ export function detectPatternsForSection(
       found.add("optional_add");
     }
   }
-  return [...found];
+  return normalizePatternIds([...found]);
 }
 
 /** Wizard-owned pattern selections keyed by section — survives category tab switches. */
@@ -209,6 +224,14 @@ export function seedPatternDraftsFromTemplate(
     if (next[id] === undefined) {
       next[id] = detectPatternsForSection(template, id);
       changed = true;
+    } else {
+      const normalized = normalizePatternIds(next[id]!);
+      const prevSorted = [...next[id]!].sort().join("|");
+      const nextSorted = [...normalized].sort().join("|");
+      if (prevSorted !== nextSorted) {
+        next[id] = normalized;
+        changed = true;
+      }
     }
   }
   for (const key of Object.keys(next)) {
@@ -225,7 +248,11 @@ export function togglePatternInDraft(
   sectionId: string,
   patternId: ConfigPatternId,
 ): PatternDraftBySection {
-  const cur = drafts[sectionId] ?? [];
+  if (patternId === "choose_then_related") {
+    // Retired top-level card — treat as choose_one.
+    return togglePatternInDraft(drafts, sectionId, "choose_one");
+  }
+  const cur = normalizePatternIds(drafts[sectionId] ?? []);
   const patterns = cur.includes(patternId)
     ? cur.filter((p) => p !== patternId)
     : [...cur, patternId];
@@ -239,7 +266,7 @@ export function patternsPayloadFromDrafts(
 ): Array<{ sectionId: string; patterns: ConfigPatternId[] }> {
   return sectionIds.map((sectionId) => ({
     sectionId,
-    patterns: [...(drafts[sectionId] ?? [])],
+    patterns: normalizePatternIds([...(drafts[sectionId] ?? [])]),
   }));
 }
 
@@ -282,37 +309,111 @@ export function branchGuideForSection(
   return items;
 }
 
+export type ReviewOptionSummary = {
+  id: string;
+  label: string;
+  unitPrice: number | null;
+  isIncluded: boolean;
+  catalog: boolean;
+  /** Dependent groups shown only after this option is selected. */
+  followUps: ReviewGroupSummary[];
+};
+
+export type ReviewGroupSummary = {
+  id: string;
+  name: string;
+  selectionMode: string;
+  required: boolean;
+  isDependent: boolean;
+  dependsOnLabels: string[];
+  incomplete: boolean;
+  options: ReviewOptionSummary[];
+};
+
 export type ReviewCategorySummary = {
   sectionId: string;
   name: string;
   guidance: string | null;
   fixedLines: { id: string; description: string; included: boolean; price: number | null; catalog: boolean }[];
-  groups: {
-    id: string;
-    name: string;
-    selectionMode: string;
-    required: boolean;
-    isDependent: boolean;
-    dependsOnLabels: string[];
-    incomplete: boolean;
-    options: {
-      id: string;
-      label: string;
-      unitPrice: number | null;
-      isIncluded: boolean;
-      catalog: boolean;
-    }[];
-  }[];
+  /** Root (primary) groups in client encounter order; follow-ups nest under options. */
+  groups: ReviewGroupSummary[];
   incompleteMessages: string[];
+  /** Sample path hint for interactive preview (commercial categories only). */
+  previewPathHint: string | null;
 };
+
+function summarizeGroup(
+  g: EventOrderTemplateGroup,
+  template: EventOrderTemplateWithDetails,
+  optionById: Map<string, EventOrderTemplateOption>,
+  sectionGroups: EventOrderTemplateGroup[],
+  nestFollowUps: boolean,
+): ReviewGroupSummary {
+  const opts = template.options
+    .filter((o) => o.groupId === g.id)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const dependsOnLabels = (g.dependsOnOptionIds ?? [])
+    .map((id) => optionById.get(id)?.label ?? id)
+    .filter(Boolean);
+  return {
+    id: g.id,
+    name: g.name,
+    selectionMode: g.selectionMode,
+    required: g.minSelect > 0,
+    isDependent: isDependentGroup(g),
+    dependsOnLabels,
+    incomplete: opts.length === 0,
+    options: opts.map((o) => ({
+      id: o.id,
+      label: o.label,
+      unitPrice: o.unitPrice,
+      isIncluded: o.isIncluded,
+      catalog: Boolean(o.offeringId),
+      followUps: nestFollowUps
+        ? dependentGroupsForOption(sectionGroups, o.id).map((d) =>
+            summarizeGroup(d, template, optionById, sectionGroups, true),
+          )
+        : [],
+    })),
+  };
+}
 
 export function buildReviewSummary(template: EventOrderTemplateWithDetails): ReviewCategorySummary[] {
   const optionById = new Map(template.options.map((o) => [o.id, o]));
   const sections = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   return sections.map((s) => {
     const sectionGroups = groupsForSection(template.groups, s.id);
+    const roots = rootGroupsInList(sectionGroups);
     const issues = sectionCompletenessIssues(sectionGroups, template.options);
     const lines = linesForSection(template.lines, s.id);
+    const groups = roots.map((g) =>
+      summarizeGroup(g, template, optionById, sectionGroups, true),
+    );
+    // Orphan dependents (parent outside section view) still surface in review.
+    const nestedIds = new Set<string>();
+    const walk = (gs: ReviewGroupSummary[]) => {
+      for (const g of gs) {
+        nestedIds.add(g.id);
+        for (const o of g.options) walk(o.followUps);
+      }
+    };
+    walk(groups);
+    for (const g of sectionGroups) {
+      if (isDependentGroup(g) && !nestedIds.has(g.id)) {
+        groups.push(summarizeGroup(g, template, optionById, sectionGroups, true));
+      }
+    }
+    const firstRoot = groups[0];
+    const firstOpt = firstRoot?.options[0];
+    const firstFollow = firstOpt?.followUps[0];
+    const previewPathHint =
+      firstRoot && firstOpt
+        ? firstFollow
+          ? `Try ${s.name} → ${firstOpt.label} → ${firstFollow.name}.`
+          : `Try ${s.name} → ${firstOpt.label}.`
+        : lines.length > 0
+          ? `Review included items under ${s.name}.`
+          : null;
     return {
       sectionId: s.id,
       name: s.name,
@@ -324,31 +425,9 @@ export function buildReviewSummary(template: EventOrderTemplateWithDetails): Rev
         price: l.unitPrice,
         catalog: Boolean(l.offeringId),
       })),
-      groups: sectionGroups.map((g) => {
-        const opts = template.options
-          .filter((o) => o.groupId === g.id)
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-        const dependsOnLabels = (g.dependsOnOptionIds ?? [])
-          .map((id) => optionById.get(id)?.label ?? id)
-          .filter(Boolean);
-        return {
-          id: g.id,
-          name: g.name,
-          selectionMode: g.selectionMode,
-          required: g.minSelect > 0,
-          isDependent: isDependentGroup(g),
-          dependsOnLabels,
-          incomplete: opts.length === 0,
-          options: opts.map((o) => ({
-            id: o.id,
-            label: o.label,
-            unitPrice: o.unitPrice,
-            isIncluded: o.isIncluded,
-            catalog: Boolean(o.offeringId),
-          })),
-        };
-      }),
+      groups,
       incompleteMessages: issues.map((i) => i.message),
+      previewPathHint,
     };
   });
 }
@@ -356,15 +435,17 @@ export function buildReviewSummary(template: EventOrderTemplateWithDetails): Rev
 export function sectionNeedsChoiceConfiguration(
   patterns: ConfigPatternId[],
 ): boolean {
-  return patterns.some((p) =>
-    p === "choose_one" || p === "choose_many" || p === "choose_then_related" || p === "optional_add",
+  const p = normalizePatternIds(patterns);
+  return p.some(
+    (id) => id === "choose_one" || id === "choose_many" || id === "optional_add",
   );
 }
 
+/** Follow-up configuration after primary options (contextual on each choose-one option). */
 export function sectionNeedsBranchConfiguration(
   patterns: ConfigPatternId[],
 ): boolean {
-  return patterns.includes("choose_then_related");
+  return normalizePatternIds(patterns).includes("choose_one");
 }
 
 export function sectionNeedsFixedConfiguration(patterns: ConfigPatternId[]): boolean {
@@ -387,6 +468,7 @@ export function defaultGroupInputForPattern(
 } | null {
   if (pattern === "included") return null;
   if (pattern === "choose_one" || pattern === "choose_then_related") {
+    // choose_then_related is legacy-only; same root group shape as choose_one.
     return {
       sectionId,
       name: `${sectionName} choices`,
@@ -454,14 +536,20 @@ export type WizardProgress = {
   sectionIdsInOrder: string[];
 };
 
+function configureSubstepOrder(patterns: ConfigPatternId[]): CategoryConfigureSubstep[] {
+  const p = normalizePatternIds(patterns);
+  const order: CategoryConfigureSubstep[] = ["patterns"];
+  if (sectionNeedsFixedConfiguration(p)) order.push("fixed");
+  if (sectionNeedsChoiceConfiguration(p)) order.push("choices");
+  if (sectionNeedsBranchConfiguration(p)) order.push("branches");
+  return order;
+}
+
 export function nextConfigureSubstep(
   current: CategoryConfigureSubstep,
   patterns: ConfigPatternId[],
 ): CategoryConfigureSubstep | "done" {
-  const order: CategoryConfigureSubstep[] = ["patterns"];
-  if (sectionNeedsFixedConfiguration(patterns)) order.push("fixed");
-  if (sectionNeedsChoiceConfiguration(patterns)) order.push("choices");
-  if (sectionNeedsBranchConfiguration(patterns)) order.push("branches");
+  const order = configureSubstepOrder(patterns);
   const idx = order.indexOf(current);
   if (idx < 0) return order[0] ?? "done";
   if (idx >= order.length - 1) return "done";
@@ -472,10 +560,7 @@ export function prevConfigureSubstep(
   current: CategoryConfigureSubstep,
   patterns: ConfigPatternId[],
 ): CategoryConfigureSubstep | "categories" {
-  const order: CategoryConfigureSubstep[] = ["patterns"];
-  if (sectionNeedsFixedConfiguration(patterns)) order.push("fixed");
-  if (sectionNeedsChoiceConfiguration(patterns)) order.push("choices");
-  if (sectionNeedsBranchConfiguration(patterns)) order.push("branches");
+  const order = configureSubstepOrder(patterns);
   const idx = order.indexOf(current);
   if (idx <= 0) return "categories";
   return order[idx - 1]!;

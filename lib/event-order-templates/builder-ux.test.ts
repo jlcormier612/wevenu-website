@@ -31,7 +31,69 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /eo-guided-step-review/);
     assert.match(wizard, /eo-guided-step-preview/);
     assert.match(wizard, /What does your venue offer/);
+    assert.match(wizard, /How should clients make their selections\?/);
+    assert.match(wizard, /What happens when a client selects this option\?/);
+    assert.match(wizard, /Nothing else — this is a complete choice/);
+    assert.match(wizard, /Show additional options/);
+    assert.match(wizard, /Specialist selection rules/);
+    assert.match(wizard, /eo-specialist-selection-rules/);
+    assert.match(wizard, /eo-guided-preview-non-sending/);
+    assert.match(wizard, /Preview only — no send, no finalize/);
     assert.doesNotMatch(wizard, /depends_on_option_ids/);
+    assert.doesNotMatch(wizard, /Advanced editor/i);
+    assert.doesNotMatch(wizard, /eo-guided-pattern-choose_then_related/);
+  });
+
+  it("pattern copy distinguishes included, choose-one, multi, and optional extras", () => {
+    const setup = readFileSync(
+      join(root, "lib/event-order-templates/guided-setup.ts"),
+      "utf8",
+    );
+    assert.match(setup, /Included automatically/);
+    assert.match(setup, /Choose one option/);
+    assert.match(setup, /Choose multiple options/);
+    assert.match(setup, /Optional extras/);
+    assert.match(
+      setup,
+      /Clients receive these items or services as part of their package/,
+    );
+    assert.match(
+      setup,
+      /Show any additional price before they choose/,
+    );
+    // Top-level choose_then_related card retired from CONFIG_PATTERNS list.
+    assert.doesNotMatch(
+      setup,
+      /id: "choose_then_related",\s*\n\s*title:/,
+    );
+  });
+
+  it("ordinary guided flow exposes More settings without requiring specialist rules", () => {
+    const groups = readFileSync(
+      join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
+      "utf8",
+    );
+    const wizard = readFileSync(
+      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+      "utf8",
+    );
+    assert.match(groups, /More settings/);
+    assert.match(groups, /guidedOrdinary/);
+    assert.match(groups, /specialistMode/);
+    assert.match(wizard, /guidedOrdinary/);
+    assert.match(wizard, /specialistMode/);
+    assert.match(wizard, /eo-guided-item-source-help/);
+  });
+
+  it("offering and line editors explain Offerings vs Inventory vs template-only", () => {
+    const sheet = readFileSync(
+      join(root, "components/event-order-templates/offering-editor-sheet.tsx"),
+      "utf8",
+    );
+    assert.match(sheet, /eo-line-source-help/);
+    assert.match(sheet, /does not reserve stock/);
+    assert.match(sheet, /never matched by name/);
+    assert.match(sheet, /reusable Offerings list/);
   });
 
   it("pattern selections are owned per section and survive category tab changes", () => {
