@@ -84,6 +84,12 @@ export function EditBookingScheduleDialog({
         toast.error(result.message ?? "Could not save the schedule.");
         return;
       }
+      if (result.timelineWarning) {
+        toast.warning(result.timelineWarning);
+        onOpenChange(false);
+        router.refresh();
+        return;
+      }
       // Honest success only after persistence; refresh does not block the spinner.
       toast.success("Schedule updated.");
       onOpenChange(false);

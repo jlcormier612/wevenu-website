@@ -45,12 +45,7 @@ export async function getTimelineEntries(eventId: string): Promise<TimelineEntry
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
-  try {
-    const { syncTimelineFromEventSpaceAssignments } = await import("@/lib/timeline/schedule-sync");
-    await syncTimelineFromEventSpaceAssignments(supabase, venue.id, eventId);
-  } catch (err) {
-    console.error("[getTimelineEntries] timeline schedule sync failed:", err);
-  }
+  // Schedule reconciliation runs on booked-schedule save only. Opening Timeline must not write.
   return repo.getTimelineEntries(supabase, venue.id, eventId);
 }
 
@@ -99,7 +94,11 @@ export async function updateEntry(entryId: string, input: TimelineEntryInput): P
       return { ok: true } as TimelineActionResult;
     } catch (e) {
       const message = e instanceof Error ? e.message : "Could not save this item.";
-      if (message.includes("cannot share with") || message.includes("belongs to the couple")) {
+      if (
+        message.includes("cannot share with")
+        || message.includes("belongs to the couple")
+        || message.includes("stays locked because its content differs")
+      ) {
         return { ok: false, message };
       }
       throw e;

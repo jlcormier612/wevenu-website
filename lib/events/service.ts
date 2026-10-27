@@ -108,6 +108,13 @@ export async function createEvent(input: EventInput): Promise<CreateEventResult>
         if (!assigned.ok) {
           return { ok: false, message: assigned.message } as CreateEventResult;
         }
+        if (assigned.timelineWarning) {
+          return {
+            ok: true,
+            eventId: booked.eventId,
+            timelineWarning: assigned.timelineWarning,
+          } as CreateEventResult;
+        }
       }
     }
     return { ok: true, eventId: booked.eventId } as CreateEventResult;
@@ -121,6 +128,7 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    let timelineWarning: string | undefined;
     const before = await repo.getEvent(supabase, venueId, eventId);
     try {
       await repo.updateEvent(supabase, venueId, eventId, input);
@@ -148,6 +156,7 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
         );
         const assigned = await replaceEventSpaceAssignments(eventId, assignments);
         if (!assigned.ok) return { ok: false, message: assigned.message };
+        if (assigned.timelineWarning) timelineWarning = assigned.timelineWarning;
       }
     }
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
@@ -217,10 +226,11 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
           previousEventEndDate: before.eventEndDate ?? null,
           previousStartTime: prevStart,
         },
+        timelineWarning,
       } as EventActionResult;
     }
 
-    return { ok: true } as EventActionResult;
+    return { ok: true, timelineWarning } as EventActionResult;
   });
   return result as EventActionResult;
 }

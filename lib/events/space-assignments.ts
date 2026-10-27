@@ -15,10 +15,11 @@ import {
   type EventSpaceAssignmentInput,
 } from "@/lib/venue-spaces/assignments";
 import { resolveExperienceProfile } from "@/lib/event-experience";
+import { SCHEDULE_SAVED_TIMELINE_MANUAL_MESSAGE } from "@/lib/timeline/schedule-sync";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export type SpaceAssignmentsResult =
-  | { ok: true }
+  | { ok: true; timelineWarning?: string }
   | { ok: false; message: string };
 
 type AssignmentRow = {
@@ -128,7 +129,17 @@ export async function replaceEventSpaceAssignments(
     const { syncTimelineFromEventSpaceAssignments } = await import("@/lib/timeline/schedule-sync");
     await syncTimelineFromEventSpaceAssignments(supabase, venue.id, eventId);
   } catch (err) {
-    console.error("[replaceEventSpaceAssignments] timeline schedule sync failed:", err);
+    const detail = err instanceof Error ? err.message : "unknown";
+    const code = err && typeof err === "object" && "code" in err
+      ? String((err as { code?: unknown }).code ?? "")
+      : "";
+    console.error("[replaceEventSpaceAssignments] timeline schedule sync failed", {
+      eventId,
+      venueId: venue.id,
+      detail,
+      code: code || undefined,
+    });
+    return { ok: true, timelineWarning: SCHEDULE_SAVED_TIMELINE_MANUAL_MESSAGE };
   }
 
   return { ok: true };

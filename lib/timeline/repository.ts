@@ -18,6 +18,13 @@ import {
 } from "@/lib/timeline/audience-ownership";
 import { provenanceFromTemplateApply, timingColumnsForUntypedDisplaySave, timingDbColumns, type TimingProvenance } from "@/lib/timeline/timing-provenance";
 import {
+  applyScheduleLinkedContentProtection,
+  expectedScheduleLinkedContent,
+  SCHEDULE_LINKED_UNLOCK_BLOCKED_MESSAGE,
+  scheduleLinkedContentDiverged,
+  scheduleLinkedMilestoneMatchesSchedule,
+} from "@/lib/timeline/schedule-sync";
+import {
   VENUE_TIMELINE_REPLACE_BLOCKED_ERROR,
   VENUE_TIMELINE_REPLACE_BLOCKED_MESSAGE,
 } from "@/lib/timeline-templates/replace-guard";
@@ -299,7 +306,7 @@ export async function updateEntry(
   client: DbClient, venueId: string, entryId: string, input: TimelineEntryInput,
 ): Promise<{ dayOffset: number; entryTime: string | null }> {
   const { data: current } = await client.from("timeline_entries")
-    .select("owner, event_id, client_id, day_offset, entry_time, timing_day_intent, timing_day_anchor, timing_clock_intent")
+    .select("owner, event_id, client_id, day_offset, entry_time, title, description, notes, source_space_use_key, timing_day_intent, timing_day_anchor, timing_clock_intent")
     .eq("id", entryId).eq("venue_id", venueId)
     .maybeSingle<{
       owner: TimelineOwner;
@@ -307,6 +314,10 @@ export async function updateEntry(
       client_id: string | null;
       day_offset: number;
       entry_time: string | null;
+      title: string | null;
+      description: string | null;
+      notes: string | null;
+      source_space_use_key: string | null;
       timing_day_intent: string | null;
       timing_day_anchor: string | null;
       timing_clock_intent: string | null;
@@ -360,6 +371,101 @@ export async function updateEntry(
   if (input.audiences !== undefined) patch.audiences = sanitizeVenueAudiences(input.audiences);
   if (input.status !== undefined) patch.status = input.status;
   if (input.assignedToStaffId !== undefined) patch.assigned_to_staff_id = input.assignedToStaffId;
+
+  // Schedule-linked rows: keep the key on content edits, lock while content
+  // differs from the authoritative schedule, and refuse unlock-only saves that
+  // would leave an edited milestone editable for the next reconcile.
+  // Reconciliation never uses this path. Detached (null key) rows use normal lock.
+  if (current.source_space_use_key) {
+    const contentEdited = scheduleLinkedContentDiverged(
+      {
+        title: current.title ?? "",
+        description: current.description,
+        notes: current.notes,
+        entryTime: current.entry_time,
+        dayOffset: current.day_offset ?? 0,
+      },
+      {
+        title: input.title,
+        description: input.description,
+        notes: input.notes,
+        notesProvided: input.notes !== undefined,
+        entryTime: entryTime,
+        dayOffset,
+      },
+    );
+    const unlockRequested = input.lockState === "editable";
+    const finalNotes = input.notes !== undefined
+      ? (input.notes.trim() || null)
+      : (current.notes?.trim() || null);
+    const finalContent = {
+      title: input.title.trim(),
+      description: input.description.trim() || null,
+      notes: finalNotes,
+      entryTime,
+      dayOffset,
+    };
+
+    if (unlockRequested) {
+      if (!current.event_id) {
+        applyScheduleLinkedContentProtection(patch);
+        if (!contentEdited) throw new Error(SCHEDULE_LINKED_UNLOCK_BLOCKED_MESSAGE);
+      } else {
+        const { data: eventRow, error: eventErr } = await client
+          .from("events")
+          .select("event_date, event_end_date")
+          .eq("id", current.event_id)
+          .eq("venue_id", venueId)
+          .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
+        if (eventErr) throw eventErr;
+
+        const { data: assignRow, error: assignErr } = await client
+          .from("event_space_assignments")
+          .select("use_key, use_label, start_time, end_time, scheduled_date, sort_order, venue_spaces(name)")
+          .eq("event_id", current.event_id)
+          .eq("venue_id", venueId)
+          .eq("use_key", current.source_space_use_key)
+          .maybeSingle();
+        if (assignErr) throw assignErr;
+
+        const spaceRaw = assignRow
+          ? (assignRow as { venue_spaces?: { name: string | null } | { name: string | null }[] | null }).venue_spaces
+          : null;
+        const space = Array.isArray(spaceRaw) ? spaceRaw[0] : spaceRaw;
+        const expected = assignRow
+          ? expectedScheduleLinkedContent({
+            eventDate: eventRow?.event_date ?? null,
+            eventEndDate: eventRow?.event_end_date ?? null,
+            assignment: {
+              useKey: String((assignRow as { use_key: string }).use_key),
+              useLabel: String(
+                (assignRow as { use_label: string | null }).use_label
+                  ?? (assignRow as { use_key: string }).use_key,
+              ),
+              spaceName: space?.name ?? null,
+              startTime: (assignRow as { start_time: string | null }).start_time,
+              endTime: (assignRow as { end_time: string | null }).end_time,
+              scheduledDate: (assignRow as { scheduled_date: string | null }).scheduled_date,
+              sortOrder: Number((assignRow as { sort_order?: number | null }).sort_order ?? 0),
+            },
+          })
+          : null;
+
+        const matches = expected
+          ? scheduleLinkedMilestoneMatchesSchedule(finalContent, expected)
+          : false;
+
+        if (matches) {
+          patch.lock_state = "editable";
+        } else {
+          applyScheduleLinkedContentProtection(patch);
+          if (!contentEdited) throw new Error(SCHEDULE_LINKED_UNLOCK_BLOCKED_MESSAGE);
+        }
+      }
+    } else if (contentEdited) {
+      applyScheduleLinkedContentProtection(patch);
+    }
+  }
 
   const { error } = await client.from("timeline_entries")
     .update(patch)
@@ -523,20 +629,27 @@ export async function shiftEntriesAfter(
 
   const { data: rows, error: fetchError } = await client
     .from("timeline_entries")
-    .select("id, entry_time, day_offset, timing_clock_intent")
+    .select("id, entry_time, day_offset, timing_clock_intent, source_space_use_key")
     .eq("venue_id", venueId).eq("event_id", eventId).eq("owner", "venue")
     .eq("day_offset", anchorDay)
     .not("entry_time", "is", null)
     .gt("entry_time", anchor.entry_time);
   if (fetchError) throw fetchError;
 
-  const toShift = (rows ?? []) as { id: string; entry_time: string; timing_clock_intent: string | null }[];
+  const toShift = (rows ?? []) as {
+    id: string;
+    entry_time: string;
+    timing_clock_intent: string | null;
+    source_space_use_key: string | null;
+  }[];
   for (const row of toShift) {
     const newTime = minutesToTime(timeToMinutes(row.entry_time.slice(0, 5)) + minutesDelta);
     const patch: Record<string, unknown> = {
       entry_time: newTime,
       timing_clock_overridden: true,
     };
+    // Pushing the clock is an intentional edit: keep the schedule link and lock.
+    if (row.source_space_use_key) applyScheduleLinkedContentProtection(patch);
     if (row.timing_clock_intent === "relative") {
       patch.timing_clock_intent = "explicit";
       patch.timing_relative_minutes = null;

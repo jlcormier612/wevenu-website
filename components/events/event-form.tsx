@@ -246,11 +246,17 @@ export function EventForm({
           const applyResult = await applyPlaybookAction(result.eventId, templateId, input.eventDate);
           if (!applyResult.ok) allApplied = false;
         }
-        if (allApplied) toast.success("Event created and checklists applied — tasks and reminders are ready.");
+        if (result.timelineWarning) toast.warning(result.timelineWarning);
+        else if (allApplied) toast.success("Event created and checklists applied — tasks and reminders are ready.");
         else {
           toast.success("Event created.");
           toast.error("A checklist could not be applied. You can apply it from the event's Planning tab.");
         }
+        if (result.timelineWarning && !allApplied) {
+          toast.error("A checklist could not be applied. You can apply it from the event's Planning tab.");
+        }
+      } else if (result.timelineWarning) {
+        toast.warning(result.timelineWarning);
       } else {
         toast.success("Event created.");
       }

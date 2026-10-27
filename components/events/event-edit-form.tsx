@@ -52,17 +52,20 @@ export function EventEditForm({
     startTransition(async () => {
       const result = await updateEventAction(event.id, input);
       if (result.ok) {
+        if (result.timelineWarning) toast.warning(result.timelineWarning);
         if (result.timingRecalc) {
-          toast.success(
-            result.timingRecalc.dateChanged
-              ? "Wedding dates saved. Review your timeline so item dates still match."
-              : "Day-of start saved. Review relative timeline times if needed.",
-          );
+          if (!result.timelineWarning) {
+            toast.success(
+              result.timingRecalc.dateChanged
+                ? "Wedding dates saved. Review your timeline so item dates still match."
+                : "Day-of start saved. Review relative timeline times if needed.",
+            );
+          }
           setTimingHint(result.timingRecalc);
           setRecalcOpen(true);
           return;
         }
-        toast.success("Event updated.");
+        if (!result.timelineWarning) toast.success("Event updated.");
         router.push(`/events/${event.id}`);
         router.refresh();
         return;
