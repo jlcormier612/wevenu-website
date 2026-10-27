@@ -101,9 +101,10 @@ describe("Floor Plans Phase 1 — library isolation and seating preservation", (
   });
 });
 
-describe("Floor Plans Phase 1 — Phase 4–5 product surface still deferred", () => {
-  it("workspace does not introduce linked flip or booking-review Phase 4–5 claims", () => {
-    assert.doesNotMatch(workspace, /linked flip|booking-review flag/);
+describe("Floor Plans Phase 1 — Phase 4 linked flip is real; Phase 5 still deferred", () => {
+  it("workspace mounts progressive flip link panel without booking-review Phase 5 claims", () => {
+    assert.match(workspace, /FloorPlanFlipPanel|floor-plan-flip-panel/);
+    assert.doesNotMatch(workspace, /booking-review flag/);
   });
 });
 

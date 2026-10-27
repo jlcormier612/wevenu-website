@@ -47,6 +47,7 @@ import {
   createClientFloorPlanAction,
   duplicateClientFloorPlanAction,
 } from "@/app/(app)/clients/planning-actions";
+import { FloorPlanFlipPanel } from "@/components/events/floor-plan-flip-panel";
 import { FloorPlanSetupPackagePanel } from "@/components/events/floor-plan-setup-package";
 import { Button } from "@/components/ui/button";
 import {
@@ -1042,6 +1043,14 @@ export function FloorPlanWorkspace({
 
       {!preBooking && eventId ? (
         <FloorPlanSetupPackagePanel
+          eventId={eventId}
+          floorPlans={floorPlans}
+          canEdit={canEdit}
+        />
+      ) : null}
+
+      {!preBooking && eventId ? (
+        <FloorPlanFlipPanel
           eventId={eventId}
           floorPlans={floorPlans}
           canEdit={canEdit}

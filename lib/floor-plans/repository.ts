@@ -961,3 +961,94 @@ export async function getSetupById(
   if (error) throw error;
   return (data as SetupRow | null) ?? null;
 }
+
+// ── Phase 4 linked before/after flips ───────────────────────────────────────
+
+export type FlipRow = {
+  id: string;
+  venue_id: string;
+  event_id: string;
+  before_floor_plan_id: string;
+  after_floor_plan_id: string;
+  transition_notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getEventFloorPlanFlip(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<FlipRow | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .select("*")
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as FlipRow | null) ?? null;
+}
+
+/**
+ * Atomic upsert of the event's single flip pair. Replaces before/after IDs and
+ * notes only — never mutates floor_plans, seating, or setup membership.
+ */
+export async function upsertEventFloorPlanFlip(
+  client: DbClient,
+  input: {
+    venueId: string;
+    eventId: string;
+    beforeFloorPlanId: string;
+    afterFloorPlanId: string;
+    transitionNotes: string | null;
+  },
+): Promise<FlipRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .upsert(
+      {
+        venue_id: input.venueId,
+        event_id: input.eventId,
+        before_floor_plan_id: input.beforeFloorPlanId,
+        after_floor_plan_id: input.afterFloorPlanId,
+        transition_notes: input.transitionNotes,
+      },
+      { onConflict: "event_id" },
+    )
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FlipRow;
+}
+
+/** Updates notes only — does not change linked layout IDs. */
+export async function updateEventFloorPlanFlipNotes(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  transitionNotes: string | null,
+): Promise<FlipRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .update({ transition_notes: transitionNotes })
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FlipRow;
+}
+
+/**
+ * Deletes only the flip relationship row (and its notes). Never deletes,
+ * detaches, or rewrites either floor_plan.
+ */
+export async function deleteEventFloorPlanFlip(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_flips") as any)
+    .delete()
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (error) throw error;
+}

@@ -490,3 +490,53 @@ export async function decideSetupFloorPlanPreferenceAction(
   }
   return result;
 }
+
+// ── Phase 4 linked before/after flips ───────────────────────────────────────
+
+export async function getEventFloorPlanFlipAction(eventId: string) {
+  const { getEventFloorPlanFlip } = await import("@/lib/floor-plans/flip-service");
+  return getEventFloorPlanFlip(eventId);
+}
+
+export async function linkEventFloorPlanFlipAction(
+  eventId: string,
+  beforeFloorPlanId: string,
+  afterFloorPlanId: string,
+  transitionNotes?: string | null,
+) {
+  const { linkEventFloorPlanFlip } = await import("@/lib/floor-plans/flip-service");
+  const result = await linkEventFloorPlanFlip(
+    eventId,
+    beforeFloorPlanId,
+    afterFloorPlanId,
+    transitionNotes,
+  );
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function updateEventFloorPlanFlipNotesAction(
+  eventId: string,
+  transitionNotes: string | null,
+) {
+  const { updateEventFloorPlanFlipNotes } = await import("@/lib/floor-plans/flip-service");
+  const result = await updateEventFloorPlanFlipNotes(eventId, transitionNotes);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function unlinkEventFloorPlanFlipAction(eventId: string) {
+  const { unlinkEventFloorPlanFlip } = await import("@/lib/floor-plans/flip-service");
+  const result = await unlinkEventFloorPlanFlip(eventId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
