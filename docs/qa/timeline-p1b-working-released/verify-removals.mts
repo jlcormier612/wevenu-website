@@ -330,21 +330,7 @@ async function main() {
       JSON.stringify({ count: beforeCancel, pointer: evBeforeCancel }),
     );
 
-    // Held-out / blocked distinction: unresolved previously-released → block, not removal
-    const blockItem = await insertVenueEntry(FANCY, fx.eventId, {
-      title: `${PREFIX}will-block`,
-      day_offset: 0,
-      entry_time: "19:00",
-      timing_day_intent: "relative",
-      timing_day_anchor: "event_start",
-      timing_relative_day_offset: 0,
-      timing_clock_intent: "explicit",
-      timing_attention: null,
-    });
-    // release keep+never+block first so block becomes previously released
-    // but we still have drop as removal — need clean path: confirm current state would block? 
-    // Currently: keep, never resolved; drop deleted (removal); block resolved.
-    // Instead: confirm removal release first, then mutate a released item to unresolved.
+    // Confirm removal immediately — do not mutate working between preview and confirm.
     const { data: conf2, error: c2e } = await staff.rpc("confirm_venue_timeline_release", {
       p_event_id: fx.eventId,
       p_acknowledged_hold_out_ids: [],
@@ -366,8 +352,7 @@ async function main() {
       "new-snapshot-excludes-removed",
       !titles2.includes(`${PREFIX}drop-me`)
         && titles2.includes(`${PREFIX}keep`)
-        && titles2.includes(`${PREFIX}never-released`)
-        && titles2.includes(`${PREFIX}will-block`),
+        && titles2.includes(`${PREFIX}never-released`),
       JSON.stringify(titles2),
     );
     const portalAfter2 = await portalTitles(portalToken);
@@ -377,6 +362,31 @@ async function main() {
         && portalAfter2.includes(`${PREFIX}keep`),
       JSON.stringify(portalAfter2),
     );
+
+    // Seed a resolved item, release it, then mark unresolved → blocks (not removal).
+    const blockItem = await insertVenueEntry(FANCY, fx.eventId, {
+      title: `${PREFIX}will-block`,
+      day_offset: 0,
+      entry_time: "19:00",
+      timing_day_intent: "relative",
+      timing_day_anchor: "event_start",
+      timing_relative_day_offset: 0,
+      timing_clock_intent: "explicit",
+      timing_attention: null,
+    });
+    const { data: prevBlockSeed } = await staff.rpc("preview_venue_timeline_release", {
+      p_event_id: fx.eventId,
+    });
+    const pbs = prevBlockSeed as Record<string, unknown>;
+    const { data: confBlock, error: confBlockErr } = await staff.rpc("confirm_venue_timeline_release", {
+      p_event_id: fx.eventId,
+      p_acknowledged_hold_out_ids: [],
+      p_working_fingerprint: String(pbs.workingFingerprint),
+      p_idempotency_key: `t3r-r2b-${RUN}`,
+    });
+    if (confBlockErr) throw confBlockErr;
+    record("seed-block-item-release", (confBlock as { ok?: boolean })?.ok === true, JSON.stringify(confBlock));
+    void String((confBlock as { releaseId?: string }).releaseId ?? "");
 
     // Held-out never-released unresolved ≠ removal
     const held = await insertVenueEntry(FANCY, fx.eventId, {

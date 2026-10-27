@@ -1,0 +1,177 @@
+{
+  "run": "P1BG6ADFEA35",
+  "expected": "8321cc0b804a90ba786dce3f0faec4d241944574",
+  "failed": 0,
+  "checks": [
+    {
+      "name": "serving-sha",
+      "pass": true,
+      "detail": "expected=8321cc0b804a90ba786dce3f0faec4d241944574 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:8321cc0b804a90ba786dce3f0faec4d241944574"
+    },
+    {
+      "name": "health",
+      "pass": true,
+      "detail": "{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}"
+    },
+    {
+      "name": "html-dpl",
+      "pass": true,
+      "detail": "dpl=8321cc0b804a90ba786dce3f0faec4d241944574"
+    },
+    {
+      "name": "cutover-still-72",
+      "pass": true,
+      "detail": "cutover=72 pointed=72"
+    },
+    {
+      "name": "never-released-portal-empty-venue",
+      "pass": true,
+      "detail": "{\"venue\":0,\"titles\":[]}"
+    },
+    {
+      "name": "preview-working-ahead-fields",
+      "pass": true,
+      "detail": "{\"ahead\":false,\"hasPrior\":false}"
+    },
+    {
+      "name": "first-release",
+      "pass": true,
+      "detail": "{\"ok\":true,\"releaseId\":\"65f5aaea-8fa8-4164-9bd6-0e37846b69bd\",\"entryCount\":1,\"releasedAt\":\"2026-10-27T00:03:06.575363+00:00\",\"heldOutCount\":0,\"priorReleaseId\":null,\"idempotentReplay\":false}"
+    },
+    {
+      "name": "summary-in-sync-after-release",
+      "pass": true,
+      "detail": "{\"ahead\":false,\"fp\":\"71170673dfb995e0829e849088adde13\",\"last\":\"71170673dfb995e0829e849088adde13\"}"
+    },
+    {
+      "name": "portal-has-original-link",
+      "pass": true,
+      "detail": "link=https://example.com/p1b-original"
+    },
+    {
+      "name": "snapshot-link-immutable",
+      "pass": true,
+      "detail": "after=https://example.com/p1b-original"
+    },
+    {
+      "name": "portal-has-original-attachment",
+      "pass": true,
+      "detail": "{\"id\":\"ec37e8a2-452b-4600-bb19-86098a28db4a\",\"url\":\"https://example.com/p1b-attach-original.pdf\",\"name\":\"P1BG-P1BG6ADFEA35-attach-original\"}"
+    },
+    {
+      "name": "snapshot-attachment-immutable",
+      "pass": true,
+      "detail": "{\"id\":\"ec37e8a2-452b-4600-bb19-86098a28db4a\",\"url\":\"https://example.com/p1b-attach-original.pdf\",\"name\":\"P1BG-P1BG6ADFEA35-attach-original\"}"
+    },
+    {
+      "name": "summary-ahead-after-edit",
+      "pass": true,
+      "detail": "{\"ahead\":true}"
+    },
+    {
+      "name": "mid-txn-fault-raised",
+      "pass": true,
+      "detail": "{\"faultErr\":\"SANDBOX_VENUE_TIMELINE_RELEASE_FORCE_FAIL after insert before pointer\",\"faultData\":null}"
+    },
+    {
+      "name": "mid-txn-preserves-pointer",
+      "pass": true,
+      "detail": "{\"before\":{\"active_venue_timeline_release_id\":\"65f5aaea-8fa8-4164-9bd6-0e37846b69bd\"},\"after\":{\"active_venue_timeline_release_id\":\"65f5aaea-8fa8-4164-9bd6-0e37846b69bd\"}}"
+    },
+    {
+      "name": "mid-txn-no-partial-release",
+      "pass": true,
+      "detail": "before=1 after=1"
+    },
+    {
+      "name": "mid-txn-prior-snapshot-unchanged",
+      "pass": true,
+      "detail": "{\"before\":\"2026-10-27T00:03:06.575363+00:00\",\"after\":\"2026-10-27T00:03:06.575363+00:00\"}"
+    },
+    {
+      "name": "mid-txn-portal-unchanged",
+      "pass": true,
+      "detail": "[\"P1BG-P1BG6ADFEA35-doors\"]"
+    },
+    {
+      "name": "release-after-fault-ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"releaseId\":\"cf8a3548-1d7a-4908-adda-ab1a1a9484e9\",\"entryCount\":1,\"releasedAt\":\"2026-10-27T00:03:07.870061+00:00\",\"heldOutCount\":0,\"priorReleaseId\":\"65f5aaea-8fa8-4164-9bd6-0e37846b69bd\",\"idempotentReplay\":false}"
+    },
+    {
+      "name": "concurrent-same-key-one-release",
+      "pass": true,
+      "detail": "{\"a\":{\"ok\":true,\"releaseId\":\"bad820c9-5b8a-4b9a-966f-1180d01e9495\",\"entryCount\":2,\"releasedAt\":\"2026-10-27T00:03:08.395963+00:00\",\"heldOutCount\":0,\"priorReleaseId\":\"cf8a3548-1d7a-4908-adda-ab1a1a9484e9\",\"idempotentReplay\":false},\"b\":{\"ok\":true,\"releaseId\":\"bad820c9-5b8a-4b9a-966f-1180d01e9495\",\"idempotentReplay\":true},\"beforeConc\":2,\"afterConc\":3}"
+    },
+    {
+      "name": "concurrent-same-key-pointer-valid",
+      "pass": true,
+      "detail": "{\"active_venue_timeline_release_id\":\"bad820c9-5b8a-4b9a-966f-1180d01e9495\"}"
+    },
+    {
+      "name": "concurrent-portal-consistent",
+      "pass": true,
+      "detail": "[\"P1BG-P1BG6ADFEA35-doors\",\"P1BG-P1BG6ADFEA35-toast\"]"
+    },
+    {
+      "name": "concurrent-diff-keys-consistent",
+      "pass": true,
+      "detail": "{\"da\":{\"ok\":true,\"releaseId\":\"07bee837-b2bf-4958-8707-9952eb80e440\",\"entryCount\":3,\"releasedAt\":\"2026-10-27T00:03:08.899138+00:00\",\"heldOutCount\":0,\"priorReleaseId\":\"bad820c9-5b8a-4b9a-966f-1180d01e9495\",\"idempotentReplay\":false},\"db\":{\"ok\":true,\"releaseId\":\"7c68bdf2-8517-440a-96f3-15e4b92c07e5\",\"entryCount\":3,\"releasedAt\":\"2026-10-27T00:03:08.917208+00:00\",\"heldOutCount\":0,\"priorReleaseId\":\"07bee837-b2bf-4958-8707-9952eb80e440\",\"idempotentReplay\":false},\"beforeDiff\":3,\"afterDiff\":5}"
+    },
+    {
+      "name": "concurrent-diff-keys-pointer-complete",
+      "pass": true,
+      "detail": "{\"pointer\":{\"active_venue_timeline_release_id\":\"7c68bdf2-8517-440a-96f3-15e4b92c07e5\"},\"entry_count\":3}"
+    },
+    {
+      "name": "concurrent-edit-stale-rejected",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"stale_preview\",\"message\":\"The working timeline changed since you reviewed the preview. Review again before sharing.\"}"
+    },
+    {
+      "name": "cross-venue-preview-denied",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"event_not_found\"}"
+    },
+    {
+      "name": "cross-venue-confirm-denied",
+      "pass": true,
+      "detail": "{\"ok\":false,\"error\":\"event_not_found\"}"
+    },
+    {
+      "name": "cross-venue-fancy-unaffected",
+      "pass": true,
+      "detail": "{\"active_venue_timeline_release_id\":\"7c68bdf2-8517-440a-96f3-15e4b92c07e5\"}"
+    },
+    {
+      "name": "browser-prepare-control",
+      "pass": true,
+      "detail": "prepare=1 panel=1 url=https://app.sandbox.hellotocheers.com/clients/95e9b67d-8624-474c-9690-28240f98457b body=OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n85\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\n99+\nJ\njennifer@hellotocheers.com\nDelete\nBookings\nP1\nP1BG-P1BG6ADFEA35"
+    },
+    {
+      "name": "browser-prepare-release-persisted",
+      "pass": true,
+      "detail": "before=5 after=6 pointerBefore=7c68bdf2-8517-440a-96f3-15e4b92c07e5 pointerAfter=f4da5ea5-265c-4f9d-b50e-5846e6f4433f"
+    },
+    {
+      "name": "browser-prepare-portal-updated",
+      "pass": true,
+      "detail": "[\"P1BG-P1BG6ADFEA35-doors-PREP\",\"P1BG-P1BG6ADFEA35-toast\",\"P1BG-P1BG6ADFEA35-sparkler\"]"
+    },
+    {
+      "name": "browser-prepare-truthful-feedback",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\n85\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n22\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\n13\nPayments\n14\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedba"
+    },
+    {
+      "name": "browser-summary-not-always-ahead",
+      "pass": true,
+      "detail": "rpcAhead=false shareBtn=1 line=Shared with the couple · Just now url=https://app.sandbox.hellotocheers.com/clients/95e9b67d-8624-474c-9690-28240f98457b#timeline"
+    },
+    {
+      "name": "cleanup",
+      "pass": true,
+      "detail": "fixtures=2"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+PASS serving-sha — expected=d57245eee37c8c2f1f9e27962f2e423950a97f69 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:d57245eee37c8c2f1f9e27962f2e423950a97f69
+PASS health — {"ok":true,"checks":{"env":"ok","supabase":"ok"}}
+PASS html-dpl — dpl=d57245eee37c8c2f1f9e27962f2e423950a97f69
+PASS no-prior-release-empty-removals — {"rem":[],"hasPrior":false,"fp":"b4bb0ce00433833a1b5a6bd2a1b4d508|","baseline":null}
+PASS first-release — {"ok":true,"releaseId":"a575d988-8674-4320-b4f5-620417e99ef9","entryCount":2,"releasedAt":"2026-10-27T01:06:45.712374+00:00","heldOutCount":0,"priorReleaseId":null,"idempotentReplay":false}
+PASS portal-has-both-after-first-release — ["T3R-T3REM63198-keep","T3R-T3REM63198-drop-me"]
+PASS never-released-not-listed-as-removal — []
+PASS deleted-released-item-in-preview — {"rem":[{"id":"8af51f8f-ab52-41a8-974f-06a8b81bf86c","title":"T3R-T3REM63198-drop-me"}],"baseline":"a575d988-8674-4320-b4f5-620417e99ef9","fp":"142422bd78e0a6204641f04d5200df90|a575d988-8674-4320-b4f5-620417e99ef9"}
+PASS retained-item-not-listed-as-removal — {"rem":[{"id":"8af51f8f-ab52-41a8-974f-06a8b81bf86c","title":"T3R-T3REM63198-drop-me"}],"will":[{"id":"a5bb6b26-f160-469c-b997-912f261de934","title":"T3R-T3REM63198-keep","attention":null,"dayOffset":0,"entryTime":"16:00:00"},{"id":"d4e1eaef-57c7-455b-bd33-c4dd9d069224","title":"T3R-T3REM63198-never-released","attention":null,"dayOffset":0,"entryTime":"18:00:00"}]}
+PASS portal-still-has-removed-item-before-confirm — ["T3R-T3REM63198-keep","T3R-T3REM63198-drop-me"]
+PASS cancel-leaves-active-release — {"count":1,"pointer":{"active_venue_timeline_release_id":"a575d988-8674-4320-b4f5-620417e99ef9"}}
+PASS confirm-removal-release — {"ok":true,"releaseId":"a8d37603-47d5-4456-87ac-08de149aa17b","entryCount":2,"releasedAt":"2026-10-27T01:06:46.322635+00:00","heldOutCount":0,"priorReleaseId":"a575d988-8674-4320-b4f5-620417e99ef9","idempotentReplay":false}
+PASS new-snapshot-excludes-removed — ["T3R-T3REM63198-keep","T3R-T3REM63198-never-released"]
+PASS portal-after-confirm-drops-removed — ["T3R-T3REM63198-keep","T3R-T3REM63198-never-released"]
+PASS seed-block-item-release — {"ok":true,"releaseId":"690cbe8a-6972-4b99-8a3b-065a5dfcb12a","entryCount":3,"releasedAt":"2026-10-27T01:06:46.732103+00:00","heldOutCount":0,"priorReleaseId":"a8d37603-47d5-4456-87ac-08de149aa17b","idempotentReplay":false}
+PASS held-out-not-mislabeled-removal — {"held":[{"id":"1ebec277-185e-43a2-96e0-2a1184c0703f","title":"T3R-T3REM63198-held-out","reason":"never_released_unresolved","attention":"unknown_intent"}],"rem":[]}
+PASS blocked-not-mislabeled-removal — {"blocks":[{"id":"a2b63f54-95a0-4971-b511-db35a9cfce99","title":"T3R-T3REM63198-will-block","reason":"previously_released_unresolved","attention":"missing_event_end"}],"rem":[],"can":false}
+PASS stale-working-rejected — {"ok":false,"error":"stale_preview","message":"The working timeline changed since you reviewed the preview. Review again before sharing."}
+PASS third-release-for-baseline — {"ok":true,"releaseId":"2967a584-4744-482c-99d7-f3b1c251c245","entryCount":3,"releasedAt":"2026-10-27T01:06:47.189562+00:00","heldOutCount":1,"priorReleaseId":"690cbe8a-6972-4b99-8a3b-065a5dfcb12a","idempotentReplay":false}
+PASS stale-baseline-rejected — {"ok":false,"error":"stale_preview","message":"The working timeline changed since you reviewed the preview. Review again before sharing."}
+PASS fault-preserves-prior-release — {"faultErr":"SANDBOX_VENUE_TIMELINE_RELEASE_FORCE_FAIL after insert before pointer","faultData":null,"pointerBefore":"2967a584-4744-482c-99d7-f3b1c251c245","pointerAfter":"2967a584-4744-482c-99d7-f3b1c251c245","relBefore":4,"relAfter":4}
+PASS cross-venue-preview-denied — {"ok":false,"error":"event_not_found"}
+PASS browser-share-control — count=1 url=https://app.sandbox.hellotocheers.com/clients/9fadb747-6570-434f-a5ff-464a57d630d3?tab=timeline
+PASS browser-removal-disclosure — Review what the couple will receive.
+
+Will share: 2 item(s).
+
+Not shared yet — needs your decision:
+- T3R-T3REM63198-held-out
+
+Items being removed from the couple’s schedule:
+- T3R-T3REM63198-never-released
+
+Confirming this release will remove these items from the schedule the couple sees.
+
+No email is sent. Continue?
+PASS browser-cancel-preserves-pointer — {"before":{"active_venue_timeline_release_id":"2967a584-4744-482c-99d7-f3b1c251c245"},"after":{"active_venue_timeline_release_id":"2967a584-4744-482c-99d7-f3b1c251c245"}}
+PASS cleanup — fixtures=1
+
+26 pass / 0 fail (run T3REM63198)
