@@ -47,6 +47,7 @@ import {
   createClientFloorPlanAction,
   duplicateClientFloorPlanAction,
 } from "@/app/(app)/clients/planning-actions";
+import { FloorPlanSetupPackagePanel } from "@/components/events/floor-plan-setup-package";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -1038,6 +1039,14 @@ export function FloorPlanWorkspace({
           canEdit={canEdit}
         />
       )}
+
+      {!preBooking && eventId ? (
+        <FloorPlanSetupPackagePanel
+          eventId={eventId}
+          floorPlans={floorPlans}
+          canEdit={canEdit}
+        />
+      ) : null}
 
       {!preBooking && coupleSelectedFloorPlanId && (() => {
         const submitted = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);

@@ -449,6 +449,139 @@ function WorkingLayoutCanvas({
   );
 }
 
+type PortalSetupPackage = {
+  setupId: string;
+  name: string;
+  sortOrder: number;
+  coupleSelectedFloorPlanId: string | null;
+  couplePreferenceStatus: string | null;
+  coupleApprovedFloorPlanId: string | null;
+  operationalFloorPlanId: string | null;
+  layouts: Array<{
+    floorPlanId: string;
+    name: string;
+    sortOrder: number;
+    sharedWithCouple: boolean;
+    isPreference: boolean;
+    isApproved: boolean;
+    isWorking: boolean;
+  }>;
+};
+
+/** Phase 3 — “Your wedding setups” package view (FP-S6). */
+function WeddingSetupsSection({
+  token,
+  setups,
+  onSelected,
+}: {
+  token: string;
+  setups: PortalSetupPackage[];
+  onSelected: () => void;
+}) {
+  const [pendingKey, setPendingKey] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function choose(setupId: string, floorPlanId: string) {
+    setPendingKey(`${setupId}:${floorPlanId}`);
+    setError(null);
+    try {
+      const r = await fetch("/api/portal/floor-plan-setups/select", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, setupId, floorPlanId }),
+      });
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok || !d.ok) {
+        setError(d.error ?? "Could not save your preference for this setup.");
+        return;
+      }
+      onSelected();
+    } catch {
+      setError("Could not save your preference. Nothing was changed — you can try again.");
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
+  return (
+    <section className="space-y-4" data-testid="floor-plan-wedding-setups">
+      <div>
+        <h2 className="text-lg font-semibold text-heading">Your wedding setups</h2>
+        <p className="text-xs text-muted-foreground mt-0.5" data-testid="floor-plan-wedding-setups-copy">
+          Each setup is a part of your wedding plan. Alternatives appear only under the setup they belong to.
+          Saving a preference asks your venue to review it — it does not approve the layout or change what the
+          venue will use by itself.
+        </p>
+      </div>
+      {setups.map((setup) => {
+        const status = normalizeCouplePreferenceStatus(
+          setup.couplePreferenceStatus,
+          setup.coupleSelectedFloorPlanId,
+        );
+        return (
+          <div
+            key={setup.setupId}
+            className="rounded-xl border border-border bg-background p-4 space-y-3"
+            data-testid={`floor-plan-wedding-setup-${setup.setupId}`}
+          >
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Required setup
+              </p>
+              <p className="text-sm font-semibold text-heading">{setup.name}</p>
+              {status === "pending" && setup.coupleSelectedFloorPlanId ? (
+                <p className="text-xs text-amber-800 mt-1">Preference pending venue review for this setup.</p>
+              ) : null}
+            </div>
+            {setup.layouts.length === 0 ? (
+              <p className="text-xs text-muted-foreground" data-testid={`floor-plan-setup-empty-${setup.setupId}`}>
+                Your venue has not shared a layout for this setup yet.
+              </p>
+            ) : (
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {setup.layouts.map((layout) => {
+                  const selected = layout.isPreference;
+                  const busy = pendingKey === `${setup.setupId}:${layout.floorPlanId}`;
+                  return (
+                    <li key={layout.floorPlanId}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        data-testid={`floor-plan-setup-option-${setup.setupId}-${layout.floorPlanId}`}
+                        className={`w-full rounded-lg border px-3 py-3 text-left text-sm transition ${
+                          selected
+                            ? "border-heading bg-muted/40"
+                            : "border-border hover:border-heading/40"
+                        }`}
+                        onClick={() => void choose(setup.setupId, layout.floorPlanId)}
+                      >
+                        <span className="font-medium text-heading">{layout.name}</span>
+                        <span className="mt-1 block text-[0.7rem] text-muted-foreground">
+                          {selected ? "Your preference · " : ""}
+                          {layout.isApproved || (status === "approved" && layout.isWorking)
+                            ? "Venue will use"
+                            : layout.isWorking
+                              ? "Venue working layout"
+                              : setup.layouts.length > 1
+                                ? "Alternative for this setup"
+                                : "Layout for this setup"}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+      {error ? (
+        <p className="text-sm text-destructive" data-testid="floor-plan-wedding-setups-error">{error}</p>
+      ) : null}
+    </section>
+  );
+}
+
 function ChooseLayoutSection({
   token,
   offers,
@@ -629,6 +762,8 @@ export default function FloorPlanSection({
 }) {
   const [list, setList] = React.useState<PortalFloorPlanSummary[]>([]);
   const [offers, setOffers] = React.useState<PortalFloorPlanOfferSummary[]>([]);
+  const [setups, setSetups] = React.useState<PortalSetupPackage[]>([]);
+  const [hasSetups, setHasSetups] = React.useState(false);
   const [operationalId, setOperationalId] = React.useState<string | null>(null);
   const [coupleSelectedIdFromApi, setCoupleSelectedIdFromApi] = React.useState<string | null>(null);
   const [preferenceStatus, setPreferenceStatus] = React.useState<string | null>(null);
@@ -660,7 +795,7 @@ export default function FloorPlanSection({
           body: JSON.stringify({ token }),
         }).catch(() => null);
 
-        const [plansRes, offersRes] = await Promise.all([
+        const [plansRes, offersRes, setupsRes] = await Promise.all([
           fetch(`/api/portal/floor-plans?token=${encodeURIComponent(token)}`).then(async (r) => ({
             ok: r.ok,
             body: await r.json() as {
@@ -679,6 +814,14 @@ export default function FloorPlanSection({
               error?: string;
             },
           })),
+          fetch(`/api/portal/floor-plan-setups?token=${encodeURIComponent(token)}`).then(async (r) => ({
+            ok: r.ok,
+            body: await r.json() as {
+              setups?: PortalSetupPackage[];
+              hasSetups?: boolean;
+              error?: string;
+            },
+          })).catch(() => ({ ok: false, body: { setups: [], hasSetups: false } })),
         ]);
 
         if (cancelled) return;
@@ -704,6 +847,13 @@ export default function FloorPlanSection({
           setError(null);
         }
         setOffers(offersRes.ok && !offersRes.body.error ? (offersRes.body.offers ?? []) : []);
+        if (setupsRes.ok && !setupsRes.body.error) {
+          setHasSetups(Boolean(setupsRes.body.hasSetups));
+          setSetups(setupsRes.body.setups ?? []);
+        } else {
+          setHasSetups(false);
+          setSetups([]);
+        }
       } catch {
         if (!cancelled) setError("Could not load Floor Plan.");
       } finally {
@@ -900,7 +1050,8 @@ export default function FloorPlanSection({
     coupleSelectedIdFromApi
     ?? list.find((p) => p.isCoupleSelected)?.id
     ?? null;
-  const needsChooser = offers.length > 1;
+  const showPackageView = hasSetups;
+  const needsChooser = !showPackageView && offers.length > 1;
   const normalizedPreferenceStatus = normalizeCouplePreferenceStatus(
     preferenceStatus,
     coupleSelectedId,
@@ -963,6 +1114,13 @@ export default function FloorPlanSection({
         onCancel={cancelSubmitConfirm}
         onConfirm={() => void submitToVenue()}
       />
+      {showPackageView ? (
+        <WeddingSetupsSection
+          token={token}
+          setups={setups}
+          onSelected={() => setReloadTick((n) => n + 1)}
+        />
+      ) : null}
       {needsChooser && (
         <ChooseLayoutSection
           token={token}

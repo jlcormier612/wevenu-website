@@ -792,3 +792,172 @@ export async function clearAllObjects(
   }
   return { ok: true };
 }
+
+// ── Phase 3 required setups ─────────────────────────────────────────────────
+
+export type SetupRow = {
+  id: string;
+  venue_id: string;
+  event_id: string;
+  name: string;
+  sort_order: number;
+  couple_selected_floor_plan_id: string | null;
+  couple_preference_status: string | null;
+  couple_approved_floor_plan_id: string | null;
+  operational_floor_plan_id: string | null;
+  seating_in_use_floor_plan_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SetupMemberRow = {
+  id: string;
+  venue_id: string;
+  setup_id: string;
+  floor_plan_id: string;
+  sort_order: number;
+};
+
+export async function listEventFloorPlanSetups(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<SetupRow[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setups") as any)
+    .select("*")
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as SetupRow[] | null) ?? [];
+}
+
+export async function listSetupMembersForEvent(
+  client: DbClient, venueId: string, eventId: string,
+): Promise<Array<SetupMemberRow & { floor_plan_name: string; shared_with_couple: boolean }>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: setups, error: sErr } = await (client.from("event_floor_plan_setups") as any)
+    .select("id")
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId);
+  if (sErr) throw sErr;
+  const setupIds = ((setups as Array<{ id: string }> | null) ?? []).map((s) => s.id);
+  if (setupIds.length === 0) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setup_members") as any)
+    .select("id, venue_id, setup_id, floor_plan_id, sort_order, floor_plans(name, shared_with_couple)")
+    .eq("venue_id", venueId)
+    .in("setup_id", setupIds)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  type Raw = SetupMemberRow & {
+    floor_plans: { name: string; shared_with_couple: boolean } | { name: string; shared_with_couple: boolean }[] | null;
+  };
+  return ((data as Raw[] | null) ?? []).map((row) => {
+    const fp = Array.isArray(row.floor_plans) ? row.floor_plans[0] : row.floor_plans;
+    return {
+      id: row.id,
+      venue_id: row.venue_id,
+      setup_id: row.setup_id,
+      floor_plan_id: row.floor_plan_id,
+      sort_order: row.sort_order,
+      floor_plan_name: fp?.name ?? "Layout",
+      shared_with_couple: Boolean(fp?.shared_with_couple),
+    };
+  });
+}
+
+export async function insertEventFloorPlanSetup(
+  client: DbClient,
+  input: { venueId: string; eventId: string; name: string; sortOrder: number },
+): Promise<SetupRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setups") as any)
+    .insert({
+      venue_id: input.venueId,
+      event_id: input.eventId,
+      name: input.name.trim(),
+      sort_order: input.sortOrder,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as SetupRow;
+}
+
+export async function updateEventFloorPlanSetup(
+  client: DbClient,
+  venueId: string,
+  setupId: string,
+  patch: {
+    name?: string;
+    sort_order?: number;
+    couple_selected_floor_plan_id?: string | null;
+    couple_preference_status?: string | null;
+    couple_approved_floor_plan_id?: string | null;
+    operational_floor_plan_id?: string | null;
+    seating_in_use_floor_plan_id?: string | null;
+  },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_setups") as any)
+    .update(patch)
+    .eq("id", setupId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function deleteEventFloorPlanSetup(
+  client: DbClient, venueId: string, setupId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_setups") as any)
+    .delete()
+    .eq("id", setupId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function insertSetupMember(
+  client: DbClient,
+  input: { venueId: string; setupId: string; floorPlanId: string; sortOrder: number },
+): Promise<SetupMemberRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setup_members") as any)
+    .insert({
+      venue_id: input.venueId,
+      setup_id: input.setupId,
+      floor_plan_id: input.floorPlanId,
+      sort_order: input.sortOrder,
+    })
+    .select("id, venue_id, setup_id, floor_plan_id, sort_order")
+    .single();
+  if (error) throw error;
+  return data as SetupMemberRow;
+}
+
+/** Detach only — never deletes the floor_plans row or seating. */
+export async function deleteSetupMember(
+  client: DbClient, venueId: string, setupId: string, floorPlanId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_floor_plan_setup_members") as any)
+    .delete()
+    .eq("venue_id", venueId)
+    .eq("setup_id", setupId)
+    .eq("floor_plan_id", floorPlanId);
+  if (error) throw error;
+}
+
+export async function getSetupById(
+  client: DbClient, venueId: string, setupId: string,
+): Promise<SetupRow | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_setups") as any)
+    .select("*")
+    .eq("id", setupId)
+    .eq("venue_id", venueId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as SetupRow | null) ?? null;
+}

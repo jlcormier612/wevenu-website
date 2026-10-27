@@ -101,8 +101,20 @@ describe("Floor Plans Phase 1 — library isolation and seating preservation", (
   });
 });
 
-describe("Floor Plans Phase 1 — Phase 3–5 product surface still deferred", () => {
-  it("workspace does not introduce linked flip or booking-review Phase 3–5 claims", () => {
-    assert.doesNotMatch(workspace, /linked flip|booking-review flag|setup-scoped portal/);
+describe("Floor Plans Phase 1 — Phase 4–5 product surface still deferred", () => {
+  it("workspace does not introduce linked flip or booking-review Phase 4–5 claims", () => {
+    assert.doesNotMatch(workspace, /linked flip|booking-review flag/);
+  });
+});
+
+describe("Floor Plans Phase 3 — package view replaces whole-event false chooser when setups exist", () => {
+  it("portal hosts Your wedding setups package surface", () => {
+    assert.match(portalSection, /Your wedding setups/);
+    assert.match(portalSection, /floor-plan-wedding-setups/);
+    assert.match(portalSection, /showPackageView/);
+  });
+
+  it("venue workspace exposes optional setup organizer without forcing package builder", () => {
+    assert.match(workspace, /FloorPlanSetupPackagePanel|floor-plan-setup-package/);
   });
 });

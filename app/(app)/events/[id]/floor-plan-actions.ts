@@ -394,3 +394,99 @@ export async function setSeatingInUseFloorPlanAction(
   }
   return result;
 }
+
+// ── Phase 3 required setups ─────────────────────────────────────────────────
+
+export async function listSetupsWithMembersAction(eventId: string) {
+  const { listSetupsWithMembers } = await import("@/lib/floor-plans/setup-service");
+  return listSetupsWithMembers(eventId);
+}
+
+export async function createRequiredSetupAction(eventId: string, name: string) {
+  const { createRequiredSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await createRequiredSetup(eventId, name);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function renameRequiredSetupAction(eventId: string, setupId: string, name: string) {
+  const { renameRequiredSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await renameRequiredSetup(eventId, setupId, name);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function removeRequiredSetupAction(eventId: string, setupId: string) {
+  const { removeRequiredSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await removeRequiredSetup(eventId, setupId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function attachLayoutToSetupAction(
+  eventId: string,
+  setupId: string,
+  floorPlanId: string,
+) {
+  const { attachLayoutToSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await attachLayoutToSetup(eventId, setupId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function detachLayoutFromSetupAction(
+  eventId: string,
+  setupId: string,
+  floorPlanId: string,
+) {
+  const { detachLayoutFromSetup } = await import("@/lib/floor-plans/setup-service");
+  const result = await detachLayoutFromSetup(eventId, setupId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function setSetupWorkingLayoutAction(
+  eventId: string,
+  setupId: string,
+  floorPlanId: string,
+) {
+  const { setSetupWorkingLayout } = await import("@/lib/floor-plans/setup-service");
+  const result = await setSetupWorkingLayout(eventId, setupId, floorPlanId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
+export async function decideSetupFloorPlanPreferenceAction(
+  eventId: string,
+  setupId: string,
+  input:
+    | { decision: "decline" }
+    | { decision: "defer" }
+    | { decision: "approve"; seatingChoice?: "start_on_preferred"; seatingInUseFloorPlanId?: string },
+): Promise<FloorPlanActionResult> {
+  const { decideSetupFloorPlanPreference } = await import("@/lib/floor-plans/setup-service");
+  const result = await decideSetupFloorPlanPreference(eventId, setupId, input);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
