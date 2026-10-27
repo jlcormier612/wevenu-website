@@ -9,7 +9,10 @@ import {
   emptyDependentGroupInput,
   matchSuggestedCategory,
   nextConfigureSubstep,
+  patternsPayloadFromDrafts,
+  seedPatternDraftsFromTemplate,
   selectedCategoryKeysFromTemplate,
+  togglePatternInDraft,
 } from "@/lib/event-order-templates/guided-setup";
 import type {
   EventOrderTemplateGroup,
@@ -146,6 +149,242 @@ describe("guided setup — patterns and branches", () => {
     assert.equal(nextConfigureSubstep("choices", ["choose_then_related"]), "branches");
     assert.equal(nextConfigureSubstep("branches", ["choose_then_related"]), "done");
     assert.equal(nextConfigureSubstep("patterns", ["choose_one"]), "choices");
+  });
+});
+
+describe("guided setup — pattern drafts survive category switches", () => {
+  const emptyTemplate = () =>
+    template({
+      sections: [
+        section({ id: "sec-catering", name: "Catering", sortOrder: 0 }),
+        section({ id: "sec-rentals", name: "Rentals", sortOrder: 1 }),
+        section({ id: "sec-bar", name: "Bar Service", sortOrder: 2 }),
+        section({ id: "sec-services", name: "Services", sortOrder: 3 }),
+      ],
+    });
+
+  it("keeps Catering picks when switching to Rentals and back", () => {
+    const t = emptyTemplate();
+    const ids = t.sections.map((s) => s.id);
+    let drafts = seedPatternDraftsFromTemplate(t, ids, {});
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    // Simulate tab → Rentals (re-seed must not wipe Catering)
+    drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+    drafts = togglePatternInDraft(drafts, "sec-rentals", "optional_add");
+    drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+    assert.deepEqual(drafts["sec-catering"]!.slice().sort(), ["choose_one", "included"]);
+    assert.deepEqual(drafts["sec-rentals"], ["optional_add"]);
+  });
+
+  it("Continue payload includes every category's selections", () => {
+    let drafts = seedPatternDraftsFromTemplate(emptyTemplate(), [
+      "sec-catering",
+      "sec-rentals",
+      "sec-bar",
+      "sec-services",
+    ], {});
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    drafts = togglePatternInDraft(drafts, "sec-rentals", "choose_many");
+    drafts = togglePatternInDraft(drafts, "sec-bar", "included");
+    drafts = togglePatternInDraft(drafts, "sec-services", "optional_add");
+    const payload = patternsPayloadFromDrafts(drafts, [
+      "sec-catering",
+      "sec-rentals",
+      "sec-bar",
+      "sec-services",
+    ]);
+    assert.deepEqual(payload, [
+      { sectionId: "sec-catering", patterns: ["choose_one"] },
+      { sectionId: "sec-rentals", patterns: ["choose_many"] },
+      { sectionId: "sec-bar", patterns: ["included"] },
+      { sectionId: "sec-services", patterns: ["optional_add"] },
+    ]);
+  });
+
+  it("repeated switches neither lose nor duplicate selections", () => {
+    const t = emptyTemplate();
+    const ids = ["sec-catering", "sec-rentals"];
+    let drafts = seedPatternDraftsFromTemplate(t, ids, {});
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_then_related");
+    for (let i = 0; i < 8; i++) {
+      drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+      const focus = i % 2 === 0 ? "sec-rentals" : "sec-catering";
+      if (focus === "sec-rentals" && !(drafts["sec-rentals"] ?? []).includes("choose_many")) {
+        drafts = togglePatternInDraft(drafts, "sec-rentals", "choose_many");
+      }
+    }
+    assert.deepEqual(drafts["sec-catering"]!.slice().sort(), [
+      "choose_then_related",
+      "included",
+    ]);
+    assert.deepEqual(drafts["sec-rentals"], ["choose_many"]);
+    assert.equal(drafts["sec-catering"]!.filter((p) => p === "included").length, 1);
+  });
+
+  it("edit path initializes from persisted groups and lines", () => {
+    const t = template({
+      sections: [
+        section({ id: "sec-catering", name: "Catering", sortOrder: 0 }),
+        section({ id: "sec-rentals", name: "Rentals", sortOrder: 1 }),
+      ],
+      lines: [{
+        id: "l1",
+        templateId: "t1",
+        venueId: "v1",
+        sectionId: "sec-catering",
+        description: "Staff meal",
+        descriptionDetail: null,
+        quantity: 1,
+        unitPrice: 0,
+        pricingModel: "flat",
+        unit: null,
+        includedByDefault: true,
+        offeringId: null,
+        sortOrder: 0,
+        createdAt: "",
+        updatedAt: "",
+      }],
+      groups: [
+        group({
+          id: "g-rent",
+          name: "Rental options",
+          sectionId: "sec-rentals",
+          selectionMode: "multi",
+          minSelect: 0,
+          maxSelect: null,
+          allowQuantity: true,
+        }),
+      ],
+      options: [],
+    });
+    const drafts = seedPatternDraftsFromTemplate(t, ["sec-catering", "sec-rentals"], {});
+    assert.ok(drafts["sec-catering"]!.includes("included"));
+    assert.ok(drafts["sec-rentals"]!.includes("optional_add"));
+    assert.ok(drafts["sec-rentals"]!.includes("choose_many"));
+  });
+
+  it("backward/forward navigation preserves drafts (re-seed is a no-op)", () => {
+    const t = emptyTemplate();
+    const ids = ["sec-catering", "sec-rentals"];
+    let drafts = seedPatternDraftsFromTemplate(t, ids, {});
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    drafts = togglePatternInDraft(drafts, "sec-rentals", "included");
+    const afterBack = seedPatternDraftsFromTemplate(t, ids, drafts);
+    assert.equal(afterBack, drafts);
+    const afterForward = seedPatternDraftsFromTemplate(t, ids, afterBack);
+    assert.deepEqual(afterForward["sec-catering"], ["choose_one"]);
+    assert.deepEqual(afterForward["sec-rentals"], ["included"]);
+  });
+
+  it("toggling off a pattern updates only that category", () => {
+    let drafts = seedPatternDraftsFromTemplate(emptyTemplate(), ["sec-catering", "sec-florals"], {});
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    drafts = togglePatternInDraft(drafts, "sec-florals", "optional_add");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    assert.deepEqual(drafts["sec-catering"], ["choose_one"]);
+    assert.deepEqual(drafts["sec-florals"], ["optional_add"]);
+  });
+
+  it("empty patterns payload is the validation signal for Continue", () => {
+    const drafts = seedPatternDraftsFromTemplate(emptyTemplate(), ["sec-catering"], {});
+    const payload = patternsPayloadFromDrafts(drafts, ["sec-catering"]);
+    assert.deepEqual(payload[0]!.patterns, []);
+    assert.equal(payload[0]!.patterns.length === 0, true);
+  });
+
+  it("blocked Continue on empty category does not clear sibling drafts", () => {
+    const t = emptyTemplate();
+    const ids = ["sec-catering", "sec-rentals"];
+    let drafts = seedPatternDraftsFromTemplate(t, ids, {});
+    drafts = togglePatternInDraft(drafts, "sec-rentals", "choose_one");
+    drafts = togglePatternInDraft(drafts, "sec-rentals", "optional_add");
+    // Catering still empty → Continue must block; drafts must remain untouched.
+    assert.deepEqual(drafts["sec-catering"], []);
+    const blocked = (drafts["sec-catering"] ?? []).length === 0;
+    assert.equal(blocked, true);
+    drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+    assert.deepEqual(drafts["sec-rentals"]!.slice().sort(), ["choose_one", "optional_add"]);
+    assert.deepEqual(drafts["sec-catering"], []);
+  });
+
+  it("UI selection for the active section matches its Continue payload entry", () => {
+    let drafts = seedPatternDraftsFromTemplate(emptyTemplate(), ["sec-catering", "sec-rentals"], {});
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_then_related");
+    drafts = togglePatternInDraft(drafts, "sec-rentals", "choose_many");
+    const payload = patternsPayloadFromDrafts(drafts, ["sec-catering", "sec-rentals"]);
+    assert.deepEqual(
+      payload.find((p) => p.sectionId === "sec-catering")!.patterns,
+      drafts["sec-catering"],
+    );
+    assert.deepEqual(
+      payload.find((p) => p.sectionId === "sec-rentals")!.patterns,
+      drafts["sec-rentals"],
+    );
+  });
+
+  it("rapid toggles never duplicate a pattern id", () => {
+    let drafts: ReturnType<typeof seedPatternDraftsFromTemplate> = {};
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "included");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    assert.deepEqual(drafts["sec-catering"]!.slice().sort(), ["choose_one", "included"]);
+    assert.equal(new Set(drafts["sec-catering"]).size, drafts["sec-catering"]!.length);
+  });
+
+  it("custom category section ids keep independent drafts across switches", () => {
+    const t = template({
+      sections: [
+        section({ id: "sec-catering", name: "Catering", sortOrder: 0 }),
+        section({ id: "sec-custom-lights", name: "Specialty Lighting", sortOrder: 1 }),
+      ],
+    });
+    const ids = ["sec-catering", "sec-custom-lights"];
+    let drafts = seedPatternDraftsFromTemplate(t, ids, {});
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
+    drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+    drafts = togglePatternInDraft(drafts, "sec-custom-lights", "included");
+    drafts = togglePatternInDraft(drafts, "sec-custom-lights", "optional_add");
+    drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+    assert.deepEqual(drafts["sec-catering"], ["choose_one"]);
+    assert.deepEqual(drafts["sec-custom-lights"]!.slice().sort(), ["included", "optional_add"]);
+    const payload = patternsPayloadFromDrafts(drafts, ids);
+    assert.equal(payload.length, 2);
+    assert.ok(payload.every((p) => p.patterns.length > 0));
+  });
+
+  it("Florals and Décor coexist with Catering/Rentals in the Continue payload", () => {
+    const t = template({
+      sections: [
+        section({ id: "sec-catering", name: "Catering", sortOrder: 0 }),
+        section({ id: "sec-rentals", name: "Rentals", sortOrder: 1 }),
+        section({ id: "sec-florals", name: "Florals", sortOrder: 2 }),
+        section({ id: "sec-decor", name: "Décor", sortOrder: 3 }),
+      ],
+    });
+    const ids = t.sections.map((s) => s.id);
+    let drafts = seedPatternDraftsFromTemplate(t, ids, {});
+    for (const [id, pattern] of [
+      ["sec-catering", "choose_one"],
+      ["sec-rentals", "choose_many"],
+      ["sec-florals", "optional_add"],
+      ["sec-decor", "included"],
+    ] as const) {
+      drafts = togglePatternInDraft(drafts, id, pattern);
+      drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+    }
+    assert.deepEqual(patternsPayloadFromDrafts(drafts, ids), [
+      { sectionId: "sec-catering", patterns: ["choose_one"] },
+      { sectionId: "sec-rentals", patterns: ["choose_many"] },
+      { sectionId: "sec-florals", patterns: ["optional_add"] },
+      { sectionId: "sec-decor", patterns: ["included"] },
+    ]);
   });
 });
 
