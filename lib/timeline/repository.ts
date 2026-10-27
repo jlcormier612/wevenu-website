@@ -17,6 +17,10 @@ import {
   VENUE_OWNED_DEFAULT_AUDIENCES,
 } from "@/lib/timeline/audience-ownership";
 import { provenanceFromTemplateApply, timingColumnsForUntypedDisplaySave, timingDbColumns, type TimingProvenance } from "@/lib/timeline/timing-provenance";
+import {
+  VENUE_TIMELINE_REPLACE_BLOCKED_ERROR,
+  VENUE_TIMELINE_REPLACE_BLOCKED_MESSAGE,
+} from "@/lib/timeline-templates/replace-guard";
 import type {
   TimelineAudience, TimelineEntry, TimelineEntryAttachment, TimelineEntryInput,
   TimelineEntryLink, TimelineEntryStatus, TimelineLockState, TimelineOwner, TimelineRelatedLink, TimelineRelatedSourceType, TimelineSection,
@@ -464,20 +468,32 @@ export async function deleteEntry(
   return { ok: true };
 }
 
-/** Bulk-remove venue-owned timeline rows for an event (template replace). Client-owned rows stay. */
+/**
+ * P2 / D5 defense-in-depth: refuse bulk wipe when any venue-owned working
+ * rows exist. Eligible empty clears go through the guarded SQL helper.
+ * Overview replace uses replace_venue_timeline_from_template_items instead.
+ */
 export async function deleteVenueOwnedEntriesForEvent(
   client: DbClient, venueId: string, eventId: string,
-): Promise<{ ok: true; deleted: number } | { ok: false; message: string }> {
-  const { data, error } = await client.from("timeline_entries")
-    .delete()
-    .eq("venue_id", venueId)
-    .eq("event_id", eventId)
-    .eq("owner", "venue")
-    .select("id");
+): Promise<{ ok: true; deleted: number } | { ok: false; message: string; error?: string }> {
+  // Prefer the transactional RPC so the refuse-if-not-empty check cannot race a wipe.
+  const { data, error } = await client.rpc("delete_venue_owned_timeline_entries_if_empty", {
+    p_event_id: eventId,
+  });
   if (error) {
     return { ok: false, message: error.message || "Could not clear venue-owned timeline items." };
   }
-  return { ok: true, deleted: data?.length ?? 0 };
+  const row = (data ?? {}) as { ok?: boolean; error?: string; message?: string; deleted?: number };
+  if (row.ok !== true) {
+    return {
+      ok: false,
+      error: String(row.error ?? VENUE_TIMELINE_REPLACE_BLOCKED_ERROR),
+      message: String(row.message ?? VENUE_TIMELINE_REPLACE_BLOCKED_MESSAGE),
+    };
+  }
+  // Venue scope is enforced inside the RPC via current_user_venue_id(); venueId is for call-site clarity.
+  void venueId;
+  return { ok: true, deleted: Number(row.deleted ?? 0) };
 }
 
 /**

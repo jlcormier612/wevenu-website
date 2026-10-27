@@ -192,14 +192,14 @@ export function EventTimelineSetupEditor({
       toast.error("Choose a timeline template.");
       return;
     }
-    if (
-      !confirm(
-        "Replace this event's venue-owned timeline items with the selected template?\n\n"
-        + "Venue-owned items on this event will be removed and replaced. "
-        + "Client-owned items are kept. The Library template is not changed. "
-        + "This does not share the timeline with the client — Release from Overview still controls sharing.",
-      )
-    ) {
+    const hasVenueOwned = rows.some((r) => r.owner === "venue" && !r.pendingRemove);
+    if (hasVenueOwned) {
+      toast.error(
+        "This event already has venue timeline items, including items added from the schedule. Replacing the template would remove that work.\n\n"
+        + "To keep your existing items, add items from a template on the Timeline tab instead.\n\n"
+        + "A safer replace option isn’t available yet.",
+        { duration: 12_000 },
+      );
       return;
     }
     startTransition(async () => {
@@ -209,7 +209,7 @@ export function EventTimelineSetupEditor({
         eventStartTime,
       );
       if (!result.ok) {
-        toast.error(result.message ?? "Could not switch the timeline template.");
+        toast.error(result.message ?? "Could not switch the timeline template.", { duration: 12_000 });
         return;
       }
       toast.success("This event's timeline now uses the selected template. The Library was not changed.");
@@ -518,7 +518,7 @@ export function EventTimelineSetupEditor({
                 ? ` (Day-of schedule start is ${eventStartTime.slice(0, 5)}).`
                 : " (set Day-of schedule start on the event if you apply relative template items)."}
               {" "}Days use this event&apos;s actual dates plus prep/loadout days ({dayRangeHint}).
-              {" "}Edits do not change the Library template. Re-applying a template replaces venue-owned items.
+              {" "}Edits do not change the Library template. Switching templates is only available when this event has no venue-owned timeline items — otherwise add from a template on the Timeline tab.
             </p>
             {visibleRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">

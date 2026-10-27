@@ -43,12 +43,14 @@ describe("Venue editor — cancel and inherited recovery", () => {
   });
 });
 
-describe("Timeline template replace — bulk, single client", () => {
-  it("clears venue-owned entries in one query before re-applying", () => {
-    assert.match(timelineRepo, /deleteVenueOwnedEntriesForEvent/);
-    assert.match(apply, /deleteVenueOwnedEntriesForEvent/);
+describe("Timeline template replace — P2 / D5 guarded RPC", () => {
+  it("uses the atomic replace RPC and does not wipe via per-row delete", () => {
+    assert.match(timelineRepo, /delete_venue_owned_timeline_entries_if_empty/);
+    assert.match(timelineRepo, /venue_owned_entries_exist|VENUE_TIMELINE_REPLACE_BLOCKED/);
     const replace = apply.slice(apply.indexOf("export async function replaceEventTimelineFromTemplate"));
-    assert.doesNotMatch(replace.slice(0, 900), /deleteEntry\(/);
-    assert.match(replace, /timelineRepo\.insertEntry/);
+    assert.match(replace, /replace_venue_timeline_from_template_items/);
+    assert.doesNotMatch(replace, /deleteVenueOwnedEntriesForEvent/);
+    assert.doesNotMatch(replace, /timelineRepo\.insertEntry/);
+    assert.doesNotMatch(replace.slice(0, 1200), /deleteEntry\(/);
   });
 });

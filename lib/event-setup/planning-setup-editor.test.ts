@@ -146,7 +146,8 @@ describe("Timeline setup editor seams", () => {
     assert.match(timelineEditor, /replaceEventTimelineFromTemplateAction/);
     assert.doesNotMatch(timelineEditor, /shareTimelineWithCouple/);
     assert.match(apply, /replaceEventTimelineFromTemplate/);
-    assert.match(apply, /deleteVenueOwnedEntriesForEvent/);
+    assert.match(apply, /replace_venue_timeline_from_template_items/);
+    assert.match(timelineEditor, /Timeline tab instead/);
   });
 
   it("template selection can be canceled and apply keeps the editor open", () => {

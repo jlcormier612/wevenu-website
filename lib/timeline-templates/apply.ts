@@ -14,9 +14,12 @@
 
 import { createClient } from "@/integrations/supabase/server";
 import { clampDayOffset } from "@/lib/timeline/constants";
-import { provenanceFromTemplateApply } from "@/lib/timeline/timing-provenance";
+import { provenanceFromTemplateApply, timingDbColumns } from "@/lib/timeline/timing-provenance";
 import * as timelineRepo from "@/lib/timeline/repository";
 import type { TimelineActionResult, TimelineAudience } from "@/lib/timeline/types";
+import {
+  VENUE_TIMELINE_REPLACE_BLOCKED_MESSAGE,
+} from "@/lib/timeline-templates/replace-guard";
 import { getItems } from "@/lib/timeline-templates/service";
 import type { TimelineTemplateItem } from "@/lib/timeline-templates/types";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -109,15 +112,10 @@ export async function applyTimelineTemplateToEvent(
 }
 
 /**
- * Event-specific timeline template switch for Overview setup.
- * Removes venue-owned entries on this event in one query, then applies the
- * selected Library template as a fresh event copy using one session client.
- * Client-owned entries are preserved. Does not share with the couple and does
- * not mutate the Library template.
- *
- * Prior implementation deleted/added each row through separate service
- * round-trips (N+M withVenue calls), which timed out on large templates and
- * surfaced as a page-load error with the original timeline still showing.
+ * Event-specific timeline template switch for Overview setup (P2 / D5).
+ * Blocks when any venue-owned working entries exist (including schedule-derived).
+ * Eligible path (empty venue-owned set) inserts template items atomically via
+ * SECURITY DEFINER RPC — no wipe of client-owned rows or release snapshots.
  */
 export async function replaceEventTimelineFromTemplate(
   eventId: string,
@@ -132,31 +130,52 @@ export async function replaceEventTimelineFromTemplate(
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
   const { eventDate, eventEndDate } = await loadEventDates(supabase, eventId);
 
-  const cleared = await timelineRepo.deleteVenueOwnedEntriesForEvent(supabase, venue.id, eventId);
-  if (!cleared.ok) {
-    return { ok: false, message: cleared.message };
-  }
-
-  for (let i = 0; i < items.length; i += 1) {
-    const item = items[i]!;
+  const payload = items.map((item, i) => {
     const timing = timingFromTemplateItem(item, eventDate, eventEndDate, eventStartTime);
-    try {
-      await timelineRepo.insertEntry(supabase, venue.id, eventId, {
-        title: item.title,
-        description: item.description ?? "",
-        notes: item.notes ?? "",
-        entryTime: timing.entryTime,
-        dayOffset: timing.dayOffset,
-        sortOrder: item.sortOrder ?? i,
-        audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences),
-        timing,
-      });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : `Could not add "${item.title}".`;
-      return { ok: false, message };
-    }
-  }
+    const cols = timingDbColumns({
+      ...timing,
+      dayOffset: timing.dayOffset,
+      entryTime: timing.entryTime || null,
+    });
+    return {
+      title: item.title,
+      description: item.description ?? "",
+      notes: item.notes ?? "",
+      entry_time: timing.entryTime || null,
+      day_offset: timing.dayOffset,
+      sort_order: item.sortOrder ?? i,
+      audiences: mapTemplateAudiencesForVenueOwnedApply(item.audiences) ?? ["client"],
+      lock_state: "locked",
+      status: "not_started",
+      timing_day_intent: cols.timing_day_intent ?? null,
+      timing_day_anchor: cols.timing_day_anchor ?? null,
+      timing_relative_day_offset: cols.timing_relative_day_offset ?? null,
+      timing_day_offset_overridden: cols.timing_day_offset_overridden ?? false,
+      timing_template_day_offset: cols.timing_template_day_offset ?? null,
+      timing_template_day_anchor: cols.timing_template_day_anchor ?? null,
+      timing_fixed_date: cols.timing_fixed_date ?? null,
+      timing_clock_intent: cols.timing_clock_intent ?? null,
+      timing_relative_minutes: cols.timing_relative_minutes ?? null,
+      timing_clock_overridden: cols.timing_clock_overridden ?? false,
+      timing_attention: cols.timing_attention ?? null,
+    };
+  });
 
+  const { data, error } = await supabase.rpc("replace_venue_timeline_from_template_items", {
+    p_event_id: eventId,
+    p_items: payload,
+  });
+  if (error) {
+    return { ok: false, message: error.message || "Could not switch the timeline template." };
+  }
+  const row = (data ?? {}) as { ok?: boolean; error?: string; message?: string; inserted?: number };
+  if (row.ok !== true) {
+    return {
+      ok: false,
+      message: String(row.message ?? VENUE_TIMELINE_REPLACE_BLOCKED_MESSAGE),
+      errors: row.error ? { replace: String(row.error) } : undefined,
+    };
+  }
   return { ok: true };
 }
 
