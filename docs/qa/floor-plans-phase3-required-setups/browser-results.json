@@ -1,0 +1,117 @@
+{
+  "expectedSha": "3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7",
+  "pass": 22,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7"
+    },
+    {
+      "name": "api_health",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}"
+    },
+    {
+      "name": "html_dpl",
+      "pass": true,
+      "detail": "dpl=3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7"
+    },
+    {
+      "name": "migration_setups_table",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "gate1_required_setups_coexist",
+      "pass": true,
+      "detail": "[{\"id\":\"ff04c606-5ae9-4b71-8e0d-62631a82d2d5\",\"name\":\"Ceremony\",\"operational_floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"seating_in_use_floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"couple_selected_floor_plan_id\":null,\"couple_preference_status\":null},{\"id\":\"4f2f73b4-9c4f-4990-b072-d5ad703d4bcb\",\"name\":\"Reception\",\"operational_floor_plan_id\":\"41d2d266-7ad2-4f71-bc0f-42a3eb93c187\",\"seating_in_use_floor_plan_id\":null,\"couple_selected_floor_plan_id\":null,\"couple_preference_status\":null}]"
+    },
+    {
+      "name": "gate2_alts_scoped_to_reception",
+      "pass": true,
+      "detail": "[{\"setup_id\":\"ff04c606-5ae9-4b71-8e0d-62631a82d2d5\",\"floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"sort_order\":0},{\"setup_id\":\"4f2f73b4-9c4f-4990-b072-d5ad703d4bcb\",\"floor_plan_id\":\"41d2d266-7ad2-4f71-bc0f-42a3eb93c187\",\"sort_order\":0},{\"setup_id\":\"4f2f73b4-9c4f-4990-b072-d5ad703d4bcb\",\"floor_plan_id\":\"c44bab2f-bb48-4019-b0e6-8f2b0da72462\",\"sort_order\":1}]"
+    },
+    {
+      "name": "venue_setup_organizer_present",
+      "pass": true,
+      "detail": "setup package panel"
+    },
+    {
+      "name": "venue_shows_ceremony_and_reception",
+      "pass": true,
+      "detail": "Wedding setups (optional)\n\nFor multi-part weddings, organize layouts into required setups such as Ceremony and Reception. Alternatives belong under one setup only. A single-layout wedding does not need this.\n\nOrganize wedding setups\n\n2 required setups configured. Open the organizer to review or edit."
+    },
+    {
+      "name": "simple_path_controls_still_present",
+      "pass": true,
+      "detail": "workspace chrome"
+    },
+    {
+      "name": "portal_api_has_setups",
+      "pass": true,
+      "detail": "{\"setups\":[{\"name\":\"Ceremony\",\"layouts\":[{\"name\":\"FP3-FP3MVR66K47-Garden Ceremony\",\"isWorking\":true,\"sortOrder\":0,\"isApproved\":null,\"floorPlanId\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"isPreference\":null,\"sharedWithCouple\":true}],\"setupId\":\"ff04c606-5ae9-4b71-8e0d-62631a82d2d5\",\"sortOrder\":0,\"couplePreferenceStatus\":null,\"operationalFloorPlanId\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"coupleApprovedFloorPlanId\":null,\"coupleSelectedFloorPlanId\":null},{\"name\":\"Reception\",\"layouts\":[{\"name\":\"FP3-FP3MVR66K47-Reception A\",\"isWorking\":true,\"sortOrder\":0,\"isApproved\":null,\"floorPlanId\":\"41d2d266-7ad2-4f71-bc0f-42a3eb93c187\",\"isPreference\":null,\"sharedWithCouple\":true},{\"name\":\"FP3-FP3MVR66K47-Reception B\",\"isWorking\":false,\"sortOrder\":1,\"isApproved\":null,\"floorPlanId\":\"c44bab2f-bb48-4019-b0e6-8f2b0da72462\",\"isPreference\":null,\"sharedWithCouple\":true}],\"setupId\":\"4f2f73b4-9c4f-4990-b072-d5ad703d4bcb\",\"sortOrder\":1,\"couplePreferenceStatus\":null,\"operationalFloorPlanId\":\"41d2d266-7ad2-4f71-bc0f-42a3eb93c187\",\"coupleApprovedFloorPlanId\":null,\"coupleSelectedFloorPlanId\":null}],\"hasSetups\":true}"
+    },
+    {
+      "name": "portal_api_alts_under_reception_only",
+      "pass": true,
+      "detail": "{\"apiCeremony\":{\"name\":\"Ceremony\",\"layouts\":[{\"name\":\"FP3-FP3MVR66K47-Garden Ceremony\",\"isWorking\":true,\"sortOrder\":0,\"isApproved\":null,\"floorPlanId\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"isPreference\":null,\"sharedWithCouple\":true}],\"setupId\":\"ff04c606-5ae9-4b71-8e0d-62631a82d2d5\",\"sortOrder\":0,\"couplePreferenceStatus\":null,\"operationalFloorPlanId\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"coupleApprovedFloorPlanId\":null,\"coupleSelectedFloorPlanId\":null},\"apiReception\":{\"name\":\"Reception\",\"layouts\":[{\"name\":\"FP3-FP3MVR66K47-Reception A\",\"isWorking\":true,\"sortOrder\":0,\"isApproved\":null,\"floorPlanId\":\"41d2d266-7ad2-4f71-bc0f-42a3eb93c187\",\"isPreference\":null,\"sharedWithCouple\":true},{\"name\":\"FP3-FP3MVR66K47-Reception B\",\"isWorking\":false,\"sortOrder\":1,\"isApproved\":null,\"floorPlanId\":\"c44bab2f-bb48-4019-b0e6-8f2b0da72462\",\"isPreference\":null,\"sharedWithCouple\":true}],\"setupId\":\"4f2f73b4-9c4f-4990-b072-d5ad703d4bcb\",\"sortOrder\":1,\"couplePreferenceStatus\":null,\"operationalFloorPlanId\":\"41d2d266-7ad2-4f71-bc0f-42a3eb93c187\",\"coupleApprovedFloorPlanId\":null,\"coupleSelectedFloorPlanId\":null}}"
+    },
+    {
+      "name": "gate3_no_whole_event_false_chooser",
+      "pass": true,
+      "detail": "weddingSetups=1 chooser=0"
+    },
+    {
+      "name": "portal_heading_your_wedding_setups",
+      "pass": true,
+      "detail": "heading"
+    },
+    {
+      "name": "portal_setups_as_one_plan",
+      "pass": true,
+      "detail": "Your wedding setups\n\nEach setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.\n\nREQUIRED SETUP\n\nCeremony\n\nFP3-FP3MVR66K47-Garden Ceremony\nVenue working layout\n\nREQUIRED SETUP\n\nReception\n\nFP3-FP3MVR66K47-Reception A\nVenue working layout\nFP3-FP3MVR66K47-Reception B\nAlternative for this setup"
+    },
+    {
+      "name": "portal_select_reception_b_ok",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"setupId\":\"4f2f73b4-9c4f-4990-b072-d5ad703d4bcb\",\"floorPlanId\":\"c44bab2f-bb48-4019-b0e6-8f2b0da72462\",\"couplePreferenceStatus\":\"pending\"}}"
+    },
+    {
+      "name": "preference_reception_does_not_change_ceremony",
+      "pass": true,
+      "detail": "[{\"id\":\"ff04c606-5ae9-4b71-8e0d-62631a82d2d5\",\"name\":\"Ceremony\",\"couple_selected_floor_plan_id\":null,\"couple_preference_status\":null,\"operational_floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"seating_in_use_floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\"},{\"id\":\"4f2f73b4-9c4f-4990-b072-d5ad703d4bcb\",\"name\":\"Reception\",\"couple_selected_floor_plan_id\":\"c44bab2f-bb48-4019-b0e6-8f2b0da72462\",\"couple_preference_status\":\"pending\",\"operational_floor_plan_id\":\"41d2d266-7ad2-4f71-bc0f-42a3eb93c187\",\"seating_in_use_floor_plan_id\":null}]"
+    },
+    {
+      "name": "phase2_seats_preserved_after_preference",
+      "pass": true,
+      "detail": "{\"before\":{\"id\":\"0a29a98d-a24b-4e10-bc7a-8713a174c02d\",\"guest_id\":\"d4a95173-8ec4-4b86-80c3-5ac8fa787f46\",\"table_object_id\":\"d33a679e-c41f-4c00-b4b5-e194dd26ba8c\",\"floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\"},\"after\":{\"id\":\"0a29a98d-a24b-4e10-bc7a-8713a174c02d\",\"guest_id\":\"d4a95173-8ec4-4b86-80c3-5ac8fa787f46\",\"table_object_id\":\"d33a679e-c41f-4c00-b4b5-e194dd26ba8c\",\"floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\"}}"
+    },
+    {
+      "name": "portal_still_package_not_whole_event_after_pref",
+      "pass": true,
+      "detail": "after preference reload"
+    },
+    {
+      "name": "detach_preserves_layout_row",
+      "pass": true,
+      "detail": "{\"id\":\"c44bab2f-bb48-4019-b0e6-8f2b0da72462\",\"name\":\"FP3-FP3MVR66K47-Reception B\"}"
+    },
+    {
+      "name": "phase2_seats_preserved_after_detach",
+      "pass": true,
+      "detail": "{\"id\":\"0a29a98d-a24b-4e10-bc7a-8713a174c02d\",\"guest_id\":\"d4a95173-8ec4-4b86-80c3-5ac8fa787f46\",\"table_object_id\":\"d33a679e-c41f-4c00-b4b5-e194dd26ba8c\",\"floor_plan_id\":\"0187861e-4fb4-458a-9358-844b94062c4e\"}"
+    },
+    {
+      "name": "phase2_sharing_preserved",
+      "pass": true,
+      "detail": "{\"id\":\"0187861e-4fb4-458a-9358-844b94062c4e\",\"shared_with_couple\":true,\"client_access\":\"view\"}"
+    },
+    {
+      "name": "cleanup_complete",
+      "pass": true,
+      "detail": "plans=0 clients=0 events 83->83"
+    }
+  ]
+}

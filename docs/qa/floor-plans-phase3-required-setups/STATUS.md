@@ -1,51 +1,83 @@
 # Floor Plans v1.5 Phase 3 — Required setups + portal package view
 
-## Verdict: **NOT GREEN** (implementation in progress)
+## Verdict: **GREEN**
 
 ## Authorization
 
 PO clarified: venue-side setup organization + couple portal package view are one Phase 3 deliverable. Oct 26 gate remains authoritative (F1–F7 / C1–C9 locked).
+
+## Commits / deploy
+
+| Item | Value |
+|---|---|
+| Feature commit (setups + portal) | `754d7a170854d708851b345a8e1b600fb86ba31d` |
+| Build fix (portal TS union) | `3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7` |
+| **Serving / acceptance SHA** | `3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7` |
+| Deploy ref | `sandbox-deploy/fp-phase3-3979637b` |
+| Migration | `20261425000000_floor_plans_phase3_required_setups.sql` |
+| Migration run | https://github.com/jlcormier612/wevenu-website/actions/runs/40579930928 — **success** |
+| Failed deploy (pre-fix) | https://github.com/jlcormier612/wevenu-website/actions/runs/40579934939 — venue-app TS failure |
+| Successful deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40581612969 — **success** |
+| ECS image | `htc-sandbox-venue-app:3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7` |
+| `data-dpl-id` | `3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7` |
+| Health | ok · env+supabase ok |
+| Production | Untouched |
 
 ## Preflight baseline
 
 | Item | Value |
 |---|---|
 | Branch | `feat/spaces-booking-e1-smart-fields` |
-| HEAD at start | `aba92110b6d19b3bed62393e77632aa28899bf14` |
-| Phase 1 tip | `e03e9aad…` (ancestor) |
-| Phase 2 tip | `abc4bdab…` (ancestor) |
-| Dirty/untracked | Preserved (~1179); no reset/stash/clean |
+| Dirty/untracked | Preserved (~1187); no reset/stash/clean |
 | Production | Untouched |
 
-## Proposed domain model (before code)
+## Automated tests
 
-### Tables
+```bash
+npx tsx --test \
+  lib/floor-plans/phase3-required-setups.test.ts \
+  lib/floor-plans/phase1-contract-invariants.test.ts
+→ 23 pass / 0 fail
+```
 
-1. **`event_floor_plan_setups`** — explicit required-setup identity (venue-named; never inferred from layout/room/template names).
-   - `id`, `venue_id`, `event_id`, `name`, `sort_order`
-   - Per-setup Phase 2 fields: `couple_selected_floor_plan_id`, `couple_preference_status`, `couple_approved_floor_plan_id`, `operational_floor_plan_id`, `seating_in_use_floor_plan_id`
-2. **`event_floor_plan_setup_members`** — setup ↔ event `floor_plans` association.
-   - `setup_id`, `floor_plan_id` (unique), `sort_order`
-   - A floor plan may belong to at most one setup (enforced).
-   - Detach deletes membership only — never the layout or seats.
+## Browser harness
 
-### Compatibility
+```bash
+EXPECTED_SHA=3979637b64ea341edd1aed0a1d2a7c0d8b58bbb7 \
+  npx tsx docs/qa/floor-plans-phase3-required-setups/verify-browser.mts
+→ GREEN — 22 pass / 0 fail
+```
 
-- **Zero setups** → Phase 1/2 event-level pointers + whole-event offer chooser remain SoT (honest non-package path).
-- **One or more setups** → setup rows are SoT for package view / per-setup preference & operational & seating-in-use. Event-level preference pointer is not used as multi-setup SoT.
+Evidence: `browser-results.json`, `browser-run.log`, `persisted-state.json`, `before-cleanup.json`, `after-cleanup.json`, `shots/`
 
-### Portal
+### Frozen gates
 
-- Package mode: “Your wedding setups”; alternatives only under owning setup; preference ≠ approval.
-- Select preference: RPC updates **only that setup’s** pending preference columns.
+| Gate | Result |
+|---|---|
+| 1. Required setups coexist as parts of one wedding plan | **PASS** — Ceremony + Reception rows; venue organizer + portal “Your wedding setups” |
+| 2. Alternatives scoped to owning setup; reception preference does not change ceremony | **PASS** — Reception A/B under Reception only; prefer B leaves ceremony ops/seating/preference untouched |
+| 3. No whole-event false chooser when setups configured | **PASS** — `floor-plan-wedding-setups=1`, `floor-plan-choose-layout=0` |
 
-### Out of scope
+### Additional proven checks
 
-Phase 4 flips, Phase 5 booking flags, name inference, Timeline, EO/catering.
+| Scenario | Result |
+|---|---|
+| Serving SHA + health + dpl-id | PASS |
+| Migration tables present | PASS |
+| Portal API hasSetups + nested layouts | PASS |
+| Detach preserves layout row | PASS |
+| Guest seats preserved after preference + detach | PASS |
+| Sharing (`shared_with_couple` / `client_access`) preserved | PASS |
+| Simple one-layout path chrome still present | PASS |
+| Cleanup FP3 fixtures; Fancy event count restored (83→83) | PASS |
 
-## Gate (verbatim)
+## Domain model (shipped)
 
-- Required setups coexist.
-- Alternatives scoped to one setup.
-- Portal: setups as one wedding plan; alternatives only within setup.
-- Exit: no whole-event false chooser.
+1. **`event_floor_plan_setups`** — explicit required-setup identity; per-setup preference / approval / operational / seating-in-use.
+2. **`event_floor_plan_setup_members`** — setup ↔ layout; floor plan ∈ ≤1 setup; detach ≠ delete.
+3. Zero setups → Phase 1/2 event-level SoT + whole-event chooser (honest non-package path).
+4. Portal select RPC updates **only** that setup’s pending preference columns.
+
+## Out of scope (preserved)
+
+Phase 4 flips, Phase 5 booking flags, name inference, Timeline, EO/catering, Production.
