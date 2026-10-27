@@ -72,7 +72,9 @@ export function PlaybookTemplateEditorHeader({
                     toast.success("Template duplicated.");
                     router.push(`/library/playbooks/${result.templateId}`);
                   } else {
-                    toast.error(result.message ?? "Could not duplicate template.");
+                    toast.error(
+                      (result as { message?: string }).message ?? "Could not duplicate template.",
+                    );
                   }
                 });
               }}
