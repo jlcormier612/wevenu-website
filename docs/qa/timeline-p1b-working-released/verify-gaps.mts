@@ -173,10 +173,13 @@ async function cleanup(clientId: string | null, eventId: string | null, venueId 
     const ids = (ents ?? []).map((e) => e.id);
     if (ids.length) {
       await admin.from("timeline_entry_links").delete().in("timeline_entry_id", ids).eq("venue_id", venueId);
+      await admin.from("timeline_entry_attachments").delete().in("timeline_entry_id", ids).eq("venue_id", venueId);
     }
     await admin.from("timeline_entries").delete().eq("event_id", eventId).eq("venue_id", venueId);
     await admin.from("venue_timeline_releases").delete().eq("event_id", eventId).eq("venue_id", venueId);
     await admin.from("client_portal_sessions").delete().eq("event_id", eventId).eq("venue_id", venueId);
+    await admin.from("event_setup_states").delete().eq("event_id", eventId).eq("venue_id", venueId);
+    await admin.from("documents").delete().eq("event_id", eventId).eq("venue_id", venueId);
     await admin.from("events").delete().eq("id", eventId).eq("venue_id", venueId);
   }
   if (clientId) {
@@ -234,6 +237,31 @@ async function main() {
       .select("id,url,label")
       .single();
     if (linkErr) throw linkErr;
+
+    const { data: docRow, error: docErr } = await admin
+      .from("documents")
+      .insert({
+        venue_id: FANCY,
+        event_id: fx.eventId,
+        name: `${PREFIX}attach-original`,
+        file_name: `${PREFIX}attach-original.pdf`,
+        file_size: 128,
+        mime_type: "application/pdf",
+        storage_path: `qa/p1b/${RUN}/attach-original.pdf`,
+        storage_url: "https://example.com/p1b-attach-original.pdf",
+        category: "other",
+        uploaded_by_type: "venue",
+      })
+      .select("id,name,storage_url")
+      .single();
+    if (docErr) throw docErr;
+    const { error: attErr } = await admin.from("timeline_entry_attachments").insert({
+      venue_id: FANCY,
+      timeline_entry_id: doors.id,
+      document_id: docRow!.id,
+      sort_order: 0,
+    });
+    if (attErr) throw attErr;
 
     const portalToken = `qa-p1bg-${RUN.toLowerCase()}`;
     await admin.from("client_portal_sessions").insert({
@@ -318,6 +346,35 @@ async function main() {
       "snapshot-link-immutable",
       stillLink === "https://example.com/p1b-original",
       `after=${stillLink}`,
+    );
+
+    const releasedAtt = (
+      beforePortal.venue[0] as { attachments?: Array<{ name?: string; url?: string }> }
+    )?.attachments?.[0];
+    record(
+      "portal-has-original-attachment",
+      releasedAtt?.url === "https://example.com/p1b-attach-original.pdf"
+        && String(releasedAtt?.name ?? "").includes("attach-original"),
+      JSON.stringify(releasedAtt),
+    );
+    await admin
+      .from("documents")
+      .update({
+        name: `${PREFIX}attach-MUTATED`,
+        storage_url: "https://example.com/p1b-attach-MUTATED.pdf",
+      })
+      .eq("id", docRow!.id)
+      .eq("venue_id", FANCY);
+    const afterAttMutate = await portalVenueTitles(portalToken);
+    const stillAtt = (
+      afterAttMutate.venue[0] as { attachments?: Array<{ name?: string; url?: string }> }
+    )?.attachments?.[0];
+    record(
+      "snapshot-attachment-immutable",
+      stillAtt?.url === "https://example.com/p1b-attach-original.pdf"
+        && String(stillAtt?.name ?? "").includes("attach-original")
+        && !String(stillAtt?.name ?? "").includes("MUTATED"),
+      JSON.stringify(stillAtt),
     );
 
     // Working ahead after content change
@@ -656,6 +713,35 @@ async function main() {
     );
     void foreignClientId;
 
+    // Seed setup decisions so Prepare Release CTA is enabled (decisionsComplete).
+    // Skip planning so missing client checklist is not an outstanding blocker.
+    // Timeline set_up is fine when working entries exist (fixture has them).
+    const setupDecisions = {
+      planning: "skipped",
+      timeline: "set_up",
+      floor_plans: "skipped",
+      vendors: "skipped",
+      questionnaires: "skipped",
+      inventory: "skipped",
+      event_order: "skipped",
+    };
+    const { error: setupErr } = await admin.from("event_setup_states").upsert(
+      {
+        event_id: fx.eventId,
+        venue_id: FANCY,
+        collapsed_at: null,
+        decisions: setupDecisions,
+        uses_profile: false,
+        profile_id: null,
+        profile_name: null,
+        inherited_decisions: {},
+        inherited_template_refs: {},
+        overrides: {},
+      },
+      { onConflict: "event_id" },
+    );
+    if (setupErr) throw setupErr;
+
     // ——— Prepare-release browser ———
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -670,13 +756,19 @@ async function main() {
         await page.waitForTimeout(1000);
       }
     }
+    // Reopen if collapsed
+    const reopen = page.getByRole("button", { name: /Show setup|Event setup/i });
+    if ((await page.getByTestId("prepare-and-release-portal").count()) === 0 && (await reopen.count()) > 0) {
+      await reopen.first().click().catch(() => null);
+      await page.waitForTimeout(800);
+    }
     await page.getByTestId("event-setup-panel").waitFor({ timeout: 30_000 }).catch(() => null);
     const prepareBtn = page.getByTestId("prepare-and-release-portal");
     const prepareVisible = await prepareBtn.count();
     record(
       "browser-prepare-control",
-      prepareVisible > 0 || (await page.getByTestId("event-setup-panel").count()) > 0,
-      `prepare=${prepareVisible} panel=${await page.getByTestId("event-setup-panel").count()} url=${page.url()}`,
+      prepareVisible > 0,
+      `prepare=${prepareVisible} panel=${await page.getByTestId("event-setup-panel").count()} url=${page.url()} body=${(await page.locator("body").innerText()).slice(0, 400)}`,
     );
     if (prepareVisible > 0) {
       // Ensure working has a content change so prepare creates a new release.
@@ -729,10 +821,12 @@ async function main() {
     await page.waitForTimeout(2500);
     await page.screenshot({ path: `${OUT}/shots/summary-bar-1280.png`, fullPage: false });
     const summaryText = await page.locator("body").innerText();
+    const sharedLine = summaryText.match(/Shared with the couple[^\n]*/i)?.[0] ?? "";
     record(
       "browser-summary-not-always-ahead",
-      /Shared with the couple/i.test(summaryText),
-      summaryText.slice(0, 400),
+      /Shared with the couple/i.test(summaryText)
+        && !/working changes not shared yet/i.test(sharedLine),
+      `line=${sharedLine || summaryText.slice(0, 400)}`,
     );
 
     await browser.close();
