@@ -74,7 +74,10 @@ export function NewEventOrderTemplateButton() {
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader className="mb-6">
           <SheetTitle>New Event Order Template</SheetTitle>
-          <p className="text-sm text-muted-foreground">A reusable Event Order template — sections and optional offerings, with or without prices. Applying it copies a snapshot into an event; it is not itself a client commitment.</p>
+          <p className="text-sm text-muted-foreground">
+            Create a reusable package — what is included automatically and what the couple chooses.
+            Applying it copies a snapshot into an event; it is not itself a client commitment.
+          </p>
         </SheetHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -493,8 +496,8 @@ export function EventOrderTemplateList({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">
-          Commercial build sheets — fixed offerings and selectable groups. Use applies on the venue side;
-          Send lets the client choose. Editing a template never changes an Event Order already on a booking.
+          Use applies a template to an event&apos;s Event Order. Send is for templates with couple choices.
+          Editing a template never changes an Event Order already on a booking.
         </p>
         <div className="flex items-center gap-2">
           <StarterMenu missingKeys={missingStarterKeys} />

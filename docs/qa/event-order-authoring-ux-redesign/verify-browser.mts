@@ -147,9 +147,10 @@ async function main() {
     const landingText = await page.locator("body").innerText();
     record(
       "landing_plain_english",
-      /Reusable packages|included automatically|couple chooses|Preview/i.test(landingText)
-        && (await page.getByText(/commercial build sheets/i).count()) === 0,
-      landingText.slice(0, 400),
+      /Reusable packages for a wedding/i.test(landingText)
+        && /included automatically/i.test(landingText)
+        && /Preview shows the couple experience without sending/i.test(landingText),
+      landingText.slice(0, 500),
     );
     record(
       "landing_example_present",
