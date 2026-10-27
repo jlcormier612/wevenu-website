@@ -163,9 +163,22 @@ export function OfferingEditorSheet({
                 testId="eo-line-offering-picker"
                 disabled={pending}
               />
-              <p className="text-xs text-muted-foreground">
-                Details are copied into this template as a snapshot. Changing the catalog later does not rewrite events that already used this template. Catalog identity is kept by Offering id — never matched by name.
-              </p>
+              <div className="space-y-1.5 text-xs text-muted-foreground" data-testid="eo-line-source-help">
+                <p>
+                  <span className="font-medium text-heading">Offerings</span> are the products and
+                  services your venue provides or sells, such as catering packages, bar service,
+                  rentals, and upgrades. You can use the same Offering in multiple event orders.
+                </p>
+                <p>
+                  <span className="font-medium text-heading">Inventory</span> tracks physical items your
+                  venue owns or manages, such as chairs, tables, and ceremony arbors. Inventory can
+                  support floor plan placement and usage reporting — it is not selected here.
+                </p>
+                <p>
+                  Details are copied into this template as a snapshot. Catalog identity is kept by
+                  Offering id — never matched by name. Linking an Offering to Inventory does not reserve stock or guarantee availability.
+                </p>
+              </div>
               {!customMode ? (
                 <button
                   type="button"
@@ -193,7 +206,8 @@ export function OfferingEditorSheet({
           ) : null}
           {!line && customMode && available.length > 0 ? (
             <p className="text-xs text-muted-foreground">
-              Custom offering — not linked to the Offerings catalog.{" "}
+              Add an item or service directly to this event order when you don&apos;t need it in your
+              reusable Offerings list. This is not a reusable catalog Offering.{" "}
               <button type="button" className="font-medium text-heading underline-offset-2 hover:underline" onClick={() => { setCustomMode(false); setName(""); }}>
                 Select from catalog instead
               </button>

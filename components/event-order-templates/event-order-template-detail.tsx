@@ -185,8 +185,9 @@ export function EventOrderTemplateDetail({
       ) : null}
 
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        Guided setup asks what you offer, how clients choose, and what each choice reveals — category by
-        category. Catalog Offerings are linked by id only (never by name).{" "}
+        Guided setup asks what you offer, how clients choose, and what each choice reveals — commercial
+        category by category. Ordinary configuration stays in the guided steps; specialist selection
+        rules are only for unusual cases. Catalog Offerings are linked by id only (never by name).{" "}
         <Link href="/library/offerings" className="font-medium text-heading hover:underline">
           Manage Offerings →
         </Link>

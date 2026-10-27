@@ -212,8 +212,7 @@ export function GuidedSetupWizard({
     const roots = rootGroupsInList(groupsForSection(template.groups, activeSection.id));
     if (roots.length > 0) return true;
     const pattern =
-      patternDraft.find((p) => p === "choose_then_related")
-      ?? patternDraft.find((p) => p === "choose_one")
+      patternDraft.find((p) => p === "choose_one")
       ?? patternDraft.find((p) => p === "choose_many")
       ?? patternDraft.find((p) => p === "optional_add");
     if (!pattern) return true;
@@ -413,8 +412,8 @@ export function GuidedSetupWizard({
           {progressLabel}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Answer plain questions about what you offer and how clients choose. You do not need to learn
-          internal choice-group settings.
+          Answer plain questions about what you offer and how clients choose. Ordinary setup stays in
+          these steps — specialist selection rules are only for unusual cases.
         </p>
       </div>
 
@@ -539,11 +538,12 @@ export function GuidedSetupWizard({
           {substep === "patterns" ? (
             <div className="space-y-4" data-testid="eo-guided-step-patterns">
               <h2 className="font-heading text-xl text-heading">
-                How should clients make selections for {activeSection.name}?
+                How should clients make their selections?
               </h2>
               <p className="text-sm text-muted-foreground">
-                Pick every pattern that applies. A category can include fixed items and one or more
-                choice lists. You will configure the details next — nothing is invented automatically.
+                Choose what clients need to select, what they receive automatically, and which
+                additional choices or questions appear along the way. Pick every pattern that applies
+                for {activeSection.name} — patterns can be combined.
               </p>
               <div className="space-y-2">
                 {CONFIG_PATTERNS.map((p) => {
@@ -577,9 +577,34 @@ export function GuidedSetupWizard({
                 Included items for {activeSection.name}
               </h2>
               <p className="text-sm text-muted-foreground">
-                These appear as included with the package — not as automatic extra client charges.
-                Link a catalog Offering or add a template-only line. Nothing is seeded with assumed prices.
+                Clients receive these items or services as part of their package. They don&apos;t need
+                to select them — and they are not presented as optional extras.
               </p>
+              <div
+                className="space-y-2 rounded-md border border-border/70 bg-muted/15 px-3 py-2 text-xs text-muted-foreground"
+                data-testid="eo-guided-item-source-help"
+              >
+                <p>
+                  <span className="font-medium text-heading">Offerings</span> — products and services
+                  your venue provides or sells, such as catering packages, bar service, rentals, and
+                  upgrades. You can use the same Offering in multiple event orders.
+                </p>
+                <p>
+                  <span className="font-medium text-heading">Inventory</span> — tracks physical items
+                  your venue owns or manages, such as chairs, tables, and ceremony arbors. Inventory
+                  can support floor plan placement and usage reporting. It is not a source for lines
+                  here.
+                </p>
+                <p>
+                  <span className="font-medium text-heading">Custom / template-only line</span> — add an
+                  item or service directly to this event order when you don&apos;t need it in your
+                  reusable Offerings list.
+                </p>
+                <p>
+                  Linking an Offering to Inventory (elsewhere) does not reserve stock or guarantee
+                  availability.
+                </p>
+              </div>
               <FixedLinesPanel
                 template={template}
                 sectionId={activeSection.id}
@@ -610,13 +635,15 @@ export function GuidedSetupWizard({
                 Main client-facing choices — {activeSection.name}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Define the options clients see first. Link catalog Offerings when you want, or keep
-                template-only labels. Prices come from your catalog or what you enter — we never invent them.
+                Define the options clients see first. Select a reusable Offering or add a custom /
+                template-only option. Prices come from your catalog or what you enter — we never invent
+                them. Additional prices for optional extras must be visible before a client chooses.
               </p>
-              {patternDraft.includes("choose_then_related") ? (
+              {patternDraft.includes("choose_one") ? (
                 <p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                  After you add main options (for example Plated Dinner and Buffet Dinner), the next
-                  step asks what each option reveals — separately.
+                  After you add primary options (for example Plated Dinner and Buffet Dinner), the next
+                  step asks what happens when a client selects each option — including follow-up choices
+                  that appear only for that option.
                 </p>
               ) : null}
               <EventOrderTemplateChoiceGroups
@@ -628,6 +655,7 @@ export function GuidedSetupWizard({
                 showPreview={false}
                 nestBranches={false}
                 rootsOnly
+                guidedOrdinary
               />
             </div>
           ) : null}
@@ -635,12 +663,12 @@ export function GuidedSetupWizard({
           {substep === "branches" ? (
             <div className="space-y-4" data-testid="eo-guided-step-branches">
               <h2 className="font-heading text-xl text-heading">
-                What should clients see after each main choice?
+                Follow-up choices for {activeSection.name}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Each follow-up list appears only when its parent option is selected. Configure only the
-                branches you need — plated-only venues can skip buffet entirely. Do not leave empty
-                follow-up lists unless you plan to fill them.
+                For each primary option, choose what happens next. Follow-up lists appear only when that
+                option is selected — for example, plated entrée choices after Plated Dinner, not after
+                Buffet Dinner.
               </p>
               {branchGuideForSection(template, activeSection.id).map((branch) => (
                 <div
@@ -651,8 +679,9 @@ export function GuidedSetupWizard({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-heading">
-                        You added “{branch.optionLabel}”. What should the client see after choosing it?
+                        What happens when a client selects this option?
                       </p>
+                      <p className="text-sm text-heading">“{branch.optionLabel}”</p>
                       <p className="text-xs text-muted-foreground">From “{branch.parentGroupName}”</p>
                     </div>
                     {branch.incomplete ? (
@@ -662,7 +691,15 @@ export function GuidedSetupWizard({
                     ) : null}
                   </div>
                   {branch.dependents.length === 0 ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2" data-testid={`eo-guided-followup-actions-${branch.optionId}`}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        data-testid={`eo-guided-followup-none-${branch.optionId}`}
+                      >
+                        Nothing else — this is a complete choice.
+                      </Button>
                       <Button
                         type="button"
                         size="sm"
@@ -670,23 +707,24 @@ export function GuidedSetupWizard({
                         data-testid={`eo-guided-add-followup-${branch.optionId}`}
                         onClick={() => void addFollowUpForOption(branch.optionId)}
                       >
-                        Add follow-up choices
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost">
-                        No follow-ups needed
+                        Show additional options.
                       </Button>
                     </div>
                   ) : (
                     <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Showing additional options when the client selects “{branch.optionLabel}”.
+                      </p>
                       {branch.dependents.map((d) => {
                         const optCount = template.options.filter((o) => o.groupId === d.id).length;
                         return (
                           <div key={d.id} className="rounded-md border border-border/80 p-3">
                             <p className="text-sm font-medium text-heading">{d.name}</p>
                             <p className="text-xs text-muted-foreground">
+                              Triggered by “{branch.optionLabel}”
                               {optCount === 0
-                                ? "No options yet — clients would see an empty list. Add options below or remove this follow-up."
-                                : `${optCount} option(s)`}
+                                ? " — no options yet. Add options below or remove this follow-up."
+                                : ` · ${optCount} option(s)`}
                             </p>
                             {optCount === 0 ? (
                               <Button
@@ -710,6 +748,7 @@ export function GuidedSetupWizard({
                         compact
                         showPreview={false}
                         nestBranches
+                        guidedOrdinary
                       />
                     </div>
                   )}
@@ -745,8 +784,10 @@ export function GuidedSetupWizard({
         <section className="space-y-4" data-testid="eo-guided-step-review">
           <h2 className="font-heading text-xl text-heading">Review your complete setup</h2>
           <p className="text-sm text-muted-foreground">
-            This is the configuration that will drive the client experience. Return to a category to
-            edit. Existing content is preserved unless you explicitly remove a category.
+            Organized in the order a client will encounter each commercial category. Included items,
+            primary choices, follow-ups under the option that triggers them, and optional extras with
+            their additional prices. This reflects saved server state — unsaved pattern drafts are not
+            shown as persisted. Return to a category to edit.
           </p>
           {review.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
@@ -775,48 +816,35 @@ export function GuidedSetupWizard({
                 </Button>
               </div>
               {cat.incompleteMessages.map((m) => (
-                <p key={m} className="text-sm text-amber-800">{m}</p>
+                <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">
+                  {m} — use Edit category to finish this configuration.
+                </p>
               ))}
               {cat.fixedLines.length > 0 ? (
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fixed / included</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Included items and services
+                  </p>
                   <ul className="mt-1 space-y-1 text-sm">
                     {cat.fixedLines.map((l) => (
                       <li key={l.id}>
                         {l.description}
-                        {l.included ? " · included" : ""}
-                        {l.catalog ? " · catalog" : " · template-only"}
-                        {l.price != null ? ` · $${l.price}` : ""}
+                        {l.included ? " · included (not an extra charge)" : ""}
+                        {l.catalog ? " · Offering" : " · template-only"}
+                        {!l.included && l.price != null ? ` · $${l.price}` : ""}
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : null}
               {cat.groups.map((g) => (
-                <div key={g.id} className="rounded-md border border-border/70 p-3 text-sm">
-                  <p className="font-medium text-heading">
-                    {g.name}
-                    {g.isDependent ? " (follow-up)" : ""}
-                    {g.incomplete ? " — incomplete" : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {g.selectionMode === "single" ? "Choose one" : "Choose multiple"}
-                    {g.required ? " · required" : " · optional"}
-                    {g.dependsOnLabels.length > 0
-                      ? ` · shown after: ${g.dependsOnLabels.join(", ")}`
-                      : ""}
-                  </p>
-                  <ul className="mt-1 space-y-0.5">
-                    {g.options.map((o) => (
-                      <li key={o.id}>
-                        {o.label}
-                        {o.isIncluded ? " · included" : o.unitPrice != null ? ` · $${o.unitPrice}` : ""}
-                        {o.catalog ? " · catalog" : " · template-only"}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <ReviewGroupBlock key={g.id} group={g} depth={0} />
               ))}
+              {cat.previewPathHint ? (
+                <p className="text-xs text-muted-foreground" data-testid={`eo-guided-review-path-${cat.sectionId}`}>
+                  {cat.previewPathHint}
+                </p>
+              ) : null}
             </div>
           ))}
           <div className="flex flex-wrap justify-between gap-2">
@@ -841,13 +869,21 @@ export function GuidedSetupWizard({
         <section className="space-y-4" data-testid="eo-guided-step-preview">
           <h2 className="font-heading text-xl text-heading">Preview the client experience</h2>
           <p className="text-sm text-muted-foreground">
-            This uses the real saved template — not a demo. Try parent choices to reveal follow-ups.
-            Preview does not send anything to a client or finalize an Event Order.
+            Interactive preview of the saved template. Try commercial-category paths such as{" "}
+            <span className="font-medium text-heading">Catering → Plated Dinner → Entrée choice</span>.
+            This preview does not send an Event Order to a client and does not finalize anything.
+          </p>
+          <p
+            className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
+            data-testid="eo-guided-preview-non-sending"
+          >
+            Preview only — no send, no finalize.
           </p>
           {review.some((c) => c.incompleteMessages.length > 0) ? (
-            <p className="rounded-md border border-amber-600/40 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p className="rounded-md border border-amber-600/40 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="eo-guided-preview-incomplete">
               Some follow-up lists are still empty. Return to setup to finish them or remove empty branches
-              so clients do not see incomplete choices.
+              so clients do not see incomplete choices. Incomplete configuration does not block this
+              preview, and preview still does not send or finalize.
             </p>
           ) : null}
           <div className="rounded-lg border border-border p-4" data-testid="eo-template-client-preview">
@@ -880,11 +916,16 @@ export function GuidedSetupWizard({
         onSave={persistLine}
       />
 
-      {/* Quiet escape hatch for rare cases — not the primary IA */}
-      <details className="rounded-lg border border-border/60 p-3 text-sm text-muted-foreground">
-        <summary className="cursor-pointer font-medium text-heading">Advanced editor</summary>
+      {/* Specialist controls only — ordinary setup lives in guided steps above */}
+      <details
+        className="rounded-lg border border-border/60 p-3 text-sm text-muted-foreground"
+        data-testid="eo-specialist-selection-rules"
+      >
+        <summary className="cursor-pointer font-medium text-heading">Specialist selection rules</summary>
         <p className="mt-2 mb-3">
-          Direct category workspace for edge cases. Prefer the guided steps above for normal setup.
+          Unusual cross-group relationships, unassigned groups, and other specialist controls. You can
+          complete ordinary included items, primary choices, follow-ups, and optional extras without
+          opening this section.
         </p>
         {activeSection ? (
           <EventOrderTemplateChoiceGroups
@@ -895,11 +936,63 @@ export function GuidedSetupWizard({
             compact
             showPreview={false}
             nestBranches
+            specialistMode
           />
         ) : (
           <p>Select or create a category in Step 1 first.</p>
         )}
       </details>
+    </div>
+  );
+}
+
+function ReviewGroupBlock({
+  group,
+  depth,
+}: {
+  group: ReturnType<typeof buildReviewSummary>[number]["groups"][number];
+  depth: number;
+}) {
+  return (
+    <div
+      className={`rounded-md border border-border/70 p-3 text-sm ${depth > 0 ? "ml-3 border-l-4 border-l-heading/25" : ""}`}
+      data-testid={`eo-guided-review-group-${group.id}`}
+      data-dependent={group.isDependent ? "true" : "false"}
+    >
+      <p className="font-medium text-heading">
+        {depth > 0 ? "Follow-up: " : ""}
+        {group.name}
+        {group.incomplete ? " — incomplete" : ""}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {group.selectionMode === "single" ? "Choose one" : "Choose multiple"}
+        {group.required ? " · required" : " · optional"}
+        {group.dependsOnLabels.length > 0
+          ? ` · shown after: ${group.dependsOnLabels.join(", ")}`
+          : ""}
+      </p>
+      <ul className="mt-1 space-y-2">
+        {group.options.map((o) => (
+          <li key={o.id}>
+            <span>
+              {o.label}
+              {o.isIncluded
+                ? " · included"
+                : o.unitPrice != null
+                  ? ` · additional $${o.unitPrice}`
+                  : ""}
+              {o.catalog ? " · Offering" : " · template-only"}
+            </span>
+            {o.followUps.length > 0 ? (
+              <div className="mt-2 space-y-2">
+                {o.followUps.map((fu) => (
+                  <ReviewGroupBlock key={fu.id} group={fu} depth={depth + 1} />
+                ))}
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

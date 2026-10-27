@@ -112,7 +112,7 @@ describe("guided setup — categories", () => {
 });
 
 describe("guided setup — patterns and branches", () => {
-  it("detects choose-one + related patterns from plated/buffet tree", () => {
+  it("detects choose-one from plated/buffet tree without a separate related pattern", () => {
     const plated = option({ id: "opt-p", groupId: "g-dinner", label: "Plated Dinner" });
     const buffet = option({ id: "opt-b", groupId: "g-dinner", label: "Buffet Dinner" });
     const dinner = group({ id: "g-dinner", name: "Dinner service" });
@@ -128,7 +128,7 @@ describe("guided setup — patterns and branches", () => {
     });
     const patterns = detectPatternsForSection(t, "sec-catering");
     assert.ok(patterns.includes("choose_one"));
-    assert.ok(patterns.includes("choose_then_related"));
+    assert.ok(!patterns.includes("choose_then_related"));
 
     const branches = branchGuideForSection(t, "sec-catering");
     assert.equal(branches.length, 2);
@@ -146,9 +146,26 @@ describe("guided setup — patterns and branches", () => {
   it("advances configure substeps based on selected patterns", () => {
     assert.equal(nextConfigureSubstep("patterns", ["included"]), "fixed");
     assert.equal(nextConfigureSubstep("fixed", ["included", "choose_one"]), "choices");
-    assert.equal(nextConfigureSubstep("choices", ["choose_then_related"]), "branches");
-    assert.equal(nextConfigureSubstep("branches", ["choose_then_related"]), "done");
+    assert.equal(nextConfigureSubstep("choices", ["choose_one"]), "branches");
+    assert.equal(nextConfigureSubstep("branches", ["choose_one"]), "done");
     assert.equal(nextConfigureSubstep("patterns", ["choose_one"]), "choices");
+    // Legacy choose_then_related normalizes to choose_one → still gets branches.
+    assert.equal(nextConfigureSubstep("choices", ["choose_then_related"]), "branches");
+  });
+
+  it("allows multiple combinable patterns in one category", () => {
+    assert.equal(
+      nextConfigureSubstep("patterns", ["included", "choose_one", "optional_add"]),
+      "fixed",
+    );
+    assert.equal(
+      nextConfigureSubstep("fixed", ["included", "choose_one", "optional_add"]),
+      "choices",
+    );
+    assert.equal(
+      nextConfigureSubstep("choices", ["included", "choose_one", "optional_add"]),
+      "branches",
+    );
   });
 });
 
@@ -207,7 +224,7 @@ describe("guided setup — pattern drafts survive category switches", () => {
     const ids = ["sec-catering", "sec-rentals"];
     let drafts = seedPatternDraftsFromTemplate(t, ids, {});
     drafts = togglePatternInDraft(drafts, "sec-catering", "included");
-    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_then_related");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
     for (let i = 0; i < 8; i++) {
       drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
       const focus = i % 2 === 0 ? "sec-rentals" : "sec-catering";
@@ -216,11 +233,22 @@ describe("guided setup — pattern drafts survive category switches", () => {
       }
     }
     assert.deepEqual(drafts["sec-catering"]!.slice().sort(), [
-      "choose_then_related",
+      "choose_one",
       "included",
     ]);
     assert.deepEqual(drafts["sec-rentals"], ["choose_many"]);
     assert.equal(drafts["sec-catering"]!.filter((p) => p === "included").length, 1);
+  });
+
+  it("normalizes legacy choose_then_related drafts to choose_one", () => {
+    const t = emptyTemplate();
+    const ids = ["sec-catering"];
+    let drafts: ReturnType<typeof seedPatternDraftsFromTemplate> = {
+      "sec-catering": ["included", "choose_then_related"],
+    };
+    drafts = seedPatternDraftsFromTemplate(t, ids, drafts);
+    assert.deepEqual(drafts["sec-catering"]!.slice().sort(), ["choose_one", "included"]);
+    assert.ok(!drafts["sec-catering"]!.includes("choose_then_related"));
   });
 
   it("edit path initializes from persisted groups and lines", () => {
@@ -313,7 +341,7 @@ describe("guided setup — pattern drafts survive category switches", () => {
   it("UI selection for the active section matches its Continue payload entry", () => {
     let drafts = seedPatternDraftsFromTemplate(emptyTemplate(), ["sec-catering", "sec-rentals"], {});
     drafts = togglePatternInDraft(drafts, "sec-catering", "included");
-    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_then_related");
+    drafts = togglePatternInDraft(drafts, "sec-catering", "choose_one");
     drafts = togglePatternInDraft(drafts, "sec-rentals", "choose_many");
     const payload = patternsPayloadFromDrafts(drafts, ["sec-catering", "sec-rentals"]);
     assert.deepEqual(
@@ -389,7 +417,7 @@ describe("guided setup — pattern drafts survive category switches", () => {
 });
 
 describe("guided setup — review summary", () => {
-  it("summarizes fixed lines, options, and incomplete dependents", () => {
+  it("summarizes fixed lines, options, and incomplete dependents nested under parents", () => {
     const t = template({
       sections: [section({ id: "sec-catering", name: "Catering" })],
       lines: [{
@@ -419,12 +447,131 @@ describe("guided setup — review summary", () => {
       ],
       options: [
         option({ id: "opt-p", groupId: "g-dinner", label: "Plated Dinner", unitPrice: 85 }),
+        option({ id: "opt-b", groupId: "g-dinner", label: "Buffet Dinner", unitPrice: 65 }),
       ],
     });
     const review = buildReviewSummary(t);
     assert.equal(review.length, 1);
     assert.equal(review[0]!.fixedLines.length, 1);
+    assert.ok(review[0]!.fixedLines[0]!.included);
     assert.ok(review[0]!.incompleteMessages.length >= 1);
-    assert.ok(review[0]!.groups.some((g) => g.isDependent && g.incomplete));
+    const dinner = review[0]!.groups.find((g) => g.id === "g-dinner");
+    assert.ok(dinner);
+    assert.equal(dinner!.isDependent, false);
+    const plated = dinner!.options.find((o) => o.id === "opt-p");
+    const buffet = dinner!.options.find((o) => o.id === "opt-b");
+    assert.equal(plated!.followUps.length, 1);
+    assert.equal(plated!.followUps[0]!.id, "g-pd");
+    assert.equal(plated!.followUps[0]!.incomplete, true);
+    assert.equal(buffet!.followUps.length, 0);
+    assert.match(review[0]!.previewPathHint ?? "", /Catering → Plated Dinner/);
+  });
+
+  it("does not attach plated follow-ups to buffet in the review tree", () => {
+    const t = template({
+      sections: [section({ id: "sec-catering", name: "Catering" })],
+      groups: [
+        group({ id: "g-dinner", name: "Dinner service" }),
+        group({
+          id: "g-entree",
+          name: "Entrée choice",
+          dependsOnOptionIds: ["opt-p"],
+          minSelect: 1,
+        }),
+      ],
+      options: [
+        option({ id: "opt-p", groupId: "g-dinner", label: "Plated Dinner" }),
+        option({ id: "opt-b", groupId: "g-dinner", label: "Buffet Dinner" }),
+        option({ id: "opt-e1", groupId: "g-entree", label: "Chicken" }),
+      ],
+    });
+    const review = buildReviewSummary(t);
+    const dinner = review[0]!.groups[0]!;
+    assert.equal(dinner.options.find((o) => o.label === "Buffet Dinner")!.followUps.length, 0);
+    assert.equal(
+      dinner.options.find((o) => o.label === "Plated Dinner")!.followUps[0]!.name,
+      "Entrée choice",
+    );
+  });
+
+  it("guest-paid bar option keeps its own price and does not inherit open-bar hosted charge", () => {
+    const t = template({
+      sections: [section({ id: "sec-bar", name: "Bar Service" })],
+      groups: [
+        group({ id: "g-bar", name: "Bar package", sectionId: "sec-bar" }),
+        group({
+          id: "g-sig",
+          name: "Optional signature cocktails",
+          sectionId: "sec-bar",
+          selectionMode: "multi",
+          minSelect: 0,
+          maxSelect: null,
+          allowQuantity: true,
+          dependsOnOptionIds: ["opt-open"],
+        }),
+      ],
+      options: [
+        option({
+          id: "opt-open",
+          groupId: "g-bar",
+          label: "Open Bar",
+          unitPrice: 45,
+          isIncluded: false,
+        }),
+        option({
+          id: "opt-guest",
+          groupId: "g-bar",
+          label: "Guest-Paid Beer and Wine",
+          unitPrice: null,
+          isIncluded: true,
+        }),
+        option({
+          id: "opt-sig",
+          groupId: "g-sig",
+          label: "Signature cocktail",
+          unitPrice: 12,
+          isIncluded: false,
+        }),
+      ],
+    });
+    const review = buildReviewSummary(t);
+    const bar = review[0]!.groups.find((g) => g.id === "g-bar")!;
+    const open = bar.options.find((o) => o.id === "opt-open")!;
+    const guest = bar.options.find((o) => o.id === "opt-guest")!;
+    assert.equal(open.unitPrice, 45);
+    assert.equal(open.isIncluded, false);
+    assert.equal(guest.unitPrice, null);
+    assert.equal(guest.isIncluded, true);
+    assert.equal(guest.followUps.length, 0);
+    assert.equal(open.followUps.length, 1);
+    assert.equal(open.followUps[0]!.options[0]!.unitPrice, 12);
+    assert.equal(open.followUps[0]!.options[0]!.isIncluded, false);
+  });
+
+  it("included template-only arbor is not presented as an optional extra charge", () => {
+    const t = template({
+      sections: [section({ id: "sec-rentals", name: "Rentals" })],
+      lines: [{
+        id: "l-arbor",
+        templateId: "t1",
+        venueId: "v1",
+        sectionId: "sec-rentals",
+        description: "Ceremony arbor",
+        descriptionDetail: null,
+        quantity: 1,
+        unitPrice: 0,
+        pricingModel: "flat",
+        unit: null,
+        includedByDefault: true,
+        offeringId: null,
+        sortOrder: 0,
+        createdAt: "",
+        updatedAt: "",
+      }],
+    });
+    const review = buildReviewSummary(t);
+    assert.equal(review[0]!.fixedLines[0]!.included, true);
+    assert.equal(review[0]!.fixedLines[0]!.catalog, false);
+    assert.equal(review[0]!.fixedLines[0]!.description, "Ceremony arbor");
   });
 });
