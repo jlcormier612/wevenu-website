@@ -123,6 +123,47 @@ describe("Stage 0 Event Order journey facts", () => {
     assert.equal(shouldShowChoicesFinancialImpact(true, 0), false);
     assert.equal(shouldShowChoicesFinancialImpact(true, 200), true);
   });
+
+  it("reopened open EO with prior invoice does not push Finalize as unfinished next step", () => {
+    const { currentStep, rows } = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "open", sharedAt: "2026-10-01T00:00:00Z" },
+      hasEoInvoice: true,
+      eoInvoiceStatus: "sent",
+      unbilledAmount: 0,
+    });
+    assert.equal(currentStep, "invoice");
+    const eo = rows.find((r) => r.key === "event_order")!;
+    assert.match(eo.state, /invoice already issued/i);
+    assert.doesNotMatch(eo.state, /needs finalize/i);
+    assert.equal(eo.primaryLabel, "Review Event Order");
+  });
+
+  it("stale shared commitment owns re-share before first invoice", () => {
+    const { currentStep, rows } = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "finalized", sharedAt: "2026-10-01T00:00:00Z" },
+      hasEoInvoice: false,
+      shareCommitmentStale: true,
+    });
+    assert.equal(currentStep, "order");
+    assert.equal(rows.find((r) => r.isCurrent)?.key, "event_order");
+    assert.equal(rows.find((r) => r.key === "event_order")!.primaryLabel, "Re-share Event Order");
+    assert.equal(rows.find((r) => r.key === "invoice")!.primaryLabel, "Re-share Event Order");
+  });
+
+  it("open EO with invoice + unbilled charges points to Invoice new charges", () => {
+    const { currentStep, rows } = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "open", sharedAt: "2026-10-01T00:00:00Z" },
+      hasEoInvoice: true,
+      eoInvoiceStatus: "sent",
+      unbilledAmount: 450,
+    });
+    assert.equal(currentStep, "invoice");
+    assert.equal(rows.find((r) => r.key === "invoice")!.primaryLabel, "Invoice new charges");
+    assert.match(rows.find((r) => r.key === "event_order")!.state, /additional charges/i);
+  });
 });
 
 describe("Stage 0 workflow composition source", () => {

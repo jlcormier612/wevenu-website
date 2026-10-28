@@ -180,6 +180,7 @@ export function EventOrderPanel({
   templates = [],
   linkedScheduleId = null,
   preferredTemplateId = null,
+  shareCommitmentStale = false,
 }: {
   eventId: string;
   planningClientId?: string | null;
@@ -202,6 +203,8 @@ export function EventOrderPanel({
   linkedScheduleId?: string | null;
   /** Setup Profile starting Event Order template — preselect only; does not auto-create. */
   preferredTemplateId?: string | null;
+  /** Live lines differ from the last share the couple still sees. */
+  shareCommitmentStale?: boolean;
 }) {
   const router = useRouter();
   const scopeId = eventId || planningClientId || "";
@@ -505,11 +508,24 @@ export function EventOrderPanel({
             Package context: <span className="font-medium text-foreground">{selectedPackageName}</span> (commercial purchase — not this Event Order)
           </p>
         )}
-        {!isFinalized && eventOrder.sharedAt && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
-            Clients still see the shared version from{" "}
-            {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
-            Re-share when you are ready to publish revisions.
+        {eventOrder.sharedAt && (shareCommitmentStale || !isFinalized) && (
+          <div
+            className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground space-y-1"
+            data-testid="event-order-share-stale-banner"
+            role="status"
+          >
+            <p>
+              Clients still see the shared Event Order from{" "}
+              {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {shareCommitmentStale
+                ? " — and that copy no longer matches the lines on this screen (selections or prices may differ)."
+                : "."}
+            </p>
+            <p>
+              {shareCommitmentStale
+                ? "Re-share so their Accept view matches what you intend to invoice. Issuing the original invoice is blocked until the shared copy matches."
+                : "Re-share when you are ready to publish revisions. Until then, their portal Order stays on the last shared snapshot."}
+            </p>
           </div>
         )}
         {isFinalized && (

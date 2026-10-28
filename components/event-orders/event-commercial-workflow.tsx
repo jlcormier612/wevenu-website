@@ -5,8 +5,10 @@
  * Domain actions stay on ClientChoicesPanel / EventOrderPanel.
  * No competing spine/strip progress chrome. Inventory not in this presentation.
  */
+import * as React from "react";
 import type { ReactNode } from "react";
 
+import { evaluateEventOrderShareStaleAction } from "@/app/(app)/events/[id]/event-order-actions";
 import { ClientChoicesPanel } from "@/components/client-choices/client-choices-panel";
 import { EventOrderJourney } from "@/components/event-orders/event-order-journey";
 import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
@@ -128,17 +130,36 @@ export function EventCommercialWorkflow({
         )
       : undefined;
   const hasEoInvoice = Boolean(eoLinkedInvoice);
+  const unbilledAmount = financialImpact?.unbilledAmount ?? 0;
+  const [shareCommitmentStale, setShareCommitmentStale] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!eventOrder?.id || !eventOrder.sharedAt) {
+      setShareCommitmentStale(false);
+      return;
+    }
+    let cancelled = false;
+    void evaluateEventOrderShareStaleAction(eventOrder.id).then((r) => {
+      if (!cancelled) setShareCommitmentStale(Boolean(r.liveDiffersFromLastShare));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventOrder?.id, eventOrder?.sharedAt, eventOrder?.revision, eventOrder?.updatedAt, eventOrder?.lines?.length]);
+
   const current = resolveCommercialWorkflowStep({
     choices,
     eventOrder: eventOrder
       ? { sharedAt: eventOrder.sharedAt, status: eventOrder.status }
       : null,
     hasEoInvoice,
+    shareCommitmentStale,
+    unbilledAmount,
   });
   const { emphasizeChoices, emphasizeOrder } = panelEmphasisForStep(current);
   const showFinancialImpact = shouldShowChoicesFinancialImpact(
     hasEoInvoice,
-    financialImpact?.unbilledAmount ?? 0,
+    unbilledAmount,
   );
 
   return (
@@ -155,6 +176,8 @@ export function EventCommercialWorkflow({
             : null,
           hasEoInvoice,
           eoInvoiceStatus: eoLinkedInvoice?.status ?? null,
+          shareCommitmentStale,
+          unbilledAmount,
         }}
         onNavigate={onNavigate}
       />
@@ -206,6 +229,7 @@ export function EventCommercialWorkflow({
           templates={templates}
           preferredTemplateId={preferredTemplateId}
           overview={overview}
+          shareCommitmentStale={shareCommitmentStale}
         />
       </StageSection>
     </div>

@@ -196,6 +196,25 @@ export async function insertShareSnapshot(
   if (error) throw error;
 }
 
+/** Most recent share snapshot for an Event Order (portal authority until re-share). */
+export async function getLatestShareSnapshot(
+  client: DbClient,
+  venueId: string,
+  eventOrderId: string,
+): Promise<{ revision: number; payload: EventOrderSharePayload; sharedAt: string } | null> {
+  const { data, error } = await client
+    .from("event_order_share_snapshots")
+    .select("revision,payload,shared_at")
+    .eq("venue_id", venueId)
+    .eq("event_order_id", eventOrderId)
+    .order("shared_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ revision: number; payload: EventOrderSharePayload; shared_at: string }>();
+  if (error) throw error;
+  if (!data) return null;
+  return { revision: data.revision, payload: data.payload, sharedAt: data.shared_at };
+}
+
 export function buildSharePayload(order: EventOrderWithDetails): EventOrderSharePayload {
   return {
     sections: order.sections.map((s) => ({ id: s.id, name: s.name, sortOrder: s.sortOrder })),

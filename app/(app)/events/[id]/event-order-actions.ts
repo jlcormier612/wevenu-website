@@ -256,6 +256,17 @@ export async function shareEventOrderWithClientAction(eventOrderId: string, even
   return result;
 }
 
+/** Whether live EO lines diverge from the last share snapshot the couple still sees. */
+export async function evaluateEventOrderShareStaleAction(eventOrderId: string): Promise<{
+  hasBeenShared: boolean;
+  liveDiffersFromLastShare: boolean;
+}> {
+  const { evaluateEventOrderShareStale } = await import(
+    "@/lib/event-orders/share-consistency-service"
+  );
+  return evaluateEventOrderShareStale(eventOrderId);
+}
+
 export async function getEventOrderPdfUrlAction(eventOrderId: string) {
   return getEventOrderPdfUrl(eventOrderId);
 }

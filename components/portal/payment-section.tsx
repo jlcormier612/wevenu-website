@@ -15,6 +15,7 @@ import {
 import { computePortalScheduleTotals } from "@/lib/portal/payment-totals";
 import { formatPortalPaymentDate } from "@/lib/portal/payment-display-date";
 import {
+  bareInvoiceNextStepCopy,
   invoicesWithoutPaymentPlan,
   labelForSchedule,
   portalInvoiceLabel,
@@ -442,6 +443,7 @@ type PortalInvoiceRow = {
   balanceDue?: number;
   status?: string;
   dueDate?: string | null;
+  amendsInvoiceId?: string | null;
 };
 
 type PortalPaymentsPayload = {
@@ -685,6 +687,21 @@ export function PaymentSection({ token }: { token: string }) {
         <p className="text-sm text-muted-foreground mt-1">
           What you&apos;ve paid, what&apos;s next, and how to pay.
         </p>
+        {(scheduleList.length + bareInvoices.length) > 1 && remaining > 0 && (
+          <div
+            className="mt-3 rounded-xl px-4 py-3 space-y-1"
+            style={{ background: "#F7F4F0", border: "1px solid #E8E2D8" }}
+          >
+            <p className="text-sm font-semibold text-heading">
+              Combined outstanding: {formatMoney(remaining, currency)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              This total adds remaining balances across {scheduleList.length + bareInvoices.length} invoices.
+              Each invoice keeps its own schedule (if any) — an additional-charges invoice does not inherit
+              another invoice&apos;s payment plan.
+            </p>
+          </div>
+        )}
       </div>
 
       {!onlinePaymentsReady && (offlinePaymentMethods.length > 0 || offlinePaymentInstructions) && (
@@ -739,22 +756,29 @@ export function PaymentSection({ token }: { token: string }) {
         );
       })}
 
-      {bareInvoices.map((invoice) => (
-        <section key={invoice.id} className="rounded-2xl border border-border bg-card p-6 space-y-2" aria-label={portalInvoiceLabel(invoice)}>
-          <h3 className="text-sm font-semibold text-heading">{portalInvoiceLabel(invoice)}</h3>
-          <p className="text-xs text-muted-foreground">{invoice.invoiceNumber}</p>
-          <p className="text-sm text-heading">
-            Balance: {new Intl.NumberFormat("en-US", {
-              style: "currency", currency,
-              minimumFractionDigits: 2, maximumFractionDigits: 2,
-            }).format(invoice.balanceDue ?? invoice.total ?? 0)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : "No due date set"}
-          </p>
-          <p className="text-xs text-muted-foreground">No payment schedule has been set for this invoice yet.</p>
-        </section>
-      ))}
+      {bareInvoices.map((invoice) => {
+        const bal = invoice.balanceDue ?? invoice.total ?? 0;
+        return (
+          <section key={invoice.id} className="rounded-2xl border border-border bg-card p-6 space-y-2" aria-label={portalInvoiceLabel(invoice)}>
+            <h3 className="text-sm font-semibold text-heading">{portalInvoiceLabel(invoice)}</h3>
+            {invoice.amendsInvoiceId ? (
+              <p className="text-xs text-muted-foreground">
+                Additional charges on a separate invoice — not covered by your earlier payment plan.
+              </p>
+            ) : null}
+            <p className="text-sm text-heading">
+              Invoice total: {formatMoney(invoice.total ?? bal, currency)}
+            </p>
+            <p className="text-sm text-heading">
+              Balance: {formatMoney(bal, currency)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {invoice.dueDate ? `Due ${formatDate(invoice.dueDate)}` : "No due date set"}
+            </p>
+            <p className="text-xs text-muted-foreground">{bareInvoiceNextStepCopy(bal)}</p>
+          </section>
+        );
+      })}
 
       {/* Luv observations */}
       {luvObs.length > 0 && (

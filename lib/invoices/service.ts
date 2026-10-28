@@ -253,6 +253,16 @@ export async function getInvoiceLineMarkers(invoiceIds: string[]): Promise<repo.
 
 export async function createInvoice(input: InvoiceInput): Promise<CreateInvoiceResult> {
   if (!input.clientId) return { ok: false, errors: { clientId: "Client is required." } };
+  // Original EO invoice only — amending invoices skip this gate.
+  if (input.eventOrderId && !input.amendsInvoiceId) {
+    const { gateOriginalEoInvoiceWhenShareStale } = await import(
+      "@/lib/event-orders/share-consistency-service"
+    );
+    const blocked = await gateOriginalEoInvoiceWhenShareStale(input.eventOrderId, {
+      isAmendingInvoice: false,
+    });
+    if (blocked) return { ok: false, message: blocked.message };
+  }
   const result = await withVenue(async (c, venueId) => {
     const invoiceId = await repo.insertInvoice(c, venueId, input);
     await repo.insertActivity(c, venueId, invoiceId, "created", "Invoice created");
@@ -461,6 +471,16 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
         // layer up from where Event Order already applies it to
         // Package/Inventory. From this instant on, nothing here changes
         // again without a human's explicit decision.
+        // Original (non-amend) send: refuse when couple still sees a divergent share.
+        if (!invoice.amendsInvoiceId) {
+          const { gateOriginalEoInvoiceWhenShareStale } = await import(
+            "@/lib/event-orders/share-consistency-service"
+          );
+          const blocked = await gateOriginalEoInvoiceWhenShareStale(invoice.eventOrderId, {
+            isAmendingInvoice: false,
+          });
+          if (blocked) return { ok: false, message: blocked.message } as InvoiceActionResult;
+        }
         const eventOrder = await getEventOrder(invoice.eventId ?? "");
         if (eventOrder) {
           // Incremental freeze: billable ∧ not already on any non-void invoice.

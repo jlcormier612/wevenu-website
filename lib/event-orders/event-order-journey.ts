@@ -37,6 +37,10 @@ export type EventOrderJourneyInput = {
   } | null;
   hasEoInvoice: boolean;
   eoInvoiceStatus?: string | null;
+  /** True when live EO lines differ from the last share snapshot (couple still sees older Order). */
+  shareCommitmentStale?: boolean;
+  /** Unbilled billable amount on the Event Order after prior EO invoices. */
+  unbilledAmount?: number;
 };
 
 export function panelEmphasisForStep(step: CommercialWorkflowStepId): {
@@ -132,16 +136,47 @@ function eventOrderState(input: EventOrderJourneyInput): {
     };
   }
   const status = input.eventOrder.status ?? "draft";
+  const stale = Boolean(input.shareCommitmentStale && input.eventOrder.sharedAt);
+  const unbilled = input.unbilledAmount ?? 0;
+
+  if (stale) {
+    return {
+      state: status === "finalized" ? "Finalized · shared copy is outdated" : "Open · shared copy is outdated",
+      detail:
+        "The couple still sees the last shared Event Order, which no longer matches these lines. Re-share so their view matches before they accept or before you issue the original invoice.",
+      primaryLabel: "Re-share Event Order",
+    };
+  }
+
   if (status === "finalized") {
     return {
       state: input.eventOrder.sharedAt ? "Finalized · shared with couple" : "Finalized",
       detail:
-        "Agreed billable lines are the authoritative record. Sharing with the couple is optional and separate from invoicing — no signature step is required.",
+        "Agreed billable lines are the authoritative record. Sharing with the couple is optional and separate from invoicing — Accept on the portal is acknowledgment of this delivery list, not a legal e-signature or Contracts module signing.",
       primaryLabel: "Review Event Order",
     };
   }
+
+  // Reopened after invoice: do not present initial finalize as the unfinished next step.
+  if (input.hasEoInvoice) {
+    if (unbilled > 0) {
+      return {
+        state: "Open for additional charges",
+        detail:
+          "An Event Order invoice was already issued. Review new billable lines, then Invoice new charges. Re-finalize and re-share only if the couple should see an updated delivery list.",
+        primaryLabel: "Review Event Order",
+      };
+    }
+    return {
+      state: "Open · invoice already issued",
+      detail:
+        "This Event Order was reopened after invoicing. Finalize again only when you intend a new shared snapshot for the couple — payment lives on the invoice(s).",
+      primaryLabel: "Review Event Order",
+    };
+  }
+
   return {
-    state: status === "draft" ? "Draft — needs review" : status,
+    state: status === "draft" ? "Draft — needs review" : status === "open" ? "Open — needs finalize" : status,
     detail:
       "Review selected options, quantities, included lines, and totals, then finalize. Finalizing does not change booking status.",
     primaryLabel: "Review Event Order",
@@ -153,20 +188,37 @@ function invoiceState(input: EventOrderJourneyInput): {
   detail: string;
   primaryLabel: string | null;
 } {
+  const unbilled = input.unbilledAmount ?? 0;
   if (input.hasEoInvoice) {
     const status = input.eoInvoiceStatus ?? "linked";
+    if (unbilled > 0) {
+      return {
+        state: `Invoice · ${status} · new charges`,
+        detail:
+          "Earlier invoices and their payment plans stay as issued. Invoice new charges for unbilled Event Order lines only — a second plan is not created automatically.",
+        primaryLabel: "Invoice new charges",
+      };
+    }
     return {
       state: `Invoice · ${status}`,
       detail:
-        "Amount due lives on the Event Order–linked invoice and its payment plan. Reopen to check balance and installments.",
+        "Amount due lives on each Event Order–linked invoice and its own payment plan (if any). Incremental invoices do not inherit the original plan.",
       primaryLabel: "Open invoice & payment plan",
+    };
+  }
+  if (input.shareCommitmentStale && input.eventOrder?.sharedAt) {
+    return {
+      state: "Re-share before invoicing",
+      detail:
+        "Create the invoice only after the shared Event Order matches the lines you intend to bill — or the couple will see a different Order than the invoice.",
+      primaryLabel: "Re-share Event Order",
     };
   }
   if (input.eventOrder?.status === "finalized" || input.eventOrder?.sharedAt) {
     return {
       state: "Ready to invoice",
       detail:
-        "Create the invoice and payment plan from the finalized Event Order’s billable lines — same workflow as after contract execution.",
+        "Create the invoice and payment plan from the finalized Event Order’s billable lines. Portal Accept and Contracts signing are separate and not required for this invoice step.",
       primaryLabel: "Create invoice & payment plan",
     };
   }
@@ -190,6 +242,8 @@ export function describeEventOrderJourney(input: EventOrderJourneyInput): {
     choices: [...input.choices],
     eventOrder: input.eventOrder,
     hasEoInvoice: input.hasEoInvoice,
+    shareCommitmentStale: input.shareCommitmentStale,
+    unbilledAmount: input.unbilledAmount,
   });
   const sel = selectionsState(input.choices);
   const eo = eventOrderState(input);

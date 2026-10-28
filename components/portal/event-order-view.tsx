@@ -10,6 +10,10 @@ import {
   eventOrderPortalAdditionalReferenceTotal,
   eventOrderPortalLineMoneyLabel,
 } from "@/lib/client-portal/event-order-portal-display";
+import {
+  coupleVisibleLineNotes,
+  coupleVisibleLineUnit,
+} from "@/lib/event-orders/share-consistency";
 
 export type PortalEventOrderLineView = {
   id: string;
@@ -135,7 +139,7 @@ export function EventOrderPortalView({
         <p className="text-sm text-muted-foreground">
           Your Event Order — the delivery list for your event. Not your invoice or contract.
           {canAccept
-            ? " Review the details below, then accept to confirm agreement with your venue."
+            ? " Review the details below, then accept to record that you agree with this delivery list. This is not a legal e-signature and not your invoice or contract."
             : null}
         </p>
         {local.sharedAt && (
@@ -167,22 +171,26 @@ export function EventOrderPortalView({
             <div key={sectionId ?? "general"} className="space-y-2">
               {sectionName && <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{sectionName}</p>}
               <div className="rounded-xl border border-border bg-card divide-y divide-border">
-                {lines.map((l) => (
+                {lines.map((l) => {
+                  const unit = coupleVisibleLineUnit(l.unit);
+                  const notes = coupleVisibleLineNotes(l.notes);
+                  return (
                   <div key={l.id} className="flex items-start justify-between gap-3 px-4 py-3">
                     <div className="min-w-0">
                       <p className="text-sm text-foreground">{l.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        ×{l.quantity}{l.unit ? ` ${l.unit}` : ""}
+                        ×{l.quantity}{unit ? ` ${unit}` : ""}
                         {" · "}
                         {l.isIncluded === false ? "Additional" : "Included"}
                       </p>
-                      {l.notes && <p className="mt-1 text-xs text-muted-foreground">{l.notes}</p>}
+                      {notes ? <p className="mt-1 text-xs text-muted-foreground">{notes}</p> : null}
                     </div>
                     <p className="shrink-0 text-sm font-medium text-foreground">
                       {eventOrderPortalLineMoneyLabel(l, formatMoney)}
                     </p>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -216,8 +224,9 @@ export function EventOrderPortalView({
           <div>
             <h3 className="text-sm font-medium text-heading">Accept this Event Order</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Sharing means your venue sent this for review. Accepting records your agreement.
-              It does not create an invoice by itself.
+              Sharing means your venue sent this delivery list for review. Accepting records your
+              agreement with these items — it is not a Contracts signature and does not create or
+              change an invoice by itself.
             </p>
           </div>
           <label className="block space-y-1 text-sm">

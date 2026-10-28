@@ -27,12 +27,29 @@ export type PortalScheduleRef = {
 export function portalInvoiceLabel(invoice: {
   displayName?: string | null;
   invoiceNumber?: string | null;
+  amendsInvoiceId?: string | null;
 }): string {
   const name = invoice.displayName?.trim();
-  if (name === SELECTIONS_INVOICE_DISPLAY_NAME) return SELECTIONS_INVOICE_DISPLAY_NAME;
+  const number = invoice.invoiceNumber?.trim();
+  const amending = Boolean(invoice.amendsInvoiceId);
+  if (name === SELECTIONS_INVOICE_DISPLAY_NAME) {
+    if (amending && number) return `Additional charges · ${number}`;
+    if (number) return `${SELECTIONS_INVOICE_DISPLAY_NAME} · ${number}`;
+    return SELECTIONS_INVOICE_DISPLAY_NAME;
+  }
   if (name === "Invoice") return BOOKING_INVOICE_LABEL;
+  if (name && number && amending) return `${name} · ${number}`;
   if (name) return name;
+  if (number) return `Invoice · ${number}`;
   return "Invoice";
+}
+
+/** Plain-language next step when an invoice has a balance but no schedule. */
+export function bareInvoiceNextStepCopy(balanceDue: number): string {
+  if (!(balanceDue > 0)) {
+    return "This invoice has no remaining balance.";
+  }
+  return "No payment schedule was set for this invoice. Pay this balance separately using the method your venue listed above — it is not covered by another invoice’s plan.";
 }
 
 export function labelForSchedule(

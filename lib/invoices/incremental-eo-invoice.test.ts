@@ -297,7 +297,10 @@ describe("incremental EO invoice — portal & QuickBooks identity", () => {
         balanceDue: 200,
       },
     ];
-    assert.equal(labelForSchedule(schedules.find((s) => s.invoiceId === "inv-2")!, invoices), SELECTIONS_INVOICE_DISPLAY_NAME);
+    assert.equal(
+      labelForSchedule(schedules.find((s) => s.invoiceId === "inv-2")!, invoices),
+      `${SELECTIONS_INVOICE_DISPLAY_NAME} · INV-2`,
+    );
     const bare = invoicesWithoutPaymentPlan(invoices, [
       { id: "sch-1", invoiceId: "inv-1", title: "Original" },
     ]);
