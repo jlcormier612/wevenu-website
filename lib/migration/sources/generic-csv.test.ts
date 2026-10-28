@@ -76,6 +76,18 @@ describe("genericCsvAdapter.normalizeRow — client", () => {
     assert.equal(result.ok, false);
     if (!result.ok) assert.match(result.error, /please confirm/i);
   });
+
+  it("splits when Suggest-with-Luv mapped a combined column onto First name only", () => {
+    const result = genericCsvAdapter.normalizeRow(
+      { firstName: "Jamie Rivera", email: "jamie@example.com" },
+      "client",
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.normalized.firstName, "Jamie");
+      assert.equal(result.normalized.lastName, "Rivera");
+    }
+  });
 });
 
 describe("genericCsvAdapter.normalizeRow — lead", () => {

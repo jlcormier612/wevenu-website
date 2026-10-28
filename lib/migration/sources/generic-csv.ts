@@ -38,6 +38,22 @@ function str(row: SourceRow, key: string): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+function applyCombinedNameSplit(
+  combined: string,
+): { ok: true; firstName: string; lastName: string } | { ok: false; error: string } {
+  const split = splitName(combined);
+  if (!split.firstName) {
+    return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
+  }
+  if (!split.confident) {
+    return {
+      ok: false,
+      error: `"${combined}" was split as first name "${split.firstName}", last name "${split.lastName}" — please confirm this is correct.`,
+    };
+  }
+  return { ok: true, firstName: split.firstName, lastName: split.lastName };
+}
+
 function normalizeClientLike(row: SourceRow): (NormalizedClientLike & { ok: true }) | { ok: false; error: string } {
   let firstName = str(row, "firstName");
   let lastName = str(row, "lastName");
@@ -45,23 +61,24 @@ function normalizeClientLike(row: SourceRow): (NormalizedClientLike & { ok: true
   // (Couple Name, Full name). HoneyBook/Tripleseat adapters already split
   // that shape; Another-system / generic must too or auto-mapped combined
   // columns are reported as missing first/last after Bring in.
+  //
+  // Also: Suggest-with-Luv sometimes drops a combined column onto First name
+  // only (leaving Last name empty). Treat that the same as a combined name.
   if (!firstName && !lastName) {
     const combined = str(row, "name") ?? str(row, "fullName") ?? str(row, "clientName");
     if (!combined) {
       return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
     }
-    const split = splitName(combined);
-    if (!split.firstName) {
-      return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
-    }
-    if (!split.confident) {
-      return {
-        ok: false,
-        error: `"${combined}" was split as first name "${split.firstName}", last name "${split.lastName}" — please confirm this is correct.`,
-      };
-    }
+    const split = applyCombinedNameSplit(combined);
+    if (!split.ok) return split;
     firstName = split.firstName;
-    lastName = split.lastName; // may be "" for a confident single-word name
+    lastName = split.lastName;
+  } else if (firstName && !lastName) {
+    const combined = str(row, "name") ?? str(row, "fullName") ?? str(row, "clientName") ?? firstName;
+    const split = applyCombinedNameSplit(combined);
+    if (!split.ok) return split;
+    firstName = split.firstName;
+    lastName = split.lastName;
   } else if (!firstName || !lastName) {
     return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
   }

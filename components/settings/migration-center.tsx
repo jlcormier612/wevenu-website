@@ -597,9 +597,16 @@ export function MigrationCenter({
         return;
       }
       const next = { ...mapping };
+      const usedHeaders = new Set(Object.values(next).filter(Boolean));
       let filled = 0;
       for (const [key, header] of Object.entries(result.mapping)) {
-        if (!next[key] && header) { next[key] = header; filled++; }
+        // Never steal a header already mapped to another field (e.g. Luv
+        // proposing Couple Name onto First name when Full name already has it).
+        if (!next[key] && header && !usedHeaders.has(header)) {
+          next[key] = header;
+          usedHeaders.add(header);
+          filled++;
+        }
       }
       if (filled === 0) {
         toast.info("Luv didn't find any new matches beyond what's already mapped.");

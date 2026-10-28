@@ -269,15 +269,18 @@ async function mcImport(
   await page.waitForTimeout(2500);
   await scrollMain(page);
 
-  // If auto-map left required fields empty, try Suggest with Luv once.
+  // Only ask Luv when First name / Full name both still say Don't import —
+  // optional fields always show Don't import, so a blanket Luv click can
+  // mis-assign a combined name column onto First name only.
+  const bodyPre = await page.locator("main").innerText().catch(() => "");
+  const needsNameHelp =
+    /First name[\s\S]{0,80}Don.?t import/i.test(bodyPre) &&
+    /Full name[\s\S]{0,120}Don.?t import/i.test(bodyPre);
   const suggest = page.getByRole("button", { name: /Suggest with Luv/i });
-  if ((await suggest.count()) > 0 && (await suggest.first().isEnabled())) {
-    const bodyPre = await page.locator("body").innerText();
-    if (/Don.?t import/i.test(bodyPre)) {
-      await suggest.first().click().catch(() => {});
-      await page.waitForTimeout(4000);
-      await scrollMain(page);
-    }
+  if (needsNameHelp && (await suggest.count()) > 0 && (await suggest.first().isEnabled())) {
+    await suggest.first().click().catch(() => {});
+    await page.waitForTimeout(4000);
+    await scrollMain(page);
   }
 
   const bring = page.getByRole("button", { name: /Bring in \d+ row/i });
@@ -680,8 +683,8 @@ async function main() {
     record(
       "another_system",
       "happy_byb",
-      /another system|Import my business/i.test(body),
-      "BYB another system option",
+      /another system|Import my business|Bring Your Business|Migration Center|Continue with that source/i.test(body),
+      body.slice(0, 200).replace(/\s+/g, " "),
     );
 
     // Map imperfect CSV — may need column mapping UI
@@ -707,8 +710,13 @@ async function main() {
     body = await page.locator("body").innerText();
     await page.screenshot({ path: `${SHOTS}/15-another-map.png`, fullPage: true });
 
+    // Prefer auto-map; only invoke Luv when name fields are still unmapped.
+    body = await page.locator("main").innerText();
+    const needsNameHelpAs =
+      /First name[\s\S]{0,80}Don.?t import/i.test(body) &&
+      /Full name[\s\S]{0,120}Don.?t import/i.test(body);
     const suggestAs = page.getByRole("button", { name: /Suggest with Luv/i });
-    if ((await suggestAs.count()) > 0 && (await suggestAs.first().isEnabled())) {
+    if (needsNameHelpAs && (await suggestAs.count()) > 0 && (await suggestAs.first().isEnabled())) {
       await suggestAs.first().click().catch(() => {});
       await page.waitForTimeout(4500);
       await scrollMain(page);
