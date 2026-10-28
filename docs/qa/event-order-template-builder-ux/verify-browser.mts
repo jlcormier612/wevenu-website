@@ -448,24 +448,43 @@ async function main() {
     if (entrees && entreeOffering) await addCatalogOptionToGroup(entrees.id, entreeOffering.id, "Chicken Marsala");
 
     // Template-only under Sides
+    const roastLabel = `${PREFIX}Roasted Vegetables`;
     if (sides) {
       await page.getByTestId("eo-add-option-group").selectOption(sides.id);
       await page.getByTestId("eo-add-option-template-only").click();
-      await page.getByPlaceholder("Option label").fill(`${PREFIX}Roasted Vegetables`);
+      await page.getByPlaceholder("Option label").waitFor({ state: "visible", timeout: 15_000 });
+      await page.getByPlaceholder("Option label").fill(roastLabel);
       await page.getByRole("button", { name: /^Add template-only option$/i }).click();
-      await page.waitForTimeout(1200);
+      await page.getByTestId("eo-choice-groups-panel").getByText(roastLabel).waitFor({
+        state: "visible",
+        timeout: 30_000,
+      });
     }
 
-    const { data: allOpts } = await admin
-      .from("event_order_template_options")
-      .select("id,label,group_id,offering_id")
-      .eq("template_id", tpl.id);
-    const caesar = (allOpts ?? []).find((o) => o.label === "Caesar salad");
-    const chicken = (allOpts ?? []).find((o) => o.label === "Chicken Marsala");
-    const roast = (allOpts ?? []).find((o) => String(o.label).includes("Roasted Vegetables"));
+    let caesar: { id: string; label: string; group_id: string; offering_id: string | null } | undefined;
+    let chicken: typeof caesar;
+    let roast: typeof caesar;
+    let allOpts: typeof caesar[] | null = null;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const { data } = await admin
+        .from("event_order_template_options")
+        .select("id,label,group_id,offering_id")
+        .eq("template_id", tpl.id);
+      allOpts = (data ?? []) as typeof allOpts;
+      caesar = (allOpts ?? []).find((o) => o.label === "Caesar salad");
+      chicken = (allOpts ?? []).find((o) => o.label === "Chicken Marsala");
+      roast = (allOpts ?? []).find((o) => String(o.label).includes("Roasted Vegetables"));
+      if (caesar && chicken && roast) break;
+      await page.waitForTimeout(400);
+    }
     record("persisted_sides_catalog_item", Boolean(caesar?.offering_id === sideOffering?.id), JSON.stringify(caesar), "persisted");
     record("persisted_entrees_catalog_item", Boolean(chicken?.offering_id === entreeOffering?.id), JSON.stringify(chicken), "persisted");
-    record("persisted_sides_template_only_item", Boolean(roast && roast.offering_id == null), JSON.stringify(roast), "persisted");
+    record(
+      "persisted_sides_template_only_item",
+      Boolean(roast && roast.offering_id == null),
+      JSON.stringify(roast ?? { allOpts }),
+      "persisted",
+    );
     await page.screenshot({ path: `${OUT}/shots/04-followups-both-branches-1280.png`, fullPage: true });
     persisted.groups = groups2;
     persisted.options = allOpts;

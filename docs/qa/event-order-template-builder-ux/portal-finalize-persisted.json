@@ -1,0 +1,62 @@
+{
+  "run": "EOPFMVSR1B9Y",
+  "expectedSha": "159e5a9d9f8404325242ae966487acc560609928",
+  "prefix": "EOPF-EOPFMVSR1B9Y-",
+  "marker": {
+    "id": "ae4b1e1c-86ba-453c-8104-4365dca75313",
+    "description": "EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line",
+    "unit_price": 25,
+    "is_included": false
+  },
+  "choicesId": "77085534-6e33-451d-93ab-7e153cfe8162",
+  "eventId": "46a83cb6-ceec-40a3-8cde-dfbc3d9409cb",
+  "eoId": "cea19b6c-963e-4913-ab21-57c568b3f8af",
+  "portalToken": "eopf_eopfmvsr1b9y_cbdd",
+  "eoLinesAfterFinalize": [
+    {
+      "id": "ae4b1e1c-86ba-453c-8104-4365dca75313",
+      "description": "EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line",
+      "unit_price": 25,
+      "is_included": false,
+      "quantity": 1,
+      "amount": 25,
+      "offering_id": null
+    },
+    {
+      "id": "964b5b98-dad1-43b8-91a3-b04736debb00",
+      "description": "EOPF-EOPFMVSR1B9Y-Plated Dinner",
+      "unit_price": 0,
+      "is_included": true,
+      "quantity": 1,
+      "amount": 0,
+      "offering_id": null
+    },
+    {
+      "id": "ed067a55-496b-418a-89cc-fbf642fecb59",
+      "description": "EOPF-EOPFMVSR1B9Y-Chicken Marsala",
+      "unit_price": 42,
+      "is_included": false,
+      "quantity": 1,
+      "amount": 42,
+      "offering_id": null
+    }
+  ],
+  "appliedIds": [
+    "964b5b98-dad1-43b8-91a3-b04736debb00",
+    "ed067a55-496b-418a-89cc-fbf642fecb59"
+  ],
+  "eoLinesAfterDup": [
+    {
+      "id": "ae4b1e1c-86ba-453c-8104-4365dca75313",
+      "description": "EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line"
+    },
+    {
+      "id": "dfd44bf0-68b8-4b5d-b204-de4b6bfbf7b5",
+      "description": "EOPF-EOPFMVSR1B9Y-Plated Dinner"
+    },
+    {
+      "id": "285a8d91-15ab-4321-a8fd-8f6ad9de5cc3",
+      "description": "EOPF-EOPFMVSR1B9Y-Chicken Marsala"
+    }
+  ]
+}

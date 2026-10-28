@@ -1,152 +1,106 @@
 # Event Order Template Builder UX — acceptance STATUS
 
-**Verdict: GREEN** for the complete venue-owner workflow on serving tip `3865e4c1`  
-**Follow-up:** residual save-button copy `159e5a9d` — Sandbox deploy `40784742660` in flight; re-run harness after it serves  
+**Verdict: GREEN**  
 **Date:** 2026-10-28  
 **Production:** untouched  
 **Unrelated dirty/untracked work:** preserved
 
 ---
 
-## Deployment reconciliation
+## Final serving SHA / deployment
 
 | Item | Result |
 |---|---|
-| GitHub run `40782882893` | `success` — Deploy Sandbox — headSha `3865e4c1494fae80572ef3640b35bf7c907713e9` |
-| ECS PRIMARY (acceptance run) | single deployment, `rollout=COMPLETED`, steady state |
-| Serving image during A–E browser pass | `…/htc-sandbox-venue-app:3865e4c1494fae80572ef3640b35bf7c907713e9` |
-| Competing deploy at acceptance start | none |
-| Follow-up commit | `159e5a9d9f8404325242ae966487acc560609928` — package-item save button + harness/STATUS |
-| Follow-up deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40784742660 |
-
-UX product tip was already serving. This pass closed harness gaps, proved the full workflow on that tip, then applied one residual copy correction (sheet save button) and dispatched Sandbox deploy — see “UX changes this pass.”
+| Residual copy-fix commit | `159e5a9d9f8404325242ae966487acc560609928` |
+| Deploy run | [40784742660](https://github.com/jlcormier612/wevenu-website/actions/runs/40784742660) — **success** |
+| ECS image | `…/htc-sandbox-venue-app:159e5a9d9f8404325242ae966487acc560609928` |
+| Competing deploy at verification | none (PRIMARY `COMPLETED`) |
+| Prior UX tip (still in history) | `3865e4c1494fae80572ef3640b35bf7c907713e9` via run `40782882893` |
 
 ---
 
-## Original audit / root cause
-
-See [`AUDIT.md`](./AUDIT.md).
-
-**Root cause (confirmed):** guided builder already modeled package items vs primary/follow-up choices correctly; venue-facing labels and empty states previously collapsed those into “Included” + catalog-major jargon. Commit `3865e4c1` fixed that framing. This acceptance pass verifies the **actual** experience end-to-end, not label assertions alone.
-
----
-
-## UX changes this pass
-
-| Change | Why |
-|---|---|
-| Sheet primary action: **Add package item** / **Save package item** (was “Add offering” / “Save offering”) | Sheet title and workspace already said package item; the commit button still said “offering,” which reintroduced catalog jargon at the moment of save. |
-| Stale unit assertions updated (`offerings.test`, `hierarchy.test`, `builder-ux.test`) | Prior copy expected “Add from Offerings” / “Select where this belongs” on EO choice UI — obsolete after multi-parent catalog + package-item language. |
-
-No schema, pricing-model, or selection-engine redesign.
-
----
-
-## Browser acceptance matrix (Sandbox, serving tip)
-
-Harness: `docs/qa/event-order-template-builder-ux/verify-browser.mts`  
-Evidence: `browser-results.json`, `browser-run.log`, `persisted-state.json`, `shots/`
-
-Command:
+## 1. Builder UX harness (final serving SHA)
 
 ```bash
-EXPECTED_SHA=<serving> npx tsx docs/qa/event-order-template-builder-ux/verify-browser.mts
+EXPECTED_SHA=159e5a9d9f8404325242ae966487acc560609928 \
+  npx tsx docs/qa/event-order-template-builder-ux/verify-browser.mts
+→ GREEN — 35 pass / 0 fail
 ```
 
-### Automated checks — all PASS (35)
+Evidence: `browser-results.json`, `browser-run.log` / `browser-run-159e5a9d.log`, `persisted-state.json`, `shots/01`–`08`.
 
-| Area | Checks | Result |
-|---|---|---|
-| Deploy | `serving_sha` | PASS |
-| Usability copy | package items / choices headings; no “Included in Catering”; no major-choices jargon; primary CTA; empty state | PASS |
-| A — package items + pricing | catalog covered (`Day-of coordination`); template-only additional charge `$150` Champagne Toast; UI Covered vs Additional; catalog vs template-only labels | PASS |
-| B — primary question | Dinner style + Buffet/Plated same `group_id`; answers under question in UI | PASS |
-| C — follow-ups | Sides → Buffet; Entrées → Plated; catalog + template-only under Sides; preview path switch; incomplete reject; complete accept | PASS |
-| D — catalog vs template-only | offering_id set/null; Champagne Toast did not create Offering | PASS |
-| E — reopen / finalize integrity | reopen structure; server validate reject/accept; resolve both paths; rejected finalize no lines; apply lines once; no duplicate reapply; template rename does not mutate EO snapshot | PASS |
-| Mobile | 390px structure readable | PASS |
+Confirmed still valid on `159e5a9d`:
 
-### Actual browser workflows exercised
+- Direct package items with covered vs additional-charge treatment  
+- Template-only Champagne Toast `$150`  
+- Dinner style → Buffet / Plated  
+- Conditional Sides / Entrées  
+- Preview path switch + validation  
+- Reopen / edit persistence  
+- Finalization integrity simulation + snapshot immutability  
+- 390px layout  
 
-1. New wedding EO template → Catering category workspace  
-2. Add catalog package item (covered by package price)  
-3. Add template-only package item (additional charge $150)  
-4. Add primary question “Dinner style” + Buffet Dinner / Plated Dinner answers  
-5. Add Sides under Buffet (Caesar salad catalog + Roasted Vegetables template-only)  
-6. Add Entrées under Plated (Chicken Marsala catalog)  
-7. Leave / reopen template — structure intact  
-8. Preview: Buffet path shows Sides only; Plated path shows Entrées only  
-9. Preview validation: incomplete follow-up rejected; complete plated path accepted  
-10. Desktop 1280 + mobile 390 screenshots
-
-### Persisted state verified
-
-- Lines: catalog `included_by_default=true` + `offering_id`; template-only `included_by_default=false`, `unit_price=150`, `offering_id=null`  
-- Groups: Dinner style root; Sides `depends_on` Buffet; Entrées `depends_on` Plated  
-- Options: catalog offering_ids for Caesar/Chicken; template-only roast `offering_id=null`  
-- Finalization simulation: incomplete answers blocked; valid plated resolve → EO lines; rename template option label left EO line “Chicken Marsala”
-
-### Screenshots
-
-| File | Stage |
-|---|---|
-| `shots/01-workspace-empty-1280.png` | Initial Catering workspace |
-| `shots/02-package-items-pricing-1280.png` | Covered vs additional package items |
-| `shots/03-primary-answers-1280.png` | Dinner style + both answers |
-| `shots/04-followups-both-branches-1280.png` | Sides + Entrées branches |
-| `shots/05-preview-initial-1280.png` | Couple preview |
-| `shots/06-preview-buffet-path-1280.png` | Buffet → Sides only |
-| `shots/07-preview-plated-path-1280.png` | Plated → Entrées only |
-| `shots/08-builder-390.png` | Mobile 390 |
-
-### Visual / usability evaluation
-
-| Question | Verdict |
-|---|---|
-| Next action obvious? | Yes — empty state + “Add a primary question” + Add package item |
-| Direct package items clear? | Yes — “Items always on this package” + note that always ≠ free |
-| Pricing treatment truthful? | Yes — Covered by package price vs Additional charge on each row |
-| Primary question vs answers distinct? | Yes — PRIMARY QUESTION band; answers nested; follow-up CTAs per answer |
-| Buffet/Plated follow-up relationship obvious? | Yes — “FOLLOW-UPS UNDER EACH ANSWER”; preview path switches |
-| Catalog vs template-only at add? | Yes — sheet source help + list “From Offerings catalog” / “Template-only” |
-| Preview reflects couple experience? | Yes — same validator; inactive branch hidden |
+UX residual on this SHA: sheet save actions read **Add package item** / **Save package item**.
 
 ---
 
-## Unit / regression
+## 2. Live portal finalization click path (closed)
 
-| Suite | Result |
+Previously OPEN: live `finalizeClientChoices` via portal submit + venue Apply/Update CTA.
+
+Harness (new, targeted; reuses SPF portal patterns + staff cookie auth):
+
+```bash
+EXPECTED_SHA=159e5a9d9f8404325242ae966487acc560609928 \
+  npx tsx docs/qa/event-order-template-builder-ux/verify-portal-finalize.mts
+→ GREEN — 19 pass / 0 fail
+```
+
+Evidence: `portal-finalize-results.json`, `portal-finalize-persisted.json`, `portal-finalize-run.log`, shots:
+
+| Shot | Stage |
 |---|---|
-| `lib/event-order-templates/builder-ux.test.ts` | PASS |
-| `lib/event-order-templates/offerings.test.ts` | PASS (assertions updated for current copy) |
-| `lib/offerings/hierarchy.test.ts` | PASS (multi-parent asserted on catalog UI, not EO choice UI) |
-| `lib/client-choices/validate-answers.test.ts` | PASS |
-| `lib/client-choices/conditional-groups.test.ts` | PASS |
+| `shots/portal-incomplete-reject-1280.png` | Portal rejects missing Entrée |
+| `shots/portal-submitted-1280.png` | Valid plated path submitted |
+| `shots/venue-before-finalize-1280.png` | Staff before Apply/Update |
+| `shots/venue-after-finalize-1280.png` | After `finalizeClientChoices` |
+| `shots/venue-rejected-finalize-1280.png` | Incomplete finalize rejected |
+| `shots/portal-after-flow-1280.png` | Portal after flow |
 
-Focused batch: **71 pass / 0 fail**.
+### Portal + finalize results
 
-Related prior browser workstreams (category integrity, selection progress/finalize, multi-parent) remain documented GREEN under their own `docs/qa/*/STATUS.md`; this pass did not re-run those long harnesses against a new product deploy unless a follow-up deploy SHA requires it.
+| Check | Result |
+|---|---|
+| Incomplete follow-up submit rejected (Entrées) | PASS — no EO mutation (marker line only) |
+| Over-max Sides blocked (3rd disabled at max 2) | PASS — status remains `sent` |
+| Valid plated path portal submit | PASS — status `submitted`; answers dinner=plated, entrée=chicken |
+| Submit does not create choice EO lines | PASS |
+| Staff UI `choices-create-event-order` → `finalizeClientChoices` | PASS — status `finalized` |
+| EO lines: Plated (included $0) + Chicken Marsala ($42 additional) | PASS |
+| Unrelated venue marker line preserved | PASS |
+| Duplicate finalize (Amend → submitted → Update) replaces lines, no duplicates | PASS — new `applied_line_ids`, counts stay 1/1/1 |
+| Rejected finalize with incomplete answers | PASS — status stays `submitted`; EO line set unchanged |
+
+Sibling reference (progress/max/submit without staff finalize click): `docs/qa/selection-progress-finalize/STATUS.md`.
 
 ---
 
-## Behaviors not verified / limitations
+## Remaining limitations
 
 | Item | Status |
 |---|---|
-| Live staff UI click of `finalizeClientChoices` against a portal session in this harness | **OPEN** — covered by shared `validateChoicesAnswers` + `resolveSelectedOptions` + isolated EO line apply/reject simulation; full portal finalize remains proven in `docs/qa/selection-progress-finalize` / EO commercial lifecycle harnesses |
-| Over-selection UI when max &lt; available options | **OPEN** — server/unit covered; this template used choose-1 groups |
-| Production deploy | Not authorized — untouched |
+| Production | Not authorized — untouched |
+| Full commercial invoice/share after choices finalize | Out of scope — not required for this closure |
 
-None of the OPEN items block venue-owner builder clarity or the supported A–E workflow on Sandbox.
+No OPEN blockers for builder UX acceptance or live portal → finalizeClientChoices.
 
 ---
 
 ## Definition of done
 
-- Serving SHA reconciled; no competing deploy  
-- Full A–E workflow verified in browser + persistence  
-- UI clear enough without internal terminology coaching  
-- Regression unit coverage green  
+- Residual deploy `40784742660` succeeded; serving SHA `159e5a9d` verified  
+- Builder harness GREEN on that SHA  
+- Live portal submit + staff finalize click path GREEN with persisted EO evidence  
 - Production untouched; unrelated dirty work preserved  
 
 **GREEN.**

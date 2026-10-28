@@ -1,11 +1,11 @@
 {
-  "run": "EOTUXMVSPZ9CI",
-  "expectedSha": "3865e4c1494fae80572ef3640b35bf7c907713e9",
-  "prefix": "EOTUX-EOTUXMVSPZ9CI-",
-  "templateId": "ceb7822f-50c8-40e3-ba4d-1d313550b54b",
+  "run": "EOTUXMVSQH5H8",
+  "expectedSha": "159e5a9d9f8404325242ae966487acc560609928",
+  "prefix": "EOTUX-EOTUXMVSQH5H8-",
+  "templateId": "d3689a40-f397-4e9f-8a1e-42e8fb73be02",
   "lines": [
     {
-      "id": "9d3f8c1b-718b-4781-98bb-b8194ef46323",
+      "id": "7527c002-ecc2-48c0-bcf6-f3f1a38249a6",
       "description": "Day-of coordination",
       "included_by_default": true,
       "unit_price": null,
@@ -13,8 +13,8 @@
       "pricing_model": "none"
     },
     {
-      "id": "b04fe246-2db2-41b5-9aa4-60317281fe62",
-      "description": "EOTUX-EOTUXMVSPZ9CI-Champagne Toast",
+      "id": "103a453a-39d8-4421-863b-3e947f560c1d",
+      "description": "EOTUX-EOTUXMVSQH5H8-Champagne Toast",
       "included_by_default": false,
       "unit_price": 150,
       "offering_id": null,
@@ -23,26 +23,26 @@
   ],
   "groups": [
     {
-      "id": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+      "id": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
       "name": "Dinner style",
       "depends_on_option_ids": [],
       "min_select": 1,
       "max_select": 1
     },
     {
-      "id": "26585150-7f1f-4231-956d-331eeab03977",
+      "id": "ff82bd91-7240-442b-a983-fcbe892aff61",
       "name": "Sides",
       "depends_on_option_ids": [
-        "63239fa9-54ef-413b-96c1-ea3bb1d8f7a5"
+        "94df4953-0140-476e-8c41-4cb21f25ce7d"
       ],
       "min_select": 1,
       "max_select": 1
     },
     {
-      "id": "797a754f-22a9-4e0b-8ca3-6bfbb091bbb4",
+      "id": "9fbad510-cf3c-422c-8b4e-1183a33c9781",
       "name": "Entrées",
       "depends_on_option_ids": [
-        "89f99f95-45d5-45be-a00c-4956bd3ba9c5"
+        "85dfbbe7-6587-4708-af6b-7f82511d0b19"
       ],
       "min_select": 1,
       "max_select": 1
@@ -50,41 +50,41 @@
   ],
   "options": [
     {
-      "id": "2254fed7-a695-400f-bcb0-7682847ff250",
-      "label": "EOTUX-EOTUXMVSPZ9CI-Roasted Vegetables",
-      "group_id": "26585150-7f1f-4231-956d-331eeab03977",
-      "offering_id": null
+      "id": "f63ba3df-737d-4092-a404-3855c03f49fa",
+      "label": "Chicken Marsala",
+      "group_id": "9fbad510-cf3c-422c-8b4e-1183a33c9781",
+      "offering_id": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323"
     },
     {
-      "id": "63239fa9-54ef-413b-96c1-ea3bb1d8f7a5",
+      "id": "94df4953-0140-476e-8c41-4cb21f25ce7d",
       "label": "Buffet Dinner",
-      "group_id": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+      "group_id": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
       "offering_id": null
     },
     {
-      "id": "89f99f95-45d5-45be-a00c-4956bd3ba9c5",
+      "id": "85dfbbe7-6587-4708-af6b-7f82511d0b19",
       "label": "Plated Dinner",
-      "group_id": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+      "group_id": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
       "offering_id": null
     },
     {
-      "id": "9c43e95d-96c0-4907-af26-c89647112aba",
+      "id": "fb6bdbd4-e958-46bc-be04-a612f7982156",
       "label": "Caesar salad",
-      "group_id": "26585150-7f1f-4231-956d-331eeab03977",
+      "group_id": "ff82bd91-7240-442b-a983-fcbe892aff61",
       "offering_id": "16c0cbd8-0b24-419e-aa8f-02d01c29c078"
     },
     {
-      "id": "6ea79568-cb90-42a6-b5c5-faecceb06e87",
-      "label": "Chicken Marsala",
-      "group_id": "797a754f-22a9-4e0b-8ca3-6bfbb091bbb4",
-      "offering_id": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323"
+      "id": "775c5285-0e03-48d0-8b50-5c325ed834e3",
+      "label": "EOTUX-EOTUXMVSQH5H8-Roasted Vegetables",
+      "group_id": "ff82bd91-7240-442b-a983-fcbe892aff61",
+      "offering_id": null
     }
   ],
   "finalization": {
     "resolved": [
       {
-        "optionId": "89f99f95-45d5-45be-a00c-4956bd3ba9c5",
-        "groupId": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+        "optionId": "85dfbbe7-6587-4708-af6b-7f82511d0b19",
+        "groupId": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
         "offeringId": null,
         "description": "Plated Dinner",
         "quantity": 1,
@@ -93,8 +93,8 @@
         "amount": 0
       },
       {
-        "optionId": "6ea79568-cb90-42a6-b5c5-faecceb06e87",
-        "groupId": "797a754f-22a9-4e0b-8ca3-6bfbb091bbb4",
+        "optionId": "f63ba3df-737d-4092-a404-3855c03f49fa",
+        "groupId": "9fbad510-cf3c-422c-8b4e-1183a33c9781",
         "offeringId": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323",
         "description": "Chicken Marsala",
         "quantity": 1,
@@ -105,7 +105,7 @@
     ],
     "applied": [
       {
-        "id": "b8d153e0-7141-4d7f-9da2-09fad571ff40",
+        "id": "d0698d2d-2c84-4cc7-8d47-6f58fad90955",
         "description": "Plated Dinner",
         "unit_price": 0,
         "is_included": true,
@@ -113,7 +113,7 @@
         "amount": 0
       },
       {
-        "id": "c1781b63-1c94-48fb-8bd9-d604e6c3dccd",
+        "id": "2cce4610-77c2-4e6b-a506-95f899c6641b",
         "description": "Chicken Marsala",
         "unit_price": 0,
         "is_included": true,
