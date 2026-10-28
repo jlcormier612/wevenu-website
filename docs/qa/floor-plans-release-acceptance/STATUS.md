@@ -6,8 +6,10 @@ Prior tip GREEN (`5959df8c`) is **superseded** for release closure. Re-acceptanc
 
 ## Serving (current Sandbox)
 
-- Still serving until redeploy: `5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a`
-- Fix commit pending deploy (this branch): Change-for-event offer-editor entry without Setup Profile
+- Still serving until redeploy completes: `5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a`
+- Fix commit: `38b2d591f2ee7a0cad3a96a8124424dbe6837549` (Change without Setup Profile)
+- Harness tip: `69f0bf7f` (local script only; product fix is `38b2d591`)
+- Deploy in progress: https://github.com/jlcormier612/wevenu-website/actions/runs/40633517702
 
 ## P1 found (blocks Journey 2)
 
