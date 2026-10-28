@@ -1,0 +1,18 @@
+PASS serving_sha — expected=ce41253c40938a5682d22633f969efdfbd2e7aac ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ce41253c40938a5682d22633f969efdfbd2e7aac
+PASS baseline_flag_loaded — fancyAllow=false
+PASS copy_title_1280 — setting title
+PASS copy_options_1280 — both options
+PASS copy_note_1280 — important note visible
+PASS howto_multi_space_1280 — how-to section
+PASS selection_matches_db_1280 — db=false close=true open=false
+PASS toggle_persists_1280 — expected=true got=true
+PASS restored_1280 — original=false restored=false
+PASS copy_title_390 — setting title
+PASS copy_options_390 — both options
+PASS copy_note_390 — important note visible
+PASS howto_multi_space_390 — how-to section
+PASS selection_matches_db_390 — db=false close=true open=false
+PASS toggle_persists_390 — expected=true got=true
+PASS restored_390 — original=false restored=false
+
+VERDICT GREEN pass=16 fail=0

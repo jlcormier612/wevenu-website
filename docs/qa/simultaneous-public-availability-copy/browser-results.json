@@ -1,0 +1,90 @@
+{
+  "expectedSha": "ce41253c40938a5682d22633f969efdfbd2e7aac",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ce41253c40938a5682d22633f969efdfbd2e7aac",
+  "originalFlag": false,
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=ce41253c40938a5682d22633f969efdfbd2e7aac ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ce41253c40938a5682d22633f969efdfbd2e7aac"
+    },
+    {
+      "name": "baseline_flag_loaded",
+      "pass": true,
+      "detail": "fancyAllow=false"
+    },
+    {
+      "name": "copy_title_1280",
+      "pass": true,
+      "detail": "setting title"
+    },
+    {
+      "name": "copy_options_1280",
+      "pass": true,
+      "detail": "both options"
+    },
+    {
+      "name": "copy_note_1280",
+      "pass": true,
+      "detail": "important note visible"
+    },
+    {
+      "name": "howto_multi_space_1280",
+      "pass": true,
+      "detail": "how-to section"
+    },
+    {
+      "name": "selection_matches_db_1280",
+      "pass": true,
+      "detail": "db=false close=true open=false"
+    },
+    {
+      "name": "toggle_persists_1280",
+      "pass": true,
+      "detail": "expected=true got=true"
+    },
+    {
+      "name": "restored_1280",
+      "pass": true,
+      "detail": "original=false restored=false"
+    },
+    {
+      "name": "copy_title_390",
+      "pass": true,
+      "detail": "setting title"
+    },
+    {
+      "name": "copy_options_390",
+      "pass": true,
+      "detail": "both options"
+    },
+    {
+      "name": "copy_note_390",
+      "pass": true,
+      "detail": "important note visible"
+    },
+    {
+      "name": "howto_multi_space_390",
+      "pass": true,
+      "detail": "how-to section"
+    },
+    {
+      "name": "selection_matches_db_390",
+      "pass": true,
+      "detail": "db=false close=true open=false"
+    },
+    {
+      "name": "toggle_persists_390",
+      "pass": true,
+      "detail": "expected=true got=true"
+    },
+    {
+      "name": "restored_390",
+      "pass": true,
+      "detail": "original=false restored=false"
+    }
+  ],
+  "failedCount": 0,
+  "verdict": "GREEN",
+  "generatedAt": "2026-10-28T17:38:17.241Z"
+}
