@@ -1,6 +1,7 @@
 # Event Order Template Builder UX — acceptance STATUS
 
-**Verdict: GREEN** (complete venue-owner workflow + usable UI on Sandbox)  
+**Verdict: GREEN** for the complete venue-owner workflow on serving tip `3865e4c1`  
+**Follow-up:** residual save-button copy `159e5a9d` — Sandbox deploy `40784742660` in flight; re-run harness after it serves  
 **Date:** 2026-10-28  
 **Production:** untouched  
 **Unrelated dirty/untracked work:** preserved
@@ -12,11 +13,13 @@
 | Item | Result |
 |---|---|
 | GitHub run `40782882893` | `success` — Deploy Sandbox — headSha `3865e4c1494fae80572ef3640b35bf7c907713e9` |
-| ECS PRIMARY | single deployment, `rollout=COMPLETED`, steady state |
-| Serving image (pre follow-up fix) | `…/htc-sandbox-venue-app:3865e4c1494fae80572ef3640b35bf7c907713e9` |
-| Competing deploy | none at acceptance start |
+| ECS PRIMARY (acceptance run) | single deployment, `rollout=COMPLETED`, steady state |
+| Serving image during A–E browser pass | `…/htc-sandbox-venue-app:3865e4c1494fae80572ef3640b35bf7c907713e9` |
+| Competing deploy at acceptance start | none |
+| Follow-up commit | `159e5a9d9f8404325242ae966487acc560609928` — package-item save button + harness/STATUS |
+| Follow-up deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40784742660 |
 
-UX product tip was already serving. This pass closed harness gaps, proved the full workflow, then applied one residual copy correction (sheet save button) — see “UX changes this pass.”
+UX product tip was already serving. This pass closed harness gaps, proved the full workflow on that tip, then applied one residual copy correction (sheet save button) and dispatched Sandbox deploy — see “UX changes this pass.”
 
 ---
 
