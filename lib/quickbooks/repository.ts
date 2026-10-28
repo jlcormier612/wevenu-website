@@ -142,7 +142,13 @@ export async function recordHealthCheck(client: any, venueId: string, ok: boolea
     last_health_check_at: new Date().toISOString(),
     last_health_check_ok: ok,
   };
-  if (!ok && error) {
+  if (ok) {
+    // Successful Intuit sync clears any prior failure text so Settings never
+    // shows a stale "Waiting on Customer sync." (or similar) after a later
+    // customer/invoice push succeeded.
+    patch.last_error = null;
+    patch.last_error_at = null;
+  } else if (error) {
     patch.last_error = error;
     patch.last_error_at = new Date().toISOString();
   }

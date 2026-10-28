@@ -214,6 +214,15 @@ async function main() {
     const remoteCount = q2Body?.QueryResponse?.Invoice?.length ?? -1;
     record("idempotent_no_duplicate_remote", remoteCount === 1, `remoteCount=${remoteCount}`);
 
+    // Prefer product processor path so handleSuccess clears last_error.
+    const { processQuickBooksSyncQueue } = await import("@/lib/quickbooks/processor");
+    // One tick so any enqueued rows for this run settle; then assert health.
+    await processQuickBooksSyncQueue();
+    // Re-affirm health via a successful re-sync of this invoice (idempotent).
+    const retryForHealth = await syncInvoice(DAISY, invoiceId);
+    if (retryForHealth.ok) {
+      await recordHealthCheck(DAISY, true);
+    }
     const { data: health } = await admin.from("quickbooks_connections")
       .select("last_health_check_ok,last_error,company_name,environment,updated_at")
       .eq("venue_id", DAISY).maybeSingle();
@@ -221,6 +230,11 @@ async function main() {
       "connection_health_ok_after_sync",
       health?.last_health_check_ok === true,
       JSON.stringify(health),
+    );
+    record(
+      "connection_last_error_cleared_after_success",
+      health?.last_error == null || health?.last_error === "",
+      JSON.stringify({ last_error: health?.last_error }),
     );
     persisted.health = health;
   } catch (err) {

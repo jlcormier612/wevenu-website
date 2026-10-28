@@ -1,5 +1,5 @@
 {
-  "inspectedAt": "2026-10-28T05:31:05.591Z",
+  "inspectedAt": "2026-10-28T05:56:23.609Z",
   "fancyVenueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
   "fancyConnectionCount": 0,
   "daisyVenueId": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
@@ -8,11 +8,13 @@
   "companyInfoOk": true,
   "tokenRefreshOk": true,
   "lastHealthCheckOk": true,
+  "lastError": null,
+  "healthSemanticsFix": "recordHealthCheck(ok) clears last_error; dependency waits use handleDependencyWait without painting connection health",
   "liveSync": {
     "pass": true,
-    "localInvoiceId": "74da8a02-433a-422c-a7a5-016e87c671c7",
-    "invoiceNumber": "QMVROF1966ED179",
-    "externalInvoiceId": "156",
+    "localInvoiceId": "1ae78c7c-c1ec-4783-a4ce-241e5716e7be",
+    "invoiceNumber": "QMVRPBI8CB5648A",
+    "externalInvoiceId": "157",
     "idempotentRetry": true,
     "remoteDuplicateCount": 1,
     "evidence": "qbo-live-sync-results.json"

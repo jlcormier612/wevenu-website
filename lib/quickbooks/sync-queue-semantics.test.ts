@@ -268,8 +268,23 @@ describe("dependency ordering survives", () => {
     assert.match(processor, /Waiting on Invoice sync\./);
   });
 
-  it("a dependency miss is always retryable, never an immediate dead-letter", () => {
-    assert.match(processor, /handleFailure\(admin, item, dependency\.error, true\)/);
+  it("a dependency miss defers via handleDependencyWait (retryable, no connection-health paint)", () => {
+    assert.match(processor, /handleDependencyWait\(admin, item, dependency\.error\)/);
+    const waitFn = processor.slice(
+      processor.indexOf("async function handleDependencyWait"),
+      processor.indexOf("async function handleFailure"),
+    );
+    assert.doesNotMatch(waitFn, /recordHealthCheck/);
+    assert.match(waitFn, /markQueueFailedRetrying|markQueueDeadLetter/);
+  });
+
+  it("successful health checks clear last_error so Settings cannot show a stale failure", () => {
+    const health = repository.slice(
+      repository.indexOf("export async function recordHealthCheck"),
+      repository.indexOf("export async function setDefaultItemId"),
+    );
+    assert.match(health, /if \(ok\)/);
+    assert.match(health, /patch\.last_error = null/);
   });
 
   it("a deleted source record is not retryable", () => {

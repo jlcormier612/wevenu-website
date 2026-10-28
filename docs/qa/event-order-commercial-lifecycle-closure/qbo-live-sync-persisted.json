@@ -1,38 +1,38 @@
 {
-  "run": "QBOLIVEMVROF0EQ",
+  "run": "QBOLIVEMVRPBHG2",
   "venueId": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
   "companyName": "Sandbox Company US 1ff4",
-  "clientId": "1d17d95d-adc0-4696-8bfb-9a13e6a9987c",
-  "invoiceId": "74da8a02-433a-422c-a7a5-016e87c671c7",
-  "invoiceNumber": "QMVROF1966ED179",
-  "displayName": "QBO6ED179 Livef196",
+  "clientId": "1462de4e-b128-40c7-851b-bce9b7cb8ec4",
+  "invoiceId": "1ae78c7c-c1ec-4783-a4ce-241e5716e7be",
+  "invoiceNumber": "QMVRPBI8CB5648A",
+  "displayName": "QBOB5648A Livebi8c",
   "ticks": {
     "cust": {
       "ok": true,
-      "quickbooksId": "64"
+      "quickbooksId": "65"
     },
     "invSync": {
       "ok": true,
-      "quickbooksId": "156"
+      "quickbooksId": "157"
     }
   },
   "remoteInvoice": {
     "AllowOnlineAffirmPayment": false,
     "sparse": true,
-    "Id": "156",
-    "DocNumber": "QMVROF1966ED179",
+    "Id": "157",
+    "DocNumber": "QMVRPBI8CB5648A",
     "LinkedTxn": [],
     "Line": [],
     "ShipFromAddr": {
-      "Id": "103"
+      "Id": "104"
     },
     "TotalAmt": 42.5
   },
   "health": {
     "last_health_check_ok": true,
-    "last_error": "Waiting on Customer sync.",
+    "last_error": null,
     "company_name": "Sandbox Company US 1ff4",
     "environment": "sandbox",
-    "updated_at": "2026-10-28T05:31:05.591385+00:00"
+    "updated_at": "2026-10-28T05:56:23.609648+00:00"
   }
 }

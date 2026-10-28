@@ -137,7 +137,10 @@ export async function processQuickBooksSyncQueue(): Promise<ProcessResult> {
 
     const dependency = await checkDependency(admin, item.entity_type, item.entity_id);
     if (!dependency.ok) {
-      await handleFailure(admin, item, dependency.error, true);
+      // Queue retries, but do not mark the connection unhealthy — no Intuit
+      // call happened. Otherwise a stuck leftover invoice awaiting its
+      // customer flips Settings to "last sync failed" after a healthy sync.
+      await handleDependencyWait(admin, item, dependency.error);
       if (item.attempt_count + 1 >= (item.max_attempts ?? MAX_ATTEMPTS)) result.deadLettered++; else result.failedRetrying++;
       continue;
     }
@@ -216,10 +219,35 @@ async function handleSuccess(admin: any, item: repo.SyncQueueRow, syncResult: Ex
 }
 
 /**
- * retryable=false (a permanent validation error, or a dependency that will
- * never resolve on its own — though dependency failures are always
- * retryable in practice, see checkDependency) skips straight to
- * dead_letter rather than exhausting attempts pointlessly.
+ * Dependency not ready yet (customer before invoice, invoice before payment).
+ * Always retryable until the attempt ceiling; never paints connection health.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleDependencyWait(admin: any, item: repo.SyncQueueRow, error: string): Promise<void> {
+  const nextAttemptCount = item.attempt_count + 1;
+  const maxAttempts = item.max_attempts ?? MAX_ATTEMPTS;
+  if (nextAttemptCount >= maxAttempts) {
+    await repo.markQueueDeadLetter(admin, item.id, nextAttemptCount, error);
+    await repo.insertSyncLog(admin, {
+      venueId: item.venue_id, queueId: item.id, entityType: item.entity_type, entityId: item.entity_id,
+      outcome: "dead_lettered", attemptNumber: nextAttemptCount, message: error,
+    });
+    const table = SYNC_STATUS_TABLE[item.entity_type];
+    await admin.from(table).update({ quickbooks_sync_status: "failed" }).eq("id", item.entity_id);
+    return;
+  }
+  await repo.markQueueFailedRetrying(admin, item.id, nextAttemptCount, computeNextAttemptAt(nextAttemptCount), error);
+  await repo.insertSyncLog(admin, {
+    venueId: item.venue_id, queueId: item.id, entityType: item.entity_type, entityId: item.entity_id,
+    outcome: "failed", attemptNumber: nextAttemptCount, message: error,
+  });
+}
+
+/**
+ * retryable=false (a permanent validation error) skips straight to
+ * dead_letter rather than exhausting attempts pointlessly. Dependency
+ * waits use handleDependencyWait instead so they do not set connection
+ * health.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleFailure(admin: any, item: repo.SyncQueueRow, error: string, retryable: boolean): Promise<void> {
