@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PaymentAccessShell } from "@/components/portal/payment-access-shell";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { isChoicesPortalView } from "@/lib/client-choices/choices-portal-link";
+import { isInventoryPortalView } from "@/lib/event-inventory/inventory-portal-link";
 import {
   getCouplePortalLegalGateStatus,
   resolveCouplePortalLegalIdentity,
@@ -55,7 +56,7 @@ export default async function PortalPage({ params, searchParams }: Props) {
   // Payment access before portal invitation — purpose-built pay experience.
   // Portal layout pins h-svh + overflow-hidden for PortalShell; financial pages
   // need a nested page scroll so the Invoice & Payment Plan schedule is reachable.
-  // view=choices is ignored here so invoice links stay on the financial document.
+  // view=choices / view=inventory are ignored here so invoice links stay on the financial document.
   if (context.accessLevel === "financial") {
     return (
       <div className="h-full overflow-y-auto overscroll-contain">
@@ -65,14 +66,17 @@ export default async function PortalPage({ params, searchParams }: Props) {
   }
 
   const choicesView = isChoicesPortalView(query.view);
+  const inventoryView = isInventoryPortalView(query.view);
   const viewParam = Array.isArray(query.view) ? query.view[0] : query.view;
   const initialSection = choicesView
     ? "choices"
-    : viewParam === "documents"
-      ? "documents"
-      : viewParam === "questionnaire"
-        ? "questionnaire"
-        : undefined;
+    : inventoryView
+      ? "inventory"
+      : viewParam === "documents"
+        ? "documents"
+        : viewParam === "questionnaire"
+          ? "questionnaire"
+          : undefined;
 
   const [tasks, vendorTasks, timeline, legalGate] = await Promise.all([
     resolvePortalTasks(token),

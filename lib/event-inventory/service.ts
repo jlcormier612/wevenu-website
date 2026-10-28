@@ -261,18 +261,21 @@ async function notifyInventoryShared(
     const client = await getClient(event.clientId);
     if (!client?.email) return;
     const { getPortalSessions, createPortalSession } = await import("@/lib/portal/service");
+    const { inventoryReviewUrl, pickInventoryPortalSession } = await import(
+      "@/lib/event-inventory/inventory-portal-link"
+    );
     const sessions = await getPortalSessions(event.clientId);
+    // Never email a financial payment token — it always opens Invoice & Payment Plan.
     const session =
-      sessions.find((s) => s.accessLevel !== "financial")
-      ?? sessions[0]
-      ?? (await createPortalSession(event.clientId, null, "couple"));
-    if (!session) return;
+      pickInventoryPortalSession(sessions)
+      ?? (await createPortalSession(event.clientId, "Couple", "couple"));
+    if (!session?.accessToken) return;
     const { publicAppOrigin } = await import("@/lib/env");
-    const portalUrl = `${publicAppOrigin()}/p/${session.accessToken}#inventory`;
+    const portalUrl = inventoryReviewUrl(publicAppOrigin(), session.accessToken);
     const body =
       mode === "select"
-        ? `We've shared inventory choices for ${event.name}. Please review and submit your selections.\n\n${portalUrl}`
-        : `We've shared your event inventory for ${event.name}.\n\n${portalUrl}`;
+        ? `We've shared inventory choices for ${event.name}. Please open Inventory, choose any additional items we marked for selection, and submit.\n\n${portalUrl}`
+        : `We've shared your event inventory for ${event.name}. Open the Inventory tab to review what is included (read-only).\n\n${portalUrl}`;
     const { sendEmail } = await import("@/lib/email/send");
     const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
     const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");

@@ -53,6 +53,8 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(service, /Confirm or request changes on the couple/);
     assert.match(service, /recordExternalClientOutbound/);
     assert.match(service, /event_inventory_shared/);
+    assert.match(service, /pickInventoryPortalSession/);
+    assert.match(service, /inventoryReviewUrl/);
   });
 
   it("venue actions and panel expose share-for-selection and confirm", () => {
@@ -60,6 +62,8 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(actions, /confirmInventorySelectionsAction/);
     assert.match(actions, /setInventoryItemClientSelectableAction/);
     assert.match(panel, /Share for selection/);
+    assert.match(panel, /Share to view/);
+    assert.match(panel, /inventory-share-selection-disabled-reason/);
     assert.match(panel, /Confirm selections/);
     assert.match(panel, /Request changes/);
     assert.match(panel, /runLifecycle/);

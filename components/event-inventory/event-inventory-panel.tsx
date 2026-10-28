@@ -94,11 +94,20 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
           {!item.isIncluded && onToggleSelectable && (
             <button
               type="button"
-              className="rounded px-1.5 py-1 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
+              className={`rounded px-1.5 py-1 text-[10px] font-medium ${
+                item.clientSelectable
+                  ? "bg-primary/10 text-primary hover:bg-primary/15"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
               onClick={() => onToggleSelectable(!item.clientSelectable)}
-              title="Offer this additional item for couple selection"
+              data-testid={`inventory-item-select-toggle-${item.id}`}
+              title={
+                item.clientSelectable
+                  ? "Couple can select this additional item — click to lock"
+                  : "Offer this additional item for couple selection"
+              }
             >
-              {item.clientSelectable ? "Lock" : "Select"}
+              {item.clientSelectable ? "Selectable" : "Select"}
             </button>
           )}
           <ItemSheet eventInventoryId={eventInventoryId} eventId={eventId} catalogItems={catalogItems} existingItem={item} />
@@ -294,20 +303,37 @@ export function EventInventoryPanel({
               {canShare && (
                 <>
                   <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
+                    data-testid="inventory-share-to-view"
                     onClick={() => runLifecycle(async () => {
                       const result = await shareEventInventoryAction(inv.id, eventId, "view");
-                      if (result.ok) toast.success("Shared for viewing (read-only).");
-                      else toast.error(result.message ?? "Could not share.");
+                      if (result.ok) {
+                        toast.success(
+                          "Shared for viewing. The couple gets an Inventory link (read-only) — not an invoice.",
+                        );
+                      } else toast.error(result.message ?? "Could not share.");
                     })}>
                     Share to view
                   </Button>
-                  <Button type="button" variant="outline" size="sm" disabled={lifecyclePending || selectableCount === 0}
-                    title={selectableCount === 0 ? "Mark additional items as Select first" : undefined}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={lifecyclePending || selectableCount === 0}
+                    data-testid="inventory-share-for-selection"
+                    title={
+                      selectableCount === 0
+                        ? "On each Additional item, click Select first — then you can ask the couple to choose."
+                        : "Email the couple an Inventory link where they can choose quantities and submit."
+                    }
                     onClick={() => runLifecycle(async () => {
                       const result = await shareEventInventoryAction(inv.id, eventId, "select");
-                      if (result.ok) toast.success("Shared for couple selection.");
-                      else toast.error(result.message ?? "Could not share.");
-                    })}>
+                      if (result.ok) {
+                        toast.success(
+                          "Shared for selection. The couple gets an Inventory link to choose and submit.",
+                        );
+                      } else toast.error(result.message ?? "Could not share.");
+                    })}
+                  >
                     Share for selection
                   </Button>
                 </>
@@ -344,12 +370,25 @@ export function EventInventoryPanel({
             </div>
           )}
         />
-        <p className="text-xs text-muted-foreground -mt-1">
-          Included items stay informational. Mark additional items as Select, then Share for selection
-          so the couple can choose quantities. Confirm their submission before Finalize → Add to Event Order.
-          Additional-cost total:{" "}
-          <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
-        </p>
+        <div className="space-y-1 text-xs text-muted-foreground -mt-1" data-testid="inventory-share-instructions">
+          <p>
+            <span className="font-medium text-foreground">Share to view</span> emails a read-only Inventory
+            link. <span className="font-medium text-foreground">Share for selection</span> lets the couple
+            choose quantities on items you marked Select, then submit. Neither action sends an invoice.
+          </p>
+          <p>
+            Included items stay informational. On each Additional row, click{" "}
+            <span className="font-medium text-foreground">Select</span> before Share for selection.
+            Confirm their submission before Finalize → Add to Event Order. Additional-cost total:{" "}
+            <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
+          </p>
+          {canShare && selectableCount === 0 ? (
+            <p className="text-amber-800" data-testid="inventory-share-selection-disabled-reason">
+              Share for selection is unavailable until at least one Additional item is marked Select.
+              A price alone does not offer a choice — use Select on that row.
+            </p>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {inv.items.length === 0 ? (
