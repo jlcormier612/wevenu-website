@@ -84,8 +84,10 @@ describe("Floor plan collaboration complete (auto-assign, seating, couple move)"
     assert.match(portalSection, /floor-plan-waiting-no-offer/);
     assert.match(portalSection, /Waiting on a layout from your venue/);
     assert.match(portalSection, /ensure-assignment/);
-    assert.match(portalSection, /needsChooser = offers\.length > 1/);
+    assert.match(portalSection, /needsChooser = !showPackageView && offers\.length > 1/);
+    assert.match(portalSection, /requiresPreferenceSelection = needsChooser/);
     assert.match(portalSection, /Save as preference|preferred layout/);
+    assert.match(portalSection, /floor-plan-submit-needs-preference|Submit floor plan to venue/);
     assert.match(portalSection, /Your Floor Plan/);
     assert.match(portalSection, /floor-plan-working-canvas/);
     assert.match(portalSection, /move-object/);
