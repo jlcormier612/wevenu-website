@@ -225,14 +225,17 @@ export function ClientList({
       </div>
 
       {clients.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+        <div
+          className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center"
+          data-clients-empty="true"
+        >
           <p className="font-heading text-lg font-medium text-heading">No clients yet</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            When you book a client, convert their lead inquiry here — or add a client directly.
+          <p className="mt-1 mb-4 max-w-md text-sm text-muted-foreground">
+            Add your first client or import an existing client list. You can also convert a booked lead inquiry here later.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button render={<Link href="/leads" />} variant="outline">View Leads</Button>
-            <Button render={<Link href="/clients/new" />}>+ New Client</Button>
+            <Button render={<Link href="/clients/new" />}>Add your first client</Button>
+            <Button render={<Link href="/settings/import?type=couples" />} variant="outline">Import Clients</Button>
           </div>
         </div>
       )}

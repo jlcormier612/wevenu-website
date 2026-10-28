@@ -61,7 +61,7 @@ import {
   LEGACY_CONFLICT_BADGE_LABEL,
   needsReviewBadgeLabel,
 } from "@/lib/migration/review-display";
-import { formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
+import { formatPartialImportGuidance, formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
 import {
   DEFAULT_SOURCE_SELECTION_LANE,
   IMPORT_HISTORY_COPY,
@@ -735,7 +735,22 @@ export function MigrationCenter({
     startLoading(async () => {
       const result = await commitMigrationSessionAction(sessionId);
       if (!result.ok) { toast.error(result.message); return; }
-      toast.success(`Imported ${result.outcome.committed}, skipped ${result.outcome.skipped}${result.outcome.failed ? `, ${result.outcome.failed} need another look` : ""}.`);
+      // Toast from the real post-commit session summary — never celebrate
+      // "success" while unresolved records remain (including ones that were
+      // already needs_review before this commit pass).
+      const resumeState = await getMigrationSessionResumeStateAction(sessionId);
+      if (resumeState) {
+        const guidance = formatPartialImportGuidance(resumeState.summary.counts);
+        if (guidance.tone === "attention") toast.message(`${guidance.headline}. ${guidance.detail}`);
+        else toast.success(guidance.detail);
+      } else {
+        const failedNote = result.outcome.failed
+          ? `, ${result.outcome.failed} need another look`
+          : "";
+        const line = `Imported ${result.outcome.committed}, skipped ${result.outcome.skipped}${failedNote}.`;
+        if (result.outcome.failed > 0) toast.message(line);
+        else toast.success(line);
+      }
       openSession(sessionId);
       refreshSessions();
     });
@@ -868,6 +883,10 @@ export function MigrationCenter({
   }
 
   const pendingCommitCount = resume ? resume.summary.counts.validated + resume.summary.counts.approved : 0;
+  const partialGuidance =
+    resume && (resume.state === "needs_review" || resume.state === "partially_done")
+      ? formatPartialImportGuidance(resume.summary.counts)
+      : null;
   const datedEventsBlocked = !cutover.readyForDatedEvents && (entityType === "event" || entityType === "client");
   const eventImportBlocked = !cutover.readyForDatedEvents && entityType === "event";
 
@@ -1107,6 +1126,16 @@ export function MigrationCenter({
 
             {resume?.state === "empty" && (
               <p className="text-sm text-muted-foreground">Nothing was recognized from this upload yet.</p>
+            )}
+
+            {partialGuidance && (
+              <div
+                className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-foreground"
+                data-migration-outcome="needs-attention"
+              >
+                <p className="font-medium text-heading">{partialGuidance.headline}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{partialGuidance.detail}</p>
+              </div>
             )}
 
             {(resume?.state === "needs_review" || resume?.state === "partially_done") && decisionRecords.length > 0 && (

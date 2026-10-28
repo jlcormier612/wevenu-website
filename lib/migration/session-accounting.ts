@@ -52,3 +52,38 @@ export function formatSessionOutcomeSentence(counts: SessionSummary["counts"]): 
   if (parts.length === 0) return "Nothing recognized yet.";
   return parts.join(" · ");
 }
+
+/**
+ * Post-commit toast + in-page callout: success only when nothing still needs
+ * attention and nothing is waiting to import. Uses real session counts — never
+ * invents numbers beyond the summary.
+ */
+export function formatPartialImportGuidance(counts: SessionSummary["counts"]): {
+  tone: "success" | "attention";
+  headline: string;
+  detail: string;
+} {
+  const a = summarizeSessionAccounting(counts);
+  const detail = formatSessionOutcomeSentence(counts);
+  if (a.needsAttention > 0) {
+    return {
+      tone: "attention",
+      headline: a.imported > 0
+        ? "Partly imported — some records still need your attention"
+        : "Some records need your attention before they can be imported",
+      detail: `${detail}. Resolve the items below, then continue.`,
+    };
+  }
+  if (a.pendingCommit > 0) {
+    return {
+      tone: "attention",
+      headline: "Ready to import — confirm below",
+      detail: `${detail}. Import the ready records when you are set.`,
+    };
+  }
+  return {
+    tone: "success",
+    headline: "Import complete",
+    detail,
+  };
+}
