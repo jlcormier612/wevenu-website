@@ -1,6 +1,6 @@
 {
   "pass": true,
-  "run": "FPRAMVRN7QS9",
+  "run": "FPRAMVRNU3NG",
   "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
   "checks": [
     {
@@ -24,49 +24,49 @@
     {
       "name": "j2_change_opens_offer_editor_without_profile",
       "pass": true,
-      "detail": "Edit floor-plan offers for this event\n\nFPRA-FPRAMVRN7QS9-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.\n\nLayouts offered to the client\n\nPreferred starting from",
+      "detail": "Edit floor-plan offers for this event\n\nFPRA-FPRAMVRNU3NG-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.\n\nLayouts offered to the client\n\nPreferred starting from",
       "evidence": "live-ui"
     },
     {
       "name": "j2_multi_offers_created_via_ui",
       "pass": true,
-      "detail": "{\"offeredA\":true,\"offeredB\":true,\"offersNow\":[{\"id\":\"04188947-e88f-4916-b1a8-b61ebd4572f0\",\"couple_label\":\"FPRA-FPRAMVRN7QS9-Offer-A\",\"is_offered\":true,\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\"},{\"id\":\"ec878c4b-c1d1-48e1-a250-c5e58cdd656b\",\"couple_label\":\"FPRA-FPRAMVRN7QS9-Offer-B\",\"is_offered\":true,\"floor_plan_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\"}]}",
+      "detail": "{\"offeredA\":true,\"offeredB\":true,\"offersNow\":[{\"id\":\"078153eb-7ec1-4190-b07f-b9d3200a5c77\",\"couple_label\":\"FPRA-FPRAMVRNU3NG-Offer-A\",\"is_offered\":true,\"floor_plan_template_id\":\"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3\"},{\"id\":\"828cea58-74ce-412f-a45c-094bc4bd8eb2\",\"couple_label\":\"FPRA-FPRAMVRNU3NG-Offer-B\",\"is_offered\":true,\"floor_plan_template_id\":\"026fb633-2dce-4c73-87c8-144bb29a0318\"}]}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "j2_layouts_shared_via_ui",
       "pass": true,
-      "detail": "[{\"id\":\"14e3d00b-efb9-4d29-8bbd-4795aad53b30\",\"shared_with_couple\":true},{\"id\":\"f75d7f73-dd80-41b0-abf4-647ab4b095d8\",\"shared_with_couple\":true},{\"id\":\"c559e75f-d746-4a38-b224-347f04432be0\",\"shared_with_couple\":true}]",
+      "detail": "[{\"id\":\"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf\",\"shared_with_couple\":true},{\"id\":\"5447b575-6177-4d8a-9ad8-6bcccf652e37\",\"shared_with_couple\":true}]",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "j2_couple_sees_multi_offer_chooser",
       "pass": true,
-      "detail": "FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 26, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi-setup package — each option is a full layout for",
+      "detail": "FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 4, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi-setup package — each option is a full layout for ",
       "evidence": "live-ui"
     },
     {
       "name": "j2_couple_preference_persisted",
       "pass": true,
-      "detail": "{\"prefSaved\":true,\"evtPref\":{\"couple_selected_floor_plan_id\":\"14e3d00b-efb9-4d29-8bbd-4795aad53b30\",\"couple_preference_status\":\"pending\"},\"setupPrefs\":[]}",
+      "detail": "{\"prefSaved\":true,\"evtPref\":{\"couple_selected_floor_plan_id\":\"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf\",\"couple_preference_status\":\"pending\"},\"setupPrefs\":[]}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "j2_preference_survives_return",
       "pass": true,
-      "detail": "{\"evtPref2\":{\"couple_selected_floor_plan_id\":\"14e3d00b-efb9-4d29-8bbd-4795aad53b30\"},\"text\":\"FPRA\\n\\n·\\n\\nJen's Fancy Venue\\n\\nNov 26, 2027\\n\\nExport my data\\n🏠\\nHome\\n✅\\nTasks\\n🕒\\nTimeline\\n📁\\nDocs\\n🗺️\\nFloor Plan\\n💳\\nPayments\\n💬\\nMessages\\n🏛️\\nGuide\\n🤝\\nVendors\\nChoose your preferred layout\\n\\nSave a preference for your venue to review. This does not approve t\"}",
+      "detail": "{\"evtPref2\":{\"couple_selected_floor_plan_id\":\"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf\"},\"text\":\"FPRA\\n\\n·\\n\\nJen's Fancy Venue\\n\\nNov 4, 2027\\n\\nExport my data\\n🏠\\nHome\\n✅\\nTasks\\n🕒\\nTimeline\\n📁\\nDocs\\n🗺️\\nFloor Plan\\n💳\\nPayments\\n💬\\nMessages\\n🏛️\\nGuide\\n🤝\\nVendors\\nChoose your preferred layout\\n\\nSave a preference for your venue to review. This does not approve th\"}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "setup_members_attached_via_ui_only",
       "pass": true,
-      "detail": "{\"cerOk\":true,\"recOk\":true,\"setups\":[{\"id\":\"aa8a5b9a-5e44-4727-8bb8-b505716a46a9\",\"name\":\"Ceremony\"},{\"id\":\"b7e03b3e-026c-4633-aec1-8f24408512a3\",\"name\":\"Reception\"}],\"attachedViaUi\":2,\"planA\":\"14e3d00b-efb9-4d29-8bbd-4795aad53b30\",\"planB\":\"f75d7f73-dd80-41b0-abf4-647ab4b095d8\",\"attachAttempts\":[{\"setup\":\"Ceremony\",\"want\":\"14e3d00b-efb9-4d29-8bbd-4795aad53b30\",\"visible\":true,\"ok\":true},{\"setup\":\"Reception\",\"want\":\"f75d7f73-dd80-41b0-abf4-647ab4b095d8\",\"visible\":true,\"ok\":true}]}",
+      "detail": "{\"cerOk\":true,\"recOk\":true,\"setups\":[{\"id\":\"12df5a17-2ff3-4915-8ea1-39a70c380098\",\"name\":\"Ceremony\"},{\"id\":\"c1a7b667-e32f-4b43-9ddf-e6ea628b7134\",\"name\":\"Reception\"}],\"attachedViaUi\":2,\"planA\":\"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf\",\"planB\":\"5447b575-6177-4d8a-9ad8-6bcccf652e37\",\"attachAttempts\":[{\"setup\":\"Ceremony\",\"want\":\"f3bd19ea-4a0e-4855-9a91-a76019dfb4bf\",\"visible\":true,\"ok\":true},{\"setup\":\"Reception\",\"want\":\"5447b575-6177-4d8a-9ad8-6bcccf652e37\",\"visible\":true,\"ok\":true}]}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "furniture_unlocked_via_venue_editor_ui",
       "pass": true,
-      "detail": "{\"unlockedViaUi\":true,\"id\":\"b819d4e9-473d-4a29-97ae-bd8baa69dfad\"}",
+      "detail": "{\"unlockedViaUi\":true,\"id\":\"6ad8290d-e34b-4fd9-b8ca-44c43534cbdb\"}",
       "evidence": "live-ui+persisted"
     },
     {
@@ -78,20 +78,20 @@
     {
       "name": "j3_fp_ra1_submit_persisted",
       "pass": true,
-      "detail": "[{\"id\":\"a787eeb3-86b8-47b8-b96c-8e0b88512c90\",\"client_layout_status\":\"submitted\"}]",
+      "detail": "[{\"id\":\"d3d9f2bc-8e0f-4064-a522-7627cef4c57f\",\"client_layout_status\":\"submitted\"}]",
       "evidence": "live-ui+persisted"
     }
   ],
   "usability": [
     {
       "screen": "Event setup floor-plan offers",
-      "text": "Edit floor-plan offers for this event\n\nFPRA-FPRAMVRN7QS9-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.\n\nLayouts offered to the client\n\nPreferred starting from profile (none set). Changes here update this event's offers only — not Library templates or other events.\n\nNo floor-plan offers are configured for this event. Offer a Library layout below, or open Setup Profiles if this area should use a standard starting set.\n\nOffer another layout for this event\n\nChoose a Library layout\nOffer for this event\nBack to Overview\nClose",
+      "text": "Edit floor-plan offers for this event\n\nFPRA-FPRAMVRNU3NG-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.\n\nLayouts offered to the client\n\nPreferred starting from profile (none set). Changes here update this event's offers only — not Library templates or other events.\n\nNo floor-plan offers are configured for this event. Offer a Library layout below, or open Setup Profiles if this area should use a standard starting set.\n\nOffer another layout for this event\n\nChoose a Library layout\nOffer for this event\nBack to Overview\nClose",
       "assessment": "Offer editor explains event-only offers vs Library.",
       "severity": "ok"
     },
     {
       "screen": "Couple multi-offer chooser",
-      "text": "FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 26, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi-setup package — each option is a full layout for the celebration.\n\nFPRA-FPRAMVRN7QS9-Offer-A\n\n36 elements\n\nFPRA-FPRAMVRN7QS9-Offer-B\n\n17 elements\n\nFPRA-FPRAMVRN7QS9-Offer-A\n\nPreview\n\nSave as preference\nCeremony\nCocktail\nReception\nArbor\nAisle\nCeremony Row 1\n8 seats\nCeremony Row 1\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 4\n8 seats\nCeremony Row 4\n8 seats\nReserved\n6 seats\nReserved\n6 seats\nC1\n4 seats\nC2\n4 seats\nC3\n4 seats\nC4\n4 seats\nC5\n4 seats\nCocktail Bar\nT1\n8 seats\nT2\n8 seat",
+      "text": "FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 4, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi-setup package — each option is a full layout for the celebration.\n\nFPRA-FPRAMVRNU3NG-Offer-A\n\n36 elements\n\nFPRA-FPRAMVRNU3NG-Offer-B\n\n17 elements\n\nFPRA-FPRAMVRNU3NG-Offer-A\n\nPreview\n\nSave as preference\nCeremony\nCocktail\nReception\nArbor\nAisle\nCeremony Row 1\n8 seats\nCeremony Row 1\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 4\n8 seats\nCeremony Row 4\n8 seats\nReserved\n6 seats\nReserved\n6 seats\nC1\n4 seats\nC2\n4 seats\nC3\n4 seats\nC4\n4 seats\nC5\n4 seats\nCocktail Bar\nT1\n8 seats\nT2\n8 seats",
       "assessment": "Chooser or preference action present for multi-offer path.",
       "severity": "ok"
     },
@@ -110,23 +110,23 @@
   ],
   "blockers": 0,
   "persisted": {
-    "run": "FPRAMVRN7QS9",
+    "run": "FPRAMVRNU3NG",
     "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
     "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549",
-    "clientId": "77f7e236-5888-4e4c-892a-99c30dc43ddb",
-    "eventId": "0cf81bc0-3f5e-48ac-8cb2-1dc7371cebab",
-    "portalToken": "fpra_fpramvrn7qs9_44d5",
-    "unlockedViaUi": "b819d4e9-473d-4a29-97ae-bd8baa69dfad",
+    "clientId": "e3829ae5-b0d6-4046-8ddc-7a6143af4cb9",
+    "eventId": "76825154-2511-41bf-89f3-7e669584d6a6",
+    "portalToken": "fpra_fpramvrnu3ng_4b3e",
+    "unlockedViaUi": "6ad8290d-e34b-4fd9-b8ca-44c43534cbdb",
     "usability": [
       {
         "screen": "Event setup floor-plan offers",
-        "text": "Edit floor-plan offers for this event\n\nFPRA-FPRAMVRN7QS9-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.\n\nLayouts offered to the client\n\nPreferred starting from profile (none set). Changes here update this event's offers only — not Library templates or other events.\n\nNo floor-plan offers are configured for this event. Offer a Library layout below, or open Setup Profiles if this area should use a standard starting set.\n\nOffer another layout for this event\n\nChoose a Library layout\nOffer for this event\nBack to Overview\nClose",
+        "text": "Edit floor-plan offers for this event\n\nFPRA-FPRAMVRNU3NG-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.\n\nLayouts offered to the client\n\nPreferred starting from profile (none set). Changes here update this event's offers only — not Library templates or other events.\n\nNo floor-plan offers are configured for this event. Offer a Library layout below, or open Setup Profiles if this area should use a standard starting set.\n\nOffer another layout for this event\n\nChoose a Library layout\nOffer for this event\nBack to Overview\nClose",
         "assessment": "Offer editor explains event-only offers vs Library.",
         "severity": "ok"
       },
       {
         "screen": "Couple multi-offer chooser",
-        "text": "FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 26, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi-setup package — each option is a full layout for the celebration.\n\nFPRA-FPRAMVRN7QS9-Offer-A\n\n36 elements\n\nFPRA-FPRAMVRN7QS9-Offer-B\n\n17 elements\n\nFPRA-FPRAMVRN7QS9-Offer-A\n\nPreview\n\nSave as preference\nCeremony\nCocktail\nReception\nArbor\nAisle\nCeremony Row 1\n8 seats\nCeremony Row 1\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 4\n8 seats\nCeremony Row 4\n8 seats\nReserved\n6 seats\nReserved\n6 seats\nC1\n4 seats\nC2\n4 seats\nC3\n4 seats\nC4\n4 seats\nC5\n4 seats\nCocktail Bar\nT1\n8 seats\nT2\n8 seat",
+        "text": "FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 4, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi-setup package — each option is a full layout for the celebration.\n\nFPRA-FPRAMVRNU3NG-Offer-A\n\n36 elements\n\nFPRA-FPRAMVRNU3NG-Offer-B\n\n17 elements\n\nFPRA-FPRAMVRNU3NG-Offer-A\n\nPreview\n\nSave as preference\nCeremony\nCocktail\nReception\nArbor\nAisle\nCeremony Row 1\n8 seats\nCeremony Row 1\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 4\n8 seats\nCeremony Row 4\n8 seats\nReserved\n6 seats\nReserved\n6 seats\nC1\n4 seats\nC2\n4 seats\nC3\n4 seats\nC4\n4 seats\nC5\n4 seats\nCocktail Bar\nT1\n8 seats\nT2\n8 seats",
         "assessment": "Chooser or preference action present for multi-offer path.",
         "severity": "ok"
       },

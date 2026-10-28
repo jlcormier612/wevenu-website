@@ -22,27 +22,31 @@ A venue owner and couple can complete Phase 1–5 Floor Plans on Sandbox at `38b
 
 ## Fresh evidence on serving tip
 
+Reconfirmed after the OPEN-resume request (same serving tip; no redeploy required — product fix is `38b2d591`; later commits `e79d045d`/`0ac652df` are harness/docs only).
+
 ### Gap-closure reacceptance (multi-offer / attach / unlock / FP-RA-1)
 
 ```bash
 EXPECTED_SHA=38b2d591f2ee7a0cad3a96a8124424dbe6837549 \
   npx tsx docs/qa/floor-plans-release-acceptance/verify-reacceptance.mts
-# → 13/13 PASS · UX blockers/p2=0
+# → 13/13 PASS · UX blockers/p2=0  (rerun log: reacceptance/browser-run-rerun.log)
 ```
+
+Live navigation proof (no Setup Profile): Set up → Needs action → **Change for this event** + outstanding CTA → offer editor (`reacceptance/debug-change-rerun.log`).
 
 ### Full release journey harness
 
 ```bash
 EXPECTED_SHA=38b2d591f2ee7a0cad3a96a8124424dbe6837549 \
   npx tsx docs/qa/floor-plans-release-acceptance/verify-release.mts
-# → 27/27 PASS · UX blockers=0 · confusing=0
+# → 27/27 PASS · UX blockers=0 · confusing=0  (rerun log: browser-run-rerun.log)
 ```
 
 ### Units
 
 ```bash
 npx tsx --test lib/floor-plans/*.test.ts lib/event-setup/floor-plans-setup-editor.test.ts
-# → included in 149/149 combined Phase + Choices unit run
+# → 122/122 (rerun: reacceptance/unit-rerun.log)
 ```
 
 ## Setup-member & furniture-unlock findings
