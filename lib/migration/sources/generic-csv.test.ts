@@ -55,6 +55,27 @@ describe("genericCsvAdapter.normalizeRow — client", () => {
     const result = genericCsvAdapter.normalizeRow({ firstName: "   ", lastName: "Rivera" }, "client");
     assert.equal(result.ok, false);
   });
+
+  it("splits a mapped combined name column the same way HoneyBook does", () => {
+    const result = genericCsvAdapter.normalizeRow(
+      { name: "Jamie Rivera", email: "jamie@example.com" },
+      "client",
+    );
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.normalized.firstName, "Jamie");
+      assert.equal(result.normalized.lastName, "Rivera");
+    }
+  });
+
+  it("routes an ambiguous combined name to needs_review instead of silently inventing certainty", () => {
+    const result = genericCsvAdapter.normalizeRow(
+      { name: "Morgan OtherSys & Riley OtherSys", email: "m@example.com" },
+      "client",
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.match(result.error, /please confirm/i);
+  });
 });
 
 describe("genericCsvAdapter.normalizeRow — lead", () => {

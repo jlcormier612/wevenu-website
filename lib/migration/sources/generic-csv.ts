@@ -29,6 +29,7 @@ import {
   isVenueGuestListImportRemoved,
   VENUE_GUEST_LIST_IMPORT_REMOVED_MESSAGE,
 } from "@/lib/migration/venue-guest-list-import";
+import { splitName } from "@/lib/migration/sources/honeybook";
 
 function str(row: SourceRow, key: string): string | null {
   const v = row[key];
@@ -38,9 +39,30 @@ function str(row: SourceRow, key: string): string | null {
 }
 
 function normalizeClientLike(row: SourceRow): (NormalizedClientLike & { ok: true }) | { ok: false; error: string } {
-  const firstName = str(row, "firstName");
-  const lastName = str(row, "lastName");
-  if (!firstName || !lastName) {
+  let firstName = str(row, "firstName");
+  let lastName = str(row, "lastName");
+  // Field-mapping exposes a combined "name" slot for one-column exports
+  // (Couple Name, Full name). HoneyBook/Tripleseat adapters already split
+  // that shape; Another-system / generic must too or auto-mapped combined
+  // columns are reported as missing first/last after Bring in.
+  if (!firstName && !lastName) {
+    const combined = str(row, "name") ?? str(row, "fullName") ?? str(row, "clientName");
+    if (!combined) {
+      return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
+    }
+    const split = splitName(combined);
+    if (!split.firstName) {
+      return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
+    }
+    if (!split.confident) {
+      return {
+        ok: false,
+        error: `"${combined}" was split as first name "${split.firstName}", last name "${split.lastName}" — please confirm this is correct.`,
+      };
+    }
+    firstName = split.firstName;
+    lastName = split.lastName; // may be "" for a confident single-word name
+  } else if (!firstName || !lastName) {
     return { ok: false, error: "Missing a first and last name — every record needs at least one identifiable person." };
   }
   return {
