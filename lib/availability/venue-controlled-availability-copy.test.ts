@@ -26,7 +26,11 @@ describe("Venue-controlled availability education copy", () => {
     );
     assert.match(
       settings,
-      /Available means a prospect can still request that date — it is not a reservation or a guarantee/,
+      /Available means a prospect may submit an inquiry for that date — it is not a reservation or a guarantee/,
+    );
+    assert.match(
+      settings,
+      /An open date does not mean every space, time, or event configuration is available/,
     );
     assert.match(
       settings,
@@ -35,23 +39,27 @@ describe("Venue-controlled availability education copy", () => {
     assert.match(settings, /When to block an entire day\./);
     assert.match(
       settings,
-      /Leaving a date Available can still let someone inquire when an existing booking already makes their eventual schedule impractical/,
+      /you do not need to block the whole date merely because one space is occupied/,
     );
     assert.match(
       settings,
-      /Confirmed events and public availability\./,
+      /Booked events and public availability\./,
     );
     assert.match(
       settings,
-      /By default, a confirmed event closes that date for prospective clients/,
+      /By default, a booked event closes that date for prospective clients/,
     );
     assert.match(
       settings,
-      /Choose holds, blocked dates, capacity, spaces, and the confirmed-event public preference so the public calendar matches how you actually book/,
+      /That setting allows further inquiries; it does not promise a suitable space or guarantee a booking/,
     );
     assert.match(
       settings,
-      /These limits guide staff scheduling and do not override the separate public confirmed-event availability preference/,
+      /Choose holds, blocked dates, capacity, spaces, and the public-inquiry preference so the public calendar matches how you actually book/,
+    );
+    assert.match(
+      settings,
+      /whether public inquiries can stay open when another event is booked/,
     );
     assert.match(
       settings,
@@ -144,11 +152,15 @@ describe("Venue-controlled availability education copy", () => {
     );
     assert.match(
       article.body,
-      /By default, a confirmed \(Booked\) event closes that date for prospective clients/,
+      /By default, a booked event closes that date for prospective clients/,
     );
     assert.match(
       article.body,
-      /Date holds and availability → When a confirmed event is already on the calendar/,
+      /Date holds and availability → Allow inquiries when another event is booked/,
+    );
+    assert.match(
+      article.body,
+      /Keeping a date open for inquiries does not mean every space is available/,
     );
     assert.match(
       article.body,
@@ -161,17 +173,19 @@ describe("Venue-controlled availability education copy", () => {
   it("Scheduling Capacity copy separates staff limits from public confirmed-event preference", () => {
     const capacity = readFileSync(resolve("components/availability/capacity-rules-section.tsx"), "utf8");
     assert.match(capacity, /Choose 1 if your venue hosts one event at a time/);
-    assert.match(capacity, /does not make dates with confirmed events available for new public inquiries/);
+    assert.match(capacity, /does not make dates with booked events available for new public inquiries/);
+    assert.match(capacity, /Allow inquiries when another event is booked/);
     assert.doesNotMatch(capacity, /simple venue/i);
     assert.match(capacity, /Venues that host one event at a time apply this venue-wide/);
     assert.match(capacity, /Turnaround does not change public Available/);
   });
 
-  it("setup guide covers confirmed-event public preference and current section list", () => {
+  it("setup guide covers booked-event public preference and current section list", () => {
     const setup = readFileSync(resolve("lib/help-guides/setup-guides.ts"), "utf8");
     const calendarGuide = setup.slice(setup.indexOf('slug: "setup-calendar-availability"'));
     assert.match(calendarGuide, /Date holds and availability/);
-    assert.match(calendarGuide, /Choose what a confirmed event means for the public/);
+    assert.match(calendarGuide, /Choose whether inquiries stay open when an event is booked/);
+    assert.match(calendarGuide, /Allow inquiries when another event is booked/);
     assert.match(
       calendarGuide,
       /Do not assume raising Scheduling Capacity alone opens simultaneous public availability/,

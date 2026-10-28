@@ -58,19 +58,19 @@ export default async function AvailabilityCapacitySettingsPage() {
           </p>
           <p>
             <span className="font-medium text-heading">Public Available / Not available. </span>
-            On your public availability calendar, Available means a prospect can still request that date — it is not a reservation or a guarantee that every space and time is free. Not available means your venue cannot take an event that day under your current holds, blocked dates, capacity, and booked occupancy. Prospects often read Available as a real chance to hold their event, and may be disappointed if you later explain that you cannot accommodate them.
+            Available means a prospect may submit an inquiry for that date — it is not a reservation or a guarantee. At a multi-space venue, a date may stay open for inquiries when one event is booked and another suitable space may still be available, depending on your settings and capacity. An open date does not mean every space, time, or event configuration is available. Not available means your venue&apos;s current availability rules prevent another event from being accepted for that date — including holds, blocked dates, capacity, and booked occupancy. Prospects often read Available as a real chance to hold their event, and may be disappointed if you later explain that you cannot accommodate them.
           </p>
           <p>
             <span className="font-medium text-heading">When to block an entire day. </span>
-            Use Blocked Dates, a full-day calendar block, or a whole-venue hold when you do not want any new event interest that day — for example private buyouts, venue closures, or days that are fully committed even if a side lawn is technically unused. Leaving a date Available can still let someone inquire when an existing booking already makes their eventual schedule impractical.
+            Block an entire date when you do not want additional event inquiries that day — for example a private buyout, a venue closure, or a day you do not want to accommodate another event. Use Blocked Dates, a full-day calendar block, or a whole-venue hold. Having one event booked is different: you do not need to block the whole date merely because one space is occupied, if your venue can host another event in a different space and you allow public inquiries for that situation below.
           </p>
           <p>
-            <span className="font-medium text-heading">Confirmed events and public availability. </span>
-            By default, a confirmed event closes that date for prospective clients — even when another Event Space is free. If your venue intentionally books more than one event on the same day, enable that preference below. Staff scheduling capacity (simultaneous events) still controls what your team can book internally.
+            <span className="font-medium text-heading">Booked events and public availability. </span>
+            By default, a booked event closes that date for prospective clients — even when another Event Space may be free. Venues that intentionally book multiple events on the same day can enable the preference below to allow inquiries when capacity and availability rules permit. That setting allows further inquiries; it does not promise a suitable space or guarantee a booking. Your simultaneous-event capacity remains a separate limit on what staff can book internally.
           </p>
           <p>
             <span className="font-medium text-heading">Your responsibility. </span>
-            Choose holds, blocked dates, capacity, spaces, and the confirmed-event public preference so the public calendar matches how you actually book.
+            Choose holds, blocked dates, capacity, spaces, and the public-inquiry preference so the public calendar matches how you actually book.
           </p>
           <p>
             <span className="font-medium text-heading">Holds. </span>
@@ -137,7 +137,7 @@ export default async function AvailabilityCapacitySettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Scheduling Capacity</CardTitle>
           <CardDescription>
-            Event and tour simultaneous limits and event turnaround are enforced when booking. A missing simultaneous setting is treated as 1 — never unlimited. Turnaround of 0 means events may be back-to-back. These limits guide staff scheduling and do not override the separate public confirmed-event availability preference under Date holds and availability.
+            Event and tour simultaneous limits and event turnaround are enforced when booking. A missing simultaneous setting is treated as 1 — never unlimited. Turnaround of 0 means events may be back-to-back. These limits guide staff scheduling and do not override the separate preference under Date holds and availability for whether public inquiries can stay open when another event is booked.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

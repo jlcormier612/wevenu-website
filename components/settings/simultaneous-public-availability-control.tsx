@@ -27,8 +27,8 @@ export function SimultaneousPublicAvailabilityControl({
       const result = await updateAllowSimultaneousPublicAvailabilityAction(next);
       if (result.ok) {
         toast.success(next
-          ? "A free Event Space can keep a date available when another event is already booked."
-          : "A confirmed event now closes that date for prospective clients.");
+          ? "Public inquiries can stay open when another event is booked, if your simultaneous-event limit allows."
+          : "A booked event now closes that date for new public inquiries.");
         router.refresh();
       } else {
         setAllows(previous);
@@ -39,10 +39,9 @@ export function SimultaneousPublicAvailabilityControl({
 
   return (
     <fieldset className="space-y-3" disabled={pending} data-testid="simultaneous-public-availability">
-      <legend className="text-sm font-medium text-heading">When a confirmed event is already on the calendar</legend>
+      <legend className="text-sm font-medium text-heading">Allow inquiries when another event is booked</legend>
       <p className="text-sm text-muted-foreground">
-        Choose whether a confirmed event should close that date for prospective clients on your public availability calendar and inquiry form.
-        This is separate from your staff scheduling capacity (how many events your team can book at once).
+        Choose how HTC handles public inquiries for dates when your venue already has an event booked.
       </p>
       <label className="flex items-start gap-3 rounded-lg border border-border px-3 py-3">
         <input
@@ -53,9 +52,12 @@ export function SimultaneousPublicAvailabilityControl({
           onChange={() => choose(false)}
         />
         <span>
-          <span className="block text-sm font-medium text-heading">Close the date when any event is confirmed</span>
+          <span className="block text-sm font-medium text-heading">Close the date when an event is booked</span>
           <span className="mt-1 block text-sm text-muted-foreground">
-            Recommended. A confirmed event on that date makes the date unavailable for new inquiries — even if another Event Space is free or unassigned.
+            Once an existing event makes a date unavailable under your venue&apos;s booking rules, HTC won&apos;t accept new public inquiries for that date—even if another space might be free.
+          </span>
+          <span className="mt-1.5 block text-xs text-muted-foreground">
+            Best if your venue generally hosts only one event per day.
           </span>
         </span>
       </label>
@@ -68,12 +70,22 @@ export function SimultaneousPublicAvailabilityControl({
           onChange={() => choose(true)}
         />
         <span>
-          <span className="block text-sm font-medium text-heading">Keep the date available when another space is free</span>
+          <span className="block text-sm font-medium text-heading">Keep the date open for other events</span>
           <span className="mt-1 block text-sm text-muted-foreground">
-            A date stays Available if at least one active Event Space can still take a full-day event under your simultaneous capacity and space rules. Overlapping use of the same space remains blocked.
+            HTC can continue accepting public inquiries for a date with an existing booking, as long as your venue&apos;s simultaneous-event limit allows another event. You&apos;ll need to confirm that a suitable space is available before accepting another booking.
+          </span>
+          <span className="mt-1.5 block text-xs text-muted-foreground">
+            Best if your venue can host multiple events in different spaces on the same day.
           </span>
         </span>
       </label>
+      <p
+        className="rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground"
+        data-testid="simultaneous-public-availability-note"
+      >
+        <span className="font-medium text-heading">Important. </span>
+        Keeping a date open does not mean every space is available. HTC&apos;s public inquiry availability is currently date-based, so you&apos;ll need to confirm the requested space and any scheduling conflicts before booking another event.
+      </p>
     </fieldset>
   );
 }

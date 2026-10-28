@@ -71,8 +71,12 @@ describe("allow_simultaneous_public_availability migration + settings", () => {
     );
     const actions = readFileSync(resolve("app/(app)/settings/availability-actions.ts"), "utf8");
     const page = readFileSync(resolve("app/(app)/settings/availability/page.tsx"), "utf8");
-    assert.match(control, /Close the date when any event is confirmed/);
-    assert.match(control, /Keep the date available when another space is free/);
+    assert.match(control, /Allow inquiries when another event is booked/);
+    assert.match(control, /Close the date when an event is booked/);
+    assert.match(control, /Keep the date open for other events/);
+    assert.match(control, /public inquiry availability is currently date-based/);
+    assert.match(control, /choose\(false\)/);
+    assert.match(control, /choose\(true\)/);
     assert.match(actions, /updateAllowSimultaneousPublicAvailabilityAction/);
     assert.match(actions, /allow_simultaneous_public_availability/);
     assert.match(page, /SimultaneousPublicAvailabilityControl/);
