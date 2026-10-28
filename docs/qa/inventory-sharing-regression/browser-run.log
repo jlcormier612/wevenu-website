@@ -1,0 +1,89 @@
+PASS [deploy] serving_sha — expected=6f06bf08bb181910e93788c51cfcb23a7ef32afc ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:6f06bf08bb181910e93788c51cfcb23a7ef32afc
+PASS [unit] picker_rejects_financial_only — null
+PASS [unit] review_url_has_view_query — https://app.sandbox.hellotocheers.com/p/abc?view=inventory#inventory
+PASS [reproduce] ursula_financial_token_is_invoice_shell — title=Invoice & Payment Plan — Meadowbrook Valley Venue
+PASS [usability] share_for_selection_disabled_until_select — disabled=true reasonVisible=true
+PASS [usability] share_for_selection_enabled_after_select — disabled=false
+PASS [persisted] share_creates_or_uses_couple_session — [{"accessToken":"9f404659d854a347f53f5ebe25b5c0c47558d7b7b7f7618f97c949e38a3e3e84","accessLevel":"couple","label":"Couple"},{"accessToken":"invshr_fin_invshrmvsrl4yz_5d48f692","accessLevel":"financial","label":"Payment"}]
+PASS [browser] couple_inventory_url_not_invoice_shell — title=InvShare — Jen's Fancy Venue text=InvShare
+
+·
+
+Jen's Fancy Venue
+
+Feb 18, 2028
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your inventory choices
+
+View the items your venue has listed for your event, including package-included items and available add-
+PASS [browser] couple_sees_inventory_items — InvShare
+
+·
+
+Jen's Fancy Venue
+
+Feb 18, 2028
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your inventory choices
+
+View the items your venue has listed for your event, including package-included items and available add-ons.
+
+Save a draft anytime. Submit when you’re ready — your venue will review before anything is confirmed.
+
+Ready for your choices
+
+PACKAGE-INCLUDED
+
+INVSHR-INVSHRMVSRL4YZ-Included Linen
+
+Included — 
+PASS [api] portal_api_select_mode_with_priced_items — {"mode":"select","items":[{"name":"INVSHR-INVSHRMVSRL4YZ-Included Linen","sel":false,"price":null,"included":true},{"name":"INVSHR-INVSHRMVSRL4YZ-Dance Floor","sel":true,"price":150,"included":false},{"name":"INVSHR-INVSHRMVSRL4YZ-DJ Band Table","sel":true,"price":200,"included":false}]}
+PASS [browser] mobile_390_not_invoice_shell
+GREEN — 13 pass / 0 fail
+y Venue
+PASS [browser] genuine_invoice_link_still_payment_shell — Invoice & Payment Plan — Jen's Fancy Venue
+PASS [security] bad_token_no_inventory_leak — {"status":200,"body":{"inventory":null}}

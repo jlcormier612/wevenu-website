@@ -243,30 +243,27 @@ async function main() {
     const dj = insertedItems.find((i) => /DJ Band/i.test(i.name))!;
     persisted.items = insertedItems;
 
-    // Staff UI: disabled Share for selection + enable Select on additional items
-    await staff.goto(`${APP}/events/${event.id}#inventory`, {
-      waitUntil: "domcontentloaded",
-      timeout: 120_000,
-    });
-    await staff.waitForTimeout(2500);
-    // hash may need help
-    await staff.evaluate(() => {
-      window.location.hash = "inventory";
-    }).catch(() => undefined);
-    await staff.waitForTimeout(1500);
-
-    const shareSelect = staff.getByTestId("inventory-share-for-selection");
-    // Panel may need scroll — wait for instructions
-    const instructions = staff.getByTestId("inventory-share-instructions");
-    if (!(await instructions.count())) {
-      // Fallback: open event and look for inventory card text
-      await staff.goto(`${APP}/events/${event.id}`, { waitUntil: "domcontentloaded", timeout: 120_000 });
-      await staff.waitForTimeout(3000);
+    async function openInventoryPanel() {
+      await staff.goto(`${APP}/events/${event.id}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 120_000,
+      });
+      await staff.waitForTimeout(2500);
+      await staff.evaluate(() => {
+        window.location.hash = "inventory";
+        document.getElementById("inventory-event-order-card")?.scrollIntoView({ block: "center" });
+      }).catch(() => undefined);
+      await staff.waitForTimeout(1200);
+      const panel = staff.getByTestId("inventory-share-instructions")
+        .or(staff.getByTestId("inventory-share-for-selection"))
+        .or(staff.getByText("Event Inventory"));
+      await panel.first().waitFor({ state: "visible", timeout: 60_000 });
     }
-    await staff.getByText(/Event Inventory|Share to view|Share for selection/i).first()
-      .waitFor({ timeout: 60_000 }).catch(() => undefined);
+
+    await openInventoryPanel();
     await staff.screenshot({ path: `${OUT}/shots/venue-inventory-before-select-1280.png`, fullPage: true });
 
+    const shareSelect = staff.getByTestId("inventory-share-for-selection");
     const disabledBefore = await shareSelect.isDisabled().catch(() => true);
     const reasonVisible = (await staff.getByTestId("inventory-share-selection-disabled-reason").count()) > 0;
     record(
@@ -276,58 +273,60 @@ async function main() {
       "usability",
     );
 
-    // Mark both additional items selectable via admin (UI toggle if present)
-    await admin.from("event_inventory_items").update({
-      client_selectable: true,
-      max_quantity: 1,
-    }).in("id", [dance.id, dj.id]);
-
-    await staff.reload({ waitUntil: "domcontentloaded" });
-    await staff.waitForTimeout(2500);
-    await staff.evaluate(() => {
-      window.location.hash = "inventory";
-    }).catch(() => undefined);
-    await staff.waitForTimeout(1000);
-
-    // Share for selection via staff UI
-    const shareBtn = staff.getByTestId("inventory-share-for-selection");
-    if (await shareBtn.count() && !(await shareBtn.isDisabled())) {
-      await shareBtn.click();
-      await staff.waitForTimeout(2500);
-    } else {
-      // Fallback: service path still validates email token creation — call share via DB+notify is staff-only.
-      // Use RPC-equivalent: update mode/status then invoke notify by re-clicking Share to view after select mode set.
-      await admin.from("event_inventory").update({
-        status: "shared",
-        collaboration_mode: "select",
-      }).eq("id", inv.id);
-      // Directly exercise notify by creating couple session the way fixed code would
-      const coupleTok = `invshr_cpl_${RUN.toLowerCase()}_${randomBytes(4).toString("hex")}`;
-      await admin.from("client_portal_sessions").insert({
-        venue_id: FANCY,
-        client_id: client.id,
-        access_token: coupleTok,
-        access_level: "couple",
-        label: "Couple",
-        event_id: event.id,
-      });
-      created.coupleToken = coupleTok;
-      record("staff_share_button_fallback", true, "DB select-share + couple session (UI button unavailable in layout)", "fixture");
+    // Prefer UI Select toggles; fall back to DB then reload
+    const danceToggle = staff.getByTestId(`inventory-item-select-toggle-${dance.id}`);
+    const djToggle = staff.getByTestId(`inventory-item-select-toggle-${dj.id}`);
+    if (await danceToggle.count()) {
+      await danceToggle.click();
+      await staff.waitForTimeout(800);
     }
+    if (await djToggle.count()) {
+      await djToggle.click();
+      await staff.waitForTimeout(800);
+    }
+    const { data: flags } = await admin
+      .from("event_inventory_items")
+      .select("id,client_selectable")
+      .in("id", [dance.id, dj.id]);
+    if (!(flags ?? []).every((f) => f.client_selectable)) {
+      await admin.from("event_inventory_items").update({
+        client_selectable: true,
+        max_quantity: 1,
+      }).in("id", [dance.id, dj.id]);
+      await openInventoryPanel();
+    }
+
+    const shareBtn = staff.getByTestId("inventory-share-for-selection");
+    await shareBtn.waitFor({ state: "visible", timeout: 30_000 });
+    record(
+      "share_for_selection_enabled_after_select",
+      !(await shareBtn.isDisabled()),
+      `disabled=${await shareBtn.isDisabled()}`,
+      "usability",
+    );
+    await shareBtn.click();
+    await staff.waitForTimeout(3500);
+    await staff.screenshot({ path: `${OUT}/shots/venue-after-share-selection-1280.png`, fullPage: true });
 
     // After UI share, couple session must exist (not only financial)
     const { data: sessionsAfter } = await admin
       .from("client_portal_sessions")
       .select("access_token,access_level,label")
       .eq("client_id", client.id);
-    const picked = pickInventoryPortalSession(sessionsAfter ?? []);
+    const mappedSessions = (sessionsAfter ?? []).map((s) => ({
+      accessToken: s.access_token as string,
+      accessLevel: s.access_level as string,
+      label: s.label as string | null,
+    }));
+    const picked = pickInventoryPortalSession(mappedSessions);
     record(
       "share_creates_or_uses_couple_session",
-      Boolean(picked) && picked!.accessLevel !== "financial",
-      JSON.stringify(sessionsAfter),
+      Boolean(picked?.accessToken) && picked!.accessLevel !== "financial",
+      JSON.stringify(mappedSessions),
       "persisted",
     );
-    if (picked?.accessToken) created.coupleToken = picked.accessToken;
+    if (!picked?.accessToken) throw new Error(`no couple session after share: ${JSON.stringify(mappedSessions)}`);
+    created.coupleToken = picked.accessToken;
 
     const { data: invAfter } = await admin
       .from("event_inventory")
@@ -385,15 +384,27 @@ async function main() {
       .get(`${APP}/api/portal/inventory?token=${encodeURIComponent(coupleToken)}`)
       .then(async (r: { json: () => Promise<Record<string, unknown>> }) => ({ data: await r.json() }));
     const portalInv = portalPayload as {
-      inventory?: { status?: string; collaborationMode?: string };
-      items?: Array<{ name: string; clientSelectable?: boolean; unitPrice?: number | null; isIncluded?: boolean }>;
+      inventory?: {
+        status?: string;
+        collaborationMode?: string;
+        items?: Array<{ name: string; clientSelectable?: boolean; unitPrice?: number | null; isIncluded?: boolean }>;
+      };
     };
+    const portalItems = portalInv.inventory?.items ?? [];
     record(
       "portal_api_select_mode_with_priced_items",
       portalInv.inventory?.collaborationMode === "select"
-        && (portalInv.items ?? []).some((i) => /Dance Floor/i.test(i.name) && i.clientSelectable && Number(i.unitPrice) === 150)
-        && (portalInv.items ?? []).some((i) => /DJ Band/i.test(i.name) && i.clientSelectable && Number(i.unitPrice) === 200),
-      JSON.stringify(portalInv).slice(0, 800),
+        && portalItems.some((i) => /Dance Floor/i.test(i.name) && i.clientSelectable && Number(i.unitPrice) === 150)
+        && portalItems.some((i) => /DJ Band/i.test(i.name) && i.clientSelectable && Number(i.unitPrice) === 200),
+      JSON.stringify({
+        mode: portalInv.inventory?.collaborationMode,
+        items: portalItems.map((i) => ({
+          name: i.name,
+          sel: i.clientSelectable,
+          price: i.unitPrice,
+          included: i.isIncluded,
+        })),
+      }),
       "api",
     );
 
