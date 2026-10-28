@@ -14,6 +14,11 @@ import {
   isClientChoicesClientEditable,
 } from "@/lib/client-choices/constants";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
+import {
+  isAtSelectionMaximum,
+  selectionMaximumReachedMessage,
+  selectionProgressForGroup,
+} from "@/lib/client-choices/selection-progress";
 import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
 import { pruneAnswersToDefinition } from "@/lib/event-order-templates/selection-definition";
 
@@ -111,15 +116,28 @@ export function ChoicesPortalSection({ token }: { token: string }) {
 
   function toggleOption(groupId: string, optionId: string, mode: "single" | "multi") {
     if (!active) return;
+    const group = active.definition.groups.find((g) => g.id === groupId);
+    const current = answers[groupId]?.optionIds ?? [];
+    const alreadySelected = current.includes(optionId);
+
+    // Adding a new multi selection past max — block without replacing silently.
+    if (group && mode === "multi" && !alreadySelected && isAtSelectionMaximum(group, current.length)) {
+      setMessageTone("error");
+      setMessage(selectionMaximumReachedMessage(group));
+      return;
+    }
+
+    setMessage(null);
+    setMessageTone("info");
     setAnswers((prev) => {
-      const current = prev[groupId]?.optionIds ?? [];
+      const cur = prev[groupId]?.optionIds ?? [];
       let next: string[];
       if (mode === "single") {
-        next = current.includes(optionId) ? [] : [optionId];
+        next = cur.includes(optionId) ? [] : [optionId];
       } else {
-        next = current.includes(optionId)
-          ? current.filter((id) => id !== optionId)
-          : [...current, optionId];
+        next = cur.includes(optionId)
+          ? cur.filter((id) => id !== optionId)
+          : [...cur, optionId];
       }
       const tentative = { ...prev, [groupId]: { ...prev[groupId], optionIds: next } };
       return reconcileAnswersForDependencies(active.definition, tentative);
@@ -158,21 +176,6 @@ export function ChoicesPortalSection({ token }: { token: string }) {
       const refreshed = await fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`).then((r) => r.json());
       setRows(refreshed.choices ?? []);
     });
-  }
-
-  function selectionRuleCopy(group: ChoicesDefinition["groups"][number]): string {
-    const mode = group.selectionMode === "single" ? "Pick one" : "Pick many";
-    const required = group.minSelect > 0 ? "required" : "optional";
-    const parts = [mode, required];
-    if (group.minSelect > 1 && group.maxSelect != null && group.minSelect === group.maxSelect) {
-      parts.push(`choose exactly ${group.minSelect}`);
-    } else {
-      if (group.minSelect > 1) parts.push(`at least ${group.minSelect}`);
-      if (group.maxSelect != null && group.selectionMode === "multi") {
-        parts.push(`up to ${group.maxSelect}`);
-      }
-    }
-    return parts.join(" · ");
   }
 
   const editable = active ? isClientChoicesClientEditable(active.status) : false;
@@ -303,6 +306,8 @@ export function ChoicesPortalSection({ token }: { token: string }) {
               .filter((o) => o.groupId === group.id)
               .sort((a, b) => a.sortOrder - b.sortOrder);
             const selected = answers[group.id]?.optionIds ?? [];
+            const progress = selectionProgressForGroup(group, selected.length);
+            const atMax = progress.atMaximum;
             return (
               <fieldset
                 key={group.id}
@@ -311,12 +316,19 @@ export function ChoicesPortalSection({ token }: { token: string }) {
                 data-testid={isDependent ? "choices-dependent-group" : "choices-group"}
                 data-group-name={group.name}
                 data-dependent={isDependent ? "true" : "false"}
+                data-selected-count={String(progress.selectedCount)}
+                data-at-maximum={atMax ? "true" : "false"}
               >
                 <legend className="px-1 text-sm font-medium text-heading">{group.name}</legend>
-                <p className="text-xs text-muted-foreground" data-testid="choices-group-rules">
-                  {selectionRuleCopy(group)}
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid="choices-group-progress"
+                >
+                  {progress.label}
                   {isDependent ? " · based on your selection above" : ""}
                 </p>
+                {/* Legacy harness seam — same live progress text */}
+                <span className="sr-only" data-testid="choices-group-rules">{progress.label}</span>
                 {group.instructions ? (
                   <p className="text-xs text-muted-foreground">{group.instructions}</p>
                 ) : null}
@@ -328,16 +340,26 @@ export function ChoicesPortalSection({ token }: { token: string }) {
                   <div className="space-y-2">
                     {opts.map((opt) => {
                       const checked = selected.includes(opt.id);
+                      const blockedAdd = atMax && !checked && group.selectionMode === "multi";
                       return (
                         <label
                           key={opt.id}
-                          className={`flex cursor-pointer items-start gap-3 rounded-sm border px-3 py-2 text-sm ${checked ? "border-heading bg-muted/30" : "border-border"}`}
+                          className={`flex items-start gap-3 rounded-sm border px-3 py-2 text-sm ${
+                            checked
+                              ? "cursor-pointer border-heading bg-muted/30"
+                              : blockedAdd
+                                ? "cursor-not-allowed border-border opacity-60"
+                                : "cursor-pointer border-border"
+                          }`}
                         >
                           <input
                             type={group.selectionMode === "single" ? "radio" : "checkbox"}
                             name={group.id}
                             value={opt.id}
                             checked={checked}
+                            disabled={!editable || blockedAdd}
+                            aria-disabled={blockedAdd || undefined}
+                            title={blockedAdd ? selectionMaximumReachedMessage(group) : undefined}
                             data-testid={`choices-option-${opt.id}`}
                             data-option-id={opt.id}
                             onChange={() => toggleOption(group.id, opt.id, group.selectionMode)}

@@ -10,6 +10,7 @@
 import {
   orderedVisibleChoiceGroups,
 } from "@/lib/client-choices/conditional-groups";
+import { selectionProgressLabel } from "@/lib/client-choices/selection-progress";
 import type {
   ChoicesAnswers,
   ChoicesDefinition,
@@ -163,9 +164,8 @@ function ChoiceGroup({
       data-group-name={group.name}
     >
       <legend className="px-1 text-sm font-medium text-heading">{group.name}</legend>
-      <p className="text-xs text-muted-foreground">
-        {group.selectionMode === "single" ? "Pick one" : "Pick many"}
-        {group.minSelect > 0 ? " · required" : " · optional"}
+      <p className="text-xs text-muted-foreground" data-testid="choices-group-progress">
+        {selectionProgressLabel(group, selected.size)}
         {isDependent ? " · based on your selection above" : ""}
       </p>
       {group.instructions ? (

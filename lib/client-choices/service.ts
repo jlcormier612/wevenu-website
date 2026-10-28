@@ -28,6 +28,7 @@ import type {
   FinalizeClientChoicesResult,
   SendClientChoicesRequestResult,
 } from "@/lib/client-choices/types";
+import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
 import * as eoTemplatesRepo from "@/lib/event-order-templates/repository";
 import {
   defaultAnswersFromEventOrderTemplate,
@@ -396,6 +397,17 @@ export async function finalizeClientChoices(
       await repo.updateInstance(supabase, venueId, row.id, { answers });
       row.answers = answers;
     }
+
+    // Defense in depth for venue-Use drafts and any path that finalizes without
+    // a prior client submit — same rules as submit_client_choices / portal submit.
+    const validated = validateChoicesAnswers(row.definition, answers);
+    if (!validated.ok) {
+      return {
+        ok: false,
+        message: validated.message ?? "Selections are incomplete.",
+      } as FinalizeClientChoicesResult;
+    }
+
     const lines = resolveSelectedOptions(row.definition, answers);
     const delta = financialDeltaFromLines(lines);
 
