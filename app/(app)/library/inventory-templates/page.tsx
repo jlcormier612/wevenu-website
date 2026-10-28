@@ -30,14 +30,17 @@ export default async function InventoryTemplatesLibraryPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Inventory Templates"
-        description="Reusable packing lists for a kind of event. Use applies a draft snapshot to the event Inventory tab (does not share). Send applies and shares for portal review — continue selection, finalize, and Event Order handoff on the event. Neither creates an invoice."
+        description="Reusable starting lists for the inventory you typically provide at an event. Apply one to an event, then customize that event’s inventory as needed."
         actions={<NewInventoryTemplateButton />}
       />
       <LibraryHowItWorks>
-        Build a reusable packing list once from Available Inventory. Use starts that event&apos;s inventory draft without sharing. Send is an event shortcut that applies (if needed) and shares for portal review — then work continues on the event Inventory tab.
+        <strong className="font-medium text-heading">Use</strong> applies the list to an event without
+        sharing it.{" "}
+        <strong className="font-medium text-heading">Send to client</strong> applies it if needed and
+        shares the event inventory for the couple to review.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Add items from Available Inventory when you edit a template. Use a custom line only for one-offs that are not already in your catalog. Applying a template copies a snapshot onto the event."
+        detail="Add catalog items when you edit a template. Use a custom line only for one-offs that are not already in your catalog."
         action={{ href: "/library/inventory", label: "Manage Available Inventory" }}
       >
         Built from your Available Inventory catalog.

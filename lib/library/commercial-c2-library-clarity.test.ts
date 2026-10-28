@@ -45,13 +45,17 @@ describe("C2 Library clarity — hub cards", () => {
 });
 
 describe("C2 Library clarity — collection pages", () => {
-  it("Inventory Templates page distinguishes Use (no share) from Send (share)", () => {
+  it("Inventory Templates page distinguishes Use (no share) from Send to client (share)", () => {
     const page = read("app/(app)/library/inventory-templates/page.tsx");
-    assert.match(page, /does not share/i);
-    assert.match(page, /Send applies and shares/i);
-    assert.match(page, /Neither creates an invoice/i);
+    assert.match(page, /Reusable starting lists for the inventory you typically provide at an event/);
+    assert.match(page, /Use<\/strong> applies the list to an event without\s+sharing it/s);
+    assert.match(page, /Send to client<\/strong> applies it if needed and\s+shares the event inventory for the couple to review/s);
+    assert.doesNotMatch(page, /Event Order handoff/);
+    assert.doesNotMatch(page, /parallel payment/);
+    assert.doesNotMatch(page, /draft snapshot/);
     const list = read("components/event-inventory/inventory-template-list.tsx");
-    assert.match(list, /does not share/i);
+    assert.doesNotMatch(list, /Event Order handoff/);
+    assert.doesNotMatch(list, /parallel payment stack/);
     assert.match(list, /sendInventoryTemplateAction/);
     assert.match(list, /ensureEventInventoryAction/);
     assert.match(list, /LIBRARY_LABELS\.sendToClient/);

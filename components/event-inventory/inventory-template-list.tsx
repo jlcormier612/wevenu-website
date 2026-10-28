@@ -214,8 +214,8 @@ function UseOrSendInventoryTemplateSheet({
           ) : (
             <p className="text-sm text-muted-foreground">
               {mode === "send"
-                ? "Applies the template (if needed) and shares the event inventory for client portal review — not an invoice. Finalize and Event Order handoff stay on the event."
-                : "Confirm before setting up this event’s inventory draft. Does not share with the client."}
+                ? "Applies the template if needed and shares the event inventory for the couple to review. Does not create an invoice."
+                : "Confirm before applying this list to the event. Does not share with the couple."}
             </p>
           )}
         </SheetHeader>
@@ -401,11 +401,6 @@ export function InventoryTemplateList({
         <StarterMenu missingKeys={missingStarterKeys} />
         {headerCreate ? <NewInventoryTemplateButton /> : null}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Reusable packing lists. Use applies a draft on the venue side (does not share). Send applies and shares for
-        client portal review — continue on the event Inventory tab. Billable inventory still uses Event Order /
-        Invoice — not a parallel payment stack.
-      </p>
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No inventory templates yet</p>
