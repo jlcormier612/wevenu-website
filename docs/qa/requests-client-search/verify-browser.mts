@@ -150,20 +150,22 @@ async function main() {
     const idle = await page.locator("text=Search for a client by name.").count();
     record("empty_search_hint", idle > 0, `hint=${idle}`);
 
+    const search = page.locator('[data-testid="request-client-search"]');
+    const option = page.locator(`[data-testid="request-client-option-${synClient.id}"]`);
+
     // No results
-    await page.locator('[data-testid="request-client-search"]').fill("zzzznonexistentclientxyz");
-    await page.waitForTimeout(800);
+    await search.fill("zzzznonexistentclientxyz");
+    await page.locator('[data-testid="request-client-empty"]').waitFor({ timeout: 10_000 });
     record("no_results_copy", (await page.locator('[data-testid="request-client-empty"]').count()) > 0, "empty state");
 
     // Partial primary name
-    await page.locator('[data-testid="request-client-search"]').fill("Rory");
-    await page.waitForTimeout(900);
-    const option = page.locator(`[data-testid="request-client-option-${synClient.id}"]`);
+    await search.fill("Rory");
+    await option.first().waitFor({ timeout: 10_000 });
     record("partial_name_hit", (await option.count()) > 0, synClient.id);
 
     // Partner name search
-    await page.locator('[data-testid="request-client-search"]').fill(`Quinn Partner${partnerTag}`);
-    await page.waitForTimeout(900);
+    await search.fill(`Quinn Partner${partnerTag}`);
+    await option.first().waitFor({ timeout: 10_000 });
     record("partner_name_hit", (await option.count()) > 0, `Quinn Partner${partnerTag}`);
 
     // Select
@@ -183,8 +185,8 @@ async function main() {
     record("submit_disabled_after_clear", await createBtn.isDisabled(), "needs client again");
 
     await page.locator('[data-testid="request-client-trigger"]').click();
-    await page.locator('[data-testid="request-client-search"]').fill(`Rcs${RUN}`);
-    await page.waitForTimeout(900);
+    await search.fill(`Rcs${RUN}`);
+    await option.first().waitFor({ timeout: 10_000 });
     await option.first().click();
     await page.waitForTimeout(300);
 
@@ -219,7 +221,12 @@ async function main() {
       await page.waitForTimeout(2500);
       await page.locator('[data-testid="request-client-trigger"]').click();
       await page.locator('[data-testid="request-client-search"]').fill(foreign.first_name);
-      await page.waitForTimeout(900);
+      await page.waitForTimeout(1500);
+      // Wait for either results or empty — then assert foreign id absent
+      await Promise.race([
+        page.locator('[data-testid="request-client-empty"]').waitFor({ timeout: 8_000 }).catch(() => null),
+        page.locator('[role="option"]').first().waitFor({ timeout: 8_000 }).catch(() => null),
+      ]);
       const foreignOpt = page.locator(`[data-testid="request-client-option-${foreign.id}"]`);
       record("foreign_venue_excluded", (await foreignOpt.count()) === 0, `foreign=${foreign.id}`);
     } else {
