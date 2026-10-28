@@ -55,33 +55,20 @@ export const OfferingsLibrarySection = React.forwardRef<
 
   return (
     <div className="space-y-4" data-testid="offerings-library">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="max-w-2xl space-y-1">
-          <p className="text-sm text-muted-foreground">
-            What this venue sells, organized by service category. Major choices (for example a dinner
-            style or bar package) can list associated menu or package items underneath — without
-            duplicating catalog rows. Distinct from physical Inventory.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Event Order templates select from this catalog. Catalog maintenance is separate from
-            deciding what a couple must choose on a specific Event Order.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
-            {showArchived ? "Hide archived" : "Show archived"}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowArchived((v) => !v)}>
+          {showArchived ? "Hide archived" : "Show archived"}
+        </Button>
+        {headerCreate ? (
+          <Button
+            type="button"
+            size="sm"
+            data-testid="offerings-new"
+            onClick={() => { setEditing(null); setCreateParentId(null); setCreating(true); }}
+          >
+            + New Offering
           </Button>
-          {headerCreate ? (
-            <Button
-              type="button"
-              size="sm"
-              data-testid="offerings-new"
-              onClick={() => { setEditing(null); setCreateParentId(null); setCreating(true); }}
-            >
-              + New Offering
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
 
       {ordered.length === 0 ? (
@@ -371,8 +358,8 @@ function OfferingFormSheet({
               ))}
             </select>
             <p className="mt-1 text-[0.7rem] text-muted-foreground">
-              Leave empty for a major service choice couples pick first. Nest items (menu lines, package
-              extras) under that choice so Event Order follow-ups can reuse them without duplicates.
+              Leave empty for a major service choice couples pick first. Nest menu or package items
+              under that choice so Event Order Templates can offer them as follow-up selections.
             </p>
           </div>
           <div>

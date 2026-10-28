@@ -82,7 +82,8 @@ describe("C2 Library clarity — collection pages", () => {
     assert.doesNotMatch(inventory, /Use Template/);
     assert.match(inventory, /Open Inventory Templates/);
     const offerings = read("components/offerings/offerings-page-client.tsx");
-    assert.match(offerings, /do not request client selections/i);
+    assert.match(offerings, /How Offerings work/);
+    assert.match(offerings, /Event Order Templates use these offerings/);
     assert.doesNotMatch(offerings, /Use Template/);
     assert.match(offerings, /Open Event Order Templates/);
   });

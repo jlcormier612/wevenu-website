@@ -31,7 +31,7 @@ export function OfferingsPageClient({
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Offerings"
-        description="Organize what this venue sells by service category — major choices and the items that belong under them. Catalog edits do not change what a couple must select on an Event Order."
+        description="Organize the services, packages, and options your venue offers. Group related items under choices, such as dinner styles or bar packages, so you can reuse them across Event Order Templates."
         actions={
           <Button type="button" onClick={() => sectionRef.current?.openCreate()}>
             + New Offering
@@ -39,10 +39,12 @@ export function OfferingsPageClient({
         }
       />
       <LibraryHowItWorks>
-        Maintain reusable offerings here: service categories, major choices (for example a dinner style or bar package), and associated menu or package items nested under those choices. Event Order Templates select from this same catalog for included lines, primary choices, and follow-ups — without duplicating records. Client selection and Event Order finalization happen on the event, not on this page.
+        <strong className="font-medium text-heading">How Offerings work.</strong> Maintain your
+        catalog here. Event Order Templates use these offerings to define what&apos;s included and
+        which choices or additional items clients can select.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="After you organize offerings here, open an Event Order Template and select which catalog items apply as included lines, major choices, or follow-up items. Optionally link an offering to a physical inventory item (does not reserve stock). Applying or sending a template is an event action from Event Order Templates or the event workspace."
+        detail="Optionally link an offering to a physical inventory item — that does not reserve stock. Distinct from Available Inventory."
         action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
         secondaryActions={[
           { href: "/library/inventory", label: "Manage Available Inventory" },

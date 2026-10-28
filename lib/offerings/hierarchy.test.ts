@@ -72,8 +72,8 @@ describe("Offerings hierarchy migration + UI seams", () => {
   });
 
   it("catalog UI exposes major/item structure without duplicating dependency model", () => {
-    assert.match(library, /Major choice/);
     assert.match(library, /Belongs under major choice/);
+    assert.match(library, /Add item under major choice|top-level major choice/);
     assert.match(library, /offerings-library/);
     assert.match(choiceGroups, /Select where this belongs/);
     assert.doesNotMatch(choiceGroups, /Select question or category/);
