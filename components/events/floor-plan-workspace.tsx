@@ -1111,10 +1111,13 @@ export function FloorPlanWorkspace({
         />
       ) : null}
 
-      {!preBooking && coupleSelectedFloorPlanId && (() => {
-        const submitted = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);
-        return submitted ? <ClientSubmissionReviewPanel eventId={eventId} plan={submitted} /> : null;
-      })()}
+      {!preBooking && eventId
+        ? floorPlans
+            .filter((p) => venueMayReviewSubmission({ clientLayoutStatus: p.clientLayoutStatus }))
+            .map((submitted) => (
+              <ClientSubmissionReviewPanel key={submitted.id} eventId={eventId} plan={submitted} />
+            ))
+        : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         {!preBooking && sharedPlans.length > 0 && (
@@ -1159,29 +1162,40 @@ export function FloorPlanWorkspace({
               ? "One layout is already offered for this event. Refresh this page if it does not appear as the working layout, or open Event setup → Change for this event to confirm the offer."
               : activeOffers.length > 1
                 ? "Several layouts are offered. Next step here: open a plan below (after refresh) and choose Set as working layout. Preference alone does not pick one."
-                : "Next step: offer a Library layout under Event setup → Change for this event. After one layout is offered, return here to edit it and assign seats. You can also start an additional layout on this tab."}
+                : "Two different starts: Offer a Library layout in Event setup when you want the couple to choose a preferred option. Additional layout builds venue layouts here — after you Share, the couple can arrange and submit the shared working layout without needing a preference chooser."}
           </p>
           {canEdit && activeOffers.length === 0 ? (
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                data-testid="floor-plan-first-layout-setup-cta"
-                onClick={() => {
-                  window.location.hash = "overview";
-                  window.setTimeout(() => {
-                    document.getElementById("event-setup")?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  }, 80);
-                }}
-              >
-                Offer a layout in Event setup
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => { reset(); setOpen(true); }}>
-                + Additional layout here
-              </Button>
+            <div className="mt-2 flex flex-col items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  data-testid="floor-plan-first-layout-setup-cta"
+                  onClick={() => {
+                    window.location.hash = "overview";
+                    window.setTimeout(() => {
+                      document.getElementById("event-setup")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }, 80);
+                  }}
+                >
+                  Offer a layout in Event setup
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  data-testid="floor-plan-first-additional-layout-cta"
+                  onClick={() => { reset(); setOpen(true); }}
+                >
+                  + Additional layout here
+                </Button>
+              </div>
+              <p className="max-w-md text-[11px] text-muted-foreground" data-testid="floor-plan-first-use-path-hint">
+                Offer = couple preference among options. Additional + Share = collaborate on your working layout (submit does not invent a preference).
+              </p>
             </div>
           ) : canEdit ? (
             <Button type="button" size="sm" className="mt-2" variant="outline" onClick={() => { reset(); setOpen(true); }}>

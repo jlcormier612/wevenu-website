@@ -30,14 +30,32 @@ export function clientMayEditLayout(opts: {
   return status === "working" || status === "changes_requested";
 }
 
+/**
+ * Submit eligibility for the couple portal.
+ *
+ * Matches `submit_portal_floor_plan`: when no couple preference pointer exists,
+ * a shared editable layout may be submitted (Additional-layout + Share without
+ * multi-offer preference). When a multi-offer preference path is active, the
+ * couple must submit the preferred layout only.
+ */
 export function clientMaySubmitLayout(opts: {
   clientLayoutStatus: ClientLayoutStatus | string | null | undefined;
   isReady: boolean;
   isCoupleSelected: boolean;
+  /**
+   * True when the couple must choose among multiple offered layouts before
+   * furniture submission (offers.length > 1). False for Additional-layout /
+   * Share-without-offers and sole-offer collaboration.
+   */
+  requiresPreferenceSelection?: boolean;
 }): boolean {
-  if (opts.isReady || !opts.isCoupleSelected) return false;
+  if (opts.isReady) return false;
   const status = normalizeClientLayoutStatus(opts.clientLayoutStatus);
-  return status === "working" || status === "changes_requested";
+  if (status !== "working" && status !== "changes_requested") return false;
+  if (opts.requiresPreferenceSelection) return opts.isCoupleSelected;
+  // No multi-offer preference gate — shared collaboration may submit without
+  // inventing a couple_selected preference (RPC allows couple_selected IS NULL).
+  return true;
 }
 
 export function venueMayReviewSubmission(opts: {

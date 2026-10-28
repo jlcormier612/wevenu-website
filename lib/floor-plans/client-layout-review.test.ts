@@ -27,18 +27,63 @@ describe("floor plan client layout review", () => {
     assert.equal(clientMayEditLayout({ clientLayoutStatus: "working", isReady: true }), false);
   });
 
-  it("allows submit only for selected working or changes_requested layouts", () => {
+  it("allows submit on shared collaboration without preference when multi-offer gate is off (FP-RA-1)", () => {
     assert.equal(
-      clientMaySubmitLayout({ clientLayoutStatus: "working", isReady: false, isCoupleSelected: true }),
+      clientMaySubmitLayout({
+        clientLayoutStatus: "working",
+        isReady: false,
+        isCoupleSelected: false,
+        requiresPreferenceSelection: false,
+      }),
+      true,
+      "Additional-layout + Share without offers must allow submit",
+    );
+    assert.equal(
+      clientMaySubmitLayout({
+        clientLayoutStatus: "changes_requested",
+        isReady: false,
+        isCoupleSelected: false,
+        requiresPreferenceSelection: false,
+      }),
+      true,
+    );
+  });
+
+  it("requires couple preference before submit when multi-offer path is active", () => {
+    assert.equal(
+      clientMaySubmitLayout({
+        clientLayoutStatus: "working",
+        isReady: false,
+        isCoupleSelected: false,
+        requiresPreferenceSelection: true,
+      }),
+      false,
+    );
+    assert.equal(
+      clientMaySubmitLayout({
+        clientLayoutStatus: "working",
+        isReady: false,
+        isCoupleSelected: true,
+        requiresPreferenceSelection: true,
+      }),
       true,
     );
     assert.equal(
-      clientMaySubmitLayout({ clientLayoutStatus: "working", isReady: false, isCoupleSelected: false }),
+      clientMaySubmitLayout({
+        clientLayoutStatus: "submitted",
+        isReady: false,
+        isCoupleSelected: true,
+        requiresPreferenceSelection: true,
+      }),
       false,
     );
+  });
+
+  it("defaults requiresPreferenceSelection to false (legacy callers treat as collaboration path)", () => {
+    // Omitting the flag must not re-introduce the FP-RA-1 dead end.
     assert.equal(
-      clientMaySubmitLayout({ clientLayoutStatus: "submitted", isReady: false, isCoupleSelected: true }),
-      false,
+      clientMaySubmitLayout({ clientLayoutStatus: "working", isReady: false, isCoupleSelected: false }),
+      true,
     );
   });
 

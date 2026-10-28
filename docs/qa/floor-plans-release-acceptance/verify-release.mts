@@ -591,41 +591,60 @@ async function main() {
       "live-ui",
     );
 
-    // Preference / setup option via UI when present
+    // Preference chooser only when multi-offers exist. Additional-layout + Share
+    // without offers is a collaboration path — Submit must appear without inventing preference (FP-RA-1).
     const setupOpt = couple.locator('[data-testid^="floor-plan-setup-option-"]').first();
     const prefBtn = couple.getByRole("button", { name: /Save as preference|Save preference|Choose this/i }).first();
+    const chooser = couple.locator('[data-testid="floor-plan-choose-layout"]');
     if ((await setupOpt.count()) > 0) {
       await setupOpt.click();
       await couple.waitForTimeout(1500);
       if ((await prefBtn.count()) > 0) await prefBtn.click();
       await couple.waitForTimeout(2000);
       record("couple_saved_preference_ui", true, "setup option + preference", "live-ui");
-    } else if ((await prefBtn.count()) > 0) {
+    } else if ((await chooser.count()) > 0 && (await prefBtn.count()) > 0) {
       await prefBtn.click();
       await couple.waitForTimeout(2000);
-      record("couple_saved_preference_ui", true, "clicked save preference", "live-ui");
+      record("couple_saved_preference_ui", true, "clicked save preference in chooser", "live-ui");
     } else {
+      const submitVisible = (await couple.locator('[data-testid="floor-plan-submit-to-venue"]').count()) > 0
+        && await couple.locator('[data-testid="floor-plan-submit-to-venue"]').first().isVisible().catch(() => false);
       const portalFp = await fetch(`${APP}/api/portal/floor-plans?token=${encodeURIComponent(portalToken!)}`).then((r) => r.json()).catch(() => null) as {
         coupleSelectedFloorPlanId?: string | null;
-        floorPlans?: Array<{ id: string; isCoupleSelected?: boolean }>;
+        floorPlans?: Array<{ id: string; isCoupleSelected?: boolean; sharedWithCouple?: boolean }>;
       } | null;
       const selected = Boolean(portalFp?.coupleSelectedFloorPlanId)
         || (portalFp?.floorPlans ?? []).some((p) => p.isCoupleSelected);
-      // Working view without preference is NOT preference success — submit requires couple_selected.
+      // FP-RA-1: no chooser + shared working view → Submit must still be available (not a preference failure).
+      record(
+        "fp_ra1_additional_share_submit_available",
+        submitVisible,
+        submitVisible
+          ? `Submit visible without preference (couple_selected=${selected})`
+          : `FAIL: Submit missing on Additional+Share path — portal=${JSON.stringify(portalFp)?.slice(0, 500)}`,
+        "live-ui",
+      );
       record(
         "couple_saved_preference_ui",
-        selected,
+        true,
         selected
-          ? "couple_selected present"
-          : `RELEASE GAP: shared working view without preference chooser/submit gate — portal=${JSON.stringify(portalFp)?.slice(0, 500)}`,
+          ? "couple_selected present (offer path)"
+          : "N/A on Additional+Share — preference not required; collaboration submit is the gate",
         "live-ui+persisted",
       );
-      if (!selected) {
+      if (!submitVisible) {
         noteUsability(
           "Couple preference / submit gate",
-          "Shared Floor Plan visible; Save as preference / setup options missing; Submit hidden until couple_selected.",
-          "Additional-layout + Share without Event-setup offers leaves couple able to view a layout but unable to record preference or submit furniture. First-use CTA offers both paths; only Offer path completes the couple loop.",
+          "Shared Floor Plan visible; Submit still hidden on Additional+Share without offers.",
+          "FP-RA-1 regression: submit must be available for shared working collaboration without inventing a preference.",
           "blocker",
+        );
+      } else {
+        noteUsability(
+          "Couple Additional+Share collaboration",
+          "Shared working layout; Submit available without preference chooser.",
+          "Couple can arrange and submit without Event-setup offers.",
+          "ok",
         );
       }
     }

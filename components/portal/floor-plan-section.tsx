@@ -1059,6 +1059,8 @@ export default function FloorPlanSection({
     ?? null;
   const showPackageView = hasSetups;
   const needsChooser = !showPackageView && offers.length > 1;
+  /** Multi-offer preference must be saved before furniture submit; sole share may collaborate without inventing a preference. */
+  const requiresPreferenceSelection = needsChooser;
   const normalizedPreferenceStatus = normalizeCouplePreferenceStatus(
     preferenceStatus,
     coupleSelectedId,
@@ -1095,6 +1097,7 @@ export default function FloorPlanSection({
     clientLayoutStatus: layoutStatus,
     isReady: selectedIsReady,
     isCoupleSelected: selectedIsCoupleChoice,
+    requiresPreferenceSelection,
   });
   const mayAddTables = Boolean(plan?.coupleMayAddTables !== false) && canEditLayout;
   const editable = hasShared && canEditLayout;
@@ -1265,6 +1268,19 @@ export default function FloorPlanSection({
                 >
                   {submitting ? "Submitting…" : "Submit floor plan to venue"}
                 </button>
+              )}
+              {!canSubmitLayout
+                && hasShared
+                && !selectedIsReady
+                && (layoutStatus === "working" || layoutStatus === "changes_requested")
+                && requiresPreferenceSelection
+                && !coupleSelectedId && (
+                <p
+                  className="text-xs text-amber-800 w-full"
+                  data-testid="floor-plan-submit-needs-preference"
+                >
+                  Save a preferred layout in the chooser above before you can submit furniture placement for review.
+                </p>
               )}
               {layoutStatus === "submitted" && !selectedIsReady && (
                 <span
