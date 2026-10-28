@@ -6,6 +6,7 @@ import { DeleteSeriesButton } from "@/components/communication/delete-series-but
 import { SeriesEnrollments } from "@/components/communication/series-enrollments";
 import { SeriesForm } from "@/components/communication/series-form";
 import { SeriesStatusToggle } from "@/components/communication/series-status-toggle";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEnrollments, getSequence } from "@/lib/message-sequences/service";
@@ -31,6 +32,7 @@ export default async function EditSeriesPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/communication/series" label="Automations" />
       <PageHeader
         title={series.name}
         description="Review who this is for, what will happen, and who is currently receiving messages."
