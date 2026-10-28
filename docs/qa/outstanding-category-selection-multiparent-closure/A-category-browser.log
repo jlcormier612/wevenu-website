@@ -1,0 +1,16 @@
+PASS serving_sha — expected=ee0e78101957f078df7e7886032e814a350d802b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ee0e78101957f078df7e7886032e814a350d802b
+PASS offerings_dropdown_has_decor — Uncategorized | Bar | Catering | Ceremony | Client Requests & Special Notes | Client-Provided Items | Day-of Notes | Décor | Event Closeout | Event Overview | Event Schedule | Final Event Readiness | Florals | Payment Summary | Reception | Rentals | Room Setup | Services | Vendor Arrival & Load-In | Vendor Team
+PASS offerings_dropdown_has_florals — Uncategorized | Bar | Catering | Ceremony | Client Requests & Special Notes | Client-Provided Items | Day-of Notes | Décor | Event Closeout | Event Overview | Event Schedule | Final Event Readiness | Florals | Payment Summary | Reception | Rentals | Room Setup | Services | Vendor Arrival & Load-In | Vendor Team
+PASS persisted_decor_category — {"id":"489f540c-a542-4ba1-96fb-ee7a3a6b9c68","name":"Décor"}
+PASS catering_selected — aria-pressed=true
+PASS configure_after_continue — https://app.sandbox.hellotocheers.com/library/event-order-templates/f3ded75e-8a67-4c40-b18f-0102c67edb5b
+PASS return_to_package_categories — Change package categories
+PASS template_has_catering_and_custom — Catering, ECI-ECIMVSMK2YI-Get Ready Inclusions
+PASS custom_section_created_offering_category — {"id":"897fe6e5-6b1d-4849-98eb-8029ef728d6c","name":"ECI-ECIMVSMK2YI-Get Ready Inclusions","venue_id":"a415ac52-cd74-42a6-8df7-7a8f6e71d080"}
+PASS offerings_dropdown_has_custom_without_recreate — Uncategorized | Bar | Catering | Ceremony | Client Requests & Special Notes | Client-Provided Items | Day-of Notes | Décor | ECI-ECIMVSMK2YI-Get Ready Inclusions | Event Closeout | Event Overview | Event Schedule | Final Event Readiness | Florals | Payment Summary | Reception | Rentals | Room Setup | Services | Vendor Arrival & Load-In | Vendor Team
+PASS no_duplicate_custom_category_rows — count=1
+PASS removed_custom_section_from_template — [{"id":"ef840c8c-5aa9-42ca-8e82-e840db80fc63","name":"Catering"}]
+PASS shared_category_survives_template_removal — 897fe6e5-6b1d-4849-98eb-8029ef728d6c
+PASS mobile_package_categories_reachable — 390
+
+GREEN — 14 pass / 0 fail

@@ -1,0 +1,22 @@
+PASS serving_sha — expected=ee0e78101957f078df7e7886032e814a350d802b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ee0e78101957f078df7e7886032e814a350d802b
+PASS api_health — {"status":200,"body":{"ok":true,"checks":{"env":"ok","supabase":"ok"}}}
+PASS migration_links_table — ok
+PASS migration_backfill_fancy — legacyChildren=0 missingLinks=0
+PASS existing_catalog_probe — nonFixture=1
+PASS cheesecake_single_catalog_row — [{"id":"e1c64a2e-f683-4788-8162-a2ae0bb9e89e","name":"OMP-OMPMVSMKZOA-Cheesecake","parent_offering_id":"08e24571-79dd-41ce-831d-f5e685ebfc61","description":null}]
+PASS persisted_two_associations — {"parentIds":["08e24571-79dd-41ce-831d-f5e685ebfc61","1a607dc5-37ff-4533-a4c6-a2a2f9b321a1"],"plated":"1a607dc5-37ff-4533-a4c6-a2a2f9b321a1","buffet":"08e24571-79dd-41ce-831d-f5e685ebfc61","denorm":"08e24571-79dd-41ce-831d-f5e685ebfc61"}
+PASS ui_appears_under_both_majors — {"placementCount":2,"underBuffet":1,"underPlated":1}
+PASS ui_row_parent_ids — 1a607dc5-37ff-4533-a4c6-a2a2f9b321a1,08e24571-79dd-41ce-831d-f5e685ebfc61
+PASS ui_under_both_labels — {"underBuffetText":"OMP-OMPMVSMKZOA-Cheesecake\n\nCatering\nItem under major choice\n\nUnder OMP-OMPMVSMKZOA-Buffet Dinner · —\n\nEdit\nArchive","underPlatedText":"OMP-OMPMVSMKZOA-Cheesecake\n\nCatering\nItem under major choice\n\nUnder OMP-OMPMVSMKZOA-Plated Dinner · —\n\nEdit\nArchive"}
+PASS reopen_both_checked — plated=true buffet=true
+PASS remove_one_keeps_other — ["1a607dc5-37ff-4533-a4c6-a2a2f9b321a1"]
+PASS offering_not_deleted_on_unlink — e1c64a2e-f683-4788-8162-a2ae0bb9e89e
+PASS ui_after_remove_one_parent — {"afterRemoveCount":1,"stillUnderPlated":1,"goneFromBuffet":0}
+PASS ui_restored_both_placements — count=2
+PASS mobile_row_visible — 390 placements=2
+PASS template_shared_offering_two_contexts — [{"id":"ac9031b9-ad0e-42e9-9a0b-877396d8b6f9","group_id":"d3482c04-a8cd-454f-a105-eae954e7f560","offering_id":"e1c64a2e-f683-4788-8162-a2ae0bb9e89e","unit_price":8,"label":"OMP-OMPMVSMKZOA-Cheesecake"},{"id":"52d67e67-3328-440c-903b-74f8e67522dd","group_id":"6c307b06-8bd2-4bbe-b6a9-f18eaaad5a11","offering_id":"e1c64a2e-f683-4788-8162-a2ae0bb9e89e","unit_price":6,"label":"OMP-OMPMVSMKZOA-Cheesecake
+PASS cross_venue_association_rejected — offering_major_links: venue_id must match offering venue
+PASS eo_template_page_loads — https://app.sandbox.hellotocheers.com/library/event-order-templates/6e94452d-7f0a-4f90-8431-1ee9f3ed6261
+PASS unrelated_offerings_untouched — before=1 after=1
+
+GREEN — 20 pass / 0 fail

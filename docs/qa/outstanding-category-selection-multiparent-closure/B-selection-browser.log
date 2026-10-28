@@ -1,0 +1,54 @@
+PASS serving_sha — expected=ee0e78101957f078df7e7886032e814a350d802b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ee0e78101957f078df7e7886032e814a350d802b
+PASS progress_copy_exact — Choose exactly 2 — 0 of 2 selected
+PASS incomplete_rejected — “Hard alcohol” requires at least 2 selections.
+PASS valid_accepted — ok
+PASS valid_selected_line_count — 9
+PASS beer_prices_preserved — 5
+PASS inapplicable_ok — ok
+PASS orphan_rejected — rejected
+PASS venue_draft_incomplete_blocked — same validate used by finalizeClientChoices
+PASS ui_progress_0_of_2 — Choose exactly 2 — 0 of 2 selected · based on your selection above
+PASS ui_progress_2_of_2 — Choose exactly 2 — 2 of 2 selected · based on your selection above
+PASS ui_at_max — true
+PASS ui_third_hard_disabled — disabled=true
+PASS ui_submit_blocks_incomplete — “Beer” requires at least 3 selections.
+PASS ui_submit_success — SPF
+
+·
+
+Jen's Fancy Venue
+
+Sep 18, 2027
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+✅
+Choices
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Select options your venue asked for. Submitting sends them for review — it is not a payment.
+
+SPF-SPFMVSMKKFJ-Bar Selectio
+PASS persisted_submitted_status — submitted
+PASS persisted_exact_counts — {"hard":["o-hard-0","o-hard-1"],"beer":["o-beer-0","o-beer-1","o-beer-2"],"wine":["o-wine-0","o-wine-1","o-wine-2"]}
+PASS mobile_390 — screenshot
+
+GREEN — 18 pass / 0 fail

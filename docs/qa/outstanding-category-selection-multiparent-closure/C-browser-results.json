@@ -1,0 +1,149 @@
+{
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=ee0e78101957f078df7e7886032e814a350d802b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:ee0e78101957f078df7e7886032e814a350d802b"
+    },
+    {
+      "name": "api_health",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}"
+    },
+    {
+      "name": "migration_links_table",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "migration_backfill_fancy",
+      "pass": true,
+      "detail": "legacyChildren=0 missingLinks=0"
+    },
+    {
+      "name": "existing_catalog_probe",
+      "pass": true,
+      "detail": "nonFixture=1"
+    },
+    {
+      "name": "cheesecake_single_catalog_row",
+      "pass": true,
+      "detail": "[{\"id\":\"e1c64a2e-f683-4788-8162-a2ae0bb9e89e\",\"name\":\"OMP-OMPMVSMKZOA-Cheesecake\",\"parent_offering_id\":\"08e24571-79dd-41ce-831d-f5e685ebfc61\",\"description\":null}]"
+    },
+    {
+      "name": "persisted_two_associations",
+      "pass": true,
+      "detail": "{\"parentIds\":[\"08e24571-79dd-41ce-831d-f5e685ebfc61\",\"1a607dc5-37ff-4533-a4c6-a2a2f9b321a1\"],\"plated\":\"1a607dc5-37ff-4533-a4c6-a2a2f9b321a1\",\"buffet\":\"08e24571-79dd-41ce-831d-f5e685ebfc61\",\"denorm\":\"08e24571-79dd-41ce-831d-f5e685ebfc61\"}"
+    },
+    {
+      "name": "ui_appears_under_both_majors",
+      "pass": true,
+      "detail": "{\"placementCount\":2,\"underBuffet\":1,\"underPlated\":1}"
+    },
+    {
+      "name": "ui_row_parent_ids",
+      "pass": true,
+      "detail": "1a607dc5-37ff-4533-a4c6-a2a2f9b321a1,08e24571-79dd-41ce-831d-f5e685ebfc61"
+    },
+    {
+      "name": "ui_under_both_labels",
+      "pass": true,
+      "detail": "{\"underBuffetText\":\"OMP-OMPMVSMKZOA-Cheesecake\\n\\nCatering\\nItem under major choice\\n\\nUnder OMP-OMPMVSMKZOA-Buffet Dinner · —\\n\\nEdit\\nArchive\",\"underPlatedText\":\"OMP-OMPMVSMKZOA-Cheesecake\\n\\nCatering\\nItem under major choice\\n\\nUnder OMP-OMPMVSMKZOA-Plated Dinner · —\\n\\nEdit\\nArchive\"}"
+    },
+    {
+      "name": "reopen_both_checked",
+      "pass": true,
+      "detail": "plated=true buffet=true"
+    },
+    {
+      "name": "remove_one_keeps_other",
+      "pass": true,
+      "detail": "[\"1a607dc5-37ff-4533-a4c6-a2a2f9b321a1\"]"
+    },
+    {
+      "name": "offering_not_deleted_on_unlink",
+      "pass": true,
+      "detail": "e1c64a2e-f683-4788-8162-a2ae0bb9e89e"
+    },
+    {
+      "name": "ui_after_remove_one_parent",
+      "pass": true,
+      "detail": "{\"afterRemoveCount\":1,\"stillUnderPlated\":1,\"goneFromBuffet\":0}"
+    },
+    {
+      "name": "ui_restored_both_placements",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "name": "mobile_row_visible",
+      "pass": true,
+      "detail": "390 placements=2"
+    },
+    {
+      "name": "template_shared_offering_two_contexts",
+      "pass": true,
+      "detail": "[{\"id\":\"ac9031b9-ad0e-42e9-9a0b-877396d8b6f9\",\"group_id\":\"d3482c04-a8cd-454f-a105-eae954e7f560\",\"offering_id\":\"e1c64a2e-f683-4788-8162-a2ae0bb9e89e\",\"unit_price\":8,\"label\":\"OMP-OMPMVSMKZOA-Cheesecake\"},{\"id\":\"52d67e67-3328-440c-903b-74f8e67522dd\",\"group_id\":\"6c307b06-8bd2-4bbe-b6a9-f18eaaad5a11\",\"offering_id\":\"e1c64a2e-f683-4788-8162-a2ae0bb9e89e\",\"unit_price\":6,\"label\":\"OMP-OMPMVSMKZOA-Cheesecake\"}]"
+    },
+    {
+      "name": "cross_venue_association_rejected",
+      "pass": true,
+      "detail": "offering_major_links: venue_id must match offering venue"
+    },
+    {
+      "name": "eo_template_page_loads",
+      "pass": true,
+      "detail": "https://app.sandbox.hellotocheers.com/library/event-order-templates/6e94452d-7f0a-4f90-8431-1ee9f3ed6261"
+    },
+    {
+      "name": "unrelated_offerings_untouched",
+      "pass": true,
+      "detail": "before=1 after=1"
+    }
+  ],
+  "failed": 0,
+  "persisted": {
+    "run": "OMPMVSMKZOA",
+    "expectedSha": "ee0e78101957f078df7e7886032e814a350d802b",
+    "prefix": "OMP-OMPMVSMKZOA-",
+    "majors": {
+      "plated": {
+        "id": "1a607dc5-37ff-4533-a4c6-a2a2f9b321a1",
+        "name": "OMP-OMPMVSMKZOA-Plated Dinner"
+      },
+      "buffet": {
+        "id": "08e24571-79dd-41ce-831d-f5e685ebfc61",
+        "name": "OMP-OMPMVSMKZOA-Buffet Dinner"
+      }
+    },
+    "cheesecake": {
+      "id": "e1c64a2e-f683-4788-8162-a2ae0bb9e89e",
+      "name": "OMP-OMPMVSMKZOA-Cheesecake",
+      "parent_offering_id": "08e24571-79dd-41ce-831d-f5e685ebfc61",
+      "description": null,
+      "parentIds": [
+        "08e24571-79dd-41ce-831d-f5e685ebfc61",
+        "1a607dc5-37ff-4533-a4c6-a2a2f9b321a1"
+      ]
+    },
+    "template": {
+      "id": "6e94452d-7f0a-4f90-8431-1ee9f3ed6261",
+      "cakeOptions": [
+        {
+          "id": "ac9031b9-ad0e-42e9-9a0b-877396d8b6f9",
+          "group_id": "d3482c04-a8cd-454f-a105-eae954e7f560",
+          "offering_id": "e1c64a2e-f683-4788-8162-a2ae0bb9e89e",
+          "unit_price": 8,
+          "label": "OMP-OMPMVSMKZOA-Cheesecake"
+        },
+        {
+          "id": "52d67e67-3328-440c-903b-74f8e67522dd",
+          "group_id": "6c307b06-8bd2-4bbe-b6a9-f18eaaad5a11",
+          "offering_id": "e1c64a2e-f683-4788-8162-a2ae0bb9e89e",
+          "unit_price": 6,
+          "label": "OMP-OMPMVSMKZOA-Cheesecake"
+        }
+      ]
+    }
+  }
+}

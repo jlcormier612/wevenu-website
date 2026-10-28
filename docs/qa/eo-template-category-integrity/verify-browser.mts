@@ -177,7 +177,21 @@ async function main() {
     // Select Catering on package step (accessible name includes description — use test id)
     const categoriesStep = page.getByTestId("eo-guided-step-categories");
     await categoriesStep.waitFor({ timeout: 30_000 });
-    await page.getByTestId("eo-guided-category-catering").click();
+    await page.waitForTimeout(1200);
+    const cateringCard = page.getByTestId("eo-guided-category-catering");
+    for (let attempt = 0; attempt < 6; attempt++) {
+      if ((await cateringCard.getAttribute("aria-pressed")) === "true") break;
+      await cateringCard.click({ force: true });
+      await page.waitForTimeout(350);
+    }
+    record(
+      "catering_selected",
+      (await cateringCard.getAttribute("aria-pressed")) === "true",
+      `aria-pressed=${await cateringCard.getAttribute("aria-pressed")}`,
+    );
+    if ((await cateringCard.getAttribute("aria-pressed")) !== "true") {
+      throw new Error("Catering category card did not stay selected");
+    }
     await page.getByTestId("eo-guided-categories-continue").click();
     await page.waitForSelector('[data-testid^="eo-guided-configure-"]', { timeout: 60_000 });
     record("configure_after_continue", true, page.url());
