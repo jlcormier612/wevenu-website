@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import type { RequestClientOption } from "@/lib/requests/client-search";
 import {
-  assignRequest, createRequest, getRequestHistory, setClientActionEnabled, updateRequestStatus,
+  assignRequest, createRequest, getRequestHistory, searchRequestClients, setClientActionEnabled, updateRequestStatus,
 } from "@/lib/requests/service";
 import type {
   RequestActionResult, RequestInput, RequestLifecycleEventRecord, RequestStatus,
@@ -43,4 +44,16 @@ export async function setClientActionEnabledAction(
   const result = await setClientActionEnabled(requestId, enabled);
   if (result.ok) revalidatePath(`/requests/${requestId}`);
   return result;
+}
+
+export async function searchRequestClientsAction(
+  query: string,
+): Promise<{ ok: true; results: RequestClientOption[] } | { ok: false; error: string }> {
+  try {
+    const results = await searchRequestClients(query);
+    return { ok: true, results };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not search clients. Try again.";
+    return { ok: false, error: message };
+  }
 }

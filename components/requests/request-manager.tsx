@@ -10,8 +10,10 @@
 import * as React from "react";
 
 import { assignRequestAction, createRequestAction, updateRequestStatusAction } from "@/app/(app)/requests/actions";
+import { RequestClientPicker } from "@/components/requests/request-client-picker";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { Client } from "@/lib/clients/types";
+import type { RequestClientOption } from "@/lib/requests/client-search";
 import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS, STATUS_LABELS } from "@/lib/requests/constants";
 import type { Request, RequestStatus, RequestType } from "@/lib/requests/types";
 import type { StaffMember } from "@/lib/team/types";
@@ -30,6 +32,7 @@ export function RequestManager({
 }: { initialRequests: Request[]; clients: Client[]; teamMembers: StaffMember[] }) {
   const [requests, setRequests] = React.useState(initialRequests);
   const [form, setForm] = React.useState(EMPTY_FORM);
+  const [selectedClient, setSelectedClient] = React.useState<RequestClientOption | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
 
@@ -66,10 +69,16 @@ export function RequestManager({
     setCreating(false);
     if (result.ok) {
       setForm(EMPTY_FORM);
+      setSelectedClient(null);
       window.location.reload();
     } else {
       alert(result.error);
     }
+  }
+
+  function handleClientChange(option: RequestClientOption | null) {
+    setSelectedClient(option);
+    setForm((f) => ({ ...f, clientId: option?.id ?? "" }));
   }
 
   async function handleStatusChange(requestId: string, status: RequestStatus) {
@@ -99,13 +108,7 @@ export function RequestManager({
       <div className="border rounded-md p-4 space-y-3">
         <h2 className="font-medium">New Request</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <select className="border rounded px-2 py-1.5 text-sm" value={form.clientId}
-            onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))}>
-            <option value="">Select client…</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName)}</option>
-            ))}
-          </select>
+          <RequestClientPicker value={selectedClient} onChange={handleClientChange} />
           <select className="border rounded px-2 py-1.5 text-sm" value={form.requestType}
             onChange={(e) => setForm((f) => ({ ...f, requestType: e.target.value as RequestType }))}>
             {REQUEST_TYPES.map((t) => <option key={t} value={t}>{REQUEST_TYPE_LABELS[t]}</option>)}
