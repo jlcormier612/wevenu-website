@@ -573,6 +573,9 @@ export async function createAmendedInvoice(originalInvoiceId: string): Promise<C
         message: `An invoice for new charges (${tip.amendedByInvoiceNumber}) already exists for this one. Review or send that one first.`,
       } as CreateInvoiceResult;
     }
+    if (!tip.eventOrderId) {
+      return { ok: false, message: "Only an Event-Order-linked invoice can be amended." } as CreateInvoiceResult;
+    }
     const newInvoiceId = await repo.insertInvoice(c, venueId, {
       clientId: tip.clientId ?? "", eventId: tip.eventId ?? "", notes: tip.notes ?? "",
       dueDate: tip.dueDate ?? "", eventOrderId: tip.eventOrderId, amendsInvoiceId: tip.id,
