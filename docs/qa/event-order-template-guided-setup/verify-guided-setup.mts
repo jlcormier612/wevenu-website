@@ -168,7 +168,7 @@ async function main() {
     record("ui-guided-wizard", await wizard.count() > 0, "eo-guided-setup-wizard");
 
     // Existing templates open on configure (or categories if empty). Ensure we can reach categories.
-    const changeCats = page.getByRole("button", { name: /Change categories|What does your venue offer/i });
+    const changeCats = page.getByRole("button", { name: /Change package categories|Change categories|What does your venue offer/i });
     const categoriesStep = page.locator('[data-testid="eo-guided-step-categories"]');
     if ((await categoriesStep.count()) === 0) {
       // Navigate via review → change categories, or back to categories
@@ -180,7 +180,7 @@ async function main() {
           await continueBtn.click();
           await page.waitForTimeout(700);
         } else if ((await page.locator('[data-testid="eo-guided-goto-preview"]').count()) > 0) {
-          await page.getByRole("button", { name: /Change categories/i }).click();
+          await page.getByRole("button", { name: /Change package categories|Change categories/i }).click();
           await page.waitForTimeout(800);
           break;
         } else if ((await back.count()) > 0) {

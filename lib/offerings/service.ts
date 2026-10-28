@@ -1,10 +1,11 @@
 import { createClient } from "@/integrations/supabase/server";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { findOrCreateOfferingCategory } from "@/lib/offerings/category-identity";
 import * as repo from "@/lib/offerings/repository";
 import type {
   CreateOfferingCategoryResult, CreateOfferingResult, Offering, OfferingActionResult,
   OfferingCategory, OfferingInput, OfferingWithCategory,
 } from "@/lib/offerings/types";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 async function withVenue<T>(
   fn: (client: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -39,8 +40,8 @@ export async function listOfferingCategories(): Promise<OfferingCategory[]> {
 export async function createOfferingCategory(name: string): Promise<CreateOfferingCategoryResult> {
   if (!name.trim()) return { ok: false, message: "Category name is required." };
   const result = await withVenue(async (c, venueId) => {
-    const categoryId = await repo.insertCategory(c, venueId, name);
-    return { ok: true as const, categoryId };
+    const ensured = await findOrCreateOfferingCategory(c, venueId, name);
+    return { ok: true as const, categoryId: ensured.id };
   });
   return result as CreateOfferingCategoryResult;
 }

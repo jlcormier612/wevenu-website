@@ -15,6 +15,7 @@ import type {
   CreateEventOrderTemplateResult, EventOrderTemplate, EventOrderTemplateActionResult,
   EventOrderTemplateInput, EventOrderTemplateWithDetails, UpdateTemplateLineInput,
 } from "@/lib/event-order-templates/types";
+import { findOrCreateOfferingCategory } from "@/lib/offerings/category-identity";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 async function withVenue<T>(
@@ -108,6 +109,8 @@ export async function addSection(
   const result = await withVenue(async (supabase, venueId) => {
     const sortOrder = await repo.nextSortOrder(supabase, "event_order_template_sections", templateId);
     const section = await repo.insertSection(supabase, venueId, templateId, name, sortOrder, guidance);
+    // Keep Offerings catalog categories aligned — do not create a second free-text identity.
+    await findOrCreateOfferingCategory(supabase, venueId, section.name);
     return { ok: true, section } as AddTemplateSectionResult;
   });
   return result as AddTemplateSectionResult;

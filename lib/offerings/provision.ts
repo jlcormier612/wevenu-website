@@ -1,10 +1,16 @@
 /**
  * Offerings starter provision — idempotent category + example items (no prices).
+ * Also ensures EO Template built-in / section labels exist as offering_categories.
  */
 import { createClient } from "@/integrations/supabase/server";
-import { getCurrentVenue } from "@/lib/venue/service";
+import {
+  ensureVenueCommercialCategories,
+  findMatchingOfferingCategory,
+  findOrCreateOfferingCategory,
+} from "@/lib/offerings/category-identity";
 import * as repo from "@/lib/offerings/repository";
 import { OFFERING_STARTER_CATEGORIES } from "@/lib/offerings/starters";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export async function ensureOfferingStartersForCurrentVenue(): Promise<{
   ok: true; createdCategories: number; createdOfferings: number;
@@ -13,24 +19,31 @@ export async function ensureOfferingStartersForCurrentVenue(): Promise<{
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
 
+  // Pull EO template section names so custom package categories appear in Offerings.
+  const { data: sectionRows } = await supabase
+    .from("event_order_template_sections")
+    .select("name")
+    .eq("venue_id", venue.id);
+  const sectionNames = [...new Set(
+    ((sectionRows as { name: string }[] | null) ?? []).map((s) => s.name).filter(Boolean),
+  )];
+
+  const commercial = await ensureVenueCommercialCategories(supabase, venue.id, sectionNames);
+
   const existingCategories = await repo.getCategories(supabase, venue.id);
   const existingOfferings = await repo.getOfferings(supabase, venue.id, { includeArchived: true });
-  const categoryByName = new Map(existingCategories.map((c) => [c.name.toLowerCase(), c]));
   const offeringNames = new Set(existingOfferings.map((o) => o.name.toLowerCase()));
 
-  let createdCategories = 0;
+  let createdCategories = commercial.created;
   let createdOfferings = 0;
 
   for (const cat of OFFERING_STARTER_CATEGORIES) {
-    let categoryId = categoryByName.get(cat.name.toLowerCase())?.id ?? null;
-    if (!categoryId) {
-      categoryId = await repo.insertCategory(supabase, venue.id, cat.name);
-      createdCategories++;
-      categoryByName.set(cat.name.toLowerCase(), {
-        id: categoryId, venueId: venue.id, name: cat.name, sortOrder: 0,
-        createdAt: "", updatedAt: "",
-      });
-    }
+    const ensured = await findOrCreateOfferingCategory(supabase, venue.id, cat.name);
+    if (ensured.created) createdCategories += 1;
+    const categoryId = ensured.id;
+    // Refresh local map if findOrCreate created after our snapshot
+    void findMatchingOfferingCategory(existingCategories, cat.name);
+
     for (const item of cat.items) {
       if (offeringNames.has(item.name.toLowerCase())) continue;
       await repo.insertOffering(supabase, venue.id, {

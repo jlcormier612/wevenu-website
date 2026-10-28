@@ -180,6 +180,15 @@ export function GuidedSetupWizard({
     goNextCategory();
   }
 
+  /** Re-enter package category selection without discarding other category config. */
+  function openPackageCategories() {
+    const next = selectedCategoryKeysFromTemplate(template.sections);
+    setSuggestedSelected(next.suggested);
+    setCustomNames(next.customNames);
+    setCustomDraft("");
+    setPhase("categories");
+  }
+
   function goBack() {
     if (phase === "preview") {
       setPhase("review");
@@ -187,7 +196,7 @@ export function GuidedSetupWizard({
     }
     if (phase === "review") {
       if (sectionsOrdered.length === 0) {
-        setPhase("categories");
+        openPackageCategories();
         return;
       }
       setPhase("configure");
@@ -200,11 +209,11 @@ export function GuidedSetupWizard({
         setCategoryIndex((i) => i - 1);
         setSubstep("workspace");
       } else {
-        setPhase("categories");
+        openPackageCategories();
       }
       return;
     }
-    setPhase("categories");
+    openPackageCategories();
   }
 
   async function persistLine(input: AddTemplateLineInput) {
@@ -349,26 +358,37 @@ export function GuidedSetupWizard({
 
       {phase === "configure" && activeSection ? (
         <section className="space-y-4" data-testid={`eo-guided-configure-${activeSection.id}`}>
-          <div className="flex flex-wrap gap-2">
-            {sectionsOrdered.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`rounded-md border px-3 py-1.5 text-sm ${
-                  i === categoryIndex
-                    ? "border-heading bg-heading text-background"
-                    : i < categoryIndex
-                      ? "border-border bg-muted/40 text-heading"
-                      : "border-border text-muted-foreground"
-                }`}
-                onClick={() => {
-                  setCategoryIndex(i);
-                  setSubstep("workspace");
-                }}
-              >
-                {s.name}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              {sectionsOrdered.map((s, i) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`rounded-md border px-3 py-1.5 text-sm ${
+                    i === categoryIndex
+                      ? "border-heading bg-heading text-background"
+                      : i < categoryIndex
+                        ? "border-border bg-muted/40 text-heading"
+                        : "border-border text-muted-foreground"
+                  }`}
+                  onClick={() => {
+                    setCategoryIndex(i);
+                    setSubstep("workspace");
+                  }}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="eo-guided-edit-package-categories"
+              onClick={() => openPackageCategories()}
+            >
+              Change package categories
+            </Button>
           </div>
 
           {substep === "workspace" ? (
@@ -461,7 +481,7 @@ export function GuidedSetupWizard({
           <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={goBack} data-testid="eo-guided-back">
               <ChevronLeft className="mr-1 h-4 w-4" />
-              Back
+              {categoryIndex === 0 ? "Package categories" : "Back"}
             </Button>
             <Button
               type="button"
@@ -547,8 +567,13 @@ export function GuidedSetupWizard({
               Back
             </Button>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={() => setPhase("categories")}>
-                Change categories
+              <Button
+                type="button"
+                variant="outline"
+                data-testid="eo-guided-edit-package-categories"
+                onClick={() => openPackageCategories()}
+              >
+                Change package categories
               </Button>
               <Button type="button" data-testid="eo-guided-goto-preview" onClick={() => setPhase("preview")}>
                 Preview client experience
