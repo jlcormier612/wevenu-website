@@ -16,8 +16,13 @@ export type Offering = {
   id: string;
   venueId: string;
   categoryId: string | null;
-  /** Top-level major/standalone when null; associated item when set. */
+  /**
+   * Denormalized primary major (first of parentOfferingIds). Prefer parentOfferingIds.
+   * Null when the offering is top-level (major choice or standalone).
+   */
   parentOfferingId: string | null;
+  /** Zero or more top-level majors this offering belongs under (M:N). */
+  parentOfferingIds: string[];
   name: string;
   description: string | null;
   unit: string | null;
@@ -31,13 +36,16 @@ export type Offering = {
 
 export type OfferingWithCategory = Offering & {
   categoryName: string | null;
+  /** Comma-separated major names for display. */
   parentOfferingName?: string | null;
+  parentOfferingNames?: string[];
 };
 
 export type OfferingInput = {
   name: string;
   categoryId: string | null;
-  parentOfferingId: string | null;
+  /** Majors this item belongs under. Empty = top-level major/standalone. */
+  parentOfferingIds: string[];
   description: string;
   unit: string;
   defaultUnitPrice: string;

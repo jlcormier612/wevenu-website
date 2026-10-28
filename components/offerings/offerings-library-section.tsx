@@ -18,10 +18,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatOptionalMoney } from "@/lib/event-orders/constants";
 import type { InventoryItem } from "@/lib/inventory/types";
 import {
+  formatParentOfferingNames,
+  hasParents,
   majorOfferingIds,
   offeringRole,
   offeringRoleLabel,
   orderOfferingsHierarchically,
+  parentIdsOf,
   topLevelOfferings,
 } from "@/lib/offerings/hierarchy";
 import type { OfferingCategory, OfferingInput, OfferingWithCategory } from "@/lib/offerings/types";
@@ -79,13 +82,14 @@ export const OfferingsLibrarySection = React.forwardRef<
         <ul className="divide-y divide-border rounded-lg border border-border bg-card" data-testid="offerings-list">
           {ordered.map((o) => {
             const role = offeringRole(o, majors);
-            const isChild = Boolean(o.parentOfferingId);
+            const isChild = hasParents(o);
             return (
               <li
                 key={o.id}
                 className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${isChild ? "bg-muted/20 pl-8" : ""}`}
                 data-testid={`offering-row-${o.id}`}
                 data-offering-role={role}
+                data-parent-ids={parentIdsOf(o).join(",")}
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -199,7 +203,7 @@ function OfferingFormSheet({
 }) {
   const [name, setName] = React.useState("");
   const [categoryId, setCategoryId] = React.useState("");
-  const [parentOfferingId, setParentOfferingId] = React.useState("");
+  const [parentOfferingIds, setParentOfferingIds] = React.useState<string[]>([]);
   const [description, setDescription] = React.useState("");
   const [unit, setUnit] = React.useState("");
   const [defaultUnitPrice, setDefaultUnitPrice] = React.useState("");
@@ -207,15 +211,21 @@ function OfferingFormSheet({
   const [newCategory, setNewCategory] = React.useState("");
   const [pending, startTransition] = React.useTransition();
 
+  const majorsWithChildren = majorOfferingIds(offerings);
+  const editingIsMajorWithChildren = Boolean(offering && majorsWithChildren.has(offering.id));
   const parentCandidates = topLevelOfferings(offerings).filter((o) => o.id !== offering?.id);
 
   React.useEffect(() => {
     if (!open) return;
     setName(offering?.name ?? "");
-    const parentId = offering?.parentOfferingId ?? defaultParentId ?? "";
-    setParentOfferingId(parentId);
-    const parent = offerings.find((o) => o.id === parentId);
-    setCategoryId(offering?.categoryId ?? parent?.categoryId ?? "");
+    const existingParents = offering
+      ? parentIdsOf(offering)
+      : defaultParentId
+        ? [defaultParentId]
+        : [];
+    setParentOfferingIds(existingParents);
+    const firstParent = offerings.find((o) => o.id === existingParents[0]);
+    setCategoryId(offering?.categoryId ?? firstParent?.categoryId ?? "");
     setDescription(offering?.description ?? "");
     setUnit(offering?.unit ?? "");
     setDefaultUnitPrice(offering?.defaultUnitPrice != null ? String(offering.defaultUnitPrice) : "");
@@ -223,15 +233,56 @@ function OfferingFormSheet({
     setNewCategory("");
   }, [open, offering, defaultParentId, offerings]);
 
+  function toggleParent(id: string) {
+    setParentOfferingIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      if (!prev.includes(id)) {
+        const parent = offerings.find((o) => o.id === id);
+        if (parent?.categoryId) setCategoryId(parent.categoryId);
+      }
+      return next;
+    });
+  }
+
   function input(): OfferingInput {
     return {
       name,
       categoryId: categoryId || null,
-      parentOfferingId: parentOfferingId || null,
+      parentOfferingIds: editingIsMajorWithChildren ? [] : parentOfferingIds,
       description,
       unit,
       defaultUnitPrice,
       inventoryItemId: inventoryItemId || null,
+    };
+  }
+
+  function buildSaved(partial: {
+    id: string;
+    venueId: string;
+    isArchived: boolean;
+    sortOrder: number;
+    createdAt: string;
+    updatedAt: string;
+  }): OfferingWithCategory {
+    const catName = categories.find((c) => c.id === (categoryId || null))?.name ?? null;
+    const parentNames = parentOfferingIds
+      .map((id) => offerings.find((o) => o.id === id)?.name)
+      .filter((n): n is string => Boolean(n))
+      .sort((a, b) => a.localeCompare(b));
+    const primary = parentOfferingIds[0] ?? null;
+    return {
+      ...partial,
+      name: name.trim(),
+      categoryId: categoryId || null,
+      parentOfferingIds: [...parentOfferingIds],
+      parentOfferingId: primary,
+      description: description.trim() || null,
+      unit: unit.trim() || null,
+      defaultUnitPrice: defaultUnitPrice.trim() === "" ? null : Number(defaultUnitPrice.replace(/[$,]/g, "")),
+      inventoryItemId: inventoryItemId || null,
+      categoryName: catName,
+      parentOfferingNames: parentNames,
+      parentOfferingName: formatParentOfferingNames(parentNames),
     };
   }
 
@@ -240,47 +291,26 @@ function OfferingFormSheet({
       if (offering) {
         const result = await updateOfferingAction(offering.id, input());
         if (!result.ok) { toast.error(result.message ?? "Could not save."); return; }
-        const catName = categories.find((c) => c.id === (categoryId || null))?.name ?? null;
-        const parentName = parentOfferingId
-          ? offerings.find((o) => o.id === parentOfferingId)?.name ?? null
-          : null;
-        onSaved({
-          ...offering,
-          ...input(),
-          categoryId: categoryId || null,
-          parentOfferingId: parentOfferingId || null,
-          description: description.trim() || null,
-          unit: unit.trim() || null,
-          defaultUnitPrice: defaultUnitPrice.trim() === "" ? null : Number(defaultUnitPrice.replace(/[$,]/g, "")),
-          inventoryItemId: inventoryItemId || null,
-          categoryName: catName,
-          parentOfferingName: parentName,
-        });
+        onSaved(buildSaved({
+          id: offering.id,
+          venueId: offering.venueId,
+          isArchived: offering.isArchived,
+          sortOrder: offering.sortOrder,
+          createdAt: offering.createdAt,
+          updatedAt: new Date().toISOString(),
+        }));
         toast.success("Offering updated.");
       } else {
         const result = await createOfferingAction(input());
         if (!result.ok) { toast.error(result.message ?? "Could not create."); return; }
-        const catName = categories.find((c) => c.id === (categoryId || null))?.name ?? null;
-        const parentName = parentOfferingId
-          ? offerings.find((o) => o.id === parentOfferingId)?.name ?? null
-          : null;
-        onSaved({
+        onSaved(buildSaved({
           id: result.offeringId,
           venueId: "",
-          categoryId: categoryId || null,
-          parentOfferingId: parentOfferingId || null,
-          name: name.trim(),
-          description: description.trim() || null,
-          unit: unit.trim() || null,
-          defaultUnitPrice: defaultUnitPrice.trim() === "" ? null : Number(defaultUnitPrice.replace(/[$,]/g, "")),
-          inventoryItemId: inventoryItemId || null,
           isArchived: false,
           sortOrder: 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          categoryName: catName,
-          parentOfferingName: parentName,
-        });
+        }));
         toast.success("Offering created.");
       }
     });
@@ -301,6 +331,8 @@ function OfferingFormSheet({
     });
   }
 
+  const hasAnyParent = parentOfferingIds.length > 0;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
@@ -314,7 +346,13 @@ function OfferingFormSheet({
           >
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Offerings
           </Button>
-          <SheetTitle>{offering ? "Edit offering" : parentOfferingId ? "Add item under major choice" : "Add offering"}</SheetTitle>
+          <SheetTitle>
+            {offering
+              ? "Edit offering"
+              : hasAnyParent
+                ? "Add item under major choice"
+                : "Add offering"}
+          </SheetTitle>
         </SheetHeader>
         <div className="space-y-3">
           <div>
@@ -338,29 +376,57 @@ function OfferingFormSheet({
             </div>
           </div>
           <div>
-            <Label className="text-xs">Belongs under major choice (optional)</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
-              value={parentOfferingId}
-              onChange={(e) => {
-                const next = e.target.value;
-                setParentOfferingId(next);
-                const parent = offerings.find((o) => o.id === next);
-                if (parent?.categoryId) setCategoryId(parent.categoryId);
-              }}
-              data-testid="offering-parent"
-            >
-              <option value="">None — top-level major choice or standalone</option>
-              {parentCandidates.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}{p.categoryName ? ` · ${p.categoryName}` : ""}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-[0.7rem] text-muted-foreground">
-              Leave empty for a major service choice couples pick first. Nest menu or package items
-              under that choice so Event Order Templates can offer them as follow-up selections.
-            </p>
+            <Label className="text-xs">Belongs under major choices (optional)</Label>
+            {editingIsMajorWithChildren ? (
+              <p className="mt-1 text-[0.7rem] text-muted-foreground" data-testid="offering-parent-locked">
+                This offering is already a major choice with items under it, so it stays top-level.
+              </p>
+            ) : (
+              <>
+                <div
+                  className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-border bg-background p-2"
+                  data-testid="offering-parents"
+                  role="group"
+                  aria-label="Major choices this offering belongs under"
+                >
+                  {parentCandidates.length === 0 ? (
+                    <p className="px-1 py-1 text-xs text-muted-foreground">
+                      No top-level major choices yet. Leave unchecked for a standalone or major choice.
+                    </p>
+                  ) : (
+                    parentCandidates.map((p) => {
+                      const checked = parentOfferingIds.includes(p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          className="flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-sm hover:bg-muted/40"
+                          data-testid={`offering-parent-${p.id}`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={checked}
+                            onChange={() => toggleParent(p.id)}
+                            data-testid={`offering-parent-check-${p.id}`}
+                          />
+                          <span>
+                            {p.name}
+                            {p.categoryName ? (
+                              <span className="text-muted-foreground"> · {p.categoryName}</span>
+                            ) : null}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                  Select one or more major service choices (for example Plated Dinner and Buffet Dinner)
+                  so the same catalog item can appear under each. Leave none selected for a major choice
+                  or standalone offering. Removing a check removes only that association.
+                </p>
+              </>
+            )}
           </div>
           <div>
             <Label className="text-xs">Description</Label>

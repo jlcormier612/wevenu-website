@@ -36,7 +36,7 @@ export async function ensureOfferingStartersForCurrentVenue(): Promise<{
       await repo.insertOffering(supabase, venue.id, {
         name: item.name,
         categoryId,
-        parentOfferingId: null,
+        parentOfferingIds: [],
         description: item.description ?? "",
         unit: item.unit ?? "",
         defaultUnitPrice: "",

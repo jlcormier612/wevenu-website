@@ -1,6 +1,7 @@
 /**
  * Offerings catalog hierarchy helpers — major choices vs associated items.
- * One nesting level. Existing flat offerings (parent null) remain valid.
+ * One nesting level. An item may belong under multiple majors (M:N).
+ * Existing flat offerings (no parents) remain valid.
  */
 
 export type OfferingHierarchyFields = {
@@ -8,11 +9,28 @@ export type OfferingHierarchyFields = {
   name: string;
   categoryId: string | null;
   categoryName?: string | null;
-  parentOfferingId: string | null;
+  /** Preferred: zero or more major parents. */
+  parentOfferingIds?: string[];
+  /** Legacy single parent; used when parentOfferingIds is absent. */
+  parentOfferingId?: string | null;
   isArchived?: boolean;
 };
 
 export type OfferingRole = "major" | "item" | "standalone";
+
+/** Normalized parent id list for an offering. */
+export function parentIdsOf<T extends OfferingHierarchyFields>(offering: T): string[] {
+  // Explicit array (including empty) wins so cleared associations are not revived from denorm FK.
+  if (Array.isArray(offering.parentOfferingIds)) {
+    return [...new Set(offering.parentOfferingIds.filter(Boolean))];
+  }
+  if (offering.parentOfferingId) return [offering.parentOfferingId];
+  return [];
+}
+
+export function hasParents<T extends OfferingHierarchyFields>(offering: T): boolean {
+  return parentIdsOf(offering).length > 0;
+}
 
 /** Top-level rows that have at least one non-archived child. */
 export function majorOfferingIds<T extends OfferingHierarchyFields>(
@@ -21,7 +39,7 @@ export function majorOfferingIds<T extends OfferingHierarchyFields>(
   const active = offerings.filter((o) => !o.isArchived);
   const ids = new Set<string>();
   for (const o of active) {
-    if (o.parentOfferingId) ids.add(o.parentOfferingId);
+    for (const pid of parentIdsOf(o)) ids.add(pid);
   }
   return ids;
 }
@@ -30,7 +48,7 @@ export function offeringRole<T extends OfferingHierarchyFields>(
   offering: T,
   majorsWithChildren: Set<string>,
 ): OfferingRole {
-  if (offering.parentOfferingId) return "item";
+  if (hasParents(offering)) return "item";
   if (majorsWithChildren.has(offering.id)) return "major";
   return "standalone";
 }
@@ -43,15 +61,15 @@ export function offeringRoleLabel(role: OfferingRole): string {
 
 /** Top-level offerings suitable as primary couple choices (not child items). */
 export function topLevelOfferings<T extends OfferingHierarchyFields>(offerings: T[]): T[] {
-  return offerings.filter((o) => !o.isArchived && !o.parentOfferingId);
+  return offerings.filter((o) => !o.isArchived && !hasParents(o));
 }
 
-/** Associated items directly under a major offering. */
+/** Associated items that list this major among their parents. */
 export function childOfferings<T extends OfferingHierarchyFields>(
   offerings: T[],
   parentId: string,
 ): T[] {
-  return offerings.filter((o) => !o.isArchived && o.parentOfferingId === parentId);
+  return offerings.filter((o) => !o.isArchived && parentIdsOf(o).includes(parentId));
 }
 
 /**
@@ -84,7 +102,11 @@ export function filterOfferingsForAuthoringContext<T extends OfferingHierarchyFi
   return { items: fallback, usedFallback: fallback.length > 0 };
 }
 
-/** Stable list order: category → majors → nested children → standalones. */
+/**
+ * Stable list order: category → majors → nested children → standalones.
+ * Multi-parent items appear once, nested under their first parent (by parent name
+ * among parents present in the category), so the catalog does not look duplicated.
+ */
 export function orderOfferingsHierarchically<T extends OfferingHierarchyFields>(
   offerings: T[],
 ): T[] {
@@ -98,18 +120,27 @@ export function orderOfferingsHierarchically<T extends OfferingHierarchyFields>(
   const out: T[] = [];
   for (const list of byCat.values()) {
     const tops = list
-      .filter((o) => !o.parentOfferingId)
+      .filter((o) => !hasParents(o))
       .sort((a, b) => a.name.localeCompare(b.name));
-    const children = list.filter((o) => o.parentOfferingId);
+    const children = list.filter((o) => hasParents(o));
+    const topIds = new Set(tops.map((t) => t.id));
+    const nameById = new Map(list.map((o) => [o.id, o.name]));
+
     for (const top of tops) {
       out.push(top);
       out.push(
         ...children
-          .filter((c) => c.parentOfferingId === top.id)
+          .filter((c) => {
+            const parents = parentIdsOf(c).filter((pid) => topIds.has(pid));
+            if (parents.length === 0) return false;
+            const primary = [...parents].sort((a, b) =>
+              (nameById.get(a) ?? a).localeCompare(nameById.get(b) ?? b),
+            )[0];
+            return primary === top.id;
+          })
           .sort((a, b) => a.name.localeCompare(b.name)),
       );
     }
-    // Orphans (parent missing / archived) last within category
     const placed = new Set(out.map((o) => o.id));
     out.push(
       ...children
@@ -118,4 +149,11 @@ export function orderOfferingsHierarchically<T extends OfferingHierarchyFields>(
     );
   }
   return out;
+}
+
+/** Display label for parent majors, e.g. "Plated Dinner, Buffet Dinner". */
+export function formatParentOfferingNames(names: string[]): string | null {
+  const cleaned = names.map((n) => n.trim()).filter(Boolean);
+  if (cleaned.length === 0) return null;
+  return cleaned.join(", ");
 }
