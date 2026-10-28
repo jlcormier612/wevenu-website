@@ -77,6 +77,18 @@ describe("Floor Plans Phase 1 — multi-layout coexistence without package claim
 });
 
 describe("Floor Plans Phase 1 — library isolation and seating preservation", () => {
+  it("first layout create/apply seeds working layout only when unset", () => {
+    assert.match(service, /async function seedWorkingLayoutIfUnset/);
+    assert.match(service, /if \(event && !event\.operational_floor_plan_id\)/);
+    assert.match(service, /seedWorkingLayoutIfUnset\(supabase, venueId, eventId, floorPlanId\)/);
+    // Must not seed share, preference, or seating as a side effect of first create.
+    const seedFn = service.slice(
+      service.indexOf("async function seedWorkingLayoutIfUnset"),
+      service.indexOf("/** \"Blank Floor Plan\""),
+    );
+    assert.doesNotMatch(seedFn, /shared_with_couple|couple_selected|client_access|seating_in_use/);
+  });
+
   it("applyTemplate clones into a new event plan via source_template_id", () => {
     assert.match(service, /export async function applyTemplate/);
     assert.match(service, /createFloorPlan\(supabase, venueId, eventId, name\.trim\(\), spaceId, templateId\)/);

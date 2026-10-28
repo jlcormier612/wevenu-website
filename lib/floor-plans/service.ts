@@ -104,11 +104,35 @@ export async function getAllFloorPlans(): Promise<FloorPlan[]> {
   return repo.getAllFloorPlans(await createClient(), venue.id);
 }
 
+/**
+ * First layout created on an event with no working layout becomes the working layout.
+ * Matches sole-offer seed behavior so Additional-layout first-use does not leave the
+ * owner looking at a grid with no designated working layout. Never retargets an
+ * already-set operational pointer; does not share, set preference, or open seating.
+ */
+async function seedWorkingLayoutIfUnset(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  eventId: string,
+  floorPlanId: string,
+): Promise<void> {
+  const { data: event } = await supabase
+    .from("events")
+    .select("operational_floor_plan_id")
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ operational_floor_plan_id: string | null }>();
+  if (event && !event.operational_floor_plan_id) {
+    await repo.setEventOperationalFloorPlan(supabase, venueId, eventId, floorPlanId);
+  }
+}
+
 /** "Blank Floor Plan" — a booking may hold many; each gets its own name and optional venue space. */
 export async function createFloorPlan(eventId: string, name = "Floor Plan", spaceId: string | null = null): Promise<CreateFloorPlanResult> {
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
   const result = await withVenueEditor(async (supabase, venueId) => {
     const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId);
+    await seedWorkingLayoutIfUnset(supabase, venueId, eventId, floorPlanId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
@@ -141,6 +165,7 @@ export async function applyTemplate(eventId: string, templateId: string, name: s
       roomWidthFt: template.roomWidthFt, roomDepthFt: template.roomDepthFt, measurementUnit: template.measurementUnit,
     });
     await repo.insertObjects(supabase, venueId, floorPlanId, objects);
+    await seedWorkingLayoutIfUnset(supabase, venueId, eventId, floorPlanId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
 
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
@@ -153,6 +178,7 @@ export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: str
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
   const result = await withVenueEditor(async (supabase, venueId) => {
     const floorPlanId = await repo.duplicateFloorPlanInto(supabase, venueId, eventId, sourceFloorPlanId, name, spaceId);
+    await seedWorkingLayoutIfUnset(supabase, venueId, eventId, floorPlanId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
