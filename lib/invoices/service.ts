@@ -553,7 +553,11 @@ export async function createAmendedInvoice(originalInvoiceId: string): Promise<C
     while (tip.amendedByInvoiceId && !seen.has(tip.id)) {
       seen.add(tip.id);
       const child = await repo.getInvoice(c, venueId, tip.amendedByInvoiceId);
-      if (!child) break;
+      if (!child || child.status === "void") {
+        // Voided incremental draft — parent is free to invoice new charges again.
+        tip = { ...tip, amendedByInvoiceId: null, amendedByInvoiceNumber: null };
+        break;
+      }
       if (child.status === "draft") {
         return { ok: true, invoiceId: child.id } as CreateInvoiceResult;
       }

@@ -189,6 +189,14 @@ describe("incremental EO invoice — payment plan & original invoice", () => {
     assert.equal(amend.includes("createPaymentSchedule"), false);
     assert.match(amend, /payment plan are unchanged/);
   });
+
+  it("voided incremental drafts do not permanently block Invoice new charges", () => {
+    const service = readFileSync("lib/invoices/service.ts", "utf8");
+    const amend = service.slice(service.indexOf("export async function createAmendedInvoice"));
+    assert.match(amend, /child\.status === "void"/);
+    const repo = readFileSync("lib/invoices/repository.ts", "utf8");
+    assert.match(repo, /amends_invoice_id[\s\S]*neq\("status", "void"\)/);
+  });
 });
 
 describe("incremental EO invoice — venue actions & messaging", () => {

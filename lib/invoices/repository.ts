@@ -101,7 +101,9 @@ export async function getInvoice(client: DbClient, venueId: string, id: string):
   const [invRes, itemsRes, amendedByRes, activitiesRes] = await Promise.all([
     client.from("invoices").select("*, clients(first_name, last_name, partner_first_name, partner_last_name, event_date), events(name, event_date, booked_at)").eq("id", id).eq("venue_id", venueId).maybeSingle<InvoiceRow>(),
     client.from("invoice_line_items").select("*").eq("invoice_id", id).order("sort_order").order("created_at"),
-    client.from("invoices").select("id, invoice_number").eq("amends_invoice_id", id).eq("venue_id", venueId).maybeSingle<{ id: string; invoice_number: string }>(),
+    // Prefer a live amendment; voided "Invoice new charges" drafts must not
+    // permanently block another incremental invoice on this parent.
+    client.from("invoices").select("id, invoice_number, status").eq("amends_invoice_id", id).eq("venue_id", venueId).neq("status", "void").order("created_at", { ascending: false }).limit(1).maybeSingle<{ id: string; invoice_number: string; status: string }>(),
     // D8 — invoice_activities has been written to (insertActivity, below)
     // since this table existed but never read anywhere; Invoice Detail was
     // the one Business Asset page of five missing its ActivityTimeline.
