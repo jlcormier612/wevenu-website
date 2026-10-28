@@ -21,7 +21,6 @@ const { chromium } = require("playwright");
 const APP = "https://app.sandbox.hellotocheers.com";
 const EXPECTED = (process.env.EXPECTED_SHA ?? "").slice(0, 40);
 const FANCY = "a415ac52-cd74-42a6-8df7-7a8f6e71d080";
-const BARN = "2f0c2f4a-6d8a-4c3e-9f1b-7a5e8d0c1b2a"; // may be overridden below
 const RUN = process.env.E2E_RUN_ID ?? `SPF${Date.now().toString(36).toUpperCase()}`;
 const OUT = "docs/qa/selection-progress-finalize";
 const PREFIX = `SPF-${RUN}-`;
@@ -55,10 +54,14 @@ async function servingImage(): Promise<string> {
 }
 
 async function passLegal(page: { getByRole: Function; locator: Function; waitForTimeout: Function }) {
-  const accept = page.getByRole("button", { name: /Accept|I agree|Continue/i }).first();
-  if (await accept.count()) {
-    await accept.click().catch(() => undefined);
-    await page.waitForTimeout(800);
+  for (let i = 0; i < 5; i++) {
+    const t = await page.locator("body").innerText().catch(() => "");
+    if (!/End User Terms|I have reviewed and agree/i.test(t)) return;
+    const box = page.locator('input[type="checkbox"]');
+    if (await box.count()) await box.first().check({ force: true }).catch(() => undefined);
+    const btn = page.getByRole("button", { name: /Continue|Accept/i }).first();
+    if (await btn.count()) await btn.click({ force: true }).catch(() => undefined);
+    await page.waitForTimeout(900);
   }
 }
 
@@ -164,7 +167,8 @@ async function main() {
     };
     record("valid_accepted", validateChoicesAnswers(definition, valid).ok, "ok");
     const lines = resolveSelectedOptions(definition, valid);
-    record("valid_seven_lines", lines.length === 7, String(lines.length));
+    // Premium (1) + hard (2) + beer (3) + wine (3) = 9 selected option lines
+    record("valid_selected_line_count", lines.length === 9, String(lines.length));
     record(
       "beer_prices_preserved",
       lines.filter((l) => l.groupId === "g-beer").every((l) => l.unitPrice === 5),
@@ -190,12 +194,13 @@ async function main() {
     );
 
     const { data: space } = await admin
-      .from("spaces")
+      .from("venue_spaces")
       .select("id")
       .eq("venue_id", FANCY)
       .limit(1)
       .maybeSingle();
-    const spaceId = space?.id ?? BARN;
+    if (!space?.id) throw new Error("No venue_spaces row for Fancy venue");
+    const spaceId = space.id;
 
     const { data: client, error: cErr } = await admin.from("clients").insert({
       venue_id: FANCY,
@@ -326,7 +331,13 @@ async function main() {
 
     await coupleCtx.close();
   } catch (err) {
-    record("harness_error", false, err instanceof Error ? err.stack ?? err.message : String(err));
+    const detail =
+      err instanceof Error
+        ? err.stack ?? err.message
+        : typeof err === "object" && err
+          ? JSON.stringify(err)
+          : String(err);
+    record("harness_error", false, detail);
   } finally {
     if (choicesId) {
       await admin.from("client_choices_submissions").delete().eq("client_choices_id", choicesId);

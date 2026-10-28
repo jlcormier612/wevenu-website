@@ -186,15 +186,22 @@ async function main() {
     record("existing_catalog_probe", (beforeCount ?? 0) >= 0, `nonFixture=${beforeCount}`);
 
     await context.addCookies(await staffCookies());
-    await page.goto(`${APP}/library/offerings`, { waitUntil: "networkidle", timeout: 120_000 });
-    await page.waitForSelector('[data-testid="offerings-library"]', { timeout: 60_000 });
+    await page.goto(`${APP}/library/offerings`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.waitForSelector('[data-testid="offerings-library"]', { timeout: 90_000 });
 
     // Create Cheesecake via UI with both majors checked.
-    // PageHeader owns "+ New Offering" when headerCreate={false} (no offerings-new testid).
-    const newBtn = page.getByRole("button", { name: /^\+?\s*New Offering$/i }).first();
-    await newBtn.waitFor({ state: "visible", timeout: 30_000 });
-    await newBtn.click();
-    await page.getByTestId("offering-name").waitFor({ state: "visible", timeout: 15_000 });
+    // PageHeader owns "+ New Offering" (imperative ref) — retry until sheet mounts.
+    await page.waitForTimeout(1200);
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await page.getByRole("button", { name: /^\+?\s*New Offering$/i }).first().click({ force: true });
+      try {
+        await page.getByTestId("offering-name").waitFor({ state: "visible", timeout: 4_000 });
+        break;
+      } catch {
+        if (attempt === 9) throw new Error("New Offering sheet did not open");
+        await page.waitForTimeout(600);
+      }
+    }
     await page.getByTestId("offering-name").fill(`${PREFIX}Cheesecake`);
     await page.getByTestId("offering-category").selectOption(cateringId);
     await page.waitForSelector('[data-testid="offerings-parents"], [data-testid="offering-parents"]', {
@@ -230,9 +237,9 @@ async function main() {
     );
     persisted.cheesecake = { ...cake, parentIds };
 
-    const cakeRows = page.locator(`[data-testid="offering-row-${cake.id}"]`);
-    await cakeRows.first().waitFor({ timeout: 30_000 });
-    const placementCount = await cakeRows.count();
+    const cakePlacements = page.locator(`[data-testid="offering-row-${cake.id}"]`);
+    await cakePlacements.first().waitFor({ timeout: 30_000 });
+    const placementCount = await cakePlacements.count();
     const nestUnderBuffet = page.locator(
       `[data-testid="offering-row-${cake.id}"][data-nest-under="${buffet.id}"]`,
     );

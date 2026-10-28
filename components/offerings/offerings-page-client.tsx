@@ -33,7 +33,16 @@ export function OfferingsPageClient({
         title="Offerings"
         description="Organize the services, packages, and options your venue offers. Group related items under choices, such as dinner styles or bar packages, so you can reuse them across Event Order Templates."
         actions={
-          <Button type="button" onClick={() => sectionRef.current?.openCreate()}>
+          <Button
+            type="button"
+            data-testid="offerings-new"
+            onClick={() => {
+              const open = () => sectionRef.current?.openCreate();
+              open();
+              // Sheet mounts via client ref — retry once if first paint raced the click.
+              if (!sectionRef.current) requestAnimationFrame(open);
+            }}
+          >
             + New Offering
           </Button>
         }

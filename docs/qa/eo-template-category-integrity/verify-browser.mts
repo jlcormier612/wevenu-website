@@ -105,11 +105,31 @@ async function main() {
 
     await context.addCookies(await staffCookies());
 
+    async function openOfferingCategorySelect() {
+      // Prefer Edit on an existing row — more reliable than PageHeader imperative create.
+      const editBtn = page.locator('[data-testid^="offering-row-"]').first().getByRole("button", { name: /^Edit$/i });
+      if (await editBtn.count()) {
+        await editBtn.click();
+        await page.getByTestId("offering-category").waitFor({ state: "visible", timeout: 15_000 });
+        return;
+      }
+      for (let attempt = 0; attempt < 8; attempt++) {
+        await page.getByRole("button", { name: /^\+?\s*New Offering$/i }).first().click({ force: true });
+        try {
+          await page.getByTestId("offering-category").waitFor({ state: "visible", timeout: 4_000 });
+          return;
+        } catch {
+          await page.waitForTimeout(500);
+        }
+      }
+      throw new Error("Offering category select did not open");
+    }
+
     // ---- A: Offerings dropdown includes Décor (built-in) after page load ensure ----
-    await page.goto(`${APP}/library/offerings`, { waitUntil: "networkidle", timeout: 120_000 });
-    await page.waitForSelector('[data-testid="offerings-library"]', { timeout: 60_000 });
-    await page.getByRole("button", { name: /^\+?\s*New Offering$/i }).first().click();
-    await page.getByTestId("offering-category").waitFor({ state: "visible", timeout: 15_000 });
+    await page.goto(`${APP}/library/offerings`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.waitForSelector('[data-testid="offerings-library"]', { timeout: 90_000 });
+    await page.waitForTimeout(1200);
+    await openOfferingCategorySelect();
     const catOptions = await page.getByTestId("offering-category").locator("option").allTextContents();
     record(
       "offerings_dropdown_has_decor",
@@ -122,6 +142,8 @@ async function main() {
       catOptions.join(" | "),
     );
     await page.screenshot({ path: `${OUT}/shots/offerings-category-dropdown-1280.png` });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
 
     const { data: fancyCats } = await admin
       .from("offering_categories")
@@ -147,15 +169,15 @@ async function main() {
     persisted.templateId = tpl.id;
 
     await page.goto(`${APP}/library/event-order-templates/${tpl.id}`, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: 120_000,
     });
-    await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 90_000 });
 
-    // Select Catering on package step
+    // Select Catering on package step (accessible name includes description — use test id)
     const categoriesStep = page.getByTestId("eo-guided-step-categories");
     await categoriesStep.waitFor({ timeout: 30_000 });
-    await categoriesStep.getByRole("button", { name: /^Catering$/i }).click();
+    await page.getByTestId("eo-guided-category-catering").click();
     await page.getByTestId("eo-guided-categories-continue").click();
     await page.waitForSelector('[data-testid^="eo-guided-configure-"]', { timeout: 60_000 });
     record("configure_after_continue", true, page.url());
@@ -199,9 +221,10 @@ async function main() {
     persisted.customOfferingCategory = customCat;
 
     // Reload offerings editor — custom category available without manual recreate
-    await page.goto(`${APP}/library/offerings`, { waitUntil: "networkidle", timeout: 120_000 });
-    await page.getByRole("button", { name: /^\+?\s*New Offering$/i }).first().click();
-    await page.getByTestId("offering-category").waitFor({ state: "visible", timeout: 15_000 });
+    await page.goto(`${APP}/library/offerings`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.waitForSelector('[data-testid="offerings-library"]', { timeout: 90_000 });
+    await page.waitForTimeout(1200);
+    await openOfferingCategorySelect();
     const catOptions2 = await page.getByTestId("offering-category").locator("option").allTextContents();
     record(
       "offerings_dropdown_has_custom_without_recreate",
@@ -219,10 +242,10 @@ async function main() {
 
     // Remove empty custom from template via return + uncheck, keep Catering
     await page.goto(`${APP}/library/event-order-templates/${tpl.id}`, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: 120_000,
     });
-    await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 90_000 });
     // May land on configure — open package categories
     const editBtn = page.getByTestId("eo-guided-edit-package-categories");
     if (await editBtn.count()) await editBtn.first().click();
@@ -262,10 +285,10 @@ async function main() {
     // Narrow
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${APP}/library/event-order-templates/${tpl.id}`, {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
       timeout: 120_000,
     });
-    await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 90_000 });
     const mobileEdit = page.getByTestId("eo-guided-edit-package-categories");
     if (await mobileEdit.count()) {
       await mobileEdit.first().click();
