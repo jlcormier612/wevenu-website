@@ -1,0 +1,53 @@
+{
+  "run": "FPRAMVRINNTA",
+  "expectedSha": "12721ce63afa00b187b1bf5816dd7880d5eda219",
+  "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:12721ce63afa00b187b1bf5816dd7880d5eda219",
+  "clientId": "6751a906-e22e-441c-8241-55ae4fc9dcbf",
+  "eventId": "62ad7f43-dc78-468c-aa94-1ef337ccfb81",
+  "portalToken": "fpra_fpramvrinnta_81c8",
+  "planAId": "9f28179b-c7d3-48bf-bb6c-c365a6e0635c",
+  "planBId": "b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f",
+  "unlockedObjectId": "d67a826c-162b-4c07-a5ee-34c0f97b74a0",
+  "unlockedOrigin": {
+    "x": 140,
+    "y": 36
+  },
+  "usability": [
+    {
+      "screen": "Venue Floor Plans — empty",
+      "instructions": "No working layout for this event yet\n\nNext step: offer a Library layout under Event setup → Change for this event. After one layout is offered, return here to edit it and assign seats. You can also start an additional layout on this tab.\n\nOffer a layout in Event setup\n+ Additional layout here",
+      "assessment": "Empty state distinguishes Event setup offer path vs additional layout on this tab; purpose of working layout is stated above.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Wedding setups organizer",
+      "instructions": "Wedding setups (optional)\n\nFor multi-part weddings, organize layouts into required setups such as Ceremony and Reception. Alternatives belong under one setup only. A single-layout wedding does not need this.\n\nHide setup organizer\nAdd a required setup\nAdd setup",
+      "assessment": "Organizer explains multi-part wedding setups; optional for single-layout.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Before/after flip panel",
+      "instructions": "Same-room flip link (optional)\n\nLink two real layouts as before and after for venue/staff planning. This records a relationship only — Hello to Cheers does not switch rooms automatically, on a timer, or with staffing. A static starter illustration is not a link.\n\nHide flip link\n\nChoose two real event layouts. Cancel discards this form without saving a link.\n\nBefore layout\nSelect…\nFPRA-FPRAMVRINNTA-Ceremony\nFPRA-FPRAMVRINNTA-Reception\nAfter layout\nSelect…\nFPRA-FPRAMVRINNTA-Ceremony\nFPRA-FPRAMVRINNTA-Reception\nTransition notes (venue only)\nLink layouts\nCancel",
+      "assessment": "Flip panel explains before/after relationship.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Couple portal Floor Plans entry",
+      "instructions": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour wedding setups\n\nEach setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.\n\nREQUIRED SETUP\n\nCeremony\n\nFPRA-FPRAMVRINNTA-Ceremony\nVenue working layout\n\nREQUIRED SETUP\n\nReception\n\nFPRA-FPRAMVRINNTA-Reception\nVenue working layout\nYour Floor Plan\n\nIn progress\n\nFPRA-FPRAMVRINNTA-Ceremony\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLAYOUT CAPACITY\n\n170 layout seats across 25 tables · assigned Space capacity 150 · Barn\n\nGuest count is what your venue recorded for this event — not how many people are already assigned to seats. Layout seats count tables on this canvas (including ceremony/cocktail areas when shown). Zone titles are visual areas on one layout, not separate timed setups. Open the furniture catalog to see which items you may add and how many remain.\n\nLocked it",
+      "assessment": "Couple reached Floor Plans; instructions readable.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Venue furniture submission review",
+      "instructions": "No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.",
+      "assessment": "Submission review panel missing or unclear.",
+      "severity": "confusing"
+    },
+    {
+      "screen": "Ready / seating handoff",
+      "instructions": "No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.",
+      "assessment": "Status box missing handoff guidance.",
+      "severity": "confusing"
+    }
+  ]
+}
