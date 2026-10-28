@@ -1,51 +1,78 @@
 # Event Order commercial lifecycle closure — STATUS
 
-**Workstream verdict: OPEN / NOT GREEN** (complete venue↔couple journey not yet live-accepted on serving tip)
+**Workstream verdict: CONDITIONAL GREEN** (Choices GREEN; QBO UNVERIFIED)
 
-**Code tip:** `fb8bd1779f532a20ddd90f0bbab6f1591b8b7f4b`  
-**Sandbox deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/40621438699 (dispatched for `fb8bd177`)
+| Stream | Verdict |
+|--------|---------|
+| Commercial lifecycle (share / Accept / invoice / incremental / payments) | **GREEN** (preserved; prior greenfield) |
+| Couple Choices (single + multi + conditional matrix) | **GREEN** (fresh on `38b2d591`) |
+| QuickBooks Online live sync | **UNVERIFIED — ENVIRONMENT BLOCKER** |
 
-## What shipped in `fb8bd177`
+**Serving Sandbox SHA:** `38b2d591f2ee7a0cad3a96a8124424dbe6837549`  
+**Production:** Untouched
 
-| Stage | Change |
+---
+
+## A. Couple Choices — GREEN
+
+### Capability matrix
+
+See `CHOICES-CAPABILITY-MATRIX.md`. Supported: single-select, multi-select, required/optional, `dependsOnOptionIds` conditionals, change-before-submit, draft save, submit, refresh/return, venue receipt, EO isolation.
+
+### Fresh matrix (multi + conditional) on tip
+
+```bash
+EXPECTED_SHA=38b2d591f2ee7a0cad3a96a8124424dbe6837549 \
+  npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-choices-matrix.mts
+# → 22/22 PASS · UX blockers/p2=0
+# Evidence: choices-matrix-results.json, choices-matrix-run.log, choices-matrix/
+```
+
+Live: Ceremony + Reception template → couple checkbox multi-select + change → plated/buffet conditional reveal/switch → submit → venue summary matches persisted `answers.optionIds` (not DB-seeded).
+
+### Prior single-select depth (still valid product path)
+
+```bash
+EXPECTED_SHA=5959df8c…  # prior tip; ancestor behavior unchanged for radio path
+  npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-choices-depth.mts
+# → 19/19 (inherited evidence; matrix re-proves multi/conditional on current tip)
+```
+
+### Units
+
+```bash
+npx tsx --test \
+  lib/client-choices/portal-submit-contract.test.ts \
+  lib/client-choices/selection-request-lifecycle.test.ts \
+  lib/client-choices/validate-answers.test.ts \
+  lib/client-choices/conditional-groups.test.ts
+# → included in 149 combined pass
+```
+
+Remaining depth (non-blocking): explicit live min/max reject UX and venue-option-change-during-draft not exhaustively re-run this tip (unit coverage present).
+
+---
+
+## B. QuickBooks Online — UNVERIFIED — ENVIRONMENT BLOCKER
+
+Evidence: `qbo-boundary.json` (inspected `2026-10-28T04:43:28Z`)
+
+| Venue | State |
 |-------|--------|
-| 1 Share/invoice authority | Fingerprint live EO vs last share snapshot; block **original** EO invoice create/send when stale; amend/incremental exempt |
-| 2 Journey | Stale → Re-share; open+invoiced → not “needs finalize”; unbilled → Invoice new charges |
-| 3 Accept vs Contracts | Documented + portal/journey copy: Accept = delivery-list acknowledgment, not e-sign; invoicing not gated on Accept |
-| 4 Payments | Hide `choices:uuid`; per-invoice labels; Additional charges; combined outstanding clarity; bare-invoice next step |
-| Tests | `share-consistency`, journey stage0 extensions, payment-obligations, incremental 22 suite still green |
+| Fancy (`a415ac52…`) | **0** connections |
+| Daisy | 1 sandbox row `Sandbox Company US 1ff4`, `last_health_check_ok=false`, error “Waiting on Invoice sync.” |
 
-## Automated evidence (pre-deploy)
+**No live sync performed.** Automated QBO tests 47/47 prove queue/timeout/idempotency semantics only — not external sync.
 
-```
-npx tsx --test lib/event-orders/share-consistency.test.ts \
-  lib/events/event-order-journey-stage0.test.ts \
-  lib/portal/payment-obligations.test.ts \
-  lib/invoices/incremental-eo-invoice.test.ts
-→ 50/50 pass
-```
+### Prerequisite for GREEN / VERIFIED
 
-## Live greenfield E2E
+1. Healthy Fancy (or explicitly authorized) Sandbox QBO connection (`last_health_check_ok=true`)  
+2. Confirm Intuit Sandbox company (not production)  
+3. Disposable invoice sync via product path → external id + local status  
+4. Idempotent re-trigger + truthful failure path  
 
-Harness: `verify-greenfield.mts` (fresh Fancy client/event, not B2P).  
-**Pending** serving SHA `fb8bd177` on ECS, then:
+---
 
-`EXPECTED_SHA=fb8bd1779f532a20ddd90f0bbab6f1591b8b7f4b npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-greenfield.mts`
+## C. Preserved commercial acceptance
 
-## Product decisions
-
-See `ACCEPT-VS-CONTRACTS.md`. No new legal semantics invented.
-
-## Boundaries
-
-- Production untouched
-- Incremental invoicing prior GREEN 22/22 preserved (suite still passes)
-- Offerings hierarchy / Floor Plans 1–5 not reopened
-- QuickBooks: expect explicit UNVERIFIED BOUNDARY unless Sandbox connection permits safe sync
-- Unrelated dirty/untracked tree preserved
-
-## Remaining for GREEN
-
-1. Deploy `fb8bd177` finishes + serving image verified  
-2. Greenfield harness 1–20 applicable checks pass with persisted-state evidence  
-3. Update this STATUS with browser-results + final journey verdict  
+Prior greenfield 39/39 on `5959df8c` remains the commercial lifecycle proof; tip `38b2d591` is a Floor Plans/Event Setup fix ancestor-compatible with EO Choices (no EO regression required for Choices matrix).

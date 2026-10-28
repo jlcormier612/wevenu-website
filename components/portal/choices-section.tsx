@@ -288,7 +288,10 @@ export function ChoicesPortalSection({ token }: { token: string }) {
                           <input
                             type={group.selectionMode === "single" ? "radio" : "checkbox"}
                             name={group.id}
+                            value={opt.id}
                             checked={checked}
+                            data-testid={`choices-option-${opt.id}`}
+                            data-option-id={opt.id}
                             onChange={() => toggleOption(group.id, opt.id, group.selectionMode)}
                             className="mt-0.5"
                           />
@@ -318,19 +321,30 @@ export function ChoicesPortalSection({ token }: { token: string }) {
 
           {editable ? (
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" disabled={pending} onClick={() => save(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                data-testid="portal-choices-save"
+                onClick={() => save(false)}
+              >
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
               </Button>
-              <Button type="button" disabled={pending} onClick={() => save(true)}>
+              <Button
+                type="button"
+                disabled={pending}
+                data-testid="portal-choices-submit"
+                onClick={() => save(true)}
+              >
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
               </Button>
             </div>
           ) : active.status === "finalized" ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground" data-testid="portal-choices-finalized">
               These choices are finalized and part of your event record.
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground" data-testid="portal-choices-submitted">
               Submitted — waiting for your venue to review.
             </p>
           )}

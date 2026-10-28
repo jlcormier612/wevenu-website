@@ -1,50 +1,65 @@
 # Floor Plans — Full product re-acceptance
 
-**Verdict: OPEN / NOT GREEN**
+**Verdict: GREEN / RELEASE ACCEPTED**
 
-Prior tip GREEN (`5959df8c`) is **superseded** for release closure. Re-acceptance found a customer-facing P1 that blocks the multi-offer Event setup path for events without a Setup Profile.
+Serving tip: `38b2d591f2ee7a0cad3a96a8124424dbe6837549`  
+Deploy: https://github.com/jlcormier612/wevenu-website/actions/runs/40633517702 (`conclusion=success`)  
+ECS: `htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549`  
+Health: ok  
+Production: Untouched
 
-## Serving (current Sandbox)
+## Honest answer
 
-- Still serving until redeploy completes: `5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a`
-- Fix commit: `38b2d591f2ee7a0cad3a96a8124424dbe6837549` (Change without Setup Profile)
-- Harness tip: `69f0bf7f` (local script only; product fix is `38b2d591`)
-- Deploy in progress: https://github.com/jlcormier612/wevenu-website/actions/runs/40633517702
+A venue owner and couple can complete Phase 1–5 Floor Plans on Sandbox at `38b2d591` without developer assistance: first-use layouts, Event setup multi-offer chooser, Additional+Share collaboration (FP-RA-1), setup-member attach via UI, furniture unlock via Lock Position, flips, review flags, and seating handoff boundaries.
 
-## P1 found (blocks Journey 2)
+## P1 fixed on this tip
 
 | Item | Detail |
 |------|--------|
-| Screen | Event Setup → Floor plans (Needs action, zero offers) |
-| Observed | Only **Open Floor Plans**; no **Change for this event**. Outstanding CTA also said Open Floor Plans. |
-| Consequence | Venue owner cannot reach the offer editor; multi-offer chooser cannot be set up through the natural UI. Harness failed waiting for `floor-plans-setup-template-select`. |
-| Root cause | `Change for this event` was gated behind `state.usesProfile`. Manual Set up events only got Open (management). |
-| Fix | Show Change for all `SETUP_EDITOR_STEPS` when Included; zero-offer readiness `nextAction` = Change for this event; outstanding button opens Change. |
-| Evidence | `reacceptance/j2-offer-editor-1280.png`, `reacceptance/browser-run.log` |
+| Defect | **Change for this event** gated on Setup Profile → zero-offer events only saw Open Floor Plans; offer editor unreachable |
+| Fix | Ungate Change for `SETUP_EDITOR_STEPS`; zero-offer outstanding CTA opens Change |
+| Commit | `38b2d591` |
 
-## Re-acceptance progress
+## Fresh evidence on serving tip
 
-| Gate | Status |
-|------|--------|
-| Capability inventory | Written — `CAPABILITY-INVENTORY.md` |
-| Unit Phase 1–5 + FP-RA | 108/108 pass (local) |
-| Floor Plans setup editor unit | 14/14 pass (includes no-profile Change regression) |
-| Journey 2 multi-offer on tip | **Blocked** until fix serves |
-| Setup attach via UI only | Pending after tip refresh |
-| Unlock via Lock Position UI | Pending after tip refresh |
-| Full journey matrix + release harness | Pending on final SHA |
-| Usability P0–P2 | P1 above in progress; others pending live pass |
-
-## Commands
+### Gap-closure reacceptance (multi-offer / attach / unlock / FP-RA-1)
 
 ```bash
-npx tsx --test lib/event-setup/floor-plans-setup-editor.test.ts
-EXPECTED_SHA=<serving> npx tsx docs/qa/floor-plans-release-acceptance/verify-reacceptance.mts
-EXPECTED_SHA=<serving> npx tsx docs/qa/floor-plans-release-acceptance/verify-release.mts
+EXPECTED_SHA=38b2d591f2ee7a0cad3a96a8124424dbe6837549 \
+  npx tsx docs/qa/floor-plans-release-acceptance/verify-reacceptance.mts
+# → 13/13 PASS · UX blockers/p2=0
 ```
+
+### Full release journey harness
+
+```bash
+EXPECTED_SHA=38b2d591f2ee7a0cad3a96a8124424dbe6837549 \
+  npx tsx docs/qa/floor-plans-release-acceptance/verify-release.mts
+# → 27/27 PASS · UX blockers=0 · confusing=0
+```
+
+### Units
+
+```bash
+npx tsx --test lib/floor-plans/*.test.ts lib/event-setup/floor-plans-setup-editor.test.ts
+# → included in 149/149 combined Phase + Choices unit run
+```
+
+## Setup-member & furniture-unlock findings
+
+| Concern | Finding |
+|---------|---------|
+| Setup attach DB assist | **Fixture/harness only.** Customer path: Organize wedding setups → Attach layout select. Proven UI-only on tip (`setup_members_attached_via_ui_only`). |
+| Furniture unlock DB fixture | **Intentional template lock.** Customer unlock: select object → uncheck Lock Position (persists). Proven on tip (`furniture_unlocked_via_venue_editor_ui`). |
+
+## Evidence paths
+
+- `reacceptance/` — multi-offer, attach, unlock, FP-RA-1
+- `browser-results.json`, `browser-run.log`, `shots/` — full release
+- `CAPABILITY-INVENTORY.md`
 
 ## Boundaries
 
-- Sandbox only; Production untouched
-- Unrelated dirty/untracked work preserved
-- No Phase 6/7; EO/QBO separate
+- Sandbox only; Production untouched  
+- Unrelated dirty/untracked work preserved  
+- No Phase 6/7; EO/QBO separate  

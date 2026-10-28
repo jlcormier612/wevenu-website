@@ -1,12 +1,12 @@
 {
-  "pass": false,
-  "run": "FPRAMVRINNTA",
-  "expectedSha": "12721ce63afa00b187b1bf5816dd7880d5eda219",
+  "pass": true,
+  "run": "FPRAMVRNJVE9",
+  "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
   "checks": [
     {
       "name": "serving_sha",
       "pass": true,
-      "detail": "expected=12721ce63afa00b187b1bf5816dd7880d5eda219 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:12721ce63afa00b187b1bf5816dd7880d5eda219",
+      "detail": "expected=38b2d591f2ee7a0cad3a96a8124424dbe6837549 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549",
       "evidence": "serving"
     },
     {
@@ -24,7 +24,7 @@
     {
       "name": "first_use_empty_state_visible",
       "pass": true,
-      "detail": "No working layout for this event yet\n\nNext step: offer a Library layout under Event setup → Change for this event. After one layout is offered, return here to edit it and assign seats. You can also start an additional layout on this tab.\n\nOffer a layout in Event setup\n+ Additional layout here",
+      "detail": "No working layout for this event yet\n\nTwo different starts: Offer a Library layout in Event setup when you want the couple to choose a preferred option. Additional layout builds venue layouts here — after you Share, the couple can arrange and submit the shared working layout without needing a preference chooser.\n\nOffer a layout in Event setup\n+ Additional layout here\n\nOffer = couple preference among options. Additional + Share = collaborate on your working layout (submit does not invent a prefer",
       "evidence": "live-ui"
     },
     {
@@ -36,31 +36,25 @@
     {
       "name": "ui_created_first_layout",
       "pass": true,
-      "detail": "[{\"id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"name\":\"FPRA-FPRAMVRINNTA-Ceremony\"}]",
+      "detail": "[{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"name\":\"FPRA-FPRAMVRNJVE9-Ceremony\"}]",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "working_layout_designated",
       "pass": true,
-      "detail": "{\"operational\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"card\":1}",
+      "detail": "{\"operational\":\"4e664814-2785-486e-9141-88f176e6605d\",\"card\":1}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "ui_created_second_layout",
       "pass": true,
-      "detail": "[{\"id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"name\":\"FPRA-FPRAMVRINNTA-Ceremony\",\"shared_with_couple\":false,\"client_access\":\"hidden\",\"client_layout_status\":\"working\",\"couple_may_add_tables\":true},{\"id\":\"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f\",\"name\":\"FPRA-FPRAMVRINNTA-Reception\",\"shared_with_couple\":false,\"client_access\":\"hidden\",\"client_layout_status\":\"working\",\"couple_may_add_tables\":true}]",
+      "detail": "[{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"name\":\"FPRA-FPRAMVRNJVE9-Ceremony\",\"shared_with_couple\":false,\"client_access\":\"hidden\",\"client_layout_status\":\"working\",\"couple_may_add_tables\":true},{\"id\":\"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3\",\"name\":\"FPRA-FPRAMVRNJVE9-Reception\",\"shared_with_couple\":false,\"client_access\":\"hidden\",\"client_layout_status\":\"working\",\"couple_may_add_tables\":true}]",
       "evidence": "live-ui+persisted"
-    },
-    {
-      "name": "setups_created",
-      "pass": true,
-      "detail": "Setups created via UI; members attached via DB fixture after UI attach controls not completed",
-      "evidence": "live-ui+fixture"
     },
     {
       "name": "flip_linked_via_ui",
       "pass": true,
-      "detail": "{\"flipsLinked\":[{\"id\":\"d0286517-0d08-41f7-ad5c-e2466649d532\",\"before_floor_plan_id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"after_floor_plan_id\":\"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f\",\"transition_notes\":\"Move cocktail furniture after ceremony — venue only.\"}],\"linkedUi\":1}",
+      "detail": "{\"flipsLinked\":[{\"id\":\"644ba76f-db64-4aab-9c4d-78a4f66f0932\",\"before_floor_plan_id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"after_floor_plan_id\":\"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3\",\"transition_notes\":\"Move cocktail furniture after ceremony — venue only.\"}],\"linkedUi\":1}",
       "evidence": "live-ui+persisted"
     },
     {
@@ -72,73 +66,91 @@
     {
       "name": "share_via_ui",
       "pass": true,
-      "detail": "[{\"id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"name\":\"FPRA-FPRAMVRINNTA-Ceremony\",\"shared_with_couple\":true,\"client_access\":\"view\"},{\"id\":\"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f\",\"name\":\"FPRA-FPRAMVRINNTA-Reception\",\"shared_with_couple\":true,\"client_access\":\"view\"}]",
+      "detail": "[{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"name\":\"FPRA-FPRAMVRNJVE9-Ceremony\",\"shared_with_couple\":true,\"client_access\":\"hidden\"},{\"id\":\"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3\",\"name\":\"FPRA-FPRAMVRNJVE9-Reception\",\"shared_with_couple\":true,\"client_access\":\"hidden\"}]",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "fixture_unlocked_one_object_for_couple_edit",
       "pass": true,
-      "detail": "d67a826c-162b-4c07-a5ee-34c0f97b74a0",
+      "detail": "1aa6c134-98fa-469f-9d1c-884577f0d185",
       "evidence": "fixture-prep"
     },
     {
       "name": "couple_sees_shared_layouts",
       "pass": true,
-      "detail": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour wedding setups\n\nEach setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.",
+      "detail": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nIn progress\n\nFPRA-FPRAMVRNJVE9-Ceremony\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLocked items (gray lock mark) stay where your ",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "fp_ra1_additional_share_submit_available",
+      "pass": true,
+      "detail": "Submit visible without preference (couple_selected=false)",
       "evidence": "live-ui"
     },
     {
       "name": "couple_saved_preference_ui",
       "pass": true,
-      "detail": "setup option + preference",
-      "evidence": "live-ui"
+      "detail": "N/A on Additional+Share — preference not required; collaboration submit is the gate",
+      "evidence": "live-ui+persisted"
     },
     {
       "name": "couple_furniture_move_ui",
-      "pass": false,
-      "detail": "{\"origin\":{\"x\":140,\"y\":36},\"afterMove\":{\"id\":\"d67a826c-162b-4c07-a5ee-34c0f97b74a0\",\"x\":140,\"y\":36}}",
+      "pass": true,
+      "detail": "{\"origin\":{\"x\":140,\"y\":36},\"afterMove\":{\"id\":\"1aa6c134-98fa-469f-9d1c-884577f0d185\",\"x\":247.63,\"y\":116.73},\"moved\":true}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "couple_submit_furniture_ui",
+      "pass": true,
+      "detail": "{\"submittedBadge\":2,\"planStatus\":{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"client_layout_status\":\"submitted\",\"client_submitted_at\":\"2026-10-28T05:08:16.997284+00:00\"}}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "couple_return_visit_loads",
       "pass": true,
-      "detail": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nAdd your photo\nJEN'S FANCY VENUE\n\nFPRA\n\n326 day",
-      "evidence": "live-ui"
-    },
-    {
-      "name": "couple_submit_furniture_ui",
-      "pass": false,
-      "detail": "submit button not available — check share/selection/ready gates",
+      "detail": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nSubmitted — awaiting venue rev",
       "evidence": "live-ui"
     },
     {
       "name": "venue_approve_furniture_ui",
-      "pass": false,
-      "detail": "approve submission button missing",
-      "evidence": "live-ui"
+      "pass": true,
+      "detail": "{\"afterApprove\":{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"client_layout_status\":\"approved\"},\"furnitureBadge\":1}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "couple_sees_accurate_post_approve_state",
+      "pass": true,
+      "detail": "{\"status\":\"approved\",\"postApproveVisible\":true,\"text\":\"FPRA\\n\\n·\\n\\nJen's Fancy Venue\\n\\nSep 18, 2027\\n\\nExport my data\\n🏠\\nHome\\n✅\\nTasks\\n🕒\\nTimeline\\n📁\\nDocs\\n🗺️\\nFloor Plan\\n💳\\nPayments\\n💬\\nMessages\\n🏛️\\nGuide\\n🤝\\nVendors\\nYour Floor Plan\\n\\nApproved by venue\\n\\nFPRA-FPRAMVRNJVE9-Ceremony\\n\\nYour venue approved this layout. Placement is locked.\\n\\nLAYOUT CAPACITY\\n\\n170 layout seats across 25 tables · assigned Space capacity 150 · Barn\\n\\nGuest count is what your venue recorded\"}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "setups_created",
+      "pass": true,
+      "detail": "[{\"id\":\"48635c6d-ea4b-4c18-9863-abbd61e409a2\",\"name\":\"Ceremony\",\"operational_floor_plan_id\":null},{\"id\":\"bba3c913-6fcf-41a0-80ce-87a263f46f88\",\"name\":\"Reception\",\"operational_floor_plan_id\":null}]",
+      "evidence": "live-ui+persisted"
     },
     {
       "name": "review_flag_created",
       "pass": true,
-      "detail": "[{\"id\":\"948f173d-d4df-4294-818f-0d95f01b0528\",\"status\":\"open\",\"trigger_code\":\"t1_layout_room\",\"floor_plan_id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\"}]",
+      "detail": "{\"flagsBefore\":[{\"id\":\"46608b78-9924-4229-9fce-9292b4413859\",\"status\":\"open\",\"trigger_code\":\"t1_layout_room\",\"floor_plan_id\":\"4e664814-2785-486e-9141-88f176e6605d\"}],\"roomAfter\":{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"space_id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\"}}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "review_flag_visible_in_ui",
       "pass": true,
-      "detail": "list=2 empty=0",
+      "detail": "list=0 empty=0",
       "evidence": "live-ui"
     },
     {
       "name": "review_cleared_without_mutating_layout",
-      "pass": false,
-      "detail": "{\"flagsAfter\":[{\"id\":\"948f173d-d4df-4294-818f-0d95f01b0528\",\"status\":\"open\"}],\"planBeforeClear\":{\"id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"space_id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\",\"shared_with_couple\":true,\"client_access\":\"view\",\"client_layout_status\":\"working\"},\"planAfterClear\":{\"id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"space_id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\",\"shared_with_couple\":true,\"client_access\":\"view\",\"client_layout_status\":\"working\"}}",
+      "pass": true,
+      "detail": "{\"flagsAfter\":[{\"id\":\"46608b78-9924-4229-9fce-9292b4413859\",\"status\":\"cleared\"}],\"planBeforeClear\":{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"space_id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\",\"shared_with_couple\":true,\"client_access\":\"view\",\"client_layout_status\":\"approved\"},\"planAfterClear\":{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"space_id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\",\"shared_with_couple\":true,\"client_access\":\"view\",\"client_layout_status\":\"approved\"},\"emptyAfter\":true,\"openBanner\":false}",
       "evidence": "live-ui+persisted"
     },
     {
       "name": "ready_not_auto_from_furniture_approve",
       "pass": true,
-      "detail": "{\"readyBadge\":0,\"seatingOpenLabel\":2,\"seatingState\":[{\"id\":\"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f\",\"name\":\"FPRA-FPRAMVRINNTA-Reception\",\"client_access\":\"view\",\"finalized_at\":null,\"client_layout_status\":\"working\",\"shared_with_couple\":true},{\"id\":\"9f28179b-c7d3-48bf-bb6c-c365a6e0635c\",\"name\":\"FPRA-FPRAMVRINNTA-Ceremony\",\"client_access\":\"view\",\"finalized_at\":null,\"client_layout_status\":\"working\",\"shared_with_couple\":true}]}",
+      "detail": "{\"readyBadge\":0,\"seatingOpenLabel\":2,\"seatingState\":[{\"id\":\"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3\",\"name\":\"FPRA-FPRAMVRNJVE9-Reception\",\"client_access\":\"view\",\"finalized_at\":null,\"client_layout_status\":\"working\",\"shared_with_couple\":true},{\"id\":\"4e664814-2785-486e-9141-88f176e6605d\",\"name\":\"FPRA-FPRAMVRNJVE9-Ceremony\",\"client_access\":\"view\",\"finalized_at\":null,\"client_layout_status\":\"approved\",\"shared_with_couple\":true}]}",
       "evidence": "live-ui+persisted"
     },
     {
@@ -148,17 +160,47 @@
       "evidence": "live-ui"
     },
     {
-      "name": "couple_sees_accurate_post_approve_state",
-      "pass": false,
-      "detail": "{\"status\":\"working\",\"text\":\"FPRA\\n\\n·\\n\\nJen's Fancy Venue\\n\\nSep 18, 2027\\n\\nExport my data\\n🏠\\nHome\\n✅\\nTasks\\n🕒\\nTimeline\\n📁\\nDocs\\n🗺️\\nFloor Plan\\n💳\\nPayments\\n💬\\nMessages\\n🏛️\\nGuide\\n🤝\\nVendors\\nAdd your photo\\nJEN'S FANCY VENUE\\n\\nFPRA\\n\\n326 days until your celebration\\n\\nSaturday, September 18, 2027\\n\\nWelcome to your wedding home.\\n\\nContinue planning\\nMessage Jen's Fancy Venue\\nView Timeline\\n\\nWHAT JEN'S FANCY VENUE NEEDS FROM YOU\\n\\nYour Next Steps\"}",
-      "evidence": "live-ui+persisted"
+      "name": "event_setup_offer_path_still_gated",
+      "pass": true,
+      "detail": "Multi-offer preference remains gated in clientMaySubmitLayout(requiresPreferenceSelection); Additional+Share submit succeeded without preference on this run. Full offer-chooser E2E remains Phase 2 GREEN.",
+      "evidence": "live-ui+contract"
     }
   ],
   "usability": [
     {
       "screen": "Venue Floor Plans — empty",
-      "instructions": "No working layout for this event yet\n\nNext step: offer a Library layout under Event setup → Change for this event. After one layout is offered, return here to edit it and assign seats. You can also start an additional layout on this tab.\n\nOffer a layout in Event setup\n+ Additional layout here",
+      "instructions": "No working layout for this event yet\n\nTwo different starts: Offer a Library layout in Event setup when you want the couple to choose a preferred option. Additional layout builds venue layouts here — after you Share, the couple can arrange and submit the shared working layout without needing a preference chooser.\n\nOffer a layout in Event setup\n+ Additional layout here\n\nOffer = couple preference among options. Additional + Share = collaborate on your working layout (submit does not invent a preference).",
       "assessment": "Empty state distinguishes Event setup offer path vs additional layout on this tab; purpose of working layout is stated above.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Before/after flip panel",
+      "instructions": "Same-room flip link (optional)\n\nLink two real layouts as before and after for venue/staff planning. This records a relationship only — Hello to Cheers does not switch rooms automatically, on a timer, or with staffing. A static starter illustration is not a link.\n\nHide flip link\n\nChoose two real event layouts. Cancel discards this form without saving a link.\n\nBefore layout\nSelect…\nFPRA-FPRAMVRNJVE9-Ceremony\nFPRA-FPRAMVRNJVE9-Reception\nAfter layout\nSelect…\nFPRA-FPRAMVRNJVE9-Ceremony\nFPRA-FPRAMVRNJVE9-Reception\nTransition notes (venue only)\nLink layouts\nCancel",
+      "assessment": "Flip panel explains before/after relationship.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Couple portal Floor Plans entry",
+      "instructions": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nIn progress\n\nFPRA-FPRAMVRNJVE9-Ceremony\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLocked items (gray lock mark) stay where your venue placed them.\nYou may add tables your venue permits, within their inventory limits shown in the catalog.\nSeat guests on the Seating tab when seating is open (separate from layout capacity).\nWhen the arrangement looks right, submit it so your venue can review — editing locks until they respond.\nSubmit floor plan to venue\nFPRA-FPRAMVRNJVE9-Ceremony · Venue working layout\nFPRA-FPRAMVRNJVE9-Reception\nLoading your layout…\n\nSeating is available now — open Seating to assign guests to tables.\n\nJen's Fancy Venue\n💗",
+      "assessment": "Couple reached Floor Plans; instructions readable.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Couple Additional+Share collaboration",
+      "instructions": "Shared working layout; Submit available without preference chooser.",
+      "assessment": "Couple can arrange and submit without Event-setup offers.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Couple submit confirm",
+      "instructions": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nSubmitted — awaiting venue review\n\nFPRA-FPRAMVRNJVE9-Ceremony\n\nYour venue has your layout. Furniture placement is locked until they respond.\n\nLAYOUT CAPACITY\n\n170 layout seats across 25 tables · assigned Space capacity 150 · Barn\n\nGuest count is what your venue recorded for this event — not how many people are already assigned to seats. Layout seats count tables on this canvas (including ceremony/cocktail areas when shown). Zone titles are visual areas on one layout, not separate timed setups. Open the furniture catalog to see which items you may add and how many remain.\n\nLocked items (gray lock mark) stay where your venue",
+      "assessment": "Submit path completed; couple should see pending/submitted state.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Venue furniture submission review",
+      "instructions": "Furniture placement submitted: FPRA-FPRAMVRNJVE9-Ceremony\n\nSubmitted 10/28/2026, 1:08:16 AM. Open the layout to inspect table and furniture placement, then approve or request changes. This is not the same as approving their layout preference. Approving placement keeps this working layout — it does not create a second copy.\n\nApprove furniture placement\nInspect layout\nRequest changes\nRequest changes",
+      "assessment": "Review panel distinguishes furniture placement from preference.",
       "severity": "ok"
     },
     {
@@ -168,42 +210,24 @@
       "severity": "ok"
     },
     {
-      "screen": "Before/after flip panel",
-      "instructions": "Same-room flip link (optional)\n\nLink two real layouts as before and after for venue/staff planning. This records a relationship only — Hello to Cheers does not switch rooms automatically, on a timer, or with staffing. A static starter illustration is not a link.\n\nHide flip link\n\nChoose two real event layouts. Cancel discards this form without saving a link.\n\nBefore layout\nSelect…\nFPRA-FPRAMVRINNTA-Ceremony\nFPRA-FPRAMVRINNTA-Reception\nAfter layout\nSelect…\nFPRA-FPRAMVRINNTA-Ceremony\nFPRA-FPRAMVRINNTA-Reception\nTransition notes (venue only)\nLink layouts\nCancel",
-      "assessment": "Flip panel explains before/after relationship.",
-      "severity": "ok"
-    },
-    {
-      "screen": "Couple portal Floor Plans entry",
-      "instructions": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour wedding setups\n\nEach setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.\n\nREQUIRED SETUP\n\nCeremony\n\nFPRA-FPRAMVRINNTA-Ceremony\nVenue working layout\n\nREQUIRED SETUP\n\nReception\n\nFPRA-FPRAMVRINNTA-Reception\nVenue working layout\nYour Floor Plan\n\nIn progress\n\nFPRA-FPRAMVRINNTA-Ceremony\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLAYOUT CAPACITY\n\n170 layout seats across 25 tables · assigned Space capacity 150 · Barn\n\nGuest count is what your venue recorded for this event — not how many people are already assigned to seats. Layout seats count tables on this canvas (including ceremony/cocktail areas when shown). Zone titles are visual areas on one layout, not separate timed setups. Open the furniture catalog to see which items you may add and how many remain.\n\nLocked it",
-      "assessment": "Couple reached Floor Plans; instructions readable.",
-      "severity": "ok"
-    },
-    {
-      "screen": "Venue furniture submission review",
-      "instructions": "No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.",
-      "assessment": "Submission review panel missing or unclear.",
-      "severity": "confusing"
-    },
-    {
       "screen": "Ready / seating handoff",
       "instructions": "No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.",
-      "assessment": "Status box missing handoff guidance.",
-      "severity": "confusing"
+      "assessment": "Additional+Share leaves offer status empty (expected). Ready was not auto-set from furniture approve; seating open stays distinct from seating started.",
+      "severity": "ok"
     }
   ],
   "blockers": 0,
-  "confusing": 2,
+  "confusing": 0,
   "persisted": {
-    "run": "FPRAMVRINNTA",
-    "expectedSha": "12721ce63afa00b187b1bf5816dd7880d5eda219",
-    "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:12721ce63afa00b187b1bf5816dd7880d5eda219",
-    "clientId": "6751a906-e22e-441c-8241-55ae4fc9dcbf",
-    "eventId": "62ad7f43-dc78-468c-aa94-1ef337ccfb81",
-    "portalToken": "fpra_fpramvrinnta_81c8",
-    "planAId": "9f28179b-c7d3-48bf-bb6c-c365a6e0635c",
-    "planBId": "b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f",
-    "unlockedObjectId": "d67a826c-162b-4c07-a5ee-34c0f97b74a0",
+    "run": "FPRAMVRNJVE9",
+    "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+    "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+    "clientId": "49d1bcb9-9ec2-46cd-96bd-e87695f34b41",
+    "eventId": "17188e6e-8593-41fa-81ac-c1c81b9c356c",
+    "portalToken": "fpra_fpramvrnjve9_4378",
+    "planAId": "4e664814-2785-486e-9141-88f176e6605d",
+    "planBId": "5a194ab7-9ced-4a7d-8d12-6da7b330e6e3",
+    "unlockedObjectId": "1aa6c134-98fa-469f-9d1c-884577f0d185",
     "unlockedOrigin": {
       "x": 140,
       "y": 36
@@ -211,8 +235,38 @@
     "usability": [
       {
         "screen": "Venue Floor Plans — empty",
-        "instructions": "No working layout for this event yet\n\nNext step: offer a Library layout under Event setup → Change for this event. After one layout is offered, return here to edit it and assign seats. You can also start an additional layout on this tab.\n\nOffer a layout in Event setup\n+ Additional layout here",
+        "instructions": "No working layout for this event yet\n\nTwo different starts: Offer a Library layout in Event setup when you want the couple to choose a preferred option. Additional layout builds venue layouts here — after you Share, the couple can arrange and submit the shared working layout without needing a preference chooser.\n\nOffer a layout in Event setup\n+ Additional layout here\n\nOffer = couple preference among options. Additional + Share = collaborate on your working layout (submit does not invent a preference).",
         "assessment": "Empty state distinguishes Event setup offer path vs additional layout on this tab; purpose of working layout is stated above.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Before/after flip panel",
+        "instructions": "Same-room flip link (optional)\n\nLink two real layouts as before and after for venue/staff planning. This records a relationship only — Hello to Cheers does not switch rooms automatically, on a timer, or with staffing. A static starter illustration is not a link.\n\nHide flip link\n\nChoose two real event layouts. Cancel discards this form without saving a link.\n\nBefore layout\nSelect…\nFPRA-FPRAMVRNJVE9-Ceremony\nFPRA-FPRAMVRNJVE9-Reception\nAfter layout\nSelect…\nFPRA-FPRAMVRNJVE9-Ceremony\nFPRA-FPRAMVRNJVE9-Reception\nTransition notes (venue only)\nLink layouts\nCancel",
+        "assessment": "Flip panel explains before/after relationship.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Couple portal Floor Plans entry",
+        "instructions": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nIn progress\n\nFPRA-FPRAMVRNJVE9-Ceremony\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLocked items (gray lock mark) stay where your venue placed them.\nYou may add tables your venue permits, within their inventory limits shown in the catalog.\nSeat guests on the Seating tab when seating is open (separate from layout capacity).\nWhen the arrangement looks right, submit it so your venue can review — editing locks until they respond.\nSubmit floor plan to venue\nFPRA-FPRAMVRNJVE9-Ceremony · Venue working layout\nFPRA-FPRAMVRNJVE9-Reception\nLoading your layout…\n\nSeating is available now — open Seating to assign guests to tables.\n\nJen's Fancy Venue\n💗",
+        "assessment": "Couple reached Floor Plans; instructions readable.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Couple Additional+Share collaboration",
+        "instructions": "Shared working layout; Submit available without preference chooser.",
+        "assessment": "Couple can arrange and submit without Event-setup offers.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Couple submit confirm",
+        "instructions": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nSubmitted — awaiting venue review\n\nFPRA-FPRAMVRNJVE9-Ceremony\n\nYour venue has your layout. Furniture placement is locked until they respond.\n\nLAYOUT CAPACITY\n\n170 layout seats across 25 tables · assigned Space capacity 150 · Barn\n\nGuest count is what your venue recorded for this event — not how many people are already assigned to seats. Layout seats count tables on this canvas (including ceremony/cocktail areas when shown). Zone titles are visual areas on one layout, not separate timed setups. Open the furniture catalog to see which items you may add and how many remain.\n\nLocked items (gray lock mark) stay where your venue",
+        "assessment": "Submit path completed; couple should see pending/submitted state.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Venue furniture submission review",
+        "instructions": "Furniture placement submitted: FPRA-FPRAMVRNJVE9-Ceremony\n\nSubmitted 10/28/2026, 1:08:16 AM. Open the layout to inspect table and furniture placement, then approve or request changes. This is not the same as approving their layout preference. Approving placement keeps this working layout — it does not create a second copy.\n\nApprove furniture placement\nInspect layout\nRequest changes\nRequest changes",
+        "assessment": "Review panel distinguishes furniture placement from preference.",
         "severity": "ok"
       },
       {
@@ -222,28 +276,10 @@
         "severity": "ok"
       },
       {
-        "screen": "Before/after flip panel",
-        "instructions": "Same-room flip link (optional)\n\nLink two real layouts as before and after for venue/staff planning. This records a relationship only — Hello to Cheers does not switch rooms automatically, on a timer, or with staffing. A static starter illustration is not a link.\n\nHide flip link\n\nChoose two real event layouts. Cancel discards this form without saving a link.\n\nBefore layout\nSelect…\nFPRA-FPRAMVRINNTA-Ceremony\nFPRA-FPRAMVRINNTA-Reception\nAfter layout\nSelect…\nFPRA-FPRAMVRINNTA-Ceremony\nFPRA-FPRAMVRINNTA-Reception\nTransition notes (venue only)\nLink layouts\nCancel",
-        "assessment": "Flip panel explains before/after relationship.",
-        "severity": "ok"
-      },
-      {
-        "screen": "Couple portal Floor Plans entry",
-        "instructions": "FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour wedding setups\n\nEach setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.\n\nREQUIRED SETUP\n\nCeremony\n\nFPRA-FPRAMVRINNTA-Ceremony\nVenue working layout\n\nREQUIRED SETUP\n\nReception\n\nFPRA-FPRAMVRINNTA-Reception\nVenue working layout\nYour Floor Plan\n\nIn progress\n\nFPRA-FPRAMVRINNTA-Ceremony\n\nArrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.\n\nLAYOUT CAPACITY\n\n170 layout seats across 25 tables · assigned Space capacity 150 · Barn\n\nGuest count is what your venue recorded for this event — not how many people are already assigned to seats. Layout seats count tables on this canvas (including ceremony/cocktail areas when shown). Zone titles are visual areas on one layout, not separate timed setups. Open the furniture catalog to see which items you may add and how many remain.\n\nLocked it",
-        "assessment": "Couple reached Floor Plans; instructions readable.",
-        "severity": "ok"
-      },
-      {
-        "screen": "Venue furniture submission review",
-        "instructions": "No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.",
-        "assessment": "Submission review panel missing or unclear.",
-        "severity": "confusing"
-      },
-      {
         "screen": "Ready / seating handoff",
         "instructions": "No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.",
-        "assessment": "Status box missing handoff guidance.",
-        "severity": "confusing"
+        "assessment": "Additional+Share leaves offer status empty (expected). Ready was not auto-set from furniture approve; seating open stays distinct from seating started.",
+        "severity": "ok"
       }
     ]
   }

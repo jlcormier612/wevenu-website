@@ -1,24 +1,24 @@
-PASS [serving] serving_sha — expected=12721ce63afa00b187b1bf5816dd7880d5eda219 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:12721ce63afa00b187b1bf5816dd7880d5eda219
+PASS [serving] serving_sha — expected=38b2d591f2ee7a0cad3a96a8124424dbe6837549 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549
 PASS [serving] api_health — {"status":200,"body":{"ok":true,"checks":{"env":"ok","supabase":"ok"}}}
 PASS [persisted] fixture_starts_with_zero_layouts — plans=0
 PASS [live-ui] first_use_empty_state_visible — No working layout for this event yet
 
-Next step: offer a Library layout under Event setup → Change for this event. After one layout is offered, return here to edit it and assign seats. You can also start an additional layout on this tab.
+Two different starts: Offer a Library layout in Event setup when you want the couple to choose a preferred option. Additional layout builds venue layouts here — after you Share, the couple can arrange and submit the shared working layout without needing a preference chooser.
 
 Offer a layout in Event setup
 + Additional layout here
+
+Offer = couple preference amo
 UX[ok] Venue Floor Plans — empty — Empty state distinguishes Event setup offer path vs additional layout on this tab; purpose of working layout is stated above.
 PASS [live-ui] first_use_ctas_available — setupCta=1 additional=1
-PASS [live-ui+persisted] ui_created_first_layout — [{"id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","name":"FPRA-FPRAMVRINNTA-Ceremony"}]
-PASS [live-ui+persisted] working_layout_designated — {"operational":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","card":1}
-PASS [live-ui+persisted] ui_created_second_layout — [{"id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","name":"FPRA-FPRAMVRINNTA-Ceremony","shared_with_couple":false,"client_access":"hidden","client_layout_status":"working","couple_may_add_tables":true},{"id":"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f","name":"FPRA-FPRAMVRINNTA-Reception","shared_with_couple":false,"client_access":"hidden","client_layout_status":"working","couple_may_add_tables":true}]
-UX[ok] Wedding setups organizer — Organizer explains multi-part wedding setups; optional for single-layout.
-PASS [live-ui+fixture] setups_created — Setups created via UI; members attached via DB fixture after UI attach controls not completed
+PASS [live-ui+persisted] ui_created_first_layout — [{"id":"4e664814-2785-486e-9141-88f176e6605d","name":"FPRA-FPRAMVRNJVE9-Ceremony"}]
+PASS [live-ui+persisted] working_layout_designated — {"operational":"4e664814-2785-486e-9141-88f176e6605d","card":1}
+PASS [live-ui+persisted] ui_created_second_layout — [{"id":"4e664814-2785-486e-9141-88f176e6605d","name":"FPRA-FPRAMVRNJVE9-Ceremony","shared_with_couple":false,"client_access":"hidden","client_layout_status":"working","couple_may_add_tables":true},{"id":"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3","name":"FPRA-FPRAMVRNJVE9-Reception","shared_with_couple":false,"client_access":"hidden","client_layout_status":"working","couple_may_add_tables":true}]
 UX[ok] Before/after flip panel — Flip panel explains before/after relationship.
-PASS [live-ui+persisted] flip_linked_via_ui — {"flipsLinked":[{"id":"d0286517-0d08-41f7-ad5c-e2466649d532","before_floor_plan_id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","after_floor_plan_id":"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f","transition_notes":"Move cocktail furniture after ceremony — venue only."}],"linkedUi":1}
+PASS [live-ui+persisted] flip_linked_via_ui — {"flipsLinked":[{"id":"644ba76f-db64-4aab-9c4d-78a4f66f0932","before_floor_plan_id":"4e664814-2785-486e-9141-88f176e6605d","after_floor_plan_id":"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3","transition_notes":"Move cocktail furniture after ceremony — venue only."}],"linkedUi":1}
 PASS [live-ui+persisted] flip_unlinked_preserves_layouts — {"flips":0,"objsA":36,"objsB":17}
-PASS [live-ui+persisted] share_via_ui — [{"id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","name":"FPRA-FPRAMVRINNTA-Ceremony","shared_with_couple":true,"client_access":"view"},{"id":"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f","name":"FPRA-FPRAMVRINNTA-Reception","shared_with_couple":true,"client_access":"view"}]
-PASS [fixture-prep] fixture_unlocked_one_object_for_couple_edit — d67a826c-162b-4c07-a5ee-34c0f97b74a0
+PASS [live-ui+persisted] share_via_ui — [{"id":"4e664814-2785-486e-9141-88f176e6605d","name":"FPRA-FPRAMVRNJVE9-Ceremony","shared_with_couple":true,"client_access":"hidden"},{"id":"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3","name":"FPRA-FPRAMVRNJVE9-Reception","shared_with_couple":true,"client_access":"hidden"}]
+PASS [fixture-prep] fixture_unlocked_one_object_for_couple_edit — 1aa6c134-98fa-469f-9d1c-884577f0d185
 UX[ok] Couple portal Floor Plans entry — Couple reached Floor Plans; instructions readable.
 PASS [live-ui] couple_sees_shared_layouts — FPRA
 
@@ -47,11 +47,21 @@ Messages
 Guide
 🤝
 Vendors
-Your wedding setups
+Your Floor Plan
 
-Each setup is a part of your wedding plan. Alternatives appear only under the setup they belong to. Saving a preference asks your venue to review it — it does not approve the layout or change what the venue will use by itself.
-PASS [live-ui] couple_saved_preference_ui — setup option + preference
-FAIL [live-ui+persisted] couple_furniture_move_ui — {"origin":{"x":140,"y":36},"afterMove":{"id":"d67a826c-162b-4c07-a5ee-34c0f97b74a0","x":140,"y":36}}
+In progress
+
+FPRA-FPRAMVRNJVE9-Ceremony
+
+Arrange unlocked furniture, add permitted tables if allowed, seat guests in Seating, then submit when you are ready for your venue to review.
+
+Locked items (gray lock mark) stay where your 
+PASS [live-ui] fp_ra1_additional_share_submit_available — Submit visible without preference (couple_selected=false)
+PASS [live-ui+persisted] couple_saved_preference_ui — N/A on Additional+Share — preference not required; collaboration submit is the gate
+UX[ok] Couple Additional+Share collaboration — Couple can arrange and submit without Event-setup offers.
+PASS [live-ui+persisted] couple_furniture_move_ui — {"origin":{"x":140,"y":36},"afterMove":{"id":"1aa6c134-98fa-469f-9d1c-884577f0d185","x":247.63,"y":116.73},"moved":true}
+PASS [live-ui+persisted] couple_submit_furniture_ui — {"submittedBadge":2,"planStatus":{"id":"4e664814-2785-486e-9141-88f176e6605d","client_layout_status":"submitted","client_submitted_at":"2026-10-28T05:08:16.997284+00:00"}}
+UX[ok] Couple submit confirm — Submit path completed; couple should see pending/submitted state.
 PASS [live-ui] couple_return_visit_loads — FPRA
 
 ·
@@ -79,22 +89,21 @@ Messages
 Guide
 🤝
 Vendors
-Add your photo
-JEN'S FANCY VENUE
+Your Floor Plan
 
-FPRA
-
-326 day
-FAIL [live-ui] couple_submit_furniture_ui — submit button not available — check share/selection/ready gates
-UX[confusing] Venue furniture submission review — Submission review panel missing or unclear.
-FAIL [live-ui] venue_approve_furniture_ui — approve submission button missing
-PASS [live-ui+persisted] review_flag_created — [{"id":"948f173d-d4df-4294-818f-0d95f01b0528","status":"open","trigger_code":"t1_layout_room","floor_plan_id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c"}]
-PASS [live-ui] review_flag_visible_in_ui — list=2 empty=0
-FAIL [live-ui+persisted] review_cleared_without_mutating_layout — {"flagsAfter":[{"id":"948f173d-d4df-4294-818f-0d95f01b0528","status":"open"}],"planBeforeClear":{"id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238","shared_with_couple":true,"client_access":"view","client_layout_status":"working"},"planAfterClear":{"id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238","shared_with_c
-UX[confusing] Ready / seating handoff — Status box missing handoff guidance.
-PASS [live-ui+persisted] ready_not_auto_from_furniture_approve — {"readyBadge":0,"seatingOpenLabel":2,"seatingState":[{"id":"b5393e81-1dd3-4af0-a8a8-e86cd3d69f0f","name":"FPRA-FPRAMVRINNTA-Reception","client_access":"view","finalized_at":null,"client_layout_status":"working","shared_with_couple":true},{"id":"9f28179b-c7d3-48bf-bb6c-c365a6e0635c","name":"FPRA-FPRAMVRINNTA-Ceremony","client_access":"view","finalized_at":null,"client_layout_status":"working","shar
+Submitted — awaiting venue rev
+UX[ok] Venue furniture submission review — Review panel distinguishes furniture placement from preference.
+PASS [live-ui+persisted] venue_approve_furniture_ui — {"afterApprove":{"id":"4e664814-2785-486e-9141-88f176e6605d","client_layout_status":"approved"},"furnitureBadge":1}
+PASS [live-ui+persisted] couple_sees_accurate_post_approve_state — {"status":"approved","postApproveVisible":true,"text":"FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Floor Plan\n\nApproved by venue\n\nFPRA-FPRAMVRNJVE9-Ceremony\n\nYour venue approved this layout. Placement is locked.\n\nLAYOUT CAPACITY\n\n170 layout seats ac
+UX[ok] Wedding setups organizer — Organizer explains multi-part wedding setups; optional for single-layout.
+PASS [live-ui+persisted] setups_created — [{"id":"48635c6d-ea4b-4c18-9863-abbd61e409a2","name":"Ceremony","operational_floor_plan_id":null},{"id":"bba3c913-6fcf-41a0-80ce-87a263f46f88","name":"Reception","operational_floor_plan_id":null}]
+PASS [live-ui+persisted] review_flag_created — {"flagsBefore":[{"id":"46608b78-9924-4229-9fce-9292b4413859","status":"open","trigger_code":"t1_layout_room","floor_plan_id":"4e664814-2785-486e-9141-88f176e6605d"}],"roomAfter":{"id":"4e664814-2785-486e-9141-88f176e6605d","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238"}}
+PASS [live-ui] review_flag_visible_in_ui — list=0 empty=0
+PASS [live-ui+persisted] review_cleared_without_mutating_layout — {"flagsAfter":[{"id":"46608b78-9924-4229-9fce-9292b4413859","status":"cleared"}],"planBeforeClear":{"id":"4e664814-2785-486e-9141-88f176e6605d","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238","shared_with_couple":true,"client_access":"view","client_layout_status":"approved"},"planAfterClear":{"id":"4e664814-2785-486e-9141-88f176e6605d","space_id":"f6df6024-e6a0-4df8-b391-27f2eae61238","shared_wi
+UX[ok] Ready / seating handoff — Additional+Share leaves offer status empty (expected). Ready was not auto-set from furniture approve; seating open stays distinct from seating started.
+PASS [live-ui+persisted] ready_not_auto_from_furniture_approve — {"readyBadge":0,"seatingOpenLabel":2,"seatingState":[{"id":"5a194ab7-9ced-4a7d-8d12-6da7b330e6e3","name":"FPRA-FPRAMVRNJVE9-Reception","client_access":"view","finalized_at":null,"client_layout_status":"working","shared_with_couple":true},{"id":"4e664814-2785-486e-9141-88f176e6605d","name":"FPRA-FPRAMVRNJVE9-Ceremony","client_access":"view","finalized_at":null,"client_layout_status":"approved","sha
 PASS [live-ui] seating_open_distinct_from_started — Seating open means client_access≠hidden; guest seating work is separate (seating tab). Not equated to Ready or furniture approval.
-FAIL [live-ui+persisted] couple_sees_accurate_post_approve_state — {"status":"working","text":"FPRA\n\n·\n\nJen's Fancy Venue\n\nSep 18, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nAdd your photo\nJEN'S FANCY VENUE\n\nFPRA\n\n326 days until your celebration\n\nSaturday, September 18, 2027\n\nWelcome to your wedding home.\n\nContinue planning\nMessage Jen's Fancy Venue\nV
+PASS [live-ui+contract] event_setup_offer_path_still_gated — Multi-offer preference remains gated in clientMaySubmitLayout(requiresPreferenceSelection); Additional+Share submit succeeded without preference on this run. Full offer-chooser E2E remains Phase 2 GREEN.
 
-20/25 passed; UX blockers=0
-58.893Z
+27/27 passed; UX blockers=0
+21.895Z

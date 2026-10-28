@@ -1,8 +1,35 @@
 {
-  "run": "FPRAMVRMG0YG",
-  "expectedSha": "5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
-  "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
-  "clientId": "f12d40d6-d144-414f-8eda-4402ed62e32a",
-  "eventId": "b3c84ee9-7410-4186-89c3-6d1e5f60fd6e",
-  "portalToken": "fpra_fpramvrmg0yg_ce84"
+  "run": "FPRAMVRN7QS9",
+  "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+  "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+  "clientId": "77f7e236-5888-4e4c-892a-99c30dc43ddb",
+  "eventId": "0cf81bc0-3f5e-48ac-8cb2-1dc7371cebab",
+  "portalToken": "fpra_fpramvrn7qs9_44d5",
+  "unlockedViaUi": "b819d4e9-473d-4a29-97ae-bd8baa69dfad",
+  "usability": [
+    {
+      "screen": "Event setup floor-plan offers",
+      "text": "Edit floor-plan offers for this event\n\nFPRA-FPRAMVRN7QS9-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.\n\nLayouts offered to the client\n\nPreferred starting from profile (none set). Changes here update this event's offers only — not Library templates or other events.\n\nNo floor-plan offers are configured for this event. Offer a Library layout below, or open Setup Profiles if this area should use a standard starting set.\n\nOffer another layout for this event\n\nChoose a Library layout\nOffer for this event\nBack to Overview\nClose",
+      "assessment": "Offer editor explains event-only offers vs Library.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Couple multi-offer chooser",
+      "text": "FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 26, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a multi-setup package — each option is a full layout for the celebration.\n\nFPRA-FPRAMVRN7QS9-Offer-A\n\n36 elements\n\nFPRA-FPRAMVRN7QS9-Offer-B\n\n17 elements\n\nFPRA-FPRAMVRN7QS9-Offer-A\n\nPreview\n\nSave as preference\nCeremony\nCocktail\nReception\nArbor\nAisle\nCeremony Row 1\n8 seats\nCeremony Row 1\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 2\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 3\n8 seats\nCeremony Row 4\n8 seats\nCeremony Row 4\n8 seats\nReserved\n6 seats\nReserved\n6 seats\nC1\n4 seats\nC2\n4 seats\nC3\n4 seats\nC4\n4 seats\nC5\n4 seats\nCocktail Bar\nT1\n8 seats\nT2\n8 seat",
+      "assessment": "Chooser or preference action present for multi-offer path.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Venue editor Lock Position",
+      "text": "Lock Position checkbox on selected object",
+      "assessment": "Customer can unlock template-locked furniture via Lock Position.",
+      "severity": "ok"
+    },
+    {
+      "screen": "First-use empty",
+      "text": "No working layout for this event yet\n\nTwo different starts: Offer a Library layout in Event setup when you want the couple to choose a preferred option. Additional layout builds venue layouts here — after you Share, the couple can arrange and submit the shared working layout without needing a preference chooser.\n\nOffer a layout in Event setup\n+ Additional layout here\n\nOffer = couple preference among options. Additional + Share = collaborate on your working layout (submit does not invent a preference).",
+      "assessment": "Paths distinguished.",
+      "severity": "ok"
+    }
+  ]
 }

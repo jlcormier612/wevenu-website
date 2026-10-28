@@ -1,12 +1,52 @@
-PASS [serving] serving_sha — expected=5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a
+PASS [serving] serving_sha — expected=38b2d591f2ee7a0cad3a96a8124424dbe6837549 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549
 PASS [serving] api_health — {"status":200,"body":{"ok":true,"checks":{"env":"ok","supabase":"ok"}}}
 PASS [persisted] fixture_zero_layouts — plans=0
-UX[p2] Event setup floor-plan offers — Offer editor missing or unclear.
-FAIL [harness] harness_error — locator.waitFor: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator('[data-testid="floor-plans-setup-template-select"]') to be visible
+UX[ok] Event setup floor-plan offers — Offer editor explains event-only offers vs Library.
+PASS [live-ui] j2_change_opens_offer_editor_without_profile — Edit floor-plan offers for this event
 
-    at offerTemplateViaUi (/Users/jensmac/Developer/wevenu-website/docs/qa/floor-plans-release-acceptance/verify-reacceptance.mts:261:21)
-    at main (/Users/jensmac/Developer/wevenu-website/docs/qa/floor-
+FPRA-FPRAMVRN7QS9-Wedding. Add or withdraw which Library layouts this couple can choose from. Offering a layout also establishes this event's working layout when one is missing — Open Floor Plans then opens that layout for editing and seating. This does not release layouts to the client portal by itself.
 
-3/4 passed; UX blockers/p2=1
+Layo
+PASS [live-ui+persisted] j2_multi_offers_created_via_ui — {"offeredA":true,"offeredB":true,"offersNow":[{"id":"04188947-e88f-4916-b1a8-b61ebd4572f0","couple_label":"FPRA-FPRAMVRN7QS9-Offer-A","is_offered":true,"floor_plan_template_id":"3d4e11ef-7de7-495b-8fc7-b2eaf59584c3"},{"id":"ec878c4b-c1d1-48e1-a250-c5e58cdd656b","couple_label":"FPRA-FPRAMVRN7QS9-Offer-B","is_offered":true,"floor_plan_template_id":"0
+PASS [live-ui+persisted] j2_layouts_shared_via_ui — [{"id":"14e3d00b-efb9-4d29-8bbd-4795aad53b30","shared_with_couple":true},{"id":"f75d7f73-dd80-41b0-abf4-647ab4b095d8","shared_with_couple":true},{"id":"c559e75f-d746-4a38-b224-347f04432be0","shared_with_couple":true}]
+UX[ok] Couple multi-offer chooser — Chooser or preference action present for multi-offer path.
+PASS [live-ui] j2_couple_sees_multi_offer_chooser — FPRA
+
+·
+
+Jen's Fancy Venue
+
+Nov 26, 2027
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Choose your preferred layout
+
+Save a preference for your venue to review. This does not approve the layout or change what the venue uses, and it does not share seating by itself. This is not a mult
+PASS [live-ui+persisted] j2_couple_preference_persisted — {"prefSaved":true,"evtPref":{"couple_selected_floor_plan_id":"14e3d00b-efb9-4d29-8bbd-4795aad53b30","couple_preference_status":"pending"},"setupPrefs":[]}
+PASS [live-ui+persisted] j2_preference_survives_return — {"evtPref2":{"couple_selected_floor_plan_id":"14e3d00b-efb9-4d29-8bbd-4795aad53b30"},"text":"FPRA\n\n·\n\nJen's Fancy Venue\n\nNov 26, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nChoose your preferred layout\n\nSave a preference for your venue to review. T
+PASS [live-ui+persisted] setup_members_attached_via_ui_only — {"cerOk":true,"recOk":true,"setups":[{"id":"aa8a5b9a-5e44-4727-8bb8-b505716a46a9","name":"Ceremony"},{"id":"b7e03b3e-026c-4633-aec1-8f24408512a3","name":"Reception"}],"attachedViaUi":2,"planA":"14e3d00b-efb9-4d29-8bbd-4795aad53b30","planB":"f75d7f73-dd80-41b0-abf4-647ab4b095d8","attachAttempts":[{"setup":"Ceremony","want":"14e3d00b-efb9-4d29-8bbd-4
+UX[ok] Venue editor Lock Position — Customer can unlock template-locked furniture via Lock Position.
+PASS [live-ui+persisted] furniture_unlocked_via_venue_editor_ui — {"unlockedViaUi":true,"id":"b819d4e9-473d-4a29-97ae-bd8baa69dfad"}
+UX[ok] First-use empty — Paths distinguished.
+PASS [live-ui] j3_fp_ra1_submit_without_preference — submitVisible=true
+PASS [live-ui+persisted] j3_fp_ra1_submit_persisted — [{"id":"a787eeb3-86b8-47b8-b96c-8e0b88512c90","client_layout_status":"submitted"}]
+
+13/13 passed; UX blockers/p2=0

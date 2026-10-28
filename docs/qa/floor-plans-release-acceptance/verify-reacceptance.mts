@@ -72,18 +72,26 @@ async function servingImage() {
 }
 
 async function staffCookies() {
-  const { data: link } = await admin.auth.admin.generateLink({ type: "magiclink", email: EMAIL });
-  const { data: otp, error } = await anon.auth.verifyOtp({
-    type: "email",
-    token_hash: link!.properties!.hashed_token!,
-  });
-  if (error || !otp?.session) throw error ?? new Error("session");
+  let session: { user: { id: string }; access_token: string; refresh_token: string; [k: string]: unknown } | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { data: link } = await admin.auth.admin.generateLink({ type: "magiclink", email: EMAIL });
+    const { data: otp, error } = await anon.auth.verifyOtp({
+      type: "email",
+      token_hash: link!.properties!.hashed_token!,
+    });
+    if (!error && otp?.session) {
+      session = otp.session as typeof session;
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+  }
+  if (!session) throw new Error("staff session unavailable after retries");
   await admin.from("venue_staff_active_context").upsert({
-    user_id: otp.session.user.id,
+    user_id: session.user.id,
     active_venue_id: FANCY,
   });
   const cookieName = "sb-wvpsldwwjqdannqasrdf-auth-token";
-  const encoded = "base64-" + ssrUtils.stringToBase64URL(JSON.stringify(otp.session));
+  const encoded = "base64-" + ssrUtils.stringToBase64URL(JSON.stringify(session));
   return [
     ...ssrUtils.createChunks(cookieName, encoded).map((c: { name: string; value: string }) => ({
       name: c.name, value: c.value, domain: "app.sandbox.hellotocheers.com", path: "/",
@@ -98,14 +106,23 @@ async function staffCookies() {
 }
 
 async function passLegal(page: any) {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     const t = await page.locator("body").innerText().catch(() => "");
     if (!/End User Terms|I have reviewed and agree/i.test(t)) return;
-    const box = page.locator('input[type="checkbox"]');
-    if (await box.count()) await box.first().check({ force: true }).catch(() => undefined);
-    const btn = page.getByRole("button", { name: /Continue|Accept/i }).first();
-    if (await btn.count()) await btn.click({ force: true }).catch(() => undefined);
-    await page.waitForTimeout(900);
+    const agree = page.getByText(/I have reviewed and agree/i).locator("..").locator('input[type="checkbox"]').first()
+      .or(page.locator('label:has-text("I have reviewed and agree") input[type="checkbox"]'))
+      .or(page.locator('input[type="checkbox"]').first());
+    if (await agree.count()) {
+      await agree.check({ force: true }).catch(async () => {
+        await agree.click({ force: true });
+      });
+    }
+    await page.waitForTimeout(400);
+    const btn = page.getByRole("button", { name: /^Continue$/i }).first();
+    if (await btn.count() && await btn.isEnabled().catch(() => true)) {
+      await btn.click({ force: true }).catch(() => undefined);
+    }
+    await page.waitForTimeout(1000);
   }
 }
 
@@ -136,22 +153,37 @@ async function openFloorPlansOfferEditor(page: any, eventId: string) {
   const setUp = fpCard.getByRole("button", { name: /^Set up$/i }).first();
   if (await setUp.count()) {
     await setUp.click();
-    await page.waitForTimeout(2500);
-    await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 30_000 }).catch(() => undefined);
+    // decide() uses server action + router.refresh — reload so Change is present
+    await page.waitForTimeout(2000);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 60_000 });
+    await page.waitForTimeout(1200);
   }
-  // Outstanding CTA may say Change for this event after readiness fix
-  const outstandingChange = page.locator('[data-testid="event-setup-outstanding"]')
-    .getByRole("button", { name: /Change for this event/i }).first();
-  const changeBtn = page.locator('[data-testid="event-setup-change-floor_plans"]');
-  if (await changeBtn.count()) {
-    await changeBtn.click();
-  } else if (await outstandingChange.count()) {
-    await outstandingChange.click();
-  } else {
-    // Last resort: open Change from card text
-    const anyChange = fpCard.getByRole("button", { name: /Change for this event/i });
-    if (await anyChange.count()) await anyChange.click();
-    else throw new Error("Change for this event missing on Floor Plans card — offer editor unreachable");
+  for (let i = 0; i < 8; i++) {
+    const changeBtn = page.locator('[data-testid="event-setup-change-floor_plans"]');
+    const outstandingChange = page.locator('[data-testid="event-setup-outstanding"]')
+      .getByRole("button", { name: /Change for this event/i }).first();
+    const inCard = page.locator('[data-testid="event-setup-card-floor_plans"]')
+      .getByRole("button", { name: /Change for this event/i }).first();
+    if (await changeBtn.count()) {
+      await changeBtn.click();
+      break;
+    }
+    if (await outstandingChange.count()) {
+      await outstandingChange.click();
+      break;
+    }
+    if (await inCard.count()) {
+      await inCard.click();
+      break;
+    }
+    if (i === 7) {
+      await page.screenshot({ path: `${OUT}/reacceptance/change-missing-1280.png`, fullPage: true });
+      throw new Error("Change for this event missing on Floor Plans card — offer editor unreachable");
+    }
+    await page.waitForTimeout(800);
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => undefined);
+    await page.waitForSelector('[data-testid="event-setup-panel"]', { timeout: 45_000 }).catch(() => undefined);
   }
   await page.locator('[data-testid="event-floor-plans-setup-editor"]').waitFor({ timeout: 30_000 });
 }
@@ -267,24 +299,37 @@ async function main() {
     );
 
     async function offerTemplateViaUi(templateId: string, label: string) {
-      const trigger = page.locator('[data-testid="floor-plans-setup-template-select"]');
+      const { data: tpl } = await admin.from("floor_plan_templates").select("id,name").eq("id", templateId).maybeSingle();
+      if (!tpl?.name) throw new Error(`template missing ${templateId}`);
+      if ((await page.locator('[data-testid="event-floor-plans-setup-editor"]').count()) === 0) {
+        await openFloorPlansOfferEditor(page, eventId!);
+      }
+      const trigger = page.getByTestId("floor-plans-setup-template-select");
       await trigger.waitFor({ state: "visible", timeout: 20_000 });
       await trigger.click();
-      await page.waitForTimeout(500);
-      // SelectItem by value or visible name from library
-      const { data: tpl } = await admin.from("floor_plan_templates").select("id,name").eq("id", templateId).maybeSingle();
-      const item = page.getByRole("option", { name: new RegExp(tpl?.name?.slice(0, 24) ?? templateId, "i") }).first();
-      if (await item.count()) await item.click();
+      await page.waitForTimeout(400);
+      const escaped = tpl.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const fpOption = page.getByRole("option", { name: tpl.name, exact: true });
+      if (await fpOption.count()) await fpOption.click();
       else {
-        // fallback: click any option then filter by selecting via keyboard
-        await page.locator('[role="option"]').first().click().catch(() => undefined);
+        const fuzzy = page.getByRole("option", { name: new RegExp(escaped) });
+        if (await fuzzy.count()) await fuzzy.first().click();
+        else {
+          // Base UI: match item text node
+          const item = page.locator('[data-slot="select-item"]').filter({ hasText: tpl.name.split("—")[0]!.trim() }).first();
+          if (await item.count()) await item.click({ force: true });
+          else throw new Error(`No select option for ${tpl.name}`);
+        }
       }
       await page.waitForTimeout(400);
-      const labelField = page.locator('[data-testid="floor-plans-setup-couple-label"]');
-      if (await labelField.count()) await labelField.fill(label);
-      const offerBtn = page.locator('[data-testid="floor-plans-setup-offer"]');
+      await page.getByTestId("floor-plans-setup-couple-label").fill(label);
+      const offerBtn = page.getByTestId("floor-plans-setup-offer");
+      for (let i = 0; i < 25 && !(await offerBtn.isEnabled()); i++) await page.waitForTimeout(200);
+      if (!(await offerBtn.isEnabled())) {
+        throw new Error(`Offer disabled for ${tpl.name}; trigger=${await trigger.innerText().catch(() => "")}`);
+      }
       await offerBtn.click();
-      for (let i = 0; i < 16; i++) {
+      for (let i = 0; i < 24; i++) {
         await page.waitForTimeout(500);
         const { data } = await admin.from("event_floor_plan_offers")
           .select("id,floor_plan_template_id,is_offered,couple_label")
@@ -296,8 +341,11 @@ async function main() {
       return false;
     }
 
+    // Two offers via UI — reopen Change between offers so Select state is fresh after refresh
     const offeredA = await offerTemplateViaUi(TPL_A, `${PREFIX}Offer-A`);
+    await page.getByRole("button", { name: /Back to Overview/i }).click().catch(() => undefined);
     await page.waitForTimeout(1500);
+    await openFloorPlansOfferEditor(page, eventId!);
     const offeredB = await offerTemplateViaUi(TPL_B, `${PREFIX}Offer-B`);
     const { data: offersNow } = await admin.from("event_floor_plan_offers")
       .select("id,couple_label,is_offered,floor_plan_template_id")
@@ -344,28 +392,50 @@ async function main() {
       }
       ({ data: plans } = await admin.from("floor_plans").select("id,name,shared_with_couple").eq("event_id", eventId));
     }
-    // Share all via UI
-    for (let g = 0; g < 8; g++) {
+    // Share all via UI (repeat until every plan is shared or no Share buttons remain)
+    for (let g = 0; g < 12; g++) {
+      const { data: uns } = await admin.from("floor_plans")
+        .select("id").eq("event_id", eventId).eq("shared_with_couple", false);
+      if (!(uns ?? []).length) break;
       const btn = page.locator("button", { hasText: /^Share Floor Plan$/ }).first();
-      if (!(await btn.count())) break;
+      if (!(await btn.count())) {
+        await openFloorPlans(page, eventId);
+        continue;
+      }
       await btn.click().catch(() => undefined);
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(1600);
     }
     const { data: shared } = await admin.from("floor_plans")
       .select("id,shared_with_couple")
       .eq("event_id", eventId);
-    record("j2_layouts_shared_via_ui", (shared ?? []).some((p) => p.shared_with_couple), JSON.stringify(shared), "live-ui+persisted");
+    const allShared = (shared ?? []).length > 0 && (shared ?? []).every((p) => p.shared_with_couple);
+    record("j2_layouts_shared_via_ui", allShared || (shared ?? []).filter((p) => p.shared_with_couple).length >= 2, JSON.stringify(shared), "live-ui+persisted");
 
     // Couple multi-offer chooser
     const coupleCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const couple = await coupleCtx.newPage();
     await coupleFloor(couple, portalToken!);
+    // Retry legal + floor nav if welcome gate still showing
+    for (let i = 0; i < 3; i++) {
+      const body = await couple.locator("body").innerText();
+      if (!/End User Terms|I have reviewed and agree/i.test(body)) break;
+      await passLegal(couple);
+      await coupleFloor(couple, portalToken!);
+    }
     await couple.screenshot({ path: `${OUT}/reacceptance/j2-couple-chooser-1280.png`, fullPage: true });
-    const coupleBody = await couple.locator("body").innerText();
+    let coupleBody = await couple.locator("body").innerText();
     const chooser = couple.locator('[data-testid="floor-plan-choose-layout"]');
-    const savePref = couple.getByRole("button", { name: /Save as preference/i });
-    const hasChooser = (await chooser.count()) > 0 || (await savePref.count()) > 0
-      || /Choose|preference|Save as preference/i.test(coupleBody);
+    let savePref = couple.getByRole("button", { name: /Save as preference/i });
+    let hasChooser = (await chooser.count()) > 0 || (await savePref.count()) > 0
+      || /Choose your preferred layout|Save as preference/i.test(coupleBody);
+    if (!hasChooser) {
+      // One more hard reload into floor plan
+      await coupleFloor(couple, portalToken!);
+      coupleBody = await couple.locator("body").innerText();
+      savePref = couple.getByRole("button", { name: /Save as preference/i });
+      hasChooser = (await chooser.count()) > 0 || (await savePref.count()) > 0
+        || /Choose your preferred layout|Save as preference/i.test(coupleBody);
+    }
     noteUx(
       "Couple multi-offer chooser",
       coupleBody.slice(0, 900),
@@ -378,9 +448,13 @@ async function main() {
 
     let prefSaved = false;
     if (await savePref.count()) {
-      // Click a distinct option if present
       const opt = couple.locator('[data-testid^="floor-plan-option-"], [data-testid="floor-plan-choose-layout"] button, [data-testid="floor-plan-choose-layout"] label').first();
       if (await opt.count()) await opt.click().catch(() => undefined);
+      else {
+        // Click first chooser card / radio if present
+        await couple.getByText(/Barn-master|Reception|Offer-A|Offer-B|preferred layout/i).first()
+          .click({ force: true }).catch(() => undefined);
+      }
       await savePref.first().click();
       await couple.waitForTimeout(2500);
       prefSaved = true;
@@ -566,29 +640,35 @@ async function main() {
     }
 
     // ── Journey 3 remnant: Additional+Share submit still works on a clean path ─
-    // Use a second disposable event for pure FP-RA-1 without offers contamination
-    const { data: client2 } = await admin.from("clients").insert({
+    // Separate date so Barn booking does not overlap Journey 2 fixture (still live).
+    const EVENT_DATE_J3 = (() => {
+      const d = (Number.parseInt(DAY, 10) % 27) + 1;
+      return `2027-12-${String(d).padStart(2, "0")}`;
+    })();
+    const { data: client2, error: c2Err } = await admin.from("clients").insert({
       venue_id: FANCY, first_name: "FPRA3", last_name: RUN,
       email: `fpra3-${RUN.toLowerCase()}@hellotocheers-test.invalid`, status: "confirmed",
     }).select("id").single();
-    const { data: event2 } = await admin.from("events").insert({
-      venue_id: FANCY, client_id: client2!.id, name: `${PREFIX}AddShare`,
-      event_type: "wedding", event_date: EVENT_DATE, event_end_date: EVENT_DATE,
+    if (c2Err || !client2) throw c2Err ?? new Error("client2 insert failed");
+    const { data: event2, error: e2Err } = await admin.from("events").insert({
+      venue_id: FANCY, client_id: client2.id, name: `${PREFIX}AddShare`,
+      event_type: "wedding", event_date: EVENT_DATE_J3, event_end_date: EVENT_DATE_J3,
       status: "confirmed", booked_at: new Date().toISOString(), space_id: BARN,
     }).select("id").single();
+    if (e2Err || !event2) throw e2Err ?? new Error(`event2 insert failed: ${JSON.stringify(e2Err)}`);
     await admin.rpc("replace_event_space_assignments", {
-      p_venue_id: FANCY, p_event_id: event2!.id, p_primary_space_id: BARN,
+      p_venue_id: FANCY, p_event_id: event2.id, p_primary_space_id: BARN,
       p_assignments: [
         { useKey: "ceremony", useLabel: "Ceremony", spaceId: BARN, startTime: null, endTime: null, scheduledDate: null, sortOrder: 0 },
       ],
     });
     const token3 = `fpra3_${RUN.toLowerCase()}_${randomBytes(2).toString("hex")}`;
     await admin.from("client_portal_sessions").insert({
-      venue_id: FANCY, client_id: client2!.id, event_id: event2!.id,
+      venue_id: FANCY, client_id: client2.id, event_id: event2.id,
       access_token: token3, access_level: "couple", label: "FPRA3",
       expires_at: new Date(Date.now() + 7 * 864e5).toISOString(),
     });
-    await openFloorPlans(page, event2!.id);
+    await openFloorPlans(page, event2.id);
     const empty = page.locator('[data-testid="floor-plan-empty-no-working"]');
     const emptyText = (await empty.count()) ? await empty.innerText() : "";
     noteUx("First-use empty", emptyText, /Offer a layout|Additional layout/i.test(emptyText) ? "Paths distinguished." : "Empty unclear.", /Offer|Additional/i.test(emptyText) ? "ok" : "p2");

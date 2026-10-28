@@ -1,0 +1,276 @@
+{
+  "pass": true,
+  "run": "EOCMMVRMRK7D",
+  "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=38b2d591f2ee7a0cad3a96a8124424dbe6837549 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+      "evidence": "serving"
+    },
+    {
+      "name": "api_health",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}",
+      "evidence": "serving"
+    },
+    {
+      "name": "matrix_template_present",
+      "pass": true,
+      "detail": "{\"id\":\"d73d9734-98d9-46a0-b54b-dccadb036150\",\"name\":\"Ceremony + Reception\"}",
+      "evidence": "fixture"
+    },
+    {
+      "name": "capability_inventory_multi_and_conditional",
+      "pass": true,
+      "detail": "{\"multi\":[\"Ceremony enhancements\",\"Optional rentals\"],\"conditional\":[{\"name\":\"Plated dinner details\",\"deps\":[\"4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9\"]},{\"name\":\"Buffet dinner details\",\"deps\":[\"c629b92b-132e-4d00-bc96-0e315df55f89\"]},{\"name\":\"Beer & Wine details\",\"deps\":[\"e4794273-22a0-43de-ae2c-345e64b94801\"]}],\"all\":[{\"name\":\"Ceremony enhancements\",\"mode\":\"multi\",\"deps\":[]},{\"name\":\"Dinner service\",\"mode\":\"single\",\"deps\":[]},{\"name\":\"Bar package\",\"mode\":\"single\",\"deps\":[]},{\"name\":\"Optional rentals\",\"mode\":\"multi\",\"deps\":[]},{\"name\":\"Plated dinner details\",\"mode\":\"single\",\"deps\":[\"4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9\"]},{\"name\":\"Buffet dinner details\",\"mode\":\"single\",\"deps\":[\"c629b92b-132e-4d00-bc96-0e315df55f89\"]},{\"name\":\"Beer & Wine details\",\"mode\":\"single\",\"deps\":[\"e4794273-22a0-43de-ae2c-345e64b94801\"]}]}",
+      "evidence": "fixture"
+    },
+    {
+      "name": "venue_selected_ceremony_reception_template",
+      "pass": true,
+      "detail": "Ceremony + Reception",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "packet_definition_has_multi_and_conditional",
+      "pass": true,
+      "detail": "{\"name\":\"Ceremony + Reception\",\"multi\":[\"Ceremony enhancements\",\"Optional rentals\"],\"deps\":[\"Plated dinner details\",\"Buffet dinner details\",\"Beer & Wine details\"]}",
+      "evidence": "persisted"
+    },
+    {
+      "name": "couple_sees_radios_and_checkboxes",
+      "pass": true,
+      "detail": "radios=3 checkboxes=2",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "multi_select_two_options",
+      "pass": true,
+      "detail": "checked first two multi options",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "multi_select_change_before_submit",
+      "pass": true,
+      "detail": "unchecked first, kept second",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "multi_select_final_set_two",
+      "pass": true,
+      "detail": "restored two-option set",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "conditional_plated_reveals_child",
+      "pass": true,
+      "detail": "before=0 after=1 platedVisible=true",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "conditional_switch_buffet_hides_plated_shows_buffet",
+      "pass": true,
+      "detail": "{\"buffetVisible\":true,\"platedStillRequired\":0}",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "draft_save_persists_without_submit",
+      "pass": true,
+      "detail": "{\"status\":\"in_progress\",\"ids\":[\"e5673c82-3332-4ead-89fc-e13373080978\",\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "matrix_submit_status",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\",\"answers\":{\"8bad2c52-32dd-4882-b6ce-1119c56883a0\":{\"optionIds\":[\"e5673c82-3332-4ead-89fc-e13373080978\"]},\"dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1\":{\"optionIds\":[\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\"]},\"fa1636a6-a392-40d7-b3cb-a48cfcaec3e7\":{\"optionIds\":[\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}},\"submitted_at\":\"2026-10-28T04:45:37.264253+00:00\"}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "matrix_multi_options_persisted",
+      "pass": true,
+      "detail": "{\"multiSelectedCount\":1,\"multiOpts\":[\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\"],\"ids\":[\"e5673c82-3332-4ead-89fc-e13373080978\",\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "matrix_conditional_buffet_path_persisted",
+      "pass": true,
+      "detail": "{\"hasBuffetParent\":true,\"hasPlatedOrphan\":false,\"hasBuffetChild\":true,\"ids\":[\"e5673c82-3332-4ead-89fc-e13373080978\",\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "matrix_no_stale_plated_child_after_buffet",
+      "pass": true,
+      "detail": "{\"platedChildOpts\":[],\"ids\":[\"e5673c82-3332-4ead-89fc-e13373080978\",\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "matrix_refresh_preserves_answers",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\",\"ids\":[\"e5673c82-3332-4ead-89fc-e13373080978\",\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "matrix_no_duplicate_packets",
+      "pass": true,
+      "detail": "packets=1",
+      "evidence": "persisted"
+    },
+    {
+      "name": "venue_matches_matrix_answers",
+      "pass": true,
+      "detail": "{\"venueIds\":[\"e5673c82-3332-4ead-89fc-e13373080978\",\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"],\"ids\":[\"e5673c82-3332-4ead-89fc-e13373080978\",\"5b59b659-9bcd-4c96-82bc-f1334d62df8f\",\"c629b92b-132e-4d00-bc96-0e315df55f89\"],\"summaryOk\":true}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "venue_summary_visible_without_raw_ids_only",
+      "pass": true,
+      "detail": "Couple-submitted choices\n\nCEREMONY\n\nStandard ceremony setup is included. Enhancements are optional paid add-ons.\n\nCeremony Coordination\n\nIncluded · $500 · Flat\n\nCeremony enhancements\n\nPick many · optional\n\nOptional paid add-ons — select only what you want to purchase.\n\nArborSELECTED\nFlat fee\n+$350.00\nCATERING\n\nThe couple must choose one dinner service.\n\nDinner service\n\nPick one · required\n\nPick one — prices are per person.\n\nPlated DinnerNOT SELECTED\nPer person\n+$85.00\nBuffet DinnerSELECTED\nPer p",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "matrix_submit_does_not_mutate_eo",
+      "pass": true,
+      "detail": "{\"shared_at\":null,\"finalized_at\":null,\"client_agreed_at\":null,\"status\":\"open\"}",
+      "evidence": "persisted"
+    }
+  ],
+  "usability": [
+    {
+      "screen": "Couple Choices matrix entry",
+      "text": "EOCM\n\n·\n\nJen's Fancy Venue\n\nDec 8, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception · Awaiting Client\n\nINCLUDED WITH YOUR EVENT\n\nCeremony\n\nStandard ceremony setup is included. Enhancements are optional paid add-ons.\n\nCeremony Coordination\nIncluded · $500.00\nServices\n\nStaffing and coordination included with this package.\n\nDay-of Coordination\nIncluded · $1200.00\nCeremony enhancements\n\nPick many · optional\n\nOptional paid add-ons — select only what you want to purchase.\n\nArbor\nFlat fee\n+$350.00\nDinner service\n\nPick one · required\n\nPick one — prices are per person.\n\nPlated Dinner\nPer person\n+$85.00\nBuffet Dinner\nPer person\n+$72.00\nBar package\n\nPick one · optional\n\nOptional — pick one package, or leave unselected for no bar service. Price is per person.\n\nBeer & Wine\nPer person\n+$28.00\nOptional rentals\n\nPick many · optional\n\nAdd any rentals you want — priced per unit.\n\nChiavari Chair\nPer chair\n+$8.00\nSave\nSubmit\nJen's Fancy Venue\n💗",
+      "assessment": "Mode labels and payment disclaimer present.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Conditional dependent group",
+      "text": "Plated dinner details\n\nPick one · optional · based on your selection above\n\nFollow-up choices for plated service. None are pre-configured — your venue will add them here when ready.\n\nNo additional choices are configured for this selection yet.",
+      "assessment": "Dependent group appears with based-on-selection copy.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Venue matrix receipt",
+      "text": "Couple-submitted choices\n\nCEREMONY\n\nStandard ceremony setup is included. Enhancements are optional paid add-ons.\n\nCeremony Coordination\n\nIncluded · $500 · Flat\n\nCeremony enhancements\n\nPick many · optional\n\nOptional paid add-ons — select only what you want to purchase.\n\nArborSELECTED\nFlat fee\n+$350.00\nCATERING\n\nThe couple must choose one dinner service.\n\nDinner service\n\nPick one · required\n\nPick one — prices are per person.\n\nPlated DinnerNOT SELECTED\nPer person\n+$85.00\nBuffet DinnerSELECTED\nPer person\n+$72.00\nBuffet dinner details\n\nPick one · optional · based on your selection above\n\nFollow-up choices for buffet service. None are pre-configured — your venue will add them here when ready.\n\nNo additional choices are configured for this selection yet.\n\nBAR AND BEVERAGES\n\nBar service is optional — decline by leaving unselected.\n\nBar package\n\nPick one · optional\n\nOptional — pick one package, or leave unselected for no bar service. Price is per person.\n\nBeer & WineNOT SELECTED\nPer person\n+$28.00\nRENTALS\n\nOptional rental products the couple may add.\n\nOptional rentals\n\nPick many · optional\n\nAdd any rentals you want — priced per unit.\n\nChiavari ChairSELECTED\nPer chair\n+$8.00\nSERVICES\n\nStaffi",
+      "assessment": "Venue can read submitted multi/conditional choices.",
+      "severity": "ok"
+    }
+  ],
+  "blockers": 0,
+  "persisted": {
+    "run": "EOCMMVRMRK7D",
+    "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+    "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+    "capabilityInventory": {
+      "multiGroups": [
+        {
+          "id": "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1",
+          "name": "Ceremony enhancements",
+          "selection_mode": "multi",
+          "min_select": 0,
+          "max_select": null,
+          "depends_on_option_ids": []
+        },
+        {
+          "id": "8bad2c52-32dd-4882-b6ce-1119c56883a0",
+          "name": "Optional rentals",
+          "selection_mode": "multi",
+          "min_select": 0,
+          "max_select": null,
+          "depends_on_option_ids": []
+        }
+      ],
+      "depGroups": [
+        {
+          "id": "7a0eb11a-d4b7-43fd-b780-9045867af4ef",
+          "name": "Plated dinner details",
+          "selection_mode": "single",
+          "min_select": 0,
+          "max_select": null,
+          "depends_on_option_ids": [
+            "4bf926c2-fd3a-44e6-9ea8-eb8ce67ab6c9"
+          ]
+        },
+        {
+          "id": "2f6a3767-a0cd-4d3a-9f53-eb435f10065f",
+          "name": "Buffet dinner details",
+          "selection_mode": "single",
+          "min_select": 0,
+          "max_select": null,
+          "depends_on_option_ids": [
+            "c629b92b-132e-4d00-bc96-0e315df55f89"
+          ]
+        },
+        {
+          "id": "5df33a80-a410-4c3e-b48f-76a3afd884af",
+          "name": "Beer & Wine details",
+          "selection_mode": "single",
+          "min_select": 0,
+          "max_select": null,
+          "depends_on_option_ids": [
+            "e4794273-22a0-43de-ae2c-345e64b94801"
+          ]
+        }
+      ]
+    },
+    "clientId": "3317fc29-54f6-4a2d-9775-5b570b730da1",
+    "eventId": "1579dc31-44f8-469a-bf0a-fd87ea5f3534",
+    "eoId": "ddf37337-4a76-436c-ad6b-5bfb5440f6ba",
+    "choicesId": "32ba9038-58b7-4022-9baf-5e21ae5c573b",
+    "packetName": "Ceremony + Reception",
+    "selectedDom": [
+      {
+        "name": "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1",
+        "value": "on",
+        "label": "Arbor\nFlat fee\n+$350.00"
+      },
+      {
+        "name": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
+        "value": "on",
+        "label": "Buffet Dinner\nPer person\n+$72.00"
+      },
+      {
+        "name": "8bad2c52-32dd-4882-b6ce-1119c56883a0",
+        "value": "on",
+        "label": "Chiavari Chair\nPer chair\n+$8.00"
+      }
+    ],
+    "finalAnswers": {
+      "8bad2c52-32dd-4882-b6ce-1119c56883a0": {
+        "optionIds": [
+          "e5673c82-3332-4ead-89fc-e13373080978"
+        ]
+      },
+      "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1": {
+        "optionIds": [
+          "5b59b659-9bcd-4c96-82bc-f1334d62df8f"
+        ]
+      },
+      "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7": {
+        "optionIds": [
+          "c629b92b-132e-4d00-bc96-0e315df55f89"
+        ]
+      }
+    },
+    "usability": [
+      {
+        "screen": "Couple Choices matrix entry",
+        "text": "EOCM\n\n·\n\nJen's Fancy Venue\n\nDec 8, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception · Awaiting Client\n\nINCLUDED WITH YOUR EVENT\n\nCeremony\n\nStandard ceremony setup is included. Enhancements are optional paid add-ons.\n\nCeremony Coordination\nIncluded · $500.00\nServices\n\nStaffing and coordination included with this package.\n\nDay-of Coordination\nIncluded · $1200.00\nCeremony enhancements\n\nPick many · optional\n\nOptional paid add-ons — select only what you want to purchase.\n\nArbor\nFlat fee\n+$350.00\nDinner service\n\nPick one · required\n\nPick one — prices are per person.\n\nPlated Dinner\nPer person\n+$85.00\nBuffet Dinner\nPer person\n+$72.00\nBar package\n\nPick one · optional\n\nOptional — pick one package, or leave unselected for no bar service. Price is per person.\n\nBeer & Wine\nPer person\n+$28.00\nOptional rentals\n\nPick many · optional\n\nAdd any rentals you want — priced per unit.\n\nChiavari Chair\nPer chair\n+$8.00\nSave\nSubmit\nJen's Fancy Venue\n💗",
+        "assessment": "Mode labels and payment disclaimer present.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Conditional dependent group",
+        "text": "Plated dinner details\n\nPick one · optional · based on your selection above\n\nFollow-up choices for plated service. None are pre-configured — your venue will add them here when ready.\n\nNo additional choices are configured for this selection yet.",
+        "assessment": "Dependent group appears with based-on-selection copy.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Venue matrix receipt",
+        "text": "Couple-submitted choices\n\nCEREMONY\n\nStandard ceremony setup is included. Enhancements are optional paid add-ons.\n\nCeremony Coordination\n\nIncluded · $500 · Flat\n\nCeremony enhancements\n\nPick many · optional\n\nOptional paid add-ons — select only what you want to purchase.\n\nArborSELECTED\nFlat fee\n+$350.00\nCATERING\n\nThe couple must choose one dinner service.\n\nDinner service\n\nPick one · required\n\nPick one — prices are per person.\n\nPlated DinnerNOT SELECTED\nPer person\n+$85.00\nBuffet DinnerSELECTED\nPer person\n+$72.00\nBuffet dinner details\n\nPick one · optional · based on your selection above\n\nFollow-up choices for buffet service. None are pre-configured — your venue will add them here when ready.\n\nNo additional choices are configured for this selection yet.\n\nBAR AND BEVERAGES\n\nBar service is optional — decline by leaving unselected.\n\nBar package\n\nPick one · optional\n\nOptional — pick one package, or leave unselected for no bar service. Price is per person.\n\nBeer & WineNOT SELECTED\nPer person\n+$28.00\nRENTALS\n\nOptional rental products the couple may add.\n\nOptional rentals\n\nPick many · optional\n\nAdd any rentals you want — priced per unit.\n\nChiavari ChairSELECTED\nPer chair\n+$8.00\nSERVICES\n\nStaffi",
+        "assessment": "Venue can read submitted multi/conditional choices.",
+        "severity": "ok"
+      }
+    ]
+  }
+}
