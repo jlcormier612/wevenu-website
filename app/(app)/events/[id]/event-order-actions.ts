@@ -192,13 +192,23 @@ export async function removeLineAction(eventOrderId: string, eventId: string, li
 export async function createInvoiceFromEventOrderAction(
   eventOrderId: string, eventId: string, clientId: string,
 ): Promise<CreateInvoiceResult> {
-  const { getInvoicesForEventOrder } = await import("@/lib/invoices/service");
-  const { invoiceToOpenForEventOrder } = await import("@/lib/client-choices/selections-billing");
+  const { getInvoicesForEventOrder, createAmendedInvoice } = await import("@/lib/invoices/service");
+  const { addToExistingPlan, invoiceToOpenForEventOrder } = await import(
+    "@/lib/client-choices/selections-billing"
+  );
   const { SELECTIONS_INVOICE_DISPLAY_NAME } = await import("@/lib/invoices/display-name");
-  const existing = invoiceToOpenForEventOrder(await getInvoicesForEventOrder(eventOrderId), eventOrderId);
-  if (existing) {
+  const invoices = await getInvoicesForEventOrder(eventOrderId);
+  const draft = invoiceToOpenForEventOrder(invoices, eventOrderId);
+  if (draft) {
     revalidateEvent(eventId);
-    return { ok: true, invoiceId: existing.id };
+    return { ok: true, invoiceId: draft.id };
+  }
+  // Sent/paid EO invoice exists → incremental draft for new charges only.
+  const plan = addToExistingPlan(invoices, eventOrderId);
+  if (plan.kind === "amend") {
+    const amended = await createAmendedInvoice(plan.invoiceId);
+    if (amended.ok) revalidateEvent(eventId);
+    return amended;
   }
   const result = await createInvoice({
     clientId,
@@ -213,8 +223,8 @@ export async function createInvoiceFromEventOrderAction(
 }
 
 /**
- * Add to Existing: open the Event Order draft, or amend a sent/paid EO invoice.
- * Hidden from callers when no EO-linked invoice exists. Never links a booking invoice.
+ * Invoice new charges: open the EO draft, or create an incremental draft after
+ * a sent/paid EO invoice. Never links a booking invoice. Does not create a plan.
  */
 export async function addSelectionsToExistingInvoiceAction(
   eventOrderId: string, eventId: string,
@@ -223,7 +233,7 @@ export async function addSelectionsToExistingInvoiceAction(
   const { addToExistingPlan } = await import("@/lib/client-choices/selections-billing");
   const plan = addToExistingPlan(await getInvoicesForEventOrder(eventOrderId), eventOrderId);
   if (plan.kind === "unavailable") {
-    return { ok: false, message: "No Event Order invoice to add to." };
+    return { ok: false, message: "No Event Order invoice to add new charges to." };
   }
   if (plan.kind === "open") {
     revalidateEvent(eventId);

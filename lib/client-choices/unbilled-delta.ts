@@ -40,3 +40,19 @@ export function unbilledSelectionsTotal(
   }, 0);
   return Number(total.toFixed(2));
 }
+
+/**
+ * Billable EO lines not yet frozen on any non-void invoice.
+ * Same predicate for draft projection and freeze-on-send.
+ */
+export function unbilledBillableEventOrderLines<T extends UnbilledEventOrderLine>(
+  lines: T[],
+  frozenEventOrderLineIds: Iterable<string>,
+): T[] {
+  const frozen = frozenEventOrderLineIds instanceof Set
+    ? frozenEventOrderLineIds
+    : new Set(frozenEventOrderLineIds);
+  return lines.filter(
+    (line) => !frozen.has(line.id) && isBillableEventOrderLineForInvoice(line),
+  );
+}

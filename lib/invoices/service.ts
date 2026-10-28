@@ -1,6 +1,9 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { isPackageBookingCommitmentLines } from "@/lib/invoices/booking-commitment";
+import {
+  frozenEventOrderLineIds,
+  isPackageBookingCommitmentLines,
+} from "@/lib/invoices/booking-commitment";
 import * as repo from "@/lib/invoices/repository";
 import { computeInvoiceTotals, deriveRevenueCategory } from "@/lib/invoices/constants";
 import type {
@@ -20,7 +23,10 @@ import type {
   InvoiceStatus,
   InvoiceWithLineItems,
 } from "@/lib/invoices/types";
-import { isBillableEventOrderLineForInvoice } from "@/lib/client-choices/unbilled-delta";
+import {
+  isBillableEventOrderLineForInvoice,
+  unbilledBillableEventOrderLines,
+} from "@/lib/client-choices/unbilled-delta";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { eventOrderLinesFingerprint } from "@/lib/event-orders/constants";
 import type { EventOrderLine } from "@/lib/event-orders/types";
@@ -65,13 +71,40 @@ function eoUnitPriceForInvoice(unitPrice: number | null): number {
   return unitPrice ?? 0;
 }
 
-/** Lines that may project onto / freeze into an EO-linked invoice. */
+/** Lines that may project onto / freeze into an EO-linked invoice (billable only). */
 function billableEventOrderLinesForInvoice(eventOrderLines: EventOrderLine[]): EventOrderLine[] {
   return eventOrderLines.filter(isBillableEventOrderLineForInvoice);
 }
 
-function projectEventOrderLines(eventOrderLines: EventOrderLine[]): InvoiceLineItem[] {
-  return billableEventOrderLinesForInvoice(eventOrderLines).map((l) => {
+/** Non-void EO-linked invoices' frozen event_order_line_id set for an Event Order. */
+async function loadFrozenEventOrderLineIds(
+  c: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  eventOrderId: string,
+): Promise<Set<string>> {
+  const invoices = await repo.getInvoicesForEventOrder(c, venueId, eventOrderId);
+  const nonVoidIds = invoices.filter((inv) => inv.status !== "void").map((inv) => inv.id);
+  if (nonVoidIds.length === 0) return new Set();
+  const markers = await repo.listInvoiceLineMarkers(c, venueId, nonVoidIds);
+  return new Set(frozenEventOrderLineIds(markers, nonVoidIds));
+}
+
+/**
+ * Incremental EO invoice projection / freeze set:
+ * billable ∧ not already frozen on any non-void invoice.
+ */
+function incrementalEventOrderLinesForInvoice(
+  eventOrderLines: EventOrderLine[],
+  frozenIds: Iterable<string>,
+): EventOrderLine[] {
+  return unbilledBillableEventOrderLines(eventOrderLines, frozenIds);
+}
+
+function projectEventOrderLines(
+  eventOrderLines: EventOrderLine[],
+  frozenIds: Iterable<string> = [],
+): InvoiceLineItem[] {
+  return incrementalEventOrderLinesForInvoice(eventOrderLines, frozenIds).map((l) => {
     const type = PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item";
     return {
       id: l.id, invoiceId: "", venueId: l.venueId, packageId: l.packageId,
@@ -170,7 +203,8 @@ export async function getInvoice(id: string): Promise<InvoiceWithLineItems | nul
   if (invoice.status === "draft" && invoice.eventOrderId) {
     const eventOrder = await getEventOrder(invoice.eventId ?? "");
     if (eventOrder) {
-      const projectedLines = projectEventOrderLines(eventOrder.lines);
+      const frozenIds = await loadFrozenEventOrderLineIds(c, venue.id, invoice.eventOrderId);
+      const projectedLines = projectEventOrderLines(eventOrder.lines, frozenIds);
       const additionalRollupLines = projectedLines.map((l) => ({ type: l.type, amount: l.amount }));
       // Keep persisted percent-tax amounts aligned with the live EO base so
       // UI, stored tax rows, and totals agree after EO charge edits.
@@ -292,7 +326,8 @@ async function additionalRollupLinesForInvoice(
   if (!invoice || invoice.status !== "draft" || !invoice.eventOrderId) return undefined;
   const eventOrder = await getEventOrder(invoice.eventId ?? "");
   if (!eventOrder) return undefined;
-  return projectEventOrderLines(eventOrder.lines).map((l) => ({
+  const frozenIds = await loadFrozenEventOrderLineIds(c, venueId, invoice.eventOrderId);
+  return projectEventOrderLines(eventOrder.lines, frozenIds).map((l) => ({
     type: l.type,
     amount: l.amount,
   }));
@@ -428,10 +463,13 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
         // again without a human's explicit decision.
         const eventOrder = await getEventOrder(invoice.eventId ?? "");
         if (eventOrder) {
-          // Copy only billable/additional lines — same rule as unbilledSelectionsTotal.
-          // Included / $0 / unpriced EO lines stay operational and must not charge.
-          const freezeLines = billableEventOrderLinesForInvoice(eventOrder.lines);
-          await repo.insertFrozenLinesFromEventOrder(c, venueId, invoiceId, freezeLines.map((l) => ({
+          // Incremental freeze: billable ∧ not already on any non-void invoice.
+          // Recheck immediately before insert so retries / races cannot duplicate.
+          const frozenIds = await loadFrozenEventOrderLineIds(c, venueId, invoice.eventOrderId);
+          const freezeLines = incrementalEventOrderLinesForInvoice(eventOrder.lines, frozenIds);
+          const frozenAgain = await loadFrozenEventOrderLineIds(c, venueId, invoice.eventOrderId);
+          const safeFreezeLines = incrementalEventOrderLinesForInvoice(freezeLines, frozenAgain);
+          await repo.insertFrozenLinesFromEventOrder(c, venueId, invoiceId, safeFreezeLines.map((l) => ({
             eventOrderLineId: l.id, packageId: l.packageId, type: PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item",
             description: l.description, quantity: l.quantity,
             unitPrice: eoUnitPriceForInvoice(l.unitPrice), amount: l.amount, sortOrder: l.sortOrder,
@@ -448,6 +486,8 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
             brandingSnapshot,
           });
           await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
+          // Sync only this invoice's existing plan (if any). Never creates a
+          // plan and never retargets another invoice's schedule.
           const { syncPaymentPlanToInvoiceCommitment } = await import("@/lib/payments/service");
           await syncPaymentPlanToInvoiceCommitment(invoiceId);
           void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
@@ -495,34 +535,63 @@ export async function revertInvoiceToDraft(invoiceId: string): Promise<InvoiceAc
 }
 
 /**
- * Booking Financial Architecture Phase 3c — "Create Amended Invoice." The
- * new invoice starts in Draft, linked to the same Event Order, and is
- * nothing more than a normal Draft invoice from that point on — Phase 3a's
- * live projection is exactly what makes it correct from the moment it's
- * created. The original stays exactly as it was, sent or paid, untouched
- * and immutable, and remains the active financial record until this one is
- * itself explicitly reviewed and sent — creating this never changes what
- * the original says, what it's owed, or its status.
+ * Create a draft for invoicing *new* Event Order charges only.
+ * Live projection excludes lines already frozen on any non-void invoice.
+ * The original sent/paid invoice is never rewritten; its balance and plan stay put.
+ * Does not create a payment plan. Does not copy the original’s ad-hoc lines —
+ * the draft shows only incremental EO charges (plus any tax the venue adds).
  */
 export async function createAmendedInvoice(originalInvoiceId: string): Promise<CreateInvoiceResult> {
   const result = await withVenue(async (c, venueId) => {
-    const original = await repo.getInvoice(c, venueId, originalInvoiceId);
-    if (!original) return { ok: false, message: "Invoice not found." } as CreateInvoiceResult;
-    if (!original.eventOrderId) return { ok: false, message: "Only an Event-Order-linked invoice can be amended." } as CreateInvoiceResult;
-    if (original.status !== "sent" && original.status !== "paid") {
+    let tip = await repo.getInvoice(c, venueId, originalInvoiceId);
+    if (!tip) return { ok: false, message: "Invoice not found." } as CreateInvoiceResult;
+    if (!tip.eventOrderId) return { ok: false, message: "Only an Event-Order-linked invoice can be amended." } as CreateInvoiceResult;
+
+    // Walk to the tip of the amendment chain so a second wave of charges
+    // amends the latest sent invoice, not a parent that already has a child.
+    const seen = new Set<string>();
+    while (tip.amendedByInvoiceId && !seen.has(tip.id)) {
+      seen.add(tip.id);
+      const child = await repo.getInvoice(c, venueId, tip.amendedByInvoiceId);
+      if (!child) break;
+      if (child.status === "draft") {
+        return { ok: true, invoiceId: child.id } as CreateInvoiceResult;
+      }
+      if (child.status === "sent" || child.status === "paid" || child.status === "partially_paid") {
+        tip = child;
+        continue;
+      }
+      break;
+    }
+
+    if (tip.status !== "sent" && tip.status !== "paid" && tip.status !== "partially_paid") {
       return { ok: false, message: "Only a sent or paid invoice can be amended." } as CreateInvoiceResult;
     }
-    if (original.amendedByInvoiceId) {
-      return { ok: false, message: `An amended invoice (${original.amendedByInvoiceNumber}) already exists for this one. Review or send that one first.` } as CreateInvoiceResult;
+    if (tip.amendedByInvoiceId) {
+      return {
+        ok: false,
+        message: `An invoice for new charges (${tip.amendedByInvoiceNumber}) already exists for this one. Review or send that one first.`,
+      } as CreateInvoiceResult;
     }
     const newInvoiceId = await repo.insertInvoice(c, venueId, {
-      clientId: original.clientId ?? "", eventId: original.eventId ?? "", notes: original.notes ?? "",
-      dueDate: original.dueDate ?? "", eventOrderId: original.eventOrderId, amendsInvoiceId: original.id,
-      displayName: original.displayName?.trim() || undefined,
+      clientId: tip.clientId ?? "", eventId: tip.eventId ?? "", notes: tip.notes ?? "",
+      dueDate: tip.dueDate ?? "", eventOrderId: tip.eventOrderId, amendsInvoiceId: tip.id,
+      displayName: tip.displayName?.trim() || undefined,
     });
-    await repo.copyAdHocLineItems(c, venueId, newInvoiceId, original.lineItems);
-    await repo.insertActivity(c, venueId, newInvoiceId, "created", `Amends ${original.invoiceNumber} — starts as a live Draft, not active until sent.`);
-    await repo.insertActivity(c, venueId, originalInvoiceId, "amended", `An amended invoice was created. This invoice remains the active financial record until the amendment is sent.`);
+    await repo.insertActivity(
+      c,
+      venueId,
+      newInvoiceId,
+      "created",
+      `Invoice new charges after ${tip.invoiceNumber} — draft shows only previously unbilled Event Order lines.`,
+    );
+    await repo.insertActivity(
+      c,
+      venueId,
+      tip.id,
+      "amended",
+      `A draft for new charges was created. This invoice’s lines, total, balance, and payment plan are unchanged.`,
+    );
     return { ok: true, invoiceId: newInvoiceId } as CreateInvoiceResult;
   });
   return result as CreateInvoiceResult;
@@ -587,6 +656,8 @@ export async function getEventOrderDrift(invoiceId: string): Promise<EventOrderD
   const frozenLines = invoice.lineItems.filter((l): l is InvoiceLineItem & { eventOrderLineId: string } => !!l.eventOrderLineId);
   const frozenByEoId = new Map(frozenLines.map((l) => [l.eventOrderLineId, l]));
   const currentEoIds = new Set(billableLines.map((l) => l.id));
+  // Lines already frozen on another non-void invoice are not "new charges" here.
+  const frozenElsewhere = await loadFrozenEventOrderLineIds(supabase, venue.id, invoice.eventOrderId);
 
   const added: EventOrderLineSnapshot[] = [];
   const changed: EventOrderLineChange[] = [];
@@ -595,7 +666,9 @@ export async function getEventOrderDrift(invoiceId: string): Promise<EventOrderD
   for (const line of billableLines) {
     const frozen = frozenByEoId.get(line.id);
     if (!frozen) {
-      added.push({ description: line.description, quantity: line.quantity, unitPrice: eoUnitPriceForInvoice(line.unitPrice), amount: line.amount });
+      if (!frozenElsewhere.has(line.id)) {
+        added.push({ description: line.description, quantity: line.quantity, unitPrice: eoUnitPriceForInvoice(line.unitPrice), amount: line.amount });
+      }
       continue;
     }
     if (frozen.quantity !== line.quantity || frozen.description !== line.description) {

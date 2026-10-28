@@ -11,6 +11,8 @@ export type EoInvoiceRef = {
   status: InvoiceStatus;
   invoiceNumber: string;
   eventOrderId?: string | null;
+  /** Present when another invoice was created for new charges after this one. */
+  amendedByInvoiceId?: string | null;
 };
 
 export type SelectionsFinancialImpact = {
@@ -25,19 +27,22 @@ export function nonVoidEoInvoices<T extends EoInvoiceRef>(invoices: T[], eventOr
   return invoices.filter((inv) => inv.eventOrderId === eventOrderId && inv.status !== "void");
 }
 
-/** Open an existing EO invoice instead of inserting another. Draft wins. */
+/**
+ * Reuse only an existing EO *draft* (live unbilled projection).
+ * Sent/paid invoices are frozen history — never open them to “add” charges.
+ */
 export function invoiceToOpenForEventOrder<T extends EoInvoiceRef>(
   invoices: T[],
   eventOrderId: string,
 ): T | null {
   const open = nonVoidEoInvoices(invoices, eventOrderId);
-  return open.find((inv) => inv.status === "draft") ?? open[0] ?? null;
+  return open.find((inv) => inv.status === "draft") ?? null;
 }
 
 /**
- * Add to Existing is absent unless this Event Order already has its own invoice.
- * Draft: open it (live projection). Sent/paid with no draft yet: amend.
- * An existing draft amendment is opened — a second amendment is not started.
+ * Invoice new charges: open an EO draft, or create an incremental draft that
+ * amends a sent/paid EO invoice. Never rewrites the original.
+ * Prefer amending the tip of the chain (no child amendment yet).
  */
 export function addToExistingPlan(
   invoices: EoInvoiceRef[],
@@ -50,8 +55,14 @@ export function addToExistingPlan(
   if (open.length === 0) return { kind: "unavailable" };
   const draft = open.find((inv) => inv.status === "draft");
   if (draft) return { kind: "open", invoiceId: draft.id };
-  const amendable = open.find((inv) => inv.status === "sent" || inv.status === "paid");
+  const amendable = open.find(
+    (inv) =>
+      (inv.status === "sent" || inv.status === "paid") && !inv.amendedByInvoiceId,
+  );
   if (amendable) return { kind: "amend", invoiceId: amendable.id };
+  // List rows may omit amendedBy — fall back to newest sent/paid.
+  const sentOrPaid = open.find((inv) => inv.status === "sent" || inv.status === "paid");
+  if (sentOrPaid) return { kind: "amend", invoiceId: sentOrPaid.id };
   return { kind: "unavailable" };
 }
 
@@ -65,9 +76,9 @@ export function financialImpactCopy(
     return `These finalized selections add ${amount}. Nothing has been billed yet.`;
   }
   if (eoInvoice.status === "draft") {
-    return "These selections are in draft review on the Event Order invoice.";
+    return `These selections add ${amount} on the draft Event Order invoice (new charges only — already invoiced lines stay off this draft).`;
   }
-  return `These finalized selections add ${amount} that is not on the current invoice yet.`;
+  return `These finalized selections add ${amount} in new charges that are not on a sent invoice yet. Invoice new charges to bill only those lines; the original invoice stays unchanged.`;
 }
 
 export function buildSelectionsFinancialImpact(input: {
@@ -78,9 +89,13 @@ export function buildSelectionsFinancialImpact(input: {
   frozenEventOrderLineIds: Iterable<string>;
 }): SelectionsFinancialImpact {
   const eventOrderId = input.eventOrderId;
-  const eoInvoice = eventOrderId
-    ? invoiceToOpenForEventOrder(input.invoices, eventOrderId)
-    : null;
+  const open = eventOrderId ? nonVoidEoInvoices(input.invoices, eventOrderId) : [];
+  const draft = open.find((inv) => inv.status === "draft") ?? null;
+  const sentOrPaid =
+    open.find((inv) => inv.status === "sent" || inv.status === "paid") ?? null;
+  // Copy + CTA: draft for live projection, else any sent/paid EO invoice.
+  // Opening a sent invoice still goes through addToExistingPlan (amend), not edit-in-place.
+  const eoInvoice = draft ?? sentOrPaid;
   return {
     unbilledAmount: unbilledSelectionsTotal(input.lines, input.frozenEventOrderLineIds),
     clientId: input.clientId,

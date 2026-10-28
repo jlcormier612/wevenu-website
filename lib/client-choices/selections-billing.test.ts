@@ -85,15 +85,31 @@ describe("selections invoice decisions", () => {
     );
   });
 
-  it("reuses the same Event Order invoice instead of inserting another", () => {
+  it("reuses only an Event Order draft — sent invoices stay frozen history", () => {
     assert.equal(invoiceToOpenForEventOrder([eoSent, eoDraft], "eo-1")?.id, "eo-draft");
-    assert.equal(invoiceToOpenForEventOrder([eoSent], "eo-1")?.id, "eo-sent");
+    assert.equal(invoiceToOpenForEventOrder([eoSent], "eo-1"), null);
   });
 
   it("amends a sent Event Order invoice and opens a draft", () => {
     assert.deepEqual(addToExistingPlan([eoSent], "eo-1"), { kind: "amend", invoiceId: "eo-sent" });
     assert.deepEqual(addToExistingPlan([eoDraft], "eo-1"), { kind: "open", invoiceId: "eo-draft" });
     assert.deepEqual(addToExistingPlan([eoSent, eoDraft], "eo-1"), { kind: "open", invoiceId: "eo-draft" });
+  });
+
+  it("surfaces Invoice new charges copy when a sent EO invoice exists", () => {
+    const impact = buildSelectionsFinancialImpact({
+      eventOrderId: "eo-1",
+      clientId: "client",
+      lines: [bar, veg],
+      invoices: [eoSent],
+      frozenEventOrderLineIds: ["eo-bar"],
+    });
+    assert.equal(impact.unbilledAmount, 0);
+    assert.equal(impact.eoInvoice?.id, "eo-sent");
+    assert.match(
+      financialImpactCopy(125, impact.eoInvoice) ?? "",
+      /Invoice new charges/,
+    );
   });
 
   it("hides financial impact when nothing is unbilled", () => {

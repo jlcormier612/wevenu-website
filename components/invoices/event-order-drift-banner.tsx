@@ -56,7 +56,7 @@ export function EventOrderDriftBanner({
     startAmend(async () => {
       const result = await createAmendedInvoiceAction(invoiceId);
       if (!result.ok) { toast.error(result.message ?? "Could not create an amended invoice."); return; }
-      toast.success("Amended invoice created as a Draft — this invoice remains active until it's sent.");
+      toast.success("Draft for new charges created. This invoice’s total, balance, and payment plan stay unchanged.");
       router.push(`/invoices/${result.invoiceId}`);
     });
   }
@@ -142,7 +142,7 @@ export function EventOrderDriftBanner({
           )}
           {!hasExistingAmendment && (
             <Button type="button" variant="outline" size="sm" disabled={amendPending} onClick={handleCreateAmended}>
-              {amendPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create Amended Invoice"}
+              {amendPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Invoice new charges"}
             </Button>
           )}
           <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={handleDismiss}>
@@ -152,7 +152,7 @@ export function EventOrderDriftBanner({
       </div>
       {!canRevertToDraft && (
         <p className="mt-2 text-xs text-muted-foreground">
-          A payment has already been recorded against this invoice, so it can no longer be reopened as a draft — create an amended invoice instead.
+          A payment has already been recorded against this invoice, so it can no longer be reopened as a draft — use Invoice new charges to bill only the added lines. This invoice’s balance and payment plan stay unchanged.
         </p>
       )}
     </div>

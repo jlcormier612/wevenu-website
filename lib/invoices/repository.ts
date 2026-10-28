@@ -267,9 +267,46 @@ export async function insertFrozenLinesFromEventOrder(
 ): Promise<void> {
   if (lines.length === 0) return;
 
+  // Authoritative de-dupe: never attach an EO line that is already frozen on
+  // any non-void invoice (including a concurrent send that won the race).
+  const candidateIds = [...new Set(lines.map((l) => l.eventOrderLineId))];
+  const { data: existingRows, error: existingErr } = await client
+    .from("invoice_line_items")
+    .select("event_order_line_id, invoice_id")
+    .eq("venue_id", venueId)
+    .in("event_order_line_id", candidateIds)
+    .not("event_order_line_id", "is", null);
+  if (existingErr) throw existingErr;
+  const existing = (existingRows ?? []) as { event_order_line_id: string; invoice_id: string }[];
+  const invoiceIds = [...new Set(existing.map((r) => r.invoice_id))];
+  let nonVoidInvoiceIds = new Set<string>();
+  if (invoiceIds.length > 0) {
+    const { data: invRows, error: invErr } = await client
+      .from("invoices")
+      .select("id, status")
+      .eq("venue_id", venueId)
+      .in("id", invoiceIds);
+    if (invErr) throw invErr;
+    nonVoidInvoiceIds = new Set(
+      ((invRows ?? []) as { id: string; status: string }[])
+        .filter((inv) => inv.status !== "void")
+        .map((inv) => inv.id),
+    );
+  }
+  const alreadyFrozen = new Set(
+    existing
+      .filter((r) => nonVoidInvoiceIds.has(r.invoice_id))
+      .map((r) => r.event_order_line_id),
+  );
+  const toInsert = lines.filter((l) => !alreadyFrozen.has(l.eventOrderLineId));
+  if (toInsert.length === 0) {
+    await recomputeInvoiceTotals(client, venueId, invoiceId);
+    return;
+  }
+
   // D5B — same write-path fix as addLineItem above. Batch-fetch every
   // distinct package's category once rather than per line.
-  const packageIds = [...new Set(lines.map((l) => l.packageId).filter((id): id is string => !!id))];
+  const packageIds = [...new Set(toInsert.map((l) => l.packageId).filter((id): id is string => !!id))];
   const categoryByPackageId = new Map<string, string | null>();
   if (packageIds.length > 0) {
     const { data: pkgs } = await client.from("packages").select("id, category").in("id", packageIds);
@@ -277,7 +314,7 @@ export async function insertFrozenLinesFromEventOrder(
   }
 
   const { error } = await client.from("invoice_line_items").insert(
-    lines.map((l) => ({
+    toInsert.map((l) => ({
       invoice_id: invoiceId, venue_id: venueId, event_order_line_id: l.eventOrderLineId,
       package_id: l.packageId, type: l.type, description: l.description,
       quantity: l.quantity, unit_price: l.unitPrice, amount: l.amount, sort_order: l.sortOrder,
@@ -469,6 +506,18 @@ export async function updateInvoiceStatus(
   client: DbClient, venueId: string, invoiceId: string, status: InvoiceStatus,
   extra?: { eventOrderRevisionAtFreeze?: number; brandingSnapshot?: InvoiceBrandingSnapshot },
 ): Promise<void> {
+  // Void restores EO-line eligibility: clear provenance so a unique
+  // event_order_line_id constraint (and re-freeze) can attach the line again.
+  // Amounts/descriptions on the voided rows stay for audit; only the link clears.
+  if (status === "void") {
+    const { error: clearErr } = await client
+      .from("invoice_line_items")
+      .update({ event_order_line_id: null })
+      .eq("invoice_id", invoiceId)
+      .eq("venue_id", venueId)
+      .not("event_order_line_id", "is", null);
+    if (clearErr) throw clearErr;
+  }
   const patch: Record<string, unknown> = { status };
   if (status === "sent") {
     patch.issued_at = new Date().toISOString();

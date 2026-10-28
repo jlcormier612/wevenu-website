@@ -433,38 +433,31 @@ function FinancialImpact({
           size="sm"
           disabled={pending || !impact.clientId}
           onClick={() => startTransition(async () => {
-            const result = await createInvoiceFromEventOrderAction(
-              impact.eventOrderId!,
-              eventId,
-              impact.clientId!,
-            );
+            const result = canAdd
+              ? await addSelectionsToExistingInvoiceAction(impact.eventOrderId!, eventId)
+              : await createInvoiceFromEventOrderAction(
+                impact.eventOrderId!,
+                eventId,
+                impact.clientId!,
+              );
             if (!result.ok) {
-              toast.error(result.message ?? "Could not create the invoice.");
+              toast.error(result.message ?? "Could not open the invoice.");
               return;
             }
+            toast.success(
+              canAdd
+                ? "Draft shows new charges only. The original invoice is unchanged. Sending does not create a payment plan."
+                : "Draft invoice created. Review and send when ready — this does not create a payment plan.",
+            );
             go(result.invoiceId);
           })}
         >
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create invoice & payment plan"}
+          {pending
+            ? <Loader2 className="h-4 w-4 animate-spin" />
+            : canAdd
+              ? "Invoice new charges"
+              : "Create invoice"}
         </Button>
-        {canAdd ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={pending}
-            onClick={() => startTransition(async () => {
-              const result = await addSelectionsToExistingInvoiceAction(impact.eventOrderId!, eventId);
-              if (!result.ok) {
-                toast.error(result.message ?? "Could not open the Event Order invoice.");
-                return;
-              }
-              go(result.invoiceId);
-            })}
-          >
-            Add to Existing Invoice
-          </Button>
-        ) : null}
         <Button
           type="button"
           size="sm"
