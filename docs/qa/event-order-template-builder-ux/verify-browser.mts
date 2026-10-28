@@ -242,26 +242,28 @@ async function main() {
     );
     persisted.options = { buffet, plated };
 
-    // Follow-up under Buffet
-    if (buffet) {
-      const openFollow = page.getByTestId(`eo-add-choices-for-${buffet.id}`);
-      if (await openFollow.count()) {
-        await openFollow.click();
-        await page.waitForTimeout(400);
-      }
-      const nameInput = page.getByTestId(`eo-followup-name-${buffet.id}`);
-      if (await nameInput.count()) {
-        await nameInput.fill(`${PREFIX}Sides`);
-        await page.getByTestId(`eo-followup-save-${buffet.id}`).click();
-        await page.waitForTimeout(1500);
-      }
+    async function addFollowUpUnder(optionId: string, name: string) {
+      const openFollow = page.getByTestId(`eo-add-choices-for-${optionId}`);
+      if (!(await openFollow.count())) return null;
+      await openFollow.click();
+      await page.waitForTimeout(400);
+      const nameInput = page.getByTestId(`eo-followup-name-${optionId}`);
+      if (!(await nameInput.count())) return null;
+      await nameInput.fill(name);
+      await page.getByTestId(`eo-followup-save-${optionId}`).click();
+      await page.waitForTimeout(1500);
+      return name;
     }
+
+    if (buffet) await addFollowUpUnder(buffet.id, `${PREFIX}Sides`);
+    if (plated) await addFollowUpUnder(plated.id, `${PREFIX}Entrées`);
 
     const { data: groupsAfter } = await admin
       .from("event_order_template_groups")
       .select("id,name,depends_on_option_ids")
       .eq("template_id", tpl.id);
     const sides = (groupsAfter ?? []).find((g) => String(g.name).includes("Sides"));
+    const entrees = (groupsAfter ?? []).find((g) => String(g.name).includes("Entrées") || String(g.name).includes("Entrees"));
     record(
       "persisted_followup_under_buffet",
       Boolean(sides)
@@ -269,7 +271,35 @@ async function main() {
         && (sides!.depends_on_option_ids as string[]).includes(buffet!.id),
       JSON.stringify(sides),
     );
+    record(
+      "persisted_followup_under_plated",
+      Boolean(entrees)
+        && Array.isArray(entrees!.depends_on_option_ids)
+        && (entrees!.depends_on_option_ids as string[]).includes(plated!.id),
+      JSON.stringify(entrees),
+    );
     persisted.sidesGroup = sides;
+    persisted.entreesGroup = entrees;
+
+    // Template-only item under Sides follow-up (distinct from catalog)
+    if (sides) {
+      await page.getByTestId("eo-add-option-group").selectOption(sides.id);
+      await page.getByTestId("eo-add-option-template-only").click();
+      await page.getByPlaceholder("Option label").fill(`${PREFIX}Roasted Vegetables`);
+      await page.getByRole("button", { name: /^Add template-only option$/i }).click();
+      await page.waitForTimeout(1200);
+    }
+    const { data: sideOpts } = await admin
+      .from("event_order_template_options")
+      .select("id,label,group_id,offering_id")
+      .eq("template_id", tpl.id)
+      .eq("group_id", sides?.id ?? "00000000-0000-0000-0000-000000000000");
+    const roast = (sideOpts ?? []).find((o) => String(o.label).includes("Roasted Vegetables"));
+    record(
+      "persisted_template_only_followup_item",
+      Boolean(roast) && roast!.offering_id == null,
+      JSON.stringify(roast),
+    );
 
     await page.screenshot({ path: `${OUT}/shots/workspace-1280.png`, fullPage: true });
 
