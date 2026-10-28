@@ -1,6 +1,6 @@
 # Import engine matrix — Bring Your Business
 
-Verified against repository code on tip `0b3838d3` (Sandbox serving) and live browser runs in this folder.
+Verified against repository code and live browser runs on Sandbox tip `0b81d961` (see `FINAL-ACCEPTANCE.md`).
 
 ## How paths reach Migration Center
 

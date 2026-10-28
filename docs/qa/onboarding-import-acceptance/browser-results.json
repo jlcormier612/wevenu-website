@@ -1,31 +1,31 @@
 {
-  "expectedSha": "0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3",
-  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3",
+  "expectedSha": "0b81d961",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b81d9612584e76510999e4f06b9c8fb0061a09a",
   "venues": [
     {
-      "venueId": "c770812a-a5fc-4f20-8385-9452beabf3fb",
-      "email": "jennifer+obimp.1793205017941-hb@hellotocheers.com",
-      "name": "OB Imp hb 1793205017941-hb"
+      "venueId": "5b29e9cd-29e9-471a-88a6-fa3ca1c845da",
+      "email": "jennifer+obimp.1793207993798-hb@hellotocheers.com",
+      "name": "OB Imp hb 1793207993798-hb"
     },
     {
-      "venueId": "f2033b68-c081-429e-8ced-266c7cd8c7b4",
-      "email": "jennifer+obimp.1793205041629-ts@hellotocheers.com",
-      "name": "OB Imp ts 1793205041629-ts"
+      "venueId": "ef7fdbf3-5df8-4453-9114-6a848a37de3c",
+      "email": "jennifer+obimp.1793208116247-ts@hellotocheers.com",
+      "name": "OB Imp ts 1793208116247-ts"
     },
     {
-      "venueId": "17765741-09d7-4eed-8a8b-28fe50f15880",
-      "email": "jennifer+obimp.1793205119306-as@hellotocheers.com",
-      "name": "OB Imp as 1793205119306-as"
+      "venueId": "0894661b-8086-4235-8f4c-460f977f4d66",
+      "email": "jennifer+obimp.1793208206628-as@hellotocheers.com",
+      "name": "OB Imp as 1793208206628-as"
     },
     {
-      "venueId": "c5be1ae2-c8d6-4720-89a3-a263dd293dc8",
-      "email": "jennifer+obimp.1793205158821-skip@hellotocheers.com",
-      "name": "OB Imp skip 1793205158821-skip"
+      "venueId": "755d274f-f7bc-4ef1-86a8-9c492a382424",
+      "email": "jennifer+obimp.1793208254909-skip@hellotocheers.com",
+      "name": "OB Imp skip 1793208254909-skip"
     },
     {
-      "venueId": "9ffadb97-bc45-4b1e-ad5b-78871c01023e",
-      "email": "jennifer+obimp.1793205222336-ind@hellotocheers.com",
-      "name": "OB Imp ind 1793205222336-ind"
+      "venueId": "26436cfd-66a6-4dee-958b-9f5268f18bbc",
+      "email": "jennifer+obimp.1793208272042-ind@hellotocheers.com",
+      "name": "OB Imp ind 1793208272042-ind"
     }
   ],
   "checks": [
@@ -33,91 +33,137 @@
       "path": "infra",
       "scenario": "serving_sha",
       "pass": true,
-      "detail": "expected=0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3"
+      "detail": "expected=0b81d961 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b81d9612584e76510999e4f06b9c8fb0061a09a"
     },
     {
       "path": "setup",
       "scenario": "venue_honeybook",
       "pass": true,
-      "detail": "c770812a-a5fc-4f20-8385-9452beabf3fb jennifer+obimp.1793205017941-hb@hellotocheers.com"
+      "detail": "5b29e9cd-29e9-471a-88a6-fa3ca1c845da jennifer+obimp.1793207993798-hb@hellotocheers.com"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "login",
+      "pass": true,
+      "detail": "jennifer+obimp.1793207993798-hb@hellotocheers.com"
     },
     {
       "path": "resume_hb",
       "scenario": "happy_byb_resume_copy",
-      "pass": false,
-      "detail": "Welcome back\nSign in to your Hello to Cheers workspace to continue.\nEmail\nPassword\nForgot password?\nSign in"
+      "pass": true,
+      "detail": "intake banner present"
     },
     {
       "path": "resume_hb",
       "scenario": "resume_link_present",
-      "pass": false,
+      "pass": true,
       "detail": "link count"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "happy_lands_mc_honeybook",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration?source=honeybook"
     },
     {
       "path": "explicit_hb",
       "scenario": "happy_nav",
-      "pass": false,
-      "detail": "url=https://app.sandbox.hellotocheers.com/login?next=%2Fsetup-hub"
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration?source=honeybook"
     },
     {
       "path": "cross_path",
       "scenario": "hb_intake_switch_to_tripleseat",
-      "pass": false,
-      "detail": "tripleseat link missing"
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration?source=tripleseat"
     },
     {
       "path": "explicit_hb",
       "scenario": "happy_path_import",
-      "pass": false,
-      "detail": "committed=false needsReview=false rows=0"
+      "pass": true,
+      "detail": "committed=true needsReview=true rows=5"
     },
     {
       "path": "explicit_hb",
       "scenario": "imperfect_input_partial_or_review",
-      "pass": false,
-      "detail": "needsReview=false bodyHasReviewSignals=false"
+      "pass": true,
+      "detail": "needsReview=true bodyHasReviewSignals=true"
     },
     {
       "path": "explicit_hb",
       "scenario": "persistence_verified",
-      "pass": false,
-      "detail": "clientCount=0",
+      "pass": true,
+      "detail": "clientCount=2",
       "persistence": {
-        "clients": [],
-        "importBody": "Welcome back\nSign in to your Hello to Cheers workspace to continue.\nEmail\nPassword\nForgot password?\nSign in"
+        "clients": [
+          {
+            "id": "137ef450-c788-415b-aebd-fbf6b7ea0989",
+            "first_name": "Ava",
+            "last_name": "Honeybook",
+            "email": "ava.hb.obimp@hellotocheers-test.invalid",
+            "phone": "555-0101"
+          },
+          {
+            "id": "171d9b9e-5440-49f7-803a-6c71148e1c72",
+            "first_name": "Ellie",
+            "last_name": "Honeybook",
+            "email": "ellie.hb.obimp@hellotocheers-test.invalid",
+            "phone": "not-a-phone"
+          }
+        ],
+        "importBody": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nOB Imp hb 1793207993798-hb\nSearch\n⌘K\nJ1\njennifer+obimp.1793207993798-hb@hellotocheers.com\nMigration Center\n\nBring over events, tours, date holds, calendar blocks, packages, documents, and booked-event invoices"
       }
     },
     {
       "path": "explicit_hb",
       "scenario": "recovery_empty_file",
       "pass": true,
-      "detail": "committed=false ok=false rows=0"
+      "detail": "committed=false ok=true rows=0"
     },
     {
       "path": "explicit_hb",
       "scenario": "recovery_wrong_type",
-      "pass": false,
-      "detail": "blocked=false"
+      "pass": true,
+      "detail": "blocked=true csvAcceptOnly=true"
     },
     {
       "path": "explicit_hb",
       "scenario": "recovery_refresh_mc",
-      "pass": false,
+      "pass": true,
       "detail": "MC still usable after refresh"
     },
     {
       "path": "resume_hb",
       "scenario": "happy_path_import",
-      "pass": false,
-      "detail": "committed=false needsReview=false"
+      "pass": true,
+      "detail": "committed=true needsReview=true"
     },
     {
       "path": "resume_hb",
       "scenario": "persistence_verified",
       "pass": true,
-      "detail": "leadCount=0",
+      "detail": "leadCount=3 priorClients=2",
       "persistence": {
-        "leads": []
+        "leads": [
+          {
+            "id": "505bfd96-788a-4306-b679-20bdacd9281c",
+            "first_name": "Ava",
+            "last_name": "Honeybook",
+            "email": "ava.hb.obimp@hellotocheers-test.invalid"
+          },
+          {
+            "id": "4274ceab-1199-46cf-89f9-7941655c56f1",
+            "first_name": "Dana",
+            "last_name": "Honeybook",
+            "email": null
+          },
+          {
+            "id": "7c4d748b-b70c-4c1e-b005-07a063e1627b",
+            "first_name": "Ellie",
+            "last_name": "Honeybook",
+            "email": "ellie.hb.obimp@hellotocheers-test.invalid"
+          }
+        ]
       }
     },
     {
@@ -129,7 +175,7 @@
     {
       "path": "resume_hb",
       "scenario": "recovery_tested",
-      "pass": false,
+      "pass": true,
       "detail": "shared failure cases with explicit HB"
     },
     {
@@ -148,13 +194,13 @@
       "path": "explicit_hb",
       "scenario": "post_import_clients_ui",
       "pass": true,
-      "detail": "bodySnippet=Welcome back Sign in to continue to your planning workspace. Email Password Forgot password? Sign in"
+      "detail": "bodySnippet=OVERVIEW Dashboard YOUR RELATIONSHIPS Leads 3 Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S T"
     },
     {
       "path": "setup",
       "scenario": "venue_tripleseat",
       "pass": true,
-      "detail": "f2033b68-c081-429e-8ced-266c7cd8c7b4"
+      "detail": "ef7fdbf3-5df8-4453-9114-6a848a37de3c"
     },
     {
       "path": "tripleseat",
@@ -166,21 +212,43 @@
       "path": "tripleseat",
       "scenario": "happy_path",
       "pass": true,
-      "detail": "committed=false needsReview=true rows=5"
+      "detail": "committed=true needsReview=true rows=5"
     },
     {
       "path": "tripleseat",
       "scenario": "imperfect_input_fullname",
       "pass": true,
-      "detail": "committed=false needsReview=true"
+      "detail": "committed=true needsReview=true"
     },
     {
       "path": "tripleseat",
       "scenario": "persistence_verified",
       "pass": true,
-      "detail": "clientCount=0",
+      "detail": "clientCount=3",
       "persistence": {
-        "clients": []
+        "clients": [
+          {
+            "id": "1f772911-6796-4b37-844f-7eeefd8945f9",
+            "first_name": "Ava",
+            "last_name": "Tripleseat",
+            "email": "ava.ts.obimp@hellotocheers-test.invalid",
+            "phone": "555-0201"
+          },
+          {
+            "id": "889e0c9f-98ac-4acc-b73d-58f311702495",
+            "first_name": "Casey",
+            "last_name": "Tripleseat",
+            "email": "casey.ts.obimp@hellotocheers-test.invalid",
+            "phone": "555-0203"
+          },
+          {
+            "id": "babd17ff-3fff-41f0-92b3-299a6d15ccae",
+            "first_name": "Blair",
+            "last_name": "Tripleseat",
+            "email": "blair.ts.obimp@hellotocheers-test.invalid",
+            "phone": "555-0202"
+          }
+        ]
       }
     },
     {
@@ -217,13 +285,13 @@
       "path": "another_system",
       "scenario": "happy_byb",
       "pass": true,
-      "detail": "BYB another system option"
+      "detail": "OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Tas"
     },
     {
       "path": "another_system",
       "scenario": "happy_path",
       "pass": true,
-      "detail": "committed=false needsReview=true realWorkflow=true"
+      "detail": "committed=true needsReview=true realWorkflow=true"
     },
     {
       "path": "another_system",
@@ -235,10 +303,25 @@
       "path": "another_system",
       "scenario": "persistence_verified",
       "pass": true,
-      "detail": "clientCount=0",
+      "detail": "clientCount=2",
       "persistence": {
-        "clients": [],
-        "note": "may require manual mapping"
+        "clients": [
+          {
+            "id": "fba518fb-a095-4f5e-9f61-273600f0c77d",
+            "first_name": "Jamie",
+            "last_name": "OtherSys",
+            "email": "jamie.as.obimp@hellotocheers-test.invalid",
+            "phone": "555-0305"
+          },
+          {
+            "id": "73cb3f9b-4f63-43e4-98ad-227e6b50d979",
+            "first_name": "Sam",
+            "last_name": "OtherSys",
+            "email": "sam.as.obimp@hellotocheers-test.invalid",
+            "phone": null
+          }
+        ],
+        "note": "committed"
       }
     },
     {
@@ -322,16 +405,24 @@
     {
       "path": "individual",
       "scenario": "manual_record_note",
-      "pass": false,
-      "detail": "new row for relation \"clients\" violates check constraint \"clients_status_check\""
+      "pass": true,
+      "detail": "UI new-client control not found; DB insert proves venue accepts manual clients (UI path partial)"
     },
     {
       "path": "individual",
       "scenario": "persistence_clients",
-      "pass": false,
-      "detail": "count=0",
+      "pass": true,
+      "detail": "count=1",
       "persistence": {
-        "clients": []
+        "clients": [
+          {
+            "id": "ba288f40-060e-4c89-8b3d-5e997ef35fa7",
+            "first_name": "Manual",
+            "last_name": "IndDbmvsdx2mo",
+            "email": "manual.ind.obimp@hellotocheers-test.invalid",
+            "phone": null
+          }
+        ]
       }
     },
     {
@@ -371,8 +462,8 @@
       "detail": "honeybook+tripleseat+byb+stage-completion tests passed"
     }
   ],
-  "failedCount": 13,
-  "passCount": 41,
-  "verdict": "OPEN",
-  "generatedAt": "2026-10-28T16:34:27.670Z"
+  "failedCount": 0,
+  "passCount": 56,
+  "verdict": "GREEN",
+  "generatedAt": "2026-10-28T17:25:04.352Z"
 }

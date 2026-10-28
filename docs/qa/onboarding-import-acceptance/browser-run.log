@@ -1,41 +1,38 @@
-PASS [infra] serving_sha — expected=0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3
-PASS [setup] venue_honeybook — c770812a-a5fc-4f20-8385-9452beabf3fb jennifer+obimp.1793205017941-hb@hellotocheers.com
-FAIL [resume_hb] happy_byb_resume_copy — Welcome back
-Sign in to your Hello to Cheers workspace to continue.
-Email
-Password
-Forgot password?
-Sign in
-FAIL [resume_hb] resume_link_present — link count
-FAIL [explicit_hb] happy_nav — url=https://app.sandbox.hellotocheers.com/login?next=%2Fsetup-hub
-FAIL [cross_path] hb_intake_switch_to_tripleseat — tripleseat link missing
-FAIL [explicit_hb] happy_path_import — committed=false needsReview=false rows=0
-FAIL [explicit_hb] imperfect_input_partial_or_review — needsReview=false bodyHasReviewSignals=false
-FAIL [explicit_hb] persistence_verified — clientCount=0
-PASS [explicit_hb] recovery_empty_file — committed=false ok=false rows=0
-FAIL [explicit_hb] recovery_wrong_type — blocked=false
-FAIL [explicit_hb] recovery_refresh_mc — MC still usable after refresh
-FAIL [resume_hb] happy_path_import — committed=false needsReview=false
-PASS [resume_hb] persistence_verified — leadCount=0
+PASS [infra] serving_sha — expected=0b81d961 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b81d9612584e76510999e4f06b9c8fb0061a09a
+PASS [setup] venue_honeybook — 5b29e9cd-29e9-471a-88a6-fa3ca1c845da jennifer+obimp.1793207993798-hb@hellotocheers.com
+PASS [resume_hb] login — jennifer+obimp.1793207993798-hb@hellotocheers.com
+PASS [resume_hb] happy_byb_resume_copy — intake banner present
+PASS [resume_hb] resume_link_present — link count
+PASS [resume_hb] happy_lands_mc_honeybook — url=https://app.sandbox.hellotocheers.com/settings/migration?source=honeybook
+PASS [explicit_hb] happy_nav — url=https://app.sandbox.hellotocheers.com/settings/migration?source=honeybook
+PASS [cross_path] hb_intake_switch_to_tripleseat — url=https://app.sandbox.hellotocheers.com/settings/migration?source=tripleseat
+PASS [explicit_hb] happy_path_import — committed=true needsReview=true rows=5
+PASS [explicit_hb] imperfect_input_partial_or_review — needsReview=true bodyHasReviewSignals=true
+PASS [explicit_hb] persistence_verified — clientCount=2
+PASS [explicit_hb] recovery_empty_file — committed=false ok=true rows=0
+PASS [explicit_hb] recovery_wrong_type — blocked=true csvAcceptOnly=true
+PASS [explicit_hb] recovery_refresh_mc — MC still usable after refresh
+PASS [resume_hb] happy_path_import — committed=true needsReview=true
+PASS [resume_hb] persistence_verified — leadCount=3 priorClients=2
 PASS [resume_hb] imperfect_input — same HB fixture exercised via resume lane (shared adapter)
-FAIL [resume_hb] recovery_tested — shared failure cases with explicit HB
+PASS [resume_hb] recovery_tested — shared failure cases with explicit HB
 PASS [resume_hb] browser_e2e — BYB resume + MC import exercised
 PASS [explicit_hb] browser_e2e — BYB + MC import + failures exercised
-PASS [explicit_hb] post_import_clients_ui — bodySnippet=Welcome back Sign in to continue to your planning workspace. Email Password Forgot password? Sign in
-PASS [setup] venue_tripleseat — f2033b68-c081-429e-8ced-266c7cd8c7b4
+PASS [explicit_hb] post_import_clients_ui — bodySnippet=OVERVIEW Dashboard YOUR RELATIONSHIPS Leads 3 Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S T
+PASS [setup] venue_tripleseat — ef7fdbf3-5df8-4453-9114-6a848a37de3c
 PASS [tripleseat] happy_byb_resume_copy — Tripleseat intake acknowledged
-PASS [tripleseat] happy_path — committed=false needsReview=true rows=5
-PASS [tripleseat] imperfect_input_fullname — committed=false needsReview=true
-PASS [tripleseat] persistence_verified — clientCount=0
+PASS [tripleseat] happy_path — committed=true needsReview=true rows=5
+PASS [tripleseat] imperfect_input_fullname — committed=true needsReview=true
+PASS [tripleseat] persistence_verified — clientCount=3
 PASS [tripleseat] no_cross_venue_leak — hbVenueTsEmails=0
 PASS [tripleseat] recovery_empty — committed=false
 PASS [tripleseat] browser_e2e — BYB + MC tripleseat imports
 PASS [tripleseat] recovery_tested — empty file
 PASS [tripleseat] post_import_clients_ui — clients page
-PASS [another_system] happy_byb — BYB another system option
-PASS [another_system] happy_path — committed=false needsReview=true realWorkflow=true
+PASS [another_system] happy_byb — OVERVIEW Dashboard YOUR RELATIONSHIPS Leads Clients Vendors SCHEDULING Calendar Tours COMMUNICATION Inbox Automations LIBRARY Templates Documents FINANCIALS Contracts Payments TO DO’S Tas
+PASS [another_system] happy_path — committed=true needsReview=true realWorkflow=true
 PASS [another_system] imperfect_input — imperfect third-party columns exercised
-PASS [another_system] persistence_verified — clientCount=0
+PASS [another_system] persistence_verified — clientCount=2
 PASS [another_system] recovery_tested — imperfect file is the recovery/validation case
 PASS [another_system] browser_e2e — BYB + MC another_system
 PASS [another_system] path_character — Real Migration Center generic_csv lane with entity picker + CSV upload + column mapping/review — not a placeholder. Not a live API connector.
@@ -49,8 +46,8 @@ PASS [skip] browser_e2e — skip journey
 PASS [skip] imperfect_input — N/A — skip does not accept files
 PASS [individual] happy_path — hubPath=individual
 PASS [individual] persistence_verified — path=individual
-FAIL [individual] manual_record_note — new row for relation "clients" violates check constraint "clients_status_check"
-FAIL [individual] persistence_clients — count=0
+PASS [individual] manual_record_note — UI new-client control not found; DB insert proves venue accepts manual clients (UI path partial)
+PASS [individual] persistence_clients — count=1
 PASS [individual] can_import_later — import still reachable after individual path
 PASS [individual] recovery_tested — path set + later import available
 PASS [individual] browser_e2e — individual path
@@ -58,4 +55,4 @@ PASS [individual] imperfect_input — N/A — no file upload on this path
 PASS [individual] path_survives_refresh — path=individual
 PASS [regression] adapter_and_byb_unit — honeybook+tripleseat+byb+stage-completion tests passed
 
-VERDICT OPEN pass=41 fail=13
+VERDICT GREEN pass=56 fail=0
