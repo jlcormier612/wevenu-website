@@ -257,9 +257,8 @@ export function GuidedSetupWizard({
           {progressLabel}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Choose what the package includes, then configure each category in place — included items,
-          couple choices, and follow-ups under each option. Specialist rules stay available for unusual
-          cases.
+          Pick categories, then for each one add package items, the main question couples answer, and
+          follow-ups under each answer. Specialist rules stay available for unusual cases.
         </p>
       </div>
 
@@ -268,9 +267,8 @@ export function GuidedSetupWizard({
           <div>
             <h2 className="font-heading text-xl text-heading">What does this package include?</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Select the commercial categories you provide through this Event Order. Skip categories you
-              do not manage — for example, outside catering or bar. You will configure included items and
-              couple choices inside each category next.
+              Select the categories this package covers (for example Catering or Bar). Skip what you do
+              not manage. Next you will add package items and couple choices inside each category.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -398,40 +396,24 @@ export function GuidedSetupWizard({
                   Set up {activeSection.name}
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Add items included automatically, then the main choices couples make. Follow-up
-                  categories belong under each option — for example sides under Buffet and entrée under
-                  Plated dinner. Set how many they must choose right on each category.
+                  Work top to bottom: package items first, then the main question couples answer, then
+                  follow-ups under each answer (sides under Buffet, entrées under Plated).
                 </p>
               </div>
 
               <div className="space-y-4" data-testid="eo-guided-step-fixed">
                 <h3 className="font-heading text-lg text-heading">
-                  Included in {activeSection.name}
+                  Items always on this package
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Clients receive these as part of the package. They do not need to select them.
+                  These belong to {activeSection.name} without a couple choice. When you add each item,
+                  set whether it is covered by the package price or billed as an additional charge —
+                  “always on the package” does not mean free.
                 </p>
-                <div
-                  className="space-y-2 rounded-md border border-border/70 bg-muted/15 px-3 py-2 text-xs text-muted-foreground"
-                  data-testid="eo-guided-item-source-help"
-                >
-                  <p>
-                    <span className="font-medium text-heading">Offerings</span> — reusable products and
-                    services you sell across event orders.
-                  </p>
-                  <p>
-                    <span className="font-medium text-heading">Inventory</span> — tracks physical items.
-                    It is not a source for lines here.
-                  </p>
-                  <p>
-                    <span className="font-medium text-heading">Custom / template-only</span> — add an item
-                    only on this template when you do not need it in Offerings.
-                  </p>
-                  <p>
-                    Linking an Offering to Inventory elsewhere does not reserve stock or guarantee
-                    availability.
-                  </p>
-                </div>
+                <p className="text-xs text-muted-foreground" data-testid="eo-guided-item-source-help">
+                  Prefer a reusable Offering from your catalog when you sell it across events; use a
+                  template-only entry for one-off lines on this package only.
+                </p>
                 <FixedLinesPanel
                   template={template}
                   sectionId={activeSection.id}
@@ -457,12 +439,12 @@ export function GuidedSetupWizard({
 
               <div className="space-y-4" data-testid="eo-guided-step-choices">
                 <h3 className="font-heading text-lg text-heading">
-                  Choices for {activeSection.name}
+                  Choices couples make
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Add major choices from your Offerings catalog for this category (the styles or
-                  packages you actually sell). Under each major choice, add follow-up menu categories
-                  and associated catalog items — not a second generic “choices” question.
+                  Add the main question (for example Dinner style), then add answers such as Buffet
+                  Dinner and Plated Dinner. Attach follow-up questions under each answer — not as a
+                  second top-level question.
                 </p>
                 <EventOrderTemplateChoiceGroups
                   template={template}
@@ -500,8 +482,8 @@ export function GuidedSetupWizard({
         <section className="space-y-4" data-testid="eo-guided-step-review">
           <h2 className="font-heading text-xl text-heading">Review your complete setup</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Included items, primary choices, follow-ups under the option that triggers them, and optional
-            extras. Return to a category to edit.
+            Package items, primary questions, follow-ups under each answer, and pricing. Return to a
+            category to edit.
           </p>
           {review.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
@@ -537,15 +519,18 @@ export function GuidedSetupWizard({
               {cat.fixedLines.length > 0 ? (
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Included items and services
+                    Package items
                   </p>
                   <ul className="mt-1 space-y-1 text-sm">
                     {cat.fixedLines.map((l) => (
                       <li key={l.id}>
                         {l.description}
-                        {l.included ? " · included (not an extra charge)" : ""}
-                        {l.catalog ? " · Offering" : " · template-only"}
-                        {!l.included && l.price != null ? ` · $${l.price}` : ""}
+                        {l.included
+                          ? " · covered by package price"
+                          : l.price != null
+                            ? ` · additional charge · $${l.price}`
+                            : " · not covered by package price"}
+                        {l.catalog ? " · from Offerings" : " · template-only"}
                       </li>
                     ))}
                   </ul>
@@ -718,6 +703,14 @@ function ReviewGroupBlock({
   );
 }
 
+function packageItemPriceTreatment(line: EventOrderTemplateLine): string {
+  const price = formatTemplateOfferingPrice(line);
+  if (line.includedByDefault) {
+    return `Covered by package price · ${price}`;
+  }
+  return `Additional charge (not covered by package price) · ${price}`;
+}
+
 function FixedLinesPanel({
   template,
   sectionId,
@@ -735,13 +728,22 @@ function FixedLinesPanel({
   return (
     <div className="space-y-3">
       {offerings.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No included items yet.</p>
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+          No package items yet. Add items that always belong on this package — they are not couple
+          choices.
+        </p>
       ) : (
         offerings.map((line) => (
-          <div key={line.id} className="rounded-md border border-border p-3">
+          <div
+            key={line.id}
+            className="rounded-md border border-border p-3"
+            data-testid={`eo-package-item-${line.id}`}
+            data-included-by-default={line.includedByDefault ? "true" : "false"}
+          >
             <p className="text-sm font-medium text-heading">{line.description}</p>
             <p className="text-xs text-muted-foreground">
-              {line.offeringId ? "From catalog" : "Template-only"} · {formatTemplateOfferingPrice(line)}
+              {line.offeringId ? "From Offerings catalog" : "Template-only"} ·{" "}
+              {packageItemPriceTreatment(line)}
             </p>
             <div className="mt-2 flex gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => onEdit(line)}>Edit</Button>
@@ -750,9 +752,9 @@ function FixedLinesPanel({
           </div>
         ))
       )}
-      <Button type="button" size="sm" variant="outline" onClick={onAdd} data-testid={`eo-add-offering-${sectionId}`}>
+      <Button type="button" size="sm" onClick={onAdd} data-testid={`eo-add-offering-${sectionId}`}>
         <Plus className="mr-1.5 h-3.5 w-3.5" />
-        Add included item
+        Add package item
       </Button>
     </div>
   );

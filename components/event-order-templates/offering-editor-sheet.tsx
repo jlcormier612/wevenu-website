@@ -147,7 +147,7 @@ export function OfferingEditorSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader className="mb-6">
-          <SheetTitle>{line ? "Edit offering" : "Add offering"}</SheetTitle>
+          <SheetTitle>{line ? "Edit package item" : "Add package item"}</SheetTitle>
         </SheetHeader>
         <div className="space-y-4">
           {!line && available.length > 0 ? (
@@ -165,18 +165,12 @@ export function OfferingEditorSheet({
               />
               <div className="space-y-1.5 text-xs text-muted-foreground" data-testid="eo-line-source-help">
                 <p>
-                  <span className="font-medium text-heading">Offerings</span> are the products and
-                  services your venue provides or sells, such as catering packages, bar service,
-                  rentals, and upgrades. You can use the same Offering in multiple event orders.
+                  <span className="font-medium text-heading">From Offerings</span> — reuse a catalog
+                  product or service across event orders. Details copy into this template as a snapshot.
                 </p>
                 <p>
-                  <span className="font-medium text-heading">Inventory</span> tracks physical items your
-                  venue owns or manages, such as chairs, tables, and ceremony arbors. Inventory can
-                  support floor plan placement and usage reporting — it is not selected here.
-                </p>
-                <p>
-                  Details are copied into this template as a snapshot. Catalog identity is kept by
-                  Offering id — never matched by name. Linking an Offering to Inventory does not reserve stock or guarantee availability.
+                  <span className="font-medium text-heading">Template-only</span> — for a one-off line on
+                  this package. Inventory is managed separately and is not selected here.
                 </p>
               </div>
               {!customMode ? (
@@ -301,10 +295,14 @@ export function OfferingEditorSheet({
                   checked={included}
                   onChange={(e) => setIncluded(e.target.checked)}
                   className="mt-1 size-4 shrink-0"
+                  data-testid="eo-line-covered-by-package"
                 />
                 <span>
-                  Included by default
-                  <span className="block text-xs text-muted-foreground">Selected when this template is applied to an event.</span>
+                  Covered by the package price
+                  <span className="block text-xs text-muted-foreground">
+                    Uncheck if this item is an additional charge. The item still belongs on the package
+                    without a couple choice either way.
+                  </span>
                 </span>
               </label>
 

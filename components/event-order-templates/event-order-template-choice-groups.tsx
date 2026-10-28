@@ -1354,12 +1354,12 @@ export function EventOrderTemplateChoiceGroups({
       ) : guidedOrdinary ? (
         <div>
           <h3 className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            {rootsOnly ? "Primary question" : "Service options and follow-up choices"}
+            {rootsOnly ? "Primary question and answers" : "Follow-ups under each answer"}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {rootsOnly
-              ? "Add major choices from your Offerings catalog for this service category. Option labels should be the real offerings you sell — not a generic placeholder question."
-              : "Under each major choice, add follow-up categories and the associated catalog items that apply only for that choice. Set how many the couple must select."}
+              ? "Name the question couples see first, then add each answer (Buffet Dinner, Plated Dinner). Answers can come from Offerings or stay template-only."
+              : "Under each answer, add the follow-up questions and items that apply only when that answer is selected. Set how many the couple must choose."}
           </p>
         </div>
       ) : (
@@ -1388,10 +1388,15 @@ export function EventOrderTemplateChoiceGroups({
       ) : null}
 
       {groups.length === 0 && !(nestBranches && scopedGroups.some((g) => isDependentGroup(g))) ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+        <p
+          className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground"
+          data-testid="eo-choice-groups-empty"
+        >
           {showUnassignedOnly
             ? "No unassigned choice groups."
-            : "No choice groups in this section yet. Add a group when clients should pick among options."}
+            : guidedOrdinary
+              ? "No primary question yet. Use “Add a primary question” below — for example Dinner style with Buffet and Plated answers."
+              : "No choice groups in this section yet. Add a group when clients should pick among options."}
         </p>
       ) : (
         <ul className="space-y-3">
@@ -1432,15 +1437,15 @@ export function EventOrderTemplateChoiceGroups({
 
       {guidedOrdinary && !specialistMode ? (
         <div
-          className="rounded-lg border border-dashed border-border p-4 space-y-3"
+          className="rounded-lg border-2 border-heading/30 bg-heading/5 p-4 space-y-3"
           data-testid="eo-add-primary-question"
         >
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="text-sm font-semibold text-heading">
             Add a primary question
           </p>
           <p className="text-sm text-muted-foreground">
-            This is the first choice couples make — for example “Dinner service” with Buffet and Plated
-            dinner. Follow-up menu categories belong under each option, not here.
+            This is the first choice couples make — for example “Dinner style.” After you save it, add
+            Buffet Dinner and Plated Dinner as answers, then attach follow-ups under each answer.
           </p>
           <Input
             placeholder="Question name (e.g. Dinner service)"
@@ -1650,12 +1655,12 @@ export function EventOrderTemplateChoiceGroups({
         data-testid="eo-add-option-panel"
       >
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          {guidedOrdinary ? "Add from your Offerings catalog" : "Add option"}
+          {guidedOrdinary ? "Add an answer or follow-up item" : "Add option"}
         </p>
         <p className="text-xs text-muted-foreground">
           {guidedOrdinary
-            ? "Pick the destination in this category, then select a catalog offering. Primary destinations use major choices; follow-ups under a linked major choice prefer that choice’s associated catalog items. Template-only items remain available when something is not in the catalog. Offerings are not Inventory and do not reserve stock."
-            : "Prefer a reusable Offering when the choice is something you sell across event orders. Use a custom / template-only option when it belongs only on this template. Offerings are not Inventory — linking them elsewhere does not reserve stock. New catalog picks snapshot label and price once; later catalog edits do not rewrite this option."}
+            ? "Choose which question this belongs to, then pick from Offerings or add a template-only entry. Catalog picks snapshot the label and price once."
+            : "Prefer a reusable Offering when you sell this across events, or add a template-only option for this package only. Catalog picks snapshot label and price once."}
         </p>
         <select
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -1664,14 +1669,14 @@ export function EventOrderTemplateChoiceGroups({
           data-testid="eo-add-option-group"
         >
           <option value="">
-            {guidedOrdinary ? "Select where this belongs…" : "Select group…"}
+            {guidedOrdinary ? "Select which question…" : "Select group…"}
           </option>
           {/* When nesting branches, include dependents so follow-up categories can receive items. */}
           {(rootsOnly ? groups : nestBranches ? scopedGroups : groups).map((g) => (
             <option key={g.id} value={g.id}>
               {isDependentGroup(g)
-                ? `${g.name} (under selected major choice)`
-                : `${g.name} (major choices)`}
+                ? `${g.name} (follow-up under an answer)`
+                : `${g.name} (primary question)`}
             </option>
           ))}
         </select>
@@ -1683,8 +1688,9 @@ export function EventOrderTemplateChoiceGroups({
               size="sm"
               disabled={!optionGroupId || available.length === 0}
               onClick={() => setOptionMode("catalog")}
+              data-testid="eo-add-option-from-catalog"
             >
-              + Select Offering
+              + From Offerings catalog
             </Button>
             <Button
               type="button"
@@ -1692,12 +1698,13 @@ export function EventOrderTemplateChoiceGroups({
               size="sm"
               disabled={!optionGroupId}
               onClick={() => setOptionMode("custom")}
+              data-testid="eo-add-option-template-only"
             >
-              + Add template-only option
+              + Template-only answer
             </Button>
             {available.length === 0 ? (
               <p className="w-full text-xs text-muted-foreground">
-                No active Offerings yet — add a template-only option, or create Offerings first.
+                No Offerings yet — add a template-only answer, or create Offerings first.
               </p>
             ) : null}
           </div>

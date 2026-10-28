@@ -30,15 +30,16 @@ export default async function EventOrderTemplatesPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Event Order Templates"
-        description="Reusable packages for a wedding’s Event Order — what you include automatically, and what the couple chooses."
+        description="Reusable packages for a wedding’s Event Order — package items, couple choices, and follow-ups under each answer."
         actions={<NewEventOrderTemplateButton />}
       />
       <LibraryHowItWorks>
-        An Event Order template is the reusable package you apply to a booked event. You decide what is
-        included automatically (no couple action), what the couple must choose (for example Buffet or
-        Plated dinner), and any follow-up questions that appear only after a choice. Customize a starter
-        or build your own; Preview shows the couple experience without sending anything. Use applies the
-        template to an event&apos;s Event Order; Send is only for templates with couple choices.
+        An Event Order template is the reusable package you apply to a booked event. You decide package
+        items (no couple action — with clear package-price vs additional-charge treatment), the main
+        question couples answer (for example Buffet or Plated dinner), and follow-ups that appear only
+        after a choice. Customize a starter or build your own; Preview shows the couple experience without sending
+        anything. Use applies the template to an event&apos;s Event Order; Send is only for templates with
+        couple choices.
       </LibraryHowItWorks>
       <div
         className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground space-y-1.5"

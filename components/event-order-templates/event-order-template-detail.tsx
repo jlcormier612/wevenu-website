@@ -185,10 +185,9 @@ export function EventOrderTemplateDetail({
       ) : null}
 
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground" data-testid="eo-template-detail-intro">
-        Set up this package category by category: what is included automatically, what the couple chooses,
-        and follow-up questions nested under each option (for example sides under Buffet). Preview the
-        couple experience anytime — it does not send or finalize. Specialist selection rules stay available
-        for unusual cases.{" "}
+        Set up each category with package items (no couple choice), the main question couples answer, and
+        follow-ups under each answer — for example sides under Buffet. Preview anytime; it does not send
+        or finalize.{" "}
         <Link href="/library/offerings" className="font-medium text-heading hover:underline">
           Manage Offerings →
         </Link>

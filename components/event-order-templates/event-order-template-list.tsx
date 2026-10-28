@@ -75,7 +75,7 @@ export function NewEventOrderTemplateButton() {
         <SheetHeader className="mb-6">
           <SheetTitle>New Event Order Template</SheetTitle>
           <p className="text-sm text-muted-foreground">
-            Create a reusable package — what is included automatically and what the couple chooses.
+            Create a reusable package — package items, couple choices, and follow-ups under each answer.
             Applying it copies a snapshot into an event; it is not itself a client commitment.
           </p>
         </SheetHeader>

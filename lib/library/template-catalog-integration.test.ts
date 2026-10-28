@@ -166,7 +166,9 @@ describe("Event Order Template — offering provenance + snapshot", () => {
     const ui = readFileSync(resolve("components/event-order-templates/offering-editor-sheet.tsx"), "utf8");
     assert.match(ui, /Select from Offerings/);
     assert.match(ui, /Or add a custom \/ template-only line/);
-    assert.match(ui, /does not reserve stock/);
+    assert.match(ui, /From Offerings/);
+    assert.match(ui, /Template-only/);
+    assert.match(ui, /Covered by the package price/);
     assert.doesNotMatch(ui, /Start from a Library offering \(optional\)/);
   });
 });
@@ -200,13 +202,12 @@ describe("Choices Template — offering-first + label independence", () => {
     assert.match(apply, /offeringId: opt\.offeringId/);
   });
 
-  it("EO choice-group editor uses Select Offering primary / template-only secondary", () => {
+  it("EO choice-group editor uses catalog primary / template-only secondary", () => {
     const ui = readFileSync(resolve("components/event-order-templates/event-order-template-choice-groups.tsx"), "utf8");
-    assert.match(ui, /Select Offering/);
-    assert.match(ui, /Add template-only option/);
+    assert.match(ui, /From Offerings catalog|Select Offering/);
+    assert.match(ui, /Template-only answer|Add template-only option/);
     assert.doesNotMatch(ui, /Optional: link Offering/);
     assert.doesNotMatch(ui, /matchOfferingByName|autoLinkByName/);
-    assert.match(ui, /does not reserve stock/);
   });
 });
 

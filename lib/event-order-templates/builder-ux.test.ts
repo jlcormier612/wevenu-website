@@ -16,9 +16,10 @@ describe("EO template builder — guided setup UX seams", () => {
     );
     assert.match(detail, /GuidedSetupWizard/);
     assert.match(detail, /eo-template-detail-intro/);
-    assert.match(detail, /included automatically/i);
-    assert.match(detail, /follow-up questions nested under each option/i);
+    assert.match(detail, /package items/i);
+    assert.match(detail, /follow-ups under each answer/i);
     assert.doesNotMatch(detail, /commercial build sheet/i);
+    assert.doesNotMatch(detail, /included automatically/i);
   });
 
   it("landing page explains templates without jargon-heavy intro", () => {
@@ -28,7 +29,7 @@ describe("EO template builder — guided setup UX seams", () => {
     );
     assert.match(page, /Reusable packages for a wedding/i);
     assert.match(page, /eo-templates-landing-example/);
-    assert.match(page, /included automatically/i);
+    assert.match(page, /package items|no couple action/i);
     assert.match(page, /Preview shows the couple experience without sending/i);
     assert.doesNotMatch(page, /commercial build sheets/i);
   });
@@ -81,7 +82,7 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /nestBranches/);
   });
 
-  it("ordinary guided catering flow uses major catalog choices + under-option follow-ups", () => {
+  it("ordinary guided catering flow uses primary question + under-answer follow-ups", () => {
     const groups = readFileSync(
       join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
       "utf8",
@@ -99,12 +100,16 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(groups, /dependentCategoryGroupInput/);
     assert.match(groups, /resolvePlainSelectionRule/);
     assert.match(groups, /If the couple chooses/);
-    assert.match(groups, /Select where this belongs/);
+    assert.match(groups, /Select which question/);
     assert.match(groups, /authoringScope/);
-    assert.match(wizard, /Choices for \{activeSection\.name\}/);
-    assert.match(wizard, /major choices from your Offerings catalog/i);
-    assert.match(wizard, /follow-up menu categories/i);
-    assert.doesNotMatch(wizard, /Under each option, add the follow-up categories/i);
+    assert.match(groups, /Template-only answer/);
+    assert.match(wizard, /Items always on this package/);
+    assert.match(wizard, /Choices couples make/);
+    assert.match(wizard, /Add package item/);
+    assert.match(wizard, /Covered by package price/);
+    assert.doesNotMatch(wizard, /Included in \{activeSection\.name\}/);
+    assert.doesNotMatch(wizard, /major choices from your Offerings catalog/i);
+    assert.doesNotMatch(groups, /Add from your Offerings catalog/);
   });
 
   it("preview validates under-selection with the shared choices validator", () => {
@@ -118,14 +123,15 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(groups, /orderedVisibleChoiceGroups/);
   });
 
-  it("offering and line editors explain Offerings vs Inventory vs template-only", () => {
+  it("offering and line editors explain Offerings vs template-only at the point of add", () => {
     const sheet = readFileSync(
       join(root, "components/event-order-templates/offering-editor-sheet.tsx"),
       "utf8",
     );
     assert.match(sheet, /eo-line-source-help/);
-    assert.match(sheet, /does not reserve stock/);
-    assert.match(sheet, /never matched by name/);
+    assert.match(sheet, /From Offerings/);
+    assert.match(sheet, /Template-only/);
+    assert.match(sheet, /Covered by the package price/);
     assert.match(sheet, /reusable Offerings list/);
   });
 
@@ -156,6 +162,6 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(picker, /eo-offering-filter-empty/);
     assert.match(picker, /eo-offering-search/);
     assert.match(sheet, /CategorizedOfferingSelect/);
-    assert.match(sheet, /never matched by name/);
+    assert.match(sheet, /snapshot/);
   });
 });
