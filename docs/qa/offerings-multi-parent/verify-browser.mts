@@ -189,8 +189,12 @@ async function main() {
     await page.goto(`${APP}/library/offerings`, { waitUntil: "networkidle", timeout: 120_000 });
     await page.waitForSelector('[data-testid="offerings-library"]', { timeout: 60_000 });
 
-    // Create Cheesecake via UI with both majors checked
-    await page.getByTestId("offerings-new").click();
+    // Create Cheesecake via UI with both majors checked.
+    // PageHeader owns "+ New Offering" when headerCreate={false} (no offerings-new testid).
+    const newBtn = page.getByRole("button", { name: /^\+?\s*New Offering$/i }).first();
+    await newBtn.waitFor({ state: "visible", timeout: 30_000 });
+    await newBtn.click();
+    await page.getByTestId("offering-name").waitFor({ state: "visible", timeout: 15_000 });
     await page.getByTestId("offering-name").fill(`${PREFIX}Cheesecake`);
     await page.getByTestId("offering-category").selectOption(cateringId);
     await page.waitForSelector('[data-testid="offerings-parents"], [data-testid="offering-parents"]', {
@@ -226,24 +230,46 @@ async function main() {
     );
     persisted.cheesecake = { ...cake, parentIds };
 
-    const cakeRow = page.locator(`[data-testid="offering-row-${cake.id}"]`);
-    await cakeRow.waitFor({ timeout: 30_000 });
-    const rowParents = await cakeRow.getAttribute("data-parent-ids");
+    const cakeRows = page.locator(`[data-testid="offering-row-${cake.id}"]`);
+    await cakeRows.first().waitFor({ timeout: 30_000 });
+    const placementCount = await cakeRows.count();
+    const nestUnderBuffet = page.locator(
+      `[data-testid="offering-row-${cake.id}"][data-nest-under="${buffet.id}"]`,
+    );
+    const nestUnderPlated = page.locator(
+      `[data-testid="offering-row-${cake.id}"][data-nest-under="${plated.id}"]`,
+    );
+    record(
+      "ui_appears_under_both_majors",
+      placementCount === 2
+        && (await nestUnderBuffet.count()) === 1
+        && (await nestUnderPlated.count()) === 1,
+      JSON.stringify({
+        placementCount,
+        underBuffet: await nestUnderBuffet.count(),
+        underPlated: await nestUnderPlated.count(),
+      }),
+    );
+    const rowParents = await nestUnderBuffet.getAttribute("data-parent-ids");
     record(
       "ui_row_parent_ids",
       Boolean(rowParents?.includes(plated.id) && rowParents?.includes(buffet.id)),
       rowParents ?? "",
     );
-    const underText = await cakeRow.innerText();
+    const underBuffetText = await nestUnderBuffet.innerText();
+    const underPlatedText = await nestUnderPlated.innerText();
     record(
       "ui_under_both_labels",
-      /Under /i.test(underText) && underText.includes("Plated") && underText.includes("Buffet"),
-      underText.slice(0, 300),
+      /Under /i.test(underBuffetText)
+        && underBuffetText.includes("Buffet")
+        && /Under /i.test(underPlatedText)
+        && underPlatedText.includes("Plated"),
+      JSON.stringify({ underBuffetText: underBuffetText.slice(0, 200), underPlatedText: underPlatedText.slice(0, 200) }),
     );
     await page.screenshot({ path: `${OUT}/shots/offerings-both-parents-1280.png`, fullPage: true });
 
-    // Reopen edit — both checks persist
-    await cakeRow.getByRole("button", { name: "Edit" }).click();
+    // Reopen edit — both checks persist (any placement opens the same offering)
+    await nestUnderBuffet.getByRole("button", { name: "Edit" }).click();
     await page.waitForSelector('[data-testid="offering-parents"]', { timeout: 15_000 });
     const platedChecked = await page.getByTestId(`offering-parent-check-${plated.id}`).isChecked();
     const buffetChecked = await page.getByTestId(`offering-parent-check-${buffet.id}`).isChecked();
@@ -272,8 +298,22 @@ async function main() {
       .maybeSingle();
     record("offering_not_deleted_on_unlink", Boolean(cakeStill?.id), cakeStill?.id ?? "missing");
 
+    // After removing Buffet, only the Plated placement remains
+    const afterRemoveCount = await page.locator(`[data-testid="offering-row-${cake.id}"]`).count();
+    const stillUnderPlated = await page
+      .locator(`[data-testid="offering-row-${cake.id}"][data-nest-under="${plated.id}"]`)
+      .count();
+    const goneFromBuffet = await page
+      .locator(`[data-testid="offering-row-${cake.id}"][data-nest-under="${buffet.id}"]`)
+      .count();
+    record(
+      "ui_after_remove_one_parent",
+      afterRemoveCount === 1 && stillUnderPlated === 1 && goneFromBuffet === 0,
+      JSON.stringify({ afterRemoveCount, stillUnderPlated, goneFromBuffet }),
+    );
+
     // Re-add both for EO authoring check
-    await page.locator(`[data-testid="offering-row-${cake.id}"]`).getByRole("button", { name: "Edit" }).click();
+    await page.locator(`[data-testid="offering-row-${cake.id}"]`).first().getByRole("button", { name: "Edit" }).click();
     await page.waitForSelector('[data-testid="offering-parents"]', { timeout: 15_000 });
     if (!(await page.getByTestId(`offering-parent-check-${buffet.id}`).isChecked())) {
       await page.getByTestId(`offering-parent-check-${buffet.id}`).check();
@@ -284,12 +324,16 @@ async function main() {
     await page.getByTestId("offering-save").click();
     await page.waitForTimeout(1200);
 
+    const restoredPlacements = await page.locator(`[data-testid="offering-row-${cake.id}"]`).count();
+    record("ui_restored_both_placements", restoredPlacements === 2, `count=${restoredPlacements}`);
+
     // Narrow viewport
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${APP}/library/offerings`, { waitUntil: "networkidle", timeout: 120_000 });
     await page.waitForSelector(`[data-testid="offering-row-${cake.id}"]`, { timeout: 60_000 });
+    const mobilePlacements = await page.locator(`[data-testid="offering-row-${cake.id}"]`).count();
     await page.screenshot({ path: `${OUT}/shots/offerings-both-parents-390.png`, fullPage: true });
-    record("mobile_row_visible", true, "390 viewport screenshot");
+    record("mobile_row_visible", mobilePlacements === 2, `390 placements=${mobilePlacements}`);
 
     // EO template: same offering_id under two dependent groups (context-specific prices)
     const { data: tpl, error: tplErr } = await admin

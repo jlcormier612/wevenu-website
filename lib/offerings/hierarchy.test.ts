@@ -93,7 +93,7 @@ describe("Offerings hierarchy helpers", () => {
   });
 
   it("orders children under parents", () => {
-    const ordered = orderOfferingsHierarchically(catalog).map((o) => o.id);
+    const ordered = orderOfferingsHierarchically(catalog).map((p) => p.offering.id);
     assert.ok(ordered.indexOf("buffet") < ordered.indexOf("chicken"));
     assert.ok(ordered.indexOf("plated") < ordered.indexOf("salad"));
   });
@@ -138,13 +138,45 @@ describe("Offerings multi-parent associations", () => {
     );
   });
 
-  it("orders multi-parent item once under first parent by name", () => {
-    const ordered = orderOfferingsHierarchically(multiParentCatalog).map((o) => o.id);
-    assert.equal(ordered.filter((id) => id === "cheesecake").length, 1);
-    // "Buffet Dinner" sorts before "Plated Dinner" → nest under buffet
-    assert.ok(ordered.indexOf("buffet") < ordered.indexOf("cheesecake"));
-    assert.ok(ordered.indexOf("cheesecake") < ordered.indexOf("plated")
-      || ordered.indexOf("cheesecake") > ordered.indexOf("plated"));
+  it("orders multi-parent item under every associated major", () => {
+    const placements = orderOfferingsHierarchically(multiParentCatalog);
+    const cakePlacements = placements.filter((p) => p.offering.id === "cheesecake");
+    assert.equal(cakePlacements.length, 2);
+    assert.deepEqual(
+      cakePlacements.map((p) => p.nestUnderParentId).sort(),
+      ["buffet", "plated"],
+    );
+    // Still one Offering record identity in the source catalog
+    assert.equal(multiParentCatalog.filter((o) => o.id === "cheesecake").length, 1);
+    const ids = placements.map((p) => p.offering.id);
+    const buffetIdx = ids.indexOf("buffet");
+    const platedIdx = ids.indexOf("plated");
+    const cakeUnderBuffet = placements.findIndex(
+      (p) => p.offering.id === "cheesecake" && p.nestUnderParentId === "buffet",
+    );
+    const cakeUnderPlated = placements.findIndex(
+      (p) => p.offering.id === "cheesecake" && p.nestUnderParentId === "plated",
+    );
+    assert.ok(buffetIdx < cakeUnderBuffet && cakeUnderBuffet < platedIdx);
+    assert.ok(platedIdx < cakeUnderPlated);
+  });
+
+  it("Whiskey-style dual bar parents place the item under both majors", () => {
+    const catalog = [
+      { id: "guest", name: "Guest Paid Bar Offering", categoryId: "bar", parentOfferingIds: [] as string[] },
+      { id: "premium", name: "Premium open bar", categoryId: "bar", parentOfferingIds: [] as string[] },
+      {
+        id: "whiskey",
+        name: "Whiskey",
+        categoryId: "bar",
+        parentOfferingIds: ["guest", "premium"],
+      },
+    ];
+    const placements = orderOfferingsHierarchically(catalog);
+    const whiskey = placements.filter((p) => p.offering.id === "whiskey");
+    assert.equal(whiskey.length, 2);
+    assert.ok(whiskey.some((p) => p.nestUnderParentId === "guest"));
+    assert.ok(whiskey.some((p) => p.nestUnderParentId === "premium"));
   });
 
   it("formats multiple parent names for display", () => {
@@ -268,6 +300,8 @@ describe("Offerings hierarchy migration + UI seams", () => {
     assert.match(library, /offerings-parents|offering-parents/);
     assert.match(library, /type="checkbox"/);
     assert.match(library, /Removing a check removes only that association/);
+    assert.match(library, /data-nest-under/);
+    assert.match(library, /orderOfferingsHierarchically/);
     assert.match(choiceGroups, /Select where this belongs/);
     assert.doesNotMatch(choiceGroups, /Select question or category/);
   });

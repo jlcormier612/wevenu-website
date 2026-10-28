@@ -103,13 +103,23 @@ export function filterOfferingsForAuthoringContext<T extends OfferingHierarchyFi
 }
 
 /**
- * Stable list order: category → majors → nested children → standalones.
- * Multi-parent items appear once, nested under their first parent (by parent name
- * among parents present in the category), so the catalog does not look duplicated.
+ * One catalog list placement. Multi-parent items get one placement under each
+ * associated major; the underlying Offering record is never duplicated.
+ */
+export type OfferingListPlacement<T extends OfferingHierarchyFields> = {
+  offering: T;
+  /** Parent major for this nested placement; null for top-level rows. */
+  nestUnderParentId: string | null;
+};
+
+/**
+ * Stable list order: category → majors → nested children (under each parent) →
+ * standalones / orphans. A shared item appears under every associated major that
+ * is present in the same category list.
  */
 export function orderOfferingsHierarchically<T extends OfferingHierarchyFields>(
   offerings: T[],
-): T[] {
+): OfferingListPlacement<T>[] {
   const byCat = new Map<string, T[]>();
   for (const o of offerings) {
     const key = o.categoryId ?? "__none__";
@@ -117,35 +127,35 @@ export function orderOfferingsHierarchically<T extends OfferingHierarchyFields>(
     list.push(o);
     byCat.set(key, list);
   }
-  const out: T[] = [];
+  const out: OfferingListPlacement<T>[] = [];
   for (const list of byCat.values()) {
     const tops = list
       .filter((o) => !hasParents(o))
       .sort((a, b) => a.name.localeCompare(b.name));
     const children = list.filter((o) => hasParents(o));
     const topIds = new Set(tops.map((t) => t.id));
-    const nameById = new Map(list.map((o) => [o.id, o.name]));
+    const placedUnder = new Set<string>();
 
     for (const top of tops) {
-      out.push(top);
-      out.push(
-        ...children
-          .filter((c) => {
-            const parents = parentIdsOf(c).filter((pid) => topIds.has(pid));
-            if (parents.length === 0) return false;
-            const primary = [...parents].sort((a, b) =>
-              (nameById.get(a) ?? a).localeCompare(nameById.get(b) ?? b),
-            )[0];
-            return primary === top.id;
-          })
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      );
+      out.push({ offering: top, nestUnderParentId: null });
+      const nested = children
+        .filter((c) => parentIdsOf(c).includes(top.id))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      for (const c of nested) {
+        out.push({ offering: c, nestUnderParentId: top.id });
+        placedUnder.add(`${c.id}::${top.id}`);
+      }
     }
-    const placed = new Set(out.map((o) => o.id));
+    // Orphans: parents missing from this category slice (or all parents filtered out)
     out.push(
       ...children
-        .filter((c) => !placed.has(c.id))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .filter((c) => {
+          const parentsInCat = parentIdsOf(c).filter((pid) => topIds.has(pid));
+          if (parentsInCat.length === 0) return true;
+          return !parentsInCat.some((pid) => placedUnder.has(`${c.id}::${pid}`));
+        })
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((c) => ({ offering: c, nestUnderParentId: null as string | null })),
     );
   }
   return out;

@@ -53,8 +53,9 @@ export const OfferingsLibrarySection = React.forwardRef<
   }));
 
   const visible = offerings.filter((o) => showArchived || !o.isArchived);
-  const ordered = orderOfferingsHierarchically(visible);
+  const placements = orderOfferingsHierarchically(visible);
   const majors = majorOfferingIds(offerings);
+  const nameById = new Map(offerings.map((o) => [o.id, o.name]));
 
   return (
     <div className="space-y-4" data-testid="offerings-library">
@@ -74,20 +75,27 @@ export const OfferingsLibrarySection = React.forwardRef<
         ) : null}
       </div>
 
-      {ordered.length === 0 ? (
+      {placements.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
           No offerings yet. Add a service category, then major choices and the items that belong under them.
         </div>
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border bg-card" data-testid="offerings-list">
-          {ordered.map((o) => {
+          {placements.map(({ offering: o, nestUnderParentId }) => {
             const role = offeringRole(o, majors);
             const isChild = hasParents(o);
+            const nestLabel = nestUnderParentId
+              ? nameById.get(nestUnderParentId) ?? null
+              : null;
+            const underLabel = nestLabel
+              ? nestLabel
+              : o.parentOfferingName ?? null;
             return (
               <li
-                key={o.id}
-                className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${isChild ? "bg-muted/20 pl-8" : ""}`}
+                key={`${o.id}::${nestUnderParentId ?? "top"}`}
+                className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${isChild && nestUnderParentId ? "bg-muted/20 pl-8" : ""}`}
                 data-testid={`offering-row-${o.id}`}
+                data-nest-under={nestUnderParentId ?? ""}
                 data-offering-role={role}
                 data-parent-ids={parentIdsOf(o).join(",")}
               >
@@ -99,8 +107,8 @@ export const OfferingsLibrarySection = React.forwardRef<
                     {o.isArchived && <Badge variant="outline">Archived</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {isChild && o.parentOfferingName
-                      ? `Under ${o.parentOfferingName} · `
+                    {isChild && underLabel
+                      ? `Under ${underLabel} · `
                       : ""}
                     {formatOptionalMoney(o.defaultUnitPrice)}
                     {o.unit ? ` / ${o.unit}` : ""}
