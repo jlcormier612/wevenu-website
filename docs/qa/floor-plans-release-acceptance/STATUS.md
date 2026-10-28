@@ -10,7 +10,9 @@ Prior remediation **23/23 on `12721ce6`** remains valid for its scoped scenarios
 |------|--------|
 | Acceptance start serving | `12721ce63afa00b187b1bf5816dd7880d5eda219` |
 | First-layout → working seed fix | `fab331592a1a77a15f852364d356c3b8cd4395cf` |
-| Deploy | https://github.com/jlcormier612/wevenu-website/actions/runs/40622837094 |
+| Typecheck unblock (amendsInvoiceId) | `40eb7531339659efbb3204be3f465fb1b79d20b9` |
+| Deploy (failed typecheck on fab33159) | https://github.com/jlcormier612/wevenu-website/actions/runs/40622837094 |
+| Deploy (retry with type fix) | https://github.com/jlcormier612/wevenu-website/actions/runs/40623617817 |
 | Production | Untouched |
 
 ## Honest answer
