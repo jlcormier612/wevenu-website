@@ -83,6 +83,80 @@ describe("validateChoicesAnswers", () => {
     assert.equal(result.ok, false);
   });
 
+  it("rejects below multi minimum with actionable message", () => {
+    const multiMin: ChoicesDefinition = {
+      ...definition,
+      groups: [
+        {
+          id: "g-sides",
+          sectionId: null,
+          name: "Side dishes",
+          instructions: null,
+          selectionMode: "multi",
+          minSelect: 2,
+          maxSelect: 2,
+          allowQuantity: false,
+          sortOrder: 0,
+        },
+      ],
+      options: [
+        {
+          id: "o-a", groupId: "g-sides", offeringId: null, label: "A",
+          description: null, isIncluded: false, unitPrice: 0, sortOrder: 0,
+        },
+        {
+          id: "o-b", groupId: "g-sides", offeringId: null, label: "B",
+          description: null, isIncluded: false, unitPrice: 0, sortOrder: 1,
+        },
+        {
+          id: "o-c", groupId: "g-sides", offeringId: null, label: "C",
+          description: null, isIncluded: false, unitPrice: 0, sortOrder: 2,
+        },
+      ],
+    };
+    const below = validateChoicesAnswers(multiMin, { "g-sides": { optionIds: ["o-a"] } });
+    assert.equal(below.ok, false);
+    if (!below.ok) assert.match(below.message, /at least 2/);
+  });
+
+  it("rejects above multi maximum with actionable message", () => {
+    const multiMax: ChoicesDefinition = {
+      ...definition,
+      groups: [
+        {
+          id: "g-sides",
+          sectionId: null,
+          name: "Side dishes",
+          instructions: null,
+          selectionMode: "multi",
+          minSelect: 0,
+          maxSelect: 2,
+          allowQuantity: false,
+          sortOrder: 0,
+        },
+      ],
+      options: [
+        {
+          id: "o-a", groupId: "g-sides", offeringId: null, label: "A",
+          description: null, isIncluded: false, unitPrice: 0, sortOrder: 0,
+        },
+        {
+          id: "o-b", groupId: "g-sides", offeringId: null, label: "B",
+          description: null, isIncluded: false, unitPrice: 0, sortOrder: 1,
+        },
+        {
+          id: "o-c", groupId: "g-sides", offeringId: null, label: "C",
+          description: null, isIncluded: false, unitPrice: 0, sortOrder: 2,
+        },
+      ],
+    };
+    const above = validateChoicesAnswers(multiMax, {
+      "g-sides": { optionIds: ["o-a", "o-b", "o-c"] },
+    });
+    assert.equal(above.ok, false);
+    if (!above.ok) assert.match(above.message, /at most 2/);
+  });
+
   it("skips inactive required dependents and rejects orphan child answers", () => {
     const withDeps: ChoicesDefinition = {
       ...definition,

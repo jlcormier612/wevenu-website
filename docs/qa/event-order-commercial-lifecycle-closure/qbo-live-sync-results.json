@@ -1,0 +1,120 @@
+{
+  "pass": true,
+  "run": "QBOLIVEMVROF0EQ",
+  "checks": [
+    {
+      "name": "connection_is_sandbox_company",
+      "pass": true,
+      "detail": "{\"company\":\"Sandbox Company US 1ff4\",\"env\":\"sandbox\",\"status\":\"connected\",\"realmPrefix\":\"9341…\",\"health\":false}"
+    },
+    {
+      "name": "token_refresh_ok",
+      "pass": true,
+      "detail": "realm=9341…"
+    },
+    {
+      "name": "companyinfo_sandbox_us",
+      "pass": true,
+      "detail": "{\"status\":200,\"companyName\":\"Sandbox Company US 1ff4\",\"country\":\"US\"}"
+    },
+    {
+      "name": "fixture_invoice_created",
+      "pass": true,
+      "detail": "{\"run\":\"QBOLIVEMVROF0EQ\",\"venueId\":\"5c84e74e-355d-4ce1-9e6b-913a9267f543\",\"companyName\":\"Sandbox Company US 1ff4\",\"clientId\":\"1d17d95d-adc0-4696-8bfb-9a13e6a9987c\",\"invoiceId\":\"74da8a02-433a-422c-a7a5-016e87c671c7\",\"invoiceNumber\":\"QMVROF1966ED179\",\"displayName\":\"QBO6ED179 Livef196\"}"
+    },
+    {
+      "name": "enqueued_customer_and_invoice",
+      "pass": true,
+      "detail": "queueRows=2"
+    },
+    {
+      "name": "customer_api_sync",
+      "pass": true,
+      "detail": "{\"ok\":true,\"quickbooksId\":\"64\"}"
+    },
+    {
+      "name": "invoice_api_sync",
+      "pass": true,
+      "detail": "{\"ok\":true,\"quickbooksId\":\"156\"}"
+    },
+    {
+      "name": "customer_synced_locally",
+      "pass": true,
+      "detail": "{\"quickbooks_customer_id\":\"64\",\"quickbooks_sync_status\":\"synced\"}"
+    },
+    {
+      "name": "invoice_synced_locally",
+      "pass": true,
+      "detail": "{\"quickbooks_sync_status\":\"synced\",\"quickbooks_invoice_id\":\"156\",\"quickbooks_synced_at\":\"2026-10-28T05:31:05.472+00:00\",\"invoice_number\":\"QMVROF1966ED179\",\"total\":42.5}"
+    },
+    {
+      "name": "external_invoice_exists",
+      "pass": true,
+      "detail": "{\"AllowOnlineAffirmPayment\":false,\"sparse\":true,\"Id\":\"156\",\"DocNumber\":\"QMVROF1966ED179\",\"LinkedTxn\":[],\"Line\":[],\"ShipFromAddr\":{\"Id\":\"103\"},\"TotalAmt\":42.5}"
+    },
+    {
+      "name": "external_id_matches_local",
+      "pass": true,
+      "detail": "{\"local\":\"156\",\"remote\":\"156\"}"
+    },
+    {
+      "name": "external_total_matches",
+      "pass": true,
+      "detail": "{\"remoteTotal\":42.5,\"local\":42.5}"
+    },
+    {
+      "name": "idempotent_retry_ok",
+      "pass": true,
+      "detail": "{\"ok\":true,\"quickbooksId\":\"156\"}"
+    },
+    {
+      "name": "idempotent_no_duplicate_remote",
+      "pass": true,
+      "detail": "remoteCount=1"
+    },
+    {
+      "name": "connection_health_ok_after_sync",
+      "pass": true,
+      "detail": "{\"last_health_check_ok\":true,\"last_error\":\"Waiting on Customer sync.\",\"company_name\":\"Sandbox Company US 1ff4\",\"environment\":\"sandbox\",\"updated_at\":\"2026-10-28T05:31:05.591385+00:00\"}"
+    }
+  ],
+  "persisted": {
+    "run": "QBOLIVEMVROF0EQ",
+    "venueId": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+    "companyName": "Sandbox Company US 1ff4",
+    "clientId": "1d17d95d-adc0-4696-8bfb-9a13e6a9987c",
+    "invoiceId": "74da8a02-433a-422c-a7a5-016e87c671c7",
+    "invoiceNumber": "QMVROF1966ED179",
+    "displayName": "QBO6ED179 Livef196",
+    "ticks": {
+      "cust": {
+        "ok": true,
+        "quickbooksId": "64"
+      },
+      "invSync": {
+        "ok": true,
+        "quickbooksId": "156"
+      }
+    },
+    "remoteInvoice": {
+      "AllowOnlineAffirmPayment": false,
+      "sparse": true,
+      "Id": "156",
+      "DocNumber": "QMVROF1966ED179",
+      "LinkedTxn": [],
+      "Line": [],
+      "ShipFromAddr": {
+        "Id": "103"
+      },
+      "TotalAmt": 42.5
+    },
+    "health": {
+      "last_health_check_ok": true,
+      "last_error": "Waiting on Customer sync.",
+      "company_name": "Sandbox Company US 1ff4",
+      "environment": "sandbox",
+      "updated_at": "2026-10-28T05:31:05.591385+00:00"
+    }
+  },
+  "verdict": "GREEN / VERIFIED"
+}

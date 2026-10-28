@@ -15,6 +15,7 @@ import {
 } from "@/lib/client-choices/constants";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
 import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
+import { pruneAnswersToDefinition } from "@/lib/event-order-templates/selection-definition";
 
 type PortalChoices = {
   id: string;
@@ -35,6 +36,20 @@ export function ChoicesPortalSection({ token }: { token: string }) {
   const [answers, setAnswers] = useState<ChoicesAnswers>({});
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"info" | "error">("info");
+
+  function applyLoadedAnswers(definition: ChoicesDefinition, raw: ChoicesAnswers | null | undefined) {
+    const pruned = pruneAnswersToDefinition(raw ?? {}, definition);
+    const reconciled = reconcileAnswersForDependencies(definition, pruned);
+    const dropped =
+      JSON.stringify(Object.keys(raw ?? {}).sort()) !== JSON.stringify(Object.keys(pruned).sort())
+      || Object.keys(raw ?? {}).some((gid) => {
+        const before = [...((raw ?? {})[gid]?.optionIds ?? [])].sort().join(",");
+        const after = [...(pruned[gid]?.optionIds ?? [])].sort().join(",");
+        return before !== after;
+      });
+    return { answers: reconciled, dropped };
+  }
 
   useEffect(() => {
     fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`)
@@ -44,11 +59,18 @@ export function ChoicesPortalSection({ token }: { token: string }) {
         setRows(list);
         const open = list.find((c) => isClientChoicesClientEditable(c.status)) ?? list[0];
         setActiveId(open?.id ?? null);
-        setAnswers(
-          open
-            ? reconcileAnswersForDependencies(open.definition, open.answers ?? {})
-            : {},
-        );
+        if (open) {
+          const loaded = applyLoadedAnswers(open.definition, open.answers ?? {});
+          setAnswers(loaded.answers);
+          if (loaded.dropped && isClientChoicesClientEditable(open.status)) {
+            setMessageTone("error");
+            setMessage(
+              "Some of your saved selections are no longer available — review the options below before submitting.",
+            );
+          }
+        } else {
+          setAnswers({});
+        }
       })
       .catch(() => setRows(null));
   }, [token]);
@@ -57,7 +79,14 @@ export function ChoicesPortalSection({ token }: { token: string }) {
 
   useEffect(() => {
     if (active) {
-      setAnswers(reconcileAnswersForDependencies(active.definition, active.answers ?? {}));
+      const loaded = applyLoadedAnswers(active.definition, active.answers ?? {});
+      setAnswers(loaded.answers);
+      if (loaded.dropped && isClientChoicesClientEditable(active.status)) {
+        setMessageTone("error");
+        setMessage(
+          "Some of your saved selections are no longer available — review the options below before submitting.",
+        );
+      }
     }
   }, [active?.id]);
 
@@ -100,10 +129,13 @@ export function ChoicesPortalSection({ token }: { token: string }) {
   function save(submit: boolean) {
     if (!active) return;
     setMessage(null);
-    const reconciled = reconcileAnswersForDependencies(active.definition, answers);
+    setMessageTone("info");
+    const pruned = pruneAnswersToDefinition(answers, active.definition);
+    const reconciled = reconcileAnswersForDependencies(active.definition, pruned);
     if (submit) {
       const validated = validateChoicesAnswers(active.definition, reconciled);
       if (!validated.ok) {
+        setMessageTone("error");
         setMessage(validated.message);
         return;
       }
@@ -117,13 +149,30 @@ export function ChoicesPortalSection({ token }: { token: string }) {
       });
       const data = await res.json();
       if (!data.ok) {
+        setMessageTone("error");
         setMessage(data.message ?? "Something went wrong.");
         return;
       }
+      setMessageTone("info");
       setMessage(submit ? "Submitted — your venue will review." : "Saved.");
       const refreshed = await fetch(`/api/portal/choices?token=${encodeURIComponent(token)}`).then((r) => r.json());
       setRows(refreshed.choices ?? []);
     });
+  }
+
+  function selectionRuleCopy(group: ChoicesDefinition["groups"][number]): string {
+    const mode = group.selectionMode === "single" ? "Pick one" : "Pick many";
+    const required = group.minSelect > 0 ? "required" : "optional";
+    const parts = [mode, required];
+    if (group.minSelect > 1 && group.maxSelect != null && group.minSelect === group.maxSelect) {
+      parts.push(`choose exactly ${group.minSelect}`);
+    } else {
+      if (group.minSelect > 1) parts.push(`at least ${group.minSelect}`);
+      if (group.maxSelect != null && group.selectionMode === "multi") {
+        parts.push(`up to ${group.maxSelect}`);
+      }
+    }
+    return parts.join(" · ");
   }
 
   const editable = active ? isClientChoicesClientEditable(active.status) : false;
@@ -264,9 +313,8 @@ export function ChoicesPortalSection({ token }: { token: string }) {
                 data-dependent={isDependent ? "true" : "false"}
               >
                 <legend className="px-1 text-sm font-medium text-heading">{group.name}</legend>
-                <p className="text-xs text-muted-foreground">
-                  {group.selectionMode === "single" ? "Pick one" : "Pick many"}
-                  {group.minSelect > 0 ? " · required" : " · optional"}
+                <p className="text-xs text-muted-foreground" data-testid="choices-group-rules">
+                  {selectionRuleCopy(group)}
                   {isDependent ? " · based on your selection above" : ""}
                 </p>
                 {group.instructions ? (
@@ -317,7 +365,15 @@ export function ChoicesPortalSection({ token }: { token: string }) {
             );
           })}
 
-          {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+          {message ? (
+            <p
+              className={`text-sm ${messageTone === "error" ? "text-destructive" : "text-muted-foreground"}`}
+              data-testid={messageTone === "error" ? "portal-choices-error" : "portal-choices-message"}
+              role={messageTone === "error" ? "alert" : undefined}
+            >
+              {message}
+            </p>
+          ) : null}
 
           {editable ? (
             <div className="flex flex-wrap gap-2">

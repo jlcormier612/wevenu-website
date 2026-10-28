@@ -1,78 +1,82 @@
 # Event Order commercial lifecycle closure — STATUS
 
-**Workstream verdict: CONDITIONAL GREEN** (Choices GREEN; QBO UNVERIFIED)
+**Workstream verdict: CONDITIONAL** until Choices edge deploy is tip-verified; QBO now VERIFIED on Daisy Sandbox.
 
 | Stream | Verdict |
 |--------|---------|
 | Commercial lifecycle (share / Accept / invoice / incremental / payments) | **GREEN** (preserved; prior greenfield) |
-| Couple Choices (single + multi + conditional matrix) | **GREEN** (fresh on `38b2d591`) |
-| QuickBooks Online live sync | **UNVERIFIED — ENVIRONMENT BLOCKER** |
+| Couple Choices (matrix + live min/max + stale-draft edge) | **IN PROGRESS → deploy required** for hydration/portal UX tip proof |
+| QuickBooks Online live sync | **GREEN / VERIFIED** (Daisy Sandbox Company US 1ff4) |
 
-**Serving Sandbox SHA:** `38b2d591f2ee7a0cad3a96a8124424dbe6837549`  
+**Prior serving tip:** `38b2d591f2ee7a0cad3a96a8124424dbe6837549`  
 **Production:** Untouched
 
 ---
 
-## A. Couple Choices — GREEN
+## A. Couple Choices
 
 ### Capability matrix
 
-See `CHOICES-CAPABILITY-MATRIX.md`. Supported: single-select, multi-select, required/optional, `dependsOnOptionIds` conditionals, change-before-submit, draft save, submit, refresh/return, venue receipt, EO isolation.
+See `CHOICES-CAPABILITY-MATRIX.md`.
 
-### Fresh matrix (multi + conditional) on tip
+### Fresh matrix (multi + conditional) on tip `38b2d591`
 
 ```bash
 EXPECTED_SHA=38b2d591f2ee7a0cad3a96a8124424dbe6837549 \
   npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-choices-matrix.mts
-# → 22/22 PASS · UX blockers/p2=0
-# Evidence: choices-matrix-results.json, choices-matrix-run.log, choices-matrix/
+# → 22/22 PASS
 ```
 
-Live: Ceremony + Reception template → couple checkbox multi-select + change → plated/buffet conditional reveal/switch → submit → venue summary matches persisted `answers.optionIds` (not DB-seeded).
+### Edge cases (min/max + venue option change during draft)
 
-### Prior single-select depth (still valid product path)
+Code + harness added:
+- Portal shows min/max rules; validation errors use `portal-choices-error` alert styling
+- Template structural drift re-freezes on venue list/get/send with answer prune
+- Harness: `verify-choices-edge.mts`
+
+Must run against the **post-deploy** serving SHA that includes these commits.
 
 ```bash
-EXPECTED_SHA=5959df8c…  # prior tip; ancestor behavior unchanged for radio path
-  npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-choices-depth.mts
-# → 19/19 (inherited evidence; matrix re-proves multi/conditional on current tip)
+EXPECTED_SHA=<new-serving> \
+  npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-choices-edge.mts
 ```
 
 ### Units
 
 ```bash
 npx tsx --test \
-  lib/client-choices/portal-submit-contract.test.ts \
-  lib/client-choices/selection-request-lifecycle.test.ts \
   lib/client-choices/validate-answers.test.ts \
-  lib/client-choices/conditional-groups.test.ts
-# → included in 149 combined pass
+  lib/event-order-templates/selection-definition.test.ts
+# → pass (incl. min/max messages + hydration drift)
 ```
-
-Remaining depth (non-blocking): explicit live min/max reject UX and venue-option-change-during-draft not exhaustively re-run this tip (unit coverage present).
 
 ---
 
-## B. QuickBooks Online — UNVERIFIED — ENVIRONMENT BLOCKER
+## B. QuickBooks Online — GREEN / VERIFIED
 
-Evidence: `qbo-boundary.json` (inspected `2026-10-28T04:43:28Z`)
+**Venue:** Sweet Daisy Barn & Farm (`5c84e74e…`)  
+**Company:** Sandbox Company US 1ff4 (Intuit Sandbox; CompanyInfo confirmed)  
+**Connection:** refreshed OAuth access token; `last_health_check_ok=true` after live invoice sync
 
-| Venue | State |
-|-------|--------|
-| Fancy (`a415ac52…`) | **0** connections |
-| Daisy | 1 sandbox row `Sandbox Company US 1ff4`, `last_health_check_ok=false`, error “Waiting on Invoice sync.” |
+### Evidence
 
-**No live sync performed.** Automated QBO tests 47/47 prove queue/timeout/idempotency semantics only — not external sync.
+| Artifact | Result |
+|----------|--------|
+| `qbo-daisy-probe.json` / probe script | Token refresh + CompanyInfo OK |
+| `qbo-live-sync-results.json` | **15/15 PASS** |
+| External invoice Id | `156` |
+| Local invoice | `74da8a02-…` · DocNumber `QMVROF1966ED179` · status `synced` |
+| Idempotent retry | same Id `156`, remoteCount=1 |
 
-### Prerequisite for GREEN / VERIFIED
+```bash
+# Requires /tmp/htc-qbo-probe/env (QUICKBOOKS_* + SENSITIVE_FIELD_ENCRYPTION_KEY from Secrets Manager)
+npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-qbo-live-sync.mts
+```
 
-1. Healthy Fancy (or explicitly authorized) Sandbox QBO connection (`last_health_check_ok=true`)  
-2. Confirm Intuit Sandbox company (not production)  
-3. Disposable invoice sync via product path → external id + local status  
-4. Idempotent re-trigger + truthful failure path  
+Fancy Venue still has zero connections — Daisy was the authorized healthy Sandbox path used for sync proof. No Production company was written.
 
 ---
 
 ## C. Preserved commercial acceptance
 
-Prior greenfield 39/39 on `5959df8c` remains the commercial lifecycle proof; tip `38b2d591` is a Floor Plans/Event Setup fix ancestor-compatible with EO Choices (no EO regression required for Choices matrix).
+Prior greenfield remains commercial lifecycle proof; tip changes for Floor Plans / Choices edge do not rewrite EO Accept semantics.

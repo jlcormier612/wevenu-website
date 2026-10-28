@@ -1,19 +1,21 @@
 {
-  "inspectedAt": "2026-10-28T04:43:28.877Z",
+  "inspectedAt": "2026-10-28T05:31:05.591Z",
   "fancyVenueId": "a415ac52-cd74-42a6-8df7-7a8f6e71d080",
   "fancyConnectionCount": 0,
-  "sandboxConnections": [
-    {
-      "id": "179e03e9-8dbc-496c-9c56-9636a4ab28c3",
-      "venue_id": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
-      "company_name": "Sandbox Company US 1ff4",
-      "environment": "sandbox",
-      "status": "connected",
-      "last_health_check_ok": false,
-      "last_error": "Waiting on Invoice sync.",
-      "updated_at": "2026-10-20T08:10:01.390357+00:00"
-    }
-  ],
-  "healthySandboxConnections": 0,
-  "verdict": "UNVERIFIED — ENVIRONMENT BLOCKER"
+  "daisyVenueId": "5c84e74e-355d-4ce1-9e6b-913a9267f543",
+  "verifiedCompany": "Sandbox Company US 1ff4",
+  "environment": "sandbox",
+  "companyInfoOk": true,
+  "tokenRefreshOk": true,
+  "lastHealthCheckOk": true,
+  "liveSync": {
+    "pass": true,
+    "localInvoiceId": "74da8a02-433a-422c-a7a5-016e87c671c7",
+    "invoiceNumber": "QMVROF1966ED179",
+    "externalInvoiceId": "156",
+    "idempotentRetry": true,
+    "remoteDuplicateCount": 1,
+    "evidence": "qbo-live-sync-results.json"
+  },
+  "verdict": "GREEN / VERIFIED"
 }

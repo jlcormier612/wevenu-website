@@ -55,10 +55,14 @@ export function selectionDefinitionFromEventOrderTemplate(
 }
 
 /**
- * True when the frozen packet is missing offerings that the Event Order
- * Template still carries (legacy packets created before fixedLines shipped,
- * or a partial freeze). Staff preview and the couple form both depend on a
- * complete freeze — not a live catalog rebuild at render time.
+ * True when the frozen packet is missing offerings the Event Order Template
+ * still carries (legacy / partial freeze), OR when the template's selectable
+ * structure has drifted (group/option ids, selection mode, min/max).
+ *
+ * Drift detection lets venue Resend / staff open re-freeze the packet and
+ * prune stale draft answers after the venue changes options on the linked
+ * template — without rebuilding from the catalog on every couple render.
+ * Finalized packets never hydrate (caller short-circuits).
  */
 export function selectionDefinitionNeedsHydration(
   definition: ChoicesDefinition,
@@ -68,6 +72,30 @@ export function selectionDefinitionNeedsHydration(
   if (template.lines.length > 0 && fixedCount === 0) return true;
   if (template.groups.length > 0 && definition.groups.length === 0) return true;
   if (template.options.length > 0 && definition.options.length === 0) return true;
+
+  const defGroupIds = new Set(definition.groups.map((g) => g.id));
+  const tmplGroupIds = new Set(template.groups.map((g) => g.id));
+  if (defGroupIds.size !== tmplGroupIds.size) return true;
+  for (const id of tmplGroupIds) {
+    if (!defGroupIds.has(id)) return true;
+  }
+
+  const defByGroup = new Map(definition.groups.map((g) => [g.id, g]));
+  for (const g of template.groups) {
+    const frozen = defByGroup.get(g.id);
+    if (!frozen) return true;
+    if (frozen.selectionMode !== g.selectionMode) return true;
+    if (frozen.minSelect !== g.minSelect) return true;
+    if (frozen.maxSelect !== g.maxSelect) return true;
+  }
+
+  const defOptionIds = new Set(definition.options.map((o) => o.id));
+  const tmplOptionIds = new Set(template.options.map((o) => o.id));
+  if (defOptionIds.size !== tmplOptionIds.size) return true;
+  for (const id of tmplOptionIds) {
+    if (!defOptionIds.has(id)) return true;
+  }
+
   return false;
 }
 

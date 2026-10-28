@@ -1,0 +1,28 @@
+{
+  "before": {
+    "company_name": "Sandbox Company US 1ff4",
+    "environment": "sandbox",
+    "status": "connected",
+    "last_health_check_ok": false,
+    "last_error": "Waiting on Invoice sync.",
+    "access_token_expires_at": "2026-10-18T22:37:26.18+00:00"
+  },
+  "tokenOk": true,
+  "error": null,
+  "refreshDead": null,
+  "realmPrefix": "9341…",
+  "companyInfo": {
+    "ok": true,
+    "status": 200,
+    "companyName": "Sandbox Company US 1ff4",
+    "country": "US"
+  },
+  "after": {
+    "company_name": "Sandbox Company US 1ff4",
+    "environment": "sandbox",
+    "status": "connected",
+    "last_health_check_ok": false,
+    "last_error": "Waiting on Invoice sync.",
+    "access_token_expires_at": "2026-10-28T06:28:45.665+00:00"
+  }
+}

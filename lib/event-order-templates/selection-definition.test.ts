@@ -233,6 +233,34 @@ describe("selectionDefinitionNeedsHydration", () => {
     };
     assert.equal(selectionDefinitionNeedsHydration(partial, t), true);
   });
+
+  it("detects when the venue removes an option from the linked template", () => {
+    const t = template();
+    const def = selectionDefinitionFromEventOrderTemplate(t);
+    const shrunk = {
+      ...t,
+      options: t.options.filter((o) => o.id !== "opt-premium"),
+    };
+    assert.equal(selectionDefinitionNeedsHydration(def, shrunk), true);
+  });
+
+  it("detects min/max rule drift on an existing group", () => {
+    const t = template();
+    const def = selectionDefinitionFromEventOrderTemplate(t);
+    const changed = {
+      ...t,
+      groups: t.groups.map((g) =>
+        g.id === "grp-addons" ? { ...g, minSelect: 1, maxSelect: 2 } : g,
+      ),
+    };
+    assert.equal(selectionDefinitionNeedsHydration(def, changed), true);
+  });
+
+  it("is false when selectable structure matches the freeze", () => {
+    const t = template();
+    const def = selectionDefinitionFromEventOrderTemplate(t);
+    assert.equal(selectionDefinitionNeedsHydration(def, t), false);
+  });
 });
 
 describe("pruneAnswersToDefinition", () => {
