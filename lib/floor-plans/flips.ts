@@ -24,6 +24,10 @@ export type FlipRow = {
   before_floor_plan_id: string;
   after_floor_plan_id: string;
   transition_notes: string | null;
+  /** Phase 5 snapshot — only meaningful when room_snapshot_captured_at is set. */
+  recorded_before_space_id?: string | null;
+  recorded_after_space_id?: string | null;
+  room_snapshot_captured_at?: string | null;
 };
 
 export function mapFlipRow(row: FlipRow): EventFloorPlanFlip {
@@ -63,4 +67,16 @@ export const COUPLE_FORBIDDEN_FLIP_KEYS = [
   "transitionNotes",
   "flipNotes",
   "flip_transition_notes",
+] as const;
+
+/** Phase 5 — couple/portal must never see review-flag fields. */
+export const COUPLE_FORBIDDEN_REVIEW_FLAG_KEYS = [
+  "review_flags",
+  "reviewFlags",
+  "event_floor_plan_review_flags",
+  "reason_summary",
+  "reasonSummary",
+  "trigger_code",
+  "triggerCode",
+  "Clear review",
 ] as const;

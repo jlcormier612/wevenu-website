@@ -973,6 +973,10 @@ export type FlipRow = {
   transition_notes: string | null;
   created_at: string;
   updated_at: string;
+  /** Phase 5 — only meaningful when room_snapshot_captured_at is set. */
+  recorded_before_space_id?: string | null;
+  recorded_after_space_id?: string | null;
+  room_snapshot_captured_at?: string | null;
 };
 
 export async function getEventFloorPlanFlip(
@@ -1030,6 +1034,34 @@ export async function updateEventFloorPlanFlipNotes(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client.from("event_floor_plan_flips") as any)
     .update({ transition_notes: transitionNotes })
+    .eq("venue_id", venueId)
+    .eq("event_id", eventId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FlipRow;
+}
+
+/**
+ * Phase 5 — persist room-relationship snapshot at link/upsert time.
+ * Notes-only updates must never call this. Sets room_snapshot_captured_at.
+ */
+export async function updateEventFloorPlanFlipRoomSnapshot(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  input: {
+    recordedBeforeSpaceId: string | null;
+    recordedAfterSpaceId: string | null;
+  },
+): Promise<FlipRow> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_floor_plan_flips") as any)
+    .update({
+      recorded_before_space_id: input.recordedBeforeSpaceId,
+      recorded_after_space_id: input.recordedAfterSpaceId,
+      room_snapshot_captured_at: new Date().toISOString(),
+    })
     .eq("venue_id", venueId)
     .eq("event_id", eventId)
     .select("*")

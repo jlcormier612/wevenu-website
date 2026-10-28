@@ -129,6 +129,7 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
     let timelineWarning: string | undefined;
+    let flagWarning: string | undefined;
     const before = await repo.getEvent(supabase, venueId, eventId);
     try {
       await repo.updateEvent(supabase, venueId, eventId, input);
@@ -137,6 +138,7 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       if (fail) return fail as EventActionResult;
       throw err;
     }
+    let reconciledViaAssignments = false;
     if (input.spaceAssignments !== undefined) {
       const venue = await getCurrentVenue();
       if (venue?.spaceOperatingMode === "multi") {
@@ -157,6 +159,29 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
         const assigned = await replaceEventSpaceAssignments(eventId, assignments);
         if (!assigned.ok) return { ok: false, message: assigned.message };
         if (assigned.timelineWarning) timelineWarning = assigned.timelineWarning;
+        if (assigned.flagWarning) flagWarning = assigned.flagWarning;
+        reconciledViaAssignments = true;
+      }
+    }
+    // Phase 5 — primary space_id change when assignments path did not run.
+    if (
+      !reconciledViaAssignments
+      && before
+      && (before.spaceId ?? null) !== (input.spaceId?.trim() || null)
+    ) {
+      try {
+        const { reconcileT1BookingRoomFlags } = await import(
+          "@/lib/floor-plans/review-flag-service"
+        );
+        const flags = await reconcileT1BookingRoomFlags(eventId, {
+          previousBookingRoomSet: before.spaceId ? [before.spaceId] : [],
+        });
+        if (flags.ok && flags.flagWarning) flagWarning = flags.flagWarning;
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : "unknown";
+        console.error("[updateEvent_] review flag reconcile failed", { eventId, detail });
+        flagWarning =
+          "Rooms were saved, but layout review flags could not be updated. Refresh and try again, or contact support if this continues.";
       }
     }
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
@@ -227,10 +252,11 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
           previousStartTime: prevStart,
         },
         timelineWarning,
+        flagWarning,
       } as EventActionResult;
     }
 
-    return { ok: true, timelineWarning } as EventActionResult;
+    return { ok: true, timelineWarning, flagWarning } as EventActionResult;
   });
   return result as EventActionResult;
 }

@@ -126,9 +126,9 @@ describe("Phase 4 couple privacy", () => {
   });
 });
 
-describe("Phase 4 does not reopen Phase 5", () => {
-  it("phase1 invariants still forbid booking-review flags", () => {
-    assert.match(phase1, /booking-review flag/);
+describe("Phase 4 coexists with Phase 5 review flags", () => {
+  it("phase1 still requires flip panel; Phase 5 review panel is separately authorized", () => {
     assert.match(phase1, /FloorPlanFlipPanel|floor-plan-flip-panel/);
+    assert.match(phase1, /FloorPlanReviewFlagsPanel|Phase 5/);
   });
 });

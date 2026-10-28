@@ -48,6 +48,10 @@ import {
   duplicateClientFloorPlanAction,
 } from "@/app/(app)/clients/planning-actions";
 import { FloorPlanFlipPanel } from "@/components/events/floor-plan-flip-panel";
+import {
+  FloorPlanReviewFlagsPanel,
+  LayoutRoomEditorInline,
+} from "@/components/events/floor-plan-review-flags-panel";
 import { FloorPlanSetupPackagePanel } from "@/components/events/floor-plan-setup-package";
 import { Button } from "@/components/ui/button";
 import {
@@ -258,7 +262,11 @@ function FloorPlanCard({
           </div>
         )}
       </div>
-      <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
+      {canEdit && !preBooking ? (
+        <LayoutRoomEditorInline eventId={eventId} plan={plan} spaces={spaces} canEdit={canEdit} />
+      ) : (
+        <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
+      )}
       {(isOperational || isCoupleSelected || plan.finalizedAt || plan.clientLayoutStatus !== "working") && (
         <div className="flex flex-wrap gap-1">
           {plan.finalizedAt && (
@@ -1045,6 +1053,15 @@ export function FloorPlanWorkspace({
         <FloorPlanSetupPackagePanel
           eventId={eventId}
           floorPlans={floorPlans}
+          canEdit={canEdit}
+        />
+      ) : null}
+
+      {!preBooking && eventId ? (
+        <FloorPlanReviewFlagsPanel
+          eventId={eventId}
+          floorPlans={floorPlans}
+          spaces={spaces}
           canEdit={canEdit}
         />
       ) : null}

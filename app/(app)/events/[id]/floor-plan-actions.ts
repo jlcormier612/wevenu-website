@@ -540,3 +540,54 @@ export async function unlinkEventFloorPlanFlipAction(eventId: string) {
   }
   return result;
 }
+
+// ── Phase 5 booking-change review flags ─────────────────────────────────────
+
+export async function listOpenFloorPlanReviewFlagsAction(eventId: string) {
+  const { listOpenReviewFlagsForEvent } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  return listOpenReviewFlagsForEvent(eventId);
+}
+
+export async function getEventBookingRoomSetAction(eventId: string): Promise<string[]> {
+  const { captureBookingRoomSetBeforeMutation } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  return captureBookingRoomSetBeforeMutation(eventId);
+}
+
+export async function clearFloorPlanReviewFlagAction(
+  eventId: string,
+  flagId: string,
+): Promise<FloorPlanActionResult> {
+  const { clearFloorPlanReviewFlag } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  const result = await clearFloorPlanReviewFlag(eventId, flagId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result.ok
+    ? { ok: true }
+    : { ok: false, message: result.message };
+}
+
+export async function updateFloorPlanSpaceAction(
+  eventId: string,
+  floorPlanId: string,
+  spaceId: string | null,
+): Promise<FloorPlanActionResult & { flagWarning?: string }> {
+  const { updateFloorPlanSpace } = await import(
+    "@/lib/floor-plans/review-flag-service"
+  );
+  const result = await updateFloorPlanSpace(eventId, floorPlanId, spaceId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+    revalidatePath(`/events/${eventId}/floor-plans/${floorPlanId}`);
+  }
+  if (!result.ok) return { ok: false, message: result.message };
+  return { ok: true, flagWarning: result.flagWarning };
+}

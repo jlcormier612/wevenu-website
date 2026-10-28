@@ -101,10 +101,10 @@ describe("Floor Plans Phase 1 — library isolation and seating preservation", (
   });
 });
 
-describe("Floor Plans Phase 1 — Phase 4 linked flip is real; Phase 5 still deferred", () => {
-  it("workspace mounts progressive flip link panel without booking-review Phase 5 claims", () => {
+describe("Floor Plans Phase 1 — Phase 4 flip + Phase 5 review flags coexist", () => {
+  it("workspace mounts flip panel and Phase 5 review flags panel", () => {
     assert.match(workspace, /FloorPlanFlipPanel|floor-plan-flip-panel/);
-    assert.doesNotMatch(workspace, /booking-review flag/);
+    assert.match(workspace, /FloorPlanReviewFlagsPanel|floor-plan-review-flags/);
   });
 });
 

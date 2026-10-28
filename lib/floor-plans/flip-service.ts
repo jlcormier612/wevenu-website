@@ -101,7 +101,22 @@ export async function linkEventFloorPlanFlip(
       transitionNotes: notes,
     });
 
-    const flip = await enrichFlip(supabase, venueId, mapFlipRow(row));
+    // Phase 5 — capture room snapshot from the two linked layouts at link time.
+    const { afterFlipLinked } = await import("@/lib/floor-plans/review-flag-service");
+    await afterFlipLinked(
+      supabase,
+      venueId,
+      eventId,
+      row.id,
+      before.spaceId ?? null,
+      after.spaceId ?? null,
+    );
+    const withSnapshot = await repo.getEventFloorPlanFlip(supabase, venueId, eventId);
+    const flip = await enrichFlip(
+      supabase,
+      venueId,
+      mapFlipRow(withSnapshot ?? row),
+    );
     const spaceMismatchWarning = spaceIdsMismatch(before.spaceId, after.spaceId);
     return { ok: true as const, flip, spaceMismatchWarning };
   });

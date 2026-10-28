@@ -148,7 +148,7 @@ export type EventTimingRecalcHint = {
 };
 
 export type EventActionResult =
-  | { ok: true; timingRecalc?: EventTimingRecalcHint; timelineWarning?: string }
+  | { ok: true; timingRecalc?: EventTimingRecalcHint; timelineWarning?: string; flagWarning?: string }
   | { ok: false; errors?: EventErrors; message?: string; code?: OccupancyCode };
 
 export type CreateEventResult =
