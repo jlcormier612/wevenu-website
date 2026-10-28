@@ -1,7 +1,7 @@
 {
-  "run": "EOCMMVRMRK7D",
-  "expectedSha": "38b2d591f2ee7a0cad3a96a8124424dbe6837549",
-  "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:38b2d591f2ee7a0cad3a96a8124424dbe6837549",
+  "run": "EOCMMVROZOJ6",
+  "expectedSha": "553a7aaf044f1e605965e0c4df21f088fc03a96b",
+  "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:553a7aaf044f1e605965e0c4df21f088fc03a96b",
   "capabilityInventory": {
     "multiGroups": [
       {
@@ -54,25 +54,25 @@
       }
     ]
   },
-  "clientId": "3317fc29-54f6-4a2d-9775-5b570b730da1",
-  "eventId": "1579dc31-44f8-469a-bf0a-fd87ea5f3534",
-  "eoId": "ddf37337-4a76-436c-ad6b-5bfb5440f6ba",
-  "choicesId": "32ba9038-58b7-4022-9baf-5e21ae5c573b",
+  "clientId": "15bd4d6a-f4be-4af8-9449-beff70d0c26e",
+  "eventId": "a3130380-57cf-4c49-8ab0-d04ae8262a43",
+  "eoId": "0ce22532-8d57-4e88-901d-8304e872b77b",
+  "choicesId": "3fd660e2-f4cf-46b9-8fae-c4810ea6bc5a",
   "packetName": "Ceremony + Reception",
   "selectedDom": [
     {
       "name": "dfd30bd7-bbc4-49f1-aca1-a00a35a5edd1",
-      "value": "on",
+      "value": "5b59b659-9bcd-4c96-82bc-f1334d62df8f",
       "label": "Arbor\nFlat fee\n+$350.00"
     },
     {
       "name": "fa1636a6-a392-40d7-b3cb-a48cfcaec3e7",
-      "value": "on",
+      "value": "c629b92b-132e-4d00-bc96-0e315df55f89",
       "label": "Buffet Dinner\nPer person\n+$72.00"
     },
     {
       "name": "8bad2c52-32dd-4882-b6ce-1119c56883a0",
-      "value": "on",
+      "value": "e5673c82-3332-4ead-89fc-e13373080978",
       "label": "Chiavari Chair\nPer chair\n+$8.00"
     }
   ],
@@ -96,7 +96,7 @@
   "usability": [
     {
       "screen": "Couple Choices matrix entry",
-      "text": "EOCM\n\n·\n\nJen's Fancy Venue\n\nDec 8, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception · Awaiting Client\n\nINCLUDED WITH YOUR EVENT\n\nCeremony\n\nStandard ceremony setup is included. Enhancements are optional paid add-ons.\n\nCeremony Coordination\nIncluded · $500.00\nServices\n\nStaffing and coordination included with this package.\n\nDay-of Coordination\nIncluded · $1200.00\nCeremony enhancements\n\nPick many · optional\n\nOptional paid add-ons — select only what you want to purchase.\n\nArbor\nFlat fee\n+$350.00\nDinner service\n\nPick one · required\n\nPick one — prices are per person.\n\nPlated Dinner\nPer person\n+$85.00\nBuffet Dinner\nPer person\n+$72.00\nBar package\n\nPick one · optional\n\nOptional — pick one package, or leave unselected for no bar service. Price is per person.\n\nBeer & Wine\nPer person\n+$28.00\nOptional rentals\n\nPick many · optional\n\nAdd any rentals you want — priced per unit.\n\nChiavari Chair\nPer chair\n+$8.00\nSave\nSubmit\nJen's Fancy Venue\n💗",
+      "text": "EOCM\n\n·\n\nJen's Fancy Venue\n\nDec 7, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nCeremony + Reception · Awaiting Client\n\nINCLUDED WITH YOUR EVENT\n\nCeremony\n\nStandard ceremony setup is included. Enhancements are optional paid add-ons.\n\nCeremony Coordination\nIncluded · $500.00\nServices\n\nStaffing and coordination included with this package.\n\nDay-of Coordination\nIncluded · $1200.00\nCeremony enhancements\n\nPick many · optional\n\nOptional paid add-ons — select only what you want to purchase.\n\nArbor\nFlat fee\n+$350.00\nDinner service\n\nPick one · required\n\nPick one — prices are per person.\n\nPlated Dinner\nPer person\n+$85.00\nBuffet Dinner\nPer person\n+$72.00\nBar package\n\nPick one · optional\n\nOptional — pick one package, or leave unselected for no bar service. Price is per person.\n\nBeer & Wine\nPer person\n+$28.00\nOptional rentals\n\nPick many · optional\n\nAdd any rentals you want — priced per unit.\n\nChiavari Chair\nPer chair\n+$8.00\nSave\nSubmit\nJen's Fancy Venue\n💗",
       "assessment": "Mode labels and payment disclaimer present.",
       "severity": "ok"
     },

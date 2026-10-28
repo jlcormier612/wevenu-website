@@ -441,15 +441,18 @@ async function main() {
       waitUntil: "domcontentloaded", timeout: 90_000,
     });
     await page.waitForTimeout(2500);
-    const removeCBtn = page.getByRole("button", { name: `Remove ${labels[2]}` }).first();
+    const optionCCard = page.locator(`[data-testid="eo-option-${optC.id}"]`);
+    await optionCCard.first().waitFor({ timeout: 30_000 });
+    await optionCCard.first().scrollIntoViewIfNeeded().catch(() => undefined);
+    await page.waitForTimeout(500);
+    const removeCBtn = page.locator(`button[aria-label="Remove ${labels[2]}"]`).first();
+    record("venue_remove_button_visible", await removeCBtn.count() > 0, `aria-label=Remove ${labels[2]}`, "live-ui");
     if (await removeCBtn.count()) {
       await removeCBtn.click({ force: true });
-      await page.waitForTimeout(2000);
-    } else {
-      const trashNearC = page.locator(`[data-testid="eo-option-${optC.id}"]`).locator("button").last();
-      if (await trashNearC.count()) {
-        await trashNearC.click({ force: true });
-        await page.waitForTimeout(2000);
+      await page.waitForTimeout(2500);
+      // Wait until the option card leaves the DOM (server action + refresh)
+      for (let i = 0; i < 20 && (await optionCCard.count()) > 0; i++) {
+        await page.waitForTimeout(500);
       }
     }
     await page.screenshot({ path: `${OUT}/choices-edge/07-venue-removed-c-1280.png`, fullPage: true });
@@ -458,12 +461,7 @@ async function main() {
       .select("id,label").eq("group_id", groupId!);
     const cGone = !(optsAfter ?? []).some((o) => o.id === optC.id);
     record("venue_removed_option_c_via_ui", cGone, JSON.stringify(optsAfter), cGone ? "live-ui+persisted" : "live-ui");
-    if (!cGone) {
-      // Last-resort supported path: still use venue-owned remove action outcome via service-role
-      // only if UI trash missed — mark as fail for UI path but continue hydrate proof via admin delete
-      await admin.from("event_order_template_options").delete().eq("id", optC.id);
-      record("venue_option_c_removed_fallback_db", true, "UI trash missed; fixture deleted option for hydrate path", "fixture");
-    }
+    if (!cGone) throw new Error("Venue UI did not remove option C — refusing DB fallback");
 
     // Venue opens choices workspace → hydrate on list; also Resend
     await openChoicesWorkspace();

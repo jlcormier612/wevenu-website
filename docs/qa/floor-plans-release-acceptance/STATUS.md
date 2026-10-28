@@ -60,7 +60,18 @@ npx tsx --test lib/floor-plans/*.test.ts lib/event-setup/floor-plans-setup-edito
 
 - `reacceptance/` — multi-offer, attach, unlock, FP-RA-1
 - `browser-results.json`, `browser-run.log`, `shots/` — full release
-- `CAPABILITY-INVENTORY.md`
+- `CAPABILITY-INVENTORY.md` — supported Phase 1–5 rows marked **fresh** on tip
+
+## Independent tip re-verification (2026-10-28 resume)
+
+Serving ECS image still tip `38b2d591…` at inspection. Artifact audit (not count-only):
+
+| Harness | Tip SHA match | Checks | Required scenarios |
+|---------|---------------|--------|--------------------|
+| `verify-release.mts` → `browser-results.json` | yes | 27/27 | empty→create→flip link/unlink→share→furniture move/submit/approve→review flags→ready≠seating — all present & pass |
+| `verify-reacceptance.mts` → `reacceptance/browser-results.json` | yes | 13/13 | Change-without-profile, multi-offer chooser+preference, setup attach UI-only, Lock Position unlock, FP-RA-1 — all present & pass |
+
+Usability blockers/p2 in both result files: **0**.
 
 ## Boundaries
 

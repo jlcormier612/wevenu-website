@@ -1,45 +1,49 @@
 # Event Order commercial lifecycle closure — STATUS
 
-**Workstream verdict: CONDITIONAL** until Choices edge deploy is tip-verified; QBO now VERIFIED on Daisy Sandbox.
+**Workstream verdict: GREEN** for Choices + QBO on serving `553a7aaf` (Floor Plans separately GREEN on prior tip evidence).
 
 | Stream | Verdict |
 |--------|---------|
 | Commercial lifecycle (share / Accept / invoice / incremental / payments) | **GREEN** (preserved; prior greenfield) |
-| Couple Choices (matrix + live min/max + stale-draft edge) | **IN PROGRESS → deploy required** for hydration/portal UX tip proof |
+| Couple Choices (matrix + live min/max + stale-draft edge) | **GREEN** |
 | QuickBooks Online live sync | **GREEN / VERIFIED** (Daisy Sandbox Company US 1ff4) |
 
-**Prior serving tip:** `38b2d591f2ee7a0cad3a96a8124424dbe6837549`  
+**Serving Sandbox SHA:** `553a7aaf044f1e605965e0c4df21f088fc03a96b`  
+**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/40638522789 (`success`)  
 **Production:** Untouched
 
 ---
 
-## A. Couple Choices
+## A. Couple Choices — GREEN
 
 ### Capability matrix
 
 See `CHOICES-CAPABILITY-MATRIX.md`.
 
-### Fresh matrix (multi + conditional) on tip `38b2d591`
+### Fresh matrix (multi + conditional)
 
 ```bash
-EXPECTED_SHA=38b2d591f2ee7a0cad3a96a8124424dbe6837549 \
+EXPECTED_SHA=553a7aaf044f1e605965e0c4df21f088fc03a96b \
   npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-choices-matrix.mts
-# → 22/22 PASS
+# Evidence: choices-matrix-results.json (re-run on tip)
 ```
 
-### Edge cases (min/max + venue option change during draft)
+Prior tip `38b2d591` also 22/22.
 
-Code + harness added:
-- Portal shows min/max rules; validation errors use `portal-choices-error` alert styling
-- Template structural drift re-freezes on venue list/get/send with answer prune
-- Harness: `verify-choices-edge.mts`
-
-Must run against the **post-deploy** serving SHA that includes these commits.
+### Live edge cases on tip `553a7aaf` — **20/20**
 
 ```bash
-EXPECTED_SHA=<new-serving> \
+EXPECTED_SHA=553a7aaf044f1e605965e0c4df21f088fc03a96b \
   npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-choices-edge.mts
+# → 20/20 PASS · UX blockers/p2=0
+# Evidence: choices-edge-results.json, choices-edge-run.log, choices-edge/
 ```
+
+Observed UX:
+- Min 0 / min 1 → alert “requires at least 2 selections.” Submit blocked.
+- Max 3 selected → alert “allows at most 2 selections.” Submit blocked.
+- Rules copy: “Pick many · required · choose exactly 2”
+- Venue removed option C via template trash UI; hydrate pruned definition + draft answers; couple no longer sees C; final submit A+B only; venue summary matches; no duplicate packets.
 
 ### Units
 
@@ -47,7 +51,6 @@ EXPECTED_SHA=<new-serving> \
 npx tsx --test \
   lib/client-choices/validate-answers.test.ts \
   lib/event-order-templates/selection-definition.test.ts
-# → pass (incl. min/max messages + hydration drift)
 ```
 
 ---
@@ -56,27 +59,19 @@ npx tsx --test \
 
 **Venue:** Sweet Daisy Barn & Farm (`5c84e74e…`)  
 **Company:** Sandbox Company US 1ff4 (Intuit Sandbox; CompanyInfo confirmed)  
-**Connection:** refreshed OAuth access token; `last_health_check_ok=true` after live invoice sync
-
-### Evidence
+**Connection:** OAuth token refreshed; `last_health_check_ok=true` after live invoice sync
 
 | Artifact | Result |
 |----------|--------|
-| `qbo-daisy-probe.json` / probe script | Token refresh + CompanyInfo OK |
 | `qbo-live-sync-results.json` | **15/15 PASS** |
 | External invoice Id | `156` |
-| Local invoice | `74da8a02-…` · DocNumber `QMVROF1966ED179` · status `synced` |
+| Local invoice | `74da8a02-…` · DocNumber `QMVROF1966ED179` · `synced` |
 | Idempotent retry | same Id `156`, remoteCount=1 |
 
-```bash
-# Requires /tmp/htc-qbo-probe/env (QUICKBOOKS_* + SENSITIVE_FIELD_ENCRYPTION_KEY from Secrets Manager)
-npx tsx docs/qa/event-order-commercial-lifecycle-closure/verify-qbo-live-sync.mts
-```
-
-Fancy Venue still has zero connections — Daisy was the authorized healthy Sandbox path used for sync proof. No Production company was written.
+Fancy still has 0 connections — Daisy was the authorized healthy Sandbox path. No Production company written.
 
 ---
 
 ## C. Preserved commercial acceptance
 
-Prior greenfield remains commercial lifecycle proof; tip changes for Floor Plans / Choices edge do not rewrite EO Accept semantics.
+Prior greenfield remains commercial lifecycle proof.

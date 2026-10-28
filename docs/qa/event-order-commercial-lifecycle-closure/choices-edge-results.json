@@ -1,0 +1,217 @@
+{
+  "pass": true,
+  "run": "EOCEMVROWB8V",
+  "expectedSha": "553a7aaf044f1e605965e0c4df21f088fc03a96b",
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=553a7aaf044f1e605965e0c4df21f088fc03a96b ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:553a7aaf044f1e605965e0c4df21f088fc03a96b",
+      "evidence": "serving"
+    },
+    {
+      "name": "api_health",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}",
+      "evidence": "serving"
+    },
+    {
+      "name": "fixture_multi_min2_max2_three_options",
+      "pass": true,
+      "detail": "{\"templateId\":\"34f1d1e3-0311-4459-80e3-b405c2170de3\",\"groupId\":\"b13b75fc-1e9f-430b-8940-d67793ae521c\",\"optionIds\":[\"c8c74dc1-21fe-40df-b4d3-111f17926e4d\",\"475f82d7-8774-429b-883b-3939454ad925\",\"b9d87220-e05b-4a0a-8ab8-9934670825f2\"],\"labels\":[\"EOCE-EOCEMVROWB8V-A\",\"EOCE-EOCEMVROWB8V-B\",\"EOCE-EOCEMVROWB8V-C\"]}",
+      "evidence": "fixture"
+    },
+    {
+      "name": "venue_selected_disposable_sides_template",
+      "pass": true,
+      "detail": "EOCE-EOCEMVROWB8V-Sides",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "packet_has_min2_max2_sides",
+      "pass": true,
+      "detail": "{\"choicesId\":\"8ae71e07-6c3e-4234-aa26-62d32eb74f6d\",\"sides\":{\"id\":\"b13b75fc-1e9f-430b-8940-d67793ae521c\",\"name\":\"Side dishes\",\"maxSelect\":2,\"minSelect\":2,\"sectionId\":\"1f4f5f88-e455-4a54-af30-6b3cd7617a8d\",\"sortOrder\":0,\"instructions\":\"Choose exactly 2 sides.\",\"allowQuantity\":false,\"selectionMode\":\"multi\",\"dependsOnOptionIds\":[]},\"optCount\":3}",
+      "evidence": "persisted"
+    },
+    {
+      "name": "couple_sees_min_max_rules_copy",
+      "pass": true,
+      "detail": "Pick many · required · choose exactly 2",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "live_min_reject_zero_selections",
+      "pass": true,
+      "detail": "“Side dishes” requires at least 2 selections.",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "live_min_reject_one_selection",
+      "pass": true,
+      "detail": "“Side dishes” requires at least 2 selections.",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "ui_allows_selecting_above_max_before_submit",
+      "pass": true,
+      "detail": "three checkboxes checked",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "live_max_reject_three_selections",
+      "pass": true,
+      "detail": "“Side dishes” allows at most 2 selections.",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "draft_saved_with_ac_including_soon_removed",
+      "pass": true,
+      "detail": "{\"status\":\"in_progress\",\"draftIds\":[\"c8c74dc1-21fe-40df-b4d3-111f17926e4d\",\"b9d87220-e05b-4a0a-8ab8-9934670825f2\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "venue_remove_button_visible",
+      "pass": true,
+      "detail": "aria-label=Remove EOCE-EOCEMVROWB8V-C",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "venue_removed_option_c_via_ui",
+      "pass": true,
+      "detail": "[{\"id\":\"c8c74dc1-21fe-40df-b4d3-111f17926e4d\",\"label\":\"EOCE-EOCEMVROWB8V-A\"},{\"id\":\"475f82d7-8774-429b-883b-3939454ad925\",\"label\":\"EOCE-EOCEMVROWB8V-B\"}]",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "hydrate_pruned_removed_option_from_definition_and_answers",
+      "pass": true,
+      "detail": "{\"defOptCount\":2,\"answers\":[\"c8c74dc1-21fe-40df-b4d3-111f17926e4d\"],\"status\":\"in_progress\"}",
+      "evidence": "persisted"
+    },
+    {
+      "name": "couple_no_longer_sees_removed_option_c",
+      "pass": true,
+      "detail": "label=EOCE-EOCEMVROWB8V-C staleMsg=false",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "stale_or_below_min_submit_blocked",
+      "pass": true,
+      "detail": "“Side dishes” requires at least 2 selections.",
+      "evidence": "live-ui"
+    },
+    {
+      "name": "final_submit_without_removed_option",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\",\"finalIds\":[\"c8c74dc1-21fe-40df-b4d3-111f17926e4d\",\"475f82d7-8774-429b-883b-3939454ad925\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "refresh_preserves_valid_final_answers",
+      "pass": true,
+      "detail": "{\"status\":\"submitted\",\"ids\":[\"c8c74dc1-21fe-40df-b4d3-111f17926e4d\",\"475f82d7-8774-429b-883b-3939454ad925\"]}",
+      "evidence": "live-ui+persisted"
+    },
+    {
+      "name": "no_duplicate_packets",
+      "pass": true,
+      "detail": "packets=1",
+      "evidence": "persisted"
+    },
+    {
+      "name": "venue_summary_shows_remaining_sides",
+      "pass": true,
+      "detail": "Couple-submitted choices\n\nFOOD\nSide dishes\n\nPick many · required\n\nChoose exactly 2 sides.\n\nEOCE-EOCEMVROWB8V-ASELECTED\n+$10.00\nEOCE-EOCEMVROWB8V-BSELECTED\n+$11.00",
+      "evidence": "live-ui"
+    }
+  ],
+  "usability": [
+    {
+      "screen": "Couple sides rules",
+      "text": "Pick many · required · choose exactly 2",
+      "assessment": "Min/max selection rules visible on group.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Min reject (0)",
+      "text": "“Side dishes” requires at least 2 selections.",
+      "assessment": "Actionable min message; submit blocked.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Max reject (3)",
+      "text": "“Side dishes” allows at most 2 selections.",
+      "assessment": "Actionable max message; submit blocked.",
+      "severity": "ok"
+    },
+    {
+      "screen": "Stale draft after venue option remove",
+      "text": "\nEOCE\n\n·\n\nJen's Fancy Venue\n\nNov 9, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nEOCE-EOCEMVROWB8V-Sides · Awaiting Client\nSide dishes\n\nPick many · required · choose exactly 2\n\nChoose exactly 2 sides.\n\nEOCE-EOCEMVROWB8V-A\n+$10.00\nEOCE-EOCEMVROWB8V-B\n+$11.00\nSave\nSubmit\nJen's Fancy Venue\n💗",
+      "assessment": "Removed option gone; review message optional.",
+      "severity": "ok"
+    }
+  ],
+  "blockers": 0,
+  "persisted": {
+    "run": "EOCEMVROWB8V",
+    "expectedSha": "553a7aaf044f1e605965e0c4df21f088fc03a96b",
+    "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:553a7aaf044f1e605965e0c4df21f088fc03a96b",
+    "templateId": "34f1d1e3-0311-4459-80e3-b405c2170de3",
+    "groupId": "b13b75fc-1e9f-430b-8940-d67793ae521c",
+    "optionIds": [
+      "c8c74dc1-21fe-40df-b4d3-111f17926e4d",
+      "475f82d7-8774-429b-883b-3939454ad925",
+      "b9d87220-e05b-4a0a-8ab8-9934670825f2"
+    ],
+    "clientId": "82807085-f44a-43d5-a704-accf26dba673",
+    "eventId": "ab91e21f-337d-485b-95ff-fceb7ebcee1e",
+    "eoId": "83b30610-fa98-43bc-b0f1-d5166623930c",
+    "choicesId": "8ae71e07-6c3e-4234-aa26-62d32eb74f6d",
+    "afterHydrate": {
+      "defOptIds": [
+        "c8c74dc1-21fe-40df-b4d3-111f17926e4d",
+        "475f82d7-8774-429b-883b-3939454ad925"
+      ],
+      "answers": {
+        "b13b75fc-1e9f-430b-8940-d67793ae521c": {
+          "optionIds": [
+            "c8c74dc1-21fe-40df-b4d3-111f17926e4d"
+          ]
+        }
+      }
+    },
+    "finalAnswers": {
+      "b13b75fc-1e9f-430b-8940-d67793ae521c": {
+        "optionIds": [
+          "c8c74dc1-21fe-40df-b4d3-111f17926e4d",
+          "475f82d7-8774-429b-883b-3939454ad925"
+        ]
+      }
+    },
+    "usability": [
+      {
+        "screen": "Couple sides rules",
+        "text": "Pick many · required · choose exactly 2",
+        "assessment": "Min/max selection rules visible on group.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Min reject (0)",
+        "text": "“Side dishes” requires at least 2 selections.",
+        "assessment": "Actionable min message; submit blocked.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Max reject (3)",
+        "text": "“Side dishes” allows at most 2 selections.",
+        "assessment": "Actionable max message; submit blocked.",
+        "severity": "ok"
+      },
+      {
+        "screen": "Stale draft after venue option remove",
+        "text": "\nEOCE\n\n·\n\nJen's Fancy Venue\n\nNov 9, 2027\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nEOCE-EOCEMVROWB8V-Sides · Awaiting Client\nSide dishes\n\nPick many · required · choose exactly 2\n\nChoose exactly 2 sides.\n\nEOCE-EOCEMVROWB8V-A\n+$10.00\nEOCE-EOCEMVROWB8V-B\n+$11.00\nSave\nSubmit\nJen's Fancy Venue\n💗",
+        "assessment": "Removed option gone; review message optional.",
+        "severity": "ok"
+      }
+    ]
+  }
+}
