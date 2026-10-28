@@ -71,6 +71,12 @@ export const SUGGESTED_CATEGORIES: readonly SuggestedCategory[] = [
     description: "Décor packages or à la carte décor clients can choose.",
     aliases: ["decor", "décor", "decoration", "decorations"],
   },
+  {
+    key: "ceremony",
+    name: "Ceremony",
+    description: "Ceremony structures, aisles, and related package choices.",
+    aliases: ["ceremony", "ceremony decor", "aisle"],
+  },
 ] as const;
 
 /**

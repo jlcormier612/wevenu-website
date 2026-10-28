@@ -17,6 +17,7 @@ import {
 import { ConditionalChoicePreview } from "@/components/event-order-templates/event-order-template-choice-groups";
 import { EventOrderTemplateChoiceGroups } from "@/components/event-order-templates/event-order-template-choice-groups";
 import { OfferingEditorSheet } from "@/components/event-order-templates/offering-editor-sheet";
+import { PackageChoicesPanel } from "@/components/event-order-templates/package-choices-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,8 +258,8 @@ export function GuidedSetupWizard({
           {progressLabel}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pick categories, then for each one add package items, the main question couples answer, and
-          follow-ups under each answer. Specialist rules stay available for unusual cases.
+          Pick categories, then for each one add items always on the package and Offerings the couple
+          can choose from. Specialist rules stay available for unusual cases.
         </p>
       </div>
 
@@ -268,7 +269,7 @@ export function GuidedSetupWizard({
             <h2 className="font-heading text-xl text-heading">What does this package include?</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Select the categories this package covers (for example Catering or Bar). Skip what you do
-              not manage. Next you will add package items and couple choices inside each category.
+              not manage. Next you will add always-on items and couple choices from your Offerings.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -396,14 +397,15 @@ export function GuidedSetupWizard({
                   Set up {activeSection.name}
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Work top to bottom: package items first, then the main question couples answer, then
-                  follow-ups under each answer (sides under Buffet, entrées under Plated).
+                  Work top to bottom: items always on this package, then Offerings the couple can
+                  choose from. Select Offerings from your catalog — you do not need to create
+                  questions first.
                 </p>
               </div>
 
               <div className="space-y-4" data-testid="eo-guided-step-fixed">
                 <h3 className="font-heading text-lg text-heading">
-                  Items always on this package
+                  Always on the package
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   These belong to {activeSection.name} without a couple choice. When you add each item,
@@ -439,22 +441,14 @@ export function GuidedSetupWizard({
 
               <div className="space-y-4" data-testid="eo-guided-step-choices">
                 <h3 className="font-heading text-lg text-heading">
-                  Choices couples make
+                  Couple&apos;s choices
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Add the main question (for example Dinner style), then add answers such as Buffet
-                  Dinner and Plated Dinner. Attach follow-up questions under each answer — not as a
-                  second top-level question.
-                </p>
-                <EventOrderTemplateChoiceGroups
+                <PackageChoicesPanel
                   template={template}
                   catalogOfferings={catalogOfferings}
+                  sectionId={activeSection.id}
+                  sectionName={activeSection.name}
                   onPersist={onPersist}
-                  lockedSectionId={activeSection.id}
-                  compact
-                  showPreview={false}
-                  nestBranches
-                  guidedOrdinary
                 />
               </div>
             </div>
@@ -482,8 +476,8 @@ export function GuidedSetupWizard({
         <section className="space-y-4" data-testid="eo-guided-step-review">
           <h2 className="font-heading text-xl text-heading">Review your complete setup</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Package items, primary questions, follow-ups under each answer, and pricing. Return to a
-            category to edit.
+            Always-on package items, couple choices from your Offerings, selection rules, and
+            pricing. Return to a category to edit.
           </p>
           {review.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
@@ -630,7 +624,7 @@ export function GuidedSetupWizard({
           <summary className="cursor-pointer font-medium text-heading">Specialist selection rules</summary>
           <p className="mt-2 mb-3">
             Unusual cross-group relationships, unassigned groups, and other specialist controls. Ordinary
-            included items, primary choices, and under-option follow-ups do not require this section.
+            always-on items and Offering-based couple choices do not require this section.
           </p>
           {specialistOpen && activeSection ? (
             <EventOrderTemplateChoiceGroups

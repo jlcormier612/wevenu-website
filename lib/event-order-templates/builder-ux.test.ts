@@ -16,8 +16,9 @@ describe("EO template builder — guided setup UX seams", () => {
     );
     assert.match(detail, /GuidedSetupWizard/);
     assert.match(detail, /eo-template-detail-intro/);
-    assert.match(detail, /package items/i);
-    assert.match(detail, /follow-ups under each answer/i);
+    assert.match(detail, /always on the package/i);
+    assert.match(detail, /Couple.*s choices|Offerings catalog/i);
+    assert.doesNotMatch(detail, /follow-ups under each answer/i);
     assert.doesNotMatch(detail, /commercial build sheet/i);
     assert.doesNotMatch(detail, /included automatically/i);
   });
@@ -29,9 +30,11 @@ describe("EO template builder — guided setup UX seams", () => {
     );
     assert.match(page, /Reusable packages for a wedding/i);
     assert.match(page, /eo-templates-landing-example/);
-    assert.match(page, /package items|no couple action/i);
+    assert.match(page, /always-on items|always on the package/i);
+    assert.match(page, /Offerings/i);
     assert.match(page, /Preview shows the couple experience without sending/i);
     assert.doesNotMatch(page, /commercial build sheets/i);
+    assert.doesNotMatch(page, /follow-ups under each answer/i);
   });
 
   it("wizard covers categories → workspace → review → preview without pattern quiz", () => {
@@ -64,52 +67,54 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.doesNotMatch(wizard, /eo-guided-pattern-choose_one/);
   });
 
-  it("ordinary guided flow exposes More settings without requiring specialist rules", () => {
+  it("ordinary guided flow uses Offering package choices; specialist rules stay collapsed", () => {
     const groups = readFileSync(
       join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
       "utf8",
     );
     const wizard = readFileSync(
       join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+      "utf8",
+    );
+    const panel = readFileSync(
+      join(root, "components/event-order-templates/package-choices-panel.tsx"),
       "utf8",
     );
     assert.match(groups, /More settings/);
-    assert.match(groups, /guidedOrdinary/);
     assert.match(groups, /specialistMode/);
-    assert.match(wizard, /guidedOrdinary/);
+    assert.match(wizard, /PackageChoicesPanel/);
     assert.match(wizard, /specialistMode/);
     assert.match(wizard, /eo-guided-item-source-help/);
-    assert.match(wizard, /nestBranches/);
+    assert.match(wizard, /eo-package-choices-panel|PackageChoicesPanel/);
+    assert.match(panel, /eo-package-choices-panel/);
+    assert.match(panel, /CategorizedOfferingSelect/);
+    assert.match(panel, /authoringScope=\{\{ kind: "primary" \}\}/);
+    assert.doesNotMatch(wizard, /guidedOrdinary/);
   });
 
-  it("ordinary guided catering flow uses primary question + under-answer follow-ups", () => {
-    const groups = readFileSync(
-      join(root, "components/event-order-templates/event-order-template-choice-groups.tsx"),
-      "utf8",
-    );
+  it("ordinary guided catering flow is Offering-first — no question-builder step", () => {
     const wizard = readFileSync(
       join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
       "utf8",
     );
-    assert.match(groups, /Add a primary question/);
-    assert.match(groups, /How many can the couple select\?/);
-    assert.match(groups, /Add choices for couples who select/);
-    assert.match(groups, /eo-add-choices-for-/);
-    assert.match(groups, /eo-select-count-/);
-    assert.match(groups, /eo-add-primary-question/);
-    assert.match(groups, /dependentCategoryGroupInput/);
-    assert.match(groups, /resolvePlainSelectionRule/);
-    assert.match(groups, /If the couple chooses/);
-    assert.match(groups, /Select which question/);
-    assert.match(groups, /authoringScope/);
-    assert.match(groups, /Template-only answer/);
-    assert.match(wizard, /Items always on this package/);
-    assert.match(wizard, /Choices couples make/);
-    assert.match(wizard, /Add package item/);
-    assert.match(wizard, /Covered by package price/);
+    const panel = readFileSync(
+      join(root, "components/event-order-templates/package-choices-panel.tsx"),
+      "utf8",
+    );
+    assert.match(wizard, /Always on the package/);
+    assert.match(wizard, /Couple.*s choices/);
+    assert.match(panel, /eo-couple-choice-offering-select/);
+    assert.match(panel, /Child Offerings available for this package/);
+    assert.match(panel, /Instructions for the couple/);
+    assert.match(panel, /eo-add-choice-set/);
+    assert.match(panel, /parentChoiceView/);
+    assert.match(panel, /optionInputFromOffering/);
+    assert.doesNotMatch(wizard, /Add a primary question/);
+    assert.doesNotMatch(wizard, /Items always on this package/);
+    assert.doesNotMatch(wizard, /Choices couples make/);
     assert.doesNotMatch(wizard, /Included in \{activeSection\.name\}/);
-    assert.doesNotMatch(wizard, /major choices from your Offerings catalog/i);
-    assert.doesNotMatch(groups, /Add from your Offerings catalog/);
+    assert.doesNotMatch(panel, /Add a primary question/);
+    assert.doesNotMatch(panel, /follow-up question/i);
   });
 
   it("preview validates under-selection with the shared choices validator", () => {

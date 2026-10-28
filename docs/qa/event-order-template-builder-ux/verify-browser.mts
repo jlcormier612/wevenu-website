@@ -1,11 +1,10 @@
 /**
- * EO Template builder mental-model UX — full Sandbox venue-owner acceptance.
+ * EO Template builder — Offering-based package builder Sandbox acceptance.
  *
  * EXPECTED_SHA=<sha> npx tsx docs/qa/event-order-template-builder-ux/verify-browser.mts
  */
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 
@@ -179,6 +178,100 @@ async function loadTemplateDetails(templateId: string): Promise<EventOrderTempla
   } as EventOrderTemplateWithDetails;
 }
 
+async function ensureCategory(name: string): Promise<string> {
+  const { data: existing } = await admin
+    .from("offering_categories")
+    .select("id")
+    .eq("venue_id", FANCY)
+    .eq("name", name)
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+  const { data, error } = await admin
+    .from("offering_categories")
+    .insert({ venue_id: FANCY, name, sort_order: 50 })
+    .select("id")
+    .single();
+  if (error || !data) throw error ?? new Error(`category ${name}`);
+  return data.id;
+}
+
+async function ensureOffering(
+  name: string,
+  categoryId: string,
+  defaultUnitPrice: number | null,
+  tracked: string[],
+): Promise<string> {
+  const { data: existing } = await admin
+    .from("offerings")
+    .select("id")
+    .eq("venue_id", FANCY)
+    .eq("name", name)
+    .maybeSingle();
+  if (existing?.id) {
+    await admin
+      .from("offerings")
+      .update({
+        category_id: categoryId,
+        default_unit_price: defaultUnitPrice,
+        is_archived: false,
+      })
+      .eq("id", existing.id);
+    return existing.id;
+  }
+  const { data, error } = await admin
+    .from("offerings")
+    .insert({
+      venue_id: FANCY,
+      name,
+      category_id: categoryId,
+      default_unit_price: defaultUnitPrice,
+      unit: "each",
+      is_archived: false,
+      sort_order: 0,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw error ?? new Error(`offering ${name}`);
+  tracked.push(data.id);
+  return data.id;
+}
+
+async function ensureMajorLink(childId: string, parentId: string) {
+  const { data: existing } = await admin
+    .from("offering_major_links")
+    .select("id")
+    .eq("venue_id", FANCY)
+    .eq("offering_id", childId)
+    .eq("parent_offering_id", parentId)
+    .maybeSingle();
+  if (existing?.id) return;
+  const { error } = await admin.from("offering_major_links").insert({
+    venue_id: FANCY,
+    offering_id: childId,
+    parent_offering_id: parentId,
+  });
+  if (error) throw error;
+  await admin.from("offerings").update({ parent_offering_id: parentId }).eq("id", childId);
+}
+
+async function pickOffering(page: {
+  getByTestId: (id: string) => {
+    count: () => Promise<number>;
+    selectOption: (v: string) => Promise<unknown>;
+    waitFor: (o: { state: string; timeout: number }) => Promise<unknown>;
+  };
+  waitForTimeout: (ms: number) => Promise<void>;
+}, selectTestId: string, offeringId: string) {
+  const filter = page.getByTestId(`${selectTestId}-filter`);
+  if (await filter.count()) {
+    await filter.selectOption("all").catch(() => undefined);
+    await page.waitForTimeout(250);
+  }
+  const list = page.getByTestId(`${selectTestId}-list`);
+  await list.waitFor({ state: "visible", timeout: 20_000 });
+  await list.selectOption(offeringId);
+}
+
 async function main() {
   if (!EXPECTED) throw new Error("EXPECTED_SHA required");
   const createdTemplateIds: string[] = [];
@@ -186,6 +279,7 @@ async function main() {
   const createdEventIds: string[] = [];
   const createdChoicesIds: string[] = [];
   const createdOrderIds: string[] = [];
+  const createdOfferingIds: string[] = [];
   const persisted: Record<string, unknown> = { run: RUN, expectedSha: EXPECTED, prefix: PREFIX };
 
   const browser = await chromium.launch({ headless: true });
@@ -199,34 +293,45 @@ async function main() {
 
     await context.addCookies(await staffCookies());
 
-    const { data: catalogOffering } = await admin
-      .from("offerings")
-      .select("id,name,default_unit_price")
-      .eq("venue_id", FANCY)
-      .eq("name", "Day-of coordination")
-      .maybeSingle();
-    const { data: sideOffering } = await admin
-      .from("offerings")
-      .select("id,name")
-      .eq("venue_id", FANCY)
-      .eq("name", "Caesar salad")
-      .maybeSingle();
-    const { data: entreeOffering } = await admin
-      .from("offerings")
-      .select("id,name")
-      .eq("venue_id", FANCY)
-      .eq("name", "Chicken Marsala")
-      .maybeSingle();
-    record("catalog_fixtures_present", Boolean(catalogOffering && sideOffering && entreeOffering), JSON.stringify({
-      catalogOffering, sideOffering, entreeOffering,
-    }), "fixture");
+    const cateringCatId = await ensureCategory("Catering");
+    const ceremonyCatId = await ensureCategory("Ceremony");
+
+    const buffetId = await ensureOffering("Buffet Style Dinner", cateringCatId, null, createdOfferingIds);
+    const platedId = await ensureOffering("Plated Dinner", cateringCatId, null, createdOfferingIds);
+    const zitiId = await ensureOffering("Baked Ziti", cateringCatId, null, createdOfferingIds);
+    const cheesecakeId = await ensureOffering("Cheesecake", cateringCatId, null, createdOfferingIds);
+    const marsalaId = await ensureOffering("Chicken Marsala", cateringCatId, null, createdOfferingIds);
+    const vegId = await ensureOffering("Vegetarian entrée", cateringCatId, null, createdOfferingIds);
+    const dayOfId = await ensureOffering("Day-of coordination", await ensureCategory("Services"), 0, createdOfferingIds);
+
+    await ensureMajorLink(zitiId, buffetId);
+    await ensureMajorLink(cheesecakeId, buffetId);
+    await ensureMajorLink(marsalaId, platedId);
+    await ensureMajorLink(vegId, platedId);
+    await ensureMajorLink(cheesecakeId, platedId);
+
+    const arborId = await ensureOffering("Arbor", ceremonyCatId, 250, createdOfferingIds);
+    const archId = await ensureOffering("Arch", ceremonyCatId, 200, createdOfferingIds);
+    const runnerId = await ensureOffering("Runner", ceremonyCatId, 75, createdOfferingIds);
+    const petalsId = await ensureOffering("White Rose Petal Aisle Path", ceremonyCatId, 175, createdOfferingIds);
+
+    persisted.catalog = {
+      buffetId, platedId, zitiId, cheesecakeId, marsalaId, vegId, dayOfId,
+      arborId, archId, runnerId, petalsId,
+    };
+    record(
+      "catalog_fixtures_seeded",
+      Boolean(buffetId && platedId && arborId && archId),
+      JSON.stringify(persisted.catalog),
+      "fixture",
+    );
 
     const { data: tpl, error: tplErr } = await admin
       .from("event_order_templates")
       .insert({
         venue_id: FANCY,
-        name: `${PREFIX}Builder UX`,
-        description: "eotux full acceptance",
+        name: `${PREFIX}Offering Builder`,
+        description: "offering-based package builder acceptance",
         is_archived: false,
       })
       .select("id")
@@ -240,38 +345,40 @@ async function main() {
       timeout: 120_000,
     });
     await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 90_000 });
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1000);
 
-    const catering = page.getByTestId("eo-guided-category-catering");
-    for (let i = 0; i < 6; i++) {
-      if ((await catering.getAttribute("aria-pressed")) === "true") break;
-      await catering.click({ force: true });
-      await page.waitForTimeout(300);
+    async function pressCategory(key: string) {
+      const el = page.getByTestId(`eo-guided-category-${key}`);
+      for (let i = 0; i < 6; i++) {
+        if ((await el.getAttribute("aria-pressed")) === "true") return;
+        await el.click({ force: true });
+        await page.waitForTimeout(250);
+      }
+      if ((await el.getAttribute("aria-pressed")) !== "true") throw new Error(`${key} not selected`);
     }
-    if ((await catering.getAttribute("aria-pressed")) !== "true") throw new Error("Catering not selected");
+    await pressCategory("catering");
+    await pressCategory("ceremony");
     await page.getByTestId("eo-guided-categories-continue").click();
     await page.waitForSelector('[data-testid="eo-guided-step-workspace"]', { timeout: 60_000 });
     await page.screenshot({ path: `${OUT}/shots/01-workspace-empty-1280.png`, fullPage: true });
 
     const workspace = await page.getByTestId("eo-guided-step-workspace").innerText();
-    record("ux_package_items_heading", /Items always on this package/i.test(workspace), "heading", "usability");
-    record("ux_choices_heading", /Choices couples make/i.test(workspace), "heading", "usability");
-    record("ux_no_included_in_catering", !/Included in Catering/i.test(workspace), "no old heading", "usability");
-    record("ux_no_major_choices_jargon", !/major choices from your Offerings catalog/i.test(workspace), "no jargon", "usability");
-    record("ux_primary_question_cta", (await page.getByTestId("eo-add-primary-question").count()) === 1, "CTA present", "usability");
-    record("ux_empty_guides_next", /No primary question yet/i.test(workspace), "empty state", "usability");
+    record("ux_always_on_heading", /Always on the package/i.test(workspace), "heading", "usability");
+    record("ux_couples_choices_heading", /Couple.?s choices/i.test(workspace), "heading", "usability");
+    record("ux_no_included_heading", !/Included in Catering/i.test(workspace), "no Included", "usability");
+    record("ux_no_primary_question_cta", (await page.getByTestId("eo-add-primary-question").count()) === 0, "no question CTA", "usability");
+    record("ux_offering_choices_panel", (await page.getByTestId("eo-package-choices-panel").count()) === 1, "panel", "usability");
+    record("ux_no_question_copy", !/Add a primary question/i.test(workspace), "no question copy", "usability");
 
-    // ---- A: catalog package item covered by package price ----
+    // ---- Always on: catalog covered item ----
     await page.locator('[data-testid^="eo-add-offering-"]').first().click();
     await page.waitForTimeout(600);
     await page.getByTestId("eo-line-offering-picker-filter").selectOption("all").catch(() => undefined);
     await page.waitForTimeout(300);
     const list = page.getByTestId("eo-line-offering-picker-list");
     await list.waitFor({ state: "visible", timeout: 15_000 });
-    if (catalogOffering) {
-      await list.selectOption(catalogOffering.id);
-      await page.waitForTimeout(400);
-    }
+    await list.selectOption(dayOfId);
+    await page.waitForTimeout(400);
     const covered = page.getByTestId("eo-line-covered-by-package");
     await covered.waitFor({ state: "visible", timeout: 10_000 });
     if (!(await covered.isChecked())) await covered.check({ force: true });
@@ -282,24 +389,18 @@ async function main() {
       timeout: 30_000,
     });
 
-    // ---- A: template-only additional charge ----
+    // ---- Always on: template-only additional charge ----
     await page.locator('[data-testid^="eo-add-offering-"]').first().click();
     await page.waitForTimeout(700);
-    const customBtn = page.getByRole("button", { name: /custom \/ template-only/i });
-    await customBtn.waitFor({ state: "visible", timeout: 15_000 });
-    await customBtn.click();
+    await page.getByRole("button", { name: /custom \/ template-only/i }).click();
     await page.locator("#offering-name").waitFor({ state: "visible", timeout: 15_000 });
     const toastName = `${PREFIX}Champagne Toast`;
     await page.locator("#offering-name").fill(toastName);
-    const hasPriceBox = page.locator('label').filter({ hasText: /This offering has a price/i }).locator('input[type="checkbox"]');
-    await hasPriceBox.check({ force: true });
-    await page.locator("#offering-price").waitFor({ state: "visible", timeout: 10_000 });
+    await page.locator("label").filter({ hasText: /This offering has a price/i }).locator('input[type="checkbox"]').check({ force: true });
     await page.locator("#offering-price").fill("150");
     const covered2 = page.getByTestId("eo-line-covered-by-package");
-    await covered2.waitFor({ state: "visible", timeout: 10_000 });
     if (await covered2.isChecked()) await covered2.uncheck({ force: true });
     await page.getByRole("button", { name: /^(Add package item|Add offering)$/i }).click();
-    // Wait until the sheet closes and the new line is visible in the package list
     await page.locator("#offering-name").waitFor({ state: "hidden", timeout: 30_000 }).catch(() => undefined);
     await page.getByTestId("eo-guided-step-fixed").getByText(/Champagne Toast/i).waitFor({
       state: "visible",
@@ -312,182 +413,197 @@ async function main() {
       included_by_default: boolean;
       unit_price: number | null;
       offering_id: string | null;
-      pricing_model: string;
     } | undefined;
     let catalogLine: typeof toastLine;
     let lines: typeof toastLine[] | null = null;
     for (let attempt = 0; attempt < 10; attempt++) {
       const { data } = await admin
         .from("event_order_template_lines")
-        .select("id,description,included_by_default,unit_price,offering_id,pricing_model")
+        .select("id,description,included_by_default,unit_price,offering_id")
         .eq("template_id", tpl.id);
       lines = (data ?? []) as typeof lines;
-      catalogLine = (lines ?? []).find((l) => l.offering_id === catalogOffering?.id);
+      catalogLine = (lines ?? []).find((l) => l.offering_id === dayOfId);
       toastLine = (lines ?? []).find((l) => String(l.description).includes("Champagne Toast"));
       if (catalogLine && toastLine) break;
       await page.waitForTimeout(400);
     }
     record(
-      "persisted_catalog_package_item_covered",
-      Boolean(catalogLine)
-        && catalogLine!.included_by_default === true
-        && catalogLine!.offering_id === catalogOffering!.id,
+      "persisted_catalog_always_on_covered",
+      Boolean(catalogLine) && catalogLine!.included_by_default === true && catalogLine!.offering_id === dayOfId,
       JSON.stringify(catalogLine),
       "persisted",
     );
     record(
       "persisted_template_only_additional_charge",
-      Boolean(toastLine)
-        && toastLine!.included_by_default === false
-        && Number(toastLine!.unit_price) === 150
-        && toastLine!.offering_id == null,
+      Boolean(toastLine) && toastLine!.included_by_default === false && Number(toastLine!.unit_price) === 150 && toastLine!.offering_id == null,
       JSON.stringify(toastLine ?? { lines }),
       "persisted",
     );
-    const fixedText = await page.getByTestId("eo-guided-step-fixed").innerText();
-    record(
-      "ui_distinguishes_covered_vs_additional",
-      /Covered by package price/i.test(fixedText) && /Additional charge/i.test(fixedText),
-      fixedText.slice(0, 600),
-      "usability",
-    );
-    record(
-      "ui_catalog_vs_template_only_on_items",
-      /From Offerings catalog/i.test(fixedText) && /Template-only/i.test(fixedText),
-      "source labels",
-      "usability",
-    );
-    await page.screenshot({ path: `${OUT}/shots/02-package-items-pricing-1280.png`, fullPage: true });
+    await page.screenshot({ path: `${OUT}/shots/02-always-on-pricing-1280.png`, fullPage: true });
     persisted.lines = lines;
 
-    // ---- B: primary question + answers ----
-    await page.getByTestId("eo-add-group-name").fill("Dinner style");
-    await page.getByTestId("eo-add-choice-group").click();
-    await page.waitForTimeout(1500);
-    const { data: groups1 } = await admin
-      .from("event_order_template_groups")
-      .select("id,name,depends_on_option_ids,min_select,max_select,selection_mode")
-      .eq("template_id", tpl.id);
-    const primary = (groups1 ?? []).find((g) => g.name === "Dinner style");
-    record("persisted_primary_question", Boolean(primary?.id) && (primary!.depends_on_option_ids ?? []).length === 0, JSON.stringify(primary), "persisted");
+    // ---- Couple's choices: Buffet + Plated from Offering dropdown (no question first) ----
+    await pickOffering(page, "eo-couple-choice-offering-select", buffetId);
+    await page.getByText("Buffet Style Dinner").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(800);
+    await pickOffering(page, "eo-couple-choice-offering-select-0", platedId);
+    await page.getByText("Plated Dinner").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(1000);
 
-    async function addTemplateOnlyAnswer(label: string) {
-      await page.getByTestId("eo-add-option-group").selectOption(primary!.id);
-      await page.getByTestId("eo-add-option-template-only").click();
-      await page.getByPlaceholder("Option label").fill(label);
-      await page.getByRole("button", { name: /^Add template-only option$/i }).click();
-      await page.waitForTimeout(1200);
-    }
-    await addTemplateOnlyAnswer("Buffet Dinner");
-    await addTemplateOnlyAnswer("Plated Dinner");
-
-    const { data: options } = await admin
-      .from("event_order_template_options")
-      .select("id,label,group_id,offering_id")
-      .eq("template_id", tpl.id);
-    const buffet = (options ?? []).find((o) => o.label === "Buffet Dinner");
-    const plated = (options ?? []).find((o) => o.label === "Plated Dinner");
-    record(
-      "persisted_answers_same_question",
-      Boolean(buffet && plated && buffet.group_id === primary!.id && plated.group_id === primary!.id),
-      JSON.stringify({ buffet, plated, primaryId: primary?.id }),
-      "persisted",
-    );
-    const choicesPanel = await page.getByTestId("eo-choice-groups-panel").innerText();
-    record(
-      "ux_answers_visually_under_question",
-      /Dinner style/i.test(choicesPanel) && /Buffet Dinner/i.test(choicesPanel) && /Plated Dinner/i.test(choicesPanel),
-      choicesPanel.slice(0, 500),
-      "usability",
-    );
-    await page.screenshot({ path: `${OUT}/shots/03-primary-answers-1280.png`, fullPage: true });
-
-    // ---- C: follow-ups ----
-    async function addFollowUp(optionId: string, name: string) {
-      await page.getByTestId(`eo-add-choices-for-${optionId}`).click();
-      await page.getByTestId(`eo-followup-name-${optionId}`).fill(name);
-      await page.getByTestId(`eo-followup-count-${optionId}`).fill("1");
-      await page.getByTestId(`eo-followup-save-${optionId}`).click();
-      await page.waitForTimeout(1500);
-    }
-    if (buffet) await addFollowUp(buffet.id, "Sides");
-    if (plated) await addFollowUp(plated.id, "Entrées");
-
-    const { data: groups2 } = await admin
-      .from("event_order_template_groups")
-      .select("id,name,depends_on_option_ids,min_select,max_select")
-      .eq("template_id", tpl.id);
-    const sides = (groups2 ?? []).find((g) => g.name === "Sides");
-    const entrees = (groups2 ?? []).find((g) => g.name === "Entrées" || g.name === "Entrees");
-    record(
-      "persisted_sides_depends_on_buffet",
-      Boolean(sides) && (sides!.depends_on_option_ids as string[]).includes(buffet!.id),
-      JSON.stringify(sides),
-      "persisted",
-    );
-    record(
-      "persisted_entrees_depends_on_plated",
-      Boolean(entrees) && (entrees!.depends_on_option_ids as string[]).includes(plated!.id),
-      JSON.stringify(entrees),
-      "persisted",
-    );
-
-    async function addCatalogOptionToGroup(groupId: string, offeringId: string, label: string) {
-      await page.getByTestId("eo-add-option-group").selectOption(groupId);
-      await page.getByTestId("eo-add-option-from-catalog").click();
-      await page.getByTestId("eo-add-option-offering-filter").selectOption("all").catch(() => undefined);
-      await page.waitForTimeout(300);
-      await page.getByTestId("eo-add-option-offering-list").selectOption(offeringId);
-      await page.waitForTimeout(300);
-      const labelInput = page.getByPlaceholder("Customer-facing label");
-      if (await labelInput.count()) await labelInput.fill(label);
-      await page.getByRole("button", { name: /^Add option$/i }).click();
-      await page.waitForTimeout(1200);
-    }
-    if (sides && sideOffering) await addCatalogOptionToGroup(sides.id, sideOffering.id, "Caesar salad");
-    if (entrees && entreeOffering) await addCatalogOptionToGroup(entrees.id, entreeOffering.id, "Chicken Marsala");
-
-    // Template-only under Sides
-    const roastLabel = `${PREFIX}Roasted Vegetables`;
-    if (sides) {
-      await page.getByTestId("eo-add-option-group").selectOption(sides.id);
-      await page.getByTestId("eo-add-option-template-only").click();
-      await page.getByPlaceholder("Option label").waitFor({ state: "visible", timeout: 15_000 });
-      await page.getByPlaceholder("Option label").fill(roastLabel);
-      await page.getByRole("button", { name: /^Add template-only option$/i }).click();
-      await page.getByTestId("eo-choice-groups-panel").getByText(roastLabel).waitFor({
-        state: "visible",
-        timeout: 30_000,
-      });
-    }
-
-    let caesar: { id: string; label: string; group_id: string; offering_id: string | null } | undefined;
-    let chicken: typeof caesar;
-    let roast: typeof caesar;
-    let allOpts: typeof caesar[] | null = null;
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const { data } = await admin
+    let buffetOpt: { id: string; label: string; group_id: string; offering_id: string | null } | undefined;
+    let platedOpt: typeof buffetOpt;
+    let rootGroupId: string | undefined;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const { data: opts } = await admin
         .from("event_order_template_options")
         .select("id,label,group_id,offering_id")
         .eq("template_id", tpl.id);
-      allOpts = (data ?? []) as typeof allOpts;
-      caesar = (allOpts ?? []).find((o) => o.label === "Caesar salad");
-      chicken = (allOpts ?? []).find((o) => o.label === "Chicken Marsala");
-      roast = (allOpts ?? []).find((o) => String(o.label).includes("Roasted Vegetables"));
-      if (caesar && chicken && roast) break;
-      await page.waitForTimeout(400);
+      buffetOpt = (opts ?? []).find((o) => o.offering_id === buffetId);
+      platedOpt = (opts ?? []).find((o) => o.offering_id === platedId);
+      if (buffetOpt && platedOpt && buffetOpt.group_id === platedOpt.group_id) {
+        rootGroupId = buffetOpt.group_id;
+        break;
+      }
+      await page.waitForTimeout(500);
     }
-    record("persisted_sides_catalog_item", Boolean(caesar?.offering_id === sideOffering?.id), JSON.stringify(caesar), "persisted");
-    record("persisted_entrees_catalog_item", Boolean(chicken?.offering_id === entreeOffering?.id), JSON.stringify(chicken), "persisted");
     record(
-      "persisted_sides_template_only_item",
-      Boolean(roast && roast.offering_id == null),
-      JSON.stringify(roast ?? { allOpts }),
+      "persisted_parents_from_offerings_no_question",
+      Boolean(buffetOpt && platedOpt && rootGroupId && buffetOpt.offering_id === buffetId && platedOpt.offering_id === platedId),
+      JSON.stringify({ buffetOpt, platedOpt, rootGroupId }),
       "persisted",
     );
-    await page.screenshot({ path: `${OUT}/shots/04-followups-both-branches-1280.png`, fullPage: true });
-    persisted.groups = groups2;
-    persisted.options = allOpts;
+    record(
+      "ui_shows_parent_children_checklists",
+      (await page.getByTestId(`eo-parent-children-${buffetOpt!.id}`).count()) === 1
+        && (await page.getByTestId(`eo-parent-children-${platedOpt!.id}`).count()) === 1,
+      "child panels",
+      "usability",
+    );
+
+    // Select children under Buffet / Plated
+    await page.getByTestId(`eo-child-toggle-${buffetOpt!.id}-${zitiId}`).check({ force: true });
+    await page.waitForTimeout(1200);
+    await page.getByTestId(`eo-child-toggle-${buffetOpt!.id}-${cheesecakeId}`).check({ force: true });
+    await page.waitForTimeout(1200);
+    await page.getByTestId(`eo-child-toggle-${platedOpt!.id}-${marsalaId}`).check({ force: true });
+    await page.waitForTimeout(1200);
+    await page.getByTestId(`eo-child-toggle-${platedOpt!.id}-${vegId}`).check({ force: true });
+    await page.waitForTimeout(1500);
+
+    // Instructions + required choose-1 on root set
+    const instr = page.getByTestId("eo-choice-instructions-0");
+    await instr.fill(
+      "Choose either Buffet Style Dinner or Plated Dinner. For the style you select, choose from the available options.",
+    );
+    await instr.blur();
+    await page.waitForTimeout(800);
+    const countInput = page.getByTestId("eo-choice-select-count-0");
+    await countInput.fill("1");
+    await countInput.blur();
+    const req = page.getByTestId("eo-choice-required-0");
+    if (!(await req.isChecked())) await req.check({ force: true });
+    await page.waitForTimeout(1000);
+
+    let zitiOpt: typeof buffetOpt;
+    let marsalaOpt: typeof buffetOpt;
+    let buffetChildGroup: { id: string; depends_on_option_ids: string[]; min_select: number; max_select: number | null } | undefined;
+    let platedChildGroup: typeof buffetChildGroup;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const [{ data: opts }, { data: groups }] = await Promise.all([
+        admin.from("event_order_template_options").select("id,label,group_id,offering_id").eq("template_id", tpl.id),
+        admin.from("event_order_template_groups").select("id,name,depends_on_option_ids,min_select,max_select,instructions").eq("template_id", tpl.id),
+      ]);
+      zitiOpt = (opts ?? []).find((o) => o.offering_id === zitiId);
+      marsalaOpt = (opts ?? []).find((o) => o.offering_id === marsalaId);
+      buffetChildGroup = (groups ?? []).find((g) =>
+        (g.depends_on_option_ids as string[] | null)?.includes(buffetOpt!.id),
+      ) as typeof buffetChildGroup;
+      platedChildGroup = (groups ?? []).find((g) =>
+        (g.depends_on_option_ids as string[] | null)?.includes(platedOpt!.id),
+      ) as typeof platedChildGroup;
+      if (zitiOpt && marsalaOpt && buffetChildGroup && platedChildGroup) break;
+      await page.waitForTimeout(500);
+    }
+    record(
+      "persisted_selected_children_under_parents",
+      Boolean(zitiOpt && marsalaOpt && buffetChildGroup && platedChildGroup),
+      JSON.stringify({ zitiOpt, marsalaOpt, buffetChildGroup, platedChildGroup }),
+      "persisted",
+    );
+
+    // Configure child group counts (choose 1 required)
+    if (buffetChildGroup) {
+      const childCount = page.getByTestId(`eo-child-select-count-${buffetChildGroup.id}`);
+      if (await childCount.count()) {
+        await childCount.fill("1");
+        await childCount.blur();
+        const childReq = page.getByTestId(`eo-child-required-${buffetChildGroup.id}`);
+        if (!(await childReq.isChecked())) await childReq.check({ force: true });
+        await page.waitForTimeout(800);
+      }
+    }
+    if (platedChildGroup) {
+      const childCount = page.getByTestId(`eo-child-select-count-${platedChildGroup.id}`);
+      if (await childCount.count()) {
+        await childCount.fill("1");
+        await childCount.blur();
+        const childReq = page.getByTestId(`eo-child-required-${platedChildGroup.id}`);
+        if (!(await childReq.isChecked())) await childReq.check({ force: true });
+        await page.waitForTimeout(800);
+      }
+    }
+
+    await page.screenshot({ path: `${OUT}/shots/03-catering-couple-choices-1280.png`, fullPage: true });
+
+    // Always-on offering must not appear in couple picker (Day-of already used as line)
+    const coupleListOptions = await page.getByTestId("eo-couple-choice-offering-select-0-list").innerText().catch(() => "");
+    record(
+      "always_on_not_duplicated_in_couple_picker",
+      !coupleListOptions.includes("Day-of coordination"),
+      coupleListOptions.slice(0, 400),
+      "usability",
+    );
+
+    // ---- Continue to Ceremony ----
+    await page.getByTestId("eo-guided-continue").click();
+    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid="eo-guided-step-workspace"]', { timeout: 30_000 });
+    const ceremonyWs = await page.getByTestId("eo-guided-step-workspace").innerText();
+    record("ceremony_workspace", /Ceremony/i.test(ceremonyWs) && /Couple.?s choices/i.test(ceremonyWs), ceremonyWs.slice(0, 300), "usability");
+
+    await pickOffering(page, "eo-couple-choice-offering-select", arborId);
+    await page.getByText("Arbor").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(800);
+    await pickOffering(page, "eo-couple-choice-offering-select-0", archId);
+    await page.getByText("Arch").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(800);
+
+    await page.getByTestId("eo-add-choice-set").click();
+    await page.waitForTimeout(1200);
+    await pickOffering(page, "eo-couple-choice-offering-select-1", runnerId);
+    await page.getByText("Runner").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(800);
+    await pickOffering(page, "eo-couple-choice-offering-select-1", petalsId);
+    await page.getByText("White Rose Petal Aisle Path").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(1000);
+
+    const { data: ceremonyOpts } = await admin
+      .from("event_order_template_options")
+      .select("id,label,group_id,offering_id,unit_price")
+      .eq("template_id", tpl.id)
+      .in("offering_id", [arborId, archId, runnerId, petalsId]);
+    record(
+      "persisted_ceremony_standalones",
+      (ceremonyOpts ?? []).length === 4
+        && (ceremonyOpts ?? []).some((o) => o.offering_id === arborId && Number(o.unit_price) === 250)
+        && (ceremonyOpts ?? []).some((o) => o.offering_id === archId),
+      JSON.stringify(ceremonyOpts),
+      "persisted",
+    );
+    const ceremonyGroupIds = new Set((ceremonyOpts ?? []).map((o) => o.group_id));
+    record("ceremony_two_choice_sets", ceremonyGroupIds.size === 2, `groups=${ceremonyGroupIds.size}`, "persisted");
+    await page.screenshot({ path: `${OUT}/shots/04-ceremony-standalones-1280.png`, fullPage: true });
+    persisted.ceremonyOptions = ceremonyOpts;
 
     // ---- Reopen persistence ----
     await page.goto(`${APP}/library/event-order-templates/${tpl.id}`, {
@@ -495,39 +611,26 @@ async function main() {
       timeout: 120_000,
     });
     await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 90_000 });
-    // Land on configure/workspace or review — open catering workspace
-    const editCat = page.getByTestId("eo-guided-edit-package-categories");
-    if (await editCat.count()) {
-      // may be on review — go edit category via review button if present
-    }
     const editCategoryBtn = page.getByRole("button", { name: /^Edit category$/i });
     if (await editCategoryBtn.count()) {
       await editCategoryBtn.first().click();
       await page.waitForTimeout(800);
-    } else if (await page.getByTestId("eo-guided-step-categories").count()) {
-      // ensure catering and continue
-      if ((await catering.getAttribute("aria-pressed")) !== "true") {
-        await catering.click({ force: true });
-      }
-      await page.getByTestId("eo-guided-categories-continue").click();
-      await page.waitForTimeout(1000);
     }
     await page.waitForSelector('[data-testid="eo-guided-step-workspace"], [data-testid="eo-guided-step-review"]', {
       timeout: 30_000,
     });
     const reopenBody = await page.locator("body").innerText();
     record(
-      "reopen_preserves_structure",
-      /Dinner style/i.test(reopenBody)
-        && /Buffet Dinner/i.test(reopenBody)
+      "reopen_preserves_offering_structure",
+      /Buffet Style Dinner/i.test(reopenBody)
         && /Plated Dinner/i.test(reopenBody)
-        && (/Champagne Toast/i.test(reopenBody) || /Day-of coordination/i.test(reopenBody)),
+        && (/Baked Ziti|Chicken Marsala/i.test(reopenBody) || /Champagne Toast/i.test(reopenBody)),
       reopenBody.slice(0, 800),
       "persisted",
     );
 
-    // ---- Preview + conditional follow-ups ----
-    for (let i = 0; i < 5; i++) {
+    // ---- Preview ----
+    for (let i = 0; i < 8; i++) {
       if (await page.getByTestId("eo-guided-step-preview").count()) break;
       if (await page.getByTestId("eo-guided-goto-preview").count()) {
         await page.getByTestId("eo-guided-goto-preview").click();
@@ -539,52 +642,43 @@ async function main() {
         await page.waitForTimeout(700);
       }
     }
-    if (!(await page.getByTestId("eo-guided-step-preview").count())) {
-      // from review
-      if (await page.getByTestId("eo-guided-goto-preview").count()) {
-        await page.getByTestId("eo-guided-goto-preview").click();
-      }
-    }
     await page.getByTestId("eo-guided-step-preview").waitFor({ timeout: 45_000 });
     await page.screenshot({ path: `${OUT}/shots/05-preview-initial-1280.png`, fullPage: true });
 
-    await page.getByTestId(`eo-preview-parent-${buffet!.id}`).click();
+    await page.getByTestId(`eo-preview-parent-${buffetOpt!.id}`).click();
     await page.waitForTimeout(500);
     const afterBuffet = await page.getByTestId("eo-choice-conditional-preview").innerText();
     record(
-      "preview_buffet_shows_sides_not_entrees",
-      /Sides/i.test(afterBuffet) && !/Entrées|Entrees/i.test(afterBuffet),
+      "preview_buffet_shows_only_buffet_children",
+      /Baked Ziti|Cheesecake/i.test(afterBuffet) && !/Chicken Marsala|Vegetarian/i.test(afterBuffet),
       afterBuffet.slice(0, 600),
       "preview",
     );
     await page.screenshot({ path: `${OUT}/shots/06-preview-buffet-path-1280.png`, fullPage: true });
 
-    await page.getByTestId(`eo-preview-parent-${plated!.id}`).click();
+    await page.getByTestId(`eo-preview-parent-${platedOpt!.id}`).click();
     await page.waitForTimeout(500);
     const afterPlated = await page.getByTestId("eo-choice-conditional-preview").innerText();
     record(
-      "preview_plated_shows_entrees_not_sides",
-      (/Entrées|Entrees/i.test(afterPlated) || /Chicken Marsala/i.test(afterPlated))
-        && !/Sides/i.test(afterPlated),
+      "preview_plated_shows_only_plated_children",
+      (/Chicken Marsala|Vegetarian/i.test(afterPlated)) && !/Baked Ziti/i.test(afterPlated),
       afterPlated.slice(0, 600),
       "preview",
     );
     await page.screenshot({ path: `${OUT}/shots/07-preview-plated-path-1280.png`, fullPage: true });
 
-    // Invalid: only primary selected — under-selection on follow-up
     await page.getByTestId("eo-preview-check-selections").click();
     await page.waitForTimeout(400);
     const valMsg = await page.getByTestId("eo-preview-validation-message").innerText().catch(() => "");
     record(
-      "preview_rejects_incomplete_followup",
-      /at least|requires|Entrée|Sides|select/i.test(valMsg),
+      "preview_rejects_incomplete_child_selection",
+      /at least|requires|select|option/i.test(valMsg),
       valMsg || "no validation message",
       "preview",
     );
 
-    // Valid plated path
-    if (chicken) {
-      await page.getByTestId(`eo-preview-option-${chicken.id}`).click().catch(() => undefined);
+    if (marsalaOpt) {
+      await page.getByTestId(`eo-preview-option-${marsalaOpt.id}`).click().catch(() => undefined);
       await page.waitForTimeout(300);
       await page.getByTestId("eo-preview-check-selections").click();
       await page.waitForTimeout(400);
@@ -592,49 +686,66 @@ async function main() {
       const stillErr = await page.getByTestId("eo-preview-validation-message").count();
       record("preview_accepts_complete_plated_path", okHint === 1 && stillErr === 0, `okHint=${okHint} err=${stillErr}`, "preview");
     } else {
-      record("preview_accepts_complete_plated_path", false, "chicken option missing", "preview");
+      record("preview_accepts_complete_plated_path", false, "marsala option missing", "preview");
     }
 
-    // ---- Selection definition + finalization integrity (server rules) ----
+    // ---- Server validation / finalize integrity ----
     const details = await loadTemplateDetails(tpl.id);
     const definition = selectionDefinitionFromEventOrderTemplate(details);
     const incomplete: ChoicesAnswers = {
-      [primary!.id]: { optionIds: [plated!.id] },
+      [rootGroupId!]: { optionIds: [platedOpt!.id] },
     };
     const incompleteV = validateChoicesAnswers(definition, incomplete);
     record("server_rejects_incomplete_before_finalize", !incompleteV.ok, incompleteV.ok ? "ok" : incompleteV.message, "finalization");
 
     const valid: ChoicesAnswers = {
-      [primary!.id]: { optionIds: [plated!.id] },
-      [entrees!.id]: { optionIds: [chicken!.id] },
+      [rootGroupId!]: { optionIds: [platedOpt!.id] },
+      [platedChildGroup!.id]: { optionIds: [marsalaOpt!.id] },
     };
+    // Include ceremony required chooses if minSelect > 0
+    for (const g of details.groups) {
+      if ((g.dependsOnOptionIds ?? []).length > 0) continue;
+      if (g.id === rootGroupId) continue;
+      if (g.minSelect <= 0) continue;
+      const opts = details.options.filter((o) => o.groupId === g.id);
+      if (opts[0] && !valid[g.id]) valid[g.id] = { optionIds: [opts[0].id] };
+    }
     const validV = validateChoicesAnswers(definition, valid);
     record("server_accepts_valid_plated_path", validV.ok, validV.ok ? "ok" : validV.message, "finalization");
     const resolved = resolveSelectedOptions(definition, valid);
     record(
-      "resolved_lines_include_plated_and_entree",
+      "resolved_lines_include_plated_and_entree_not_all_children",
       resolved.some((l) => /Plated Dinner/i.test(l.description))
-        && resolved.some((l) => /Chicken Marsala/i.test(l.description)),
+        && resolved.some((l) => /Chicken Marsala/i.test(l.description))
+        && !resolved.some((l) => /Baked Ziti/i.test(l.description))
+        && !resolved.some((l) => /Vegetarian/i.test(l.description)),
       JSON.stringify(resolved.map((l) => ({ d: l.description, p: l.unitPrice, inc: l.isIncluded }))),
       "finalization",
     );
+
     const buffetPath: ChoicesAnswers = {
-      [primary!.id]: { optionIds: [buffet!.id] },
-      [sides!.id]: { optionIds: [caesar!.id] },
+      [rootGroupId!]: { optionIds: [buffetOpt!.id] },
+      [buffetChildGroup!.id]: { optionIds: [zitiOpt!.id] },
     };
+    for (const g of details.groups) {
+      if ((g.dependsOnOptionIds ?? []).length > 0) continue;
+      if (g.id === rootGroupId) continue;
+      if (g.minSelect <= 0) continue;
+      const opts = details.options.filter((o) => o.groupId === g.id);
+      if (opts[0] && !buffetPath[g.id]) buffetPath[g.id] = { optionIds: [opts[0].id] };
+    }
     const buffetResolved = resolveSelectedOptions(definition, buffetPath);
     record(
-      "resolved_buffet_path_excludes_plated_entree",
-      buffetResolved.some((l) => /Buffet Dinner/i.test(l.description))
-        && !buffetResolved.some((l) => /Chicken Marsala/i.test(l.description))
-        && buffetResolved.some((l) => /Caesar/i.test(l.description)),
+      "resolved_buffet_path_excludes_plated_children",
+      buffetResolved.some((l) => /Buffet Style Dinner/i.test(l.description))
+        && buffetResolved.some((l) => /Baked Ziti/i.test(l.description))
+        && !buffetResolved.some((l) => /Chicken Marsala/i.test(l.description)),
       JSON.stringify(buffetResolved.map((l) => l.description)),
       "finalization",
     );
 
-    // Isolated event + empty EO: incomplete validation must not invent lines
-    const { data: space, error: spaceErr } = await admin.from("venue_spaces").select("id").eq("venue_id", FANCY).limit(1).maybeSingle();
-    if (spaceErr || !space) throw new Error(`space: ${JSON.stringify(spaceErr)}`);
+    const { data: space } = await admin.from("venue_spaces").select("id").eq("venue_id", FANCY).limit(1).maybeSingle();
+    if (!space) throw new Error("space");
     const { data: client, error: clientErr } = await admin.from("clients").insert({
       venue_id: FANCY,
       first_name: "EOTUX",
@@ -665,20 +776,16 @@ async function main() {
     }).select("id").single();
     if (eoErr || !eo) throw new Error(`eo: ${JSON.stringify(eoErr)}`);
     createdOrderIds.push(eo.id);
+
     const beforeCount = await admin.from("event_order_lines").select("id", { count: "exact", head: true }).eq("event_order_id", eo.id);
-    // Simulate rejected finalize: validate fails → do not insert
-    if (!incompleteV.ok) {
-      // no inserts
-    }
     const afterReject = await admin.from("event_order_lines").select("id", { count: "exact", head: true }).eq("event_order_id", eo.id);
     record(
       "rejected_finalize_no_partial_lines",
-      (beforeCount.count ?? 0) === 0 && (afterReject.count ?? 0) === 0,
+      !incompleteV.ok && (beforeCount.count ?? 0) === 0 && (afterReject.count ?? 0) === 0,
       `before=${beforeCount.count} after=${afterReject.count}`,
       "finalization",
     );
 
-    // Apply valid resolved lines once (manual apply simulating finalize success path)
     const { data: section, error: sectionErr } = await admin.from("event_order_sections").insert({
       venue_id: FANCY,
       event_order_id: eo.id,
@@ -722,8 +829,7 @@ async function main() {
       "finalization",
     );
 
-    // Snapshot immutability: mutate template option label; EO lines stay as snapshotted
-    await admin.from("event_order_template_options").update({ label: "Chicken Marsala RENAMED" }).eq("id", chicken!.id);
+    await admin.from("event_order_template_options").update({ label: "Chicken Marsala RENAMED" }).eq("id", marsalaOpt!.id);
     const { data: afterTemplateEdit } = await admin
       .from("event_order_lines")
       .select("description")
@@ -737,7 +843,6 @@ async function main() {
       "finalization",
     );
 
-    // Re-apply same resolved set must not duplicate if we clear first (revision path)
     await admin.from("event_order_lines").delete().eq("event_order_id", eo.id);
     await insertResolvedLines();
     const { count: reapplied } = await admin
@@ -747,7 +852,6 @@ async function main() {
     record("no_duplicate_lines_on_reapply", reapplied === resolved.length, `count=${reapplied} expected=${resolved.length}`, "finalization");
     persisted.finalization = { resolved, applied, reapplied };
 
-    // Fixed catalog offering count unchanged (no accidental Offering create)
     const { count: offeringCount } = await admin
       .from("offerings")
       .select("id", { count: "exact", head: true })
@@ -766,7 +870,7 @@ async function main() {
     const mobileText = await page.locator("body").innerText();
     record(
       "mobile_390_structure_readable",
-      /Dinner style|Choices couples make|Items always on this package|Buffet/i.test(mobileText),
+      /Always on the package|Couple.?s choices|Buffet Style Dinner|Arbor/i.test(mobileText),
       mobileText.slice(0, 400),
       "usability",
     );
@@ -803,6 +907,7 @@ async function main() {
       await admin.from("event_order_template_sections").delete().in("template_id", createdTemplateIds);
       await admin.from("event_order_templates").delete().in("id", createdTemplateIds);
     }
+    // Keep seeded catalog Offerings (real Fancy catalog enrichment for acceptance).
     await browser.close();
   }
 

@@ -30,14 +30,14 @@ export default async function EventOrderTemplatesPage() {
       <CollectionBackLink href="/library" label="Templates" />
       <PageHeader
         title="Event Order Templates"
-        description="Reusable packages for a wedding’s Event Order — package items, couple choices, and follow-ups under each answer."
+        description="Reusable packages for a wedding’s Event Order — always-on items and couple choices selected from your Offerings."
         actions={<NewEventOrderTemplateButton />}
       />
       <LibraryHowItWorks>
-        An Event Order template is the reusable package you apply to a booked event. You decide package
-        items (no couple action — with clear package-price vs additional-charge treatment), the main
-        question couples answer (for example Buffet or Plated dinner), and follow-ups that appear only
-        after a choice. Customize a starter or build your own; Preview shows the couple experience without sending
+        An Event Order template is the reusable package you apply to a booked event. You decide items
+        always on the package (with clear package-price vs additional-charge treatment) and Couple&apos;s
+        choices selected from your Offerings — for example Buffet or Plated dinner, with which child
+        Offerings are available under each. Customize a starter or build your own; Preview shows the couple experience without sending
         anything. Use applies the template to an event&apos;s Event Order; Send is only for templates with
         couple choices.
       </LibraryHowItWorks>
@@ -47,8 +47,9 @@ export default async function EventOrderTemplatesPage() {
       >
         <p className="font-medium text-heading">Example</p>
         <p>
-          Package includes ceremony coordination. Couples choose dinner service (Buffet or Plated). Under
-          Buffet they choose three sides — those questions stay under Buffet only.
+          Ceremony coordination stays always on the package. Couples choose dinner service (Buffet or
+          Plated) from your Offerings. Under Buffet they only see the child Offerings you selected for
+          that package.
         </p>
       </div>
       <LibraryDependencyNote
