@@ -136,7 +136,10 @@ export function EventCommercialWorkflow({
     hasEoInvoice,
   });
   const { emphasizeChoices, emphasizeOrder } = panelEmphasisForStep(current);
-  const showFinancialImpact = shouldShowChoicesFinancialImpact(hasEoInvoice);
+  const showFinancialImpact = shouldShowChoicesFinancialImpact(
+    hasEoInvoice,
+    financialImpact?.unbilledAmount ?? 0,
+  );
 
   return (
     <div className="space-y-4" data-testid="event-commercial-workflow">

@@ -117,9 +117,11 @@ describe("Stage 0 Event Order journey facts", () => {
     });
   });
 
-  it("hides Choices financial impact when EO-linked invoice exists", () => {
+  it("hides Choices financial impact when EO-linked invoice exists and nothing is unbilled", () => {
     assert.equal(shouldShowChoicesFinancialImpact(false), true);
     assert.equal(shouldShowChoicesFinancialImpact(true), false);
+    assert.equal(shouldShowChoicesFinancialImpact(true, 0), false);
+    assert.equal(shouldShowChoicesFinancialImpact(true, 200), true);
   });
 });
 

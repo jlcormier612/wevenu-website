@@ -197,6 +197,16 @@ describe("incremental EO invoice — payment plan & original invoice", () => {
     const repo = readFileSync("lib/invoices/repository.ts", "utf8");
     assert.match(repo, /amends_invoice_id[\s\S]*neq\("status", "void"\)/);
   });
+
+  it("Choices FinancialImpact stays available when unbilled charges exist after an EO invoice", () => {
+    const journey = readFileSync("lib/event-orders/event-order-journey.ts", "utf8");
+    assert.match(journey, /unbilledAmount > 0/);
+    const workflow = readFileSync(
+      "components/event-orders/event-commercial-workflow.tsx",
+      "utf8",
+    );
+    assert.match(workflow, /financialImpact\?\.unbilledAmount/);
+  });
 });
 
 describe("incremental EO invoice — venue actions & messaging", () => {

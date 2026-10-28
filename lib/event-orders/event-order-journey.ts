@@ -49,8 +49,15 @@ export function panelEmphasisForStep(step: CommercialWorkflowStepId): {
   return { emphasizeChoices: false, emphasizeOrder: true };
 }
 
-/** Prefer EO invoice strip over Choices FinancialImpact when an EO-linked invoice exists. */
-export function shouldShowChoicesFinancialImpact(hasEoInvoice: boolean): boolean {
+/**
+ * Prefer EO invoice strip over Choices FinancialImpact when an EO-linked invoice
+ * exists — unless unbilled billable charges need "Invoice new charges".
+ */
+export function shouldShowChoicesFinancialImpact(
+  hasEoInvoice: boolean,
+  unbilledAmount = 0,
+): boolean {
+  if (unbilledAmount > 0) return true;
   return !hasEoInvoice;
 }
 
