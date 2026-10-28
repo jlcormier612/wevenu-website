@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-28T16:11:08.038Z",
+  "stamp": "PUEMVSBA4RC",
+  "eventId": "8b1146da-0c1d-49c5-952b-250cbfd2abad",
+  "clientId": "afb9a805-5957-4b71-9b69-560b7112911d",
+  "checks": [
+    {
+      "name": "patio_cocktail_only",
+      "pass": true,
+      "detail": "{\"id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\",\"name\":\"Stone Patio\",\"permitted_uses\":[\"cocktail_hour\"]}"
+    },
+    {
+      "name": "ballroom_present",
+      "pass": true,
+      "detail": "8982b7e5-8122-42f1-a56b-7eaf7920d968"
+    },
+    {
+      "name": "valid_cocktail_on_patio",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "seed_persisted",
+      "pass": true,
+      "detail": "[{\"use_key\":\"cocktail_hour\",\"space_id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\"}]"
+    },
+    {
+      "name": "invalid_reception_rejected",
+      "pass": true,
+      "detail": "permitted_use Stone Patio cannot be used for Reception. Choose a space that allows this use, or update the space’s permitted uses in Availability settings."
+    },
+    {
+      "name": "invalid_did_not_persist",
+      "pass": true,
+      "detail": "[{\"use_key\":\"cocktail_hour\",\"space_id\":\"f6df6024-e6a0-4df8-b391-27f2eae61238\"}]"
+    },
+    {
+      "name": "valid_barn_reception",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "simultaneous_barn_ballroom",
+      "pass": true,
+      "detail": "A=ok B=ok"
+    },
+    {
+      "name": "same_space_conflict",
+      "pass": true,
+      "detail": "This space is already booked for \"PUE-PUEMVSBA4RC-SimA\" at an overlapping time."
+    },
+    {
+      "name": "capacity_config_scoped",
+      "pass": true,
+      "detail": "max=3 venue=a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "name": "fancy_spaces_venue_scoped",
+      "pass": true,
+      "detail": "Ballroom/Lakeside count on Fancy=2; other venue rules sample=[{\"venue_id\":\"5c84e74e-355d-4ce1-9e6b-913a9267f543\",\"max_simultaneous_events\":1},{\"venue_id\":\"31ea4816-a5fb-4337-96c7-e2bd3d2c5c5a\",\"max_simultaneous_events\":2},{\"venue_id\":\"5f3b43f8-0c5d-43df-ae8a-5cd59806d30d\",\"max_simultaneous_events\":3}]"
+    }
+  ],
+  "ok": true
+}

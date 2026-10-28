@@ -30,7 +30,10 @@ function record(name: string, pass: boolean, detail: string) {
 
 async function main() {
   const stamp = `PUE${Date.now().toString(36).toUpperCase()}`;
-  const date = "2030-08-19";
+  // Unique calendar day per run so leftover PUE probes do not cause space_overlap.
+  const dayNum = (Number.parseInt(stamp.replace(/\D/g, "").slice(-4) || "100", 10) % 27) + 1;
+  const monthNum = (Number.parseInt(stamp.replace(/\D/g, "").slice(-6, -4) || "8", 10) % 9) + 3;
+  const date = `2031-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
 
   const { data: patio } = await admin.from("venue_spaces")
     .select("id,name,permitted_uses").eq("id", PATIO).single();
@@ -151,7 +154,8 @@ async function main() {
 
   // Simultaneous Barn + Ballroom regression (separate events)
   if (ballroom?.id) {
-    const day = "2030-09-21";
+    const dayNum2 = ((dayNum + 7) % 27) + 1;
+    const day = `2031-${String(monthNum).padStart(2, "0")}-${String(dayNum2).padStart(2, "0")}`;
     async function mk(label: string, spaceId: string, start: string, end: string) {
       const { data: c } = await admin.from("clients").insert({
         venue_id: FANCY,
