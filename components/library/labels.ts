@@ -29,8 +29,6 @@ export const LIBRARY_LABELS = {
   customize: "Customize",
   /** Template-level name / space / event-type (not item editing). */
   editDetails: "Edit details",
-  /** Item/activity editor when the card also offers Customize. */
-  editActivities: "Edit activities",
   /**
    * Planning-only: re-provision fresh master recipe content (not Duplicate of this row).
    * Kept distinct from Duplicate / Customize on purpose — see playbooks-section.

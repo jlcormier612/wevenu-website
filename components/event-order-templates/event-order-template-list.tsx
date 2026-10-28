@@ -414,7 +414,7 @@ function TemplateCard({
             ...(isStarter
               ? [
                   { id: "customize", label: LIBRARY_LABELS.customize, onClick: handleDuplicate, emphasis: "edit" as const },
-                  { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/event-order-templates/${template.id}`, emphasis: "preview" as const },
+                  { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" as const },
                 ]
               : [
                   { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" as const },

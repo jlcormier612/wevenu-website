@@ -242,7 +242,7 @@ function TemplateCard({
         ...(canEdit && isStarter
           ? [
               { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const, disabled: busy },
-              { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/floor-plan-templates/${template.id}`, emphasis: "preview" as const },
+              { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const },
             ]
           : canEdit
             ? [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const }]

@@ -355,9 +355,9 @@ function TemplateCard({
               },
               {
                 id: "edit",
-                label: LIBRARY_LABELS.editActivities,
+                label: LIBRARY_LABELS.edit,
                 href: `/library/questionnaire-templates/${template.id}`,
-                emphasis: "preview" as const,
+                emphasis: "edit" as const,
               },
             ]
           : [

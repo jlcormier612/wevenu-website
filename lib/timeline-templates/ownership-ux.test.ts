@@ -43,13 +43,14 @@ describe("Timeline template ownership UX", () => {
     assert.match(page, /TimelineTemplateEditor/);
   });
 
-  it("library card promotes Customize for starters", () => {
+  it("library card promotes Customize for starters with Edit (not Edit activities)", () => {
     const section = readFileSync(
       resolve("components/timeline-templates/timeline-templates-section.tsx"),
       "utf8",
     );
     assert.match(section, /LIBRARY_LABELS\.customize/);
-    assert.match(section, /LIBRARY_LABELS\.editActivities/);
+    assert.match(section, /LIBRARY_LABELS\.edit/);
+    assert.doesNotMatch(section, /LIBRARY_LABELS\.editActivities/);
     assert.match(section, /isStarter/);
   });
 });

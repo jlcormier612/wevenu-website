@@ -162,7 +162,7 @@ function TemplateCard({
           { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/playbooks/${template.id}/preview`, emphasis: "preview" as const },
           // Customize duplicates this Library row into a venue-owned copy (safe primary).
           { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const, disabled: busy },
-          { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/playbooks/${template.id}`, emphasis: "preview" as const },
+          { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/playbooks/${template.id}`, emphasis: "edit" as const },
           { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" as const },
         ]
       : [

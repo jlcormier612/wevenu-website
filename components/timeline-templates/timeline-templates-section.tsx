@@ -215,7 +215,7 @@ function TemplateCard({
           { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/timeline-templates/${template.id}/preview`, emphasis: "preview" as const },
           // Customize is the safe primary for starters — Duplicate was easy to miss in overflow.
           { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const, disabled: busy },
-          { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/timeline-templates/${template.id}`, emphasis: "preview" as const },
+          { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/timeline-templates/${template.id}`, emphasis: "edit" as const },
           { id: "use", label: LIBRARY_LABELS.useTimeline, onClick: onUse, emphasis: "use" as const },
         ]
       : [
