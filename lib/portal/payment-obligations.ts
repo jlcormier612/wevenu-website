@@ -16,6 +16,7 @@ export type PortalInvoiceRef = {
   balanceDue?: number;
   status?: string;
   dueDate?: string | null;
+  amendsInvoiceId?: string | null;
 };
 
 export type PortalScheduleRef = {
