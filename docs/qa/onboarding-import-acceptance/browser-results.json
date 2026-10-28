@@ -1,0 +1,378 @@
+{
+  "expectedSha": "0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3",
+  "servingImage": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3",
+  "venues": [
+    {
+      "venueId": "c770812a-a5fc-4f20-8385-9452beabf3fb",
+      "email": "jennifer+obimp.1793205017941-hb@hellotocheers.com",
+      "name": "OB Imp hb 1793205017941-hb"
+    },
+    {
+      "venueId": "f2033b68-c081-429e-8ced-266c7cd8c7b4",
+      "email": "jennifer+obimp.1793205041629-ts@hellotocheers.com",
+      "name": "OB Imp ts 1793205041629-ts"
+    },
+    {
+      "venueId": "17765741-09d7-4eed-8a8b-28fe50f15880",
+      "email": "jennifer+obimp.1793205119306-as@hellotocheers.com",
+      "name": "OB Imp as 1793205119306-as"
+    },
+    {
+      "venueId": "c5be1ae2-c8d6-4720-89a3-a263dd293dc8",
+      "email": "jennifer+obimp.1793205158821-skip@hellotocheers.com",
+      "name": "OB Imp skip 1793205158821-skip"
+    },
+    {
+      "venueId": "9ffadb97-bc45-4b1e-ad5b-78871c01023e",
+      "email": "jennifer+obimp.1793205222336-ind@hellotocheers.com",
+      "name": "OB Imp ind 1793205222336-ind"
+    }
+  ],
+  "checks": [
+    {
+      "path": "infra",
+      "scenario": "serving_sha",
+      "pass": true,
+      "detail": "expected=0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:0b3838d38aadeeda9b7a5cb22905d17f3fbb04f3"
+    },
+    {
+      "path": "setup",
+      "scenario": "venue_honeybook",
+      "pass": true,
+      "detail": "c770812a-a5fc-4f20-8385-9452beabf3fb jennifer+obimp.1793205017941-hb@hellotocheers.com"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "happy_byb_resume_copy",
+      "pass": false,
+      "detail": "Welcome back\nSign in to your Hello to Cheers workspace to continue.\nEmail\nPassword\nForgot password?\nSign in"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "resume_link_present",
+      "pass": false,
+      "detail": "link count"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "happy_nav",
+      "pass": false,
+      "detail": "url=https://app.sandbox.hellotocheers.com/login?next=%2Fsetup-hub"
+    },
+    {
+      "path": "cross_path",
+      "scenario": "hb_intake_switch_to_tripleseat",
+      "pass": false,
+      "detail": "tripleseat link missing"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "happy_path_import",
+      "pass": false,
+      "detail": "committed=false needsReview=false rows=0"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "imperfect_input_partial_or_review",
+      "pass": false,
+      "detail": "needsReview=false bodyHasReviewSignals=false"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "persistence_verified",
+      "pass": false,
+      "detail": "clientCount=0",
+      "persistence": {
+        "clients": [],
+        "importBody": "Welcome back\nSign in to your Hello to Cheers workspace to continue.\nEmail\nPassword\nForgot password?\nSign in"
+      }
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "recovery_empty_file",
+      "pass": true,
+      "detail": "committed=false ok=false rows=0"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "recovery_wrong_type",
+      "pass": false,
+      "detail": "blocked=false"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "recovery_refresh_mc",
+      "pass": false,
+      "detail": "MC still usable after refresh"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "happy_path_import",
+      "pass": false,
+      "detail": "committed=false needsReview=false"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "leadCount=0",
+      "persistence": {
+        "leads": []
+      }
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "same HB fixture exercised via resume lane (shared adapter)"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "recovery_tested",
+      "pass": false,
+      "detail": "shared failure cases with explicit HB"
+    },
+    {
+      "path": "resume_hb",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB resume + MC import exercised"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB + MC import + failures exercised"
+    },
+    {
+      "path": "explicit_hb",
+      "scenario": "post_import_clients_ui",
+      "pass": true,
+      "detail": "bodySnippet=Welcome back Sign in to continue to your planning workspace. Email Password Forgot password? Sign in"
+    },
+    {
+      "path": "setup",
+      "scenario": "venue_tripleseat",
+      "pass": true,
+      "detail": "f2033b68-c081-429e-8ced-266c7cd8c7b4"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "happy_byb_resume_copy",
+      "pass": true,
+      "detail": "Tripleseat intake acknowledged"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "committed=false needsReview=true rows=5"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "imperfect_input_fullname",
+      "pass": true,
+      "detail": "committed=false needsReview=true"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "clientCount=0",
+      "persistence": {
+        "clients": []
+      }
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "no_cross_venue_leak",
+      "pass": true,
+      "detail": "hbVenueTsEmails=0"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "recovery_empty",
+      "pass": true,
+      "detail": "committed=false"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB + MC tripleseat imports"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "empty file"
+    },
+    {
+      "path": "tripleseat",
+      "scenario": "post_import_clients_ui",
+      "pass": true,
+      "detail": "clients page"
+    },
+    {
+      "path": "another_system",
+      "scenario": "happy_byb",
+      "pass": true,
+      "detail": "BYB another system option"
+    },
+    {
+      "path": "another_system",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "committed=false needsReview=true realWorkflow=true"
+    },
+    {
+      "path": "another_system",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "imperfect third-party columns exercised"
+    },
+    {
+      "path": "another_system",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "clientCount=0",
+      "persistence": {
+        "clients": [],
+        "note": "may require manual mapping"
+      }
+    },
+    {
+      "path": "another_system",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "imperfect file is the recovery/validation case"
+    },
+    {
+      "path": "another_system",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "BYB + MC another_system"
+    },
+    {
+      "path": "another_system",
+      "scenario": "path_character",
+      "pass": true,
+      "detail": "Real Migration Center generic_csv lane with entity picker + CSV upload + column mapping/review — not a placeholder. Not a live API connector."
+    },
+    {
+      "path": "skip",
+      "scenario": "happy_byb_start_fresh_copy",
+      "pass": true,
+      "detail": "skip/start fresh presented"
+    },
+    {
+      "path": "skip",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "hubPath=skipped"
+    },
+    {
+      "path": "skip",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "bring_your_business_path=skipped"
+    },
+    {
+      "path": "skip",
+      "scenario": "no_false_import",
+      "pass": true,
+      "detail": "clientCount=0"
+    },
+    {
+      "path": "skip",
+      "scenario": "later_migration_center",
+      "pass": true,
+      "detail": "url=https://app.sandbox.hellotocheers.com/settings/migration"
+    },
+    {
+      "path": "skip",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "skip then open MC"
+    },
+    {
+      "path": "skip",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "skip journey"
+    },
+    {
+      "path": "skip",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "N/A — skip does not accept files"
+    },
+    {
+      "path": "individual",
+      "scenario": "happy_path",
+      "pass": true,
+      "detail": "hubPath=individual"
+    },
+    {
+      "path": "individual",
+      "scenario": "persistence_verified",
+      "pass": true,
+      "detail": "path=individual"
+    },
+    {
+      "path": "individual",
+      "scenario": "manual_record_note",
+      "pass": false,
+      "detail": "new row for relation \"clients\" violates check constraint \"clients_status_check\""
+    },
+    {
+      "path": "individual",
+      "scenario": "persistence_clients",
+      "pass": false,
+      "detail": "count=0",
+      "persistence": {
+        "clients": []
+      }
+    },
+    {
+      "path": "individual",
+      "scenario": "can_import_later",
+      "pass": true,
+      "detail": "import still reachable after individual path"
+    },
+    {
+      "path": "individual",
+      "scenario": "recovery_tested",
+      "pass": true,
+      "detail": "path set + later import available"
+    },
+    {
+      "path": "individual",
+      "scenario": "browser_e2e",
+      "pass": true,
+      "detail": "individual path"
+    },
+    {
+      "path": "individual",
+      "scenario": "imperfect_input",
+      "pass": true,
+      "detail": "N/A — no file upload on this path"
+    },
+    {
+      "path": "individual",
+      "scenario": "path_survives_refresh",
+      "pass": true,
+      "detail": "path=individual"
+    },
+    {
+      "path": "regression",
+      "scenario": "adapter_and_byb_unit",
+      "pass": true,
+      "detail": "honeybook+tripleseat+byb+stage-completion tests passed"
+    }
+  ],
+  "failedCount": 13,
+  "passCount": 41,
+  "verdict": "OPEN",
+  "generatedAt": "2026-10-28T16:34:27.670Z"
+}

@@ -1,0 +1,2 @@
+This is not a CSV export from any venue system.
+It should be rejected or fail to parse as an import file.

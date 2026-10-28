@@ -1,0 +1,6 @@
+Couple Name,E-mail Address,Mobile #,Wedding Date,Notes / Comments
+Morgan OtherSys & Riley OtherSys,morgan.as.obimp@hellotocheers-test.invalid,555-0301,2026-09-12,Imperfect third-party columns
+Sam OtherSys,sam.as.obimp@hellotocheers-test.invalid,,2026-10-01,Missing phone ok
+Taylor OtherSys,not-an-email,555-0303,not-a-date,Malformed email and date
+,blank.name.as.obimp@hellotocheers-test.invalid,555-0304,2026-11-01,Blank couple name
+Jamie OtherSys,jamie.as.obimp@hellotocheers-test.invalid,555-0305,2027-01-15,Clean row

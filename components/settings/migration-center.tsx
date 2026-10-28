@@ -76,6 +76,7 @@ import {
   sourceSelectionGuidance,
   type SourceSelectionLane,
 } from "@/lib/migration/source-selection";
+import { autoMapHeaders } from "@/lib/migration/auto-map-headers";
 import { recognizeSource } from "@/lib/migration/source-profiles";
 import type {
   MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceKey, SourceProfile,
@@ -557,12 +558,9 @@ export function MigrationCenter({
         setHeaders(hs);
         setRows(results.data);
         const fields = FIELD_KEYS_BY_ENTITY[entityType];
-        const auto: Record<string, string> = {};
-        for (const f of fields) {
-          const found = hs.find((h) => h.trim().toLowerCase() === f.label.toLowerCase() || h.trim().toLowerCase() === f.key.toLowerCase());
-          if (found) auto[f.key] = found;
-        }
-        setMapping(auto);
+        // Compact + alias match so Tripleseat first_name / HoneyBook Name /
+        // third-party "E-mail Address" auto-map without forcing Luv or manual work.
+        setMapping(autoMapHeaders(hs, fields));
 
         // Best-effort recognition only — never forces a source; venue can keep
         // "another system" / manual mapping. Uses existing recognizeSource().
