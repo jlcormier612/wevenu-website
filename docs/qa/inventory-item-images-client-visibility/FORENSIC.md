@@ -1,8 +1,7 @@
 # Inventory item images — client visibility forensic
 
-**Verdict: images are venue-catalog only today — not shown to clients.**  
-**Product change to expose images on the portal: not implemented (decision gate).**  
-**Sandbox tip verified with Parts 1–2 UI fixes; see STATUS.md.**
+**Historical forensic (pre-implementation):** images were venue-catalog only.  
+**Current product decision:** client-facing photos implemented — see `STATUS.md` and migration `20261425600000_event_inventory_item_image_url.sql`.
 
 ## Question
 

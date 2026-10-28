@@ -15,11 +15,27 @@ export type PortalInventoryItemView = {
   unitPrice: number | null;
   isIncluded: boolean;
   notes: string | null;
+  /** Catalog/event photo when the venue shared one; omit or null = no thumbnail. */
+  imageUrl?: string | null;
   clientSelectable?: boolean;
   maxQuantity?: number | null;
   clientDraftQuantity?: number | null;
   clientSubmittedQuantity?: number | null;
 };
+
+function ItemPhoto({ src, alt }: { src: string | null | undefined; alt: string }) {
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      className="h-12 w-12 shrink-0 rounded-md border border-border/60 bg-muted/30 object-contain"
+      data-testid="inventory-item-photo"
+    />
+  );
+}
 
 export type PortalInventoryViewModel = {
   id: string;
@@ -233,18 +249,21 @@ export function InventoryPortalView({
           </p>
           <div className="rounded-xl border border-border bg-card divide-y divide-border">
             {included.map((item) => (
-              <div key={item.id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm text-foreground">{item.name}</p>
-                  {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
-                  <p
-                    className="text-[11px] text-muted-foreground mt-0.5"
-                    data-testid="inventory-item-included-label"
-                  >
-                    Included — no extra charge
-                  </p>
+              <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <ItemPhoto src={item.imageUrl} alt={item.name} />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">{item.name}</p>
+                    {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
+                    <p
+                      className="text-[11px] text-muted-foreground mt-0.5"
+                      data-testid="inventory-item-included-label"
+                    >
+                      Included — no extra charge
+                    </p>
+                  </div>
                 </div>
-                <span className="text-xs text-muted-foreground">×{item.quantity}</span>
+                <span className="text-xs text-muted-foreground shrink-0">×{item.quantity}</span>
               </div>
             ))}
           </div>
@@ -262,18 +281,21 @@ export function InventoryPortalView({
               const qty = displayQty(item);
               return (
                 <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-foreground">{item.name}</p>
-                    {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
-                    <p
-                      className="text-[11px] text-muted-foreground mt-0.5"
-                      data-testid="inventory-item-additional-label"
-                    >
-                      {item.unitPrice != null
-                        ? `Additional fee — ${formatMoney(item.unitPrice)} each`
-                        : "Additional fee — price set by your venue"}
-                      {item.clientSelectable ? ` · optional · up to ×${max}` : null}
-                    </p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <ItemPhoto src={item.imageUrl} alt={item.name} />
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground">{item.name}</p>
+                      {item.notes && <p className="text-xs text-muted-foreground">{item.notes}</p>}
+                      <p
+                        className="text-[11px] text-muted-foreground mt-0.5"
+                        data-testid="inventory-item-additional-label"
+                      >
+                        {item.unitPrice != null
+                          ? `Additional fee — ${formatMoney(item.unitPrice)} each`
+                          : "Additional fee — price set by your venue"}
+                        {item.clientSelectable ? ` · optional · up to ×${max}` : null}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right shrink-0 space-y-1">
                     <p className="text-sm font-medium text-foreground">

@@ -15,7 +15,8 @@ type InventoryRow = {
 };
 type ItemRow = {
   id: string; event_inventory_id: string; venue_id: string; inventory_item_id: string | null;
-  name: string; category: string | null; quantity: number; unit_price: number | null;
+  name: string; category: string | null; image_url?: string | null;
+  quantity: number; unit_price: number | null;
   is_included: boolean; notes: string | null; sort_order: number;
   client_selectable?: boolean | null;
   max_quantity?: number | null;
@@ -46,7 +47,7 @@ const mapInventory = (r: InventoryRow): EventInventory => ({
 });
 const mapItem = (r: ItemRow): EventInventoryItem => ({
   id: r.id, eventInventoryId: r.event_inventory_id, venueId: r.venue_id, inventoryItemId: r.inventory_item_id,
-  name: r.name, category: r.category, quantity: Number(r.quantity),
+  name: r.name, category: r.category, imageUrl: r.image_url ?? null, quantity: Number(r.quantity),
   unitPrice: r.unit_price == null ? null : Number(r.unit_price),
   isIncluded: r.is_included, notes: r.notes, sortOrder: r.sort_order,
   clientSelectable: !!r.client_selectable,
@@ -55,6 +56,23 @@ const mapItem = (r: ItemRow): EventInventoryItem => ({
   clientSubmittedQuantity: r.client_submitted_quantity == null ? null : Number(r.client_submitted_quantity),
   addedToEventOrderAt: r.added_to_event_order_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
+
+/** Resolve catalog photo for snapshotting onto event/template lines (venue-scoped). */
+export async function resolveCatalogImageUrl(
+  client: DbClient,
+  venueId: string,
+  inventoryItemId: string | null | undefined,
+): Promise<string | null> {
+  if (!inventoryItemId) return null;
+  const { data, error } = await client
+    .from("inventory_items")
+    .select("image_url")
+    .eq("id", inventoryItemId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ image_url: string | null }>();
+  if (error) throw error;
+  return data?.image_url ?? null;
+}
 const mapActivity = (r: ActivityRow): EventInventoryActivity => ({
   id: r.id, eventInventoryId: r.event_inventory_id, venueId: r.venue_id, type: r.type,
   title: r.title, description: r.description, createdAt: r.created_at,
@@ -190,11 +208,16 @@ export async function applySubmittedQuantities(
 export async function insertItem(client: DbClient, venueId: string, eventInventoryId: string, input: InventoryItemInput, sortOrder: number): Promise<EventInventoryItem> {
   const quantity = parseFloat(input.quantity) || 1;
   const unitPrice = input.unitPrice?.trim() ? parseFloat(input.unitPrice.replace(/[$,]/g, "")) : null;
+  const imageUrl =
+    input.imageUrl !== undefined
+      ? (input.imageUrl?.trim() || null)
+      : await resolveCatalogImageUrl(client, venueId, input.inventoryItemId);
   const { data, error } = await client.from("event_inventory_items")
     .insert({
       event_inventory_id: eventInventoryId, venue_id: venueId,
       inventory_item_id: input.inventoryItemId || null,
       name: input.name.trim(), category: input.category?.trim() || null,
+      image_url: imageUrl,
       quantity, unit_price: unitPrice, is_included: input.isIncluded,
       notes: input.notes?.trim() || null, sort_order: sortOrder,
     }).select().single<ItemRow>();
@@ -219,10 +242,17 @@ export async function updateItem(
   const { data: existing } = await client.from("event_inventory_items").select("id").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ id: string }>();
   if (!existing) return { ok: false, reason: "not_found" };
 
+  const imageUrl =
+    input.imageUrl !== undefined
+      ? (input.imageUrl?.trim() || null)
+      : await resolveCatalogImageUrl(client, venueId, input.inventoryItemId);
+
   const { data, error } = await client.from("event_inventory_items")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update({
+      inventory_item_id: input.inventoryItemId || null,
       name: input.name.trim(), category: input.category?.trim() || null,
+      image_url: imageUrl,
       quantity, unit_price: unitPrice, is_included: input.isIncluded, notes: input.notes?.trim() || null,
     } as any)
     .eq("id", itemId).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
@@ -389,9 +419,26 @@ export async function nextTemplateItemSortOrder(client: DbClient, templateId: st
 /** Apply-Template (D5 brief §10) — copies each template item into a brand-new Event Inventory item. Copy at commitment, same as everywhere else in this codebase; the template is never touched, and the new items never reference it live. */
 export async function applyTemplateItems(client: DbClient, venueId: string, eventInventoryId: string, templateItems: InventoryTemplateItem[]): Promise<void> {
   if (templateItems.length === 0) return;
+  const catalogIds = [...new Set(
+    templateItems.map((t) => t.inventoryItemId).filter((id): id is string => !!id),
+  )];
+  const imageByCatalogId = new Map<string, string | null>();
+  if (catalogIds.length > 0) {
+    const { data, error: imgErr } = await client
+      .from("inventory_items")
+      .select("id, image_url")
+      .eq("venue_id", venueId)
+      .in("id", catalogIds);
+    if (imgErr) throw imgErr;
+    for (const row of data ?? []) {
+      imageByCatalogId.set(row.id as string, (row.image_url as string | null) ?? null);
+    }
+  }
   const rows = templateItems.map((t, i) => ({
     event_inventory_id: eventInventoryId, venue_id: venueId, inventory_item_id: t.inventoryItemId,
-    name: t.name, category: t.category, quantity: t.quantity, unit_price: t.unitPrice,
+    name: t.name, category: t.category,
+    image_url: t.inventoryItemId ? (imageByCatalogId.get(t.inventoryItemId) ?? null) : null,
+    quantity: t.quantity, unit_price: t.unitPrice,
     is_included: t.isIncluded, notes: t.notes, sort_order: i,
   }));
   const { error } = await client.from("event_inventory_items").insert(rows);

@@ -41,6 +41,8 @@ export type EventInventoryItem = {
   inventoryItemId: string | null;
   name: string;
   category: string | null;
+  /** Catalog photo snapshot for client-facing display. Null = no photo. */
+  imageUrl: string | null;
   quantity: number;
   /** Null = included at no extra charge; the Master Catalog has no price field at all today (confirmed), so this is always directly entered, never looked up. */
   unitPrice: number | null;
@@ -112,6 +114,8 @@ export type InventoryItemInput = {
   unitPrice?: string;
   isIncluded: boolean;
   notes?: string;
+  /** Optional explicit photo URL; when omitted and inventoryItemId is set, catalog image_url is snapshotted. */
+  imageUrl?: string | null;
 };
 
 export type EventInventoryErrors = Record<string, string>;

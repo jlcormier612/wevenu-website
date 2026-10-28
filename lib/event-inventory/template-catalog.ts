@@ -30,6 +30,7 @@ export function templateItemInputFromCatalog(
     unitPrice: overrides?.unitPrice ?? "",
     isIncluded: overrides?.isIncluded ?? true,
     notes: overrides?.notes ?? "",
+    imageUrl: catalogItem.imageUrl ?? null,
   };
 }
 

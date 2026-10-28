@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     item_max_quantity?: number | null;
     item_client_draft_quantity?: number | null;
     item_client_submitted_quantity?: number | null;
+    item_image_url?: string | null;
   }>;
   if (rows.length === 0) return NextResponse.json({ inventory: null });
 
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
       unitPrice: r.item_unit_price,
       isIncluded: r.item_is_included,
       notes: r.item_notes,
+      imageUrl: r.item_image_url?.trim() ? r.item_image_url.trim() : null,
       clientSelectable: !!r.item_client_selectable,
       maxQuantity: r.item_max_quantity == null ? null : Number(r.item_max_quantity),
       clientDraftQuantity:
