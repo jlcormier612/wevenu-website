@@ -182,15 +182,15 @@ function floorPlansDetail(ctx: SetupReadinessContext): SetupReadinessDetail {
         summary:
           "Configured floor-plan options are recoverable on Release to client portal or Change for this event."
           + operationalNote,
-        nextAction: "Open Floor Plans",
+        nextAction: "Change for this event",
       };
     }
     return {
       status: "needs_action",
       summary:
-        "No floor-plan layouts offered to the client yet. Offered layouts are separate from the venue's operational layout."
+        "No floor-plan layouts offered to the client yet. Use Change for this event to offer Library layouts. Offered layouts are separate from the venue's operational layout."
         + operationalNote,
-      nextAction: "Open Floor Plans",
+      nextAction: "Change for this event",
     };
   }
   return {

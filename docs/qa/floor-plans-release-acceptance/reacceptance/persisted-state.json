@@ -1,0 +1,8 @@
+{
+  "run": "FPRAMVRMG0YG",
+  "expectedSha": "5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
+  "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
+  "clientId": "f12d40d6-d144-414f-8eda-4402ed62e32a",
+  "eventId": "b3c84ee9-7410-4186-89c3-6d1e5f60fd6e",
+  "portalToken": "fpra_fpramvrmg0yg_ce84"
+}

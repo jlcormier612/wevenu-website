@@ -1,0 +1,12 @@
+PASS [serving] serving_sha — expected=5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a
+PASS [serving] api_health — {"status":200,"body":{"ok":true,"checks":{"env":"ok","supabase":"ok"}}}
+PASS [persisted] fixture_zero_layouts — plans=0
+UX[p2] Event setup floor-plan offers — Offer editor missing or unclear.
+FAIL [harness] harness_error — locator.waitFor: Timeout 20000ms exceeded.
+Call log:
+  - waiting for locator('[data-testid="floor-plans-setup-template-select"]') to be visible
+
+    at offerTemplateViaUi (/Users/jensmac/Developer/wevenu-website/docs/qa/floor-plans-release-acceptance/verify-reacceptance.mts:261:21)
+    at main (/Users/jensmac/Developer/wevenu-website/docs/qa/floor-
+
+3/4 passed; UX blockers/p2=1

@@ -135,6 +135,7 @@ describe("Floor Plans readiness — offers and working layouts", () => {
     assert.equal(detailRow.status, "draft");
     assert.match(detailRow.summary, /recoverable/i);
     assert.doesNotMatch(detailRow.summary, /Unavailable/i);
+    assert.equal(detailRow.nextAction, "Change for this event");
   });
 
   it("no offers and no configured refs is needs_action, not Unavailable", () => {
@@ -146,5 +147,34 @@ describe("Floor Plans readiness — offers and working layouts", () => {
     });
     assert.equal(detailRow.status, "needs_action");
     assert.match(detailRow.summary, /No floor-plan layouts offered/i);
+    assert.match(detailRow.summary, /Change for this event/i);
+    assert.equal(detailRow.nextAction, "Change for this event");
+  });
+
+  it("zero-offer outstanding CTA opens Change, not Open Floor Plans", () => {
+    const detailRow = setupReadinessDetail({
+      ...base,
+      floorPlanOfferCount: 0,
+      operationalFloorPlanCount: 0,
+      inheritedRefs: {},
+    });
+    assert.equal(detailRow.nextAction, "Change for this event");
+    assert.match(panel, /detail\.nextAction === "Change for this event"/);
+    assert.match(panel, /changeForEvent\(step\)/);
+  });
+
+  it("Change for this event is available without a Setup Profile", () => {
+    // Regression: gating Change behind usesProfile left manual Set up events
+    // with only Open Floor Plans — customers could not reach the offer editor.
+    assert.match(
+      panel,
+      /\{decision === "set_up" && SETUP_EDITOR_STEPS\.has\(step\) \? \([\s\S]*?event-setup-change-\$\{step\}[\s\S]*?Change for this event[\s\S]*?\) : null\}/,
+    );
+    // Profile-only actions remain gated; Change itself must not be.
+    assert.match(panel, /state\.usesProfile && decision === "set_up"/);
+    assert.doesNotMatch(
+      panel,
+      /state\.usesProfile \? \([\s\S]*?event-setup-change-\$\{step\}/,
+    );
   });
 });

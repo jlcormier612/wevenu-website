@@ -577,6 +577,7 @@ function PropertiesPanel({
           <input
             type="checkbox"
             checked={obj.locked}
+            data-testid="floor-plan-object-lock-toggle"
             onChange={(e) => onUpdate(obj.id, { locked: e.target.checked })}
           />
           Lock Position

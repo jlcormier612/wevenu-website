@@ -1,0 +1,182 @@
+▶ floor plan client layout review
+  ✔ normalizes unknown status to working (1.160709ms)
+  ✔ blocks client edits while submitted or approved or Ready (0.118417ms)
+  ✔ allows submit on shared collaboration without preference when multi-offer gate is off (FP-RA-1) (0.084916ms)
+  ✔ requires couple preference before submit when multi-offer path is active (0.061708ms)
+  ✔ defaults requiresPreferenceSelection to false (legacy callers treat as collaboration path) (0.075791ms)
+  ✔ venue may review only submitted layouts (0.099ms)
+  ✔ migration and UI wire submit + review (0.943541ms)
+  ✔ opens a confirmation dialog before invoking submit; cancel does not submit (0.83275ms)
+✔ floor plan client layout review (4.8765ms)
+▶ Floor plan collaboration complete (auto-assign, seating, couple move)
+  ✔ historical 222 select shared layout AND seating; Phase 2 migration decouples preference (1.592458ms)
+  ✔ Phase 2 ensure_portal reports state without auto-select; route still wired (0.29475ms)
+  ✔ move_portal_floor_plan_object rejects locked and Ready plans (0.111709ms)
+  ✔ add_portal_floor_plan_table respects couple_may_add_tables (0.084292ms)
+  ✔ portal detail exposes locked + coupleMayAddTables (0.102958ms)
+  ✔ sole-offer venue ensure may seed working + layout share without preference or seating (0.141458ms)
+  ✔ portal UX: waiting state, multi-offer preference chooser, working edit + seating hint (0.580083ms)
+  ✔ venue workspace keeps seating toggles and sole-offer simple-path guidance (0.525833ms)
+  ✔ prior select-shares migration remains historically correct (superseded by 222) (0.227833ms)
+✔ Floor plan collaboration complete (auto-assign, seating, couple move) (5.335458ms)
+▶ FP-RA-1 Additional-layout + Share collaboration path
+  ✔ RPC allows submit when couple_selected is null (sole shared path) (2.70575ms)
+  ✔ portal gates multi-offer preference separately from shared collaboration submit (0.167833ms)
+  ✔ venue empty state distinguishes Offer vs Additional + Share (0.110667ms)
+  ✔ venue review finds submitted layouts by client_layout_status, not only couple_selected (0.070667ms)
+  ✔ clientMaySubmitLayout: shared path without preference is allowed; multi-offer still requires selection (0.108167ms)
+✔ FP-RA-1 Additional-layout + Share collaboration path (4.614958ms)
+▶ Floor Plans Phase 1 — truthful working-layout labels
+  ✔ venue workspace labels the pointer as working layout, not Operational approval (1.031458ms)
+  ✔ portal chooser uses Working layout, not Operational (0.207708ms)
+  ✔ setup readiness refers to working layout, not operational plan as approval (0.126416ms)
+✔ Floor Plans Phase 1 — truthful working-layout labels (2.575625ms)
+▶ Floor Plans Phase 1 — share vs seating remain distinct
+  ✔ workspace exposes independent Share Floor Plan and seating toggles (0.187083ms)
+  ✔ does not treat shared or working layout as furniture-placement approval (0.243958ms)
+✔ Floor Plans Phase 1 — share vs seating remain distinct (0.552ms)
+▶ Floor Plans Phase 1 — multi-layout coexistence without package claims
+  ✔ surfaces other layouts with progressive, non-package guidance (0.202292ms)
+  ✔ portal multi-offer chooser does not claim a setup-package system (0.211125ms)
+✔ Floor Plans Phase 1 — multi-layout coexistence without package claims (0.557083ms)
+▶ Floor Plans Phase 1 — library isolation and seating preservation
+  ✔ first layout create/apply seeds working layout only when unset (0.155875ms)
+  ✔ applyTemplate clones into a new event plan via source_template_id (0.078334ms)
+  ✔ duplicateFloorPlan never mutates the source plan (0.341916ms)
+  ✔ setEventOperationalFloorPlan updates only the event pointer (0.378625ms)
+  ✔ deleteFloorPlan blocks when seating history exists (0.136584ms)
+✔ Floor Plans Phase 1 — library isolation and seating preservation (2.219666ms)
+▶ Floor Plans Phase 1 — Phase 4 flip + Phase 5 review flags coexist
+  ✔ workspace mounts flip panel and Phase 5 review flags panel (0.225167ms)
+✔ Floor Plans Phase 1 — Phase 4 flip + Phase 5 review flags coexist (0.314583ms)
+▶ Floor Plans Phase 3 — package view replaces whole-event false chooser when setups exist
+  ✔ portal hosts Your wedding setups package surface (0.130958ms)
+  ✔ venue workspace exposes optional setup organizer without forcing package builder (0.111208ms)
+✔ Floor Plans Phase 3 — package view replaces whole-event false chooser when setups exist (0.328708ms)
+▶ Phase 2 — select RPC preference only
+  ✔ migration select sets couple_selected + pending and does not set operational/share/seating (1.906042ms)
+  ✔ ensure_portal no longer auto-selects sole offer or heals seating (0.291917ms)
+✔ Phase 2 — select RPC preference only (3.342291ms)
+▶ Phase 2 — ensureWorkingLayoutForEvent decoupling
+  ✔ does not retarget operational from couple_selected (0.29975ms)
+  ✔ sole offer may seed working+share; multi-offer leaves unset (4.516292ms)
+  ✔ sole offer is not preference approval (3.351167ms)
+✔ Phase 2 — ensureWorkingLayoutForEvent decoupling (8.529917ms)
+▶ Phase 2 — preference lifecycle pure transitions
+  ✔ normalize treats legacy pointer without status as pending (0.277167ms)
+  ✔ couple select supersedes pending and preserves approved (0.234583ms)
+  ✔ decline and defer preserve approved and operational (6.461542ms)
+  ✔ Case B3 approve switches working/seating-in-use without claiming seat rewrite (0.279958ms)
+  ✔ Case C requires explicit seating-in-use and preserves both pointers' meaning (0.243083ms)
+✔ Phase 2 — preference lifecycle pure transitions (8.266875ms)
+▶ Phase 2 — approval × sharing copy matrix
+  ✔ approved-but-unshared, shared-but-unapproved, approved-and-shared (0.454417ms)
+  ✔ does not claim venue will use layout unless approved path copy (3.322542ms)
+  ✔ venue export allowlist includes preference lifecycle fields next to existing pointers (0.237209ms)
+✔ Phase 2 — approval × sharing copy matrix (4.187375ms)
+▶ Phase 2 — venue UX + authorization surface
+  ✔ workspace exposes preference review and B1/B3/C actions (0.695625ms)
+  ✔ service never updates guest_seat_assignments on preference decide (0.389542ms)
+  ✔ seat counts authorize via floor_plans then read assignments with admin (staff RLS gap) (0.3545ms)
+  ✔ schema adds preference lifecycle + seating-in-use distinct from client_layout_status (0.060542ms)
+✔ Phase 2 — venue UX + authorization surface (1.619ms)
+▶ Phase 2 — Phase 1 independence preserved in copy
+  ✔ keeps share vs seating and working-layout labels (0.203ms)
+✔ Phase 2 — Phase 1 independence preserved in copy (0.238583ms)
+▶ Phase 3 helpers — package vs simple path
+  ✔ zero setups keeps simple path; any setup enables package mode (1.267542ms)
+  ✔ alternatives exclude the working layout for a setup (1.108583ms)
+  ✔ layouts for one setup never include another setup's members (0.131417ms)
+✔ Phase 3 helpers — package vs simple path (4.39625ms)
+▶ Phase 3 migration — explicit setups, no name inference, detach-safe
+  ✔ creates setup and member tables with unique floor_plan membership (0.281833ms)
+  ✔ portal preference RPC is setup-scoped and preference-only (0.136875ms)
+  ✔ does not destructively backfill or reinterpret legacy events (0.448792ms)
+✔ Phase 3 migration — explicit setups, no name inference, detach-safe (1.108125ms)
+▶ Phase 3 UI seams
+  ✔ portal package view uses Your wedding setups and nests options under setups (0.25675ms)
+  ✔ venue organizer is progressive and detach preserves layouts (0.238ms)
+✔ Phase 3 UI seams (0.71875ms)
+▶ Phase 3 does not reopen Phase 1/2 invariants
+  ✔ Phase 1 coexistence and Phase 2 preference suites remain present (0.33325ms)
+✔ Phase 3 does not reopen Phase 1/2 invariants (0.468166ms)
+▶ Phase 4 helpers
+  ✔ space mismatch is advisory only when both space ids are present and differ (1.246583ms)
+  ✔ sanitizes transition notes without inventing schedule fields (0.263958ms)
+✔ Phase 4 helpers (6.470791ms)
+▶ Phase 4 migration — real link table, not FP-SR
+  ✔ creates event_floor_plan_flips with distinct layouts and one pair per event (12.596292ms)
+  ✔ validates both layouts belong to the same event/venue (0.189083ms)
+  ✔ does not treat setup membership as the link persistence model (7.423125ms)
+✔ Phase 4 migration — real link table, not FP-SR (20.473459ms)
+▶ Phase 4 service — link/unlink preserve layouts
+  ✔ unlink deletes only the relationship row (0.508583ms)
+  ✔ rejects identical layout ids in the service (0.181875ms)
+  ✔ link path does not rewrite preference, seating, share, or setup membership (0.240208ms)
+✔ Phase 4 service — link/unlink preserve layouts (1.326166ms)
+▶ Phase 4 venue UI — progressive, honest copy
+  ✔ is opt-in and mounted from the workspace (0.686209ms)
+  ✔ states link is for staff planning, not automatic turnover (0.655458ms)
+  ✔ FP-SR remains a static illustration in starters (0.376125ms)
+✔ Phase 4 venue UI — progressive, honest copy (8.289ms)
+▶ Phase 4 couple privacy
+  ✔ portal floor-plan surfaces do not reference transition notes keys (0.362458ms)
+  ✔ portal routes do not read event_floor_plan_flips (0.312417ms)
+✔ Phase 4 couple privacy (0.801042ms)
+▶ Phase 4 coexists with Phase 5 review flags
+  ✔ phase1 still requires flip panel; Phase 5 review panel is separately authorized (0.102917ms)
+✔ Phase 4 coexists with Phase 5 review flags (0.286791ms)
+▶ Phase 5 predicates — booking room set
+  ✔ uses distinct assignment space ids when present (multi-room) (1.219917ms)
+  ✔ falls back to primary events.space_id when no assignments (0.068166ms)
+  ✔ empty set when neither assignments nor primary (0.062667ms)
+✔ Phase 5 predicates — booking room set (2.247417ms)
+▶ Phase 5 predicates — T1 layout inconsistency
+  ✔ null layout room is never inconsistent (0.100667ms)
+  ✔ empty booking room set never flags (0.045875ms)
+  ✔ membership: in set consistent, out of set inconsistent (0.0505ms)
+  ✔ does not compare only against a single primary when set has multiple (0.045ms)
+✔ Phase 5 predicates — T1 layout inconsistency (0.352792ms)
+▶ Phase 5 predicates — fingerprints and T3
+  ✔ identical T1 fingerprints for same effective state (0.174458ms)
+  ✔ setsEqual is order-insensitive (0.078084ms)
+  ✔ T3 requires captured snapshot; legacy without timestamp never mismatches (0.088333ms)
+  ✔ T3 mismatches when recorded rooms differ from current after capture (0.062167ms)
+  ✔ T3 fingerprint distinguishes states (0.119083ms)
+✔ Phase 5 predicates — fingerprints and T3 (0.6715ms)
+▶ Phase 5 migration
+  ✔ adds flip snapshot columns and review_flags table with constraints/RLS (0.160875ms)
+  ✔ does not add T2 setup-to-space (0.098417ms)
+✔ Phase 5 migration (0.33175ms)
+▶ Phase 5 service wiring
+  ✔ booking-room reconcile hooks after successful assignment replace (0.07775ms)
+  ✔ single-space primary update reconciles when assignments path skipped (0.112875ms)
+  ✔ layout room update path exists and does not silently clear flags (0.369917ms)
+  ✔ clear mutates flag audit fields only (0.105166ms)
+  ✔ flip link captures snapshot; notes path does not (0.094ms)
+  ✔ empty booking set skips T1; skipped_cleared_retry prevents reopen on identical retry (0.041666ms)
+✔ Phase 5 service wiring (0.9045ms)
+▶ Phase 5 venue UI
+  ✔ mounts review panel in workspace with Clear review and plain-language copy (0.143ms)
+  ✔ shows mismatch banner only when open reviews exist; loading/empty/error are distinct (0.090542ms)
+  ✔ refetches reviews when layout rooms change or card save notifies the panel (0.092667ms)
+  ✔ exposes server actions for list/clear/update room (0.047667ms)
+  ✔ default banner copy is stable (0.0465ms)
+✔ Phase 5 venue UI (0.480666ms)
+▶ Phase 5 couple privacy
+  ✔ portal surfaces do not reference review-flag persistence (0.272417ms)
+  ✔ still preserves Phase 4 flip privacy keys (0.12625ms)
+✔ Phase 5 couple privacy (0.428541ms)
+▶ Phase 5 preserves Phase 1–4 contracts
+  ✔ does not reopen T2 or capacity hardening (0.072208ms)
+  ✔ phase1 expects Phase 5 review panel once mounted (0.044625ms)
+  ✔ phase4 privacy + unlink contracts remain tested (0.038917ms)
+✔ Phase 5 preserves Phase 1–4 contracts (0.192375ms)
+ℹ tests 108
+ℹ suites 33
+ℹ pass 108
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 738.272708

@@ -445,6 +445,10 @@ export function EventSetupPanel({
                         openSetupProfiles();
                         return;
                       }
+                      if (detail.nextAction === "Change for this event") {
+                        changeForEvent(step);
+                        return;
+                      }
                       navigateStep(step);
                     }}
                   >
@@ -495,8 +499,12 @@ export function EventSetupPanel({
                       Skip
                     </Button>
                   </div>
-                ) : state.usesProfile ? (
+                ) : (
                   <div className="flex flex-wrap gap-2">
+                    {/* Change opens the dedicated setup editor for any Included area —
+                        not only when a Setup Profile is attached. Without this, events
+                        with a manual Set up decision only expose Open (management) and
+                        customers cannot reach offer / template configuration. */}
                     {decision === "set_up" && SETUP_EDITOR_STEPS.has(step) ? (
                       <Button
                         type="button"
@@ -509,7 +517,7 @@ export function EventSetupPanel({
                         Change for this event
                       </Button>
                     ) : null}
-                    {decision === "set_up" ? (
+                    {state.usesProfile && decision === "set_up" ? (
                       <Button
                         type="button"
                         size="sm"
@@ -520,13 +528,13 @@ export function EventSetupPanel({
                         Don&apos;t include for this event
                       </Button>
                     ) : null}
-                    {decision === "skipped" && inherited ? (
+                    {state.usesProfile && decision === "skipped" && inherited ? (
                       <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => decide(step, inherited)}>
                         Use {state.profileName}
                       </Button>
                     ) : null}
                   </div>
-                ) : null}
+                )}
               </div>
               <p
                 className="mt-2 text-xs text-muted-foreground"

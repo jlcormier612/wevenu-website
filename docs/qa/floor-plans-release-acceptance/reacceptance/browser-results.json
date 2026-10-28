@@ -1,0 +1,48 @@
+{
+  "pass": false,
+  "run": "FPRAMVRMG0YG",
+  "expectedSha": "5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
+      "evidence": "serving"
+    },
+    {
+      "name": "api_health",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":{\"ok\":true,\"checks\":{\"env\":\"ok\",\"supabase\":\"ok\"}}}",
+      "evidence": "serving"
+    },
+    {
+      "name": "fixture_zero_layouts",
+      "pass": true,
+      "detail": "plans=0",
+      "evidence": "persisted"
+    },
+    {
+      "name": "harness_error",
+      "pass": false,
+      "detail": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"floor-plans-setup-template-select\"]') to be visible\n\n    at offerTemplateViaUi (/Users/jensmac/Developer/wevenu-website/docs/qa/floor-plans-release-acceptance/verify-reacceptance.mts:261:21)\n    at main (/Users/jensmac/Developer/wevenu-website/docs/qa/floor-plans-release-acceptance/verify-reacceptance.mts:289:28)",
+      "evidence": "harness"
+    }
+  ],
+  "usability": [
+    {
+      "screen": "Event setup floor-plan offers",
+      "text": "",
+      "assessment": "Offer editor missing or unclear.",
+      "severity": "p2"
+    }
+  ],
+  "blockers": 1,
+  "persisted": {
+    "run": "FPRAMVRMG0YG",
+    "expectedSha": "5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
+    "serving": "405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a",
+    "clientId": "f12d40d6-d144-414f-8eda-4402ed62e32a",
+    "eventId": "b3c84ee9-7410-4186-89c3-6d1e5f60fd6e",
+    "portalToken": "fpra_fpramvrmg0yg_ce84"
+  }
+}
