@@ -449,22 +449,43 @@ async function main() {
     }
     const cerOk = await addSetup("Ceremony");
     const recOk = await addSetup("Reception");
+    await page.waitForTimeout(1500);
+    if ((await page.locator('[data-testid="floor-plan-setup-package-editor"]').count()) === 0) {
+      await setupToggle.click().catch(() => undefined);
+      await page.waitForTimeout(800);
+    }
     const { data: setups } = await admin.from("event_floor_plan_setups").select("id,name").eq("event_id", eventId);
     const { data: planRows } = await admin.from("floor_plans").select("id,name").eq("event_id", eventId).order("created_at");
     const planA = planRows?.[0]?.id ?? null;
-    const planB = planRows?.[1]?.id ?? planRows?.[0]?.id ?? null;
+    const planB = planRows?.[1]?.id ?? null;
+    // Attach requires distinct unassigned layouts (a layout can only sit in one setup).
     let attachedViaUi = 0;
-    if ((setups ?? []).length >= 2 && planA && planB) {
-      if ((await page.locator('[data-testid="floor-plan-setup-package-editor"]').count()) === 0) {
-        await setupToggle.click().catch(() => undefined);
-        await page.waitForTimeout(800);
-      }
-      for (const s of setups ?? []) {
+    let attachAttempts: unknown[] = [];
+    if ((setups ?? []).length >= 2 && planA && planB && planA !== planB) {
+      const ordered = [...(setups ?? [])].sort((a, b) => {
+        if (/Ceremony/i.test(a.name)) return -1;
+        if (/Ceremony/i.test(b.name)) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      const wants = [planA, planB];
+      for (let i = 0; i < ordered.length && i < wants.length; i++) {
+        const s = ordered[i]!;
+        const want = wants[i]!;
         const sel = page.locator(`[data-testid="floor-plan-setup-attach-${s.id}"]`);
-        if (!(await sel.count())) continue;
-        const want = /Ceremony/i.test(s.name) ? planA : planB;
+        const visible = (await sel.count()) > 0;
+        if (!visible) {
+          attachAttempts.push({ setup: s.name, want, visible: false });
+          continue;
+        }
         await sel.selectOption(want);
-        await page.waitForTimeout(2000);
+        let ok = false;
+        for (let w = 0; w < 20; w++) {
+          await page.waitForTimeout(400);
+          const { data: mem } = await admin.from("event_floor_plan_setup_members")
+            .select("id").eq("setup_id", s.id).eq("floor_plan_id", want);
+          if ((mem ?? []).length) { ok = true; break; }
+        }
+        attachAttempts.push({ setup: s.name, want, visible: true, ok });
       }
       const { data: members } = await admin.from("event_floor_plan_setup_members")
         .select("id,setup_id,floor_plan_id")
@@ -474,7 +495,7 @@ async function main() {
     record(
       "setup_members_attached_via_ui_only",
       cerOk && recOk && attachedViaUi >= 2,
-      JSON.stringify({ cerOk, recOk, setups, attachedViaUi, planA, planB }),
+      JSON.stringify({ cerOk, recOk, setups, attachedViaUi, planA, planB, attachAttempts }),
       attachedViaUi >= 2 ? "live-ui+persisted" : "live-ui",
     );
     await page.screenshot({ path: `${OUT}/reacceptance/setup-attach-1280.png`, fullPage: true });
@@ -492,49 +513,52 @@ async function main() {
       if (await locked.count()) await locked.click({ force: true }).catch(() => undefined);
       else if (await anyObj.count()) await anyObj.click({ force: true }).catch(() => undefined);
       await page.waitForTimeout(800);
-      const lockLabel = page.getByText(/Lock Position/i).first();
       let unlockedViaUi = false;
-      if (await lockLabel.count()) {
-        const checkbox = page.locator('label:has-text("Lock Position") input[type="checkbox"]').first();
-        if (await checkbox.count()) {
-          const wasLocked = await checkbox.isChecked().catch(() => true);
-          if (wasLocked) {
-            await checkbox.uncheck({ force: true }).catch(async () => {
-              await checkbox.click({ force: true });
-            });
-          }
-          await page.waitForTimeout(1500);
-          // Persist: find selected object id
-          const { data: objs } = await admin.from("floor_plan_objects")
-            .select("id,locked")
-            .eq("floor_plan_id", planA)
-            .eq("locked", false)
-            .limit(3);
-          unlockedViaUi = (objs ?? []).length > 0 || !wasLocked;
-          persisted.unlockedViaUi = objs?.[0]?.id ?? null;
-        }
-      }
-      // If editor didn't expose lock (selection miss), try toggling first unlocked by ensuring at least one unlock click on inspector
-      if (!unlockedViaUi) {
-        const { data: anyLocked } = await admin.from("floor_plan_objects")
-          .select("id")
-          .eq("floor_plan_id", planA)
-          .eq("locked", true)
-          .limit(1);
-        if (anyLocked?.[0]) {
-          // Click object by evaluating data-object-id
-          await page.locator(`[data-object-id="${anyLocked[0].id}"]`).first().click({ force: true }).catch(() => undefined);
-          await page.waitForTimeout(600);
-          const checkbox = page.locator('label:has-text("Lock Position") input[type="checkbox"]').first();
-          if (await checkbox.count() && await checkbox.isChecked()) {
+      async function tryUnlockSelected() {
+        const checkbox = page.locator('[data-testid="floor-plan-object-lock-toggle"]')
+          .or(page.locator('label:has-text("Lock Position") input[type="checkbox"]')).first();
+        if (!(await checkbox.count())) return false;
+        const wasLocked = await checkbox.isChecked().catch(() => true);
+        if (wasLocked) {
+          await checkbox.uncheck({ force: true }).catch(async () => {
             await checkbox.click({ force: true });
-            await page.waitForTimeout(1500);
-          }
-          const { data: after } = await admin.from("floor_plan_objects").select("id,locked").eq("id", anyLocked[0].id).maybeSingle();
-          unlockedViaUi = after?.locked === false;
-          persisted.unlockedViaUi = after?.id ?? null;
+          });
+          await page.waitForTimeout(1800);
+        }
+        return true;
+      }
+      const { data: lockedObjs } = await admin.from("floor_plan_objects")
+        .select("id").eq("floor_plan_id", planA).eq("locked", true).limit(3);
+      for (const row of lockedObjs ?? []) {
+        await page.locator(`[data-object-id="${row.id}"]`).first().click({ force: true }).catch(() => undefined);
+        await page.waitForTimeout(700);
+        if (!(await tryUnlockSelected())) continue;
+        const { data: after } = await admin.from("floor_plan_objects").select("id,locked").eq("id", row.id).maybeSingle();
+        if (after?.locked === false) {
+          unlockedViaUi = true;
+          persisted.unlockedViaUi = after.id;
+          break;
         }
       }
+      if (!unlockedViaUi) {
+        // Fall back: click any canvas object then toggle Lock Position
+        const anyObj = page.locator("svg g[data-object-id], [data-object-id]").first();
+        if (await anyObj.count()) await anyObj.click({ force: true }).catch(() => undefined);
+        await page.waitForTimeout(600);
+        await tryUnlockSelected();
+        const { data: objs } = await admin.from("floor_plan_objects")
+          .select("id,locked").eq("floor_plan_id", planA).eq("locked", false).limit(3);
+        unlockedViaUi = (objs ?? []).length > 0;
+        persisted.unlockedViaUi = objs?.[0]?.id ?? null;
+      }
+      noteUx(
+        "Venue editor Lock Position",
+        "Lock Position checkbox on selected object",
+        unlockedViaUi
+          ? "Customer can unlock template-locked furniture via Lock Position."
+          : "Could not unlock via editor — drag would remain blocked for couple.",
+        unlockedViaUi ? "ok" : "blocker",
+      );
       record("furniture_unlocked_via_venue_editor_ui", unlockedViaUi, JSON.stringify({ unlockedViaUi, id: persisted.unlockedViaUi }), "live-ui+persisted");
       await page.screenshot({ path: `${OUT}/reacceptance/unlock-editor-1280.png`, fullPage: true });
     } else {

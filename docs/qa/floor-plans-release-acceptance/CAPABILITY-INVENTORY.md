@@ -1,7 +1,13 @@
 # Floor Plans — Capability inventory (re-acceptance)
 
-**Serving baseline:** `5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a`  
-**Status key:** `fresh` = proven on this tip in re-acceptance · `stale` = older SHA · `gap` = not yet proven · `n/a` = unsupported
+**Serving baseline (pre-fix):** `5959df8c9da2d6e798c25db1b9b921e1fc4a5e4a`  
+**Fix commit (awaiting Sandbox serve):** `38b2d591f2ee7a0cad3a96a8124424dbe6837549`  
+**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/40633517702  
+**Status key:** `fresh` = proven on final tip · `stale` = older SHA · `gap` = not yet proven · `n/a` = unsupported · `blocked` = product defect found
+
+### P1 — Offer editor unreachable without Setup Profile (fixing)
+
+Venue Event Setup with Floor plans Included / Needs action and zero offers showed only **Open Floor Plans**. `Change for this event` was gated on `usesProfile`, so customers could not open the offer editor or create multi-offer Event setups. Zero-offer outstanding CTA also navigated to Open (wrong destination). Fix: ungated Change for `SETUP_EDITOR_STEPS`; readiness `nextAction` = Change for this event.
 
 | Capability | Entry | Roles | Persist expectation | Tip status | Notes |
 |------------|-------|-------|---------------------|------------|-------|
