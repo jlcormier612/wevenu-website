@@ -24,6 +24,11 @@ import {
   DEFAULT_REVIEW_BANNER_COPY,
   type ReviewFlagRow,
 } from "@/lib/floor-plans/review-flags";
+import {
+  FLOOR_PLAN_REVIEW_FLAGS_CHANGED_EVENT,
+  floorPlanSpaceFingerprint,
+  notifyFloorPlanReviewFlagsChanged,
+} from "@/lib/floor-plans/review-flags-ui";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 
 const NO_SPACE = "__none__";
@@ -64,20 +69,26 @@ export function FloorPlanReviewFlagsPanel({
   const [flags, setFlags] = React.useState<ReviewFlagRow[]>([]);
   const [bookingRoomIds, setBookingRoomIds] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
   const [roomEditPlanId, setRoomEditPlanId] = React.useState<string | null>(null);
   const [roomDraft, setRoomDraft] = React.useState(NO_SPACE);
   const [roomPending, startRoomTransition] = React.useTransition();
+  const spaceFingerprint = floorPlanSpaceFingerprint(floorPlans);
 
   async function reload() {
     setLoading(true);
+    setLoadError(null);
     try {
       const [next, rooms] = await Promise.all([
         listOpenFloorPlanReviewFlagsAction(eventId),
         getEventBookingRoomSetAction(eventId),
       ]);
-      setFlags(next);
-      setBookingRoomIds(rooms);
+      setFlags(Array.isArray(next) ? next : []);
+      setBookingRoomIds(Array.isArray(rooms) ? rooms : []);
+    } catch {
+      setLoadError("Could not load layout reviews. Refresh and try again.");
+      setFlags([]);
     } finally {
       setLoading(false);
     }
@@ -85,8 +96,22 @@ export function FloorPlanReviewFlagsPanel({
 
   React.useEffect(() => {
     void reload();
+    // Re-fetch when layout rooms change (card save → router.refresh) or count changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, floorPlans.length]);
+  }, [eventId, spaceFingerprint, floorPlans.length]);
+
+  React.useEffect(() => {
+    function onFlagsChanged(ev: Event) {
+      const detail = (ev as CustomEvent<{ eventId?: string }>).detail;
+      if (detail?.eventId && detail.eventId !== eventId) return;
+      void reload();
+    }
+    window.addEventListener(FLOOR_PLAN_REVIEW_FLAGS_CHANGED_EVENT, onFlagsChanged);
+    return () => {
+      window.removeEventListener(FLOOR_PLAN_REVIEW_FLAGS_CHANGED_EVENT, onFlagsChanged);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   function clearFlag(flagId: string) {
     if (!canEdit) return;
@@ -99,6 +124,7 @@ export function FloorPlanReviewFlagsPanel({
         return;
       }
       toast.success("Review cleared. Layouts and rooms were not changed.");
+      notifyFloorPlanReviewFlagsChanged(eventId);
       await reload();
       router.refresh();
     })();
@@ -126,6 +152,7 @@ export function FloorPlanReviewFlagsPanel({
         );
       }
       setRoomEditPlanId(null);
+      notifyFloorPlanReviewFlagsChanged(eventId);
       await reload();
       router.refresh();
     });
@@ -135,27 +162,45 @@ export function FloorPlanReviewFlagsPanel({
     bookingRoomIds.length === 0
       ? "None assigned"
       : bookingRoomIds.map((id) => spaceLabel(spaces, id)).join(", ");
+  const showMismatchBanner = !loading && !loadError && flags.length > 0;
 
   return (
     <div
       className="space-y-3 rounded-sm border border-border bg-card p-4"
       data-testid="floor-plan-review-flags-panel"
+      data-review-count={flags.length}
+      data-review-loading={loading ? "true" : "false"}
     >
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Layout reviews
         </p>
-        <p className="text-sm text-muted-foreground" data-testid="floor-plan-review-banner">
-          {DEFAULT_REVIEW_BANNER_COPY}
-        </p>
-        <p className="text-xs text-muted-foreground" data-testid="floor-plan-review-booking-rooms">
-          Booking rooms (read-only): {bookingRoomsLabel}
-        </p>
+        {showMismatchBanner ? (
+          <p
+            className="text-sm text-amber-950 bg-amber-50 border border-amber-200 rounded-sm px-2 py-1.5"
+            data-testid="floor-plan-review-banner"
+            role="status"
+          >
+            {DEFAULT_REVIEW_BANNER_COPY}
+          </p>
+        ) : null}
+        {!loading ? (
+          <p className="text-xs text-muted-foreground" data-testid="floor-plan-review-booking-rooms">
+            Booking rooms (read-only): {bookingRoomsLabel}
+          </p>
+        ) : null}
       </div>
 
       {loading ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <p
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+          data-testid="floor-plan-review-loading"
+        >
           <Loader2 className="h-4 w-4 animate-spin" /> Loading reviews…
+        </p>
+      ) : loadError ? (
+        <p className="text-sm text-destructive" data-testid="floor-plan-review-error" role="alert">
+          {loadError}
         </p>
       ) : flags.length === 0 ? (
         <p className="text-sm text-muted-foreground" data-testid="floor-plan-review-empty">
@@ -379,6 +424,7 @@ export function LayoutRoomEditorInline({
                 "Layout room saved. This does not clear an outstanding review.",
               );
             }
+            notifyFloorPlanReviewFlagsChanged(eventId);
             router.refresh();
           });
         }}

@@ -268,49 +268,85 @@ function FloorPlanCard({
         <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
       )}
       {(isOperational || isCoupleSelected || plan.finalizedAt || plan.clientLayoutStatus !== "working") && (
-        <div className="flex flex-wrap gap-1">
-          {plan.finalizedAt && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent-foreground">
-              Ready
-            </span>
-          )}
-          {plan.clientLayoutStatus === "submitted" && (
-            <span
-              className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-900"
-              data-testid="floor-plan-card-submitted"
-            >
-              Client submitted
-            </span>
-          )}
-          {plan.clientLayoutStatus === "changes_requested" && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground">
-              Changes requested
-            </span>
-          )}
-          {plan.clientLayoutStatus === "approved" && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary">
-              Client approved
-            </span>
-          )}
-          {isCoupleSelected && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground">
-              Couple preference
-            </span>
-          )}
-          {isOperational && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary">
-              Working layout
-            </span>
-          )}
+        <div className="flex flex-col gap-1" data-testid="floor-plan-card-status">
+          <div className="flex flex-wrap gap-1">
+            {isCoupleSelected && (
+              <span
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground"
+                title="The couple chose this layout as their preference. This is not furniture-placement approval."
+                data-testid="floor-plan-card-couple-preference"
+              >
+                Couple preference
+              </span>
+            )}
+            {isOperational && (
+              <span
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary"
+                title="Venue working layout for prep. Separate from sharing, seating, and preference."
+                data-testid="floor-plan-card-working"
+              >
+                Working layout
+              </span>
+            )}
+            {plan.finalizedAt && (
+              <span
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent-foreground"
+                title="Marked Ready for print/setup. Couple furniture edits stay locked until you Make Changes."
+                data-testid="floor-plan-card-ready"
+              >
+                Ready
+              </span>
+            )}
+          </div>
+          {plan.clientLayoutStatus !== "working" ? (
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                Furniture placement
+              </span>
+              {plan.clientLayoutStatus === "submitted" && (
+                <span
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-amber-300 bg-amber-50 text-amber-900"
+                  title="Couple submitted furniture placement for venue review. Separate from layout preference."
+                  data-testid="floor-plan-card-submitted"
+                >
+                  Submitted for review
+                </span>
+              )}
+              {plan.clientLayoutStatus === "changes_requested" && (
+                <span
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground"
+                  title="You asked the couple to update furniture placement."
+                  data-testid="floor-plan-card-changes-requested"
+                >
+                  Changes requested
+                </span>
+              )}
+              {plan.clientLayoutStatus === "approved" && (
+                <span
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary"
+                  title="You approved the couple's furniture placement. Not the same as approving their layout preference."
+                  data-testid="floor-plan-card-furniture-approved"
+                >
+                  Venue approved placement
+                </span>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
       {canEdit && !preBooking && (
-        <div className="flex flex-wrap gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-          <ShareFloorPlanToggle eventId={eventId} plan={plan} />
-          <ShareForSeatingToggle eventId={eventId} plan={plan} />
-          <ShareWithVendorsToggle eventId={eventId} plan={plan} />
-          <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
-          <CoupleMayAddTablesToggle eventId={eventId} plan={plan} />
+        <div className="flex flex-col gap-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Couple visibility & seating</p>
+          <div className="flex flex-wrap gap-1.5">
+            <ShareFloorPlanToggle eventId={eventId} plan={plan} />
+            <ShareForSeatingToggle eventId={eventId} plan={plan} />
+            <ShareWithVendorsToggle eventId={eventId} plan={plan} />
+          </div>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground pt-0.5">Venue prep</p>
+          <div className="flex flex-wrap gap-1.5">
+            <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
+            <CoupleMayAddTablesToggle eventId={eventId} plan={plan} />
+          </div>
         </div>
       )}
     </Link>
@@ -364,15 +400,16 @@ function ClientSubmissionReviewPanel({
       data-testid="floor-plan-client-submission-review"
     >
       <p className="text-sm font-medium text-heading">
-        Client submitted: <span className="font-semibold">{plan.name}</span>
+        Furniture placement submitted: <span className="font-semibold">{plan.name}</span>
       </p>
       <p className="text-xs text-muted-foreground">
         Submitted{" "}
         {plan.clientSubmittedAt
           ? new Date(plan.clientSubmittedAt).toLocaleString()
           : "recently"}
-        . Open the layout to inspect, then approve or request changes. The operational plan is this
-        working layout — approval does not create a second copy.
+        . Open the layout to inspect table and furniture placement, then approve or request changes.
+        This is not the same as approving their layout preference. Approving placement keeps this
+        working layout — it does not create a second copy.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -387,12 +424,12 @@ function ClientSubmissionReviewPanel({
                 toast.error(result.message ?? "Could not approve.");
                 return;
               }
-              toast.success("Client layout approved.");
+              toast.success("Furniture placement approved.");
               router.refresh();
             });
           }}
         >
-          Approve layout
+          Approve furniture placement
         </Button>
         <Link
           href={`/events/${eventId}/floor-plans/${plan.id}`}
@@ -1119,16 +1156,38 @@ export function FloorPlanWorkspace({
           <p className="text-sm font-medium text-heading">No working layout for this event yet</p>
           <p className="max-w-md text-xs text-muted-foreground">
             {activeOffers.length === 1
-              ? "A sole offered layout can seed the working layout. Refresh, or open Event setup → Change for this event if it does not appear."
+              ? "One layout is already offered for this event. Refresh this page if it does not appear as the working layout, or open Event setup → Change for this event to confirm the offer."
               : activeOffers.length > 1
-                ? "Several layouts are offered. Set a working layout explicitly on a plan card — the system will not pick one from preference or offer count."
-                : "Offer a Library layout under Event setup → Change for this event. A sole offer can seed the working layout so you can edit and assign seats here."}
+                ? "Several layouts are offered. Next step here: open a plan below (after refresh) and choose Set as working layout. Preference alone does not pick one."
+                : "Next step: offer a Library layout under Event setup → Change for this event. After one layout is offered, return here to edit it and assign seats. You can also start an additional layout on this tab."}
           </p>
-          {canEdit && (
+          {canEdit && activeOffers.length === 0 ? (
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                data-testid="floor-plan-first-layout-setup-cta"
+                onClick={() => {
+                  window.location.hash = "overview";
+                  window.setTimeout(() => {
+                    document.getElementById("event-setup")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }, 80);
+                }}
+              >
+                Offer a layout in Event setup
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { reset(); setOpen(true); }}>
+                + Additional layout here
+              </Button>
+            </div>
+          ) : canEdit ? (
             <Button type="button" size="sm" className="mt-2" variant="outline" onClick={() => { reset(); setOpen(true); }}>
               + Additional layout
             </Button>
-          )}
+          ) : null}
         </div>
       ) : !ensuring && workingPlan ? (
         <div className="space-y-3" data-testid="floor-plan-working-card">

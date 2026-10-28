@@ -245,6 +245,24 @@ describe("Phase 5 venue UI", () => {
     assert.match(panel, /LayoutRoomEditorInline|floor-plan-card-room-editor|floor-plan-layout-room-editor/);
   });
 
+  it("shows mismatch banner only when open reviews exist; loading/empty/error are distinct", () => {
+    assert.match(panel, /showMismatchBanner/);
+    assert.match(panel, /floor-plan-review-loading/);
+    assert.match(panel, /floor-plan-review-empty/);
+    assert.match(panel, /floor-plan-review-error/);
+    assert.match(panel, /data-review-count=\{flags\.length\}/);
+    // Empty copy must not be gated behind the rooms-changed warning.
+    const emptyIdx = panel.indexOf("No open layout reviews for this booking.");
+    const bannerRender = panel.indexOf("showMismatchBanner ?");
+    assert.ok(emptyIdx > 0 && bannerRender > 0);
+  });
+
+  it("refetches reviews when layout rooms change or card save notifies the panel", () => {
+    assert.match(panel, /floorPlanSpaceFingerprint|spaceFingerprint/);
+    assert.match(panel, /FLOOR_PLAN_REVIEW_FLAGS_CHANGED_EVENT|notifyFloorPlanReviewFlagsChanged/);
+    assert.match(panel, /notifyFloorPlanReviewFlagsChanged\(eventId\)/);
+  });
+
   it("exposes server actions for list/clear/update room", () => {
     assert.match(actions, /listOpenFloorPlanReviewFlagsAction/);
     assert.match(actions, /clearFloorPlanReviewFlagAction/);

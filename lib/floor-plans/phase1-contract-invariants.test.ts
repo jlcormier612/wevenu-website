@@ -48,11 +48,16 @@ describe("Floor Plans Phase 1 — share vs seating remain distinct", () => {
     assert.match(workspace, /Independent of Seating/);
   });
 
-  it("does not treat shared or working layout as Client approved", () => {
+  it("does not treat shared or working layout as furniture-placement approval", () => {
     assert.match(workspace, /clientLayoutStatus === "approved"/);
+    assert.match(workspace, /Venue approved placement|floor-plan-card-furniture-approved/);
     assert.doesNotMatch(
       workspace,
       /isOperational[\s\S]{0,80}Client approved|sharedWithCouple[\s\S]{0,80}Client approved/,
+    );
+    assert.doesNotMatch(
+      workspace,
+      /isOperational[\s\S]{0,80}Venue approved placement/,
     );
   });
 });
