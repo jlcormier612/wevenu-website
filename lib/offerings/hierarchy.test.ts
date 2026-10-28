@@ -302,8 +302,10 @@ describe("Offerings hierarchy migration + UI seams", () => {
     assert.match(library, /Removing a check removes only that association/);
     assert.match(library, /data-nest-under/);
     assert.match(library, /orderOfferingsHierarchically/);
-    assert.match(choiceGroups, /Select where this belongs/);
+    // Multi-parent association lives on the Offerings catalog, not EO choice-group dependency UI.
+    assert.doesNotMatch(choiceGroups, /Select where this belongs/);
     assert.doesNotMatch(choiceGroups, /Select question or category/);
+    assert.match(choiceGroups, /depends_on_option_ids|dependsOnOptionIds/);
   });
 
   it("guided defaults no longer invent Catering choices labels", () => {

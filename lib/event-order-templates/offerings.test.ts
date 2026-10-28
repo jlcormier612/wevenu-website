@@ -309,8 +309,9 @@ describe("Catalog, isolation, and preview labels", () => {
     const preview = readFileSync(join(root, "components/event-order-templates/event-order-template-preview.tsx"), "utf8");
     const apply = readFileSync(join(root, "components/event-order-templates/apply-event-order-template-sheet.tsx"), "utf8");
     assert.match(editor, /overflow-x-hidden/);
-    assert.match(editor, /Add from Offerings/);
-    assert.match(editor, /Add section/);
+    assert.match(editor, /Manage Offerings/);
+    assert.match(editor, /package items \(no couple choice\)/);
+    assert.doesNotMatch(editor, /Add from Offerings/);
     assert.match(preview, /overflow-x-hidden/);
     assert.match(preview, /the template is not a commitment/);
     assert.doesNotMatch(preview, /is a commitment/);

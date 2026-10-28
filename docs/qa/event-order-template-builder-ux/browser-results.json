@@ -1,0 +1,341 @@
+{
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=3865e4c1494fae80572ef3640b35bf7c907713e9 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3865e4c1494fae80572ef3640b35bf7c907713e9",
+      "kind": "deploy"
+    },
+    {
+      "name": "catalog_fixtures_present",
+      "pass": true,
+      "detail": "{\"catalogOffering\":{\"id\":\"ba20151d-06d5-4553-8ba6-c9b3bee91a0f\",\"name\":\"Day-of coordination\",\"default_unit_price\":null},\"sideOffering\":{\"id\":\"16c0cbd8-0b24-419e-aa8f-02d01c29c078\",\"name\":\"Caesar salad\"},\"entreeOffering\":{\"id\":\"ebf13e5b-b3f3-43ca-ae89-03c0d589b323\",\"name\":\"Chicken Marsala\"}}",
+      "kind": "fixture"
+    },
+    {
+      "name": "ux_package_items_heading",
+      "pass": true,
+      "detail": "heading",
+      "kind": "usability"
+    },
+    {
+      "name": "ux_choices_heading",
+      "pass": true,
+      "detail": "heading",
+      "kind": "usability"
+    },
+    {
+      "name": "ux_no_included_in_catering",
+      "pass": true,
+      "detail": "no old heading",
+      "kind": "usability"
+    },
+    {
+      "name": "ux_no_major_choices_jargon",
+      "pass": true,
+      "detail": "no jargon",
+      "kind": "usability"
+    },
+    {
+      "name": "ux_primary_question_cta",
+      "pass": true,
+      "detail": "CTA present",
+      "kind": "usability"
+    },
+    {
+      "name": "ux_empty_guides_next",
+      "pass": true,
+      "detail": "empty state",
+      "kind": "usability"
+    },
+    {
+      "name": "persisted_catalog_package_item_covered",
+      "pass": true,
+      "detail": "{\"id\":\"9d3f8c1b-718b-4781-98bb-b8194ef46323\",\"description\":\"Day-of coordination\",\"included_by_default\":true,\"unit_price\":null,\"offering_id\":\"ba20151d-06d5-4553-8ba6-c9b3bee91a0f\",\"pricing_model\":\"none\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "persisted_template_only_additional_charge",
+      "pass": true,
+      "detail": "{\"id\":\"b04fe246-2db2-41b5-9aa4-60317281fe62\",\"description\":\"EOTUX-EOTUXMVSPZ9CI-Champagne Toast\",\"included_by_default\":false,\"unit_price\":150,\"offering_id\":null,\"pricing_model\":\"flat\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "ui_distinguishes_covered_vs_additional",
+      "pass": true,
+      "detail": "Items always on this package\n\nThese belong to Catering without a couple choice. When you add each item, set whether it is covered by the package price or billed as an additional charge — “always on the package” does not mean free.\n\nPrefer a reusable Offering from your catalog when you sell it across events; use a template-only entry for one-off lines on this package only.\n\nDay-of coordination\n\nFrom Offerings catalog · Covered by package price · No price configured\n\nEdit\nRemove\n\nEOTUX-EOTUXMVSPZ9CI-Champagne Toast\n\nTemplate-only · Additional charge (not covered by package price) · $150 · Flat\n\n",
+      "kind": "usability"
+    },
+    {
+      "name": "ui_catalog_vs_template_only_on_items",
+      "pass": true,
+      "detail": "source labels",
+      "kind": "usability"
+    },
+    {
+      "name": "persisted_primary_question",
+      "pass": true,
+      "detail": "{\"id\":\"3dda10e0-a991-4888-bfa7-97d10aac152d\",\"name\":\"Dinner style\",\"depends_on_option_ids\":[],\"min_select\":1,\"max_select\":1,\"selection_mode\":\"single\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "persisted_answers_same_question",
+      "pass": true,
+      "detail": "{\"buffet\":{\"id\":\"63239fa9-54ef-413b-96c1-ea3bb1d8f7a5\",\"label\":\"Buffet Dinner\",\"group_id\":\"3dda10e0-a991-4888-bfa7-97d10aac152d\",\"offering_id\":null},\"plated\":{\"id\":\"89f99f95-45d5-45be-a00c-4956bd3ba9c5\",\"label\":\"Plated Dinner\",\"group_id\":\"3dda10e0-a991-4888-bfa7-97d10aac152d\",\"offering_id\":null},\"primaryId\":\"3dda10e0-a991-4888-bfa7-97d10aac152d\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "ux_answers_visually_under_question",
+      "pass": true,
+      "detail": "FOLLOW-UPS UNDER EACH ANSWER\n\nUnder each answer, add the follow-up questions and items that apply only when that answer is selected. Set how many the couple must choose.\n\nPRIMARY QUESTION\n\nDinner style\n\nChoose 1\n\nClients answer this first. Follow-up questions attach under each option.\n\nHow many can the couple select?\n\nChoose 1 · required\n\nChange\n\nExample: enter 3 and keep Required to make couples select exactly three items from this category.\n\nMore settings\nBuffet DinnerIncluded\nTemplate-only\nLi",
+      "kind": "usability"
+    },
+    {
+      "name": "persisted_sides_depends_on_buffet",
+      "pass": true,
+      "detail": "{\"id\":\"26585150-7f1f-4231-956d-331eeab03977\",\"name\":\"Sides\",\"depends_on_option_ids\":[\"63239fa9-54ef-413b-96c1-ea3bb1d8f7a5\"],\"min_select\":1,\"max_select\":1}",
+      "kind": "persisted"
+    },
+    {
+      "name": "persisted_entrees_depends_on_plated",
+      "pass": true,
+      "detail": "{\"id\":\"797a754f-22a9-4e0b-8ca3-6bfbb091bbb4\",\"name\":\"Entrées\",\"depends_on_option_ids\":[\"89f99f95-45d5-45be-a00c-4956bd3ba9c5\"],\"min_select\":1,\"max_select\":1}",
+      "kind": "persisted"
+    },
+    {
+      "name": "persisted_sides_catalog_item",
+      "pass": true,
+      "detail": "{\"id\":\"9c43e95d-96c0-4907-af26-c89647112aba\",\"label\":\"Caesar salad\",\"group_id\":\"26585150-7f1f-4231-956d-331eeab03977\",\"offering_id\":\"16c0cbd8-0b24-419e-aa8f-02d01c29c078\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "persisted_entrees_catalog_item",
+      "pass": true,
+      "detail": "{\"id\":\"6ea79568-cb90-42a6-b5c5-faecceb06e87\",\"label\":\"Chicken Marsala\",\"group_id\":\"797a754f-22a9-4e0b-8ca3-6bfbb091bbb4\",\"offering_id\":\"ebf13e5b-b3f3-43ca-ae89-03c0d589b323\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "persisted_sides_template_only_item",
+      "pass": true,
+      "detail": "{\"id\":\"2254fed7-a695-400f-bcb0-7682847ff250\",\"label\":\"EOTUX-EOTUXMVSPZ9CI-Roasted Vegetables\",\"group_id\":\"26585150-7f1f-4231-956d-331eeab03977\",\"offering_id\":null}",
+      "kind": "persisted"
+    },
+    {
+      "name": "reopen_preserves_structure",
+      "pass": true,
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\nJ\njennifer@hellotocheers.com\nEvent Order Templates\n\nEVENT ORDER TEMPLATE\n\nEOTUX-EOTUXMVSPZ9CI-Builder UX\nOwner: Venue\n·\nUpdated Oct 28, 2026\nYour template\nPreview\nEdit details\n\nSet up each category with package items (no couple choice), the main question couples answer, and follow-ups under each answer — for example sides under Buffet. Preview anytime; it does not send or finalize. Manage Offerings →\n\neotux full acceptance\n\nEVENT ORDER PACKAGE SETUP\n\nCategory 1 of 1: Catering\n",
+      "kind": "persisted"
+    },
+    {
+      "name": "preview_buffet_shows_sides_not_entrees",
+      "pass": true,
+      "detail": "Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.\n\nDINNER STYLE · CHOOSE 1\n\nBuffet Dinner\nPlated Dinner\n\nSIDES · CHOOSE 1\n\nCaesar salad\nEOTUX-EOTUXMVSPZ9CI-Roasted Vegetables\nCheck selections\n\nUses the same selection rules as couple submit.\n\nCATERING\n\nDay-of coordination\n\nIncluded · No price configured\n\nEOTUX-EOTUXMVSPZ9CI-Champagne Toast\n\n$150 · Flat\n\nDinner style\n\nPick one · required — 1 of 1 selected\n\nBuffet ",
+      "kind": "preview"
+    },
+    {
+      "name": "preview_plated_shows_entrees_not_sides",
+      "pass": true,
+      "detail": "Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.\n\nDINNER STYLE · CHOOSE 1\n\nBuffet Dinner\nPlated Dinner\n\nENTRÉES · CHOOSE 1\n\nChicken Marsala\nCheck selections\n\nUses the same selection rules as couple submit.\n\nCATERING\n\nDay-of coordination\n\nIncluded · No price configured\n\nEOTUX-EOTUXMVSPZ9CI-Champagne Toast\n\n$150 · Flat\n\nDinner style\n\nPick one · required — 1 of 1 selected\n\nBuffet Dinner\nIncluded\nPlated Dinner\nIncl",
+      "kind": "preview"
+    },
+    {
+      "name": "preview_rejects_incomplete_followup",
+      "pass": true,
+      "detail": "Choose an option for “Entrées” before submitting.",
+      "kind": "preview"
+    },
+    {
+      "name": "preview_accepts_complete_plated_path",
+      "pass": true,
+      "detail": "okHint=1 err=0",
+      "kind": "preview"
+    },
+    {
+      "name": "server_rejects_incomplete_before_finalize",
+      "pass": true,
+      "detail": "Choose an option for “Entrées” before submitting.",
+      "kind": "finalization"
+    },
+    {
+      "name": "server_accepts_valid_plated_path",
+      "pass": true,
+      "detail": "ok",
+      "kind": "finalization"
+    },
+    {
+      "name": "resolved_lines_include_plated_and_entree",
+      "pass": true,
+      "detail": "[{\"d\":\"Plated Dinner\",\"p\":0,\"inc\":true},{\"d\":\"Chicken Marsala\",\"p\":0,\"inc\":true}]",
+      "kind": "finalization"
+    },
+    {
+      "name": "resolved_buffet_path_excludes_plated_entree",
+      "pass": true,
+      "detail": "[\"Buffet Dinner\",\"Caesar salad\"]",
+      "kind": "finalization"
+    },
+    {
+      "name": "rejected_finalize_no_partial_lines",
+      "pass": true,
+      "detail": "before=0 after=0",
+      "kind": "finalization"
+    },
+    {
+      "name": "valid_finalize_lines_once",
+      "pass": true,
+      "detail": "[{\"id\":\"b8d153e0-7141-4d7f-9da2-09fad571ff40\",\"description\":\"Plated Dinner\",\"unit_price\":0,\"is_included\":true,\"offering_id\":null,\"amount\":0},{\"id\":\"c1781b63-1c94-48fb-8bd9-d604e6c3dccd\",\"description\":\"Chicken Marsala\",\"unit_price\":0,\"is_included\":true,\"offering_id\":\"ebf13e5b-b3f3-43ca-ae89-03c0d589b323\",\"amount\":0}]",
+      "kind": "finalization"
+    },
+    {
+      "name": "template_edit_does_not_mutate_eo_snapshot",
+      "pass": true,
+      "detail": "[{\"description\":\"Chicken Marsala\"}]",
+      "kind": "finalization"
+    },
+    {
+      "name": "no_duplicate_lines_on_reapply",
+      "pass": true,
+      "detail": "count=2 expected=2",
+      "kind": "finalization"
+    },
+    {
+      "name": "template_only_did_not_create_offering",
+      "pass": true,
+      "detail": "count=0",
+      "kind": "persisted"
+    },
+    {
+      "name": "mobile_390_structure_readable",
+      "pass": true,
+      "detail": "Jen's Fancy Venue\nJ\nEvent Order Templates\n\nEVENT ORDER TEMPLATE\n\nEOTUX-EOTUXMVSPZ9CI-Builder UX\nOwner: Venue\n·\nUpdated Oct 28, 2026\nYour template\nPreview\nEdit details\n\nSet up each category with package items (no couple choice), the main question couples answer, and follow-ups under each answer — for example sides under Buffet. Preview anytime; it does not send or finalize. Manage Offerings →\n\neotu",
+      "kind": "usability"
+    }
+  ],
+  "failed": 0,
+  "persisted": {
+    "run": "EOTUXMVSPZ9CI",
+    "expectedSha": "3865e4c1494fae80572ef3640b35bf7c907713e9",
+    "prefix": "EOTUX-EOTUXMVSPZ9CI-",
+    "templateId": "ceb7822f-50c8-40e3-ba4d-1d313550b54b",
+    "lines": [
+      {
+        "id": "9d3f8c1b-718b-4781-98bb-b8194ef46323",
+        "description": "Day-of coordination",
+        "included_by_default": true,
+        "unit_price": null,
+        "offering_id": "ba20151d-06d5-4553-8ba6-c9b3bee91a0f",
+        "pricing_model": "none"
+      },
+      {
+        "id": "b04fe246-2db2-41b5-9aa4-60317281fe62",
+        "description": "EOTUX-EOTUXMVSPZ9CI-Champagne Toast",
+        "included_by_default": false,
+        "unit_price": 150,
+        "offering_id": null,
+        "pricing_model": "flat"
+      }
+    ],
+    "groups": [
+      {
+        "id": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+        "name": "Dinner style",
+        "depends_on_option_ids": [],
+        "min_select": 1,
+        "max_select": 1
+      },
+      {
+        "id": "26585150-7f1f-4231-956d-331eeab03977",
+        "name": "Sides",
+        "depends_on_option_ids": [
+          "63239fa9-54ef-413b-96c1-ea3bb1d8f7a5"
+        ],
+        "min_select": 1,
+        "max_select": 1
+      },
+      {
+        "id": "797a754f-22a9-4e0b-8ca3-6bfbb091bbb4",
+        "name": "Entrées",
+        "depends_on_option_ids": [
+          "89f99f95-45d5-45be-a00c-4956bd3ba9c5"
+        ],
+        "min_select": 1,
+        "max_select": 1
+      }
+    ],
+    "options": [
+      {
+        "id": "2254fed7-a695-400f-bcb0-7682847ff250",
+        "label": "EOTUX-EOTUXMVSPZ9CI-Roasted Vegetables",
+        "group_id": "26585150-7f1f-4231-956d-331eeab03977",
+        "offering_id": null
+      },
+      {
+        "id": "63239fa9-54ef-413b-96c1-ea3bb1d8f7a5",
+        "label": "Buffet Dinner",
+        "group_id": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+        "offering_id": null
+      },
+      {
+        "id": "89f99f95-45d5-45be-a00c-4956bd3ba9c5",
+        "label": "Plated Dinner",
+        "group_id": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+        "offering_id": null
+      },
+      {
+        "id": "9c43e95d-96c0-4907-af26-c89647112aba",
+        "label": "Caesar salad",
+        "group_id": "26585150-7f1f-4231-956d-331eeab03977",
+        "offering_id": "16c0cbd8-0b24-419e-aa8f-02d01c29c078"
+      },
+      {
+        "id": "6ea79568-cb90-42a6-b5c5-faecceb06e87",
+        "label": "Chicken Marsala",
+        "group_id": "797a754f-22a9-4e0b-8ca3-6bfbb091bbb4",
+        "offering_id": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323"
+      }
+    ],
+    "finalization": {
+      "resolved": [
+        {
+          "optionId": "89f99f95-45d5-45be-a00c-4956bd3ba9c5",
+          "groupId": "3dda10e0-a991-4888-bfa7-97d10aac152d",
+          "offeringId": null,
+          "description": "Plated Dinner",
+          "quantity": 1,
+          "unitPrice": 0,
+          "isIncluded": true,
+          "amount": 0
+        },
+        {
+          "optionId": "6ea79568-cb90-42a6-b5c5-faecceb06e87",
+          "groupId": "797a754f-22a9-4e0b-8ca3-6bfbb091bbb4",
+          "offeringId": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323",
+          "description": "Chicken Marsala",
+          "quantity": 1,
+          "unitPrice": 0,
+          "isIncluded": true,
+          "amount": 0
+        }
+      ],
+      "applied": [
+        {
+          "id": "b8d153e0-7141-4d7f-9da2-09fad571ff40",
+          "description": "Plated Dinner",
+          "unit_price": 0,
+          "is_included": true,
+          "offering_id": null,
+          "amount": 0
+        },
+        {
+          "id": "c1781b63-1c94-48fb-8bd9-d604e6c3dccd",
+          "description": "Chicken Marsala",
+          "unit_price": 0,
+          "is_included": true,
+          "offering_id": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323",
+          "amount": 0
+        }
+      ],
+      "reapplied": 2
+    }
+  }
+}

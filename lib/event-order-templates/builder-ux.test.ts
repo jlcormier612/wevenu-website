@@ -132,6 +132,9 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(sheet, /From Offerings/);
     assert.match(sheet, /Template-only/);
     assert.match(sheet, /Covered by the package price/);
+    assert.match(sheet, /Add package item/);
+    assert.match(sheet, /Save package item/);
+    assert.doesNotMatch(sheet, /"Add offering"/);
     assert.match(sheet, /reusable Offerings list/);
   });
 

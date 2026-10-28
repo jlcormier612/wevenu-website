@@ -311,7 +311,7 @@ export function OfferingEditorSheet({
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
                 <Button type="button" onClick={() => void handleSave()} disabled={pending || !name.trim()}>
-                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : line ? "Save offering" : "Add offering"}
+                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : line ? "Save package item" : "Add package item"}
                 </Button>
               </div>
             </>

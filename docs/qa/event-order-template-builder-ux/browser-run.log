@@ -1,0 +1,220 @@
+PASS [deploy] serving_sha — expected=3865e4c1494fae80572ef3640b35bf7c907713e9 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:3865e4c1494fae80572ef3640b35bf7c907713e9
+PASS [fixture] catalog_fixtures_present — {"catalogOffering":{"id":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f","name":"Day-of coordination","default_unit_price":null},"sideOffering":{"id":"16c0cbd8-0b24-419e-aa8f-02d01c29c078","name":"Caesar salad"},"entreeOffering":{"id":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323","name":"Chicken Marsala"}}
+PASS [usability] ux_package_items_heading — heading
+PASS [usability] ux_choices_heading — heading
+PASS [usability] ux_no_included_in_catering — no old heading
+PASS [usability] ux_no_major_choices_jargon — no jargon
+PASS [usability] ux_primary_question_cta — CTA present
+PASS [usability] ux_empty_guides_next — empty state
+PASS [persisted] persisted_catalog_package_item_covered — {"id":"9d3f8c1b-718b-4781-98bb-b8194ef46323","description":"Day-of coordination","included_by_default":true,"unit_price":null,"offering_id":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f","pricing_model":"none"}
+PASS [persisted] persisted_template_only_additional_charge — {"id":"b04fe246-2db2-41b5-9aa4-60317281fe62","description":"EOTUX-EOTUXMVSPZ9CI-Champagne Toast","included_by_default":false,"unit_price":150,"offering_id":null,"pricing_model":"flat"}
+PASS [usability] ui_distinguishes_covered_vs_additional — Items always on this package
+
+These belong to Catering without a couple choice. When you add each item, set whether it is covered by the package price or billed as an additional charge — “always on the package” does not mean free.
+
+Prefer a reusable Offering from your catalog when you sell it across events; use a template-only entry for one-off lines on this package only.
+
+Day-of coordination
+
+From Offerings catalog · Covered by package price · No price configured
+
+Edit
+Remove
+
+EOTUX-EOTUXMVSPZ9CI-Champagne Toast
+
+Template-only · Additional charge (not covered by package price) · $150 · Flat
+
+
+PASS [usability] ui_catalog_vs_template_only_on_items — source labels
+PASS [persisted] persisted_primary_question — {"id":"3dda10e0-a991-4888-bfa7-97d10aac152d","name":"Dinner style","depends_on_option_ids":[],"min_select":1,"max_select":1,"selection_mode":"single"}
+PASS [persisted] persisted_answers_same_question — {"buffet":{"id":"63239fa9-54ef-413b-96c1-ea3bb1d8f7a5","label":"Buffet Dinner","group_id":"3dda10e0-a991-4888-bfa7-97d10aac152d","offering_id":null},"plated":{"id":"89f99f95-45d5-45be-a00c-4956bd3ba9c5","label":"Plated Dinner","group_id":"3dda10e0-a991-4888-bfa7-97d10aac152d","offering_id":null},"primaryId":"3dda10e0-a991-4888-bfa7-97d10aac152d"}
+PASS [usability] ux_answers_visually_under_question — FOLLOW-UPS UNDER EACH ANSWER
+
+Under each answer, add the follow-up questions and items that apply only when that answer is selected. Set how many the couple must choose.
+
+PRIMARY QUESTION
+
+Dinner style
+
+Choose 1
+
+Clients answer this first. Follow-up questions attach under each option.
+
+How many can the couple select?
+
+Choose 1 · required
+
+Change
+
+Example: enter 3 and keep Required to make couples select exactly three items from this category.
+
+More settings
+Buffet DinnerIncluded
+Template-only
+Li
+PASS [persisted] persisted_sides_depends_on_buffet — {"id":"26585150-7f1f-4231-956d-331eeab03977","name":"Sides","depends_on_option_ids":["63239fa9-54ef-413b-96c1-ea3bb1d8f7a5"],"min_select":1,"max_select":1}
+PASS [persisted] persisted_entrees_depends_on_plated — {"id":"797a754f-22a9-4e0b-8ca3-6bfbb091bbb4","name":"Entrées","depends_on_option_ids":["89f99f95-45d5-45be-a00c-4956bd3ba9c5"],"min_select":1,"max_select":1}
+PASS [persisted] persisted_sides_catalog_item — {"id":"9c43e95d-96c0-4907-af26-c89647112aba","label":"Caesar salad","group_id":"26585150-7f1f-4231-956d-331eeab03977","offering_id":"16c0cbd8-0b24-419e-aa8f-02d01c29c078"}
+PASS [persisted] persisted_entrees_catalog_item — {"id":"6ea79568-cb90-42a6-b5c5-faecceb06e87","label":"Chicken Marsala","group_id":"797a754f-22a9-4e0b-8ca3-6bfbb091bbb4","offering_id":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323"}
+PASS [persisted] persisted_sides_template_only_item — {"id":"2254fed7-a695-400f-bcb0-7682847ff250","label":"EOTUX-EOTUXMVSPZ9CI-Roasted Vegetables","group_id":"26585150-7f1f-4231-956d-331eeab03977","offering_id":null}
+PASS [persisted] reopen_preserves_structure — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+J
+jennifer@hellotocheers.com
+Event Order Templates
+
+EVENT ORDER TEMPLATE
+
+EOTUX-EOTUXMVSPZ9CI-Builder UX
+Owner: Venue
+·
+Updated Oct 28, 2026
+Your template
+Preview
+Edit details
+
+Set up each category with package items (no couple choice), the main question couples answer, and follow-ups under each answer — for example sides under Buffet. Preview anytime; it does not send or finalize. Manage Offerings →
+
+eotux full acceptance
+
+EVENT ORDER PACKAGE SETUP
+
+Category 1 of 1: Catering
+
+PASS [preview] preview_buffet_shows_sides_not_entrees — Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.
+
+DINNER STYLE · CHOOSE 1
+
+Buffet Dinner
+Plated Dinner
+
+SIDES · CHOOSE 1
+
+Caesar salad
+EOTUX-EOTUXMVSPZ9CI-Roasted Vegetables
+Check selections
+
+Uses the same selection rules as couple submit.
+
+CATERING
+
+Day-of coordination
+
+Included · No price configured
+
+EOTUX-EOTUXMVSPZ9CI-Champagne Toast
+
+$150 · Flat
+
+Dinner style
+
+Pick one · required — 1 of 1 selected
+
+Buffet 
+PASS [preview] preview_plated_shows_entrees_not_sides — Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.
+
+DINNER STYLE · CHOOSE 1
+
+Buffet Dinner
+Plated Dinner
+
+ENTRÉES · CHOOSE 1
+
+Chicken Marsala
+Check selections
+
+Uses the same selection rules as couple submit.
+
+CATERING
+
+Day-of coordination
+
+Included · No price configured
+
+EOTUX-EOTUXMVSPZ9CI-Champagne Toast
+
+$150 · Flat
+
+Dinner style
+
+Pick one · required — 1 of 1 selected
+
+Buffet Dinner
+Included
+Plated Dinner
+Incl
+PASS [preview] preview_rejects_incomplete_followup — Choose an option for “Entrées” before submitting.
+PASS [preview] preview_accepts_complete_plated_path — okHint=1 err=0
+PASS [finalization] s
+GREEN — 35 pass / 0 fail
+ore_finalize — Choose an option for “Entrées” before submitting.
+PASS [finalization] server_accepts_valid_plated_path — ok
+PASS [finalization] resolved_lines_include_plated_and_entree — [{"d":"Plated Dinner","p":0,"inc":true},{"d":"Chicken Marsala","p":0,"inc":true}]
+PASS [finalization] resolved_buffet_path_excludes_plated_entree — ["Buffet Dinner","Caesar salad"]
+PASS [finalization] rejected_finalize_no_partial_lines — before=0 after=0
+PASS [finalization] valid_finalize_lines_once — [{"id":"b8d153e0-7141-4d7f-9da2-09fad571ff40","description":"Plated Dinner","unit_price":0,"is_included":true,"offering_id":null,"amount":0},{"id":"c1781b63-1c94-48fb-8bd9-d604e6c3dccd","description":"Chicken Marsala","unit_price":0,"is_included":true,"offering_id":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323","amount":0}]
+PASS [finalization] template_edit_does_not_mutate_eo_snapshot — [{"description":"Chicken Marsala"}]
+PASS [finalization] no_duplicate_lines_on_reapply — count=2 expected=2
+PASS [persisted] template_only_did_not_create_offering — count=0
+PASS [usability] mobile_390_structure_readable — Jen's Fancy Venue
+J
+Event Order Templates
+
+EVENT ORDER TEMPLATE
+
+EOTUX-EOTUXMVSPZ9CI-Builder UX
+Owner: Venue
+·
+Updated Oct 28, 2026
+Your template
+Preview
+Edit details
+
+Set up each category with package items (no couple choice), the main question couples answer, and follow-ups under each answer — for example sides under Buffet. Preview anytime; it does not send or finalize. Manage Offerings →
+
+eotu
