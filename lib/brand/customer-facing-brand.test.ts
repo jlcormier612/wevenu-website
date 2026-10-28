@@ -77,6 +77,7 @@ describe("customer-facing brand — Hello to Cheers", () => {
     const relationshipCard = readFileSync(join(ROOT, "components/leads/relationship-card.tsx"), "utf8");
     const calendar = readFileSync(join(ROOT, "components/calendar/calendar-shared.tsx"), "utf8");
     const reportsLayout = readFileSync(join(ROOT, "app/(app)/reporting/layout.tsx"), "utf8");
+    const reportsShell = readFileSync(join(ROOT, "components/reporting/reports-layout-shell.tsx"), "utf8");
 
     assert.match(dashboard, /title="Coming up"/);
     assert.doesNotMatch(dashboard, /label="Coming up"/);
@@ -90,7 +91,8 @@ describe("customer-facing brand — Hello to Cheers", () => {
     assert.doesNotMatch(calendar, />\s*Convert to Booking\s*</);
 
     assert.match(reportsLayout, /title: "Reports"/);
-    assert.match(reportsLayout, /title="Reports"/);
+    assert.match(reportsLayout, /ReportsLayoutShell/);
+    assert.match(reportsShell, /title="Reports"/);
 
     const clientList = readFileSync(join(ROOT, "components/clients/client-list.tsx"), "utf8");
     assert.match(clientList, /Search by client or event type/);
