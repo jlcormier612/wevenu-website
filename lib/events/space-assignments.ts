@@ -10,10 +10,12 @@ import { isSupabaseConfigured } from "@/lib/env";
 import {
   intraEventSpaceOverlapError,
   normalizeAssignmentInputs,
+  permittedUseAssignmentError,
   primarySpaceIdFromAssignments,
   type EventSpaceAssignment,
   type EventSpaceAssignmentInput,
 } from "@/lib/venue-spaces/assignments";
+import { getSpaces } from "@/lib/availability/repository";
 import { resolveExperienceProfile } from "@/lib/event-experience";
 import { SCHEDULE_SAVED_TIMELINE_MANUAL_MESSAGE } from "@/lib/timeline/schedule-sync";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -99,6 +101,13 @@ export async function replaceEventSpaceAssignments(
   const normalized = normalizeAssignmentInputs(assignments);
   const intra = intraEventSpaceOverlapError(normalized);
   if (intra) return { ok: false, message: intra };
+
+  // Defense in depth: same permitted_uses rule as replace_event_space_assignments.
+  // Empty permittedUses = unrestricted. RPC remains the write-path authority.
+  const venueSpaces = await getSpaces(supabase, venue.id);
+  const permittedErr = permittedUseAssignmentError(normalized, venueSpaces);
+  if (permittedErr) return { ok: false, message: permittedErr };
+
   const primarySpaceId = primarySpaceIdFromAssignments(normalized, {
     weddingFamily: resolveExperienceProfile(event.event_type).isWeddingSpecific,
   });

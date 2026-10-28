@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-28T15:57:45.816Z",
+  "fancySpaces": [
+    {
+      "id": "8982b7e5-8122-42f1-a56b-7eaf7920d968",
+      "name": "Ballroom",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    },
+    {
+      "id": "5e72c885-3912-4b93-9c04-468dac0e5147",
+      "name": "Lakeside Pavilion",
+      "venue_id": "a415ac52-cd74-42a6-8df7-7a8f6e71d080"
+    }
+  ],
+  "spacesNamedBallroomOrLakesideOutsideFancy": [
+    {
+      "id": "4ebd3664-e896-4710-b978-cb2006adf1cd",
+      "name": "Ballroom",
+      "venue_id": "fbd02e09-dfb8-48a8-bdae-8640dba3bae5"
+    }
+  ],
+  "fancyMax": 3,
+  "otherVenuesRuleCount": 34,
+  "otherMaxDistribution": {
+    "1": 30,
+    "2": 2,
+    "3": 1,
+    "5": 1
+  },
+  "conclusion": "UNEXPECTED: same space names exist on other venues — inspect before cleanup."
+}

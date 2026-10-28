@@ -9,8 +9,10 @@ import {
   intraEventSpaceOverlapError,
   materializeMissingScheduledDates,
   normalizeAssignmentInputs,
+  permittedUseAssignmentError,
   preserveOmittedComponentScheduleFields,
   primarySpaceIdFromAssignments,
+  spaceAllowsUse,
   spacesEligibleForUse,
 } from "@/lib/venue-spaces/assignments";
 import { shouldShowCalendarSpaceFilter } from "@/lib/venue-spaces/uses";
@@ -186,6 +188,66 @@ describe("event space assignments", () => {
     assert.deepEqual(forCeremony, ["suite"]);
     const forReception = spacesEligibleForUse(spaces, "reception").map((s) => s.id);
     assert.deepEqual(forReception, ["barn", "suite"]);
+  });
+
+  it("rejects cocktail-only space for reception; allows cocktail_hour; empty uses unrestricted", () => {
+    const patio = space({ id: "patio", name: "Stone Patio", permittedUses: ["cocktail_hour"] });
+    const barn = space({ id: "barn", name: "Barn", permittedUses: ["ceremony", "reception"] });
+    const open = space({ id: "open", name: "Open Hall", permittedUses: [] });
+    assert.equal(spaceAllowsUse(patio, "cocktail_hour"), true);
+    assert.equal(spaceAllowsUse(patio, "reception"), false);
+    assert.equal(spaceAllowsUse(open, "reception"), true);
+    assert.match(
+      permittedUseAssignmentError(
+        [{ useKey: "reception", useLabel: "Reception", spaceId: "patio" }],
+        [patio, barn],
+      ) ?? "",
+      /Stone Patio cannot be used for Reception/,
+    );
+    assert.equal(
+      permittedUseAssignmentError(
+        [{ useKey: "cocktail_hour", useLabel: "Cocktail Hour", spaceId: "patio" }],
+        [patio, barn],
+      ),
+      null,
+    );
+    assert.equal(
+      permittedUseAssignmentError(
+        [{ useKey: "reception", useLabel: "Reception", spaceId: "barn" }],
+        [patio, barn],
+      ),
+      null,
+    );
+    assert.equal(
+      permittedUseAssignmentError(
+        [{ useKey: "reception", useLabel: "Reception", spaceId: "open" }],
+        [open],
+      ),
+      null,
+    );
+  });
+
+  it("replace_event_space_assignments migration enforces permitted_uses before delete", () => {
+    const sql = readFileSync(
+      resolve("supabase/migrations/20261425500000_enforce_assignment_permitted_uses.sql"),
+      "utf8",
+    );
+    assert.match(sql, /create or replace function public\.replace_event_space_assignments/);
+    assert.match(sql, /permitted_uses/);
+    assert.match(sql, /hint = 'permitted_use'/);
+    const validateAt = sql.indexOf("Refuse invalid rows before mutating");
+    const deleteAt = sql.indexOf("delete from public.event_space_assignments");
+    assert.ok(validateAt >= 0 && deleteAt > validateAt, "validation must run before delete");
+    assert.match(sql, /lib\/events\/space-assignments|cannot be used for/i);
+  });
+
+  it("app assignment service validates permitted uses before RPC", () => {
+    const src = readFileSync(resolve("lib/events/space-assignments.ts"), "utf8");
+    assert.match(src, /permittedUseAssignmentError/);
+    assert.match(src, /replace_event_space_assignments/);
+    const checkAt = src.indexOf("permittedUseAssignmentError");
+    const rpcAt = src.indexOf('rpc("replace_event_space_assignments"');
+    assert.ok(checkAt >= 0 && rpcAt > checkAt, "TS check must run before RPC");
   });
 
   it("calendar space filter only when multi and at least two spaces", () => {

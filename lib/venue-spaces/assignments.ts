@@ -67,6 +67,49 @@ export function spacesEligibleForUse(spaces: VenueSpace[], useKey: string): Venu
 }
 
 /**
+ * Whether a space's configured permitted_uses allow this use key.
+ * Empty / missing permittedUses = unrestricted (same rule as spacesEligibleForUse
+ * and venue_spaces.permitted_uses column comment).
+ */
+export function spaceAllowsUse(
+  space: Pick<VenueSpace, "permittedUses"> | null | undefined,
+  useKey: string,
+): boolean {
+  const key = useKey.trim();
+  if (!key) return false;
+  const uses = space?.permittedUses ?? [];
+  if (uses.length === 0) return true;
+  return uses.includes(key);
+}
+
+/**
+ * First disallowed assignment, or null when every row is allowed.
+ * Unknown / inactive spaces are reported separately so callers can refuse
+ * before a partial replace. Matches replace_event_space_assignments SoT.
+ */
+export function permittedUseAssignmentError(
+  assignments: EventSpaceAssignmentInput[],
+  spaces: Array<Pick<VenueSpace, "id" | "name" | "isActive" | "permittedUses">>,
+): string | null {
+  const byId = new Map(spaces.map((s) => [s.id, s]));
+  for (const row of assignments) {
+    const useKey = row.useKey.trim();
+    const spaceId = row.spaceId.trim();
+    if (!useKey || !spaceId) continue;
+    const space = byId.get(spaceId);
+    if (!space || !space.isActive) {
+      return "That Event Space does not belong to this venue or is inactive.";
+    }
+    if (!spaceAllowsUse(space, useKey)) {
+      const useLabel = row.useLabel.trim() || labelForUseKey(useKey);
+      const spaceName = space.name?.trim() || "This space";
+      return `${spaceName} cannot be used for ${useLabel}. Choose a space that allows this use, or update the space’s permitted uses in Availability settings.`;
+    }
+  }
+  return null;
+}
+
+/**
  * Primary space for events.space_id / availability.
  * Wedding family: reception → ceremony → other assigned space.
  * Non-wedding: first assigned space in list order (relevant-use order).
