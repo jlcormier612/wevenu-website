@@ -117,8 +117,18 @@ export function RequestManager({
             value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
           <textarea className="border rounded px-2 py-1.5 text-sm sm:col-span-2" placeholder="Description (optional)"
             value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-          <input type="date" className="border rounded px-2 py-1.5 text-sm" value={form.dueDate}
-            onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
+          <div className="space-y-1.5">
+            <label htmlFor="request-due-date" className="block text-sm font-medium text-heading">
+              Due date
+            </label>
+            <input
+              id="request-due-date"
+              type="date"
+              className="border rounded px-2 py-1.5 text-sm w-full"
+              value={form.dueDate}
+              onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+            />
+          </div>
         </div>
         <button className="border rounded px-3 py-1.5 text-sm disabled:opacity-50"
           onClick={handleCreate} disabled={creating || !form.clientId || !form.title.trim()}>

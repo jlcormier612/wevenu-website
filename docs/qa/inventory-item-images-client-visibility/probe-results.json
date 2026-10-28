@@ -1,0 +1,43 @@
+{
+  "checks": [
+    {
+      "name": "catalog_image_url_field_in_use_or_empty",
+      "pass": true,
+      "detail": "sandboxRowsWithImage=1 sample=[{\"id\":\"94ab5d9d-8139-428b-9dea-e912c623fe7a\",\"name\":\"72\\\" Round Table\",\"image_url\":\"https://wvpsldwwjqdannqasrdf.supabase.co/storage/v1/object/public/inventory/05f16a15-1752-4855-8a3b-aad5c593d8d9/94ab5d9d-8139-428b-9dea-e912c623fe7a/image.png\",\"venue_id\":\"05f16a15-1752-4855-8a3b-aad5c593d8d9\"}]"
+    },
+    {
+      "name": "fancy_catalog_readable",
+      "pass": true,
+      "detail": "fancyItemCount=49"
+    },
+    {
+      "name": "portal_view_model_no_image",
+      "pass": true,
+      "detail": "PortalInventoryItemView lacks image fields"
+    },
+    {
+      "name": "portal_api_no_image_map",
+      "pass": true,
+      "detail": "GET /api/portal/inventory does not map image"
+    },
+    {
+      "name": "event_inventory_item_no_image",
+      "pass": true,
+      "detail": "EventInventoryItem has no imageUrl"
+    },
+    {
+      "name": "rpc_no_image_column",
+      "pass": true,
+      "detail": "portal RPC returns no image column"
+    },
+    {
+      "name": "event_inventory_items_columns_no_image",
+      "pass": true,
+      "detail": "keys=id,event_inventory_id,venue_id,inventory_item_id,name,category,quantity,unit_price,is_included,notes,sort_order,created_at,updated_at,added_to_event_order_at,client_selectable,max_quantity,client_draft_quantity,client_submitted_quantity"
+    }
+  ],
+  "failedCount": 0,
+  "verdict": "GREEN_NO_CLIENT_IMAGES",
+  "conclusion": "Catalog image_url is venue-side only. Event inventory + portal RPC/API/UI do not carry or render inventory item photos.",
+  "generatedAt": "2026-10-28T17:41:08.104Z"
+}

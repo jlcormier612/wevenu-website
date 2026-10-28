@@ -299,8 +299,10 @@ function TemplateCard({
             { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
             ...(isStarter
               ? [
+                  // Customize = venue-owned copy. Edit = same template detail editor as
+                  // venue-owned rows (not a separate "activities" workflow).
                   { id: "customize", label: LIBRARY_LABELS.customize, onClick: onDuplicate, emphasis: "edit" as const },
-                  { id: "edit", label: LIBRARY_LABELS.editActivities, href: `/library/inventory-templates/${template.id}`, emphasis: "preview" as const },
+                  { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" as const },
                 ]
               : [
                   { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" as const },
