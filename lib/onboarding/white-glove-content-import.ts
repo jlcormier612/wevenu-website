@@ -144,8 +144,10 @@ function parseBlockTemplates(text: string): MessageImportParse {
         fields[key] = line.slice(idx + 1).trim();
         continue;
       }
-      if (/^Body:\s*$/i.test(line)) {
+      if (/^Body:\s*/i.test(line)) {
         inBody = true;
+        const rest = line.replace(/^Body:\s*/i, "").trimEnd();
+        if (rest) bodyLines.push(rest);
         continue;
       }
       if (inBody) bodyLines.push(line);

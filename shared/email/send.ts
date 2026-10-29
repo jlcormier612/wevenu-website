@@ -101,8 +101,13 @@ export async function sendRelationshipEmail(
     html: rendered.html,
     replyTo,
     tags: [
-      { name: "template", value: input.templateId },
-      { name: "relationship", value: input.relationshipId.slice(0, 48) },
+      // Resend tags: ASCII letters, numbers, underscores, dashes only.
+      // Synthetic WG ids like `venue:{uuid}` must be sanitized or welcome_home fails.
+      { name: "template", value: input.templateId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) },
+      {
+        name: "relationship",
+        value: input.relationshipId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48) || "none",
+      },
     ],
     idempotencyKey: input.idempotencyKey,
   });

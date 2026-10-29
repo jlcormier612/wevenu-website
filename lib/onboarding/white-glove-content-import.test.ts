@@ -48,6 +48,20 @@ describe("white glove message template import", () => {
     assert.equal(parsed.proposals[0].category, "general");
     assert.match(parsed.proposals[0].warnings.join(" "), /drip_campaign/);
   });
+
+  it("accepts Body text on the same line as the Body label", () => {
+    const parsed = parseMessageTemplateSource([
+      "---",
+      "Name: Same-line body",
+      "Category: tour",
+      "Subject: Hi",
+      "Channel: email",
+      "Body: Thanks for touring with us today.",
+    ].join("\n"));
+    assert.equal(parsed.ok, true);
+    if (!parsed.ok) return;
+    assert.equal(parsed.proposals[0].emailBody, "Thanks for touring with us today.");
+  });
 });
 
 describe("white glove planning import", () => {
