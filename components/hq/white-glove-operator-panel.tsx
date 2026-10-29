@@ -13,6 +13,7 @@ import {
   suggestImportEntityFromFileName,
   suggestPlanningImport,
 } from "@/lib/onboarding/materials";
+import { WhiteGloveMaterialReview } from "@/components/hq/white-glove-material-review";
 
 export type OperatorStageStatus =
   | "we_can_finish"
@@ -76,6 +77,7 @@ export function WhiteGloveOperatorPanel({
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [reviewMaterialId, setReviewMaterialId] = React.useState<string | null>(null);
   const [downloadError, setDownloadError] = React.useState<string | null>(null);
 
   // Access email recorded = customer handoff complete. Token + pending status
@@ -206,6 +208,15 @@ export function WhiteGloveOperatorPanel({
                     >
                       Open / download
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      data-testid={`wg-material-review-${m.id}`}
+                      onClick={() => setReviewMaterialId(m.id)}
+                    >
+                      Review import
+                    </Button>
                     {pkgHint ? (
                       <Link
                         href={`#wg-import-wizard`}
@@ -233,6 +244,14 @@ export function WhiteGloveOperatorPanel({
               );
             })}
           </ul>
+          {reviewMaterialId ? (
+            <WhiteGloveMaterialReview
+              venueId={venueId}
+              materialId={reviewMaterialId}
+              fileName={materials.find((row) => row.id === reviewMaterialId)?.fileName ?? "Material"}
+              onClose={() => setReviewMaterialId(null)}
+            />
+          ) : null}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">No materials uploaded.</p>
