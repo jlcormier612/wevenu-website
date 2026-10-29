@@ -1,91 +1,83 @@
 {
-  "run": "EOTUXMVSQH5H8",
-  "expectedSha": "159e5a9d9f8404325242ae966487acc560609928",
-  "prefix": "EOTUX-EOTUXMVSQH5H8-",
-  "templateId": "d3689a40-f397-4e9f-8a1e-42e8fb73be02",
+  "run": "EOTUXMVST5O9O",
+  "expectedSha": "bc21e105c9091fc446954717e980afab4e0008be",
+  "prefix": "EOTUX-EOTUXMVST5O9O-",
+  "catalog": {
+    "buffetId": "8ce388b7-95b2-4b13-841d-a087a37e92f8",
+    "platedId": "0dba018c-6d56-4022-b32e-337aed3db29b",
+    "zitiId": "bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed",
+    "cheesecakeId": "45d8c60d-4ccc-4dd0-aed9-67965d839740",
+    "marsalaId": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323",
+    "vegId": "549e0e69-9b35-4abb-945a-3ada002f55d4",
+    "dayOfId": "ba20151d-06d5-4553-8ba6-c9b3bee91a0f",
+    "arborId": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+    "archId": "2fcb5a0c-9ffd-4c9d-84b8-f1bde5fb0802",
+    "runnerId": "c656e6fc-4b63-459f-9b82-47876503bd30",
+    "petalsId": "427ee6c7-19f7-495f-b151-0bb9ab486208"
+  },
+  "templateId": "1d4bcc33-187b-4cbb-b5fb-2d220a89825f",
   "lines": [
     {
-      "id": "7527c002-ecc2-48c0-bcf6-f3f1a38249a6",
+      "id": "0a566728-4d97-48f5-8449-d5491f429917",
       "description": "Day-of coordination",
       "included_by_default": true,
-      "unit_price": null,
-      "offering_id": "ba20151d-06d5-4553-8ba6-c9b3bee91a0f",
-      "pricing_model": "none"
+      "unit_price": 0,
+      "offering_id": "ba20151d-06d5-4553-8ba6-c9b3bee91a0f"
     },
     {
-      "id": "103a453a-39d8-4421-863b-3e947f560c1d",
-      "description": "EOTUX-EOTUXMVSQH5H8-Champagne Toast",
+      "id": "9b1ba91c-e3de-4dfc-b6fc-3b0620997f78",
+      "description": "EOTUX-EOTUXMVST5O9O-Champagne Toast",
       "included_by_default": false,
       "unit_price": 150,
-      "offering_id": null,
-      "pricing_model": "flat"
+      "offering_id": null
     }
   ],
-  "groups": [
+  "ceremonyOptions": [
     {
-      "id": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
-      "name": "Dinner style",
-      "depends_on_option_ids": [],
-      "min_select": 1,
-      "max_select": 1
+      "id": "868dbb18-37e5-493f-994c-a08eed651e0d",
+      "label": "Arbor",
+      "group_id": "c33c6496-147e-4e17-966a-f7789e8bad81",
+      "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+      "unit_price": 250
     },
     {
-      "id": "ff82bd91-7240-442b-a983-fcbe892aff61",
-      "name": "Sides",
-      "depends_on_option_ids": [
-        "94df4953-0140-476e-8c41-4cb21f25ce7d"
-      ],
-      "min_select": 1,
-      "max_select": 1
+      "id": "ca0e063d-794e-4cd3-8e1a-0bf38a4fb236",
+      "label": "Arch",
+      "group_id": "c33c6496-147e-4e17-966a-f7789e8bad81",
+      "offering_id": "2fcb5a0c-9ffd-4c9d-84b8-f1bde5fb0802",
+      "unit_price": 200
     },
     {
-      "id": "9fbad510-cf3c-422c-8b4e-1183a33c9781",
-      "name": "Entrées",
-      "depends_on_option_ids": [
-        "85dfbbe7-6587-4708-af6b-7f82511d0b19"
-      ],
-      "min_select": 1,
-      "max_select": 1
-    }
-  ],
-  "options": [
-    {
-      "id": "f63ba3df-737d-4092-a404-3855c03f49fa",
-      "label": "Chicken Marsala",
-      "group_id": "9fbad510-cf3c-422c-8b4e-1183a33c9781",
-      "offering_id": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323"
+      "id": "12237e62-8b5e-4330-b0e2-d2dc60da29eb",
+      "label": "Runner",
+      "group_id": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+      "offering_id": "c656e6fc-4b63-459f-9b82-47876503bd30",
+      "unit_price": 75
     },
     {
-      "id": "94df4953-0140-476e-8c41-4cb21f25ce7d",
-      "label": "Buffet Dinner",
-      "group_id": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
-      "offering_id": null
-    },
-    {
-      "id": "85dfbbe7-6587-4708-af6b-7f82511d0b19",
-      "label": "Plated Dinner",
-      "group_id": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
-      "offering_id": null
-    },
-    {
-      "id": "fb6bdbd4-e958-46bc-be04-a612f7982156",
-      "label": "Caesar salad",
-      "group_id": "ff82bd91-7240-442b-a983-fcbe892aff61",
-      "offering_id": "16c0cbd8-0b24-419e-aa8f-02d01c29c078"
-    },
-    {
-      "id": "775c5285-0e03-48d0-8b50-5c325ed834e3",
-      "label": "EOTUX-EOTUXMVSQH5H8-Roasted Vegetables",
-      "group_id": "ff82bd91-7240-442b-a983-fcbe892aff61",
-      "offering_id": null
+      "id": "95835824-f9f4-4d6d-b440-806678d951a8",
+      "label": "White Rose Petal Aisle Path",
+      "group_id": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+      "offering_id": "427ee6c7-19f7-495f-b151-0bb9ab486208",
+      "unit_price": 175
     }
   ],
   "finalization": {
     "resolved": [
       {
-        "optionId": "85dfbbe7-6587-4708-af6b-7f82511d0b19",
-        "groupId": "5832abef-09d4-4046-ba0c-ae9b116f2e6d",
-        "offeringId": null,
+        "optionId": "868dbb18-37e5-493f-994c-a08eed651e0d",
+        "groupId": "c33c6496-147e-4e17-966a-f7789e8bad81",
+        "offeringId": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+        "description": "Arbor",
+        "quantity": 1,
+        "unitPrice": 250,
+        "isIncluded": false,
+        "amount": 250
+      },
+      {
+        "optionId": "18d9ba35-f8c2-41b3-bbe5-562d68074210",
+        "groupId": "3ddd4eda-8b83-4313-8d3e-4321b00d19b7",
+        "offeringId": "0dba018c-6d56-4022-b32e-337aed3db29b",
         "description": "Plated Dinner",
         "quantity": 1,
         "unitPrice": 0,
@@ -93,8 +85,18 @@
         "amount": 0
       },
       {
-        "optionId": "f63ba3df-737d-4092-a404-3855c03f49fa",
-        "groupId": "9fbad510-cf3c-422c-8b4e-1183a33c9781",
+        "optionId": "12237e62-8b5e-4330-b0e2-d2dc60da29eb",
+        "groupId": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+        "offeringId": "c656e6fc-4b63-459f-9b82-47876503bd30",
+        "description": "Runner",
+        "quantity": 1,
+        "unitPrice": 75,
+        "isIncluded": false,
+        "amount": 75
+      },
+      {
+        "optionId": "257f0286-0f33-4d91-8767-9e6f770f06fb",
+        "groupId": "276786e6-bc1b-418f-a2d9-289b3cf3182e",
         "offeringId": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323",
         "description": "Chicken Marsala",
         "quantity": 1,
@@ -105,15 +107,31 @@
     ],
     "applied": [
       {
-        "id": "d0698d2d-2c84-4cc7-8d47-6f58fad90955",
+        "id": "f992c110-7d0d-4f6f-a1a7-aa14abefb8a4",
+        "description": "Arbor",
+        "unit_price": 250,
+        "is_included": false,
+        "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+        "amount": 250
+      },
+      {
+        "id": "c6425e4b-873c-44cd-b0b2-d229086e73b9",
         "description": "Plated Dinner",
         "unit_price": 0,
         "is_included": true,
-        "offering_id": null,
+        "offering_id": "0dba018c-6d56-4022-b32e-337aed3db29b",
         "amount": 0
       },
       {
-        "id": "2cce4610-77c2-4e6b-a506-95f899c6641b",
+        "id": "f925d2ca-0a2c-4b9f-8d39-5d1dadbe4543",
+        "description": "Runner",
+        "unit_price": 75,
+        "is_included": false,
+        "offering_id": "c656e6fc-4b63-459f-9b82-47876503bd30",
+        "amount": 75
+      },
+      {
+        "id": "3efca843-1e7c-47cc-b352-a96a25e9a5e9",
         "description": "Chicken Marsala",
         "unit_price": 0,
         "is_included": true,
@@ -121,6 +139,6 @@
         "amount": 0
       }
     ],
-    "reapplied": 2
+    "reapplied": 4
   }
 }

@@ -1,0 +1,24 @@
+PASS serving_sha — expected=efb7d9c70172404942ed61f96bfd9f622860c8cc ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:efb7d9c70172404942ed61f96bfd9f622860c8cc
+PASS catalog_fixtures_seeded — {"buffetId":"8ce388b7-95b2-4b13-841d-a087a37e92f8","platedId":"0dba018c-6d56-4022-b32e-337aed3db29b","zitiId":"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed","cheesecakeId":"45d8c60d-4ccc-4dd0-aed9-67965d839740","marsalaId":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323","vegId":"549e0e69-9b35-4abb-945a-3ada002f55d4","dayOfId":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f","arborId":"bd16d232-33c9-47ac-a738-e731bdce4bfe","
+PASS ux_always_on_heading — heading
+PASS ux_couples_choices_heading — heading
+PASS ux_no_included_heading — no Included
+PASS ux_no_primary_question_cta — no question CTA
+PASS ux_offering_choices_panel — panel
+PASS ux_no_question_copy — no question copy
+PASS persisted_catalog_always_on_covered — {"id":"7d4926a9-24d5-41ba-8b91-8b4e1f8fc0f3","description":"Day-of coordination","included_by_default":true,"unit_price":0,"offering_id":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f"}
+PASS persisted_template_only_additional_charge — {"id":"2a0da5c9-8b79-4d7d-9580-de5f5c14b738","description":"EOTUX-EOTUXMVSSSHF8-Champagne Toast","included_by_default":false,"unit_price":150,"offering_id":null}
+PASS persisted_parents_from_offerings_no_question — {"buffetOpt":{"id":"3e595658-d4af-444d-a2e3-31b82af44e2c","label":"Buffet Style Dinner","group_id":"c8179007-fabf-4bd6-82ea-f014c2d9e425","offering_id":"8ce388b7-95b2-4b13-841d-a087a37e92f8"},"platedOpt":{"id":"37cfed28-25da-4336-b6e6-c606e1298c39","label":"Plated Dinner","group_id":"c8179007-fabf-4bd6-82ea-f014c2d9e425","offering_id":"0dba018c-6d56-4022-b32e-337aed3db29b"},"rootGroupId":"c8179007
+PASS ui_shows_parent_children_checklists — child panels
+PASS persisted_selected_children_under_parents — {"zitiOpt":{"id":"f75c7a18-b865-4927-b86b-08aac5a5fb11","label":"Baked Ziti","group_id":"9d59a9d9-d0ec-4d24-9154-d07d7ed12340","offering_id":"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed"},"marsalaOpt":{"id":"2e10af1f-8892-4a68-b0e0-9bbac5637a70","label":"Chicken Marsala","group_id":"ebcb7d4f-bcac-487c-a52a-d7f3bd4cce12","offering_id":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323"},"buffetChildGroup":{"id":"9d59a
+FAIL harness_error — locator.check: Clicking the checkbox did not change its state
+Call log:
+  - waiting for getByTestId('eo-child-required-9d59a9d9-d0ec-4d24-9154-d07d7ed12340')
+    - locator resolved to <input disabled type="checkbox" data-testid="eo-child-required-9d59a9d9-d0ec-4d24-9154-d07d7ed12340"/>
+  - attempting click action
+    - scrolling into view if needed
+    - done scrolling
+    - forcing action
+    - p
+
+NOT GREEN — 13 pass / 1 fail

@@ -1,0 +1,15 @@
+PASS serving_sha — expected=efb7d9c70172404942ed61f96bfd9f622860c8cc ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:efb7d9c70172404942ed61f96bfd9f622860c8cc
+PASS catalog_fixtures_seeded — {"buffetId":"8ce388b7-95b2-4b13-841d-a087a37e92f8","platedId":"0dba018c-6d56-4022-b32e-337aed3db29b","zitiId":"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed","cheesecakeId":"45d8c60d-4ccc-4dd0-aed9-67965d839740","marsalaId":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323","vegId":"549e0e69-9b35-4abb-945a-3ada002f55d4","dayOfId":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f","arborId":"bd16d232-33c9-47ac-a738-e731bdce4bfe","
+PASS ux_always_on_heading — heading
+PASS ux_couples_choices_heading — heading
+PASS ux_no_included_heading — no Included
+PASS ux_no_primary_question_cta — no question CTA
+PASS ux_offering_choices_panel — panel
+PASS ux_no_question_copy — no question copy
+FAIL harness_error — locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByTestId('eo-guided-step-fixed').getByText(/Day-of coordination/i) to be visible
+
+    at main (/Users/jensmac/Developer/wevenu-website/docs/qa/event-order-template-builder-ux/verify-browser.mts:387:86)
+
+NOT GREEN — 8 pass / 1 fail

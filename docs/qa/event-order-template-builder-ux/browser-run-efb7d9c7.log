@@ -1,0 +1,20 @@
+PASS serving_sha — expected=efb7d9c70172404942ed61f96bfd9f622860c8cc ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:efb7d9c70172404942ed61f96bfd9f622860c8cc
+PASS catalog_fixtures_seeded — {"buffetId":"8ce388b7-95b2-4b13-841d-a087a37e92f8","platedId":"0dba018c-6d56-4022-b32e-337aed3db29b","zitiId":"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed","cheesecakeId":"45d8c60d-4ccc-4dd0-aed9-67965d839740","marsalaId":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323","vegId":"549e0e69-9b35-4abb-945a-3ada002f55d4","dayOfId":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f","arborId":"bd16d232-33c9-47ac-a738-e731bdce4bfe","
+PASS ux_always_on_heading — heading
+PASS ux_couples_choices_heading — heading
+PASS ux_no_included_heading — no Included
+PASS ux_no_primary_question_cta — no question CTA
+PASS ux_offering_choices_panel — panel
+PASS ux_no_question_copy — no question copy
+PASS persisted_catalog_always_on_covered — {"id":"1cb03651-4738-4728-8dda-837e0f6ddfd3","description":"Day-of coordination","included_by_default":true,"unit_price":0,"offering_id":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f"}
+PASS persisted_template_only_additional_charge — {"id":"f3effbcc-fb58-4953-aaf1-fd8f70b22cfd","description":"EOTUX-EOTUXMVSSNIT6-Champagne Toast","included_by_default":false,"unit_price":150,"offering_id":null}
+PASS persisted_parents_from_offerings_no_question — {"buffetOpt":{"id":"98423e7e-5b5a-46ef-bc87-0c5662fceadd","label":"Buffet Style Dinner","group_id":"7ebd2e0a-a30b-4962-a3a1-5745cbfbfd8e","offering_id":"8ce388b7-95b2-4b13-841d-a087a37e92f8"},"platedOpt":{"id":"144165b4-7479-4462-a651-3be08312cfde","label":"Plated Dinner","group_id":"7ebd2e0a-a30b-4962-a3a1-5745cbfbfd8e","offering_id":"0dba018c-6d56-4022-b32e-337aed3db29b"},"rootGroupId":"7ebd2e0a
+PASS ui_shows_parent_children_checklists — child panels
+FAIL harness_error — locator.check: Clicking the checkbox did not change its state
+Call log:
+  - waiting for getByTestId('eo-child-toggle-98423e7e-5b5a-46ef-bc87-0c5662fceadd-bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed')
+    - locator resolved to <input class="mt-1" type="checkbox" data-testid="eo-child-toggle-98423e7e-5b5a-46ef-bc87-0c5662fceadd-bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed"/>
+  - attempting click action
+    - scrol
+
+NOT GREEN — 12 pass / 1 fail
