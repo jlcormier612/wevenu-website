@@ -1,0 +1,43 @@
+{
+  "at": "2026-10-29T02:54:05.220Z",
+  "pass": 7,
+  "fail": 0,
+  "ok": true,
+  "results": [
+    {
+      "name": "schema_offerings_image_url",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "schema_options_image_url",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "public_read_retained",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "name": "own_upload",
+      "pass": true,
+      "detail": "a415ac52-cd74-42a6-8df7-7a8f6e71d080/offerings/qa-pre-mvsy90r6/image.png"
+    },
+    {
+      "name": "cross_upload_denied",
+      "pass": true,
+      "detail": "new row violates row-level security policy"
+    },
+    {
+      "name": "cross_delete_denied",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "name": "own_delete",
+      "pass": true,
+      "detail": "ok"
+    }
+  ]
+}

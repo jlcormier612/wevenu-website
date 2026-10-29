@@ -1,0 +1,8 @@
+PASS schema_offerings_image_url — ok
+PASS schema_options_image_url — ok
+PASS public_read_retained — 200
+PASS own_upload — a415ac52-cd74-42a6-8df7-7a8f6e71d080/offerings/qa-pre-mvsy90r6/image.png
+PASS cross_upload_denied — new row violates row-level security policy
+PASS cross_delete_denied — 200
+PASS own_delete — ok
+GREEN 7/7
