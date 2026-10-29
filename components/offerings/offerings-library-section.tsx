@@ -7,7 +7,11 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  createOfferingAction, createOfferingCategoryAction, setOfferingArchivedAction, updateOfferingAction,
+  createOfferingAction,
+  createOfferingCategoryAction,
+  setOfferingArchivedAction,
+  updateOfferingAction,
+  updateOfferingImageAction,
 } from "@/app/(app)/library/offerings/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +19,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { effectiveOfferingImageUrl, offeringImageBasePath } from "@/lib/catalog-images/types";
+import {
+  removeCatalogImage,
+  uploadCatalogImage,
+} from "@/lib/catalog-images/upload-client";
+import { validateCatalogImageFile } from "@/lib/catalog-images/validate";
 import { formatOptionalMoney } from "@/lib/event-orders/constants";
 import type { InventoryItem } from "@/lib/inventory/types";
 import {
@@ -32,6 +42,7 @@ import type { OfferingCategory, OfferingInput, OfferingWithCategory } from "@/li
 export const OfferingsLibrarySection = React.forwardRef<
   { openCreate: () => void },
   {
+    venueId: string;
     initialOfferings: OfferingWithCategory[];
     categories: OfferingCategory[];
     inventoryItems: InventoryItem[];
@@ -39,7 +50,7 @@ export const OfferingsLibrarySection = React.forwardRef<
     headerCreate?: boolean;
   }
 >(function OfferingsLibrarySection({
-  initialOfferings, categories, inventoryItems, headerCreate = true,
+  venueId, initialOfferings, categories, inventoryItems, headerCreate = true,
 }, ref) {
   const [offerings, setOfferings] = React.useState(initialOfferings);
   const [cats, setCats] = React.useState(categories);
@@ -99,7 +110,24 @@ export const OfferingsLibrarySection = React.forwardRef<
                 data-offering-role={role}
                 data-parent-ids={parentIdsOf(o).join(",")}
               >
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-start gap-3">
+                  {(() => {
+                    const thumb = effectiveOfferingImageUrl({
+                      imageUrl: o.imageUrl,
+                      inventoryImageUrl: o.inventoryImageUrl,
+                    });
+                    if (!thumb) return null;
+                    return (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumb}
+                        alt=""
+                        className="h-12 w-12 shrink-0 rounded-md border border-border/60 bg-muted/30 object-contain"
+                        data-testid={`offering-thumb-${o.id}`}
+                      />
+                    );
+                  })()}
+                  <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-foreground">{o.name}</p>
                     {o.categoryName && <Badge variant="muted">{o.categoryName}</Badge>}
@@ -114,6 +142,7 @@ export const OfferingsLibrarySection = React.forwardRef<
                     {o.unit ? ` / ${o.unit}` : ""}
                     {o.description ? ` · ${o.description}` : ""}
                   </p>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {role !== "item" && !o.isArchived ? (
@@ -165,6 +194,7 @@ export const OfferingsLibrarySection = React.forwardRef<
             setCreateParentId(null);
           }
         }}
+        venueId={venueId}
         offering={editing}
         defaultParentId={createParentId}
         offerings={offerings}
@@ -197,10 +227,11 @@ export const OfferingsLibrarySection = React.forwardRef<
 });
 
 function OfferingFormSheet({
-  open, onOpenChange, offering, defaultParentId, offerings, categories, inventoryItems, onSaved, onCategoryCreated,
+  open, onOpenChange, venueId, offering, defaultParentId, offerings, categories, inventoryItems, onSaved, onCategoryCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  venueId: string;
   offering: OfferingWithCategory | null;
   defaultParentId: string | null;
   offerings: OfferingWithCategory[];
@@ -216,6 +247,8 @@ function OfferingFormSheet({
   const [unit, setUnit] = React.useState("");
   const [defaultUnitPrice, setDefaultUnitPrice] = React.useState("");
   const [inventoryItemId, setInventoryItemId] = React.useState("");
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+  const [file, setFile] = React.useState<File | null>(null);
   const [newCategory, setNewCategory] = React.useState("");
   const [pending, startTransition] = React.useTransition();
 
@@ -238,6 +271,8 @@ function OfferingFormSheet({
     setUnit(offering?.unit ?? "");
     setDefaultUnitPrice(offering?.defaultUnitPrice != null ? String(offering.defaultUnitPrice) : "");
     setInventoryItemId(offering?.inventoryItemId ?? "");
+    setImageUrl(offering?.imageUrl ?? null);
+    setFile(null);
     setNewCategory("");
   }, [open, offering, defaultParentId, offerings]);
 
@@ -288,10 +323,68 @@ function OfferingFormSheet({
       unit: unit.trim() || null,
       defaultUnitPrice: defaultUnitPrice.trim() === "" ? null : Number(defaultUnitPrice.replace(/[$,]/g, "")),
       inventoryItemId: inventoryItemId || null,
+      imageUrl,
+      inventoryImageUrl: inventoryItemId
+        ? inventoryItems.find((i) => i.id === inventoryItemId)?.imageUrl ?? null
+        : null,
       categoryName: catName,
       parentOfferingNames: parentNames,
       parentOfferingName: formatParentOfferingNames(parentNames),
     };
+  }
+
+  async function persistImage(offeringId: string): Promise<string | null> {
+    if (!file) return imageUrl;
+    const validated = validateCatalogImageFile(file);
+    if (!validated.ok) {
+      toast.error(validated.message);
+      return imageUrl;
+    }
+    if (!venueId) {
+      toast.error("Could not determine venue for photo upload.");
+      return imageUrl;
+    }
+    try {
+      const url = await uploadCatalogImage({
+        basePath: offeringImageBasePath(venueId, offeringId),
+        file,
+      });
+      const result = await updateOfferingImageAction(offeringId, url);
+      if (!result.ok) throw new Error(result.message ?? "Could not save photo.");
+      setImageUrl(url);
+      setFile(null);
+      return url;
+    } catch {
+      toast.error("Offering saved, but the photo upload failed — try again from Edit.");
+      return imageUrl;
+    }
+  }
+
+  async function clearImage() {
+    if (!offering?.id || !venueId) return;
+    startTransition(async () => {
+      try {
+        await removeCatalogImage(offeringImageBasePath(venueId, offering.id));
+        const result = await updateOfferingImageAction(offering.id, null);
+        if (!result.ok) throw new Error(result.message ?? "Could not remove photo.");
+        setImageUrl(null);
+        setFile(null);
+        onSaved({
+          ...buildSaved({
+            id: offering.id,
+            venueId: offering.venueId || venueId,
+            isArchived: offering.isArchived,
+            sortOrder: offering.sortOrder,
+            createdAt: offering.createdAt,
+            updatedAt: new Date().toISOString(),
+          }),
+          imageUrl: null,
+        });
+        toast.success("Photo removed.");
+      } catch {
+        toast.error("Could not remove the photo.");
+      }
+    });
   }
 
   function handleSave() {
@@ -299,26 +392,34 @@ function OfferingFormSheet({
       if (offering) {
         const result = await updateOfferingAction(offering.id, input());
         if (!result.ok) { toast.error(result.message ?? "Could not save."); return; }
-        onSaved(buildSaved({
-          id: offering.id,
-          venueId: offering.venueId,
-          isArchived: offering.isArchived,
-          sortOrder: offering.sortOrder,
-          createdAt: offering.createdAt,
-          updatedAt: new Date().toISOString(),
-        }));
+        const nextImage = await persistImage(offering.id);
+        onSaved({
+          ...buildSaved({
+            id: offering.id,
+            venueId: offering.venueId || venueId,
+            isArchived: offering.isArchived,
+            sortOrder: offering.sortOrder,
+            createdAt: offering.createdAt,
+            updatedAt: new Date().toISOString(),
+          }),
+          imageUrl: nextImage,
+        });
         toast.success("Offering updated.");
       } else {
         const result = await createOfferingAction(input());
         if (!result.ok) { toast.error(result.message ?? "Could not create."); return; }
-        onSaved(buildSaved({
-          id: result.offeringId,
-          venueId: "",
-          isArchived: false,
-          sortOrder: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
+        const nextImage = await persistImage(result.offeringId);
+        onSaved({
+          ...buildSaved({
+            id: result.offeringId,
+            venueId,
+            isArchived: false,
+            sortOrder: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }),
+          imageUrl: nextImage,
+        });
         toast.success("Offering created.");
       }
     });
@@ -462,6 +563,41 @@ function OfferingFormSheet({
                 <option key={i.id} value={i.id}>{i.printableName || i.name}</option>
               ))}
             </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              Photo <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            {imageUrl && !file ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageUrl}
+                alt=""
+                className="h-20 w-20 rounded-lg border border-border bg-muted/40 object-contain"
+                data-testid="offering-photo-preview"
+              />
+            ) : null}
+            {!imageUrl && !file && inventoryItemId ? (() => {
+              const fallback = inventoryItems.find((i) => i.id === inventoryItemId)?.imageUrl;
+              if (!fallback) return null;
+              return (
+                <p className="text-[0.7rem] text-muted-foreground">
+                  No dedicated photo yet — couples will see the linked Inventory photo until you upload one.
+                </p>
+              );
+            })() : null}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              data-testid="offering-photo-input"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
+            />
+            {offering?.imageUrl ? (
+              <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => void clearImage()}>
+                Remove photo
+              </Button>
+            ) : null}
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">

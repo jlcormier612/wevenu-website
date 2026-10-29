@@ -561,13 +561,24 @@ function ChoiceSetCard({
               data-testid={`eo-choice-option-${opt.id}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
+                <div className="flex min-w-0 items-start gap-3">
+                  {opt.imageUrl?.trim() ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={opt.imageUrl.trim()}
+                      alt=""
+                      className="h-12 w-12 shrink-0 rounded-md border border-border/60 bg-muted/30 object-contain"
+                      data-testid={`eo-choice-option-photo-${opt.id}`}
+                    />
+                  ) : null}
+                  <div>
                   <p className="font-medium text-heading">{opt.label}</p>
                   <p className="text-xs text-muted-foreground">
                     {packageBuilderPriceLabel(opt.unitPrice, opt.isIncluded)}
                     {view.role === "major" ? " · Parent Offering" : null}
                     {view.role === "standalone" ? " · Standalone Offering" : null}
                   </p>
+                  </div>
                 </div>
                 <Button
                   type="button"

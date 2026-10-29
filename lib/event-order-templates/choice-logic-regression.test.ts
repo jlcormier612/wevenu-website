@@ -84,6 +84,7 @@ describe("EO choice logic — parent / group / option model", () => {
       unit: "bottle",
       defaultUnitPrice: 12,
       inventoryItemId: null,
+      imageUrl: null,
       isArchived: false,
       sortOrder: 0,
       createdAt: "",

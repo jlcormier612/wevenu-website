@@ -16,10 +16,12 @@ import type { InventoryItem } from "@/lib/inventory/types";
 import type { OfferingCategory, OfferingWithCategory } from "@/lib/offerings/types";
 
 export function OfferingsPageClient({
+  venueId,
   initialOfferings,
   categories,
   inventoryItems,
 }: {
+  venueId: string;
   initialOfferings: OfferingWithCategory[];
   categories: OfferingCategory[];
   inventoryItems: InventoryItem[];
@@ -63,6 +65,7 @@ export function OfferingsPageClient({
       </LibraryDependencyNote>
       <OfferingsLibrarySection
         ref={sectionRef}
+        venueId={venueId}
         initialOfferings={initialOfferings}
         categories={categories}
         inventoryItems={inventoryItems}

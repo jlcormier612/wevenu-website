@@ -3,6 +3,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { catalogImageUrlBelongsToVenue } from "@/lib/catalog-images/types";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/inventory/repository";
 import { requireAdminUser } from "@/lib/hq/crm-service";
@@ -158,6 +159,9 @@ export async function setItemArchived(id: string, isArchived: boolean): Promise<
 
 export async function updateItemImage(id: string, imageUrl: string | null): Promise<InventoryActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    if (!catalogImageUrlBelongsToVenue(imageUrl, venueId)) {
+      return { ok: false, message: "Photo must belong to this venue." } as InventoryActionResult;
+    }
     await repo.updateItemImage(supabase, venueId, id, imageUrl);
     return { ok: true } as InventoryActionResult;
   });

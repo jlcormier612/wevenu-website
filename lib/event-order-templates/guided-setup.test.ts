@@ -71,6 +71,7 @@ function option(
     isIncluded: false,
     unitPrice: null,
     isDefault: false,
+    imageUrl: null,
     sortOrder: 0,
     createdAt: "",
     updatedAt: "",

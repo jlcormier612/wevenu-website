@@ -35,6 +35,8 @@ export type ChoicesDefinitionOption = {
   isIncluded: boolean;
   /** Snapshotted at create/send. Null = unpriced / included. */
   unitPrice: number | null;
+  /** Snapshotted catalog photo at freeze time. Omitted/null = text-only. */
+  imageUrl?: string | null;
   sortOrder: number;
 };
 

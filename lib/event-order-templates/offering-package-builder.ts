@@ -131,6 +131,7 @@ export function optionInputFromOffering(
         ? String(draft.unitPrice)
         : null,
     isDefault: false,
+    imageUrl: draft.imageUrl,
   };
 }
 
@@ -149,6 +150,7 @@ export function optionInputWriteIn(
     isIncluded: true,
     unitPrice: "0",
     isDefault: false,
+    imageUrl: null,
   };
 }
 

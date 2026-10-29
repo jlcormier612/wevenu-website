@@ -112,6 +112,7 @@ function definitionFromTemplate(
       description: o.description,
       isIncluded: o.isIncluded,
       unitPrice: o.isIncluded ? 0 : o.unitPrice,
+      imageUrl: o.imageUrl?.trim() ? o.imageUrl.trim() : null,
       sortOrder: o.sortOrder,
     })),
   };

@@ -2,7 +2,8 @@
  * Choices / EO Template options — Offering is optional catalog identity.
  * Template option label + price are snapshots; never auto-link by name.
  */
-import type { Offering } from "@/lib/offerings/types";
+import { effectiveOfferingImageUrl } from "@/lib/catalog-images/types";
+import type { Offering, OfferingWithCategory } from "@/lib/offerings/types";
 import type {
   AddTemplateOptionInput,
   EventOrderTemplateOption,
@@ -13,16 +14,26 @@ export type ChoicesOptionDraft = {
   label: string;
   isIncluded: boolean;
   unitPrice: number | null;
+  /** Snapshotted effective photo (own Offering image, else Inventory fallback). */
+  imageUrl: string | null;
 };
 
 /** Initial draft when *creating* an option from a catalog pick (snapshot once). */
-export function choicesOptionDraftFromOffering(offering: Offering): ChoicesOptionDraft {
+export function choicesOptionDraftFromOffering(
+  offering: Offering | OfferingWithCategory,
+): ChoicesOptionDraft {
   const hasPrice = offering.defaultUnitPrice != null;
+  const inventoryImageUrl =
+    "inventoryImageUrl" in offering ? offering.inventoryImageUrl ?? null : null;
   return {
     offeringId: offering.id,
     label: offering.name.trim(),
     isIncluded: !hasPrice,
     unitPrice: hasPrice ? offering.defaultUnitPrice : null,
+    imageUrl: effectiveOfferingImageUrl({
+      imageUrl: offering.imageUrl,
+      inventoryImageUrl,
+    }),
   };
 }
 
@@ -32,6 +43,7 @@ export function customChoicesOptionDraft(label: string): ChoicesOptionDraft {
     label: label.trim(),
     isIncluded: true,
     unitPrice: null,
+    imageUrl: null,
   };
 }
 
@@ -40,7 +52,7 @@ export function withChoicesOptionLabel(
   draft: ChoicesOptionDraft,
   label: string,
 ): ChoicesOptionDraft {
-  return { ...draft, label: label.trim() };
+  return { ...draft, label: label.trim(), imageUrl: draft.imageUrl ?? null };
 }
 
 export function isCatalogBackedChoicesOption(
@@ -115,13 +127,14 @@ export function offeringsAvailableForAttach(catalog: Offering[]): Offering[] {
 function optionToWriteInput(
   option: EventOrderTemplateOption,
   offeringId: string | null,
-  overrides?: Partial<Pick<EventOrderTemplateOption, "label" | "isIncluded" | "unitPrice" | "isDefault" | "description">>,
+  overrides?: Partial<Pick<EventOrderTemplateOption, "label" | "isIncluded" | "unitPrice" | "isDefault" | "description" | "imageUrl">>,
 ): AddTemplateOptionInput {
   const label = overrides?.label ?? option.label;
   const isIncluded = overrides?.isIncluded ?? option.isIncluded;
   const unitPrice = overrides?.unitPrice !== undefined ? overrides.unitPrice : option.unitPrice;
   const isDefault = overrides?.isDefault ?? option.isDefault;
   const description = overrides?.description !== undefined ? overrides.description : option.description;
+  const imageUrl = overrides?.imageUrl !== undefined ? overrides.imageUrl : option.imageUrl;
   return {
     groupId: option.groupId,
     offeringId,
@@ -130,6 +143,8 @@ function optionToWriteInput(
     isIncluded,
     unitPrice: isIncluded ? "0" : unitPrice == null ? null : String(unitPrice),
     isDefault,
+    // Preserve snapshotted photo unless an override explicitly changes it.
+    imageUrl: imageUrl?.trim() ? imageUrl.trim() : null,
   };
 }
 

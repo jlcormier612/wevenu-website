@@ -256,6 +256,7 @@ function parseOptionWrite(input: AddTemplateOptionInput): {
       isIncluded: Boolean(input.isIncluded),
       unitPrice,
       isDefault: Boolean(input.isDefault),
+      imageUrl: input.imageUrl?.trim() || null,
     },
   };
 }

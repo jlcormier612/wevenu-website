@@ -365,6 +365,17 @@ export function ChoicesPortalSection({ token }: { token: string }) {
                             onChange={() => toggleOption(group.id, opt.id, group.selectionMode)}
                             className="mt-0.5"
                           />
+                          {opt.imageUrl?.trim() ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={opt.imageUrl.trim()}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="h-12 w-12 shrink-0 rounded-md border border-border/60 bg-muted/30 object-contain"
+                              data-testid={`choices-option-photo-${opt.id}`}
+                            />
+                          ) : null}
                           <span className="flex-1">
                             <span className="font-medium">{opt.label}</span>
                             {opt.description ? (

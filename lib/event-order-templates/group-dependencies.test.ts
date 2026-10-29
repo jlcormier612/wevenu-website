@@ -55,6 +55,7 @@ function option(
     isIncluded: true,
     unitPrice: 0,
     isDefault: false,
+    imageUrl: null,
     sortOrder: 0,
     createdAt: ts,
     updatedAt: ts,

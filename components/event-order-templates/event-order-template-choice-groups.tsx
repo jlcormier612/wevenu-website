@@ -461,6 +461,12 @@ export function EventOrderTemplateChoiceGroups({
     if (!optionGroupId || !optionLabel.trim()) return;
     startTransition(async () => {
       onPersist("saving");
+      const catalogOffering = offeringId
+        ? available.find((o) => o.id === offeringId)
+        : undefined;
+      const imageUrl = catalogOffering
+        ? choicesOptionDraftFromOffering(catalogOffering).imageUrl
+        : null;
       const r = await addEventOrderTemplateOptionAction(template.id, {
         groupId: optionGroupId,
         offeringId,
@@ -468,6 +474,7 @@ export function EventOrderTemplateChoiceGroups({
         isIncluded: optionIncluded,
         unitPrice: optionIncluded ? "0" : (optionPrice.trim() || null),
         isDefault: optionDefault,
+        imageUrl,
       });
       if (!r.ok) onPersist("error", r.errors?.label ?? r.message ?? "Could not add option.");
       else {

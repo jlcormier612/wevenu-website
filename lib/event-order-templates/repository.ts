@@ -45,6 +45,7 @@ type OptionRow = {
   id: string; template_id: string; venue_id: string; group_id: string;
   offering_id: string | null; label: string; description: string | null;
   is_included: boolean; unit_price: number | null; is_default: boolean;
+  image_url?: string | null;
   sort_order: number; created_at: string; updated_at: string;
 };
 
@@ -97,6 +98,7 @@ const mapOption = (r: OptionRow): EventOrderTemplateOption => ({
   label: r.label,
   description: r.description ?? null,
   isIncluded: Boolean(r.is_included),
+  imageUrl: r.image_url?.trim() ? r.image_url.trim() : null,
   unitPrice: r.unit_price == null ? null : Number(r.unit_price),
   isDefault: Boolean(r.is_default),
   sortOrder: r.sort_order,
@@ -270,6 +272,7 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
       isIncluded: o.isIncluded,
       unitPrice: o.unitPrice,
       isDefault: o.isDefault,
+      imageUrl: o.imageUrl ?? null,
     }, o.sortOrder);
   }
   return newId;
@@ -419,6 +422,7 @@ export type TemplateOptionWrite = {
   isIncluded: boolean;
   unitPrice: number | null;
   isDefault: boolean;
+  imageUrl: string | null;
 };
 
 export async function insertGroup(
@@ -495,6 +499,7 @@ export async function insertOption(
       is_included: input.isIncluded,
       unit_price: input.isIncluded ? 0 : input.unitPrice,
       is_default: input.isDefault,
+      image_url: input.imageUrl?.trim() || null,
       sort_order: sortOrder,
     })
     .select()
@@ -519,6 +524,7 @@ export async function updateOption(
       is_included: input.isIncluded,
       unit_price: input.isIncluded ? 0 : input.unitPrice,
       is_default: input.isDefault,
+      image_url: input.imageUrl?.trim() || null,
     })
     .eq("id", optionId)
     .eq("venue_id", venueId);

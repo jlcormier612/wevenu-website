@@ -58,6 +58,7 @@ const offering: Offering = {
   unit: null,
   defaultUnitPrice: 45,
   inventoryItemId: null,
+  imageUrl: null,
   isArchived: false,
   sortOrder: 0,
   createdAt: "",

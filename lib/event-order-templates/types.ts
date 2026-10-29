@@ -87,6 +87,8 @@ export type EventOrderTemplateOption = {
   isIncluded: boolean;
   unitPrice: number | null;
   isDefault: boolean;
+  /** Snapshotted catalog photo URL (optional). */
+  imageUrl: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -135,6 +137,8 @@ export type AddTemplateOptionInput = {
   isIncluded?: boolean;
   unitPrice?: string | null;
   isDefault?: boolean;
+  /** Snapshotted photo when creating from a catalog Offering. */
+  imageUrl?: string | null;
 };
 
 export type EventOrderTemplateErrors = Record<string, string>;

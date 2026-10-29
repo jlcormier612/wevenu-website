@@ -28,6 +28,8 @@ export type Offering = {
   unit: string | null;
   defaultUnitPrice: number | null;
   inventoryItemId: string | null;
+  /** Dedicated Offering photo URL; null = none. */
+  imageUrl: string | null;
   isArchived: boolean;
   sortOrder: number;
   createdAt: string;
@@ -39,6 +41,8 @@ export type OfferingWithCategory = Offering & {
   /** Comma-separated major names for display. */
   parentOfferingName?: string | null;
   parentOfferingNames?: string[];
+  /** Linked Inventory item photo when inventoryItemId is set (fallback source). */
+  inventoryImageUrl?: string | null;
 };
 
 export type OfferingInput = {

@@ -29,6 +29,7 @@ function offering(partial: Partial<Offering> & Pick<Offering, "id" | "name">): O
     unit: null,
     defaultUnitPrice: 12,
     inventoryItemId: null,
+    imageUrl: null,
     isArchived: false,
     sortOrder: 0,
     createdAt: ts,
@@ -49,6 +50,7 @@ function option(
     isIncluded: false,
     unitPrice: 25,
     isDefault: false,
+    imageUrl: null,
     sortOrder: 0,
     createdAt: ts,
     updatedAt: ts,
@@ -142,6 +144,21 @@ describe("attach / clear / edit preserving snapshot", () => {
     assert.equal(write.offeringId, "off-1");
     assert.equal(write.label, "New label");
     assert.equal(write.unitPrice, "10");
+    assert.equal(write.imageUrl, opt.imageUrl ?? null);
+  });
+
+  it("label/price edits preserve snapshotted imageUrl", () => {
+    const opt = option({
+      id: "o1",
+      label: "Old",
+      offeringId: "off-1",
+      unitPrice: 10,
+      imageUrl: "https://cdn.example/snap.png",
+    });
+    const write = updateOptionFieldsPreservingOfferingLink(opt, { label: "Renamed" });
+    assert.equal(write.imageUrl, "https://cdn.example/snap.png");
+    const attached = attachOfferingPreservingSnapshot(opt, "off-2");
+    assert.equal(attached.imageUrl, "https://cdn.example/snap.png");
   });
 
   it("new-option draft may snapshot catalog price once; attach path does not refresh", () => {

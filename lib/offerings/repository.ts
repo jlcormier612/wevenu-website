@@ -18,6 +18,7 @@ type OfferingRow = {
   name: string;
   description: string | null; unit: string | null;
   default_unit_price: number | null; inventory_item_id: string | null;
+  image_url: string | null;
   is_archived: boolean; sort_order: number;
   created_at: string; updated_at: string;
 };
@@ -40,7 +41,9 @@ function mapOffering(r: OfferingRow, parentOfferingIds: string[]): Offering {
     name: r.name,
     description: r.description, unit: r.unit,
     defaultUnitPrice: r.default_unit_price != null ? Number(r.default_unit_price) : null,
-    inventoryItemId: r.inventory_item_id, isArchived: r.is_archived, sortOrder: r.sort_order,
+    inventoryItemId: r.inventory_item_id,
+    imageUrl: r.image_url?.trim() ? r.image_url.trim() : null,
+    isArchived: r.is_archived, sortOrder: r.sort_order,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -162,6 +165,23 @@ export async function getOfferingsWithCategory(
   ]);
   const names = new Map(categories.map((c) => [c.id, c.name]));
   const offeringNames = new Map(items.map((o) => [o.id, o.name]));
+  const inventoryIds = [
+    ...new Set(items.map((o) => o.inventoryItemId).filter((id): id is string => Boolean(id))),
+  ];
+  const inventoryImageById = new Map<string, string | null>();
+  if (inventoryIds.length > 0) {
+    const { data: invRows, error: invErr } = await client
+      .from("inventory_items")
+      .select("id, image_url")
+      .eq("venue_id", venueId)
+      .in("id", inventoryIds);
+    if (invErr) throw invErr;
+    for (const row of invRows ?? []) {
+      const id = (row as { id: string; image_url: string | null }).id;
+      const url = (row as { image_url: string | null }).image_url?.trim() || null;
+      inventoryImageById.set(id, url);
+    }
+  }
   return items.map((o) => {
     const parentOfferingNames = o.parentOfferingIds
       .map((id) => offeringNames.get(id))
@@ -173,6 +193,9 @@ export async function getOfferingsWithCategory(
       categoryName: o.categoryId ? names.get(o.categoryId) ?? null : null,
       parentOfferingNames,
       parentOfferingName: formatParentOfferingNames(parentOfferingNames),
+      inventoryImageUrl: o.inventoryItemId
+        ? inventoryImageById.get(o.inventoryItemId) ?? null
+        : null,
     };
   });
 }
@@ -236,5 +259,16 @@ export async function setOfferingArchived(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("offerings") as any)
     .update({ is_archived: archived }).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function updateOfferingImage(
+  client: DbClient, venueId: string, id: string, imageUrl: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("offerings") as any)
+    .update({ image_url: imageUrl })
+    .eq("id", id)
+    .eq("venue_id", venueId);
   if (error) throw error;
 }

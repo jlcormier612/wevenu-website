@@ -1,4 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
+import { catalogImageUrlBelongsToVenue } from "@/lib/catalog-images/types";
 import { findOrCreateOfferingCategory } from "@/lib/offerings/category-identity";
 import * as repo from "@/lib/offerings/repository";
 import type {
@@ -86,6 +87,20 @@ export async function updateOffering(id: string, input: OfferingInput): Promise<
 export async function setOfferingArchived(id: string, archived: boolean): Promise<OfferingActionResult> {
   const result = await withVenue(async (c, venueId) => {
     await repo.setOfferingArchived(c, venueId, id, archived);
+    return { ok: true as const };
+  });
+  return result as OfferingActionResult;
+}
+
+export async function updateOfferingImage(
+  id: string,
+  imageUrl: string | null,
+): Promise<OfferingActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    if (!catalogImageUrlBelongsToVenue(imageUrl, venueId)) {
+      return { ok: false as const, message: "Photo must belong to this venue." };
+    }
+    await repo.updateOfferingImage(c, venueId, id, imageUrl);
     return { ok: true as const };
   });
   return result as OfferingActionResult;

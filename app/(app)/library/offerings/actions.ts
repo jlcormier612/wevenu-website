@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  createOffering, createOfferingCategory, setOfferingArchived, updateOffering,
+  createOffering, createOfferingCategory, setOfferingArchived, updateOffering, updateOfferingImage,
 } from "@/lib/offerings/service";
 import type { OfferingActionResult, OfferingInput } from "@/lib/offerings/types";
 
@@ -32,6 +32,15 @@ export async function setOfferingArchivedAction(id: string, archived: boolean): 
 
 export async function createOfferingCategoryAction(name: string) {
   const result = await createOfferingCategory(name);
+  if (result.ok) revalidate();
+  return result;
+}
+
+export async function updateOfferingImageAction(
+  id: string,
+  imageUrl: string | null,
+): Promise<OfferingActionResult> {
+  const result = await updateOfferingImage(id, imageUrl);
   if (result.ok) revalidate();
   return result;
 }
