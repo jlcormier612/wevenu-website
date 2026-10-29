@@ -674,26 +674,43 @@ async function main() {
       record("hq_authorized_download_json", false, "no package material row", "materials");
     }
 
-    // Finish White Glove Setup via server action endpoint path — call action through UI
-    const finishBtn = hqPage.getByRole("button", { name: /Finish White Glove Setup/i });
-    if ((await finishBtn.count()) > 0) {
+    // Finish White Glove Setup via server action endpoint path — call action through UI.
+    // welcome_home (Resend) can take >3s — poll enrollment until email stamped or timeout.
+    async function clickFinishWhiteGlove() {
+      const finishBtn = hqPage.getByRole("button", { name: /Finish White Glove Setup/i });
+      if ((await finishBtn.count()) === 0) return;
       await finishBtn.first().click();
       await hqPage.waitForTimeout(500);
       const confirm = hqPage.getByRole("button", { name: /Finish White Glove Setup/i });
-      if ((await confirm.count()) > 0) {
-        await confirm.last().click();
-      }
-      await hqPage.waitForTimeout(3000);
-      await hqPage.screenshot({ path: join(SHOTS, "07-after-finish-1280.png"), fullPage: false });
+      if ((await confirm.count()) > 0) await confirm.last().click();
     }
+    await clickFinishWhiteGlove();
 
-    const { data: afterEnroll } = await admin
-      .from("venue_enrollments")
-      .select(
-        "white_glove_status,access_email_sent_at,activation_token,status,white_glove_handoff_at",
-      )
-      .eq("id", ctx.enrollmentId)
-      .maybeSingle();
+    let afterEnroll: {
+      white_glove_status: string | null;
+      access_email_sent_at: string | null;
+      activation_token: string | null;
+      status: string;
+      white_glove_handoff_at: string | null;
+    } | null = null;
+    for (let i = 0; i < 40; i++) {
+      const { data } = await admin
+        .from("venue_enrollments")
+        .select(
+          "white_glove_status,access_email_sent_at,activation_token,status,white_glove_handoff_at",
+        )
+        .eq("id", ctx.enrollmentId)
+        .maybeSingle();
+      afterEnroll = data;
+      if (data?.access_email_sent_at && data.activation_token) break;
+      // If still "Finishing…", keep waiting; otherwise retry once mid-loop.
+      const finishing = await hqPage.getByRole("button", { name: /Finishing/i }).count();
+      if (i === 12 && finishing === 0 && !data?.access_email_sent_at) {
+        await clickFinishWhiteGlove();
+      }
+      await hqPage.waitForTimeout(500);
+    }
+    await hqPage.screenshot({ path: join(SHOTS, "07-after-finish-1280.png"), fullPage: false });
     record(
       "finish_sets_access_pending_or_email",
       afterEnroll?.white_glove_status === "setup_complete_access_pending" ||
@@ -720,14 +737,8 @@ async function main() {
       const token1 = afterEnroll.activation_token;
       await hqPage.reload({ waitUntil: "domcontentloaded" });
       await hqPage.waitForTimeout(1000);
-      const finishAgain = hqPage.getByRole("button", { name: /Finish White Glove Setup/i });
-      if ((await finishAgain.count()) > 0) {
-        await finishAgain.first().click().catch(() => {});
-        await hqPage.waitForTimeout(400);
-        const conf2 = hqPage.getByRole("button", { name: /Finish White Glove Setup/i });
-        if ((await conf2.count()) > 0) await conf2.last().click().catch(() => {});
-        await hqPage.waitForTimeout(2000);
-      }
+      await clickFinishWhiteGlove();
+      await hqPage.waitForTimeout(2500);
       const { data: afterRetry } = await admin
         .from("venue_enrollments")
         .select("activation_token,access_email_sent_at")
@@ -739,20 +750,27 @@ async function main() {
         `before=${token1?.slice(0, 12)} after=${afterRetry?.activation_token?.slice(0, 12)}`,
         "handoff",
       );
+      afterEnroll = {
+        ...afterEnroll,
+        activation_token: afterRetry?.activation_token ?? afterEnroll.activation_token,
+        access_email_sent_at:
+          afterRetry?.access_email_sent_at ?? afterEnroll.access_email_sent_at,
+      };
     }
 
     // Post-activation intake must not reopen for unsafe edits after activated —
     // mark activated only if email sent; otherwise document pending.
     if (afterEnroll?.access_email_sent_at && afterEnroll.activation_token) {
-      const actUrl = `${APP}/activate/${encodeURIComponent(afterEnroll.activation_token)}`;
+      const actUrl = `${WORKSPACE}/activate/${encodeURIComponent(afterEnroll.activation_token)}`;
       const actPage = await hqCtx.newPage();
       await actPage.goto(actUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
       await actPage.waitForTimeout(1500);
       const actText = await actPage.locator("body").innerText();
       record(
         "activation_link_opens",
-        /activate|password|workspace|ready|sign/i.test(actText),
-        `url=${actPage.url()}`,
+        /password|get you started|create|workspace|activate|sign in|ready/i.test(actText)
+          && !/This page could not be found/i.test(actText),
+        `url=${actPage.url()} body=${actText.slice(0, 300)}`,
         "handoff",
       );
       await actPage.screenshot({ path: join(SHOTS, "08-activate-1280.png"), fullPage: false });
