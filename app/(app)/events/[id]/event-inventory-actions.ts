@@ -54,12 +54,20 @@ export async function replaceEventInventoryFromTemplateAction(
   return result;
 }
 
+/**
+ * Share Inventory. Omit collaborationMode so the document's selectable items
+ * determine review-only vs selection. Passing a mode is reserved for explicit
+ * validation (e.g. forcing select with no choices must error).
+ */
 export async function shareEventInventoryAction(
   eventInventoryId: string,
   eventId: string,
-  collaborationMode: EventInventoryCollaborationMode = "view",
+  collaborationMode?: EventInventoryCollaborationMode,
 ): Promise<EventInventoryActionResult> {
-  const result = await shareEventInventory(eventInventoryId, { collaborationMode });
+  const result = await shareEventInventory(
+    eventInventoryId,
+    collaborationMode ? { collaborationMode } : undefined,
+  );
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

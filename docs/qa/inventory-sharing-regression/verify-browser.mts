@@ -255,7 +255,7 @@ async function main() {
       }).catch(() => undefined);
       await staff.waitForTimeout(1200);
       const panel = staff.getByTestId("inventory-share-instructions")
-        .or(staff.getByTestId("inventory-share-for-selection"))
+        .or(staff.getByTestId("inventory-share"))
         .or(staff.getByText("Event Inventory"));
       await panel.first().waitFor({ state: "visible", timeout: 60_000 });
     }
@@ -263,13 +263,20 @@ async function main() {
     await openInventoryPanel();
     await staff.screenshot({ path: `${OUT}/shots/venue-inventory-before-select-1280.png`, fullPage: true });
 
-    const shareSelect = staff.getByTestId("inventory-share-for-selection");
-    const disabledBefore = await shareSelect.isDisabled().catch(() => true);
-    const reasonVisible = (await staff.getByTestId("inventory-share-selection-disabled-reason").count()) > 0;
+    const shareSelect = staff.getByTestId("inventory-share");
+    const shareEnabled = await shareSelect.isEnabled().catch(() => false);
+    const reviewHint = (await staff.getByTestId("inventory-share-review-only-hint").count()) > 0;
     record(
-      "share_for_selection_disabled_until_select",
-      disabledBefore && (reasonVisible || /marked Select|Additional item/i.test(await staff.locator("body").innerText())),
-      `disabled=${disabledBefore} reasonVisible=${reasonVisible}`,
+      "share_inventory_enabled_before_select",
+      shareEnabled && (reviewHint || /review-only|Share inventory/i.test(await staff.locator("body").innerText())),
+      `enabled=${shareEnabled} reviewHint=${reviewHint}`,
+      "usability",
+    );
+    record(
+      "obsolete_dual_share_controls_absent",
+      (await staff.getByRole("button", { name: /^Share to view$/i }).count()) === 0
+        && (await staff.getByRole("button", { name: /^Share for selection$/i }).count()) === 0,
+      "single Share inventory control",
       "usability",
     );
 
@@ -296,12 +303,17 @@ async function main() {
       await openInventoryPanel();
     }
 
-    const shareBtn = staff.getByTestId("inventory-share-for-selection");
+    const shareBtn = staff.getByTestId("inventory-share");
     await shareBtn.waitFor({ state: "visible", timeout: 30_000 });
+    let selectionReady = (await staff.getByTestId("inventory-share-selection-ready").count()) > 0;
+    for (let i = 0; i < 20 && !selectionReady; i++) {
+      await staff.waitForTimeout(250);
+      selectionReady = (await staff.getByTestId("inventory-share-selection-ready").count()) > 0;
+    }
     record(
-      "share_for_selection_enabled_after_select",
-      !(await shareBtn.isDisabled()),
-      `disabled=${await shareBtn.isDisabled()}`,
+      "share_inventory_selection_ready_after_select",
+      !(await shareBtn.isDisabled()) && selectionReady,
+      `disabled=${await shareBtn.isDisabled()} ready=${selectionReady}`,
       "usability",
     );
     await shareBtn.click();

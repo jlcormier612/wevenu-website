@@ -324,42 +324,25 @@ export function EventInventoryPanel({
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               {canShare && (
-                <>
-                  <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                    data-testid="inventory-share-to-view"
-                    onClick={() => runLifecycle(async () => {
-                      const result = await shareEventInventoryAction(inv.id, eventId, "view");
-                      if (result.ok) {
-                        toast.success(
-                          "Shared for viewing. The couple gets an Inventory link (read-only) — not an invoice.",
-                        );
-                      } else toast.error(result.message ?? "Could not share.");
-                    })}>
-                    Share to view
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={lifecyclePending || selectableCount === 0}
-                    data-testid="inventory-share-for-selection"
-                    title={
-                      selectableCount === 0
-                        ? "On each Additional item, click Select first — then you can ask the couple to choose."
-                        : "Email the couple an Inventory link where they can choose quantities and submit."
-                    }
-                    onClick={() => runLifecycle(async () => {
-                      const result = await shareEventInventoryAction(inv.id, eventId, "select");
-                      if (result.ok) {
-                        toast.success(
-                          "Shared for selection. The couple gets an Inventory link to choose and submit.",
-                        );
-                      } else toast.error(result.message ?? "Could not share.");
-                    })}
-                  >
-                    Share for selection
-                  </Button>
-                </>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={lifecyclePending}
+                  data-testid="inventory-share"
+                  onClick={() => runLifecycle(async () => {
+                    const result = await shareEventInventoryAction(inv.id, eventId);
+                    if (result.ok) {
+                      toast.success(
+                        selectableCount > 0
+                          ? "Inventory shared. The couple gets a link to review, choose, and submit."
+                          : "Inventory shared. The couple gets a read-only Inventory link — not an invoice.",
+                      );
+                    } else toast.error(result.message ?? "Could not share.");
+                  })}
+                >
+                  Share inventory
+                </Button>
               )}
               {canConfirm && (
                 <>
@@ -405,20 +388,25 @@ export function EventInventoryPanel({
         />
         <div className="space-y-1 text-xs text-muted-foreground -mt-1" data-testid="inventory-share-instructions">
           <p>
-            <span className="font-medium text-foreground">Share to view</span> emails a read-only Inventory
-            link. <span className="font-medium text-foreground">Share for selection</span> lets the couple
-            choose quantities on items you marked Select, then submit. Neither action sends an invoice.
+            <span className="font-medium text-foreground">Share inventory</span> emails the couple a
+            focused Inventory link. If any Additional item is marked{" "}
+            <span className="font-medium text-foreground">Select</span>, they can choose and submit;
+            otherwise the document is read-only. This does not send an invoice.
           </p>
           <p>
-            Included items stay informational. On each Additional row, click{" "}
-            <span className="font-medium text-foreground">Select</span> before Share for selection.
-            Confirm their submission before Finalize → Add to Event Order. Additional-cost total:{" "}
+            Included items stay informational. Confirm a submitted response before Finalize → Add to
+            Event Order. Additional-cost total:{" "}
             <span className="font-medium text-foreground">{formatMoney(billableTotal)}</span>
           </p>
-          {canShare && selectableCount === 0 ? (
-            <p className="text-amber-800" data-testid="inventory-share-selection-disabled-reason">
-              Share for selection is unavailable until at least one Additional item is marked Select.
-              A price alone does not offer a choice — use Select on that row.
+          {canShare && selectableCount > 0 ? (
+            <p className="text-foreground/80" data-testid="inventory-share-selection-ready">
+              {selectableCount} Additional item{selectableCount === 1 ? "" : "s"} marked for couple
+              selection — Share inventory will ask them to choose and submit.
+            </p>
+          ) : canShare ? (
+            <p data-testid="inventory-share-review-only-hint">
+              No Additional items marked Select — Share inventory sends a review-only document. To
+              offer choices, click Select on each Additional row first.
             </p>
           ) : null}
         </div>
@@ -434,8 +422,8 @@ export function EventInventoryPanel({
                 onRemove={() => handleRemove(item)} removing={removingId === item.id}
                 onToggleSelectable={(next) => {
                   // Do not use runLifecycle/startTransition here: that sets
-                  // lifecyclePending and keeps "Share for selection" disabled for
-                  // the whole server round-trip, defeating optimistic Select.
+                  // lifecyclePending and would block Share inventory during the
+                  // Select toggle round-trip, defeating optimistic Select.
                   setSelectableOverrides((prev) => ({ ...prev, [item.id]: next }));
                   void (async () => {
                     const result = await setInventoryItemClientSelectableAction(

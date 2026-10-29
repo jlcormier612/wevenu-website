@@ -307,7 +307,7 @@ async function openInventory(staff: {
     window.location.hash = "inventory";
   });
   await staff.waitForTimeout(800);
-  await staff.getByTestId("inventory-share-for-selection")
+  await staff.getByTestId("inventory-share")
     .or(staff.getByTestId("inventory-finalize"))
     .or(staff.getByTestId("inventory-confirm-selections"))
     .or(staff.getByRole("button", { name: /Confirm selections|Finalize|Share|Reopen/i }))
@@ -433,19 +433,33 @@ async function main() {
       if ((data ?? []).every((r) => r.client_selectable)) break;
       await staff.waitForTimeout(400);
     }
-    const shareBtn = staff.getByTestId("inventory-share-for-selection");
-    for (let i = 0; i < 20 && (await shareBtn.isDisabled()); i++) await staff.waitForTimeout(250);
-    record("A_share_enabled_after_select", !(await shareBtn.isDisabled()), "share", "usability", "A");
+    const shareBtn = staff.getByTestId("inventory-share");
+    await shareBtn.waitFor({ state: "visible", timeout: 30_000 });
+    record(
+      "A_share_inventory_single_control",
+      (await staff.getByRole("button", { name: /^Share to view$/i }).count()) === 0
+        && (await staff.getByRole("button", { name: /^Share for selection$/i }).count()) === 0
+        && (await shareBtn.isEnabled()),
+      "Share inventory only",
+      "usability",
+      "A",
+    );
 
     await shareBtn.click();
-    await staff.waitForTimeout(5000);
+    // Share runs notify (portal session + Resend) before the server action returns —
+    // a fixed 5s wait races the persist. Poll DB until select+shared (or timeout).
+    let invShared: { status: string; collaboration_mode: string } | null = null;
+    for (let i = 0; i < 40; i++) {
+      const { data } = await admin
+        .from("event_inventory")
+        .select("status,collaboration_mode")
+        .eq("id", inv.id)
+        .single();
+      invShared = data;
+      if (data?.collaboration_mode === "select" && data?.status === "shared") break;
+      await staff.waitForTimeout(500);
+    }
     await staff.screenshot({ path: `${OUT}/shots/A-after-share-1280.png`, fullPage: true });
-
-    const { data: invShared } = await admin
-      .from("event_inventory")
-      .select("status,collaboration_mode")
-      .eq("id", inv.id)
-      .single();
     record(
       "A_share_persisted_select_mode",
       invShared?.collaboration_mode === "select" && invShared?.status === "shared",
@@ -476,7 +490,16 @@ async function main() {
     await couple.goto(invUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await couple.waitForTimeout(1500);
     await passLegal(couple);
-    await couple.waitForTimeout(1500);
+    // Portal Inventory can stay on "Loading…" until the shared row is readable — wait for real content.
+    for (let i = 0; i < 40; i++) {
+      const t = await couple.locator("body").innerText().catch(() => "");
+      if (/Dance Floor|DJ Table|Submit selections|inventory-submit/i.test(t) && !/^[\s\S]*Loading…\s*$/m.test(t.slice(0, 80))) {
+        if (!/Loading…/.test(t) || /Dance Floor|DJ Table/.test(t)) break;
+      }
+      if (/Dance Floor|DJ Table/.test(t)) break;
+      await couple.waitForTimeout(500);
+    }
+    await couple.waitForTimeout(800);
     const coupleBody = await couple.locator("body").innerText();
     record(
       "A_link_opens_inventory_not_invoice",
@@ -498,7 +521,8 @@ async function main() {
       await saveDraft.first().click({ force: true }).catch(() => undefined);
       await couple.waitForTimeout(1200);
     }
-    const submit = couple.getByTestId("inventory-submit").or(couple.getByRole("button", { name: /Submit/i }));
+    const submit = couple.getByTestId("inventory-submit").or(couple.getByRole("button", { name: /Submit selections|Submit/i }));
+    for (let i = 0; i < 30 && (await submit.count()) === 0; i++) await couple.waitForTimeout(500);
     record("A_submit_control_present", (await submit.count()) > 0, "submit", "usability", "A");
     await submit.first().click({ force: true });
     await couple.waitForTimeout(3000);
@@ -526,20 +550,38 @@ async function main() {
       .or(staff.getByRole("button", { name: /Confirm selections/i }))
       .first()
       .click({ force: true });
-    await staff.waitForTimeout(3000);
-    const { data: invConfirmed } = await admin.from("event_inventory").select("status").eq("id", inv.id).single();
+    let invConfirmed: { status: string } | null = null;
+    for (let i = 0; i < 40; i++) {
+      const { data } = await admin.from("event_inventory").select("status").eq("id", inv.id).single();
+      invConfirmed = data;
+      if (data?.status === "confirmed") break;
+      await staff.waitForTimeout(400);
+    }
     record("A_confirm_via_ui", invConfirmed?.status === "confirmed", JSON.stringify(invConfirmed), "persisted", "A");
 
-    await staff.getByTestId("inventory-finalize")
+    // Confirm's runLifecycle holds lifecyclePending (disables Finalize) until refresh finishes.
+    // force:true on a disabled Finalize is a no-op — wait until enabled, then poll persist.
+    const finalizeBtn = staff.getByTestId("inventory-finalize")
       .or(staff.getByRole("button", { name: /^Finalize$/i }))
-      .first()
-      .click({ force: true });
-    await staff.waitForTimeout(4000);
-    const { data: invFinal } = await admin
-      .from("event_inventory")
-      .select("status,finalized_at")
-      .eq("id", inv.id)
-      .single();
+      .first();
+    for (let i = 0; i < 60; i++) {
+      const visible = await finalizeBtn.isVisible().catch(() => false);
+      const disabled = visible ? await finalizeBtn.isDisabled().catch(() => true) : true;
+      if (visible && !disabled) break;
+      await staff.waitForTimeout(500);
+    }
+    await finalizeBtn.click({ force: true });
+    let invFinal: { status: string; finalized_at: string | null } | null = null;
+    for (let i = 0; i < 60; i++) {
+      const { data } = await admin
+        .from("event_inventory")
+        .select("status,finalized_at")
+        .eq("id", inv.id)
+        .single();
+      invFinal = data;
+      if (data?.status === "finalized" && data.finalized_at) break;
+      await staff.waitForTimeout(500);
+    }
     record(
       "A_finalize_locked",
       invFinal?.status === "finalized" && Boolean(invFinal.finalized_at),
@@ -927,7 +969,7 @@ async function main() {
       if (data?.client_selectable) break;
       await staff.waitForTimeout(300);
     }
-    await staff.getByTestId("inventory-share-for-selection").click();
+    await staff.getByTestId("inventory-share").click();
     await staff.waitForTimeout(3500);
 
     // Prefer the token from the share email link when present; else the session we created.

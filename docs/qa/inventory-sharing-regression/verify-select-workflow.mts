@@ -1,5 +1,5 @@
 /**
- * Inventory Select → Share for selection — real Sandbox browser workflow.
+ * Inventory Select → Share inventory (document-driven) — real Sandbox browser workflow.
  * NO database fallback for Select. Must prove UI click enables Share.
  *
  * EXPECTED_SHA=<sha> npx tsx docs/qa/inventory-sharing-regression/verify-select-workflow.mts
@@ -130,14 +130,14 @@ async function openInventory(page: {
   await page.evaluate(() => {
     window.location.hash = "inventory";
     document
-      .querySelector('[data-testid="inventory-share-for-selection"]')
+      .querySelector('[data-testid="inventory-share"]')
       ?.scrollIntoView({ block: "center" });
   });
   await page.waitForTimeout(800);
   // Share CTAs hide after couple submit (status=submitted → Confirm/Request changes).
   const shareOrConfirm = page
-    .getByTestId("inventory-share-for-selection")
-    .or(page.getByRole("button", { name: /Confirm selections|Request changes|Share to view/i }));
+    .getByTestId("inventory-share")
+    .or(page.getByRole("button", { name: /Confirm selections|Request changes|Share inventory/i }));
   await shareOrConfirm.first().waitFor({ state: "visible", timeout: 60_000 });
 }
 
@@ -179,13 +179,22 @@ async function main() {
     await openInventory(staff);
     await staff.screenshot({ path: `${OUT}/shots/select-workflow-before-1280.png`, fullPage: true });
 
-    const share = staff.getByTestId("inventory-share-for-selection");
-    const disabledBefore = await share.isDisabled();
-    const reasonBefore = (await staff.getByTestId("inventory-share-selection-disabled-reason").count()) > 0;
+    const share = staff.getByTestId("inventory-share");
+    const shareEnabledAlways = await share.isEnabled();
+    const reviewHint = (await staff.getByTestId("inventory-share-review-only-hint").count()) > 0;
     record(
-      "share_disabled_when_nothing_selectable",
-      disabledBefore && reasonBefore,
-      `disabled=${disabledBefore} reason=${reasonBefore}`,
+      "share_inventory_enabled_for_review_only",
+      shareEnabledAlways && reviewHint,
+      `enabled=${shareEnabledAlways} reviewHint=${reviewHint}`,
+      "usability",
+    );
+    record(
+      "obsolete_dual_share_controls_absent",
+      (await staff.getByTestId("inventory-share-to-view").count()) === 0
+        && (await staff.getByTestId("inventory-share-for-selection").count()) === 0
+        && !(await staff.getByRole("button", { name: /^Share to view$/i }).count())
+        && !(await staff.getByRole("button", { name: /^Share for selection$/i }).count()),
+      "no Share to view / Share for selection",
       "usability",
     );
 
@@ -193,19 +202,20 @@ async function main() {
     record("dance_select_control_present", (await danceToggle.count()) === 1, "toggle", "usability");
     await danceToggle.click({ force: true });
 
-    // CRITICAL: Share must enable from UI alone (optimistic Select) — no DB fallback
-    let shareEnabled = !(await share.isDisabled());
-    for (let i = 0; i < 20 && !shareEnabled; i++) {
+    // After Select, UI should show selection-ready hint (document drives mode)
+    let selectionReady = (await staff.getByTestId("inventory-share-selection-ready").count()) > 0;
+    for (let i = 0; i < 20 && !selectionReady; i++) {
       await staff.waitForTimeout(250);
-      shareEnabled = !(await share.isDisabled());
+      selectionReady = (await staff.getByTestId("inventory-share-selection-ready").count()) > 0;
     }
     const toggleText = await danceToggle.innerText();
     record(
-      "share_enabled_after_ui_select_no_db_fallback",
-      shareEnabled,
-      `disabled=${await share.isDisabled()} toggle=${toggleText}`,
+      "selection_ready_hint_after_ui_select",
+      selectionReady && (await share.isEnabled()),
+      `ready=${selectionReady} disabled=${await share.isDisabled()} toggle=${toggleText}`,
       "usability",
     );
+    const shareEnabled = await share.isEnabled();
 
     let danceAfter: { id: string; client_selectable: boolean | null; max_quantity: number | null } | null = null;
     for (let i = 0; i < 20; i++) {
@@ -235,7 +245,7 @@ async function main() {
 
     // Reload — must stay enabled from persisted props (revalidation path)
     await openInventory(staff);
-    const shareAfterReload = !(await staff.getByTestId("inventory-share-for-selection").isDisabled());
+    const shareAfterReload = !(await staff.getByTestId("inventory-share").isDisabled());
     const { data: danceReload } = await admin
       .from("event_inventory_items")
       .select("client_selectable")
@@ -269,14 +279,14 @@ async function main() {
     );
     await staff.screenshot({ path: `${OUT}/shots/select-workflow-both-selected-1280.png`, fullPage: true });
 
-    // Share for selection via UI
+    // Share inventory via UI (document has selectable items → select mode)
     const sessionsBefore = await admin
       .from("client_portal_sessions")
       .select("access_token,access_level,label")
       .eq("client_id", CLIENT);
     const beforeTokens = new Set((sessionsBefore.data ?? []).map((s) => s.access_token));
 
-    await staff.getByTestId("inventory-share-for-selection").click();
+    await staff.getByTestId("inventory-share").click();
     await staff.waitForTimeout(4000);
     await staff.screenshot({ path: `${OUT}/shots/select-workflow-after-share-1280.png`, fullPage: true });
 
@@ -377,9 +387,15 @@ async function main() {
       await staff.waitForTimeout(2500);
     }
     await openInventory(staff);
-    const shareToView = staff.getByTestId("inventory-share-to-view");
-    if (await shareToView.count()) {
-      await shareToView.click();
+    // Clear Select flags then re-share → document-driven view mode
+    await admin
+      .from("event_inventory_items")
+      .update({ client_selectable: false, max_quantity: null })
+      .in("id", [DANCE, DJ]);
+    await openInventory(staff);
+    const shareAgain = staff.getByTestId("inventory-share");
+    if (await shareAgain.count()) {
+      await shareAgain.click();
       await staff.waitForTimeout(2500);
     }
     const { data: afterView } = await admin
@@ -388,7 +404,7 @@ async function main() {
       .eq("id", INV)
       .single();
     record(
-      "share_to_view_sets_view_mode",
+      "share_without_selectables_sets_view_mode",
       afterView?.collaboration_mode === "view"
         || afterView?.status === "changes_requested"
         || afterView?.status === "shared",
@@ -417,22 +433,22 @@ async function main() {
     const mobileText = await staff.locator("body").innerText();
     record(
       "mobile_390_select_share_controls",
-      /Share for selection|Select|Dance Floor/i.test(mobileText),
+      /Share inventory|Select|Dance Floor/i.test(mobileText),
       mobileText.slice(0, 300),
       "usability",
     );
 
-    // Explanation matches rule when cleared
+    // Review-only hint when nothing selectable; Share inventory still enabled
     await admin
       .from("event_inventory_items")
       .update({ client_selectable: false, max_quantity: null })
       .in("id", [DANCE, DJ]);
     await openInventory(staff);
     record(
-      "disabled_reason_matches_eligibility_rule",
-      (await staff.getByTestId("inventory-share-selection-disabled-reason").count()) > 0
-        && (await staff.getByTestId("inventory-share-for-selection").isDisabled()),
-      "reason visible when none selectable",
+      "review_only_hint_when_none_selectable",
+      (await staff.getByTestId("inventory-share-review-only-hint").count()) > 0
+        && (await staff.getByTestId("inventory-share").isEnabled()),
+      "review-only hint; Share inventory still sendable",
       "usability",
     );
   } catch (err) {

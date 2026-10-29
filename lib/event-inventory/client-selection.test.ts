@@ -46,7 +46,8 @@ describe("Event Inventory client selection (Workflow C)", () => {
 
   it("venue service enforces select share, confirm, and finalize gates", () => {
     assert.match(service, /collaborationMode/);
-    assert.match(service, /Mark at least one additional item/);
+    assert.match(service, /resolveInventoryShareMode/);
+    assert.match(service, /INVENTORY_SELECT_SHARE_CONFIG_ERROR/);
     assert.match(service, /Included items stay informational/);
     assert.match(service, /confirmInventorySelections/);
     assert.match(service, /requestInventorySelectionChanges/);
@@ -57,23 +58,27 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(service, /inventoryReviewUrl/);
   });
 
-  it("venue actions and panel expose share-for-selection and confirm", () => {
+  it("venue actions and panel expose unified Share inventory and confirm", () => {
     assert.match(actions, /shareEventInventoryAction/);
     assert.match(actions, /confirmInventorySelectionsAction/);
     assert.match(actions, /setInventoryItemClientSelectableAction/);
     assert.match(actions, /revalidatePath\(`\/clients\/\$\{data\.client_id\}`\)/);
     assert.match(actions, /revalidatePath\(`\/events\/\$\{eventId\}`\)/);
-    assert.match(panel, /Share for selection/);
-    assert.match(panel, /Share to view/);
-    assert.match(panel, /inventory-share-selection-disabled-reason/);
+    assert.match(panel, /Share inventory/);
+    assert.match(panel, /data-testid="inventory-share"/);
+    assert.doesNotMatch(panel, /Share for selection/);
+    assert.doesNotMatch(panel, /Share to view/);
     assert.match(panel, /Confirm selections/);
     assert.match(panel, /Request changes/);
     assert.match(panel, /runLifecycle/);
     assert.match(panel, /router\.refresh\(\)/);
     assert.match(panel, /selectableOverrides/);
-    // Select must not use startLifecycle — that sets lifecyclePending and keeps Share disabled.
+    // Select must not use startLifecycle — that sets lifecyclePending during the toggle.
     assert.match(panel, /Do not use runLifecycle\/startTransition here/);
     assert.match(repo, /Could not update selection flag for this inventory item/);
+    // Same 0-row RLS guard on status / collaboration_mode — silent no-ops look like share succeeded (email) while draft remains.
+    assert.match(repo, /Could not update Event Inventory status/);
+    assert.match(repo, /Could not update Event Inventory collaboration mode/);
   });
 
   it("portal APIs wire save/submit RPCs and return collaboration fields", () => {

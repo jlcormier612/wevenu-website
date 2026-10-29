@@ -5,6 +5,10 @@ import {
   inventoryHandoffBillableTotal,
 } from "@/lib/event-inventory/handoff";
 import * as repo from "@/lib/event-inventory/repository";
+import {
+  INVENTORY_SELECT_SHARE_CONFIG_ERROR,
+  resolveInventoryShareMode,
+} from "@/lib/event-inventory/share-mode";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
   EventInventoryActionResult, EventInventoryWithDetails, InventoryItemInput, InventoryTemplateWithItems,
@@ -121,6 +125,13 @@ export async function replaceEventInventoryFromTemplate(
   return result as EnsureEventInventoryResult | EventInventoryActionResult;
 }
 
+/**
+ * Share Inventory with the couple. One product action: client experience is
+ * derived from the document (any Additional item marked Select → selection UX;
+ * otherwise review-only). Callers may still pass collaborationMode for
+ * explicit validation (e.g. tests); forcing "select" with zero selectable
+ * items returns a configuration error instead of silently downgrading.
+ */
 export async function shareEventInventory(
   eventInventoryId: string,
   opts?: { collaborationMode?: "view" | "select" },
@@ -131,16 +142,16 @@ export async function shareEventInventory(
     if (inv.status === "finalized") {
       return { ok: false, message: "Reopen this inventory before sharing again." } as EventInventoryActionResult;
     }
-    const mode = opts?.collaborationMode ?? inv.collaborationMode ?? "view";
-    if (mode === "select") {
-      const details = await repo.getEventInventoryByEvent(supabase, venueId, inv.eventId);
-      const selectable = (details?.items ?? []).filter((i) => i.clientSelectable);
-      if (selectable.length === 0) {
-        return {
-          ok: false,
-          message: "Mark at least one additional item as “Couple can select” before sharing for selection.",
-        } as EventInventoryActionResult;
-      }
+    const details = await repo.getEventInventoryByEvent(supabase, venueId, inv.eventId);
+    const items = details?.items ?? [];
+    const selectable = items.filter((i) => i.clientSelectable);
+    const resolved = resolveInventoryShareMode(items);
+    const mode = opts?.collaborationMode ?? resolved;
+    if (mode === "select" && selectable.length === 0) {
+      return {
+        ok: false,
+        message: INVENTORY_SELECT_SHARE_CONFIG_ERROR,
+      } as EventInventoryActionResult;
     }
     await repo.setCollaborationMode(supabase, venueId, eventInventoryId, mode);
     await repo.setStatus(supabase, venueId, eventInventoryId, "shared");
@@ -150,8 +161,8 @@ export async function shareEventInventory(
       eventInventoryId,
       "shared",
       mode === "select"
-        ? "Shared for couple selection"
-        : "Shared with client — visible in their portal (read-only)",
+        ? "Shared inventory — couple may select and submit"
+        : "Shared inventory — couple can review (read-only)",
     );
     await notifyInventoryShared(supabase, venueId, inv.eventId, mode);
     return { ok: true } as EventInventoryActionResult;
@@ -281,8 +292,8 @@ async function notifyInventoryShared(
     const portalUrl = inventoryReviewUrl(publicAppOrigin(), session.accessToken);
     const body =
       mode === "select"
-        ? `We've shared inventory choices for ${event.name}. Please open Inventory, choose any additional items we marked for selection, and submit.\n\n${portalUrl}`
-        : `We've shared your event inventory for ${event.name}. Open the Inventory tab to review what is included (read-only).\n\n${portalUrl}`;
+        ? `We've shared inventory for ${event.name}. Open the Inventory document, make your choices on the items offered for selection, and submit.\n\n${portalUrl}`
+        : `We've shared inventory for ${event.name}. Open the Inventory document to review what is included (read-only).\n\n${portalUrl}`;
     const { sendEmail } = await import("@/lib/email/send");
     const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
     const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
