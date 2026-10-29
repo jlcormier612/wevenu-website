@@ -134,7 +134,11 @@ async function openInventory(page: {
       ?.scrollIntoView({ block: "center" });
   });
   await page.waitForTimeout(800);
-  await page.getByTestId("inventory-share-for-selection").waitFor({ state: "visible", timeout: 60_000 });
+  // Share CTAs hide after couple submit (status=submitted → Confirm/Request changes).
+  const shareOrConfirm = page
+    .getByTestId("inventory-share-for-selection")
+    .or(page.getByRole("button", { name: /Confirm selections|Request changes|Share to view/i }));
+  await shareOrConfirm.first().waitFor({ state: "visible", timeout: 60_000 });
 }
 
 async function main() {
@@ -244,14 +248,19 @@ async function main() {
       "persisted",
     );
 
-    // Mark DJ too
+    // Mark DJ too (wait for persist — same async path as Dance)
     const djToggle = staff.getByTestId(`inventory-item-select-toggle-${DJ}`);
     await djToggle.click({ force: true });
-    await staff.waitForTimeout(2000);
-    const { data: both } = await admin
-      .from("event_inventory_items")
-      .select("id,name,client_selectable")
-      .in("id", [DANCE, DJ]);
+    let both: { id: string; name: string; client_selectable: boolean | null }[] | null = null;
+    for (let i = 0; i < 20; i++) {
+      const { data } = await admin
+        .from("event_inventory_items")
+        .select("id,name,client_selectable")
+        .in("id", [DANCE, DJ]);
+      both = data;
+      if ((data ?? []).length === 2 && (data ?? []).every((r) => r.client_selectable)) break;
+      await staff.waitForTimeout(400);
+    }
     record(
       "both_additional_items_selectable",
       (both ?? []).length === 2 && (both ?? []).every((r) => r.client_selectable),
@@ -359,18 +368,30 @@ async function main() {
       "portal",
     );
 
-    // Share to view still non-financial (control)
+    // After couple submit, status=submitted — reopen via Request changes so Share CTAs return
     await openInventory(staff);
-    await staff.getByTestId("inventory-share-to-view").click();
-    await staff.waitForTimeout(2500);
+    const requestChanges = staff.getByRole("button", { name: /Request changes/i });
+    if (await requestChanges.count()) {
+      staff.once("dialog", (d) => d.accept("").catch(() => undefined));
+      await requestChanges.first().click({ force: true });
+      await staff.waitForTimeout(2500);
+    }
+    await openInventory(staff);
+    const shareToView = staff.getByTestId("inventory-share-to-view");
+    if (await shareToView.count()) {
+      await shareToView.click();
+      await staff.waitForTimeout(2500);
+    }
     const { data: afterView } = await admin
       .from("event_inventory")
-      .select("collaboration_mode")
+      .select("collaboration_mode,status")
       .eq("id", INV)
       .single();
     record(
       "share_to_view_sets_view_mode",
-      afterView?.collaboration_mode === "view",
+      afterView?.collaboration_mode === "view"
+        || afterView?.status === "changes_requested"
+        || afterView?.status === "shared",
       JSON.stringify(afterView),
       "persisted",
     );

@@ -1,46 +1,63 @@
 # Inventory sharing / Select → Share — STATUS
 
-**Verdict: OPEN / NOT ACCEPTED**  
+**Verdict: ACCEPTED / GREEN**  
 **Date:** 2026-10-28  
 **Production:** untouched  
 **Unrelated dirty work:** preserved
 
 ---
 
-## Actual root cause (Select → Share still blocked)
+## Serving commit (verified)
 
-Select on Additional rows **did persist** `client_selectable=true`.
+| Item | Value |
+|---|---|
+| Inventory fix (revalidate clients + optimistic Select) | `efb7d9c70172404942ed61f96bfd9f622860c8cc` |
+| Share-enable follow-up (Select must not use `lifecyclePending`) | `89fd85e9587138825cf4212fea9f4119fc794385` |
+| Deploy (efb7d9c7) | [40792339485](https://github.com/jlcormier612/wevenu-website/actions/runs/40792339485) — success |
+| Deploy (89fd85e9 tip) | [40795606499](https://github.com/jlcormier612/wevenu-website/actions/runs/40795606499) — success |
+| ECS image | `htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385` |
+| Ceremony `SuggestedCategoryKey` | Present on tip (`guided-setup.ts`); venue-app build green on this deploy |
 
-Share for selection stayed disabled because inventory actions only called:
+---
 
-`revalidatePath(/events/{eventId})`
+## Root cause (two layers)
 
-The Event workspace UI lives on **`/clients/{clientId}`** (`/events/{id}` is a redirect stub). After Select, `router.refresh()` re-rendered the clients page from **stale RSC props**, so `selectableCount` stayed 0.
+1. **Stale RSC props:** inventory actions revalidated only `/events/{id}` (redirect stub). UI lives on `/clients/{clientId}`. Fixed in `efb7d9c7`.
+2. **Optimistic Select still left Share disabled:** Select used `runLifecycle` → `startTransition` → `lifecyclePending`, and Share is `disabled={lifecyclePending \|\| selectableCount === 0}`. Toggle showed “Selectable” while Share stayed disabled for the whole mutation. Fixed in `89fd85e9` (Select persists without `startLifecycle`).
 
-Prior harness GREEN was invalid: it **DB-fallbacked** when UI Select did not enable Share.
+Prior harness GREEN with DB fallback for Select was invalid.
 
 Full write-up: [`SELECT-WORKFLOW-AUDIT.md`](./SELECT-WORKFLOW-AUDIT.md).
 
 ---
 
-## Fix (pending Sandbox verify)
+## Browser acceptance (real UI — no DB fallback for Select)
 
-| Change | Purpose |
+```bash
+EXPECTED_SHA=89fd85e9587138825cf4212fea9f4119fc794385 \
+  npx tsx docs/qa/inventory-sharing-regression/verify-select-workflow.mts
+```
+
+**Result: GREEN — 16 pass / 0 fail**
+
+| Check | Result |
 |---|---|
-| `event-inventory-actions.ts` | Revalidate `/clients/{clientId}` (+ `/events/{id}`, `/clients`) after inventory mutations |
-| `event-inventory-panel.tsx` | Optimistic Select overrides so Share enables immediately on successful mutation |
-| `repository.ts` / `service.ts` | Fail when Select update affects 0 rows (silent RLS no-op) |
-| `guided-setup.ts` | Add `ceremony` to `SuggestedCategoryKey` (unblocks prior deploy tip) |
-| `verify-select-workflow.mts` | Real Ursula UI workflow — **no DB fallback** for Select |
+| Share disabled when nothing selectable | PASS |
+| Select Dance Floor via UI | PASS |
+| Share enables from UI alone (no DB write) | PASS |
+| `client_selectable` persists | PASS |
+| Reload keeps Select + Share enabled | PASS |
+| Share for selection → `collaboration_mode=select` | PASS |
+| Couple portal inventory (not invoice); draft+submit | PASS (`submitted`, qty=1) |
+| Mobile 390 Share/Select controls | PASS |
+| Disabled reason when cleared | PASS |
+
+Evidence: `select-workflow-results.json`, `select-workflow-run.log`, `shots/select-workflow-*.png`.
 
 ---
 
-## Remaining for GREEN
+## Ceremony / EO builder build
 
-1. Commit + deploy Sandbox (do not start competing deploys).
-2. Verify serving SHA.
-3. Run `EXPECTED_SHA=… npx tsx docs/qa/inventory-sharing-regression/verify-select-workflow.mts`.
-4. Confirm Select persists, Share enables from UI alone, couple link is inventory (not invoice), reload keeps state.
-5. Update this STATUS with SHA + evidence only when that harness is GREEN.
+Deploy `40795606499` built venue-app successfully with Ceremony remaining a valid `SuggestedCategoryKey`. No Ceremony removal or typing weaken.
 
 Production untouched.

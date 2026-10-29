@@ -1,0 +1,131 @@
+{
+  "checks": [
+    {
+      "name": "serving_sha",
+      "pass": true,
+      "detail": "expected=89fd85e9587138825cf4212fea9f4119fc794385 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385",
+      "kind": "deploy"
+    },
+    {
+      "name": "share_disabled_when_nothing_selectable",
+      "pass": true,
+      "detail": "disabled=true reason=true",
+      "kind": "usability"
+    },
+    {
+      "name": "dance_select_control_present",
+      "pass": true,
+      "detail": "toggle",
+      "kind": "usability"
+    },
+    {
+      "name": "share_enabled_after_ui_select_no_db_fallback",
+      "pass": true,
+      "detail": "disabled=false toggle=Selectable",
+      "kind": "usability"
+    },
+    {
+      "name": "dance_select_persists_client_selectable",
+      "pass": true,
+      "detail": "{\"id\":\"f1c2c39c-df1c-4e36-a475-618e2fc4ea8c\",\"client_selectable\":true,\"max_quantity\":1}",
+      "kind": "persisted"
+    },
+    {
+      "name": "row_shows_selectable_state",
+      "pass": true,
+      "detail": "Selectable",
+      "kind": "usability"
+    },
+    {
+      "name": "reload_keeps_select_and_share_enabled",
+      "pass": true,
+      "detail": "shareEnabled=true db={\"client_selectable\":true}",
+      "kind": "persisted"
+    },
+    {
+      "name": "both_additional_items_selectable",
+      "pass": true,
+      "detail": "[{\"id\":\"53bb640e-c404-406d-a086-9ce904b1b1cc\",\"name\":\"DJ / Band Table\",\"client_selectable\":true},{\"id\":\"f1c2c39c-df1c-4e36-a475-618e2fc4ea8c\",\"name\":\"Dance Floor\",\"client_selectable\":true}]",
+      "kind": "persisted"
+    },
+    {
+      "name": "share_sets_collaboration_select",
+      "pass": true,
+      "detail": "{\"collaboration_mode\":\"select\",\"status\":\"shared\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "share_creates_or_uses_non_financial_session",
+      "pass": true,
+      "detail": "{\"access_token\":\"c67b6ff292258ba2be535bc964af8b9150540c8f8ef82297eec876f6adc56351\",\"access_level\":\"couple\",\"label\":\"Couple\",\"created_at\":\"2026-10-29T00:35:24.108729+00:00\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "couple_link_is_inventory_not_invoice",
+      "pass": true,
+      "detail": "title=Ursula & Brian — Meadowbrook Valley Venue body=Ursula & Brian\n\n·\n\nMeadowbrook Valley Venue\n\nOct 5, 2028\n\nExport my data\n9\n🏠\nHome\n✅\nTasks\n3\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n🪑\nInventory\n1\n💳\nPayments\n💬\nMessages\n9+\n🏛️\nGuide\n🤝\nVendors\nYour inventory choices\n\nView the items your venue has listed for your event, including package-included items and available add-ons.\n\nSave a draft anytime. Submit when you’re ready — your venue will review bef",
+      "kind": "portal"
+    },
+    {
+      "name": "couple_selection_persisted_or_portal_usable",
+      "pass": true,
+      "detail": "{\"danceSubmitted\":{\"client_draft_quantity\":1,\"client_submitted_quantity\":1,\"client_selectable\":true},\"invStatus\":{\"status\":\"submitted\",\"collaboration_mode\":\"select\"}}",
+      "kind": "portal"
+    },
+    {
+      "name": "share_to_view_sets_view_mode",
+      "pass": true,
+      "detail": "{\"collaboration_mode\":\"view\",\"status\":\"shared\"}",
+      "kind": "persisted"
+    },
+    {
+      "name": "bad_token_no_inventory_leak",
+      "pass": true,
+      "detail": "💗\n\nThis link has expired or is no longer active.\n\nPlease contact your venue coordinator for an updated link to your wedding workspace.",
+      "kind": "security"
+    },
+    {
+      "name": "mobile_390_select_share_controls",
+      "pass": true,
+      "detail": "Meadowbrook Valley Venue\nJ\nDelete\nBookings\nUB\nUrsula Meadows & Brian Valley\nView original lead\nBooked\nCancel event\nEdit event\nDay-of Sheet\n\nOctober 5, 2028\n\nThursday · In 707 days\n\nBooked\nEdit schedule\n\nDay-of schedule\n\n4:00 PM – 10:00 PM\n\nGuests\n\n150 guests\n\nTHURSDAY, OCT 5, 2028\n\nCocktail Hour\n\n4:",
+      "kind": "usability"
+    },
+    {
+      "name": "disabled_reason_matches_eligibility_rule",
+      "pass": true,
+      "detail": "reason visible when none selectable",
+      "kind": "usability"
+    }
+  ],
+  "failed": 0,
+  "persisted": {
+    "run": "INVSELMVSTVYJ8",
+    "expectedSha": "89fd85e9587138825cf4212fea9f4119fc794385",
+    "eventId": "971849b2-2223-40e8-bb38-f66fb7c57a2b",
+    "clientId": "24f1a470-0323-4bbc-905e-2b09c39420ef",
+    "inventoryId": "448d4f3a-66a1-4c3c-8a78-a822a2bf3cea",
+    "danceId": "f1c2c39c-df1c-4e36-a475-618e2fc4ea8c",
+    "djId": "53bb640e-c404-406d-a086-9ce904b1b1cc",
+    "afterDance": {
+      "danceAfter": {
+        "id": "f1c2c39c-df1c-4e36-a475-618e2fc4ea8c",
+        "client_selectable": true,
+        "max_quantity": 1
+      },
+      "shareEnabled": true,
+      "toggleText": "Selectable"
+    },
+    "inventoryUrl": "https://app.sandbox.hellotocheers.com/p/c67b6ff292258ba2be535bc964af8b9150540c8f8ef82297eec876f6adc56351?view=inventory#inventory",
+    "coupleSubmit": {
+      "danceSubmitted": {
+        "client_draft_quantity": 1,
+        "client_submitted_quantity": 1,
+        "client_selectable": true
+      },
+      "invStatus": {
+        "status": "submitted",
+        "collaboration_mode": "select"
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "run": "INVSELMVSTVYJ8",
+  "expectedSha": "89fd85e9587138825cf4212fea9f4119fc794385",
+  "eventId": "971849b2-2223-40e8-bb38-f66fb7c57a2b",
+  "clientId": "24f1a470-0323-4bbc-905e-2b09c39420ef",
+  "inventoryId": "448d4f3a-66a1-4c3c-8a78-a822a2bf3cea",
+  "danceId": "f1c2c39c-df1c-4e36-a475-618e2fc4ea8c",
+  "djId": "53bb640e-c404-406d-a086-9ce904b1b1cc",
+  "afterDance": {
+    "danceAfter": {
+      "id": "f1c2c39c-df1c-4e36-a475-618e2fc4ea8c",
+      "client_selectable": true,
+      "max_quantity": 1
+    },
+    "shareEnabled": true,
+    "toggleText": "Selectable"
+  },
+  "inventoryUrl": "https://app.sandbox.hellotocheers.com/p/c67b6ff292258ba2be535bc964af8b9150540c8f8ef82297eec876f6adc56351?view=inventory#inventory",
+  "coupleSubmit": {
+    "danceSubmitted": {
+      "client_draft_quantity": 1,
+      "client_submitted_quantity": 1,
+      "client_selectable": true
+    },
+    "invStatus": {
+      "status": "submitted",
+      "collaboration_mode": "select"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # Inventory Select → Share workflow — forensic audit
 
 **Date:** 2026-10-28  
-**Status:** Root cause confirmed — fix follows  
+**Status:** ACCEPTED / GREEN on Sandbox tip `89fd85e9`  
 **Fixture:** Ursula Meadows (`971849b2-…`) / Meadowbrook (`05f16a15-…`)  
 **Inventory:** `448d4f3a-…` — Dance Floor `$150`, DJ / Band Table `$200` (`is_included=false`, `client_selectable=false` before click)  
 **Production:** untouched
