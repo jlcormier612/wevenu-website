@@ -120,6 +120,9 @@ describe("PLAN-02/03 planning capabilities", () => {
     assert.equal(isPortalSectionEnabledByCapabilities("seating", ALL_OFF), false);
     assert.equal(isPortalSectionEnabledByCapabilities("vendors", ALL_OFF), false);
     assert.equal(isPortalSectionEnabledByCapabilities("tasks", ALL_OFF), true);
+    // Commercial document workflows stay available regardless of planning toggles.
+    assert.equal(isPortalSectionEnabledByCapabilities("inventory", ALL_OFF), true);
+    assert.equal(isPortalSectionEnabledByCapabilities("event-order", ALL_OFF), true);
   });
 
   it("Timeline OFF → Home must not render Timeline CTA / TimelineCard", async () => {

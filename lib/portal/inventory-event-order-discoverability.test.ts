@@ -76,11 +76,15 @@ describe("Inventory & Event Order portal discoverability (P2-D Documents-first)"
     assert.match(invView, /canEdit/);
   });
 
-  it("planning capabilities still gate inventory and event_order sections", () => {
+  it("inventory and event_order portal sections are always on (not Portal Setup gates)", () => {
     assert.match(caps, /case "inventory"/);
     assert.match(caps, /case "event-order"/);
-    assert.match(caps, /return caps\.inventory/);
-    assert.match(caps, /return caps\.eventOrder/);
+    assert.match(caps, /COMMERCIAL_PORTAL_ALWAYS_ON/);
+    // Portal entry must not depend on planning capability toggles.
+    const inventoryCase = caps.slice(caps.indexOf('case "inventory"'), caps.indexOf('case "event-order"'));
+    assert.match(inventoryCase, /return true/);
+    const eoCase = caps.slice(caps.indexOf('case "event-order"'), caps.indexOf('case "questionnaire"'));
+    assert.match(eoCase, /return true/);
   });
 
   it("deep links still mount sections when nav is hidden", () => {

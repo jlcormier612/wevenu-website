@@ -16,23 +16,24 @@ import { applicableSetupSteps, setupStepCapability } from "@/lib/event-setup/sta
 const read = (p: string) => readFileSync(resolve(p), "utf8");
 
 describe("venue-wide setup capability source of truth", () => {
-  it("Planning tools expose every Setup Profile–gated capability", () => {
+  it("Planning tools expose Setup Profile–gated capabilities (not commercial Inv/EO)", () => {
     const ids = PLANNING_CAPABILITY_OPTIONS.map((o) => o.id).sort();
+    // Inventory / Event Order are commercial document workflows — not Portal Setup toggles.
     assert.deepEqual(ids, [
       "checklists",
-      "event_order",
       "floor_plan",
-      "inventory",
       "questionnaires",
       "seating",
       "timeline",
       "vendors",
     ]);
+    assert.ok(!ids.includes("inventory"));
+    assert.ok(!ids.includes("event_order"));
     assert.match(read("components/settings/planning-capabilities-section.tsx"), /PLANNING_CAPABILITY_OPTIONS/);
     assert.match(read("lib/venue/service.ts"), /planning_checklists_enabled/);
-    assert.match(read("lib/venue/service.ts"), /planning_inventory_enabled/);
-    assert.match(read("lib/venue/service.ts"), /planning_event_order_enabled/);
     assert.match(read("lib/venue/service.ts"), /planning_questionnaires_enabled/);
+    // DB columns may still exist for historical rows; UI must not offer them.
+    assert.match(read("lib/playbooks/capabilities.ts"), /COMMERCIAL_PORTAL_ALWAYS_ON/);
   });
 
   it("keeps Floor plans and Seating as distinct capabilities with distinct copy", () => {
@@ -63,12 +64,13 @@ describe("venue-wide setup capability source of truth", () => {
     const inherit = read("lib/event-setup/inherit.ts");
     assert.match(inherit, /capabilitiesFromVenueRow/);
     assert.match(inherit, /caps\.checklists && profile\.decisions\.planning/);
-    assert.match(inherit, /caps\.inventory/);
-    assert.match(inherit, /caps\.eventOrder/);
     assert.match(inherit, /caps\.questionnaires/);
+    // Inventory / Event Order are never auto-created from Setup Profile inherit.
+    assert.match(inherit, /Inventory \/ Event Order are commercial/);
+    assert.doesNotMatch(inherit, /caps\.inventory &&/);
+    assert.doesNotMatch(inherit, /caps\.eventOrder &&/);
     const prepare = read("lib/event-setup/prepare-release.ts");
     assert.match(prepare, /capabilitiesFromVenue/);
-    assert.match(prepare, /caps\.inventory &&/);
     assert.match(prepare, /caps\.checklists && refs\.planningPlaybookTemplateId/);
   });
 

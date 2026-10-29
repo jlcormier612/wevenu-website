@@ -92,20 +92,6 @@ export const PLANNING_CAPABILITY_OPTIONS: {
       "Let couples discover your Vendor Network (preferred, recommended, and required classifications). Your team manages classifications in Vendor Network—not a second list in Setup Profiles. When off, Preferred Vendors is hidden from the couple’s portal (existing vendor records stay on file).",
   },
   {
-    id: "inventory",
-    key: "inventory",
-    label: "Inventory",
-    description:
-      "Event inventory templates and drafts. When on, Setup Profiles choose a starting inventory template and booking prepares the event inventory draft (not shared, not an invoice). Share, client selection, and Event Order handoff happen on the event Inventory tab. When off, Inventory is omitted from Setup Profiles and is not auto-created at booking.",
-  },
-  {
-    id: "event_order",
-    key: "eventOrder",
-    label: "Event Order",
-    description:
-      "Event Order templates and drafts. When on, Setup Profiles choose a starting Event Order template and booking prepares the Event Order draft (not an invoice or payment plan). Finalize, Share, client choices, and invoice handoff happen on the event Event Order tab. When off, Event Order is omitted from Setup Profiles and is not auto-created at booking.",
-  },
-  {
     id: "questionnaires",
     key: "questionnaires",
     label: "Questionnaires",
@@ -113,6 +99,14 @@ export const PLANNING_CAPABILITY_OPTIONS: {
       "Optional questionnaires for your standard process. When on, Setup Profiles may select questionnaire templates prepared as drafts at booking. Delivery and sending stay in the questionnaire/communication workflow—never sent by portal release or invitation. When off, questionnaires do not create Setup Profile gaps or block release.",
   },
 ];
+
+/**
+ * Inventory and Event Order are commercial document workflows — not Portal Setup
+ * toggles. They remain on VenuePlanningCapabilities for historical DB columns /
+ * Setup Profile snapshots, but are never offered in Settings planning UI and
+ * must not gate portal entry points.
+ */
+export const COMMERCIAL_PORTAL_ALWAYS_ON = ["inventory", "event_order"] as const;
 
 const TRIGGER_TO_CAPABILITY: Record<string, PlanningCapabilityId> = {
   timeline_created: "timeline",
@@ -215,10 +209,11 @@ export function isPortalSectionEnabledByCapabilities(
     case "vendors":
       return caps.vendors;
     case "inventory":
-      return caps.inventory;
+      // Commercial document lifecycle — not gated by Portal Setup toggles.
+      return true;
     case "event-order":
     case "event_order":
-      return caps.eventOrder;
+      return true;
     case "questionnaire":
     case "questionnaires":
       return caps.questionnaires;

@@ -348,6 +348,33 @@ export async function finalizeEventInventory(eventInventoryId: string): Promise<
       const { triggerAutoComplete } = await import("@/lib/playbooks/service");
       await triggerAutoComplete(supabase, venueId, inv.eventId, "inventory_finalized");
     } catch { /* non-blocking */ }
+    // Client email + portal notification after persist. Failure must not unlock.
+    try {
+      const { getEvent } = await import("@/lib/events/service");
+      const { getClient } = await import("@/lib/clients/service");
+      const { getCurrentVenue } = await import("@/lib/venue/service");
+      const { notifyInventoryFinalized } = await import("@/lib/event-inventory/finalize-notify");
+      const venue = await getCurrentVenue();
+      const event = await getEvent(inv.eventId);
+      if (venue && event?.clientId) {
+        const client = await getClient(event.clientId);
+        if (client) {
+          await notifyInventoryFinalized({
+            supabase,
+            venueId,
+            eventInventoryId,
+            eventId: inv.eventId,
+            eventName: event.name ?? "your event",
+            clientId: event.clientId,
+            clientEmail: client.email,
+            clientFirstName: client.firstName,
+            venueName: venue.name ?? "Your venue",
+            venueEmail: venue.email,
+            brand: venue,
+          });
+        }
+      }
+    } catch { /* non-blocking — finalized state already persisted */ }
     return { ok: true } as EventInventoryActionResult;
   });
   return result as EventInventoryActionResult;

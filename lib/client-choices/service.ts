@@ -531,6 +531,36 @@ export async function finalizeClientChoices(
       supabase, venueId, row.eventId, "client_choices_finalized", "client_choices", row.id,
     );
 
+    // Client email + portal notification after persist. Failure must not unlock.
+    try {
+      const { getEvent } = await import("@/lib/events/service");
+      const { getClient } = await import("@/lib/clients/service");
+      const { getCurrentVenue } = await import("@/lib/venue/service");
+      const { notifyClientChoicesFinalized } = await import("@/lib/client-choices/finalize-notify");
+      const venue = await getCurrentVenue();
+      const event = await getEvent(row.eventId);
+      const clientId = row.clientId ?? event?.clientId ?? null;
+      if (venue && clientId) {
+        const client = await getClient(clientId);
+        if (client) {
+          await notifyClientChoicesFinalized({
+            supabase,
+            venueId,
+            choicesId: row.id,
+            choicesName: row.name,
+            eventId: row.eventId,
+            eventName: event?.name ?? null,
+            clientId,
+            clientEmail: client.email,
+            clientFirstName: client.firstName,
+            venueName: venue.name ?? "Your venue",
+            venueEmail: venue.email,
+            brand: venue,
+          });
+        }
+      }
+    } catch { /* non-blocking — finalized state already persisted */ }
+
     return {
       ok: true,
       eventOrderId: eo.id,

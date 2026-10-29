@@ -20,7 +20,9 @@ import {
 type DocType =
   | "contract" | "invoice" | "upload" | "planning_guide"
   | "brochure" | "receipt" | "package" | "insurance" | "floor_plan" | "menu" | "permit"
-  | "event_order" | "client_choices" | "other";
+  | "event_order" | "event_inventory" | "client_choices" | "other";
+
+type DocumentsNavigate = (s: "questionnaire" | "event-order" | "inventory") => void;
 
 type LineItem = { id: string; description: string; quantity: number; unitPrice: number; amount: number; type: string };
 
@@ -74,6 +76,7 @@ const DOC_META: Record<DocType, { emoji: string; label: string; color: string }>
   menu:           { emoji: "🍽️", label: "Menu",           color: "bg-orange-50 text-orange-700 border-orange-100" },
   permit:         { emoji: "📜", label: "Permit",         color: "bg-gray-50 text-gray-600 border-gray-100" },
   event_order:    { emoji: "📦", label: "Event Order",    color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+  event_inventory:{ emoji: "🪑", label: "Inventory",      color: "bg-teal-50 text-teal-700 border-teal-100" },
   client_choices: { emoji: "✅", label: "Selections",     color: "bg-violet-50 text-violet-700 border-violet-100" },
   other:          { emoji: "📁", label: "File",           color: "bg-gray-50 text-gray-600 border-gray-100" },
 };
@@ -221,7 +224,7 @@ function EventOrderCard({
   onNavigate,
 }: {
   doc: CoupleDocument;
-  onNavigate?: (s: "questionnaire" | "event-order") => void;
+  onNavigate?: DocumentsNavigate;
 }) {
   const agreed = Boolean(doc.clientAgreedAt) || doc.status === "agreed";
   return (
@@ -247,6 +250,38 @@ function EventOrderCard({
       <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">
         {agreed ? "Open →" : "Review →"}
       </span>
+    </button>
+  );
+}
+
+function InventoryAgreementCard({
+  doc,
+  onNavigate,
+}: {
+  doc: CoupleDocument;
+  onNavigate?: DocumentsNavigate;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate?.("inventory")}
+      data-testid="portal-documents-inventory"
+      className="w-full text-left flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 transition-opacity hover:opacity-90"
+    >
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-teal-50 text-teal-700 border-teal-100 shrink-0">🪑</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-heading truncate">{doc.name || "Inventory Agreement"}</span>
+          <Badge className="text-[10px] px-1.5 py-0 border bg-green-50 text-green-700 border-green-200">
+            Finalized
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+          <span>Inventory Agreement</span>
+          <span>· Locked {fmtDate(doc.createdAt)}</span>
+        </div>
+      </div>
+      <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">Open →</span>
     </button>
   );
 }
@@ -506,7 +541,7 @@ export default function CoupleDocumentsSection({
   onNavigate,
 }: {
   token: string;
-  onNavigate?: (s: "questionnaire" | "event-order") => void;
+  onNavigate?: DocumentsNavigate;
 }) {
   const [documents, setDocuments] = useState<CoupleDocument[]>([]);
   const [receipts, setReceipts] = useState<PaidLineItem[]>([]);
@@ -574,12 +609,14 @@ export default function CoupleDocumentsSection({
   const contracts = documents.filter((d) => d.docType === "contract");
   const invoices = documents.filter((d) => d.docType === "invoice");
   const eventOrders = documents.filter((d) => d.docType === "event_order");
+  const inventories = documents.filter((d) => d.docType === "event_inventory");
   const venueShared = documents.filter(
     (d) =>
       d.uploadedBy === "venue"
       && d.docType !== "contract"
       && d.docType !== "invoice"
-      && d.docType !== "event_order",
+      && d.docType !== "event_order"
+      && d.docType !== "event_inventory",
   );
   const vendorShared = documents.filter((d) => d.uploadedBy === "vendor" && d.docType !== "contract" && d.docType !== "invoice");
   const coupleUploaded = documents.filter((d) => d.uploadedBy === "couple");
@@ -628,6 +665,17 @@ export default function CoupleDocumentsSection({
           <div className="space-y-2">
             {eventOrders.map((doc) => (
               <EventOrderCard key={doc.id} doc={doc} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {inventories.length > 0 && (
+        <section className="space-y-3" data-testid="portal-documents-inventories">
+          <h3 className="text-sm font-semibold text-heading">Inventory Agreement</h3>
+          <div className="space-y-2">
+            {inventories.map((doc) => (
+              <InventoryAgreementCard key={doc.id} doc={doc} onNavigate={onNavigate} />
             ))}
           </div>
         </section>

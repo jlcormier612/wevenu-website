@@ -15,6 +15,7 @@ import {
   healSharedCoupleInsuranceVenueDocuments,
 } from "@/lib/portal/ensure-couple-insurance-venue-document";
 import { mergeSharedEventOrderIntoCoupleDocuments } from "@/lib/portal/couple-documents-event-order";
+import { mergeFinalizedInventoryIntoCoupleDocuments } from "@/lib/portal/couple-documents-inventory";
 
 type PortalDoc = {
   id?: string;
@@ -126,7 +127,25 @@ export async function GET(request: Request) {
       : null,
   );
 
-  const filled = await withFilledSignedContractContent(withEventOrder);
+  const { data: invRows } = await supabase.rpc("get_event_inventory_for_portal", { p_token: token });
+  const invList = (invRows ?? []) as Array<{
+    id?: string;
+    status?: string;
+    finalized_at?: string | null;
+  }>;
+  const invHead = invList[0];
+  const withInventory = mergeFinalizedInventoryIntoCoupleDocuments(
+    withEventOrder,
+    invHead?.id && invHead.status === "finalized"
+      ? {
+          id: invHead.id,
+          status: invHead.status,
+          finalizedAt: invHead.finalized_at ?? new Date().toISOString(),
+        }
+      : null,
+  );
+
+  const filled = await withFilledSignedContractContent(withInventory);
   return NextResponse.json({ ...payload, documents: filled });
 }
 
