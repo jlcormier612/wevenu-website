@@ -20,7 +20,7 @@
 | EO share + Documents + PDF | `shareEventOrderWithClient` + `document-integration` | Exists for shared EO |
 | Contract-style `/sign/{token}` pre-booking | Contracts only | Reference pattern; Inv/EO use portal token deep-links (same auth boundary as Choices) |
 | Setup Profiles Inventory/EO steps | Filtered out via `isCommercialSetupStep` | Already removed from Setup experience |
-| Planning capabilities Inventory/EO toggles | `PLANNING_CAPABILITY_OPTIONS` + portal gate | **Still present — Portal Setup gate to remove** |
+| Planning capabilities Inventory/EO toggles | Removed from `PLANNING_CAPABILITY_OPTIONS`; portal sections always enabled for Inv/EO | **Closed on tip** |
 
 ---
 

@@ -1,0 +1,408 @@
+PASS [deploy] serving_sha — expected=f07b838f9f0a6dc51d5fe47c85f687eafe1420c8 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:f07b838f9f0a6dc51d5fe47c85f687eafe1420c8
+PASS [setup] portal_setup_no_inv_eo_toggles — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+99+
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+17
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedb
+PASS [A] A_prebooking_client_not_booked — {"client":{"id":"adaa1f93-97f8-4064-b50c-7bd8f45f9afb","relationship_id":"2c5acc98-53a6-45b5-9fdf-1a48a930025c","status":"planning","email":"InvPre-lifecyclemvswtkiq@hellotocheers-test.invalid"},"event":{"id":"34e4ca1c-8005-49bb-993d-08fd77a3b865","booked_at":null,"status":"confirmed"}}
+PASS [A] A_share_enabled_after_select — share
+PASS [A] A_share_persisted_select_mode — {"status":"shared","collaboration_mode":"select"}
+PASS [A] A_share_email_recorded — [{"id":"d21ed11c-145f-4083-b047-6a1822a05a3f","status":"accepted","provider_id":"01a1856f-e203-7801-959b-6da0b2bc4702","channel_metadata":{"sourceId":"34e4ca1c-8005-49bb-993d-08fd77a3b865","automated":true,"sourceType":"event_inventory_shared"},"body":"We've shared inventory choices for LC-LIFECYCLEMVSWTKIQ-Inv Wedding. Please open Inventory, choose any additional items we marked for selection, an
+PASS [A] A_portal_session_for_link — inv_lifecyclemvswtkiq_e1
+PASS [A] A_link_opens_inventory_not_invoice — InvPre
+
+·
+
+Jen's Fancy Venue
+
+Sep 14, 2028
+
+Export my data
+1
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+💳
+Payments
+💬
+Messages
+1
+🏛️
+Guide
+🤝
+Vendors
+Your inventory choices
+
+View the items your venue has listed for your event, including package-included items and available add-ons.
+
+Save a draft anytime. Submit when you’re ready — your venue will review before anything is c
+PASS [A] A_submit_control_present — submit
+PASS [A] A_response_persisted_submitted — {"status":"submitted"}
+PASS [A] A_venue_sees_submitted — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+99+
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+17
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+Delete
+Bookings
+IN
+LC-LIFECYCLEMVSW
+PASS [A] A_confirm_via_ui — {"status":"confirmed"}
+PASS [A] A_finalize_locked — {"status":"finalized","finalized_at":"2026-10-29T02:14:46.156+00:00"}
+PASS [D] A_duplicate_finalize_idempotent — {"status":"finalized","finalized_at":"2026-10-29T02:14:46.156+00:00"}
+PASS [A] A_finalize_email_attempt — [{"id":"eafb5840-83c2-49bd-8ee3-fed19c4259af","status":"accepted","provider_id":"01a18570-3a57-7549-91c2-3dd8d930ce88","channel_metadata":{"sourceId":"e8c5e199-6954-4679-8060-09107bb704b7","automated":true,"sourceType":"event_inventory_finalized"},"body":"Hi InvPre,\n\nJen's Fancy Venue reviewed and finalized your Inventory Agreement for LC-LIFECYCLEMVSWTKIQ-Inv Wedding.\n\nThe agreed inventory is
+PASS [D] A_finalize_email_not_false_delivered_on_fail — [{"id":"eafb5840-83c2-49bd-8ee3-fed19c4259af","status":"accepted","provider_id":"01a18570-3a57-7549-91c2-3dd8d930ce88","channel_metadata":{"sourceId":"e8c5e199-6954-4679-8060-09107bb704b7","automated":true,"sourceType":"event_inventory_finalized"},"body":"Hi InvPre,\n\nJen's Fancy Venue reviewed and finalized your Inventory Agreement for LC-LIFECYCLEMVSWTKIQ-Inv Wedding.\n\nThe agreed inventory is
+PASS [A] A_portal_notification_persisted — {"id":"c9b83582-c4d5-4c67-88f1-3a1f6321991c","title":"Inventory Agreement finalized","body":"Jen's Fancy Venue approved your Inventory Agreement for LC-LIFECYCLEMVSWTKIQ-Inv Wedding. It is locked in Documents.","created_at":"2026-10-29T02:14:47.713446+00:00","type":"new_message"}
+PASS [A] A_venue_documents_shows_inventory_agreement — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+99+
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+17
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+Delete
+Bookings
+IN
+LC-LIFECYCLEMVSW
+PASS [A] A_venue_documents_finalized_row — {"id":"e8c5e199-6954-4679-8060-09107bb704b7","status":"finalized","finalized_at":"2026-10-29T02:14:46.156+00:00"}
+PASS [A] A_couple_documents_shows_inventory — InvPre
+
+·
+
+Jen's Fancy Venue
+
+Sep 14, 2028
+
+Export my data
+2
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+💳
+Payments
+💬
+Messages
+2
+🏛️
+Guide
+🤝
+Vendors
+Documents
+
+Contracts, invoices, questionnaires, your Event Order, receipts, and anything your venue or vendors share — all in one place.
+
+Event insurance
+Share with venue
++ Upload document
+Inventory Agreement
+🪑
+Inventory Agreement
+Finalized
+PASS [D] A_finalized_stable_after_template_edit — [{"name":"LC-LIFECYCLEMVSWTKIQ-Included Linen"},{"name":"LC-LIFECYCLEMVSWTKIQ-Dance Floor"},{"name":"LC-LIFECYCLEMVSWTKIQ-DJ Table"}]
+PASS [D] D_invalid_token_blocks_inventory — 💗
+
+This link has expired or is no longer active.
+
+Please contact your venue coordinator for an updated link to your wedding workspace.
+PASS [B] B_choices_seeded_as_sent — sent
+PASS [B] B_link_opens_choices_not_invoice — EoPre
+
+·
+
+Jen's Fancy Venue
+
+Sep 14, 2028
+
+Export my data
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+✅
+Choices
+1
+💳
+Payments
+💬
+Messages
+🏛️
+Guide
+🤝
+Vendors
+Your Choices
+
+Select options your venue asked for. Submitting sends them for review — it is not a payment.
+
+LC-LIFECYCLEMVSWTKIQ-Dinner selections · Awaiting Client
+Dinner style
+
+Pick one · required — 0 of 1 selected
+
+Pick one · requi
+PASS [B] B_submit_control_present — submit
+PASS [B] B_response_persisted — {"status":"submitted","answers":{"g-dinner":{"optionIds":["o-plated"]},"g-plated":{"optionIds":["o-chicken"]}}}
+PASS [B] B_venue_finalize_control — finalize btn
+PASS [B] B_choices_finalized — {"status":"finalized","finalized_at":"2026-10-29T02:16:06.054+00:00","applied_line_ids":["b75f17cd-4ddf-41a2-b084-7098043c2c61","273a1e61-ea16-44b1-b2df-2d13af5721da"]}
+PASS [B] B_finalize_email_attempt — [{"id":"ca9f5a0f-0c39-483c-b7c8-87374170eefe","status":"accepted","provider_id":"01a18571-7253-748c-893e-fc1ac6f88e4a","channel_metadata":{"sourceId":"08815715-5845-4248-b829-826257932f9e","automated":true,"sourceType":"client_choices_finalized"},"body":"Hi EoPre,\n\nJen's Fancy Venue reviewed and finalized LC-LIFECYCLEMVSWTKIQ-Dinner selections for LC-LIFECYCLEMVSWTKIQ-EO Wedding.\n\nYour approve
+PASS [B] B_portal_notification_persisted — {"id":"73faad48-9b8d-4cb0-855e-bfd6b79cd81c","title":"Event Order selections finalized","body":"Jen's Fancy Venue approved LC-LIFECYCLEMVSWTKIQ-Dinner selections for LC-LIFECYCLEMVSWTKIQ-EO Wedding. They are locked in Documents.","created_at":"2026-10-29T02:16:07.564958+00:00","type":"new_message"}
+PASS [B] B_venue_documents_client_choices — {"id":"08815715-5845-4248-b829-826257932f9e","status":"finalized","finalized_at":"2026-10-29T02:16:06.054+00:00"}
+PASS [B] B_venue_documents_event_order_present — {"id":"61e9a01c-ae54-4297-9e56-a0a0026e2506","status":"open","shared_at":null}
+PASS [B] B_venue_documents_ui — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+99+
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+22
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+17
+Payments
+14
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+99+
+J
+jennifer@hellotocheers.com
+Delete
+Bookings
+EO
+LC-LIFECYCLEMVSW
+PASS [C] C_portal_inventory_entry — Booked
+
+·
+
+Jen's Fancy Venue
+
+Sep 14, 2028
+
+Export my data
+1
+🏠
+Home
+✅
+Tasks
+🕒
+Timeline
+📁
+Docs
+🗺️
+Floor Plan
+🪑
+Inventory
+1
+💳
+Payments
+💬
+Messages
+1
+🏛️
+Guide
+🤝
+Vendors
+Your inventory choices
+
+View the items your venue has listed for your event, including package-included items and available add-ons.
+
+Save a draft anytime. Submit when you’re ready — your venue will review before anything is c
+PASS [C] C_booked_inventory_finalized — {"status":"finalized"}
+PASS [C] C_booked_choices_finalized — {"status":"finalized"}
+PASS [C] C_no_portal_setup_dependency — workflows completed without planning_inventory/event_order capability toggles
+PASS [A] A_mobile_390_usable — overflowX=0
+
+TOTAL 38 pass / 0 fail

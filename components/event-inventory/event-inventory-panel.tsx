@@ -372,22 +372,32 @@ export function EventInventoryPanel({
                     })}>
                     Request changes
                   </Button>
-                  <Button type="button" size="sm" disabled={lifecyclePending}
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={lifecyclePending}
+                    data-testid="inventory-confirm-selections"
                     onClick={() => runLifecycle(async () => {
                       const result = await confirmInventorySelectionsAction(inv.id, eventId);
                       if (result.ok) toast.success("Selections confirmed.");
                       else toast.error(result.message ?? "Could not confirm.");
-                    })}>
+                    })}
+                  >
                     Confirm selections
                   </Button>
                 </>
               )}
-              <Button type="button" size="sm" disabled={lifecyclePending || inv.items.length === 0 || inv.status === "submitted"}
+              <Button
+                type="button"
+                size="sm"
+                disabled={lifecyclePending || inv.items.length === 0 || inv.status === "submitted"}
+                data-testid="inventory-finalize"
                 onClick={() => runLifecycle(async () => {
                   const result = await finalizeEventInventoryAction(inv.id, eventId);
                   if (result.ok) toast.success("Event Inventory finalized.");
                   else toast.error(result.message ?? "Could not finalize.");
-                })}>
+                })}
+              >
                 {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
               </Button>
             </div>

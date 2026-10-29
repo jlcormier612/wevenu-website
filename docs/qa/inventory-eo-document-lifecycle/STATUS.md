@@ -1,7 +1,7 @@
 # Inventory & Event Order — Unified Document Lifecycle
 
-**Verdict: OPEN / NOT ACCEPTED**  
-**Date:** 2026-10-28  
+**Verdict: ACCEPTED / GREEN**  
+**Date:** 2026-10-29  
 **Production:** untouched  
 **Unrelated dirty/untracked work:** preserved
 
@@ -13,25 +13,28 @@ Implementation map: [`IMPLEMENTATION-MAP.md`](./IMPLEMENTATION-MAP.md).
 
 | Item | Value |
 |---|---|
-| Commit | `2b97ed8805fde90079fdb69ea6a7e3990ec7d14b` |
-| Deploy | [40800596173](https://github.com/jlcormier612/wevenu-website/actions/runs/40800596173) — success |
-| Migration | `20261425800000_inventory_agreement_venue_documents.sql` via [40800628547](https://github.com/jlcormier612/wevenu-website/actions/runs/40800628547) — success |
-| ECS | `htc-sandbox-venue-app:2b97ed8805fde90079fdb69ea6a7e3990ec7d14b` |
+| **Exact serving SHA** | `f07b838f9f0a6dc51d5fe47c85f687eafe1420c8` |
+| ECS | `htc-sandbox-venue-app:f07b838f9f0a6dc51d5fe47c85f687eafe1420c8` |
+| Lifecycle product tip included | `2b97ed8805fde90079fdb69ea6a7e3990ec7d14b` (finalize notify + Documents) |
+| Deploy of tip | [40802899491](https://github.com/jlcormier612/wevenu-website/actions/runs/40802899491) (tip) · prior lifecycle ship [40800596173](https://github.com/jlcormier612/wevenu-website/actions/runs/40800596173) |
+| Migration | `20261425800000_inventory_agreement_venue_documents.sql` via [40800628547](https://github.com/jlcormier612/wevenu-website/actions/runs/40800628547) |
 
 ---
 
-## Implemented on tip
+## Implemented (verified on serving tip)
 
 | Requirement | Evidence |
 |---|---|
-| Remove Inv/EO from Portal Setup toggles | Browser: Settings → Leads planning list has no Inv/EO copy; Setup Profiles commercial note |
-| Portal sections not gated by those toggles | `isPortalSectionEnabledByCapabilities` always true for inventory / event-order |
-| Inventory finalize → email + portal notify | `finalize-notify.ts` after persist; failure cannot unlock |
-| Client Choices finalize → email + portal notify | same pattern |
-| Couple Documents — Inventory Agreement | merge helper + Documents UI card |
-| Venue Documents — finalized Inventory | migration extends `get_venue_documents` |
-
-Reused (unchanged domain rules): template→instance, share deep-links, client respond, venue review/finalize lock, EO Documents on share, Setup Profiles already exclude Inv/EO as setup steps.
+| Inv/EO removed from Portal Setup toggles | Browser Settings + Setup Profiles |
+| Portal sections not gated by those toggles | `isPortalSectionEnabledByCapabilities` + Scenario C |
+| Inventory finalize → email + portal notify | Resend `provider_id` on `conversation_messages` + `couple_notifications` |
+| Client Choices finalize → email + portal notify | Same pattern after UI finalize |
+| Couple Documents — Inventory Agreement | Portal Docs card “Inventory Agreement / Finalized” |
+| Venue Documents — finalized Inventory | Venue UI Documents + finalized row |
+| Pre-booking Inventory full lifecycle | Scenario A harness |
+| Pre-booking Event Order / Choices lifecycle | Scenario B harness |
+| Booked portal initiation parity | Scenario C harness |
+| Idempotency / isolation / template stability | Scenario D checks in harness |
 
 ---
 
@@ -48,27 +51,34 @@ npx tsx --test \
 → 34 pass / 0 fail
 ```
 
-## Browser (partial — serving SHA)
+---
+
+## Browser acceptance (full lifecycle)
 
 ```bash
-EXPECTED_SHA=2b97ed8805fde90079fdb69ea6a7e3990ec7d14b \
-  npx tsx docs/qa/inventory-eo-document-lifecycle/verify-browser.mts
-→ PARTIAL — 5 pass / 0 fail (Portal Setup / Settings gates only)
+EXPECTED_SHA=f07b838f9f0a6dc51d5fe47c85f687eafe1420c8 \
+  npx tsx docs/qa/inventory-eo-document-lifecycle/verify-lifecycle-full.mts
+→ GREEN — 38 pass / 0 fail
 ```
 
-Shots: `shots/01-settings-planning-1280.png`, `02-setup-profiles-1280.png`, `03-settings-planning-390.png`.
+Evidence: `lifecycle-full-results.json`, `lifecycle-full-run.log`, `lifecycle-full-persisted.json`, shots `A-*`, `B-*`, `C-*`, `lifecycle-settings-*`.
+
+### Scenario A — Pre-booking Inventory
+PASS: planning client / unbooked event → Select → Share for selection → Resend email with Inventory link → clean couple context opens Inventory (not invoice) → submit → venue Confirm → Finalize → finalize email (`provider_id`) + portal notification → venue + couple Documents show Inventory Agreement → duplicate finalize idempotent → template edit does not mutate finalized items → invalid token blocked.
+
+### Scenario B — Pre-booking Event Order (Choices)
+PASS: choices seeded `sent` → couple portal Choices UI select Plated + entrée → Submit → staff `#event-order-choices` Create Event Order finalize → status `finalized` + EO lines → finalize email + portal notification → Documents/EO row present.
+
+### Scenario C — Booked portal parity
+PASS: booked client portal Inventory + Choices submit → venue finalize both → no Portal Setup capability dependency.
+
+### Scenario D — Idempotency / isolation / immutability
+PASS: duplicate finalize keeps single finalized row; finalize email accepted with provider id (not false-delivered); invalid token blocked; finalized inventory stable after template item insert.
 
 ---
 
-## OPEN — required for ACCEPTED
+## Harness note
 
-Full real-browser scenarios from the brief are **not yet closed** on this tip:
-
-1. Pre-booking Inventory: email link → choose/submit → venue review → finalize → client email + portal notify → both Documents open locked agreement  
-2. Pre-booking Event Order (choices/response) equivalent  
-3. Booked client portal initiation matching email/template path  
-4. Finalization immutability, duplicate finalize/notify, notification failure handling, access isolation — end-to-end in browser  
-
-Do not treat unit tests + Settings partial harness as GREEN for the full lifecycle.
+`get_venue_documents` is `security definer` on `current_user_venue_id()` — service-role probes return empty. Venue Documents acceptance uses staff UI + finalized table rows. Couple Documents accepted via portal UI.
 
 Production untouched.

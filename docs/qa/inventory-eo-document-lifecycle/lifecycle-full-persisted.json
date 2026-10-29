@@ -1,0 +1,16 @@
+{
+  "run": "LIFECYCLEMVSWTKIQ",
+  "expectedSha": "f07b838f9f0a6dc51d5fe47c85f687eafe1420c8",
+  "scenarioA": {
+    "clientId": "adaa1f93-97f8-4064-b50c-7bd8f45f9afb",
+    "eventId": "34e4ca1c-8005-49bb-993d-08fd77a3b865",
+    "invId": "e8c5e199-6954-4679-8060-09107bb704b7",
+    "invUrl": "https://app.sandbox.hellotocheers.com/p/inv_lifecyclemvswtkiq_e19a89447491f9e5?view=inventory#inventory"
+  },
+  "scenarioB": {
+    "clientId": "daf5d38a-5bc4-460c-8cee-7e679a433460",
+    "eventId": "6e00d2b0-089c-4191-9eed-b277d6839f9c",
+    "choicesId": "08815715-5845-4248-b829-826257932f9e",
+    "choicesUrl": "https://app.sandbox.hellotocheers.com/p/eo_lifecyclemvswtkiq_045361bf18db?view=choices#choices"
+  }
+}
