@@ -1,7 +1,7 @@
 {
-  "run": "EOTUXMVST5O9O",
-  "expectedSha": "bc21e105c9091fc446954717e980afab4e0008be",
-  "prefix": "EOTUX-EOTUXMVST5O9O-",
+  "run": "EOTUXMVSU1IP7",
+  "expectedSha": "89fd85e9587138825cf4212fea9f4119fc794385",
+  "prefix": "EOTUX-EOTUXMVSU1IP7-",
   "catalog": {
     "buffetId": "8ce388b7-95b2-4b13-841d-a087a37e92f8",
     "platedId": "0dba018c-6d56-4022-b32e-337aed3db29b",
@@ -15,18 +15,18 @@
     "runnerId": "c656e6fc-4b63-459f-9b82-47876503bd30",
     "petalsId": "427ee6c7-19f7-495f-b151-0bb9ab486208"
   },
-  "templateId": "1d4bcc33-187b-4cbb-b5fb-2d220a89825f",
+  "templateId": "c2989a58-8181-47f9-9a77-5434d17d6cd6",
   "lines": [
     {
-      "id": "0a566728-4d97-48f5-8449-d5491f429917",
+      "id": "1f1d3379-815d-4134-a93d-fef588ecf15c",
       "description": "Day-of coordination",
       "included_by_default": true,
       "unit_price": 0,
       "offering_id": "ba20151d-06d5-4553-8ba6-c9b3bee91a0f"
     },
     {
-      "id": "9b1ba91c-e3de-4dfc-b6fc-3b0620997f78",
-      "description": "EOTUX-EOTUXMVST5O9O-Champagne Toast",
+      "id": "386f70ce-5389-4575-83f7-bdca09addf7e",
+      "description": "EOTUX-EOTUXMVSU1IP7-Champagne Toast",
       "included_by_default": false,
       "unit_price": 150,
       "offering_id": null
@@ -34,30 +34,30 @@
   ],
   "ceremonyOptions": [
     {
-      "id": "868dbb18-37e5-493f-994c-a08eed651e0d",
+      "id": "dbfefba9-97c2-42c3-b5ac-596bb351fda6",
       "label": "Arbor",
-      "group_id": "c33c6496-147e-4e17-966a-f7789e8bad81",
+      "group_id": "7bac009e-4260-4da1-bc07-8500ec2b6a7d",
       "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
       "unit_price": 250
     },
     {
-      "id": "ca0e063d-794e-4cd3-8e1a-0bf38a4fb236",
+      "id": "34248a7e-5c32-4671-a9f8-49a3bd6e52fe",
       "label": "Arch",
-      "group_id": "c33c6496-147e-4e17-966a-f7789e8bad81",
+      "group_id": "7bac009e-4260-4da1-bc07-8500ec2b6a7d",
       "offering_id": "2fcb5a0c-9ffd-4c9d-84b8-f1bde5fb0802",
       "unit_price": 200
     },
     {
-      "id": "12237e62-8b5e-4330-b0e2-d2dc60da29eb",
+      "id": "d9dcae5a-c583-42cd-830d-5db13d63fbc5",
       "label": "Runner",
-      "group_id": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+      "group_id": "54582e3b-b521-4917-a02e-47be4f8a240e",
       "offering_id": "c656e6fc-4b63-459f-9b82-47876503bd30",
       "unit_price": 75
     },
     {
-      "id": "95835824-f9f4-4d6d-b440-806678d951a8",
+      "id": "d96866bc-1a26-4e62-ac41-da173b6728aa",
       "label": "White Rose Petal Aisle Path",
-      "group_id": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+      "group_id": "54582e3b-b521-4917-a02e-47be4f8a240e",
       "offering_id": "427ee6c7-19f7-495f-b151-0bb9ab486208",
       "unit_price": 175
     }
@@ -65,18 +65,8 @@
   "finalization": {
     "resolved": [
       {
-        "optionId": "868dbb18-37e5-493f-994c-a08eed651e0d",
-        "groupId": "c33c6496-147e-4e17-966a-f7789e8bad81",
-        "offeringId": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
-        "description": "Arbor",
-        "quantity": 1,
-        "unitPrice": 250,
-        "isIncluded": false,
-        "amount": 250
-      },
-      {
-        "optionId": "18d9ba35-f8c2-41b3-bbe5-562d68074210",
-        "groupId": "3ddd4eda-8b83-4313-8d3e-4321b00d19b7",
+        "optionId": "8fbe7261-e5d4-4175-8028-957ee3f4459a",
+        "groupId": "c24dd47a-47ad-4a42-9e3c-f83fb85210ad",
         "offeringId": "0dba018c-6d56-4022-b32e-337aed3db29b",
         "description": "Plated Dinner",
         "quantity": 1,
@@ -85,8 +75,18 @@
         "amount": 0
       },
       {
-        "optionId": "12237e62-8b5e-4330-b0e2-d2dc60da29eb",
-        "groupId": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+        "optionId": "dbfefba9-97c2-42c3-b5ac-596bb351fda6",
+        "groupId": "7bac009e-4260-4da1-bc07-8500ec2b6a7d",
+        "offeringId": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+        "description": "Arbor",
+        "quantity": 1,
+        "unitPrice": 250,
+        "isIncluded": false,
+        "amount": 250
+      },
+      {
+        "optionId": "d9dcae5a-c583-42cd-830d-5db13d63fbc5",
+        "groupId": "54582e3b-b521-4917-a02e-47be4f8a240e",
         "offeringId": "c656e6fc-4b63-459f-9b82-47876503bd30",
         "description": "Runner",
         "quantity": 1,
@@ -95,8 +95,8 @@
         "amount": 75
       },
       {
-        "optionId": "257f0286-0f33-4d91-8767-9e6f770f06fb",
-        "groupId": "276786e6-bc1b-418f-a2d9-289b3cf3182e",
+        "optionId": "9f977cfc-b240-438a-a29c-d36a68ad328b",
+        "groupId": "be87577f-9133-4212-8f27-8bf47e4ca0ad",
         "offeringId": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323",
         "description": "Chicken Marsala",
         "quantity": 1,
@@ -107,15 +107,7 @@
     ],
     "applied": [
       {
-        "id": "f992c110-7d0d-4f6f-a1a7-aa14abefb8a4",
-        "description": "Arbor",
-        "unit_price": 250,
-        "is_included": false,
-        "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
-        "amount": 250
-      },
-      {
-        "id": "c6425e4b-873c-44cd-b0b2-d229086e73b9",
+        "id": "bb4de8bd-26eb-4b46-a266-a16865a7dfa5",
         "description": "Plated Dinner",
         "unit_price": 0,
         "is_included": true,
@@ -123,7 +115,15 @@
         "amount": 0
       },
       {
-        "id": "f925d2ca-0a2c-4b9f-8d39-5d1dadbe4543",
+        "id": "7b773eb3-945c-425b-838d-560bc461e30c",
+        "description": "Arbor",
+        "unit_price": 250,
+        "is_included": false,
+        "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+        "amount": 250
+      },
+      {
+        "id": "59fd5601-55da-4d61-9222-139d4e5eaa6b",
         "description": "Runner",
         "unit_price": 75,
         "is_included": false,
@@ -131,7 +131,7 @@
         "amount": 75
       },
       {
-        "id": "3efca843-1e7c-47cc-b352-a96a25e9a5e9",
+        "id": "7d762b27-8838-438e-baf6-8abd6e53c095",
         "description": "Chicken Marsala",
         "unit_price": 0,
         "is_included": true,

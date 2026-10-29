@@ -1,0 +1,145 @@
+PASS serving_sha — expected=89fd85e9587138825cf4212fea9f4119fc794385 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385
+PASS catalog_fixtures_seeded — {"buffetId":"8ce388b7-95b2-4b13-841d-a087a37e92f8","platedId":"0dba018c-6d56-4022-b32e-337aed3db29b","zitiId":"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed","cheesecakeId":"45d8c60d-4ccc-4dd0-aed9-67965d839740","marsalaId":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323","vegId":"549e0e69-9b35-4abb-945a-3ada002f55d4","dayOfId":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f","arborId":"bd16d232-33c9-47ac-a738-e731bdce4bfe","
+PASS ux_always_on_heading — heading
+PASS ux_couples_choices_heading — heading
+PASS ux_no_included_heading — no Included
+PASS ux_no_primary_question_cta — no question CTA
+PASS ux_offering_choices_panel — panel
+PASS ux_no_question_copy — no question copy
+PASS persisted_catalog_always_on_covered — {"id":"1f1d3379-815d-4134-a93d-fef588ecf15c","description":"Day-of coordination","included_by_default":true,"unit_price":0,"offering_id":"ba20151d-06d5-4553-8ba6-c9b3bee91a0f"}
+PASS persisted_template_only_additional_charge — {"id":"386f70ce-5389-4575-83f7-bdca09addf7e","description":"EOTUX-EOTUXMVSU1IP7-Champagne Toast","included_by_default":false,"unit_price":150,"offering_id":null}
+PASS persisted_parents_from_offerings_no_question — {"buffetOpt":{"id":"6ef44dec-387f-4b36-9130-5371fcf29ba9","label":"Buffet Style Dinner","group_id":"c24dd47a-47ad-4a42-9e3c-f83fb85210ad","offering_id":"8ce388b7-95b2-4b13-841d-a087a37e92f8"},"platedOpt":{"id":"8fbe7261-e5d4-4175-8028-957ee3f4459a","label":"Plated Dinner","group_id":"c24dd47a-47ad-4a42-9e3c-f83fb85210ad","offering_id":"0dba018c-6d56-4022-b32e-337aed3db29b"},"rootGroupId":"c24dd47a
+PASS ui_shows_parent_children_checklists — child panels
+PASS persisted_selected_children_under_parents — {"zitiOpt":{"id":"8e1dd621-8800-4b36-ad42-7ee0e98cbad1","label":"Baked Ziti","group_id":"0c2f3864-fd5d-4f6b-b404-0cfc69a825f2","offering_id":"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed"},"marsalaOpt":{"id":"9f977cfc-b240-438a-a29c-d36a68ad328b","label":"Chicken Marsala","group_id":"be87577f-9133-4212-8f27-8bf47e4ca0ad","offering_id":"ebf13e5b-b3f3-43ca-ae89-03c0d589b323"},"buffetChildGroup":{"id":"0c2f3
+PASS always_on_not_duplicated_in_couple_picker — Choose an Offering…
+Arbor · Standalone offering · Ceremony · $250.00 · other category
+Arch · Standalone offering · Ceremony · $200.00 · other category
+Bartender service · Standalone offering · Services · unpriced · other category
+Caesar salad · Standalone offering · Catering · unpriced
+Champagne toast · Standalone offering · Bar · unpriced · other category
+Chiavari chair rental · Standalone offeri
+PASS ceremony_workspace — Set up Ceremony
+
+Work top to bottom: items always on this package, then Offerings the couple can choose from. Select Offerings from your catalog — you do not need to create questions first.
+
+Always on the package
+
+These belong to Ceremony without a couple choice. When you add each item, set whether 
+PASS persisted_ceremony_standalones — [{"id":"dbfefba9-97c2-42c3-b5ac-596bb351fda6","label":"Arbor","group_id":"7bac009e-4260-4da1-bc07-8500ec2b6a7d","offering_id":"bd16d232-33c9-47ac-a738-e731bdce4bfe","unit_price":250},{"id":"34248a7e-5c32-4671-a9f8-49a3bd6e52fe","label":"Arch","group_id":"7bac009e-4260-4da1-bc07-8500ec2b6a7d","offering_id":"2fcb5a0c-9ffd-4c9d-84b8-f1bde5fb0802","unit_price":200},{"id":"d9dcae5a-c583-42cd-830d-5db13
+PASS ceremony_two_choice_sets — groups=2
+PASS reopen_preserves_offering_structure — OVERVIEW
+
+Dashboard
+
+YOUR RELATIONSHIPS
+
+Leads
+Clients
+Vendors
+
+SCHEDULING
+
+Calendar
+Tours
+
+COMMUNICATION
+
+Inbox
+Automations
+
+LIBRARY
+
+Templates
+Documents
+
+FINANCIALS
+
+Contracts
+Payments
+
+TO DO’S
+
+Task Center
+Requests
+
+YOUR VENUE
+
+Setup
+Settings
+Guidance
+Venue Guide
+Reports
+Help & Feedback
+Jen's Fancy Venue
+Search
+⌘K
+J
+jennifer@hellotocheers.com
+Event Order Templates
+
+EVENT ORDER TEMPLATE
+
+EOTUX-E
+PASS preview_buffet_shows_only_buffet_children — Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.
+
+CATERING CHOICES · CHOOSE 1
+
+Buffet Style Dinner
+Plated Dinner
+
+BUFFET STYLE DINNER OPTIONS · CHOOSE 1
+
+Baked Ziti
+
+CEREMONY CHOICES · CHOOSE 1
+
+Arbor
+Arch
+
+CEREMON
+PASS preview_plated_shows_only_plated_children — Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.
+
+CATERING CHOICES · CHOOSE 1
+
+Buffet Style Dinner
+Plated Dinner
+
+PLATED DINNER OPTIONS · CHOOSE 1
+
+Chicken Marsala
+
+CEREMONY CHOICES · CHOOSE 1
+
+Arbor
+Arch
+
+CEREMONY
+PASS preview_rejects_incomplete_child_selection — Choose an option for “Ceremony choices” before submitting.
+PASS preview_accepts_complete_plated_path — okHint=1 err=0 
+PASS server_rejects_incomplete_before_finalize — Choose an option for “Ceremony choices” before submitting.
+PASS server_accepts_valid_plated_path — ok
+PASS resolved_lines_include_plated_and_entree_not_all_children — [{"d":"Plated Dinner","p":0,"inc":true},{"d":"Arbor","p":250,"inc":false},{"d":"Runner","p":75,"inc":false},{"d":"Chicken Marsala","p":0,"inc":true}]
+PASS resolved_buffet_path_excludes_plated_children — ["Buffet Style Dinner","Arbor","Baked Ziti","Runner"]
+PASS rejected_finalize_no_partial_lines — before=0 after=0
+PASS valid_finalize_lines_once — [{"id":"bb4de8bd-26eb-4b46-a266-a16865a7dfa5","description":"Plated Dinner","unit_price":0,"is_included":true,"offering_id":"0dba018c-6d56-4022-b32e-337aed3db29b","amount":0},{"id":"7b773eb3-945c-425b-838d-560bc461e30c","description":"Arbor","unit_price":250,"is_included":false,"offering_id":"bd16d232-33c9-47ac-a738-e731bdce4bfe","amount":250},{"id":"59fd5601-55da-4d61-9222-139d4e5eaa6b","descript
+PASS template_edit_does_not_mutate_eo_snapshot — [{"description":"Chicken Marsala"}]
+PASS no_duplicate_lines_on_reapply — count=4 expected=4
+PASS template_only_did_not_create_offering — count=0
+PASS mobile_390_builder_workflow_usable — overflowX=0 childVisible=false text=Jen's Fancy Venue
+99+
+J
+Event Order Templates
+
+EVENT ORDER TEMPLATE
+
+EOTUX-EOTUXMVSU1IP7-Offering Builder
+Owner: Venue
+·
+Updated Oct 28, 2026
+Your template
+Preview
+Edit details
+
+Set up each category with items always on the package and Couple's choices selected from your Offerings catalog — no questions to build first. Preview anytime; it does not 
+
+GREEN — 32 pass / 0 fail

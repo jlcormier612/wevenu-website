@@ -1,6 +1,6 @@
 # Event Order Template Builder UX — acceptance STATUS
 
-**Verdict: GREEN**  
+**Verdict: ACCEPTED / GREEN**  
 **Date:** 2026-10-28  
 **Production:** untouched  
 **Unrelated dirty/untracked work:** preserved
@@ -14,28 +14,24 @@ Two-section Offering-based package builder:
 1. **Always on the package** — not labeled “Included.”
 2. **Couple's choices** — select catalog Offerings (parents expose children); no question-first authoring.
 
-Prior question-builder GREEN is not acceptance for this decision. See `REDESIGN-AUDIT.md`.
-
 ---
 
-## Ceremony build failure → fix
+## Exact serving commit (this acceptance)
 
 | Item | Value |
 |---|---|
-| Failed deploy | [40790796245](https://github.com/jlcormier612/wevenu-website/actions/runs/40790796245) |
-| Failed commit | `2f0da53e` — `"ceremony"` in `SUGGESTED_CATEGORIES` omitted from `SuggestedCategoryKey` |
-| Type + Ceremony category fix | landed in `efb7d9c7` (also inventory Select revalidation) |
-| Exact-alias match + Ceremony regression tests | `e838dbe8` |
-| Optimistic child checkboxes (usability) | `bc21e105` |
-| Successful Sandbox deploy of product tip | [40793467681](https://github.com/jlcormier612/wevenu-website/actions/runs/40793467681) — **success** |
-| **Serving SHA at acceptance** | `bc21e105c9091fc446954717e980afab4e0008be` |
-| ECS | `htc-sandbox-venue-app:bc21e105c9091fc446954717e980afab4e0008be` · PRIMARY `COMPLETED` |
+| **Serving SHA** | `89fd85e9587138825cf4212fea9f4119fc794385` |
+| ECS image | `htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385` · PRIMARY `COMPLETED` |
+| Deploy of serving tip | [40795606499](https://github.com/jlcormier612/wevenu-website/actions/runs/40795606499) — success |
+| Optimistic child checkboxes tip | `bc21e105` via [40793467681](https://github.com/jlcormier612/wevenu-website/actions/runs/40793467681) |
+| Follow-up tip incl. Ceremony preview harness | `018770c6` via [40794600935](https://github.com/jlcormier612/wevenu-website/actions/runs/40794600935) — success (superseded by `89fd85e9`) |
+| Ceremony `SuggestedCategoryKey` | Present on tip; venue-app build green |
 
-Follow-up harness-only commits (`7dd79243`…`018770c6`) were pushed after the product tip; a tip deploy was started at [40794600935](https://github.com/jlcormier612/wevenu-website/actions/runs/40794600935). Acceptance below was verified on the **serving** product SHA `bc21e105`.
+Prior STATUS GREEN on `bc21e105` alone is superseded — acceptance below is against the **exact current serving** SHA.
 
 ---
 
-## Focused tests / type
+## Focused tests
 
 ```bash
 npx tsx --test lib/event-order-templates/guided-setup.test.ts \
@@ -44,47 +40,77 @@ npx tsx --test lib/event-order-templates/guided-setup.test.ts \
 → 42 pass / 0 fail
 ```
 
-Ceremony covered: typed suggested key, aliases, `canonicalSectionNameForSuggested("ceremony")`, persisted section → `ceremony` key, wizard `eo-guided-category-${cat.key}` seam. Exact alias match preferred before substring includes (so “ceremony décor” does not collapse to Décor).
-
 ---
 
-## Browser acceptance (serving SHA)
+## 1) Builder browser acceptance (Offering workflow)
 
 ```bash
-EXPECTED_SHA=bc21e105c9091fc446954717e980afab4e0008be \
+EXPECTED_SHA=89fd85e9587138825cf4212fea9f4119fc794385 \
   npx tsx docs/qa/event-order-template-builder-ux/verify-browser.mts
 → GREEN — 32 pass / 0 fail
 ```
 
-Evidence: `browser-results.json`, `browser-run-bc21e105.log`, `persisted-state.json`, `shots/01`–`08`.
+Evidence: `browser-results.json`, `browser-run-89fd85e9.log`, `persisted-state.json`, `shots/01`–`08b`.
 
 | Area | Result |
 |---|---|
-| Ceremony + Catering categories selectable | PASS |
-| Always on the package vs Couple's choices headings (no “Included”) | PASS |
-| No “Add a primary question” CTA | PASS |
-| Catalog always-on covered + template-only $150 additional charge | PASS |
-| Buffet/Plated from Offering dropdown; child checklists | PASS |
-| Ceremony Arbor/Arch + Runner/Petals as two choice sets | PASS |
-| Save / reopen preserves Offering structure | PASS |
-| Preview: Buffet vs Plated child paths; incomplete rejected; complete accepted | PASS |
-| Server validate / finalize integrity / snapshot immutability / no dupes | PASS |
-| 390px readable | PASS |
+| Ceremony + Catering categories | PASS |
+| Always on the package / Couple's choices (no “Included” heading) | PASS |
+| No question-first CTA | PASS |
+| Catalog always-on covered + template-only $150 additional | PASS |
+| Buffet/Plated from Offerings; child checklists under parents | PASS |
+| Ceremony Arbor/Arch + Runner/Petals | PASS |
+| Save / reopen persistence | PASS |
+| Preview Buffet vs Plated paths; incomplete rejected; complete accepted | PASS |
+| Lower-level resolve/validate + snapshot immutability helpers | PASS (not a substitute for portal UI) |
+| **390px builder workflow** (headings, interact, overflow≤8) | PASS (`mobile_390_builder_workflow_usable`) |
 
-### Human usability (screens)
+---
+
+## 2) Client-facing finalization (real portal + staff UI)
+
+Closes the gap where builder harness used validators + direct EO line inserts for “finalize.”
+
+```bash
+EXPECTED_SHA=89fd85e9587138825cf4212fea9f4119fc794385 \
+  npx tsx docs/qa/event-order-template-builder-ux/verify-portal-finalize.mts
+→ GREEN — 21 pass / 0 fail
+```
+
+Evidence: `portal-finalize-results.json`, `portal-finalize-run-89fd85e9.log`, `portal-finalize-persisted.json`, `shots/portal-*`, `shots/venue-*`.
+
+| Area | Result |
+|---|---|
+| Portal UI incomplete submit → clear validation; no EO mutation | PASS |
+| Portal UI over-max sides blocked | PASS |
+| Portal UI valid Plated + Chicken submit → `submitted` | PASS |
+| Staff UI `choices-create-event-order` finalize → EO lines | PASS |
+| Plated path lines; Buffet/sides excluded; pricing/inclusion | PASS |
+| Unrelated marker line preserved | PASS |
+| Definition edit after finalize does not rewrite EO snapshot | PASS |
+| Duplicate finalize / amend path — no duplicate lines | PASS |
+| Incomplete finalize rejected — no partial mutation | PASS |
+| Portal choices usable at 390px | PASS |
+
+Fixture note: Choices **definition** is seeded via DB for an isolated event (same Buffet/Plated/dependent shape as the builder). **Submit and finalize are real UI** on the deployed app — not DB substitutes for those actions.
+
+---
+
+## Human usability (screens + interaction)
 
 - Always-on vs Couple's choices are separate sections with clear headings.
-- Covered vs additional charge is distinct on always-on lines.
+- Covered vs additional charge is distinct on always-on / option pricing.
 - Couple's choices use Offering dropdowns (no question builder).
 - Parent Offerings show child checklists for package membership.
 - Ceremony standalones work without a parent Offering.
-- Preview shows path-dependent choices and validation copy couples see.
+- Preview and portal show path-dependent choices and validation copy.
+- At 390px, builder and portal controls remain usable without horizontal overflow.
 
 ---
 
 ## Remaining limitations
 
+- Portal finalize does not re-author the template through the library UI in the same run; it uses an equivalent ChoicesDefinition fixture, then proves the customer-facing submit/finalize path.
 - Specialist selection rules remain available for rare cross-group cases (collapsed).
-- Tip deploy of harness-only follow-ups after `bc21e105` may still be completing; product acceptance is on the verified serving SHA above.
 
 Production untouched.

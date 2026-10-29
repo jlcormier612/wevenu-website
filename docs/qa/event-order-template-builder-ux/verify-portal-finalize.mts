@@ -332,10 +332,24 @@ async function main() {
     persisted.eoId = eoId;
     persisted.portalToken = portalToken;
 
+    async function selectOption(optionId: string) {
+      const input = couple.getByTestId(`choices-option-${optionId}`);
+      await input.waitFor({ state: "visible", timeout: 30_000 });
+      await input.scrollIntoViewIfNeeded();
+      // Prefer label click (native radio/checkbox + React onChange)
+      await input.locator("xpath=ancestor::label[1]").click({ force: true });
+      await couple.waitForTimeout(350);
+      const checked = await input.isChecked().catch(() => false);
+      if (!checked) {
+        await input.check({ force: true });
+        await couple.waitForTimeout(350);
+      }
+    }
+
     // ---- Portal: incomplete reject (no EO mutation) ----
     await openCoupleChoices(couple, portalToken);
-    await couple.getByText(`${PREFIX}Plated Dinner`).click();
-    await couple.waitForTimeout(500);
+    await selectOption("o-plated");
+    await couple.getByTestId("choices-option-o-chicken").waitFor({ state: "visible", timeout: 15_000 });
     const beforeIncomplete = await admin
       .from("event_order_lines")
       .select("id", { count: "exact", head: true })
@@ -366,12 +380,12 @@ async function main() {
     await couple.screenshot({ path: `${OUT}/shots/portal-incomplete-reject-1280.png`, fullPage: true });
 
     // ---- Portal: over-max blocked on Sides (buffet path) — do not submit a valid 2-of-2 ----
-    await couple.getByText(`${PREFIX}Buffet Dinner`).click();
-    await couple.waitForTimeout(600);
-    await couple.locator('input[value="o-caesar"]').check({ force: true });
-    await couple.locator('input[value="o-roast"]').check({ force: true });
+    await selectOption("o-buffet");
+    await couple.getByTestId("choices-option-o-caesar").waitFor({ state: "visible", timeout: 15_000 });
+    await selectOption("o-caesar");
+    await selectOption("o-roast");
     await couple.waitForTimeout(400);
-    const potato = couple.locator('input[value="o-potato"]');
+    const potato = couple.getByTestId("choices-option-o-potato");
     const potatoDisabled = await potato.isDisabled().catch(() => false);
     let overText = potatoDisabled ? "third side disabled at max" : "";
     if (!potatoDisabled) {
@@ -401,15 +415,19 @@ async function main() {
       "persisted",
     );
 
-    // ---- Portal: valid plated path ----
-    // Clear buffet sides by switching primary answer (dependents hide)
-    await couple.getByText(`${PREFIX}Plated Dinner`).click({ force: true });
-    await couple.waitForTimeout(700);
-    await couple.locator('input[value="o-chicken"]').check({ force: true });
-    await couple.waitForTimeout(400);
+    // ---- Portal: valid plated path (fresh load — avoid leftover buffet state) ----
+    await openCoupleChoices(couple, portalToken);
+    await selectOption("o-plated");
+    await couple.getByTestId("choices-option-o-chicken").waitFor({ state: "visible", timeout: 20_000 });
+    await selectOption("o-chicken");
+    const platedChecked = await couple.getByTestId("choices-option-o-plated").isChecked();
+    const chickenChecked = await couple.getByTestId("choices-option-o-chicken").isChecked();
+    if (!platedChecked || !chickenChecked) {
+      throw new Error(`valid path not selected plated=${platedChecked} chicken=${chickenChecked}`);
+    }
     await couple.getByTestId("portal-choices-submit").click();
     let afterSubmit: { status: string; answers: ChoicesAnswers | null; applied_line_ids: string[] | null } | null = null;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       const { data } = await admin
         .from("client_choices")
         .select("status,answers,applied_line_ids")
@@ -417,6 +435,10 @@ async function main() {
         .single();
       afterSubmit = data as typeof afterSubmit;
       if (data?.status === "submitted" || data?.status === "resubmitted") break;
+      const err = couple.getByTestId("portal-choices-error");
+      if (await err.count()) {
+        throw new Error(`valid submit UI error: ${await err.innerText()}`);
+      }
       await couple.waitForTimeout(500);
     }
     const submitBody = await couple.locator("body").innerText();
@@ -571,6 +593,23 @@ async function main() {
     persisted.appliedIds = appliedIds;
     await staff.screenshot({ path: `${OUT}/shots/venue-after-finalize-1280.png`, fullPage: true });
 
+    // Snapshot immutability: mutating the live choices definition must not rewrite EO lines
+    const mutatedDefinition = structuredClone(definition) as ChoicesDefinition;
+    const chickenOpt = mutatedDefinition.options.find((o) => o.id === "o-chicken");
+    if (chickenOpt) chickenOpt.label = `${PREFIX}Chicken Marsala RENAMED`;
+    await admin.from("client_choices").update({ definition: mutatedDefinition }).eq("id", choicesId);
+    const { data: afterDefEdit } = await admin
+      .from("event_order_lines")
+      .select("description")
+      .eq("event_order_id", eoId)
+      .ilike("description", "%Chicken%");
+    record(
+      "definition_edit_does_not_mutate_eo_snapshot",
+      (afterDefEdit ?? []).every((l) => /Chicken Marsala$/i.test(l.description) && !/RENAMED/i.test(l.description)),
+      JSON.stringify(afterDefEdit),
+      "finalization",
+    );
+
     // ---- Duplicate finalize via Amend → submitted → Update (product revision path) ----
     const validAnswers = {
       "g-dinner": { optionIds: ["o-plated"] },
@@ -691,6 +730,25 @@ async function main() {
 
     await openCoupleChoices(couple, portalToken);
     await couple.screenshot({ path: `${OUT}/shots/portal-after-flow-1280.png`, fullPage: true });
+
+    // Mobile couple choices — controls usable at 390
+    await couple.setViewportSize({ width: 390, height: 844 });
+    await openCoupleChoices(couple, portalToken);
+    const mobileBody = await couple.locator("body").innerText();
+    const mobileOverflow = await couple.evaluate(() => {
+      const doc = document.documentElement;
+      return Math.max(doc.scrollWidth - doc.clientWidth, document.body.scrollWidth - document.body.clientWidth);
+    });
+    const submit390 = couple.getByTestId("portal-choices-submit");
+    record(
+      "portal_mobile_390_choices_usable",
+      /Your Choices|Plated|Buffet|Chicken|Submitted|finalized|venue/i.test(mobileBody)
+        && mobileOverflow <= 8
+        && ((await submit390.count()) === 0 || (await submit390.isVisible().catch(() => false))),
+      `overflowX=${mobileOverflow} text=${mobileBody.slice(0, 350)}`,
+      "usability",
+    );
+    await couple.screenshot({ path: `${OUT}/shots/portal-choices-390.png`, fullPage: true });
   } catch (err) {
     const detail =
       err instanceof Error

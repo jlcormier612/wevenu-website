@@ -3,7 +3,7 @@
     {
       "name": "serving_sha",
       "pass": true,
-      "detail": "expected=159e5a9d9f8404325242ae966487acc560609928 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:159e5a9d9f8404325242ae966487acc560609928",
+      "detail": "expected=89fd85e9587138825cf4212fea9f4119fc794385 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385",
       "kind": "deploy"
     },
     {
@@ -45,7 +45,7 @@
     {
       "name": "portal_valid_submit_success",
       "pass": true,
-      "detail": "status=submitted ui=EOPF\n\n·\n\nJen's Fancy Venue\n\nOct 8, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nEOPF-EOPFMVSR1B9Y-Dinner Sel",
+      "detail": "status=submitted ui=EOPF\n\n·\n\nJen's Fancy Venue\n\nFeb 16, 2028\n\nExport my data\n🏠\nHome\n✅\nTasks\n🕒\nTimeline\n📁\nDocs\n🗺️\nFloor Plan\n✅\nChoices\n1\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nEOPF-EOPFMVSU6NSX-Dinner Se",
       "kind": "portal"
     },
     {
@@ -63,31 +63,31 @@
     {
       "name": "submit_does_not_create_choice_lines",
       "pass": true,
-      "detail": "[{\"id\":\"ae4b1e1c-86ba-453c-8104-4365dca75313\",\"description\":\"EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line\"}]",
+      "detail": "[{\"id\":\"b1ee15c2-08dd-4692-902b-54f59922f6a2\",\"description\":\"EOPF-EOPFMVSU6NSX-MARKER-venue-fixed-line\"}]",
       "kind": "persisted"
     },
     {
       "name": "finalize_sets_status_finalized",
       "pass": true,
-      "detail": "{\"status\":\"finalized\",\"applied_line_ids\":[\"964b5b98-dad1-43b8-91a3-b04736debb00\",\"ed067a55-496b-418a-89cc-fbf642fecb59\"],\"answers\":{\"g-dinner\":{\"optionIds\":[\"o-plated\"]},\"g-entree\":{\"optionIds\":[\"o-chicken\"]}}}",
+      "detail": "{\"status\":\"finalized\",\"applied_line_ids\":[\"cd0da818-0f68-4689-9cc8-70200a44f9a9\",\"e740cdb7-8500-4eb1-af0e-dff9f5556747\"],\"answers\":{\"g-dinner\":{\"optionIds\":[\"o-plated\"]},\"g-entree\":{\"optionIds\":[\"o-chicken\"]}}}",
       "kind": "finalization"
     },
     {
       "name": "finalize_records_applied_line_ids",
       "pass": true,
-      "detail": "[\"964b5b98-dad1-43b8-91a3-b04736debb00\",\"ed067a55-496b-418a-89cc-fbf642fecb59\"]",
+      "detail": "[\"cd0da818-0f68-4689-9cc8-70200a44f9a9\",\"e740cdb7-8500-4eb1-af0e-dff9f5556747\"]",
       "kind": "finalization"
     },
     {
       "name": "finalize_creates_expected_choice_lines",
       "pass": true,
-      "detail": "[{\"id\":\"964b5b98-dad1-43b8-91a3-b04736debb00\",\"description\":\"EOPF-EOPFMVSR1B9Y-Plated Dinner\",\"unit_price\":0,\"is_included\":true,\"quantity\":1,\"amount\":0,\"offering_id\":null},{\"id\":\"ed067a55-496b-418a-89cc-fbf642fecb59\",\"description\":\"EOPF-EOPFMVSR1B9Y-Chicken Marsala\",\"unit_price\":42,\"is_included\":false,\"quantity\":1,\"amount\":42,\"offering_id\":null}]",
+      "detail": "[{\"id\":\"cd0da818-0f68-4689-9cc8-70200a44f9a9\",\"description\":\"EOPF-EOPFMVSU6NSX-Plated Dinner\",\"unit_price\":0,\"is_included\":true,\"quantity\":1,\"amount\":0,\"offering_id\":null},{\"id\":\"e740cdb7-8500-4eb1-af0e-dff9f5556747\",\"description\":\"EOPF-EOPFMVSU6NSX-Chicken Marsala\",\"unit_price\":42,\"is_included\":false,\"quantity\":1,\"amount\":42,\"offering_id\":null}]",
       "kind": "finalization"
     },
     {
       "name": "finalize_preserves_unrelated_marker_line",
       "pass": true,
-      "detail": "{\"id\":\"ae4b1e1c-86ba-453c-8104-4365dca75313\",\"description\":\"EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line\",\"unit_price\":25,\"is_included\":false,\"quantity\":1,\"amount\":25,\"offering_id\":null}",
+      "detail": "{\"id\":\"b1ee15c2-08dd-4692-902b-54f59922f6a2\",\"description\":\"EOPF-EOPFMVSU6NSX-MARKER-venue-fixed-line\",\"unit_price\":25,\"is_included\":false,\"quantity\":1,\"amount\":25,\"offering_id\":null}",
       "kind": "finalization"
     },
     {
@@ -97,43 +97,55 @@
       "kind": "finalization"
     },
     {
+      "name": "definition_edit_does_not_mutate_eo_snapshot",
+      "pass": true,
+      "detail": "[{\"description\":\"EOPF-EOPFMVSU6NSX-Chicken Marsala\"}]",
+      "kind": "finalization"
+    },
+    {
       "name": "duplicate_finalize_no_duplicate_lines",
       "pass": true,
-      "detail": "{\"chickenCount\":1,\"platedCount\":1,\"markerCount\":1,\"total\":3,\"priorApplied\":[\"964b5b98-dad1-43b8-91a3-b04736debb00\",\"ed067a55-496b-418a-89cc-fbf642fecb59\"],\"dupApplied\":[\"dfd44bf0-68b8-4b5d-b204-de4b6bfbf7b5\",\"285a8d91-15ab-4321-a8fd-8f6ad9de5cc3\"],\"replaced\":true}",
+      "detail": "{\"chickenCount\":1,\"platedCount\":1,\"markerCount\":1,\"total\":3,\"priorApplied\":[\"cd0da818-0f68-4689-9cc8-70200a44f9a9\",\"e740cdb7-8500-4eb1-af0e-dff9f5556747\"],\"dupApplied\":[\"45f9d506-deb5-4af8-a587-a31eff44c8ad\",\"f8d91c6e-514b-4814-924e-a83eacd6026f\"],\"replaced\":true}",
       "kind": "finalization"
     },
     {
       "name": "reject_setup_incomplete_answers",
       "pass": true,
-      "detail": "{\"status\":\"submitted\",\"answers\":{\"g-dinner\":{\"optionIds\":[\"o-plated\"]}},\"applied_line_ids\":[\"dfd44bf0-68b8-4b5d-b204-de4b6bfbf7b5\",\"285a8d91-15ab-4321-a8fd-8f6ad9de5cc3\"]}",
+      "detail": "{\"status\":\"submitted\",\"answers\":{\"g-dinner\":{\"optionIds\":[\"o-plated\"]}},\"applied_line_ids\":[\"45f9d506-deb5-4af8-a587-a31eff44c8ad\",\"f8d91c6e-514b-4814-924e-a83eacd6026f\"]}",
       "kind": "finalization"
     },
     {
       "name": "rejected_finalize_no_partial_mutation",
       "pass": true,
-      "detail": "{\"status\":\"submitted\",\"uiHint\":\"OVERVIEW\\n\\nDashboard\\n\\nYOUR RELATIONSHIPS\\n\\nLeads\\n99+\\nClients\\nVendors\\n\\nSCHEDULING\\n\\nCalendar\\nTours\\n22\\n\\nCOMMUNICATION\\n\\nInbox\\nAutomations\\n\\nLIBRARY\\n\\nTemplates\\nDocuments\\n\\nFINANCIALS\\n\\nContracts\\n17\\nPayments\\n14\\n\\nTO DO’S\\n\\nTask Center\\nRequests\\n\\nYOUR VENUE\\n\\nSetup\\nSettings\\nGuidance\\nVenue Guide\\nReports\\nHelp & Feedback\\nJen's Fancy Venue\\nSearch\\n⌘K\\n99+\\nJ\\njennifer@hellotocheers.com\\nDelete\\nBookings\\nEO\\nEOPF-EOPFMVSR1B9\",\"before\":[\"285a8d91-15ab-4321-a8fd-8f6ad9de5cc3\",\"ae4b1e1c-86ba-453c-8104-4365dca75313\",\"dfd44bf0-68b8-4b5d-b204-de4b6bfbf7b5\"],\"after\":[\"285a8d91-15ab-4321-a8fd-8f6ad9de5cc3\",\"ae4b1e1c-86ba-453c-8104-4365dca75313\",\"dfd44bf0-68b8-4b5d-b204-de4b6bfbf7b5\"],\"answers\":{\"g-dinner\":{\"optionIds\":[\"o-plated\"]}}}",
+      "detail": "{\"status\":\"submitted\",\"uiHint\":\"OVERVIEW\\n\\nDashboard\\n\\nYOUR RELATIONSHIPS\\n\\nLeads\\n99+\\nClients\\nVendors\\n\\nSCHEDULING\\n\\nCalendar\\nTours\\n22\\n\\nCOMMUNICATION\\n\\nInbox\\nAutomations\\n\\nLIBRARY\\n\\nTemplates\\nDocuments\\n\\nFINANCIALS\\n\\nContracts\\n17\\nPayments\\n14\\n\\nTO DO’S\\n\\nTask Center\\nRequests\\n\\nYOUR VENUE\\n\\nSetup\\nSettings\\nGuidance\\nVenue Guide\\nReports\\nHelp & Feedback\\nJen's Fancy Venue\\nSearch\\n⌘K\\n99+\\nJ\\njennifer@hellotocheers.com\\nDelete\\nBookings\\nEO\\nEOPF-EOPFMVSU6NS\",\"before\":[\"45f9d506-deb5-4af8-a587-a31eff44c8ad\",\"b1ee15c2-08dd-4692-902b-54f59922f6a2\",\"f8d91c6e-514b-4814-924e-a83eacd6026f\"],\"after\":[\"45f9d506-deb5-4af8-a587-a31eff44c8ad\",\"b1ee15c2-08dd-4692-902b-54f59922f6a2\",\"f8d91c6e-514b-4814-924e-a83eacd6026f\"],\"answers\":{\"g-dinner\":{\"optionIds\":[\"o-plated\"]}}}",
       "kind": "finalization"
+    },
+    {
+      "name": "portal_mobile_390_choices_usable",
+      "pass": true,
+      "detail": "overflowX=0 text=EOPF\n\n·\n\nJen's Fancy Venue\n\nHome\nTasks\nMessages\nPayments\nMore\nYour Choices\n\nSelect options your venue asked for. Submitting sends them for review — it is not a payment.\n\nEOPF-EOPFMVSU6NSX-Dinner Selections · Client Submitted\nDinner style\n\nPick one · required — 1 of 1 selected\n\nPick one · required — 1 of 1 selected\nEOPF-EOPFMVSU6NSX-Buffet Dinner\nIn",
+      "kind": "usability"
     }
   ],
   "failed": 0,
   "persisted": {
-    "run": "EOPFMVSR1B9Y",
-    "expectedSha": "159e5a9d9f8404325242ae966487acc560609928",
-    "prefix": "EOPF-EOPFMVSR1B9Y-",
+    "run": "EOPFMVSU6NSX",
+    "expectedSha": "89fd85e9587138825cf4212fea9f4119fc794385",
+    "prefix": "EOPF-EOPFMVSU6NSX-",
     "marker": {
-      "id": "ae4b1e1c-86ba-453c-8104-4365dca75313",
-      "description": "EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line",
+      "id": "b1ee15c2-08dd-4692-902b-54f59922f6a2",
+      "description": "EOPF-EOPFMVSU6NSX-MARKER-venue-fixed-line",
       "unit_price": 25,
       "is_included": false
     },
-    "choicesId": "77085534-6e33-451d-93ab-7e153cfe8162",
-    "eventId": "46a83cb6-ceec-40a3-8cde-dfbc3d9409cb",
-    "eoId": "cea19b6c-963e-4913-ab21-57c568b3f8af",
-    "portalToken": "eopf_eopfmvsr1b9y_cbdd",
+    "choicesId": "d37ed65b-096a-4585-a54a-56e0a14764ff",
+    "eventId": "8e37aad5-e203-4210-a495-fe418e36e976",
+    "eoId": "a0e63f6a-a157-4ff8-bc08-7c59ee686e5d",
+    "portalToken": "eopf_eopfmvsu6nsx_e9ee",
     "eoLinesAfterFinalize": [
       {
-        "id": "ae4b1e1c-86ba-453c-8104-4365dca75313",
-        "description": "EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line",
+        "id": "b1ee15c2-08dd-4692-902b-54f59922f6a2",
+        "description": "EOPF-EOPFMVSU6NSX-MARKER-venue-fixed-line",
         "unit_price": 25,
         "is_included": false,
         "quantity": 1,
@@ -141,8 +153,8 @@
         "offering_id": null
       },
       {
-        "id": "964b5b98-dad1-43b8-91a3-b04736debb00",
-        "description": "EOPF-EOPFMVSR1B9Y-Plated Dinner",
+        "id": "cd0da818-0f68-4689-9cc8-70200a44f9a9",
+        "description": "EOPF-EOPFMVSU6NSX-Plated Dinner",
         "unit_price": 0,
         "is_included": true,
         "quantity": 1,
@@ -150,8 +162,8 @@
         "offering_id": null
       },
       {
-        "id": "ed067a55-496b-418a-89cc-fbf642fecb59",
-        "description": "EOPF-EOPFMVSR1B9Y-Chicken Marsala",
+        "id": "e740cdb7-8500-4eb1-af0e-dff9f5556747",
+        "description": "EOPF-EOPFMVSU6NSX-Chicken Marsala",
         "unit_price": 42,
         "is_included": false,
         "quantity": 1,
@@ -160,21 +172,21 @@
       }
     ],
     "appliedIds": [
-      "964b5b98-dad1-43b8-91a3-b04736debb00",
-      "ed067a55-496b-418a-89cc-fbf642fecb59"
+      "cd0da818-0f68-4689-9cc8-70200a44f9a9",
+      "e740cdb7-8500-4eb1-af0e-dff9f5556747"
     ],
     "eoLinesAfterDup": [
       {
-        "id": "ae4b1e1c-86ba-453c-8104-4365dca75313",
-        "description": "EOPF-EOPFMVSR1B9Y-MARKER-venue-fixed-line"
+        "id": "b1ee15c2-08dd-4692-902b-54f59922f6a2",
+        "description": "EOPF-EOPFMVSU6NSX-MARKER-venue-fixed-line"
       },
       {
-        "id": "dfd44bf0-68b8-4b5d-b204-de4b6bfbf7b5",
-        "description": "EOPF-EOPFMVSR1B9Y-Plated Dinner"
+        "id": "45f9d506-deb5-4af8-a587-a31eff44c8ad",
+        "description": "EOPF-EOPFMVSU6NSX-Plated Dinner"
       },
       {
-        "id": "285a8d91-15ab-4321-a8fd-8f6ad9de5cc3",
-        "description": "EOPF-EOPFMVSR1B9Y-Chicken Marsala"
+        "id": "f8d91c6e-514b-4814-924e-a83eacd6026f",
+        "description": "EOPF-EOPFMVSU6NSX-Chicken Marsala RENAMED"
       }
     ]
   }

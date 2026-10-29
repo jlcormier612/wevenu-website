@@ -892,7 +892,7 @@ async function main() {
       .eq("name", `${PREFIX}Champagne Toast`);
     record("template_only_did_not_create_offering", (offeringCount ?? 0) === 0, `count=${offeringCount}`, "persisted");
 
-    // Mobile
+    // Mobile — exercise meaningful builder workflow at 390px (not text-only)
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${APP}/library/event-order-templates/${tpl.id}`, {
       waitUntil: "domcontentloaded",
@@ -900,13 +900,44 @@ async function main() {
     });
     await page.waitForSelector('[data-testid="eo-guided-setup-wizard"]', { timeout: 90_000 });
     await page.screenshot({ path: `${OUT}/shots/08-builder-390.png`, fullPage: true });
+
+    const alwaysOn390 = page.getByRole("heading", { name: /Always on the package/i });
+    const couples390 = page.getByRole("heading", { name: /Couple.?s choices/i });
+    await alwaysOn390.first().scrollIntoViewIfNeeded().catch(() => undefined);
+    await couples390.first().scrollIntoViewIfNeeded().catch(() => undefined);
+    const addChoice390 = page.getByTestId("eo-add-offering-choice").or(
+      page.getByRole("button", { name: /Add (a )?choice|Add offering/i }),
+    );
+    if (await addChoice390.count()) {
+      await addChoice390.first().scrollIntoViewIfNeeded();
+      await addChoice390.first().click({ force: true }).catch(() => undefined);
+      await page.waitForTimeout(600);
+    }
+    const buffetLabel390 = page.getByText(/Buffet Style Dinner/i).first();
+    if (await buffetLabel390.count()) {
+      await buffetLabel390.scrollIntoViewIfNeeded();
+      await buffetLabel390.click({ force: true }).catch(() => undefined);
+      await page.waitForTimeout(400);
+    }
+    const childCheck390 = page.locator('[data-testid^="eo-child-offering-"]').first();
+    const childVisible390 = (await childCheck390.count()) > 0 && (await childCheck390.isVisible().catch(() => false));
+    const overflowX = await page.evaluate(() => {
+      const doc = document.documentElement;
+      return Math.max(doc.scrollWidth - doc.clientWidth, document.body.scrollWidth - document.body.clientWidth);
+    });
     const mobileText = await page.locator("body").innerText();
+    const primaryActionsUsable =
+      (await alwaysOn390.count()) > 0
+      && (await couples390.count()) > 0
+      && /Buffet Style Dinner|Arbor|Runner|Petals/i.test(mobileText)
+      && overflowX <= 8;
     record(
-      "mobile_390_structure_readable",
-      /Always on the package|Couple.?s choices|Buffet Style Dinner|Arbor/i.test(mobileText),
-      mobileText.slice(0, 400),
+      "mobile_390_builder_workflow_usable",
+      primaryActionsUsable,
+      `overflowX=${overflowX} childVisible=${childVisible390} text=${mobileText.slice(0, 350)}`,
       "usability",
     );
+    await page.screenshot({ path: `${OUT}/shots/08b-builder-390-interacted.png`, fullPage: true });
   } catch (err) {
     const detail =
       err instanceof Error

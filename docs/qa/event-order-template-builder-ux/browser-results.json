@@ -3,7 +3,7 @@
     {
       "name": "serving_sha",
       "pass": true,
-      "detail": "expected=bc21e105c9091fc446954717e980afab4e0008be ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:bc21e105c9091fc446954717e980afab4e0008be",
+      "detail": "expected=89fd85e9587138825cf4212fea9f4119fc794385 ecs=405254329873.dkr.ecr.us-east-1.amazonaws.com/htc-sandbox-venue-app:89fd85e9587138825cf4212fea9f4119fc794385",
       "kind": "deploy"
     },
     {
@@ -51,19 +51,19 @@
     {
       "name": "persisted_catalog_always_on_covered",
       "pass": true,
-      "detail": "{\"id\":\"0a566728-4d97-48f5-8449-d5491f429917\",\"description\":\"Day-of coordination\",\"included_by_default\":true,\"unit_price\":0,\"offering_id\":\"ba20151d-06d5-4553-8ba6-c9b3bee91a0f\"}",
+      "detail": "{\"id\":\"1f1d3379-815d-4134-a93d-fef588ecf15c\",\"description\":\"Day-of coordination\",\"included_by_default\":true,\"unit_price\":0,\"offering_id\":\"ba20151d-06d5-4553-8ba6-c9b3bee91a0f\"}",
       "kind": "persisted"
     },
     {
       "name": "persisted_template_only_additional_charge",
       "pass": true,
-      "detail": "{\"id\":\"9b1ba91c-e3de-4dfc-b6fc-3b0620997f78\",\"description\":\"EOTUX-EOTUXMVST5O9O-Champagne Toast\",\"included_by_default\":false,\"unit_price\":150,\"offering_id\":null}",
+      "detail": "{\"id\":\"386f70ce-5389-4575-83f7-bdca09addf7e\",\"description\":\"EOTUX-EOTUXMVSU1IP7-Champagne Toast\",\"included_by_default\":false,\"unit_price\":150,\"offering_id\":null}",
       "kind": "persisted"
     },
     {
       "name": "persisted_parents_from_offerings_no_question",
       "pass": true,
-      "detail": "{\"buffetOpt\":{\"id\":\"8787d587-d806-4729-aed2-08adbb987860\",\"label\":\"Buffet Style Dinner\",\"group_id\":\"3ddd4eda-8b83-4313-8d3e-4321b00d19b7\",\"offering_id\":\"8ce388b7-95b2-4b13-841d-a087a37e92f8\"},\"platedOpt\":{\"id\":\"18d9ba35-f8c2-41b3-bbe5-562d68074210\",\"label\":\"Plated Dinner\",\"group_id\":\"3ddd4eda-8b83-4313-8d3e-4321b00d19b7\",\"offering_id\":\"0dba018c-6d56-4022-b32e-337aed3db29b\"},\"rootGroupId\":\"3ddd4eda-8b83-4313-8d3e-4321b00d19b7\"}",
+      "detail": "{\"buffetOpt\":{\"id\":\"6ef44dec-387f-4b36-9130-5371fcf29ba9\",\"label\":\"Buffet Style Dinner\",\"group_id\":\"c24dd47a-47ad-4a42-9e3c-f83fb85210ad\",\"offering_id\":\"8ce388b7-95b2-4b13-841d-a087a37e92f8\"},\"platedOpt\":{\"id\":\"8fbe7261-e5d4-4175-8028-957ee3f4459a\",\"label\":\"Plated Dinner\",\"group_id\":\"c24dd47a-47ad-4a42-9e3c-f83fb85210ad\",\"offering_id\":\"0dba018c-6d56-4022-b32e-337aed3db29b\"},\"rootGroupId\":\"c24dd47a-47ad-4a42-9e3c-f83fb85210ad\"}",
       "kind": "persisted"
     },
     {
@@ -75,7 +75,7 @@
     {
       "name": "persisted_selected_children_under_parents",
       "pass": true,
-      "detail": "{\"zitiOpt\":{\"id\":\"ed747633-dd10-463b-9c63-fa9a50a1c4f4\",\"label\":\"Baked Ziti\",\"group_id\":\"0addbf39-1a5f-4d43-a809-3ef92e001c5d\",\"offering_id\":\"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed\"},\"marsalaOpt\":{\"id\":\"257f0286-0f33-4d91-8767-9e6f770f06fb\",\"label\":\"Chicken Marsala\",\"group_id\":\"276786e6-bc1b-418f-a2d9-289b3cf3182e\",\"offering_id\":\"ebf13e5b-b3f3-43ca-ae89-03c0d589b323\"},\"buffetChildGroup\":{\"id\":\"0addbf39-1a5f-4d43-a809-3ef92e001c5d\",\"name\":\"Buffet Style Dinner options\",\"depends_on_option_ids\":[\"8787d587-d806-4729-aed2-08adbb987860\"],\"min_select\":0,\"max_select\":null,\"instructions\":\"Shown only after the client chooses “Buffet Style Dinner”.\"},\"platedChildGroup\":{\"id\":\"276786e6-bc1b-418f-a2d9-289b3cf3182e\",\"name\":\"Plated Dinner options\",\"depends_on_option_ids\":[\"18d9ba35-f8c2-41b3-bbe5-562d68074210\"],\"min_select\":0,\"max_select\":null,\"instructions\":\"Shown only after the client chooses “Plated Dinner”.\"}}",
+      "detail": "{\"zitiOpt\":{\"id\":\"8e1dd621-8800-4b36-ad42-7ee0e98cbad1\",\"label\":\"Baked Ziti\",\"group_id\":\"0c2f3864-fd5d-4f6b-b404-0cfc69a825f2\",\"offering_id\":\"bf7b1e3c-65b6-4f61-bc0f-7e0b39bf53ed\"},\"marsalaOpt\":{\"id\":\"9f977cfc-b240-438a-a29c-d36a68ad328b\",\"label\":\"Chicken Marsala\",\"group_id\":\"be87577f-9133-4212-8f27-8bf47e4ca0ad\",\"offering_id\":\"ebf13e5b-b3f3-43ca-ae89-03c0d589b323\"},\"buffetChildGroup\":{\"id\":\"0c2f3864-fd5d-4f6b-b404-0cfc69a825f2\",\"name\":\"Buffet Style Dinner options\",\"depends_on_option_ids\":[\"6ef44dec-387f-4b36-9130-5371fcf29ba9\"],\"min_select\":0,\"max_select\":null,\"instructions\":\"Shown only after the client chooses “Buffet Style Dinner”.\"},\"platedChildGroup\":{\"id\":\"be87577f-9133-4212-8f27-8bf47e4ca0ad\",\"name\":\"Plated Dinner options\",\"depends_on_option_ids\":[\"8fbe7261-e5d4-4175-8028-957ee3f4459a\"],\"min_select\":0,\"max_select\":null,\"instructions\":\"Shown only after the client chooses “Plated Dinner”.\"}}",
       "kind": "persisted"
     },
     {
@@ -93,7 +93,7 @@
     {
       "name": "persisted_ceremony_standalones",
       "pass": true,
-      "detail": "[{\"id\":\"868dbb18-37e5-493f-994c-a08eed651e0d\",\"label\":\"Arbor\",\"group_id\":\"c33c6496-147e-4e17-966a-f7789e8bad81\",\"offering_id\":\"bd16d232-33c9-47ac-a738-e731bdce4bfe\",\"unit_price\":250},{\"id\":\"ca0e063d-794e-4cd3-8e1a-0bf38a4fb236\",\"label\":\"Arch\",\"group_id\":\"c33c6496-147e-4e17-966a-f7789e8bad81\",\"offering_id\":\"2fcb5a0c-9ffd-4c9d-84b8-f1bde5fb0802\",\"unit_price\":200},{\"id\":\"12237e62-8b5e-4330-b0e2-d2dc60da29eb\",\"label\":\"Runner\",\"group_id\":\"ffde92f7-a2c9-4dea-8f12-c16d71ec27b3\",\"offering_id\":\"c656e6fc-4b63-459f-9b82-47876503bd30\",\"unit_price\":75},{\"id\":\"95835824-f9f4-4d6d-b440-806678d951a8\",\"label\":\"White Rose Petal Aisle Path\",\"group_id\":\"ffde92f7-a2c9-4dea-8f12-c16d71ec27b3\",\"offering_id\":\"427ee6c7-19f7-495f-b151-0bb9ab486208\",\"unit_price\":175}]",
+      "detail": "[{\"id\":\"dbfefba9-97c2-42c3-b5ac-596bb351fda6\",\"label\":\"Arbor\",\"group_id\":\"7bac009e-4260-4da1-bc07-8500ec2b6a7d\",\"offering_id\":\"bd16d232-33c9-47ac-a738-e731bdce4bfe\",\"unit_price\":250},{\"id\":\"34248a7e-5c32-4671-a9f8-49a3bd6e52fe\",\"label\":\"Arch\",\"group_id\":\"7bac009e-4260-4da1-bc07-8500ec2b6a7d\",\"offering_id\":\"2fcb5a0c-9ffd-4c9d-84b8-f1bde5fb0802\",\"unit_price\":200},{\"id\":\"d9dcae5a-c583-42cd-830d-5db13d63fbc5\",\"label\":\"Runner\",\"group_id\":\"54582e3b-b521-4917-a02e-47be4f8a240e\",\"offering_id\":\"c656e6fc-4b63-459f-9b82-47876503bd30\",\"unit_price\":75},{\"id\":\"d96866bc-1a26-4e62-ac41-da173b6728aa\",\"label\":\"White Rose Petal Aisle Path\",\"group_id\":\"54582e3b-b521-4917-a02e-47be4f8a240e\",\"offering_id\":\"427ee6c7-19f7-495f-b151-0bb9ab486208\",\"unit_price\":175}]",
       "kind": "persisted"
     },
     {
@@ -105,19 +105,19 @@
     {
       "name": "reopen_preserves_offering_structure",
       "pass": true,
-      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\nJ\njennifer@hellotocheers.com\nEvent Order Templates\n\nEVENT ORDER TEMPLATE\n\nEOTUX-EOTUXMVST5O9O-Offering Builder\nOwner: Venue\n·\nUpdated Oct 28, 2026\nYour template\nPreview\nEdit details\n\nSet up each category with items always on the package and Couple's choices selected from your Offerings catalog — no questions to build first. Preview anytime; it does not send or finalize. Manage Offerings →\n\noffering-based package builder acceptance\n\nEVENT ORDER PACKAGE SETUP\n\nCategory 1 of 2: C",
+      "detail": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\nJen's Fancy Venue\nSearch\n⌘K\nJ\njennifer@hellotocheers.com\nEvent Order Templates\n\nEVENT ORDER TEMPLATE\n\nEOTUX-EOTUXMVSU1IP7-Offering Builder\nOwner: Venue\n·\nUpdated Oct 28, 2026\nYour template\nPreview\nEdit details\n\nSet up each category with items always on the package and Couple's choices selected from your Offerings catalog — no questions to build first. Preview anytime; it does not send or finalize. Manage Offerings →\n\noffering-based package builder acceptance\n\nEVENT ORDER PACKAGE SETUP\n\nCategory 1 of 2: C",
       "kind": "persisted"
     },
     {
       "name": "preview_buffet_shows_only_buffet_children",
       "pass": true,
-      "detail": "Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.\n\nCEREMONY CHOICES · CHOOSE 1\n\nArbor\nArch\n\nCATERING CHOICES · CHOOSE 1\n\nBuffet Style Dinner\nPlated Dinner\n\nBUFFET STYLE DINNER OPTIONS · CHOOSE 1\n\nBaked Ziti\n\nCEREMONY CHOICES · CHOOSE 1\n\nRunner\nWhite Rose Petal Aisle Path\nCheck selections\n\nUses the same selection rules as couple submit.\n\nCATERING\n\nDay-of coordination\n\nIncluded · $0 / event\n\nEOTUX-EOTUXMVST5O9O-Ch",
+      "detail": "Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.\n\nCATERING CHOICES · CHOOSE 1\n\nBuffet Style Dinner\nPlated Dinner\n\nBUFFET STYLE DINNER OPTIONS · CHOOSE 1\n\nBaked Ziti\n\nCEREMONY CHOICES · CHOOSE 1\n\nArbor\nArch\n\nCEREMONY CHOICES · CHOOSE 1\n\nRunner\nWhite Rose Petal Aisle Path\nCheck selections\n\nUses the same selection rules as couple submit.\n\nCATERING\n\nDay-of coordination\n\nIncluded · $0 / event\n\nEOTUX-EOTUXMVSU1IP7-Ch",
       "kind": "preview"
     },
     {
       "name": "preview_plated_shows_only_plated_children",
       "pass": true,
-      "detail": "Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.\n\nCEREMONY CHOICES · CHOOSE 1\n\nArbor\nArch\n\nCATERING CHOICES · CHOOSE 1\n\nBuffet Style Dinner\nPlated Dinner\n\nPLATED DINNER OPTIONS · CHOOSE 1\n\nChicken Marsala\n\nCEREMONY CHOICES · CHOOSE 1\n\nRunner\nWhite Rose Petal Aisle Path\nCheck selections\n\nUses the same selection rules as couple submit.\n\nCATERING\n\nDay-of coordination\n\nIncluded · $0 / event\n\nEOTUX-EOTUXMVST5O9O-Cha",
+      "detail": "Try selections below the same way a couple would. Follow-up choices appear only for the active path. Check selections to see the same min/max validation couples get before submit. This preview does not send or finalize an Event Order.\n\nCATERING CHOICES · CHOOSE 1\n\nBuffet Style Dinner\nPlated Dinner\n\nPLATED DINNER OPTIONS · CHOOSE 1\n\nChicken Marsala\n\nCEREMONY CHOICES · CHOOSE 1\n\nArbor\nArch\n\nCEREMONY CHOICES · CHOOSE 1\n\nRunner\nWhite Rose Petal Aisle Path\nCheck selections\n\nUses the same selection rules as couple submit.\n\nCATERING\n\nDay-of coordination\n\nIncluded · $0 / event\n\nEOTUX-EOTUXMVSU1IP7-Cha",
       "kind": "preview"
     },
     {
@@ -147,13 +147,13 @@
     {
       "name": "resolved_lines_include_plated_and_entree_not_all_children",
       "pass": true,
-      "detail": "[{\"d\":\"Arbor\",\"p\":250,\"inc\":false},{\"d\":\"Plated Dinner\",\"p\":0,\"inc\":true},{\"d\":\"Runner\",\"p\":75,\"inc\":false},{\"d\":\"Chicken Marsala\",\"p\":0,\"inc\":true}]",
+      "detail": "[{\"d\":\"Plated Dinner\",\"p\":0,\"inc\":true},{\"d\":\"Arbor\",\"p\":250,\"inc\":false},{\"d\":\"Runner\",\"p\":75,\"inc\":false},{\"d\":\"Chicken Marsala\",\"p\":0,\"inc\":true}]",
       "kind": "finalization"
     },
     {
       "name": "resolved_buffet_path_excludes_plated_children",
       "pass": true,
-      "detail": "[\"Arbor\",\"Buffet Style Dinner\",\"Runner\",\"Baked Ziti\"]",
+      "detail": "[\"Buffet Style Dinner\",\"Arbor\",\"Baked Ziti\",\"Runner\"]",
       "kind": "finalization"
     },
     {
@@ -165,7 +165,7 @@
     {
       "name": "valid_finalize_lines_once",
       "pass": true,
-      "detail": "[{\"id\":\"f992c110-7d0d-4f6f-a1a7-aa14abefb8a4\",\"description\":\"Arbor\",\"unit_price\":250,\"is_included\":false,\"offering_id\":\"bd16d232-33c9-47ac-a738-e731bdce4bfe\",\"amount\":250},{\"id\":\"c6425e4b-873c-44cd-b0b2-d229086e73b9\",\"description\":\"Plated Dinner\",\"unit_price\":0,\"is_included\":true,\"offering_id\":\"0dba018c-6d56-4022-b32e-337aed3db29b\",\"amount\":0},{\"id\":\"f925d2ca-0a2c-4b9f-8d39-5d1dadbe4543\",\"description\":\"Runner\",\"unit_price\":75,\"is_included\":false,\"offering_id\":\"c656e6fc-4b63-459f-9b82-47876503bd30\",\"amount\":75},{\"id\":\"3efca843-1e7c-47cc-b352-a96a25e9a5e9\",\"description\":\"Chicken Marsala\",\"unit_price\":0,\"is_included\":true,\"offering_id\":\"ebf13e5b-b3f3-43ca-ae89-03c0d589b323\",\"amount\":0}]",
+      "detail": "[{\"id\":\"bb4de8bd-26eb-4b46-a266-a16865a7dfa5\",\"description\":\"Plated Dinner\",\"unit_price\":0,\"is_included\":true,\"offering_id\":\"0dba018c-6d56-4022-b32e-337aed3db29b\",\"amount\":0},{\"id\":\"7b773eb3-945c-425b-838d-560bc461e30c\",\"description\":\"Arbor\",\"unit_price\":250,\"is_included\":false,\"offering_id\":\"bd16d232-33c9-47ac-a738-e731bdce4bfe\",\"amount\":250},{\"id\":\"59fd5601-55da-4d61-9222-139d4e5eaa6b\",\"description\":\"Runner\",\"unit_price\":75,\"is_included\":false,\"offering_id\":\"c656e6fc-4b63-459f-9b82-47876503bd30\",\"amount\":75},{\"id\":\"7d762b27-8838-438e-baf6-8abd6e53c095\",\"description\":\"Chicken Marsala\",\"unit_price\":0,\"is_included\":true,\"offering_id\":\"ebf13e5b-b3f3-43ca-ae89-03c0d589b323\",\"amount\":0}]",
       "kind": "finalization"
     },
     {
@@ -187,17 +187,17 @@
       "kind": "persisted"
     },
     {
-      "name": "mobile_390_structure_readable",
+      "name": "mobile_390_builder_workflow_usable",
       "pass": true,
-      "detail": "Jen's Fancy Venue\nJ\nEvent Order Templates\n\nEVENT ORDER TEMPLATE\n\nEOTUX-EOTUXMVST5O9O-Offering Builder\nOwner: Venue\n·\nUpdated Oct 28, 2026\nYour template\nPreview\nEdit details\n\nSet up each category with items always on the package and Couple's choices selected from your Offerings catalog — no questions to build first. Preview anytime; it does not send or finalize. Manage Offerings →\n\noffering-based p",
+      "detail": "overflowX=0 childVisible=false text=Jen's Fancy Venue\n99+\nJ\nEvent Order Templates\n\nEVENT ORDER TEMPLATE\n\nEOTUX-EOTUXMVSU1IP7-Offering Builder\nOwner: Venue\n·\nUpdated Oct 28, 2026\nYour template\nPreview\nEdit details\n\nSet up each category with items always on the package and Couple's choices selected from your Offerings catalog — no questions to build first. Preview anytime; it does not ",
       "kind": "usability"
     }
   ],
   "failed": 0,
   "persisted": {
-    "run": "EOTUXMVST5O9O",
-    "expectedSha": "bc21e105c9091fc446954717e980afab4e0008be",
-    "prefix": "EOTUX-EOTUXMVST5O9O-",
+    "run": "EOTUXMVSU1IP7",
+    "expectedSha": "89fd85e9587138825cf4212fea9f4119fc794385",
+    "prefix": "EOTUX-EOTUXMVSU1IP7-",
     "catalog": {
       "buffetId": "8ce388b7-95b2-4b13-841d-a087a37e92f8",
       "platedId": "0dba018c-6d56-4022-b32e-337aed3db29b",
@@ -211,18 +211,18 @@
       "runnerId": "c656e6fc-4b63-459f-9b82-47876503bd30",
       "petalsId": "427ee6c7-19f7-495f-b151-0bb9ab486208"
     },
-    "templateId": "1d4bcc33-187b-4cbb-b5fb-2d220a89825f",
+    "templateId": "c2989a58-8181-47f9-9a77-5434d17d6cd6",
     "lines": [
       {
-        "id": "0a566728-4d97-48f5-8449-d5491f429917",
+        "id": "1f1d3379-815d-4134-a93d-fef588ecf15c",
         "description": "Day-of coordination",
         "included_by_default": true,
         "unit_price": 0,
         "offering_id": "ba20151d-06d5-4553-8ba6-c9b3bee91a0f"
       },
       {
-        "id": "9b1ba91c-e3de-4dfc-b6fc-3b0620997f78",
-        "description": "EOTUX-EOTUXMVST5O9O-Champagne Toast",
+        "id": "386f70ce-5389-4575-83f7-bdca09addf7e",
+        "description": "EOTUX-EOTUXMVSU1IP7-Champagne Toast",
         "included_by_default": false,
         "unit_price": 150,
         "offering_id": null
@@ -230,30 +230,30 @@
     ],
     "ceremonyOptions": [
       {
-        "id": "868dbb18-37e5-493f-994c-a08eed651e0d",
+        "id": "dbfefba9-97c2-42c3-b5ac-596bb351fda6",
         "label": "Arbor",
-        "group_id": "c33c6496-147e-4e17-966a-f7789e8bad81",
+        "group_id": "7bac009e-4260-4da1-bc07-8500ec2b6a7d",
         "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
         "unit_price": 250
       },
       {
-        "id": "ca0e063d-794e-4cd3-8e1a-0bf38a4fb236",
+        "id": "34248a7e-5c32-4671-a9f8-49a3bd6e52fe",
         "label": "Arch",
-        "group_id": "c33c6496-147e-4e17-966a-f7789e8bad81",
+        "group_id": "7bac009e-4260-4da1-bc07-8500ec2b6a7d",
         "offering_id": "2fcb5a0c-9ffd-4c9d-84b8-f1bde5fb0802",
         "unit_price": 200
       },
       {
-        "id": "12237e62-8b5e-4330-b0e2-d2dc60da29eb",
+        "id": "d9dcae5a-c583-42cd-830d-5db13d63fbc5",
         "label": "Runner",
-        "group_id": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+        "group_id": "54582e3b-b521-4917-a02e-47be4f8a240e",
         "offering_id": "c656e6fc-4b63-459f-9b82-47876503bd30",
         "unit_price": 75
       },
       {
-        "id": "95835824-f9f4-4d6d-b440-806678d951a8",
+        "id": "d96866bc-1a26-4e62-ac41-da173b6728aa",
         "label": "White Rose Petal Aisle Path",
-        "group_id": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+        "group_id": "54582e3b-b521-4917-a02e-47be4f8a240e",
         "offering_id": "427ee6c7-19f7-495f-b151-0bb9ab486208",
         "unit_price": 175
       }
@@ -261,18 +261,8 @@
     "finalization": {
       "resolved": [
         {
-          "optionId": "868dbb18-37e5-493f-994c-a08eed651e0d",
-          "groupId": "c33c6496-147e-4e17-966a-f7789e8bad81",
-          "offeringId": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
-          "description": "Arbor",
-          "quantity": 1,
-          "unitPrice": 250,
-          "isIncluded": false,
-          "amount": 250
-        },
-        {
-          "optionId": "18d9ba35-f8c2-41b3-bbe5-562d68074210",
-          "groupId": "3ddd4eda-8b83-4313-8d3e-4321b00d19b7",
+          "optionId": "8fbe7261-e5d4-4175-8028-957ee3f4459a",
+          "groupId": "c24dd47a-47ad-4a42-9e3c-f83fb85210ad",
           "offeringId": "0dba018c-6d56-4022-b32e-337aed3db29b",
           "description": "Plated Dinner",
           "quantity": 1,
@@ -281,8 +271,18 @@
           "amount": 0
         },
         {
-          "optionId": "12237e62-8b5e-4330-b0e2-d2dc60da29eb",
-          "groupId": "ffde92f7-a2c9-4dea-8f12-c16d71ec27b3",
+          "optionId": "dbfefba9-97c2-42c3-b5ac-596bb351fda6",
+          "groupId": "7bac009e-4260-4da1-bc07-8500ec2b6a7d",
+          "offeringId": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+          "description": "Arbor",
+          "quantity": 1,
+          "unitPrice": 250,
+          "isIncluded": false,
+          "amount": 250
+        },
+        {
+          "optionId": "d9dcae5a-c583-42cd-830d-5db13d63fbc5",
+          "groupId": "54582e3b-b521-4917-a02e-47be4f8a240e",
           "offeringId": "c656e6fc-4b63-459f-9b82-47876503bd30",
           "description": "Runner",
           "quantity": 1,
@@ -291,8 +291,8 @@
           "amount": 75
         },
         {
-          "optionId": "257f0286-0f33-4d91-8767-9e6f770f06fb",
-          "groupId": "276786e6-bc1b-418f-a2d9-289b3cf3182e",
+          "optionId": "9f977cfc-b240-438a-a29c-d36a68ad328b",
+          "groupId": "be87577f-9133-4212-8f27-8bf47e4ca0ad",
           "offeringId": "ebf13e5b-b3f3-43ca-ae89-03c0d589b323",
           "description": "Chicken Marsala",
           "quantity": 1,
@@ -303,15 +303,7 @@
       ],
       "applied": [
         {
-          "id": "f992c110-7d0d-4f6f-a1a7-aa14abefb8a4",
-          "description": "Arbor",
-          "unit_price": 250,
-          "is_included": false,
-          "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
-          "amount": 250
-        },
-        {
-          "id": "c6425e4b-873c-44cd-b0b2-d229086e73b9",
+          "id": "bb4de8bd-26eb-4b46-a266-a16865a7dfa5",
           "description": "Plated Dinner",
           "unit_price": 0,
           "is_included": true,
@@ -319,7 +311,15 @@
           "amount": 0
         },
         {
-          "id": "f925d2ca-0a2c-4b9f-8d39-5d1dadbe4543",
+          "id": "7b773eb3-945c-425b-838d-560bc461e30c",
+          "description": "Arbor",
+          "unit_price": 250,
+          "is_included": false,
+          "offering_id": "bd16d232-33c9-47ac-a738-e731bdce4bfe",
+          "amount": 250
+        },
+        {
+          "id": "59fd5601-55da-4d61-9222-139d4e5eaa6b",
           "description": "Runner",
           "unit_price": 75,
           "is_included": false,
@@ -327,7 +327,7 @@
           "amount": 75
         },
         {
-          "id": "3efca843-1e7c-47cc-b352-a96a25e9a5e9",
+          "id": "7d762b27-8838-438e-baf6-8abd6e53c095",
           "description": "Chicken Marsala",
           "unit_price": 0,
           "is_included": true,
