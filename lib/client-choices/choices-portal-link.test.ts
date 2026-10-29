@@ -59,10 +59,11 @@ describe("choices portal link", () => {
     assert.match(page, /accessLevel === "financial"/);
     assert.match(page, /PaymentAccessShell/);
     assert.match(page, /isChoicesPortalView/);
-    assert.match(page, /initialSection=\{choicesView \? "choices" : undefined\}/);
+    assert.match(page, /choicesView\s*\?\s*"choices"/);
+    assert.match(page, /initialSection=\{initialSection\}/);
     const financialBranch = page.slice(
       page.indexOf('if (context.accessLevel === "financial")'),
-      page.indexOf("const [tasks"),
+      page.indexOf("const choicesView"),
     );
     assert.doesNotMatch(financialBranch, /initialSection/);
     assert.doesNotMatch(financialBranch, /ChoicesPortalSection/);
