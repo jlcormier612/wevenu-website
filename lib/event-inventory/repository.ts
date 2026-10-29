@@ -157,14 +157,19 @@ export async function setItemClientSelectable(
   maxQuantity: number | null,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("event_inventory_items") as any)
+  const { data, error } = await (client.from("event_inventory_items") as any)
     .update({
       client_selectable: clientSelectable,
       max_quantity: maxQuantity,
     })
     .eq("id", itemId)
-    .eq("venue_id", venueId);
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  // RLS / wrong venue can return ok with 0 rows — never treat that as success.
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error("Could not update selection flag for this inventory item.");
+  }
 }
 
 /** Apply couple-submitted quantities onto authoritative quantity; drop zeros. */

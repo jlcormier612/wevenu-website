@@ -61,6 +61,8 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(actions, /shareEventInventoryAction/);
     assert.match(actions, /confirmInventorySelectionsAction/);
     assert.match(actions, /setInventoryItemClientSelectableAction/);
+    assert.match(actions, /revalidatePath\(`\/clients\/\$\{data\.client_id\}`\)/);
+    assert.match(actions, /revalidatePath\(`\/events\/\$\{eventId\}`\)/);
     assert.match(panel, /Share for selection/);
     assert.match(panel, /Share to view/);
     assert.match(panel, /inventory-share-selection-disabled-reason/);
@@ -68,6 +70,8 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(panel, /Request changes/);
     assert.match(panel, /runLifecycle/);
     assert.match(panel, /router\.refresh\(\)/);
+    assert.match(panel, /selectableOverrides/);
+    assert.match(repo, /Could not update selection flag for this inventory item/);
   });
 
   it("portal APIs wire save/submit RPCs and return collaboration fields", () => {

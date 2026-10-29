@@ -184,7 +184,14 @@ export async function setInventoryItemClientSelectable(
       } as EventInventoryActionResult;
     }
     const max = maxQuantity == null || maxQuantity <= 0 ? item.quantity : maxQuantity;
-    await repo.setItemClientSelectable(supabase, venueId, itemId, clientSelectable, clientSelectable ? max : null);
+    try {
+      await repo.setItemClientSelectable(supabase, venueId, itemId, clientSelectable, clientSelectable ? max : null);
+    } catch (err) {
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Could not update selection flag.",
+      } as EventInventoryActionResult;
+    }
     return { ok: true } as EventInventoryActionResult;
   });
   return result as EventInventoryActionResult;

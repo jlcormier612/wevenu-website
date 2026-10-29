@@ -225,6 +225,24 @@ export function EventInventoryPanel({
   const router = useRouter();
   const [lifecyclePending, startLifecycle] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  /** Optimistic Select flags — props can lag when RSC revalidation misses the clients page. */
+  const [selectableOverrides, setSelectableOverrides] = React.useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    if (!eventInventory) return;
+    setSelectableOverrides((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const item of eventInventory.items) {
+        if (next[item.id] === undefined) continue;
+        if (next[item.id] === item.clientSelectable) {
+          delete next[item.id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [eventInventory]);
 
   /** Server actions revalidate, but this panel is props-driven — refresh so status CTAs update. */
   function runLifecycle(fn: () => Promise<void>) {
@@ -245,6 +263,11 @@ export function EventInventoryPanel({
   }
 
   const inv = eventInventory;
+  const items = inv.items.map((item) =>
+    selectableOverrides[item.id] === undefined
+      ? item
+      : { ...item, clientSelectable: selectableOverrides[item.id]! },
+  );
   const isFinalized = inv.status === "finalized";
   const canShare =
     inv.status === "draft" ||
@@ -252,12 +275,12 @@ export function EventInventoryPanel({
     inv.status === "confirmed" ||
     inv.status === "changes_requested";
   const canConfirm = inv.status === "submitted";
-  const billableTotal = inv.items.reduce(
+  const billableTotal = items.reduce(
     (sum, i) => i.isIncluded ? sum : sum + (i.unitPrice ?? 0) * i.quantity,
     0,
   );
-  const hasUnpushedItems = inv.items.some((i) => !i.addedToEventOrderAt);
-  const selectableCount = inv.items.filter((i) => i.clientSelectable).length;
+  const hasUnpushedItems = items.some((i) => !i.addedToEventOrderAt);
+  const selectableCount = items.filter((i) => i.clientSelectable).length;
 
   async function handleRemove(item: EventInventoryItem) {
     if (!confirm(`Remove "${item.name}"?`)) return;
@@ -391,18 +414,28 @@ export function EventInventoryPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {inv.items.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Nothing added yet.</p>
         ) : (
           <div>
-            {inv.items.map((item) => (
+            {items.map((item) => (
               <ItemRow key={item.id} item={item} eventInventoryId={inv.id} eventId={eventId} catalogItems={catalogItems}
                 editable={!isFinalized && inv.status !== "submitted"}
                 onRemove={() => handleRemove(item)} removing={removingId === item.id}
-                onToggleSelectable={(next) => runLifecycle(async () => {
-                  const result = await setInventoryItemClientSelectableAction(inv.id, eventId, item.id, next);
-                  if (!result.ok) toast.error(result.message ?? "Could not update selection flag.");
-                })}
+                onToggleSelectable={(next) => {
+                  setSelectableOverrides((prev) => ({ ...prev, [item.id]: next }));
+                  runLifecycle(async () => {
+                    const result = await setInventoryItemClientSelectableAction(inv.id, eventId, item.id, next);
+                    if (!result.ok) {
+                      setSelectableOverrides((prev) => {
+                        const rollback = { ...prev };
+                        delete rollback[item.id];
+                        return rollback;
+                      });
+                      toast.error(result.message ?? "Could not update selection flag.");
+                    }
+                  });
+                }}
               />
             ))}
           </div>

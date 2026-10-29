@@ -1,0 +1,12 @@
+{"shareCount":1,"disabledBefore":true,"danceCount":1,"hasDanceFloor":true,"hasSelectWord":true,"hasDisabledReason":true,"title":"Ursula Meadows · Hello to Cheers"}
+{
+  "afterClick": {
+    "id": "f1c2c39c-df1c-4e36-a475-618e2fc4ea8c",
+    "client_selectable": true
+  },
+  "shareDisabledAfter": true,
+  "toggleText": "Select",
+  "reasonAfter": 1,
+  "errors": [],
+  "responses": []
+}

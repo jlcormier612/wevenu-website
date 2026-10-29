@@ -24,6 +24,7 @@ export type SuggestedCategoryKey =
   | "services"
   | "florals"
   | "decor"
+  | "ceremony"
   | "custom";
 
 export type SuggestedCategory = {

@@ -27,17 +27,21 @@ Prior question-builder GREEN evidence is **not** acceptance for this decision. S
 | `PackageChoicesPanel` (Offering-first Couple's choices) | Done |
 | Guided wizard uses panel; Ceremony suggested category | Done |
 | Browser harness rewritten for Offering-first E2E | Done |
-| Sandbox deploy + serving SHA verification | Pending |
+| Commit | `2f0da53ec8af3f642bb5d5ba068cda69d5e9d51a` |
+| Sandbox deploy | [40790796245](https://github.com/jlcormier612/wevenu-website/actions/runs/40790796245) — **queued/in flight** |
+| Serving SHA verification | Pending deploy completion |
 | Browser acceptance on serving tip | Pending |
+
+Focused unit tests: `offering-package-builder.test.ts` + `builder-ux.test.ts` — 15/15 pass.
 
 ---
 
 ## Remaining for GREEN
 
-1. Commit scoped changes and deploy to Sandbox only.
-2. Confirm ECS image SHA.
-3. Run `verify-browser.mts` (and portal finalize if still applicable) against that SHA.
+1. Wait for deploy `40790796245` to succeed (do not start a competing deploy).
+2. Confirm ECS image contains `2f0da53e`.
+3. Run `EXPECTED_SHA=2f0da53e… npx tsx docs/qa/event-order-template-builder-ux/verify-browser.mts`.
 4. Capture screenshots + persisted-state evidence for Catering Buffet/Plated and Ceremony standalones.
 5. Mark GREEN only when the venue-owner Offering-dropdown workflow works end-to-end.
 
-Production remains untouched.
+Production remains untouched. Unrelated dirty/untracked work preserved.

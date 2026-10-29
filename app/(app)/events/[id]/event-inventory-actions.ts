@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { createClient } from "@/integrations/supabase/server";
 import {
   addItem, addTemplateItem, addToEventOrder, confirmInventorySelections, createTemplate, deleteTemplate,
   ensureEventInventory, finalizeEventInventory, getTemplate, removeItem, removeTemplateItem,
@@ -14,8 +15,27 @@ import type {
   EventInventoryActionResult, EventInventoryCollaborationMode, InventoryItemInput, InventoryTemplateWithItems,
 } from "@/lib/event-inventory/types";
 
-function revalidateEvent(eventId: string) {
+/**
+ * Event Inventory UI lives on the Booking workspace `/clients/{clientId}`.
+ * `/events/{id}` is only a redirect stub — revalidating it alone leaves the
+ * inventory panel on stale RSC props (Select click persists, Share stays disabled).
+ */
+async function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("events")
+      .select("client_id")
+      .eq("id", eventId)
+      .maybeSingle<{ client_id: string | null }>();
+    if (data?.client_id) {
+      revalidatePath(`/clients/${data.client_id}`);
+    }
+  } catch {
+    // Best-effort: mutation already succeeded; path revalidation must not throw.
+  }
+  revalidatePath("/clients");
 }
 
 export async function ensureEventInventoryAction(eventId: string, templateId: string | null = null): Promise<EnsureEventInventoryResult> {
