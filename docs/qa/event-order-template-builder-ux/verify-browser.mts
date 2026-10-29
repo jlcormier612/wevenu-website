@@ -693,12 +693,16 @@ async function main() {
     if (marsalaOpt) {
       await page.getByTestId(`eo-preview-option-${marsalaOpt.id}`).click().catch(() => undefined);
       await page.waitForTimeout(300);
-      // Ceremony choice sets are also required — select one option from each root set
+      // Ceremony choice sets are also required — root options use eo-preview-parent-*
+      const ceremonyByGroup = new Map<string, string>();
       for (const opt of ceremonyOpts ?? []) {
-        const previewOpt = page.getByTestId(`eo-preview-option-${opt.id}`);
+        if (!ceremonyByGroup.has(opt.group_id)) ceremonyByGroup.set(opt.group_id, opt.id);
+      }
+      for (const optionId of ceremonyByGroup.values()) {
+        const previewOpt = page.getByTestId(`eo-preview-parent-${optionId}`);
         if (await previewOpt.count()) {
-          await previewOpt.click().catch(() => undefined);
-          await page.waitForTimeout(200);
+          await previewOpt.click({ force: true });
+          await page.waitForTimeout(250);
         }
       }
       await page.getByTestId("eo-preview-check-selections").click();
