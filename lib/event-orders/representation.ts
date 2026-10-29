@@ -22,6 +22,10 @@ import { generateEventOrderPdf } from "@/lib/event-orders/pdf";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { EventOrderActionResult } from "@/lib/event-orders/types";
 import { publicAppOrigin } from "@/lib/env";
+import {
+  eventOrderReviewUrl,
+  pickEventOrderPortalSession,
+} from "@/lib/event-orders/event-order-portal-link";
 
 const BUCKET = "event-order-representations";
 
@@ -161,30 +165,21 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   await repo.setSharedAt(supabase, venue.id, eventOrderId);
   await repo.insertActivity(supabase, venue.id, eventOrderId, "shared", isResend ? "Updated shared copy" : "Shared with client");
 
-  // Work Package D5E — real gap fix: sharing never actually told the
-  // client anything before this (only the PDF/Document Domain write +
-  // task automation happened; nothing prompted them to go look). The
-  // client only ever reaches the Event Order through their portal (there's
-  // no standalone token page the way Contract/Questionnaire have), so the
-  // email links there with a deep-link hash straight to the Event Order
-  // section — never to a bare Dashboard the client has to search from.
+  // Email uses ?view=event-order so click-tracking cannot drop the document
+  // target. The hash remains for in-app navigation. Never a financial token.
   if (client?.email) {
     try {
       const portalService = await import("@/lib/portal/service");
       const sessions = event.clientId ? await portalService.getPortalSessions(event.clientId) : [];
+      // Never email a financial payment token — that page is the invoice and
+      // ignores the Event Order view. Create a couple session when missing.
       let session: Awaited<ReturnType<typeof portalService.createPortalSession>> =
-        sessions.find((s) => s.accessLevel !== "financial") ?? sessions[0] ?? null;
-      // A client's portal session is normally created the moment they're
-      // onboarded (before any of this ever runs) — but sharing must not
-      // silently skip the client notification just because that never
-      // happened for this particular client. Create the one they'd get
-      // anyway, same shape createPortalSession() always produces.
-      if (!session && event.clientId) session = await portalService.createPortalSession(event.clientId, null, "couple");
+        pickEventOrderPortalSession(sessions);
+      if (!session && event.clientId) session = await portalService.createPortalSession(event.clientId, "Event Order", "couple");
       if (session) {
         const { buildMergeData, mergeContent } = await import("@/lib/message-templates/merge");
         const { sendEmail } = await import("@/lib/email/send");
-        const appUrl = publicAppOrigin();
-        const portalUrl = `${appUrl}/p/${session.accessToken}#event-order`;
+        const portalUrl = eventOrderReviewUrl(publicAppOrigin(), session.accessToken);
         const mergeData = buildMergeData({ venueName: venue.name ?? "Your venue", clientName: clientName ?? "", coordinatorName: venue.name ?? "", eventDate: event.eventDate, eventName: event.name });
         const defaultText = `We've shared your Event Order for ${event.name}. Please review it when you have a chance.`;
         const bodyText = customMessage?.trim() ? mergeContent(customMessage, mergeData) : defaultText;

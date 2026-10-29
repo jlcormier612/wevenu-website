@@ -81,6 +81,7 @@ import {
   selectNextStepsForHome,
   type NextStepsItem,
 } from "@/lib/portal/next-steps";
+import { documentPortalReturnPath, isDocumentPortalSection } from "@/lib/portal/document-return";
 import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import { resolvePlanningJourney } from "@/lib/portal/planning-journey";
 import {
@@ -4998,6 +4999,8 @@ export function PortalShell({
     });
   }
 
+  const documentFocus = isDocumentPortalSection(initialSection);
+
   if (needsLegalAcceptance && legalDocuments.length > 0) {
     const welcomeDocs: WelcomeExperienceDocument[] = legalDocuments.map(
       (d) => ({
@@ -5020,7 +5023,7 @@ export function PortalShell({
         introduction={copy.introduction}
         documents={welcomeDocs}
         context={welcomeContext}
-        returnTo={`/p/${token}`}
+        returnTo={documentPortalReturnPath(token, initialSection)}
         portalToken={token}
         onSuccess={() => setNeedsLegalAcceptance(false)}
       />
@@ -5091,6 +5094,7 @@ export function PortalShell({
   return (
     <div
       className="h-full flex flex-col overflow-hidden overscroll-none"
+      data-portal-document={documentFocus ? "focus" : "workspace"}
       style={{
         // Two-layer branding: HTC owns application chrome. Keep the legacy
         // `--venue-*` names so portal sections stay token-driven, but bind
@@ -5120,11 +5124,12 @@ export function PortalShell({
             <p className="text-xs text-muted-foreground truncate">{context.venue.name}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            {context.event && (
+            {context.event && !documentFocus && (
               <p className="text-xs text-muted-foreground hidden lg:block">
                 {formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}
               </p>
             )}
+            {!documentFocus ? (
             <a
               href={`/api/portal/export?token=${encodeURIComponent(token)}`}
               download
@@ -5134,21 +5139,21 @@ export function PortalShell({
             >
               Export my data
             </a>
+            ) : null}
+            {!documentFocus ? (
             <CoupleNotificationBell
               token={token}
               onNavigate={(section) => navigateTo(section)}
             />
-            {/* Account — Program 5 (2026-07-24): "That's a global function.
-                It doesn't belong with either planning area." The only
-                header-level nav control; everything else routes through
-                the single venue-operational row below or a dashboard
-                launch card. */}
+            ) : null}
+            {!documentFocus ? (
             <button type="button" onClick={() => navigateTo("account")}
               title="Account"
               className="h-7 w-7 rounded-full flex items-center justify-center transition-colors hover:bg-muted/60 shrink-0"
               style={{ color: activeSection === "account" ? SAGE : "#6A6460" }}>
               <Settings className="h-4 w-4" />
             </button>
+            ) : null}
           </div>
         </div>
 
@@ -5156,6 +5161,7 @@ export function PortalShell({
             only. "Your Wedding" destinations (Website/Guests/Seating/Budget/
             Our Story/Plans) stay on dashboard launch cards. Floor Plan is
             venue-shared and lives in this top row with other venue surfaces. */}
+        {documentFocus ? null : (
         <div className="mx-auto hidden max-w-6xl px-2 sm:px-3 lg:block" data-portal-nav="desktop">
           <nav className="flex items-stretch justify-between gap-0 py-0.5" aria-label="Portal">
             {navItems.map(item => {
@@ -5301,6 +5307,7 @@ export function PortalShell({
             </Sheet>
           </nav>
         </div>
+        )}
       </header>
 
       {/* ── Content ── */}

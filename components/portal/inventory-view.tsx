@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { inventoryPortalStatusCopy } from "@/lib/event-inventory/inventory-portal-status";
 
 export type PortalInventoryItemView = {
   id: string;
@@ -48,29 +49,6 @@ export type PortalInventoryViewModel = {
 function formatMoney(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
-
-const STATUS_COPY: Record<string, { label: string; hint: string }> = {
-  shared: {
-    label: "Ready for your choices",
-    hint: "Save a draft anytime. Submit when you’re ready — your venue will review before anything is confirmed.",
-  },
-  changes_requested: {
-    label: "Changes requested",
-    hint: "Your venue asked you to update your selections. Save a draft, then submit again.",
-  },
-  submitted: {
-    label: "Submitted — awaiting venue review",
-    hint: "Your venue is reviewing what you submitted. Quantities are locked until they confirm or ask for changes.",
-  },
-  confirmed: {
-    label: "Confirmed",
-    hint: "Your venue confirmed these inventory choices. They’ll appear on your Event Order when shared.",
-  },
-  finalized: {
-    label: "Finalized",
-    hint: "This inventory arrangement is locked.",
-  },
-};
 
 const INVENTORY_INTRO =
   "View the items your venue has listed for your event, including package-included items and available add-ons.";
@@ -127,12 +105,7 @@ export function InventoryPortalView({
     !!token &&
     selectMode &&
     (data.status === "shared" || data.status === "changes_requested");
-  const statusMeta = STATUS_COPY[data.status] ?? {
-    label: data.status === "finalized" ? "Finalized" : "In progress",
-    hint: selectMode
-      ? "Review package-included items and any optional extras your venue offered."
-      : "Event inventory from your venue — read-only. For the delivery list, open Event Order.",
-  };
+  const statusMeta = inventoryPortalStatusCopy(data.status, selectMode);
 
   const included = data.items.filter((i) => i.isIncluded);
   const additional = data.items.filter((i) => !i.isIncluded);
