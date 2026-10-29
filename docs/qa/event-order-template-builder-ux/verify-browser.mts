@@ -543,27 +543,28 @@ async function main() {
       "persisted",
     );
 
-    // Configure child group counts (choose 1 required)
-    if (buffetChildGroup) {
-      const childCount = page.getByTestId(`eo-child-select-count-${buffetChildGroup.id}`);
-      if (await childCount.count()) {
-        await childCount.fill("1");
-        await childCount.blur();
-        const childReq = page.getByTestId(`eo-child-required-${buffetChildGroup.id}`);
-        if (!(await childReq.isChecked())) await childReq.check({ force: true });
-        await page.waitForTimeout(800);
+    // Configure child group counts (choose 1 required) — wait until save pending clears
+    async function configureChildRule(groupId: string) {
+      const childCount = page.getByTestId(`eo-child-select-count-${groupId}`);
+      if (!(await childCount.count())) return;
+      for (let i = 0; i < 20; i++) {
+        if (!(await childCount.isDisabled().catch(() => true))) break;
+        await page.waitForTimeout(300);
       }
-    }
-    if (platedChildGroup) {
-      const childCount = page.getByTestId(`eo-child-select-count-${platedChildGroup.id}`);
-      if (await childCount.count()) {
-        await childCount.fill("1");
-        await childCount.blur();
-        const childReq = page.getByTestId(`eo-child-required-${platedChildGroup.id}`);
-        if (!(await childReq.isChecked())) await childReq.check({ force: true });
-        await page.waitForTimeout(800);
+      await childCount.fill("1");
+      await childCount.blur();
+      const childReq = page.getByTestId(`eo-child-required-${groupId}`);
+      for (let i = 0; i < 20; i++) {
+        if (!(await childReq.isDisabled().catch(() => true))) break;
+        await page.waitForTimeout(300);
       }
+      if (!(await childReq.isChecked().catch(() => false))) {
+        await childReq.click({ force: true });
+      }
+      await page.waitForTimeout(600);
     }
+    if (buffetChildGroup) await configureChildRule(buffetChildGroup.id);
+    if (platedChildGroup) await configureChildRule(platedChildGroup.id);
 
     await page.screenshot({ path: `${OUT}/shots/03-catering-couple-choices-1280.png`, fullPage: true });
 
