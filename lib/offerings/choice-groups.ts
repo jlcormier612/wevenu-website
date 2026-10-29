@@ -115,7 +115,7 @@ export function memberOfferingsForGroup(
   const byId = new Map(catalog.map((o) => [o.id, o]));
   return group.memberOfferingIds
     .map((id) => byId.get(id))
-    .filter((o): o is OfferingWithCategory => Boolean(o) && !o.isArchived);
+    .filter((o): o is OfferingWithCategory => o != null && !o.isArchived);
 }
 
 /** Eligible children of a parent that are not yet in this group. */
