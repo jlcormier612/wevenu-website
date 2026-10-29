@@ -28,14 +28,16 @@ import {
 import { validateCatalogImageFile } from "@/lib/catalog-images/validate";
 import { formatOptionalMoney } from "@/lib/event-orders/constants";
 import type { InventoryItem } from "@/lib/inventory/types";
-import type { OfferingChoiceGroup } from "@/lib/offerings/choice-groups";
+import {
+  orderCatalogListWithChoiceGroups,
+  type OfferingChoiceGroup,
+} from "@/lib/offerings/choice-groups";
 import {
   formatParentOfferingNames,
   hasParents,
   majorOfferingIds,
   offeringRole,
   offeringRoleLabel,
-  orderOfferingsHierarchically,
   parentIdsOf,
   topLevelOfferings,
 } from "@/lib/offerings/hierarchy";
@@ -64,6 +66,7 @@ export const OfferingsLibrarySection = React.forwardRef<
   const [editing, setEditing] = React.useState<OfferingWithCategory | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [createParentId, setCreateParentId] = React.useState<string | null>(null);
+  const [managingGroupsFor, setManagingGroupsFor] = React.useState<OfferingWithCategory | null>(null);
   const [showArchived, setShowArchived] = React.useState(false);
 
   React.useImperativeHandle(ref, () => ({
@@ -71,9 +74,10 @@ export const OfferingsLibrarySection = React.forwardRef<
   }));
 
   const visible = offerings.filter((o) => showArchived || !o.isArchived);
-  const placements = orderOfferingsHierarchically(visible);
+  const listRows = orderCatalogListWithChoiceGroups(visible, choiceGroups);
   const majors = majorOfferingIds(offerings);
   const nameById = new Map(offerings.map((o) => [o.id, o.name]));
+  const groupNameById = new Map(choiceGroups.map((g) => [g.id, g.name]));
 
   return (
     <div className="space-y-4" data-testid="offerings-library">
@@ -93,27 +97,63 @@ export const OfferingsLibrarySection = React.forwardRef<
         ) : null}
       </div>
 
-      {placements.length === 0 ? (
+      {listRows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
           No offerings yet. Add a service category, then major choices and the items that belong under them.
         </div>
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border bg-card" data-testid="offerings-list">
-          {placements.map(({ offering: o, nestUnderParentId }) => {
+          {listRows.map((row) => {
+            if (row.kind === "choice-group") {
+              const parentName = nameById.get(row.nestUnderParentId) ?? "this major";
+              return (
+                <li
+                  key={`group::${row.group.id}`}
+                  className="flex flex-wrap items-center justify-between gap-3 bg-muted/30 px-4 py-2.5 pl-8"
+                  data-testid={`offering-choice-group-row-${row.group.id}`}
+                  data-nest-under={row.nestUnderParentId}
+                  data-choice-group-id={row.group.id}
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-heading">{row.group.name}</p>
+                      <Badge variant="outline">Choice group</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Under {parentName} · organizational layer for Event Order choices — not an offering
+                    </p>
+                  </div>
+                </li>
+              );
+            }
+
+            const o = row.offering;
+            const nestUnderParentId = row.nestUnderParentId;
+            const nestUnderGroupId = row.nestUnderGroupId;
             const role = offeringRole(o, majors);
             const isChild = hasParents(o);
             const nestLabel = nestUnderParentId
               ? nameById.get(nestUnderParentId) ?? null
               : null;
+            const groupLabel = nestUnderGroupId
+              ? groupNameById.get(nestUnderGroupId) ?? null
+              : null;
             const underLabel = nestLabel
               ? nestLabel
               : o.parentOfferingName ?? null;
+            const nestPad =
+              nestUnderGroupId != null
+                ? "bg-muted/10 pl-14"
+                : isChild && nestUnderParentId
+                  ? "bg-muted/20 pl-8"
+                  : "";
             return (
               <li
-                key={`${o.id}::${nestUnderParentId ?? "top"}`}
-                className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${isChild && nestUnderParentId ? "bg-muted/20 pl-8" : ""}`}
+                key={`${o.id}::${nestUnderParentId ?? "top"}::${nestUnderGroupId ?? "none"}`}
+                className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${nestPad}`}
                 data-testid={`offering-row-${o.id}`}
                 data-nest-under={nestUnderParentId ?? ""}
+                data-nest-under-group={nestUnderGroupId ?? ""}
                 data-offering-role={role}
                 data-parent-ids={parentIdsOf(o).join(",")}
               >
@@ -143,7 +183,9 @@ export const OfferingsLibrarySection = React.forwardRef<
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {isChild && underLabel
-                      ? `Under ${underLabel} · `
+                      ? groupLabel
+                        ? `Under ${underLabel} · ${groupLabel} · `
+                        : `Under ${underLabel} · `
                       : ""}
                     {formatOptionalMoney(o.defaultUnitPrice)}
                     {o.unit ? ` / ${o.unit}` : ""}
@@ -153,19 +195,35 @@ export const OfferingsLibrarySection = React.forwardRef<
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {role !== "item" && !o.isArchived ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-testid={`offering-add-item-${o.id}`}
-                      onClick={() => {
-                        setEditing(null);
-                        setCreateParentId(o.id);
-                        setCreating(true);
-                      }}
-                    >
-                      + Item under this
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid={`offering-manage-groups-${o.id}`}
+                        onClick={() => {
+                          setCreating(false);
+                          setEditing(null);
+                          setCreateParentId(null);
+                          setManagingGroupsFor(o);
+                        }}
+                      >
+                        Choice groups
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid={`offering-add-item-${o.id}`}
+                        onClick={() => {
+                          setEditing(null);
+                          setCreateParentId(o.id);
+                          setCreating(true);
+                        }}
+                      >
+                        + Item under this
+                      </Button>
+                    </>
                   ) : null}
                   <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setCreateParentId(null); setEditing(o); }}>
                     Edit
@@ -225,6 +283,35 @@ export const OfferingsLibrarySection = React.forwardRef<
           setCreateParentId(null);
         }}
       />
+
+      <Sheet
+        open={!!managingGroupsFor}
+        onOpenChange={(v) => {
+          if (!v) setManagingGroupsFor(null);
+        }}
+      >
+        <SheetContent className="overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>
+              Choice groups{managingGroupsFor ? ` · ${managingGroupsFor.name}` : ""}
+            </SheetTitle>
+          </SheetHeader>
+          {managingGroupsFor ? (
+            <div className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create named groups under this major (for example Entrées or Desserts), then assign
+                existing items that already belong under it. Groups are not offerings.
+              </p>
+              <OfferingChoiceGroupsEditor
+                parentOffering={managingGroupsFor}
+                allOfferings={offerings}
+                initialGroups={choiceGroups}
+                onGroupsChange={setChoiceGroups}
+              />
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
 
       <p className="text-xs text-muted-foreground">
         Physical stock and floor-plan items live in{" "}

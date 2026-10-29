@@ -3,6 +3,11 @@
  * Template selection rules stay on event_order_template_groups;
  * this module owns reusable organization + membership only.
  */
+import {
+  orderOfferingsHierarchically,
+  parentIdsOf,
+  type OfferingHierarchyFields,
+} from "@/lib/offerings/hierarchy";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 export type OfferingChoiceGroup = {
@@ -125,15 +130,109 @@ export function eligibleChildrenNotInGroup(
   group: OfferingChoiceGroup,
 ): OfferingWithCategory[] {
   const inGroup = new Set(group.memberOfferingIds);
-  return catalog.filter(
-    (o) =>
-      !o.isArchived &&
-      !inGroup.has(o.id) &&
-      (o.parentOfferingIds?.includes(parentOfferingId) ||
-        o.parentOfferingId === parentOfferingId),
-  );
+  return catalog.filter((o) => {
+    if (o.isArchived || inGroup.has(o.id)) return false;
+    const parents = parentIdsOf(o);
+    if (parents.includes(parentOfferingId)) return true;
+    // Legacy single parent when parentOfferingIds is an explicit empty array.
+    return o.parentOfferingId === parentOfferingId;
+  });
 }
 
 export function sanitizeChoiceGroupName(raw: string): string {
   return raw.trim().replace(/\s+/g, " ").slice(0, 80);
+}
+
+/**
+ * Catalog list row: either a real Offering or a named choice-group heading
+ * (not an Offering). Groups nest under their parent major; members nest under
+ * the group. Ungrouped children remain under the major.
+ */
+export type CatalogListRow<T extends OfferingHierarchyFields = OfferingWithCategory> =
+  | {
+      kind: "offering";
+      offering: T;
+      nestUnderParentId: string | null;
+      nestUnderGroupId: string | null;
+    }
+  | {
+      kind: "choice-group";
+      group: OfferingChoiceGroup;
+      nestUnderParentId: string;
+    };
+
+/**
+ * Expand hierarchical placements so Major → Choice group → items is visible
+ * in the Offerings catalog list. Does not invent offerings or duplicate rows
+ * for the same (offering, parent, group) placement.
+ */
+export function orderCatalogListWithChoiceGroups<T extends OfferingHierarchyFields>(
+  offerings: T[],
+  choiceGroups: OfferingChoiceGroup[],
+): CatalogListRow<T>[] {
+  const placements = orderOfferingsHierarchically(offerings);
+  const byId = new Map(offerings.map((o) => [o.id, o]));
+  const out: CatalogListRow<T>[] = [];
+
+  for (const { offering, nestUnderParentId } of placements) {
+    if (nestUnderParentId != null) {
+      // Children are emitted under their major below (grouped / ungrouped).
+      continue;
+    }
+
+    out.push({
+      kind: "offering",
+      offering,
+      nestUnderParentId: null,
+      nestUnderGroupId: null,
+    });
+
+    const parentGroups = groupsForParent(choiceGroups, offering.id);
+    const children = placements
+      .filter((p) => p.nestUnderParentId === offering.id)
+      .map((p) => p.offering);
+
+    if (parentGroups.length === 0) {
+      for (const child of children) {
+        out.push({
+          kind: "offering",
+          offering: child,
+          nestUnderParentId: offering.id,
+          nestUnderGroupId: null,
+        });
+      }
+      continue;
+    }
+
+    const placedInGroup = new Set<string>();
+    for (const g of parentGroups) {
+      out.push({ kind: "choice-group", group: g, nestUnderParentId: offering.id });
+      for (const memberId of g.memberOfferingIds) {
+        const member = byId.get(memberId);
+        if (!member || member.isArchived) continue;
+        const underParent =
+          parentIdsOf(member).includes(offering.id) ||
+          member.parentOfferingId === offering.id;
+        if (!underParent) continue;
+        out.push({
+          kind: "offering",
+          offering: member,
+          nestUnderParentId: offering.id,
+          nestUnderGroupId: g.id,
+        });
+        placedInGroup.add(member.id);
+      }
+    }
+    for (const child of children) {
+      if (placedInGroup.has(child.id)) continue;
+      out.push({
+        kind: "offering",
+        offering: child,
+        nestUnderParentId: offering.id,
+        nestUnderGroupId: null,
+      });
+    }
+  }
+
+  return out;
 }

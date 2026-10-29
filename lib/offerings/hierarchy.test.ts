@@ -301,7 +301,7 @@ describe("Offerings hierarchy migration + UI seams", () => {
     assert.match(library, /type="checkbox"/);
     assert.match(library, /Removing a check removes only that association/);
     assert.match(library, /data-nest-under/);
-    assert.match(library, /orderOfferingsHierarchically/);
+    assert.match(library, /orderCatalogListWithChoiceGroups/);
     // Multi-parent association lives on the Offerings catalog, not EO choice-group dependency UI.
     assert.doesNotMatch(choiceGroups, /Select where this belongs/);
     assert.doesNotMatch(choiceGroups, /Select question or category/);

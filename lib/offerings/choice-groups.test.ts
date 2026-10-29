@@ -8,6 +8,7 @@ import {
   eligibleChildrenNotInGroup,
   groupsForParent,
   memberOfferingsForGroup,
+  orderCatalogListWithChoiceGroups,
   sanitizeChoiceGroupName,
   type OfferingChoiceGroup,
 } from "@/lib/offerings/choice-groups";
@@ -136,6 +137,95 @@ describe("choice group helpers", () => {
     assert.equal(sanitizeChoiceGroupName("  Entrées  "), "Entrées");
     assert.equal(sanitizeChoiceGroupName("   "), "");
   });
+
+  it("orders catalog list as major → choice group → members → ungrouped children", () => {
+    const catalog = [
+      offering({ id: "plated", name: "Plated Dinner" }),
+      offering({
+        id: "chicken",
+        name: "Chicken Marsala",
+        parentOfferingId: "plated",
+        parentOfferingIds: ["plated"],
+      }),
+      offering({
+        id: "veg",
+        name: "Vegetarian entrée",
+        parentOfferingId: "plated",
+        parentOfferingIds: ["plated"],
+      }),
+      offering({
+        id: "cake",
+        name: "Cheesecake",
+        parentOfferingId: "plated",
+        parentOfferingIds: ["plated"],
+      }),
+    ];
+    const groups = [
+      group({
+        id: "g-entree",
+        name: "Entrées",
+        parentOfferingId: "plated",
+        sortOrder: 0,
+        memberOfferingIds: ["chicken", "veg"],
+      }),
+      group({
+        id: "g-dessert",
+        name: "Desserts",
+        parentOfferingId: "plated",
+        sortOrder: 1,
+        memberOfferingIds: ["cake"],
+      }),
+    ];
+    const rows = orderCatalogListWithChoiceGroups(catalog, groups);
+    assert.deepEqual(
+      rows.map((r) =>
+        r.kind === "choice-group"
+          ? `group:${r.group.name}`
+          : `offering:${r.offering.name}:${r.nestUnderGroupId ?? "none"}`,
+      ),
+      [
+        "offering:Plated Dinner:none",
+        "group:Entrées",
+        "offering:Chicken Marsala:g-entree",
+        "offering:Vegetarian entrée:g-entree",
+        "group:Desserts",
+        "offering:Cheesecake:g-dessert",
+      ],
+    );
+  });
+
+  it("keeps ungrouped legacy children visible under the major", () => {
+    const catalog = [
+      offering({ id: "plated", name: "Plated Dinner" }),
+      offering({
+        id: "chicken",
+        name: "Chicken Marsala",
+        parentOfferingId: "plated",
+        parentOfferingIds: ["plated"],
+      }),
+      offering({
+        id: "legacy",
+        name: "Legacy side",
+        parentOfferingId: "plated",
+        parentOfferingIds: ["plated"],
+      }),
+    ];
+    const groups = [
+      group({
+        id: "g-entree",
+        name: "Entrées",
+        parentOfferingId: "plated",
+        memberOfferingIds: ["chicken"],
+      }),
+    ];
+    const rows = orderCatalogListWithChoiceGroups(catalog, groups);
+    const legacy = rows.find(
+      (r) => r.kind === "offering" && r.offering.id === "legacy",
+    );
+    assert.ok(legacy && legacy.kind === "offering");
+    assert.equal(legacy.nestUnderParentId, "plated");
+    assert.equal(legacy.nestUnderGroupId, null);
+  });
 });
 
 describe("builder catalog include path", () => {
@@ -150,11 +240,14 @@ describe("builder catalog include path", () => {
     assert.doesNotMatch(panel, /eo-new-child-group-name-/);
   });
 
-  it("offerings library exposes choice group editor for parents", () => {
+  it("offerings library exposes choice group editor and list hierarchy for parents", () => {
     const lib = readFileSync(
       join(process.cwd(), "components/offerings/offerings-library-section.tsx"),
       "utf8",
     );
     assert.match(lib, /OfferingChoiceGroupsEditor/);
+    assert.match(lib, /orderCatalogListWithChoiceGroups/);
+    assert.match(lib, /offering-manage-groups-/);
+    assert.match(lib, /offering-choice-group-row-/);
   });
 });

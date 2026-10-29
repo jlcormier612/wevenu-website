@@ -301,8 +301,9 @@ function ChoiceGroupCard({
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
-          All eligible child Offerings under this parent are already in this group, or none are
-          linked yet.
+          {group.memberOfferingIds.length > 0
+            ? "All eligible child Offerings under this parent are already in this group."
+            : "No child Offerings are linked under this parent yet. Use “+ Item under this” or Edit → Belongs under major choices, then assign them here."}
         </p>
       )}
     </li>
