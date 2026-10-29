@@ -15,6 +15,14 @@ import {
   type ConfirmedBookingOccupancy,
 } from "@/lib/booking-journey/confirmed-occupancy";
 import type { BookingConfirmationDraft, OwnHoldSummary } from "@/lib/booking-journey/confirmation-draft";
+import {
+  CLOSED_DRAFT_HYDRATION,
+  draftRecordKey,
+  isScheduledDateFillOnly,
+  markDraftEdited,
+  planDraftHydration,
+  type DraftHydrationState,
+} from "@/lib/booking-journey/confirmation-hydration";
 import { resolveExperienceProfile } from "@/lib/event-experience";
 import { primarySpaceIdFromAssignments, type EventSpaceAssignmentInput } from "@/lib/venue-spaces/assignments";
 import { relevantUsesForExperience } from "@/lib/venue-spaces/relevant-uses";
@@ -49,10 +57,12 @@ export function PipelineBookedConfirmDialog({
   const [assignedStaffId, setAssignedStaffId] = React.useState("");
   /** Live draft refresh must not wipe an Event team member already chosen this open. */
   const eventAssigneeSeededRef = React.useRef(false);
+  const hydrationRef = React.useRef<DraftHydrationState>(CLOSED_DRAFT_HYDRATION);
 
   React.useEffect(() => {
     if (!open) {
       eventAssigneeSeededRef.current = false;
+      hydrationRef.current = CLOSED_DRAFT_HYDRATION;
       return;
     }
     function onKey(e: KeyboardEvent) {
@@ -64,6 +74,9 @@ export function PipelineBookedConfirmDialog({
 
   React.useEffect(() => {
     if (!open || !draft) return;
+    const plan = planDraftHydration(hydrationRef.current, draftRecordKey(draft));
+    hydrationRef.current = plan.next;
+    if (!plan.apply) return;
     setEventDate(draft.eventDate);
     setEventEndDate(draft.eventEndDate);
     setStartTime(draft.startTime);
@@ -74,9 +87,18 @@ export function PipelineBookedConfirmDialog({
       setAssignedStaffId(draft.leadAssignedStaffId ?? "");
       eventAssigneeSeededRef.current = true;
     }
-    setFormError(null);
-    setAvailabilityBlocked(false);
+    if (plan.firstForRecord) {
+      setFormError(null);
+      setAvailabilityBlocked(false);
+    }
   }, [open, draft]);
+
+  function edit<T>(setter: (value: T) => void) {
+    return (value: T) => {
+      hydrationRef.current = markDraftEdited(hydrationRef.current);
+      setter(value);
+    };
+  }
 
   if (!open) return null;
 
@@ -173,7 +195,7 @@ export function PipelineBookedConfirmDialog({
                     data-testid="booking-confirm-date"
                     type="date"
                     value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
+                    onChange={(e) => edit(setEventDate)(e.target.value)}
                   />
                 </Field>
                 <Field
@@ -187,7 +209,7 @@ export function PipelineBookedConfirmDialog({
                     type="date"
                     value={eventEndDate}
                     min={eventDate || undefined}
-                    onChange={(e) => setEventEndDate(e.target.value)}
+                    onChange={(e) => edit(setEventEndDate)(e.target.value)}
                   />
                 </Field>
               </div>
@@ -205,7 +227,11 @@ export function PipelineBookedConfirmDialog({
                   <EventSpaceAssignmentsEditor
                     spaces={spaces}
                     value={assignments}
-                    onChange={setAssignments}
+                    onChange={(next) => (
+                      isScheduledDateFillOnly(assignments, next)
+                        ? setAssignments(next)
+                        : edit(setAssignments)(next)
+                    )}
                     uses={relevantUses}
                     withTimes
                     eventDate={eventDate}
@@ -215,7 +241,7 @@ export function PipelineBookedConfirmDialog({
                   <div className="space-y-3" data-testid="booking-confirm-space">
                     <EventSpaceField
                       value={spaceId}
-                      onChange={setSpaceId}
+                      onChange={edit(setSpaceId)}
                       spaces={spaces}
                       spacesRequired={spacesRequired}
                       error={spacesRequired && !spaceId ? formError ?? undefined : undefined}
@@ -227,7 +253,7 @@ export function PipelineBookedConfirmDialog({
                           data-testid="booking-confirm-start"
                           type="time"
                           value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
+                          onChange={(e) => edit(setStartTime)(e.target.value)}
                         />
                       </Field>
                       <Field label="Event-wide end time" htmlFor="booking-confirm-end">
@@ -236,7 +262,7 @@ export function PipelineBookedConfirmDialog({
                           data-testid="booking-confirm-end"
                           type="time"
                           value={endTime}
-                          onChange={(e) => setEndTime(e.target.value)}
+                          onChange={(e) => edit(setEndTime)(e.target.value)}
                         />
                       </Field>
                     </div>

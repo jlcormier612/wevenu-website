@@ -63,6 +63,7 @@ export function PipelineBoard({
   const [bookedMove, setBookedMove] = React.useState<{ leadId: string; targetKey: string; label: string } | null>(null);
   const [bookingDraft, setBookingDraft] = React.useState<BookingConfirmationDraft | null>(null);
   const [bookingDraftError, setBookingDraftError] = React.useState<string | null>(null);
+  const bookingDraftLeadRef = React.useRef<string | null>(null);
   const [lifecyclePending, setLifecyclePending] = React.useState(false);
 
   const { columns, currentKeyByLead } = React.useMemo(() => {
@@ -125,7 +126,9 @@ export function PipelineBoard({
       setBookingDraft(null);
       setBookingDraftError(null);
       setBookedMove({ leadId, targetKey, label: targetMeta.label });
+      bookingDraftLeadRef.current = leadId;
       void getBookingConfirmationDraftAction(leadId).then((loaded) => {
+        if (bookingDraftLeadRef.current !== leadId) return;
         if (!loaded.ok) {
           setBookingDraftError(loaded.message);
           return;
@@ -307,6 +310,7 @@ export function PipelineBoard({
         draft={bookingDraft}
         loadError={bookingDraftError}
         onCancel={() => {
+          bookingDraftLeadRef.current = null;
           setBookedMove(null);
           setBookingDraft(null);
           setBookingDraftError(null);
