@@ -618,6 +618,35 @@ describe("guided setup — review summary", () => {
       plainSelectionRuleLabel({ selectionMode: "single", minSelect: 1, maxSelect: 1 }),
       "Choose 1",
     );
+    assert.equal(
+      plainSelectionRuleLabel({ selectionMode: "multi", minSelect: 0, maxSelect: 2 }),
+      "Optional — choose exactly 2 or skip",
+    );
+  });
+
+  it("parseCoupleSelectCount rejects blank and non-integers", async () => {
+    const { parseCoupleSelectCount, impossibleSelectionGroupMessage } = await import(
+      "@/lib/event-order-templates/guided-setup"
+    );
+    assert.equal(parseCoupleSelectCount("").ok, false);
+    assert.equal(parseCoupleSelectCount("1.5").ok, false);
+    assert.equal(parseCoupleSelectCount("-1").ok, false);
+    assert.deepEqual(parseCoupleSelectCount("2"), { ok: true, count: 2 });
+    assert.deepEqual(parseCoupleSelectCount("0"), { ok: true, count: 0 });
+    assert.match(
+      impossibleSelectionGroupMessage(
+        { name: "Spirits", minSelect: 2, maxSelect: 2 },
+        1,
+      ) ?? "",
+      /requires 2/,
+    );
+    assert.equal(
+      impossibleSelectionGroupMessage(
+        { name: "Spirits", minSelect: 2, maxSelect: 2 },
+        2,
+      ),
+      null,
+    );
   });
 
   it("dependent category input scopes follows to one parent option", () => {

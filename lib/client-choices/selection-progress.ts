@@ -41,7 +41,7 @@ export function selectionProgressLabel(
 
   if (group.selectionMode === "single") {
     const required = group.minSelect > 0;
-    const base = required ? "Pick one · required" : "Optional — choose up to 1";
+    const base = required ? "Pick one · required" : "Optional — choose 1 or skip";
     return `${base} — ${count} of 1 selected`;
   }
 
@@ -57,10 +57,30 @@ export function selectionProgressLabel(
   if (min > 0 && max == null) {
     return `Choose at least ${min} — ${count} selected`;
   }
-  if (min === 0 && max != null) {
-    return `Optional — choose up to ${max} — ${count} of ${max} selected`;
+  if (min === 0 && max != null && max > 0) {
+    return `Optional — choose exactly ${max} or skip — ${count} of ${max} selected`;
+  }
+  if (min === 0 && max === 0) {
+    return `No selections — ${count} selected`;
   }
   return `Optional — choose any — ${count} selected`;
+}
+
+function isSelectionRequirementMet(
+  group: Pick<ChoicesDefinitionGroup, "minSelect" | "maxSelect">,
+  count: number,
+): boolean {
+  if (count < group.minSelect) return false;
+  if (
+    group.minSelect === 0 &&
+    group.maxSelect != null &&
+    group.maxSelect > 0 &&
+    count > 0 &&
+    count < group.maxSelect
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function selectionProgressForGroup(
@@ -72,7 +92,7 @@ export function selectionProgressForGroup(
     label: selectionProgressLabel(group, count),
     selectedCount: count,
     atMaximum: isAtSelectionMaximum(group, count),
-    requirementMet: count >= group.minSelect,
+    requirementMet: isSelectionRequirementMet(group, count),
   };
 }
 

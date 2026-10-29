@@ -111,11 +111,17 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /Always on the package/);
     assert.match(wizard, /Couple.*s choices/);
     assert.match(panel, /eo-couple-choice-offering-select/);
-    assert.match(panel, /Child Offerings available for this package/);
+    assert.match(panel, /Dependent option groups/);
+    assert.match(panel, /How many must the couple choose\?/);
+    assert.match(panel, /Add write-in option/);
+    assert.match(panel, /Add catalog option/);
+    assert.match(panel, /Add selection group/);
+    assert.doesNotMatch(panel, /How many from this group\?/);
     assert.match(panel, /Instructions for the couple/);
     assert.match(panel, /eo-add-choice-set/);
     assert.match(panel, /parentChoiceView/);
     assert.match(panel, /optionInputFromOffering/);
+    assert.match(panel, /optionInputWriteIn/);
     assert.doesNotMatch(wizard, /Add a primary question/);
     assert.doesNotMatch(wizard, /Items always on this package/);
     assert.doesNotMatch(wizard, /Choices couples make/);

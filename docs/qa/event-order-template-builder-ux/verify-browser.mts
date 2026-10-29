@@ -295,6 +295,7 @@ async function main() {
 
     const cateringCatId = await ensureCategory("Catering");
     const ceremonyCatId = await ensureCategory("Ceremony");
+    const barCatId = await ensureCategory("Bar");
 
     const buffetId = await ensureOffering("Buffet Style Dinner", cateringCatId, null, createdOfferingIds);
     const platedId = await ensureOffering("Plated Dinner", cateringCatId, null, createdOfferingIds);
@@ -303,12 +304,22 @@ async function main() {
     const marsalaId = await ensureOffering("Chicken Marsala", cateringCatId, null, createdOfferingIds);
     const vegId = await ensureOffering("Vegetarian entrée", cateringCatId, null, createdOfferingIds);
     const dayOfId = await ensureOffering("Day-of coordination", await ensureCategory("Services"), 0, createdOfferingIds);
+    const premiumBarId = await ensureOffering("Premium Open Bar", barCatId, null, createdOfferingIds);
+    const guestBarId = await ensureOffering("Guest Paid Bar Offering", barCatId, null, createdOfferingIds);
+    const vodkaId = await ensureOffering("House Vodka", barCatId, null, createdOfferingIds);
+    const ginId = await ensureOffering("House Gin", barCatId, null, createdOfferingIds);
+    const wellVodkaId = await ensureOffering("Well Vodka", barCatId, null, createdOfferingIds);
+    const wellGinId = await ensureOffering("Well Gin", barCatId, null, createdOfferingIds);
 
     await ensureMajorLink(zitiId, buffetId);
     await ensureMajorLink(cheesecakeId, buffetId);
     await ensureMajorLink(marsalaId, platedId);
     await ensureMajorLink(vegId, platedId);
     await ensureMajorLink(cheesecakeId, platedId);
+    await ensureMajorLink(vodkaId, premiumBarId);
+    await ensureMajorLink(ginId, premiumBarId);
+    await ensureMajorLink(wellVodkaId, guestBarId);
+    await ensureMajorLink(wellGinId, guestBarId);
 
     const arborId = await ensureOffering("Arbor", ceremonyCatId, 250, createdOfferingIds);
     const archId = await ensureOffering("Arch", ceremonyCatId, 200, createdOfferingIds);
@@ -317,6 +328,7 @@ async function main() {
 
     persisted.catalog = {
       buffetId, platedId, zitiId, cheesecakeId, marsalaId, vegId, dayOfId,
+      premiumBarId, guestBarId, vodkaId, ginId, wellVodkaId, wellGinId,
       arborId, archId, runnerId, petalsId,
     };
     record(
@@ -473,34 +485,105 @@ async function main() {
       "persisted",
     );
     record(
-      "ui_shows_parent_children_checklists",
-      (await page.getByTestId(`eo-parent-children-${buffetOpt!.id}`).count()) === 1
-        && (await page.getByTestId(`eo-parent-children-${platedOpt!.id}`).count()) === 1,
-      "child panels",
+      "ui_shows_parent_dependent_groups",
+      (await page.getByTestId(`eo-parent-dependent-groups-${buffetOpt!.id}`).count()) === 1
+        && (await page.getByTestId(`eo-parent-dependent-groups-${platedOpt!.id}`).count()) === 1,
+      "dependent group panels",
+      "usability",
+    );
+    record(
+      "ui_count_label_is_explicit",
+      (await page.getByText("How many must the couple choose?").count()) >= 1
+        && (await page.getByText("How many from this group?").count()) === 0,
+      "count label",
       "usability",
     );
 
-    // Select children under Buffet / Plated (click — controlled checkboxes update via optimistic state)
-    async function toggleChild(parentOptionId: string, childOfferingId: string) {
-      const box = page.getByTestId(`eo-child-toggle-${parentOptionId}-${childOfferingId}`);
-      await box.click({ force: true });
-      for (let attempt = 0; attempt < 12; attempt++) {
-        if (await box.isChecked().catch(() => false)) return;
+    async function addNamedGroupUnder(parentOptionId: string, groupName: string) {
+      const nameInput = page.getByTestId(`eo-new-child-group-name-${parentOptionId}`);
+      await nameInput.fill(groupName);
+      await page.getByTestId(`eo-add-child-group-${parentOptionId}`).click();
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const { data: groups } = await admin
+          .from("event_order_template_groups")
+          .select("id,name,depends_on_option_ids")
+          .eq("template_id", tpl.id);
+        const match = (groups ?? []).find(
+          (g) =>
+            g.name === groupName
+            && (g.depends_on_option_ids as string[] | null)?.includes(parentOptionId),
+        );
+        if (match) return match.id as string;
+        await page.waitForTimeout(400);
+      }
+      throw new Error(`group ${groupName} under ${parentOptionId} not persisted`);
+    }
+
+    async function addCatalogOptionToGroup(groupId: string, offeringId: string) {
+      const selectId = `eo-child-catalog-select-${groupId}`;
+      await page.getByTestId(selectId).waitFor({ state: "visible", timeout: 20_000 });
+      await pickOffering(page, selectId, offeringId);
+      for (let attempt = 0; attempt < 15; attempt++) {
         const { data } = await admin
           .from("event_order_template_options")
           .select("id")
           .eq("template_id", tpl.id)
-          .eq("offering_id", childOfferingId)
+          .eq("group_id", groupId)
+          .eq("offering_id", offeringId)
           .maybeSingle();
-        if (data?.id) return;
+        if (data?.id) return data.id as string;
         await page.waitForTimeout(400);
       }
+      throw new Error(`catalog option ${offeringId} not in group ${groupId}`);
     }
-    await toggleChild(buffetOpt!.id, zitiId);
-    await toggleChild(buffetOpt!.id, cheesecakeId);
-    await toggleChild(platedOpt!.id, marsalaId);
-    await toggleChild(platedOpt!.id, vegId);
-    await page.waitForTimeout(800);
+
+    async function addWriteInOptionToGroup(groupId: string, label: string) {
+      await page.getByTestId(`eo-open-write-in-${groupId}`).click();
+      await page.getByTestId(`eo-write-in-label-${groupId}`).fill(label);
+      await page.getByTestId(`eo-save-write-in-${groupId}`).click();
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const { data } = await admin
+          .from("event_order_template_options")
+          .select("id,offering_id,label")
+          .eq("template_id", tpl.id)
+          .eq("group_id", groupId)
+          .eq("label", label)
+          .maybeSingle();
+        if (data?.id && data.offering_id == null) return data.id as string;
+        await page.waitForTimeout(400);
+      }
+      throw new Error(`write-in ${label} not in group ${groupId}`);
+    }
+
+    const buffetSidesGroupId = await addNamedGroupUnder(buffetOpt!.id, "Buffet sides");
+    const platedEntreesGroupId = await addNamedGroupUnder(platedOpt!.id, "Entrées");
+    // Duplicate name must be rejected (no second unexplained group)
+    await page.getByTestId(`eo-new-child-group-name-${buffetOpt!.id}`).fill("Buffet sides");
+    await page.getByTestId(`eo-add-child-group-${buffetOpt!.id}`).click();
+    await page.waitForTimeout(600);
+    const { data: buffetDepGroups } = await admin
+      .from("event_order_template_groups")
+      .select("id,name,depends_on_option_ids")
+      .eq("template_id", tpl.id);
+    const duplicateSides = (buffetDepGroups ?? []).filter(
+      (g) =>
+        g.name === "Buffet sides"
+        && (g.depends_on_option_ids as string[] | null)?.includes(buffetOpt!.id),
+    );
+    record(
+      "no_duplicate_named_groups",
+      duplicateSides.length === 1,
+      JSON.stringify(duplicateSides),
+      "usability",
+    );
+
+    await addCatalogOptionToGroup(buffetSidesGroupId, zitiId);
+    await addCatalogOptionToGroup(buffetSidesGroupId, cheesecakeId);
+    await addCatalogOptionToGroup(platedEntreesGroupId, marsalaId);
+    await addCatalogOptionToGroup(platedEntreesGroupId, vegId);
+    const writeInId = await addWriteInOptionToGroup(platedEntreesGroupId, `${PREFIX}House dessert`);
+    record("persisted_write_in_under_plated", Boolean(writeInId), writeInId, "persisted");
+    await page.waitForTimeout(500);
 
     // Instructions + required choose-1 on root set
     const instr = page.getByTestId("eo-choice-instructions-0");
@@ -518,40 +601,52 @@ async function main() {
 
     let zitiOpt: typeof buffetOpt;
     let marsalaOpt: typeof buffetOpt;
-    let buffetChildGroup: { id: string; depends_on_option_ids: string[]; min_select: number; max_select: number | null } | undefined;
+    let buffetChildGroup: {
+      id: string;
+      name: string;
+      depends_on_option_ids: string[];
+      min_select: number;
+      max_select: number | null;
+    } | undefined;
     let platedChildGroup: typeof buffetChildGroup;
     for (let attempt = 0; attempt < 12; attempt++) {
       const [{ data: opts }, { data: groups }] = await Promise.all([
         admin.from("event_order_template_options").select("id,label,group_id,offering_id").eq("template_id", tpl.id),
-        admin.from("event_order_template_groups").select("id,name,depends_on_option_ids,min_select,max_select,instructions").eq("template_id", tpl.id),
+        admin
+          .from("event_order_template_groups")
+          .select("id,name,depends_on_option_ids,min_select,max_select,instructions")
+          .eq("template_id", tpl.id),
       ]);
       zitiOpt = (opts ?? []).find((o) => o.offering_id === zitiId);
       marsalaOpt = (opts ?? []).find((o) => o.offering_id === marsalaId);
-      buffetChildGroup = (groups ?? []).find((g) =>
-        (g.depends_on_option_ids as string[] | null)?.includes(buffetOpt!.id),
-      ) as typeof buffetChildGroup;
-      platedChildGroup = (groups ?? []).find((g) =>
-        (g.depends_on_option_ids as string[] | null)?.includes(platedOpt!.id),
-      ) as typeof platedChildGroup;
+      buffetChildGroup = (groups ?? []).find((g) => g.id === buffetSidesGroupId) as typeof buffetChildGroup;
+      platedChildGroup = (groups ?? []).find((g) => g.id === platedEntreesGroupId) as typeof platedChildGroup;
       if (zitiOpt && marsalaOpt && buffetChildGroup && platedChildGroup) break;
       await page.waitForTimeout(500);
     }
     record(
       "persisted_selected_children_under_parents",
-      Boolean(zitiOpt && marsalaOpt && buffetChildGroup && platedChildGroup),
+      Boolean(
+        zitiOpt
+          && marsalaOpt
+          && buffetChildGroup?.name === "Buffet sides"
+          && platedChildGroup?.name === "Entrées"
+          && zitiOpt.group_id === buffetSidesGroupId
+          && marsalaOpt.group_id === platedEntreesGroupId,
+      ),
       JSON.stringify({ zitiOpt, marsalaOpt, buffetChildGroup, platedChildGroup }),
       "persisted",
     );
 
     // Configure child group counts (choose 1 required) — wait until save pending clears
-    async function configureChildRule(groupId: string) {
+    async function configureChildRule(groupId: string, count = "1") {
       const childCount = page.getByTestId(`eo-child-select-count-${groupId}`);
       if (!(await childCount.count())) return;
       for (let i = 0; i < 20; i++) {
         if (!(await childCount.isDisabled().catch(() => true))) break;
         await page.waitForTimeout(300);
       }
-      await childCount.fill("1");
+      await childCount.fill(count);
       await childCount.blur();
       const childReq = page.getByTestId(`eo-child-required-${groupId}`);
       for (let i = 0; i < 20; i++) {
@@ -563,8 +658,22 @@ async function main() {
       }
       await page.waitForTimeout(600);
     }
-    if (buffetChildGroup) await configureChildRule(buffetChildGroup.id);
-    if (platedChildGroup) await configureChildRule(platedChildGroup.id);
+    await configureChildRule(buffetSidesGroupId, "1");
+    await configureChildRule(platedEntreesGroupId, "1");
+
+    // Confirm counts persisted (not blank / not silently any)
+    {
+      const { data: ruleGroups } = await admin
+        .from("event_order_template_groups")
+        .select("id,min_select,max_select")
+        .in("id", [buffetSidesGroupId, platedEntreesGroupId]);
+      record(
+        "persisted_explicit_selection_counts",
+        (ruleGroups ?? []).every((g) => g.min_select === 1 && g.max_select === 1),
+        JSON.stringify(ruleGroups),
+        "persisted",
+      );
+    }
 
     await page.screenshot({ path: `${OUT}/shots/03-catering-couple-choices-1280.png`, fullPage: true });
 
@@ -576,6 +685,68 @@ async function main() {
       coupleListOptions.slice(0, 400),
       "usability",
     );
+
+    // ---- Bar parents: Premium Open Bar vs Guest Paid Bar (same group structure) ----
+    await page.getByTestId("eo-add-choice-set").click();
+    await page.waitForTimeout(1000);
+    await pickOffering(page, "eo-couple-choice-offering-select-1", premiumBarId);
+    await page.getByText("Premium Open Bar").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(800);
+    await pickOffering(page, "eo-couple-choice-offering-select-1", guestBarId);
+    await page.getByText("Guest Paid Bar Offering").first().waitFor({ state: "visible", timeout: 30_000 });
+    await page.waitForTimeout(1000);
+
+    let premiumOpt: typeof buffetOpt;
+    let guestOpt: typeof buffetOpt;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const { data: opts } = await admin
+        .from("event_order_template_options")
+        .select("id,label,group_id,offering_id")
+        .eq("template_id", tpl.id);
+      premiumOpt = (opts ?? []).find((o) => o.offering_id === premiumBarId);
+      guestOpt = (opts ?? []).find((o) => o.offering_id === guestBarId);
+      if (premiumOpt && guestOpt && premiumOpt.group_id === guestOpt.group_id) break;
+      await page.waitForTimeout(400);
+    }
+    record(
+      "persisted_bar_parents_mutual_exclusive_set",
+      Boolean(premiumOpt && guestOpt && premiumOpt.group_id === guestOpt.group_id),
+      JSON.stringify({ premiumOpt, guestOpt }),
+      "persisted",
+    );
+
+    const premiumSpiritsId = await addNamedGroupUnder(premiumOpt!.id, "Spirits");
+    const guestSpiritsId = await addNamedGroupUnder(guestOpt!.id, "Spirits");
+    await addCatalogOptionToGroup(premiumSpiritsId, vodkaId);
+    await addCatalogOptionToGroup(premiumSpiritsId, ginId);
+    await addCatalogOptionToGroup(guestSpiritsId, wellVodkaId);
+    await addCatalogOptionToGroup(guestSpiritsId, wellGinId);
+    await configureChildRule(premiumSpiritsId, "2");
+    await configureChildRule(guestSpiritsId, "2");
+    {
+      const { data: barGroups } = await admin
+        .from("event_order_template_groups")
+        .select("id,name,min_select,max_select,depends_on_option_ids")
+        .in("id", [premiumSpiritsId, guestSpiritsId]);
+      const premiumG = (barGroups ?? []).find((g) => g.id === premiumSpiritsId);
+      const guestG = (barGroups ?? []).find((g) => g.id === guestSpiritsId);
+      record(
+        "bar_parents_identical_spirits_rules",
+        Boolean(
+          premiumG
+            && guestG
+            && premiumG.name === "Spirits"
+            && guestG.name === "Spirits"
+            && premiumG.min_select === 2
+            && premiumG.max_select === 2
+            && guestG.min_select === 2
+            && guestG.max_select === 2,
+        ),
+        JSON.stringify(barGroups),
+        "persisted",
+      );
+    }
+    await page.screenshot({ path: `${OUT}/shots/03b-bar-choice-consistency-1280.png`, fullPage: true });
 
     // ---- Continue to Ceremony ----
     await page.getByTestId("eo-guided-continue").click();
@@ -693,7 +864,7 @@ async function main() {
     if (marsalaOpt) {
       await page.getByTestId(`eo-preview-option-${marsalaOpt.id}`).click().catch(() => undefined);
       await page.waitForTimeout(300);
-      // Ceremony choice sets are also required — root options use eo-preview-parent-*
+      // Ceremony + bar choice sets are also required — root options use eo-preview-parent-*
       const ceremonyByGroup = new Map<string, string>();
       for (const opt of ceremonyOpts ?? []) {
         if (!ceremonyByGroup.has(opt.group_id)) ceremonyByGroup.set(opt.group_id, opt.id);
@@ -703,6 +874,19 @@ async function main() {
         if (await previewOpt.count()) {
           await previewOpt.click({ force: true });
           await page.waitForTimeout(250);
+        }
+      }
+      if (premiumOpt) {
+        await page.getByTestId(`eo-preview-parent-${premiumOpt.id}`).click({ force: true }).catch(() => undefined);
+        await page.waitForTimeout(400);
+        const { data: premiumSpiritOpts } = await admin
+          .from("event_order_template_options")
+          .select("id,offering_id")
+          .eq("template_id", tpl.id)
+          .eq("group_id", premiumSpiritsId);
+        for (const opt of (premiumSpiritOpts ?? []).slice(0, 2)) {
+          await page.getByTestId(`eo-preview-option-${opt.id}`).click({ force: true }).catch(() => undefined);
+          await page.waitForTimeout(200);
         }
       }
       await page.getByTestId("eo-preview-check-selections").click();
@@ -735,13 +919,27 @@ async function main() {
       [rootGroupId!]: { optionIds: [platedOpt!.id] },
       [platedChildGroup!.id]: { optionIds: [marsalaOpt!.id] },
     };
-    // Include ceremony required chooses if minSelect > 0
+    // Include ceremony / bar required chooses if minSelect > 0
     for (const g of details.groups) {
       if ((g.dependsOnOptionIds ?? []).length > 0) continue;
       if (g.id === rootGroupId) continue;
       if (g.minSelect <= 0) continue;
       const opts = details.options.filter((o) => o.groupId === g.id);
       if (opts[0] && !valid[g.id]) valid[g.id] = { optionIds: [opts[0].id] };
+    }
+    // Active dependent groups for selected parents (e.g. Spirits under Premium Open Bar)
+    for (const g of details.groups) {
+      const deps = g.dependsOnOptionIds ?? [];
+      if (deps.length === 0) continue;
+      if (g.minSelect <= 0) continue;
+      const parentSelected = deps.some((id) =>
+        Object.values(valid).some((a) => a.optionIds.includes(id)),
+      );
+      if (!parentSelected || valid[g.id]) continue;
+      const opts = details.options.filter((o) => o.groupId === g.id);
+      if (opts.length >= g.minSelect) {
+        valid[g.id] = { optionIds: opts.slice(0, g.minSelect).map((o) => o.id) };
+      }
     }
     const validV = validateChoicesAnswers(definition, valid);
     record("server_accepts_valid_plated_path", validV.ok, validV.ok ? "ok" : validV.message, "finalization");
@@ -766,6 +964,19 @@ async function main() {
       if (g.minSelect <= 0) continue;
       const opts = details.options.filter((o) => o.groupId === g.id);
       if (opts[0] && !buffetPath[g.id]) buffetPath[g.id] = { optionIds: [opts[0].id] };
+    }
+    for (const g of details.groups) {
+      const deps = g.dependsOnOptionIds ?? [];
+      if (deps.length === 0) continue;
+      if (g.minSelect <= 0) continue;
+      const parentSelected = deps.some((id) =>
+        Object.values(buffetPath).some((a) => a.optionIds.includes(id)),
+      );
+      if (!parentSelected || buffetPath[g.id]) continue;
+      const opts = details.options.filter((o) => o.groupId === g.id);
+      if (opts.length >= g.minSelect) {
+        buffetPath[g.id] = { optionIds: opts.slice(0, g.minSelect).map((o) => o.id) };
+      }
     }
     const buffetResolved = resolveSelectedOptions(definition, buffetPath);
     record(

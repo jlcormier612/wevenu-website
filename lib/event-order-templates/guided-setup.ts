@@ -560,14 +560,44 @@ export function emptyDependentGroupInput(
  * Plain-language selection rule → existing group fields.
  * Exact N (required): minSelect = maxSelect = N.
  * Choose one (required): single / 1 / 1.
- * Optional with a cap: multi / 0 / N.
- * Optional any number: multi / 0 / null.
+ * Optional with exact N: multi / 0 / N (skip or choose exactly N).
+ * Optional any number: multi / 0 / null (only when selectCount is explicitly null).
  */
 export type PlainSelectionRuleInput = {
-  /** How many the couple should select. Null = any number (optional path). */
+  /** How many the couple must select. Null = any number (optional path only). */
   selectCount: number | null;
   required: boolean;
 };
+
+/**
+ * Parse venue-entered selection count. Blank is not silently coerced to “any”
+ * when the venue is configuring an exact-count group — callers must decide.
+ */
+export function parseCoupleSelectCount(
+  raw: string,
+): { ok: true; count: number } | { ok: false; message: string } {
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return {
+      ok: false,
+      message: "Enter how many options the couple must choose (a whole number).",
+    };
+  }
+  if (!/^\d+$/.test(trimmed)) {
+    return {
+      ok: false,
+      message: "Enter a whole number (0 or greater).",
+    };
+  }
+  const count = Number(trimmed);
+  if (!Number.isFinite(count) || count < 0 || !Number.isInteger(count)) {
+    return {
+      ok: false,
+      message: "Enter a whole number (0 or greater).",
+    };
+  }
+  return { ok: true, count };
+}
 
 export function resolvePlainSelectionRule(input: PlainSelectionRuleInput): {
   selectionMode: "single" | "multi";
@@ -575,9 +605,17 @@ export function resolvePlainSelectionRule(input: PlainSelectionRuleInput): {
   maxSelect: number | null;
 } {
   const count =
-    input.selectCount != null && Number.isFinite(input.selectCount) && input.selectCount > 0
+    input.selectCount != null && Number.isFinite(input.selectCount) && input.selectCount >= 0
       ? Math.floor(input.selectCount)
       : null;
+  if (count === 0) {
+    // Explicit zero: optional skip-only group (no selections allowed).
+    return {
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: 0,
+    };
+  }
   if (count === 1) {
     return {
       selectionMode: "single",
@@ -592,7 +630,7 @@ export function resolvePlainSelectionRule(input: PlainSelectionRuleInput): {
       maxSelect: count,
     };
   }
-  // Any number
+  // Any number (explicit null only)
   return {
     selectionMode: "multi",
     minSelect: input.required ? 1 : 0,
@@ -606,7 +644,7 @@ export function plainSelectionRuleLabel(
 ): string {
   if (g.selectionMode === "single") {
     if (g.minSelect > 0) return "Choose 1";
-    return "Optional — choose up to 1";
+    return "Optional — choose 1 or skip";
   }
   if (g.minSelect > 0 && g.maxSelect != null && g.minSelect === g.maxSelect) {
     return `Choose ${g.minSelect}`;
@@ -617,10 +655,35 @@ export function plainSelectionRuleLabel(
   if (g.minSelect > 0 && g.maxSelect == null) {
     return `Choose at least ${g.minSelect}`;
   }
+  if (g.minSelect === 0 && g.maxSelect === 0) {
+    return "No selections (skip only)";
+  }
   if (g.minSelect === 0 && g.maxSelect != null) {
-    return `Optional — choose up to ${g.maxSelect}`;
+    return `Optional — choose exactly ${g.maxSelect} or skip`;
   }
   return "Optional — choose any";
+}
+
+/**
+ * Flag impossible dependent-group configs before they become client-facing tasks.
+ * Required groups need enough options to satisfy the exact count.
+ */
+export function impossibleSelectionGroupMessage(
+  group: Pick<EventOrderTemplateGroup, "name" | "minSelect" | "maxSelect">,
+  optionCount: number,
+): string | null {
+  const needed =
+    group.maxSelect != null && group.minSelect > 0
+      ? Math.max(group.minSelect, group.maxSelect)
+      : group.minSelect;
+  if (needed <= 0) return null;
+  if (optionCount === 0) {
+    return `“${group.name || "This group"}” is required but has no options. Add catalog or write-in options, or mark it optional.`;
+  }
+  if (optionCount < needed) {
+    return `“${group.name || "This group"}” requires ${needed} selection${needed === 1 ? "" : "s"} but only has ${optionCount} option${optionCount === 1 ? "" : "s"}.`;
+  }
+  return null;
 }
 
 /** Build a follow-up category under a primary option (reuses depends_on_option_ids). */

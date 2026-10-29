@@ -88,6 +88,22 @@ export function validateChoicesAnswers(
         groupName: group.name,
       };
     }
+    // Optional with an exact configured count: skip entirely, or satisfy the count.
+    // Partial answers (e.g. 1 of 2) must not submit.
+    if (
+      group.minSelect === 0 &&
+      group.maxSelect != null &&
+      group.maxSelect > 0 &&
+      count > 0 &&
+      count < group.maxSelect
+    ) {
+      return {
+        ok: false,
+        message: `“${group.name}” requires exactly ${group.maxSelect} selections, or leave it blank to skip.`,
+        groupId: group.id,
+        groupName: group.name,
+      };
+    }
   }
   return { ok: true };
 }

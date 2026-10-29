@@ -6,6 +6,10 @@
 import { choicesOptionDraftFromOffering } from "@/lib/client-choices-templates/option-catalog";
 import { isDependentGroup } from "@/lib/event-order-templates/group-dependencies";
 import {
+  resolvePlainSelectionRule,
+  type PlainSelectionRuleInput,
+} from "@/lib/event-order-templates/guided-setup";
+import {
   dependentGroupsForOption,
   groupsForSection,
   rootGroupsInList,
@@ -130,6 +134,46 @@ export function optionInputFromOffering(
   };
 }
 
+/**
+ * Explicit write-in / custom option — not a reusable catalog Offering.
+ * Reuses nullable offering_id on the existing option model.
+ */
+export function optionInputWriteIn(
+  groupId: string,
+  label: string,
+): AddTemplateOptionInput {
+  return {
+    groupId,
+    offeringId: null,
+    label: label.trim(),
+    isIncluded: true,
+    unitPrice: "0",
+    isDefault: false,
+  };
+}
+
+/**
+ * Catalog children eligible to add under a specific dependent group
+ * (excludes offerings already used under this parent option).
+ */
+export function catalogOptionsEligibleForParentGroup(
+  catalog: OfferingWithCategory[],
+  parentOfferingId: string | null | undefined,
+  parentOptionId: string,
+  groups: EventOrderTemplateGroup[],
+  options: EventOrderTemplateOption[],
+): OfferingWithCategory[] {
+  if (!parentOfferingId) return [];
+  const info = catalogChildrenForParentOption(
+    catalog,
+    parentOfferingId,
+    parentOptionId,
+    groups,
+    options,
+  );
+  return info.available.filter((o) => !info.selectedOfferingIds.has(o.id));
+}
+
 /** Create-input for a new root choice set in a section. */
 export function newRootChoiceSetInput(
   sectionId: string,
@@ -147,19 +191,26 @@ export function newRootChoiceSetInput(
   };
 }
 
-/** Create-input for a dependent child-options group under a parent option. */
+/**
+ * Create-input for a named dependent option group under a parent offering.
+ * Requires an explicit group name so venues do not get duplicate
+ * unexplained “{Parent} options” groups.
+ */
 export function newChildGroupUnderParentInput(
   sectionId: string,
   parentOption: Pick<EventOrderTemplateOption, "id" | "label">,
-  name?: string,
+  name: string,
+  rule: PlainSelectionRuleInput = { selectCount: 1, required: true },
 ): AddTemplateGroupInput {
+  const trimmed = name.trim();
+  const resolved = resolvePlainSelectionRule(rule);
   return {
     sectionId,
-    name: name?.trim() || defaultChildGroupName(parentOption.label),
+    name: trimmed || defaultChildGroupName(parentOption.label),
     instructions: `Shown only after the client chooses “${parentOption.label}”.`,
-    selectionMode: "multi",
-    minSelect: 0,
-    maxSelect: null,
+    selectionMode: resolved.selectionMode,
+    minSelect: resolved.minSelect,
+    maxSelect: resolved.maxSelect,
     allowQuantity: false,
     dependsOnOptionIds: [parentOption.id],
   };

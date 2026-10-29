@@ -21,15 +21,25 @@ describe("selection progress + max enforcement helpers", () => {
     );
   });
 
-  it("formats min–max range and optional capped groups", () => {
+  it("formats min–max range and optional exact-or-skip groups", () => {
     assert.equal(
       selectionProgressLabel({ selectionMode: "multi", minSelect: 2, maxSelect: 4 }, 3),
       "Choose 2–4 — 3 selected",
     );
     assert.equal(
       selectionProgressLabel({ selectionMode: "multi", minSelect: 0, maxSelect: 2 }, 1),
-      "Optional — choose up to 2 — 1 of 2 selected",
+      "Optional — choose exactly 2 or skip — 1 of 2 selected",
     );
+    const partial = selectionProgressForGroup(
+      { selectionMode: "multi", minSelect: 0, maxSelect: 2 },
+      1,
+    );
+    assert.equal(partial.requirementMet, false);
+    const skipped = selectionProgressForGroup(
+      { selectionMode: "multi", minSelect: 0, maxSelect: 2 },
+      0,
+    );
+    assert.equal(skipped.requirementMet, true);
   });
 
   it("formats single-select progress", () => {

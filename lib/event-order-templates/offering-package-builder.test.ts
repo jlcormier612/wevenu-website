@@ -11,6 +11,7 @@ import {
   newRootChoiceSetInput,
   offeringsAvailableForCoupleChoices,
   optionInputFromOffering,
+  optionInputWriteIn,
   packageBuilderPriceLabel,
   parentChoiceView,
 } from "@/lib/event-order-templates/offering-package-builder";
@@ -56,12 +57,27 @@ describe("offering-package-builder", () => {
     assert.equal(root.minSelect, 1);
     assert.deepEqual(root.dependsOnOptionIds, []);
 
-    const child = newChildGroupUnderParentInput("sec-1", {
-      id: "opt-buffet",
-      label: "Buffet Style Dinner",
-    });
+    const child = newChildGroupUnderParentInput(
+      "sec-1",
+      {
+        id: "opt-buffet",
+        label: "Buffet Style Dinner",
+      },
+      "Entrées",
+      { selectCount: 2, required: true },
+    );
     assert.deepEqual(child.dependsOnOptionIds, ["opt-buffet"]);
+    assert.equal(child.name, "Entrées");
     assert.equal(child.selectionMode, "multi");
+    assert.equal(child.minSelect, 2);
+    assert.equal(child.maxSelect, 2);
+  });
+
+  it("drafts write-in options without creating catalog offerings", () => {
+    const writeIn = optionInputWriteIn("g-spirits", "House specialty cocktail");
+    assert.equal(writeIn.offeringId, null);
+    assert.equal(writeIn.label, "House specialty cocktail");
+    assert.equal(writeIn.isIncluded, true);
   });
 
   it("drafts options from catalog Offerings with price snapshots", () => {
