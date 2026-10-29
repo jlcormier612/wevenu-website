@@ -20,6 +20,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  INVENTORY_COUPLE_BAND_HINT, INVENTORY_VISIBILITY_DISCLOSURE, groupInventoryByCoupleBand, inventoryCoupleMaxQuantity,
+} from "@/lib/event-inventory/couple-bands";
 import { eventInventoryListPriceLabel } from "@/lib/event-inventory/list-display";
 import type { EventInventoryItem, EventInventoryStatus, EventInventoryWithDetails, InventoryTemplate } from "@/lib/event-inventory/types";
 import type { InventoryItem } from "@/lib/inventory/types";
@@ -56,8 +59,8 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
         <span className="text-foreground">{item.name}</span>
         {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
         {item.notes && <p className="mt-0.5 text-xs text-muted-foreground truncate">{item.notes}</p>}
-        {item.clientSelectable && (
-          <p className="mt-0.5 text-xs text-primary">Couple can select (max ×{item.maxQuantity ?? item.quantity})</p>
+        {inventoryCoupleMaxQuantity(item) != null && (
+          <p className="mt-0.5 text-xs text-primary">Couple can select (max ×{inventoryCoupleMaxQuantity(item)})</p>
         )}
         {item.clientSubmittedQuantity != null && (
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -412,39 +415,53 @@ export function EventInventoryPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p
+          className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
+          data-testid="inventory-visibility-disclosure"
+        >
+          {INVENTORY_VISIBILITY_DISCLOSURE}
+        </p>
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Nothing added yet.</p>
         ) : (
-          <div>
-            {items.map((item) => (
-              <ItemRow key={item.id} item={item} eventInventoryId={inv.id} eventId={eventId} catalogItems={catalogItems}
-                editable={!isFinalized && inv.status !== "submitted"}
-                onRemove={() => handleRemove(item)} removing={removingId === item.id}
-                onToggleSelectable={(next) => {
-                  // Do not use runLifecycle/startTransition here: that sets
-                  // lifecyclePending and would block Share inventory during the
-                  // Select toggle round-trip, defeating optimistic Select.
-                  setSelectableOverrides((prev) => ({ ...prev, [item.id]: next }));
-                  void (async () => {
-                    const result = await setInventoryItemClientSelectableAction(
-                      inv.id,
-                      eventId,
-                      item.id,
-                      next,
-                    );
-                    if (!result.ok) {
-                      setSelectableOverrides((prev) => {
-                        const rollback = { ...prev };
-                        delete rollback[item.id];
-                        return rollback;
-                      });
-                      toast.error(result.message ?? "Could not update selection flag.");
-                      return;
-                    }
-                    router.refresh();
-                  })();
-                }}
-              />
+          <div className="space-y-4">
+            {groupInventoryByCoupleBand(items).map((group) => (
+              <div key={group.band} data-testid={`inventory-band-${group.band}`}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label} ({group.rows.length})
+                </p>
+                <p className="text-xs text-muted-foreground">{INVENTORY_COUPLE_BAND_HINT[group.band]}</p>
+                {group.rows.map((item) => (
+                  <ItemRow key={item.id} item={item} eventInventoryId={inv.id} eventId={eventId} catalogItems={catalogItems}
+                    editable={!isFinalized && inv.status !== "submitted"}
+                    onRemove={() => handleRemove(item)} removing={removingId === item.id}
+                    onToggleSelectable={(next) => {
+                      // Do not use runLifecycle/startTransition here: that sets
+                      // lifecyclePending and would block Share inventory during the
+                      // Select toggle round-trip, defeating optimistic Select.
+                      setSelectableOverrides((prev) => ({ ...prev, [item.id]: next }));
+                      void (async () => {
+                        const result = await setInventoryItemClientSelectableAction(
+                          inv.id,
+                          eventId,
+                          item.id,
+                          next,
+                        );
+                        if (!result.ok) {
+                          setSelectableOverrides((prev) => {
+                            const rollback = { ...prev };
+                            delete rollback[item.id];
+                            return rollback;
+                          });
+                          toast.error(result.message ?? "Could not update selection flag.");
+                          return;
+                        }
+                        router.refresh();
+                      })();
+                    }}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         )}

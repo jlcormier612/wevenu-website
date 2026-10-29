@@ -51,6 +51,7 @@ import {
   clientChoicesNextActor,
   isClientChoicesNeedsVenueReview,
 } from "@/lib/client-choices/constants";
+import { pickActiveChoices } from "@/lib/client-choices/couple-choice-preview";
 import type { ClientChoices, ClientChoicesWithHistory } from "@/lib/client-choices/types";
 import type {
   EventOrderTemplate,
@@ -78,23 +79,6 @@ function summarizeAnswers(row: ClientChoices): string {
     if (labels.length) parts.push(`${group.name}: ${labels.join(", ")}`);
   }
   return parts.length ? parts.join(" · ") : "No selections yet";
-}
-
-/** Prefer the packet that needs venue action, then awaiting client, then draft. */
-function pickActiveChoices(
-  choices: ClientChoicesWithHistory[],
-): ClientChoicesWithHistory | null {
-  if (choices.length === 0) return null;
-  return (
-    choices.find((c) => isClientChoicesNeedsVenueReview(c.status))
-    ?? choices.find((c) => {
-      const s = c.status;
-      return s === "sent" || s === "in_progress" || s === "changes_requested";
-    })
-    ?? choices.find((c) => c.status === "draft")
-    ?? choices[0]
-    ?? null
-  );
 }
 
 function ChoicesComposerActions({

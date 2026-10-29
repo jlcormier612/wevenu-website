@@ -230,6 +230,7 @@ export function EventCommercialWorkflow({
           preferredTemplateId={preferredTemplateId}
           overview={overview}
           shareCommitmentStale={shareCommitmentStale}
+          choices={choices}
         />
       </StageSection>
     </div>

@@ -1,0 +1,319 @@
+{
+ "label": "after-select",
+ "at": "2026-10-29T23:39:58.880Z",
+ "events": {
+  "template_case_5cd0be77": {
+   "event_inventory": {
+    "count": 1,
+    "hash": "506f79f6f3dd8e4d"
+   },
+   "event_inventory_items": {
+    "count": 32,
+    "hash": "4d4cc28fd0893629"
+   },
+   "event_inventory_activities": {
+    "count": 1,
+    "hash": "2420ec6bae04ea73"
+   },
+   "event_orders": {
+    "count": 1,
+    "hash": "854637504b07ba75"
+   },
+   "event_order_lines": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "event_order_sections": {
+    "count": 6,
+    "hash": "253f32f9715cff22"
+   },
+   "event_order_share_snapshots": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "event_order_activities": {
+    "count": 1,
+    "hash": "dab0b44c306ec00a"
+   },
+   "client_choices": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_choices_submissions": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_choices_activities": {
+    "count": 0
+   },
+   "invoices": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "invoice_line_items": {
+    "count": 0
+   },
+   "contracts": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_portal_sessions": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   }
+  },
+  "packet_shared_ebf74f77": {
+   "event_inventory": {
+    "count": 1,
+    "hash": "82034e0ac20bf0bb"
+   },
+   "event_inventory_items": {
+    "count": 32,
+    "hash": "7619b38617a968bd"
+   },
+   "event_inventory_activities": {
+    "count": 23,
+    "hash": "2aa9d9b5bcec890c"
+   },
+   "event_orders": {
+    "count": 1,
+    "hash": "77b84bf6a0ef1a03"
+   },
+   "event_order_lines": {
+    "count": 48,
+    "hash": "bf9f6547bcf43765"
+   },
+   "event_order_sections": {
+    "count": 6,
+    "hash": "88f0bce6c7d26437"
+   },
+   "event_order_share_snapshots": {
+    "count": 10,
+    "hash": "c2fd00149093b07a"
+   },
+   "event_order_activities": {
+    "count": 122,
+    "hash": "f0e7e85b3ba98fd7"
+   },
+   "client_choices": {
+    "count": 18,
+    "hash": "501a066d7a8a6123"
+   },
+   "client_choices_submissions": {
+    "count": 45,
+    "hash": "a799d37e3888bee0"
+   },
+   "client_choices_activities": {
+    "count": 120,
+    "hash": "36ad10baf145d74d"
+   },
+   "invoices": {
+    "count": 6,
+    "hash": "32b5ad9273b1f9a6"
+   },
+   "invoice_line_items": {
+    "count": 15,
+    "hash": "b3fd56fbaf47aec6"
+   },
+   "contracts": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_portal_sessions": {
+    "count": 8,
+    "hash": "088489a5e1c2abd7"
+   }
+  },
+  "empty_case_9f569e99": {
+   "event_inventory": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "event_inventory_items": {
+    "count": 0
+   },
+   "event_inventory_activities": {
+    "count": 0
+   },
+   "event_orders": {
+    "count": 1,
+    "hash": "97f8436bfd74929d"
+   },
+   "event_order_lines": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "event_order_sections": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "event_order_share_snapshots": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "event_order_activities": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_choices": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_choices_submissions": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_choices_activities": {
+    "count": 0
+   },
+   "invoices": {
+    "count": 1,
+    "hash": "6355bbb6dbf13dab"
+   },
+   "invoice_line_items": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "contracts": {
+    "count": 1,
+    "hash": "9eed4a61c2141f95"
+   },
+   "client_portal_sessions": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   }
+  },
+  "shared_9c200402": {
+   "event_inventory": {
+    "count": 1,
+    "hash": "2c065a7c885f1fe8"
+   },
+   "event_inventory_items": {
+    "count": 32,
+    "hash": "508430dcc8d9ab81"
+   },
+   "event_inventory_activities": {
+    "count": 3,
+    "hash": "d3090ea04bb25fd9"
+   },
+   "event_orders": {
+    "count": 1,
+    "hash": "99d7e99476857eda"
+   },
+   "event_order_lines": {
+    "count": 7,
+    "hash": "8866a71f574c092e"
+   },
+   "event_order_sections": {
+    "count": 6,
+    "hash": "9d51a677a303de0a"
+   },
+   "event_order_share_snapshots": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "event_order_activities": {
+    "count": 6,
+    "hash": "8cb69262c699c37a"
+   },
+   "client_choices": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_choices_submissions": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_choices_activities": {
+    "count": 0
+   },
+   "invoices": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "invoice_line_items": {
+    "count": 0
+   },
+   "contracts": {
+    "count": 0,
+    "hash": "4f53cda18c2baa0c"
+   },
+   "client_portal_sessions": {
+    "count": 1,
+    "hash": "0894f5ce32c4468f"
+   }
+  }
+ },
+ "library": {
+  "inventory_templates": {
+   "count": 3,
+   "hash": "2e38681a75a08f91"
+  },
+  "inventory_template_items": {
+   "count": 60,
+   "hash": "770e18610221bbcc"
+  },
+  "event_order_templates": {
+   "count": 7,
+   "hash": "b511eca226cdbe06"
+  }
+ },
+ "venueWide": {
+  "notification_log": {
+   "count": 4796,
+   "newest": null
+  },
+  "messages": {
+   "count": 0,
+   "newest": null
+  },
+  "scheduled_messages": {
+   "count": 167,
+   "newest": null
+  },
+  "conversation_messages": {
+   "count": 415,
+   "newest": null
+  },
+  "message_events": {
+   "count": 0,
+   "newest": null
+  },
+  "invitation_emails": {
+   "count": 0,
+   "newest": null
+  },
+  "quickbooks_sync_queue": {
+   "count": 69,
+   "newest": null
+  },
+  "invoices": {
+   "count": 48,
+   "newest": null
+  },
+  "invoice_line_items": {
+   "count": 51,
+   "newest": null
+  },
+  "contracts": {
+   "count": 49,
+   "newest": null
+  },
+  "client_choices": {
+   "count": 26,
+   "newest": null
+  },
+  "client_choices_submissions": {
+   "count": 55,
+   "newest": null
+  },
+  "event_inventory_items": {
+   "count": 1381,
+   "newest": null
+  },
+  "event_order_lines": {
+   "count": 325,
+   "newest": null
+  }
+ }
+}

@@ -29,6 +29,7 @@ import {
   templateItemInputFromCatalog,
   customTemplateItemInput,
 } from "@/lib/event-inventory/template-catalog";
+import { INVENTORY_COUPLE_BAND_HINT, groupInventoryByCoupleBand } from "@/lib/event-inventory/couple-bands";
 import type { InventoryTemplateWithItems } from "@/lib/event-inventory/types";
 import type { InventoryItemWithCategory } from "@/lib/inventory/types";
 
@@ -312,29 +313,41 @@ export function InventoryTemplateDetail({
           {template.items.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No items yet.</p>
           ) : (
-            <div>
-              {template.items.map((item) => {
-                const fromCatalog = isCatalogBackedTemplateItem(item);
-                return (
-                  <div key={item.id} className="group grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 py-2 border-b border-border last:border-0 text-sm">
-                    <div className="min-w-0">
-                      <span className="text-foreground">{item.name}</span>
-                      {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
-                      <span className="ml-2 text-[0.7rem] text-muted-foreground">
-                        {fromCatalog ? "From catalog" : "Custom"}
-                      </span>
-                    </div>
-                    <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
-                    <span className="text-right w-24 font-medium text-foreground">{item.unitPrice != null ? formatMoney(item.unitPrice) : "—"}</span>
-                    <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">{item.isIncluded ? "Included" : "Additional"}</Badge>
-                    <TemplateItemEditSheet templateId={template.id} item={item} onPersist={onPersist} />
-                    <button type="button" onClick={() => handleRemove(item.id, item.name)} disabled={removingId === item.id}
-                      className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity justify-self-end">
-                      {removingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground" data-testid="inventory-template-band-note">
+                Applied to an event, Included items show as included and Additional items show at the quantity you
+                set. To let the couple choose a quantity, mark an Additional item Select on the event&apos;s Inventory tab.
+              </p>
+              {groupInventoryByCoupleBand(template.items).map((group) => (
+                <div key={group.band} data-testid={`inventory-band-${group.band}`}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label} ({group.rows.length})
+                  </p>
+                  <p className="text-xs text-muted-foreground">{INVENTORY_COUPLE_BAND_HINT[group.band]}</p>
+                  {group.rows.map((item) => {
+                    const fromCatalog = isCatalogBackedTemplateItem(item);
+                    return (
+                      <div key={item.id} className="group grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 py-2 border-b border-border last:border-0 text-sm">
+                        <div className="min-w-0">
+                          <span className="text-foreground">{item.name}</span>
+                          {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
+                          <span className="ml-2 text-[0.7rem] text-muted-foreground">
+                            {fromCatalog ? "From catalog" : "Custom"}
+                          </span>
+                        </div>
+                        <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
+                        <span className="text-right w-24 font-medium text-foreground">{item.unitPrice != null ? formatMoney(item.unitPrice) : "—"}</span>
+                        <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">{item.isIncluded ? "Included" : "Additional"}</Badge>
+                        <TemplateItemEditSheet templateId={template.id} item={item} onPersist={onPersist} />
+                        <button type="button" onClick={() => handleRemove(item.id, item.name)} disabled={removingId === item.id}
+                          className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity justify-self-end">
+                          {removingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           )}
           <AddTemplateItemInline templateId={template.id} catalogItems={catalogItems} onPersist={onPersist} />

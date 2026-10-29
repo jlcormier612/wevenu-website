@@ -31,6 +31,11 @@ import {
 } from "@/components/ui/select";
 import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
+import {
+  NO_COUPLE_CHOICES_MESSAGE, coupleChoicePreview, pickActiveChoices,
+} from "@/lib/client-choices/couple-choice-preview";
+import type { ClientChoicesWithHistory } from "@/lib/client-choices/types";
+import { isBillableEventOrderLineForInvoice } from "@/lib/client-choices/unbilled-delta";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
@@ -74,6 +79,9 @@ function LineRow({
           <Badge variant={line.isIncluded ? "muted" : "accent"} className="text-[10px]">
             {line.isIncluded ? "Included" : "Additional"}
           </Badge>
+          {line.isIncluded ? (
+            <span className="text-[10px] text-muted-foreground" data-testid="eo-line-included-extra">$0 extra</span>
+          ) : null}
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{PROVENANCE_LABEL[line.provenance]}</span>
         </div>
         {(line.notes || line.unit) && (
@@ -93,6 +101,92 @@ function LineRow({
             {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function CoupleWillChooseSection({
+  eventOrder, choices,
+}: {
+  eventOrder: EventOrderWithDetails;
+  choices: ClientChoicesWithHistory[];
+}) {
+  const hasActivePacket = pickActiveChoices(choices) != null;
+  const templateId = hasActivePacket ? null : eventOrder.templateId;
+  const [templateDetail, setTemplateDetail] = React.useState<EventOrderTemplateWithDetails | null>(null);
+  const [loadedTemplateId, setLoadedTemplateId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!templateId) return;
+    let cancelled = false;
+    void getEventOrderTemplateDetailAction(templateId).then((detail) => {
+      if (cancelled) return;
+      setTemplateDetail(detail);
+      setLoadedTemplateId(templateId);
+    });
+    return () => { cancelled = true; };
+  }, [templateId]);
+
+  const loading = Boolean(templateId) && loadedTemplateId !== templateId;
+  const preview = coupleChoicePreview({
+    choices,
+    eventOrderTemplate: templateId && loadedTemplateId === templateId ? templateDetail : null,
+  });
+
+  return (
+    <div className="rounded-lg border border-border p-4 space-y-3" data-testid="eo-couple-will-choose">
+      <p className="text-sm font-semibold text-heading">The couple will choose</p>
+      {loading ? (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading this Event Order&apos;s template…
+        </p>
+      ) : preview.kind === "none" ? (
+        <p className="text-sm text-muted-foreground" data-testid="eo-couple-will-choose-empty">
+          {NO_COUPLE_CHOICES_MESSAGE}
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground" data-testid="eo-couple-will-choose-source" data-source={preview.kind}>
+            {preview.kind === "packet"
+              ? `From the selection request “${preview.name}” · ${preview.statusLabel}. These are the groups the couple answers; the lines below are not choices.`
+              : `From this Event Order's template “${preview.templateName}” — not sent yet. Prepare a selection request in Client selections to ask the couple.`}
+          </p>
+          <ul className="space-y-3">
+            {preview.groups.map((group) => (
+              <li key={group.id} className="rounded-sm border border-border/70 p-3 space-y-1.5" data-testid="eo-couple-choice-group" data-group-id={group.id}>
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-sm font-medium text-heading">{group.name}</span>
+                  {group.sectionName ? <span className="text-xs text-muted-foreground">{group.sectionName}</span> : null}
+                </div>
+                <p className="text-xs text-muted-foreground" data-testid="eo-couple-choice-rule">
+                  {group.ruleLabel}
+                  {group.allowQuantity ? " · quantity per option" : ""}
+                  {group.shownWhen.length > 0 ? ` · shown only if ${group.shownWhen.map((l) => `“${l}”`).join(" or ")} is chosen` : ""}
+                </p>
+                {group.options.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No options configured.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {group.options.map((opt) => (
+                      <li key={opt.id} className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm" data-testid="eo-couple-choice-option" data-option-id={opt.id}>
+                        <span className="text-foreground">
+                          {opt.label}
+                          {preview.kind === "packet" && preview.showAnswers && opt.chosen ? (
+                            <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-primary">
+                              Selected{opt.chosenQuantity != null ? ` ×${opt.chosenQuantity}` : ""}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{opt.priceLabel}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
@@ -181,6 +275,7 @@ export function EventOrderPanel({
   linkedScheduleId = null,
   preferredTemplateId = null,
   shareCommitmentStale = false,
+  choices = [],
 }: {
   eventId: string;
   planningClientId?: string | null;
@@ -205,6 +300,8 @@ export function EventOrderPanel({
   preferredTemplateId?: string | null;
   /** Live lines differ from the last share the couple still sees. */
   shareCommitmentStale?: boolean;
+  /** Event selection packets (already loaded by the page) for the read-only couple-choice preview. */
+  choices?: ClientChoicesWithHistory[];
 }) {
   const router = useRouter();
   const scopeId = eventId || planningClientId || "";
@@ -498,6 +595,13 @@ export function EventOrderPanel({
           <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
           {" "}— amount due is on Invoice / Payments.
         </p>
+        <p className="text-xs text-muted-foreground -mt-1" data-testid="eo-additional-extra-total">
+          Extra charges (Additional lines with a price):{" "}
+          <span className="font-medium text-foreground">
+            {formatMoney(eventOrder.lines.filter(isBillableEventOrderLineForInvoice).reduce((sum, l) => sum + l.amount, 0))}
+          </span>
+          {" "}— Included lines add $0.
+        </p>
         {preBooking && (
           <p className="text-xs text-muted-foreground -mt-1">
             Finalize, share with the client, and the invoice link wait until this relationship is Booked. They describe the booked occasion.
@@ -602,6 +706,8 @@ export function EventOrderPanel({
             <p className="text-xs text-muted-foreground">Drawn from the event booking — edit those details on Overview, not here.</p>
           </div>
         )}
+
+        {!preBooking && <CoupleWillChooseSection eventOrder={eventOrder} choices={choices} />}
 
         {eventOrder.sections.map((section) => {
           const lines = eventOrder.lines.filter((l) => l.sectionId === section.id);

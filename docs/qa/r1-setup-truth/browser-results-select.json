@@ -1,0 +1,28 @@
+{
+  "phase": "select",
+  "at": "2026-10-29T23:41:06.436Z",
+  "app": "http://localhost:3000",
+  "checks": [
+    {
+      "name": "S2 select: starts in Additional — venue sets",
+      "pass": true,
+      "detail": "60\" Round Table"
+    },
+    {
+      "name": "S2 select: Select moves row to Couple can choose (UI + DB)",
+      "pass": true,
+      "detail": "{\"db\":{\"client_selectable\":true}}"
+    },
+    {
+      "name": "S2 select: toggle back restores Additional — venue sets (UI + DB)",
+      "pass": true,
+      "detail": "{\"db\":{\"client_selectable\":false}}"
+    },
+    {
+      "name": "S2 select: after reload row is still Additional — venue sets",
+      "pass": true,
+      "detail": "reloaded"
+    }
+  ],
+  "pass": true
+}
