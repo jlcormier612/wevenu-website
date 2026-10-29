@@ -4,6 +4,7 @@ import { CapacityRulesSection } from "@/components/availability/capacity-rules-s
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { AppointmentsOfferedControl } from "@/components/settings/appointments-offered-control";
 import { ScheduledAppointmentTypesSection } from "@/components/settings/scheduled-appointment-types-section";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { getScheduleItemTypesForSettings } from "@/lib/calendar/schedule-item-catalog-service";
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
+import { getIntakeForVenue } from "@/lib/onboarding/intake-service";
 import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
 import { getTourAvailability, getTourSettings } from "@/lib/tours/service";
 import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
@@ -36,6 +38,7 @@ export default async function AvailabilityCapacitySettingsPage() {
     getTourSettings(),
     getCurrentVenue(),
   ]);
+  const intake = venue?.id ? await getIntakeForVenue(venue.id) : null;
   const { windows, exceptions, loadError } = editorHydrationFromAvailability(tourAvailability);
   const canEditCatalog = role === "owner" || role === "manager";
 
@@ -99,6 +102,24 @@ export default async function AvailabilityCapacitySettingsPage() {
             loadError={loadError}
           />
           <SetupGuideLink href="/help/how-do-i-set-my-tour-availability" label="How Do I Set My Tour Availability?" />
+        </CardContent>
+      </Card>
+
+      <Card id="appointments-offered" className="scroll-mt-20">
+        <CardHeader>
+          <CardTitle className="text-base">Appointments other than tours</CardTitle>
+          <CardDescription>
+            Same preferences collected during setup. This is how your venue works — it does not
+            by itself enable online booking.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AppointmentsOfferedControl
+            initialOffers={intake?.offersTastingsOrAppointments ?? null}
+            initialTypeKeys={intake?.appointmentTypeKeys ?? []}
+            initialOther={intake?.appointmentTypesOther ?? ""}
+            canEdit={canEditCatalog}
+          />
         </CardContent>
       </Card>
 

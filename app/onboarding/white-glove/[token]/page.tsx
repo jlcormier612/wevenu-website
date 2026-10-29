@@ -83,21 +83,23 @@ export default async function WhiteGloveIntakePage({ params, searchParams }: Pag
   } | null;
 
   return (
-    <main className="min-h-screen bg-background px-4 py-10">
-      <div className="mx-auto max-w-xl space-y-4">
+    <main className="min-h-screen bg-background px-4 py-8 sm:py-10">
+      <div className="mx-auto max-w-xl space-y-3">
         <WhiteGloveBrandChrome />
-        <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm">
-          <p className="font-medium">White Glove Setup</p>
-          <p className="text-muted-foreground">
-            You purchased White Glove Setup. Confirm the details below — we already know your
-            venue name from checkout{enrollment.venue_name ? ` (${enrollment.venue_name})` : ""}.
+        <div
+          className="rounded-md border border-border/70 bg-muted/10 px-3 py-2.5 text-sm"
+          data-testid="wg-welcome-box"
+        >
+          <p className="font-medium text-foreground">Welcome to White Glove Setup!</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            We&apos;re excited to help you get Hello to Cheers ready for your venue. Let&apos;s
+            start with a few details about your space and how you work. We&apos;ll take care of
+            the setup from there.
           </p>
-          {enrollment.owner_email ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Account login stays {enrollment.owner_email}. Changing a venue contact email
-              here does not change who owns the account.
-            </p>
-          ) : null}
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            Your account login is already set. The contact information you provide below helps us
+            configure your venue and communicate with you during setup.
+          </p>
         </div>
       </div>
       <WhiteGloveIntakeClient
@@ -120,6 +122,8 @@ export default async function WhiteGloveIntakePage({ params, searchParams }: Pag
           spaces: existingIntake?.spaces,
           offersTours: existingIntake?.offersTours,
           offersTastingsOrAppointments: existingIntake?.offersTastingsOrAppointments ?? undefined,
+          appointmentTypeKeys: existingIntake?.appointmentTypeKeys,
+          appointmentTypesOther: existingIntake?.appointmentTypesOther ?? undefined,
           inquirySources: existingIntake?.inquirySources,
           inquirySourcesOther: existingIntake?.inquirySourcesOther ?? undefined,
           bringBusinessChoice: existingIntake?.bringBusinessChoice,

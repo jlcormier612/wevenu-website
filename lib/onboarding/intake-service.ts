@@ -5,7 +5,9 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
+  sanitizeAppointmentTypeKeys,
   spaceOperatingModeFromIntake,
+  type AppointmentTypeKey,
   type BringBusinessChoice,
   type InquirySourceKey,
   type OnboardingIntakeInput,
@@ -33,6 +35,8 @@ type IntakeRow = {
   spaces: unknown;
   offers_tours: boolean | null;
   offers_tastings_or_appointments: boolean | null;
+  appointment_type_keys: string[] | null;
+  appointment_types_other: string | null;
   inquiry_sources: string[] | null;
   inquiry_sources_other: string | null;
   bring_business_choice: BringBusinessChoice | null;
@@ -77,6 +81,8 @@ function mapRow(r: IntakeRow): OnboardingIntakeRecord {
     spaces: mapSpaces(r.spaces),
     offersTours: r.offers_tours ?? false,
     offersTastingsOrAppointments: r.offers_tastings_or_appointments,
+    appointmentTypeKeys: sanitizeAppointmentTypeKeys(r.appointment_type_keys),
+    appointmentTypesOther: r.appointment_types_other,
     inquirySources: (r.inquiry_sources ?? []) as InquirySourceKey[],
     inquirySourcesOther: r.inquiry_sources_other,
     bringBusinessChoice: r.bring_business_choice ?? "starting_fresh",
@@ -142,6 +148,15 @@ export async function submitOnboardingIntake(input: {
     spaces: spacesJson,
     offers_tours: intake.offersTours,
     offers_tastings_or_appointments: intake.offersTastingsOrAppointments,
+    appointment_type_keys:
+      intake.offersTastingsOrAppointments === true
+        ? sanitizeAppointmentTypeKeys(intake.appointmentTypeKeys)
+        : ([] as AppointmentTypeKey[]),
+    appointment_types_other:
+      intake.offersTastingsOrAppointments === true &&
+      (intake.appointmentTypeKeys ?? []).includes("other")
+        ? intake.appointmentTypesOther?.trim() || null
+        : null,
     inquiry_sources: intake.inquirySources,
     inquiry_sources_other:
       intake.inquirySources.includes("other")
@@ -276,4 +291,68 @@ export async function submitOnboardingIntake(input: {
   }
 
   return { ok: true, intakeId: saved.id };
+}
+
+/**
+ * Settings mirror of the onboarding appointment Yes/No + types.
+ * Writes the same venue_onboarding_intake columns; does not configure scheduling.
+ */
+export async function updateVenueAppointmentOfferSignal(input: {
+  venueId: string;
+  offersAppointmentsOtherThanTours: boolean | null;
+  appointmentTypeKeys?: AppointmentTypeKey[];
+  appointmentTypesOther?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "not_configured" };
+  const admin = createAdminClient();
+  const offers = input.offersAppointmentsOtherThanTours;
+  const keys =
+    offers === true ? sanitizeAppointmentTypeKeys(input.appointmentTypeKeys) : [];
+  const other =
+    offers === true && keys.includes("other")
+      ? input.appointmentTypesOther?.trim() || null
+      : null;
+
+  const { data: existing } = await admin
+    .from("venue_onboarding_intake")
+    .select("id, path")
+    .eq("venue_id", input.venueId)
+    .maybeSingle<{ id: string; path: string | null }>();
+
+  if (existing?.id) {
+    const { error } = await admin
+      .from("venue_onboarding_intake")
+      .update({
+        offers_tastings_or_appointments: offers,
+        appointment_type_keys: keys,
+        appointment_types_other: other,
+      })
+      .eq("venue_id", input.venueId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  const { data: hub } = await admin
+    .from("venue_setup_hub_state")
+    .select("onboarding_type")
+    .eq("venue_id", input.venueId)
+    .maybeSingle<{ onboarding_type: string | null }>();
+  const path =
+    hub?.onboarding_type === "white_glove" || hub?.onboarding_type === "self_setup"
+      ? hub.onboarding_type
+      : "self_setup";
+
+  const { error } = await admin.from("venue_onboarding_intake").insert({
+    venue_id: input.venueId,
+    path,
+    venue_name: null,
+    spaces: [],
+    offers_tours: null,
+    offers_tastings_or_appointments: offers,
+    appointment_type_keys: keys,
+    appointment_types_other: other,
+    inquiry_sources: [],
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }

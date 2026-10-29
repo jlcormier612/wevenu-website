@@ -121,7 +121,13 @@ export async function getWhiteGloveOperatorView(venueId: string) {
   const intakeSummary = intake
     ? [
         `Contact: ${intake.primaryContactName ?? "—"} · ${intake.contactEmail ?? "—"} · ${intake.contactPhone ?? "—"}`,
-        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Tastings/appointments: ${tastingAppointmentSignalLabel(intake.offersTastingsOrAppointments)}`,
+        `Spaces: ${intake.spaceMode} · Tours: ${intake.offersTours ? "Yes" : "No"} · Appointments other than tours: ${tastingAppointmentSignalLabel(intake.offersTastingsOrAppointments)}`,
+        intake.offersTastingsOrAppointments === true
+          ? `Appointment types: ${(intake.appointmentTypeKeys ?? []).join(", ") || "—"}`
+          : null,
+        intake.appointmentTypesOther
+          ? `Other appointment types: ${intake.appointmentTypesOther}`
+          : null,
         `Inquiry sources: ${(intake.inquirySources ?? []).join(", ") || "—"}`,
         intake.inquirySourcesOther ? `Other: ${intake.inquirySourcesOther}` : null,
         `Bring business: ${intake.bringBusinessChoice}`,
