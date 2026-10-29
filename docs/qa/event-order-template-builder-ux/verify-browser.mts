@@ -1130,7 +1130,7 @@ async function main() {
       await buffetLabel390.click({ force: true }).catch(() => undefined);
       await page.waitForTimeout(400);
     }
-    const childCheck390 = page.locator('[data-testid^="eo-child-offering-"]').first();
+    const childCheck390 = page.locator('[data-testid^="eo-parent-dependent-groups-"]').first();
     const childVisible390 = (await childCheck390.count()) > 0 && (await childCheck390.isVisible().catch(() => false));
     const overflowX = await page.evaluate(() => {
       const doc = document.documentElement;
