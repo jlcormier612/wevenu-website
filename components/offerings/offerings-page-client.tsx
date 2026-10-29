@@ -12,6 +12,7 @@ import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/l
 import { OfferingsLibrarySection } from "@/components/offerings/offerings-library-section";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
+import type { OfferingChoiceGroup } from "@/lib/offerings/choice-groups";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { OfferingCategory, OfferingWithCategory } from "@/lib/offerings/types";
 
@@ -20,11 +21,13 @@ export function OfferingsPageClient({
   initialOfferings,
   categories,
   inventoryItems,
+  initialChoiceGroups = [],
 }: {
   venueId: string;
   initialOfferings: OfferingWithCategory[];
   categories: OfferingCategory[];
   inventoryItems: InventoryItem[];
+  initialChoiceGroups?: OfferingChoiceGroup[];
 }) {
   const sectionRef = React.useRef<{ openCreate: () => void } | null>(null);
 
@@ -69,6 +72,7 @@ export function OfferingsPageClient({
         initialOfferings={initialOfferings}
         categories={categories}
         inventoryItems={inventoryItems}
+        initialChoiceGroups={initialChoiceGroups}
         headerCreate={false}
       />
     </div>

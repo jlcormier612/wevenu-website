@@ -96,14 +96,15 @@ describe("EO choice logic — parent / group / option model", () => {
     assert.equal(writeIn.label, "Custom amaro");
   });
 
-  it("builder panel separates add catalog, write-in, and selection group actions", () => {
+  it("builder panel separates add catalog, write-in, and catalog-group include actions", () => {
     const panel = readFileSync(
       join(root, "components/event-order-templates/package-choices-panel.tsx"),
       "utf8",
     );
     assert.match(panel, /Add catalog option/);
     assert.match(panel, /Add write-in option/);
-    assert.match(panel, /Add selection group/);
+    assert.match(panel, /Include group|Include existing group/);
+    assert.doesNotMatch(panel, /New selection group name/);
     assert.doesNotMatch(panel, /How many from this group\?/);
     assert.doesNotMatch(panel, /Add another selection group under/);
     assert.match(panel, /How many must the couple choose\?/);

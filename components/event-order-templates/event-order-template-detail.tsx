@@ -114,10 +114,11 @@ function EventOrderTemplateDetailsSheet({ template }: { template: EventOrderTemp
 }
 
 export function EventOrderTemplateDetail({
-  template, catalogOfferings = [],
+  template, catalogOfferings = [], catalogChoiceGroups = [],
 }: {
   template: EventOrderTemplateWithDetails;
   catalogOfferings?: OfferingWithCategory[];
+  catalogChoiceGroups?: import("@/lib/offerings/choice-groups").OfferingChoiceGroup[];
 }) {
   const router = useRouter();
   const [deleting, startDelete] = React.useTransition();
@@ -197,6 +198,7 @@ export function EventOrderTemplateDetail({
       <GuidedSetupWizard
         template={template}
         catalogOfferings={catalogOfferings}
+        catalogChoiceGroups={catalogChoiceGroups}
         onPersist={onPersist}
       />
 

@@ -7,10 +7,10 @@ import {
 } from "@/lib/event-order-templates/provision";
 import {
   addGroup, addLine, addOption, addSection, createTemplate, deleteTemplate_,
-  duplicateTemplate_, getTemplate, removeGroup_, removeLine, removeOption_,
-  removeSection, reorderGroups, reorderLines, reorderOptions, reorderSections,
-  setTemplateArchived_, updateGroup_, updateLine, updateOption_, updateSection,
-  updateSectionGuidance, updateTemplate_,
+  duplicateTemplate_, getTemplate, includeCatalogChoiceGroup, removeGroup_,
+  removeLine, removeOption_, removeSection, reorderGroups, reorderLines,
+  reorderOptions, reorderSections, setTemplateArchived_, updateGroup_,
+  updateLine, updateOption_, updateSection, updateSectionGuidance, updateTemplate_,
 } from "@/lib/event-order-templates/service";
 import type { EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
 import type {
@@ -127,6 +127,19 @@ export async function addEventOrderTemplateGroupAction(
 ): Promise<AddTemplateGroupResult> {
   const result = await addGroup(templateId, input);
   if (result.ok) revalidateLibrary(templateId);
+  return result;
+}
+
+export async function includeCatalogChoiceGroupAction(input: {
+  templateId: string;
+  sectionId: string;
+  parentOptionId: string;
+  catalogGroupId: string;
+  selectCount?: number;
+  required?: boolean;
+}): Promise<AddTemplateGroupResult> {
+  const result = await includeCatalogChoiceGroup(input);
+  if (result.ok) revalidateLibrary(input.templateId);
   return result;
 }
 

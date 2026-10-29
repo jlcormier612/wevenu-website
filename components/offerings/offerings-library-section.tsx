@@ -13,6 +13,7 @@ import {
   updateOfferingAction,
   updateOfferingImageAction,
 } from "@/app/(app)/library/offerings/actions";
+import { OfferingChoiceGroupsEditor } from "@/components/offerings/offering-choice-groups-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import {
 import { validateCatalogImageFile } from "@/lib/catalog-images/validate";
 import { formatOptionalMoney } from "@/lib/event-orders/constants";
 import type { InventoryItem } from "@/lib/inventory/types";
+import type { OfferingChoiceGroup } from "@/lib/offerings/choice-groups";
 import {
   formatParentOfferingNames,
   hasParents,
@@ -46,12 +48,17 @@ export const OfferingsLibrarySection = React.forwardRef<
     initialOfferings: OfferingWithCategory[];
     categories: OfferingCategory[];
     inventoryItems: InventoryItem[];
+    initialChoiceGroups?: OfferingChoiceGroup[];
     /** When false, PageHeader owns + New Offering. */
     headerCreate?: boolean;
   }
 >(function OfferingsLibrarySection({
-  venueId, initialOfferings, categories, inventoryItems, headerCreate = true,
+  venueId, initialOfferings, categories, inventoryItems, initialChoiceGroups = [], headerCreate = true,
 }, ref) {
+  const [choiceGroups, setChoiceGroups] = React.useState(initialChoiceGroups);
+  React.useEffect(() => {
+    setChoiceGroups(initialChoiceGroups);
+  }, [initialChoiceGroups]);
   const [offerings, setOfferings] = React.useState(initialOfferings);
   const [cats, setCats] = React.useState(categories);
   const [editing, setEditing] = React.useState<OfferingWithCategory | null>(null);
@@ -200,6 +207,8 @@ export const OfferingsLibrarySection = React.forwardRef<
         offerings={offerings}
         categories={cats}
         inventoryItems={inventoryItems}
+        choiceGroups={choiceGroups}
+        onChoiceGroupsChange={setChoiceGroups}
         onCategoryCreated={(c) => setCats((prev) => [...prev, c])}
         onSaved={(o) => {
           setOfferings((prev) => {
@@ -227,7 +236,8 @@ export const OfferingsLibrarySection = React.forwardRef<
 });
 
 function OfferingFormSheet({
-  open, onOpenChange, venueId, offering, defaultParentId, offerings, categories, inventoryItems, onSaved, onCategoryCreated,
+  open, onOpenChange, venueId, offering, defaultParentId, offerings, categories, inventoryItems,
+  choiceGroups, onChoiceGroupsChange, onSaved, onCategoryCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -237,6 +247,8 @@ function OfferingFormSheet({
   offerings: OfferingWithCategory[];
   categories: OfferingCategory[];
   inventoryItems: InventoryItem[];
+  choiceGroups: OfferingChoiceGroup[];
+  onChoiceGroupsChange: (groups: OfferingChoiceGroup[]) => void;
   onSaved: (o: OfferingWithCategory) => void;
   onCategoryCreated: (c: OfferingCategory) => void;
 }) {
@@ -599,6 +611,16 @@ function OfferingFormSheet({
               </Button>
             ) : null}
           </div>
+          {offering && !hasParents(offering) ? (
+            <div className="border-t border-border pt-4">
+              <OfferingChoiceGroupsEditor
+                parentOffering={offering}
+                allOfferings={offerings}
+                initialGroups={choiceGroups}
+                onGroupsChange={onChoiceGroupsChange}
+              />
+            </div>
+          ) : null}
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>

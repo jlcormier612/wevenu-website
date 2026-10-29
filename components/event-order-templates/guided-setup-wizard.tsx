@@ -39,17 +39,20 @@ import type {
   EventOrderTemplateLine,
   EventOrderTemplateWithDetails,
 } from "@/lib/event-order-templates/types";
+import type { OfferingChoiceGroup } from "@/lib/offerings/choice-groups";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 type Props = {
   template: EventOrderTemplateWithDetails;
   catalogOfferings?: OfferingWithCategory[];
+  catalogChoiceGroups?: OfferingChoiceGroup[];
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
 };
 
 export function GuidedSetupWizard({
   template,
   catalogOfferings = [],
+  catalogChoiceGroups = [],
   onPersist,
 }: Props) {
   const router = useRouter();
@@ -446,6 +449,7 @@ export function GuidedSetupWizard({
                 <PackageChoicesPanel
                   template={template}
                   catalogOfferings={catalogOfferings}
+                  catalogChoiceGroups={catalogChoiceGroups}
                   sectionId={activeSection.id}
                   sectionName={activeSection.name}
                   onPersist={onPersist}

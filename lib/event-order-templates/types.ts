@@ -70,6 +70,11 @@ export type EventOrderTemplateGroup = {
   allowQuantity: boolean;
   /** Parent option ids that activate this group; empty = always visible. */
   dependsOnOptionIds: string[];
+  /**
+   * Optional catalog choice-group provenance.
+   * Null/undefined = legacy manually named template group (do not infer by name).
+   */
+  offeringChoiceGroupId?: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -127,6 +132,8 @@ export type AddTemplateGroupInput = {
   maxSelect: number | null;
   allowQuantity: boolean;
   dependsOnOptionIds?: string[];
+  /** When including an existing Offerings catalog group. */
+  offeringChoiceGroupId?: string | null;
 };
 
 export type AddTemplateOptionInput = {

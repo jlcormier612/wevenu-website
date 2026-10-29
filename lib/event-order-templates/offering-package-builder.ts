@@ -203,6 +203,7 @@ export function newChildGroupUnderParentInput(
   parentOption: Pick<EventOrderTemplateOption, "id" | "label">,
   name: string,
   rule: PlainSelectionRuleInput = { selectCount: 1, required: true },
+  offeringChoiceGroupId?: string | null,
 ): AddTemplateGroupInput {
   const trimmed = name.trim();
   const resolved = resolvePlainSelectionRule(rule);
@@ -215,7 +216,24 @@ export function newChildGroupUnderParentInput(
     maxSelect: resolved.maxSelect,
     allowQuantity: false,
     dependsOnOptionIds: [parentOption.id],
+    offeringChoiceGroupId: offeringChoiceGroupId ?? null,
   };
+}
+
+/** Include an existing Offerings catalog choice group under a parent option. */
+export function newCatalogChildGroupUnderParentInput(
+  sectionId: string,
+  parentOption: Pick<EventOrderTemplateOption, "id" | "label">,
+  catalogGroup: { id: string; name: string },
+  rule: PlainSelectionRuleInput = { selectCount: 1, required: true },
+): AddTemplateGroupInput {
+  return newChildGroupUnderParentInput(
+    sectionId,
+    parentOption,
+    catalogGroup.name,
+    rule,
+    catalogGroup.id,
+  );
 }
 
 export type ChoiceSetView = {

@@ -7,6 +7,7 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import {
   addEventOrderTemplateGroupAction,
   addEventOrderTemplateOptionAction,
+  includeCatalogChoiceGroupAction,
   removeEventOrderTemplateGroupAction,
   removeEventOrderTemplateOptionAction,
   updateEventOrderTemplateGroupAction,
@@ -24,7 +25,6 @@ import {
 import {
   catalogOptionsEligibleForParentGroup,
   choiceSetsForSection,
-  newChildGroupUnderParentInput,
   newRootChoiceSetInput,
   offeringsAvailableForCoupleChoices,
   optionInputFromOffering,
@@ -33,11 +33,17 @@ import {
   parentChoiceView,
 } from "@/lib/event-order-templates/offering-package-builder";
 import type { EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
+import {
+  catalogGroupsAvailableToInclude,
+  groupsForParent,
+  type OfferingChoiceGroup,
+} from "@/lib/offerings/choice-groups";
 import type { OfferingWithCategory } from "@/lib/offerings/types";
 
 type Props = {
   template: EventOrderTemplateWithDetails;
   catalogOfferings: OfferingWithCategory[];
+  catalogChoiceGroups?: OfferingChoiceGroup[];
   sectionId: string;
   sectionName: string;
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
@@ -54,6 +60,7 @@ type TemplateOption = EventOrderTemplateWithDetails["options"][number];
 export function PackageChoicesPanel({
   template,
   catalogOfferings,
+  catalogChoiceGroups = [],
   sectionId,
   sectionName,
   onPersist,
@@ -232,33 +239,23 @@ export function PackageChoicesPanel({
     return null;
   }
 
-  function addNamedChildGroup(
-    parentOption: { id: string; label: string },
-    groupName: string,
+  function includeCatalogGroup(
+    parentOption: { id: string; label: string; offeringId: string | null },
+    catalogGroupId: string,
   ): string | null {
-    const trimmed = groupName.trim();
-    if (!trimmed) {
-      return "Enter a group name (for example Entrées, Spirits, or Beer).";
-    }
-    // Avoid creating another unexplained duplicate of the same named group.
-    const existing = template.groups.filter(
-      (g) =>
-        (g.dependsOnOptionIds ?? []).includes(parentOption.id) &&
-        g.name.trim().toLowerCase() === trimmed.toLowerCase(),
-    );
-    if (existing.length > 0) {
-      return `A group named “${trimmed}” already exists under ${parentOption.label}. Edit that group or choose a different name.`;
+    if (!catalogGroupId) return "Choose a catalog group to include.";
+    if (!parentOption.offeringId) {
+      return "This parent is not linked to a catalog Offering, so catalog groups cannot be included.";
     }
     startTransition(async () => {
       onPersist("saving");
-      const r = await addEventOrderTemplateGroupAction(
-        template.id,
-        newChildGroupUnderParentInput(sectionId, parentOption, trimmed, {
-          selectCount: 1,
-          required: true,
-        }),
-      );
-      if (!r.ok) onPersist("error", r.message ?? "Could not add selection group.");
+      const r = await includeCatalogChoiceGroupAction({
+        templateId: template.id,
+        sectionId,
+        parentOptionId: parentOption.id,
+        catalogGroupId,
+      });
+      if (!r.ok) onPersist("error", r.message ?? "Could not include catalog group.");
       else {
         onPersist("saved");
         refresh();
@@ -319,9 +316,9 @@ export function PackageChoicesPanel({
   return (
     <div className="space-y-6" data-testid="eo-package-choices-panel">
       <p className="text-sm text-muted-foreground">
-        Add parent Offerings the couple must choose between. Under each parent, create named
-        option groups with an exact number to choose, then add catalog options or write-in
-        options to each group.
+        Add parent Offerings the couple may choose between. Under each parent, include the
+        existing choice groups from your Offerings catalog, then set how many options the
+        couple must choose for this package.
       </p>
 
       {choiceSets.length === 0 ? (
@@ -365,10 +362,11 @@ export function PackageChoicesPanel({
             setPickBySet((prev) => ({ ...prev, [set.group.id]: id }));
             if (id) addOfferingToSet(set.group.id, id);
           }}
+          catalogChoiceGroups={catalogChoiceGroups}
           onRemoveOption={removeOption}
           onRemoveSet={() => removeChoiceSet(set.group.id)}
           onSaveGroup={saveGroupFields}
-          onAddNamedChildGroup={addNamedChildGroup}
+          onIncludeCatalogGroup={includeCatalogGroup}
           onRemoveChildGroup={removeChildGroup}
           onAddCatalogOption={addCatalogOptionToGroup}
           onAddWriteIn={addWriteInToGroup}
@@ -400,6 +398,7 @@ function ChoiceSetCard({
   set,
   template,
   catalogOfferings,
+  catalogChoiceGroups,
   available,
   pickValue,
   pending,
@@ -407,7 +406,7 @@ function ChoiceSetCard({
   onRemoveOption,
   onRemoveSet,
   onSaveGroup,
-  onAddNamedChildGroup,
+  onIncludeCatalogGroup,
   onRemoveChildGroup,
   onAddCatalogOption,
   onAddWriteIn,
@@ -416,6 +415,7 @@ function ChoiceSetCard({
   set: ReturnType<typeof choiceSetsForSection>[number];
   template: EventOrderTemplateWithDetails;
   catalogOfferings: OfferingWithCategory[];
+  catalogChoiceGroups: OfferingChoiceGroup[];
   available: OfferingWithCategory[];
   pickValue: string;
   pending: boolean;
@@ -431,9 +431,9 @@ function ChoiceSetCard({
       required?: boolean;
     },
   ) => string | null;
-  onAddNamedChildGroup: (
-    parent: { id: string; label: string },
-    groupName: string,
+  onIncludeCatalogGroup: (
+    parent: { id: string; label: string; offeringId: string | null },
+    catalogGroupId: string,
   ) => string | null;
   onRemoveChildGroup: (groupId: string) => void;
   onAddCatalogOption: (groupId: string, offeringId: string) => void;
@@ -598,9 +598,10 @@ function ChoiceSetCard({
                 dependentGroups={view.dependentGroups}
                 template={template}
                 catalogOfferings={catalogOfferings}
+                catalogChoiceGroups={catalogChoiceGroups}
                 pending={pending}
                 onSaveGroup={onSaveGroup}
-                onAddNamedChildGroup={onAddNamedChildGroup}
+                onIncludeCatalogGroup={onIncludeCatalogGroup}
                 onRemoveChildGroup={onRemoveChildGroup}
                 onRemoveOption={onRemoveOption}
                 onAddCatalogOption={onAddCatalogOption}
@@ -633,9 +634,10 @@ function DependentGroupsUnderParent({
   dependentGroups,
   template,
   catalogOfferings,
+  catalogChoiceGroups,
   pending,
   onSaveGroup,
-  onAddNamedChildGroup,
+  onIncludeCatalogGroup,
   onRemoveChildGroup,
   onRemoveOption,
   onAddCatalogOption,
@@ -645,19 +647,33 @@ function DependentGroupsUnderParent({
   dependentGroups: TemplateGroup[];
   template: EventOrderTemplateWithDetails;
   catalogOfferings: OfferingWithCategory[];
+  catalogChoiceGroups: OfferingChoiceGroup[];
   pending: boolean;
   onSaveGroup: ChoiceSetCardPropsSave;
-  onAddNamedChildGroup: (
-    parent: { id: string; label: string },
-    groupName: string,
+  onIncludeCatalogGroup: (
+    parent: { id: string; label: string; offeringId: string | null },
+    catalogGroupId: string,
   ) => string | null;
   onRemoveChildGroup: (groupId: string) => void;
   onRemoveOption: (optionId: string) => void;
   onAddCatalogOption: (groupId: string, offeringId: string) => void;
   onAddWriteIn: (groupId: string, label: string) => string | null;
 }) {
-  const [newGroupName, setNewGroupName] = React.useState("");
-  const [newGroupError, setNewGroupError] = React.useState<string | null>(null);
+  const [pickGroupId, setPickGroupId] = React.useState("");
+  const [includeError, setIncludeError] = React.useState<string | null>(null);
+
+  const parentOfferingId = parentOption.offeringId;
+  const availableCatalogGroups = parentOfferingId
+    ? catalogGroupsAvailableToInclude(
+        catalogChoiceGroups,
+        parentOfferingId,
+        parentOption.id,
+        template.groups,
+      )
+    : [];
+  const configuredUnderParent = parentOfferingId
+    ? groupsForParent(catalogChoiceGroups, parentOfferingId)
+    : [];
 
   return (
     <div
@@ -665,18 +681,20 @@ function DependentGroupsUnderParent({
       data-testid={`eo-parent-dependent-groups-${parentOption.id}`}
     >
       <div>
-        <p className="text-xs font-medium text-heading">Dependent option groups</p>
+        <p className="text-xs font-medium text-heading">
+          If the couple chooses {parentOption.label}
+        </p>
         <p className="text-xs text-muted-foreground">
-          Named groups under {parentOption.label} (for example Entrées or Spirits). Each group
-          has its own count and Required setting. Only these groups appear when the couple
-          selects this parent.
+          Include existing Offerings groups for this parent. Each included group keeps its
+          catalog items and you configure how many the couple must choose on this package.
         </p>
       </div>
 
       {dependentGroups.length === 0 ? (
         <p className="text-xs text-muted-foreground" data-testid={`eo-no-child-groups-${parentOption.id}`}>
-          No option groups yet. Add a named selection group, then add catalog or write-in
-          options to it.
+          {configuredUnderParent.length === 0
+            ? "No groups are configured for this parent in Offerings yet. Open Offerings, edit this parent, and create groups such as Entrées or Desserts."
+            : "No groups included yet. Choose an existing group below."}
         </p>
       ) : null}
 
@@ -712,44 +730,70 @@ function DependentGroupsUnderParent({
         className="flex flex-wrap items-end gap-2 rounded border border-dashed border-border/70 bg-background px-3 py-2"
         data-testid={`eo-add-selection-group-${parentOption.id}`}
       >
-        <div className="min-w-[10rem] flex-1 space-y-1">
-          <Label className="text-xs text-muted-foreground">New selection group name</Label>
-          <Input
-            value={newGroupName}
-            disabled={pending}
-            placeholder="e.g. Entrées, Spirits, Beer"
-            data-testid={`eo-new-child-group-name-${parentOption.id}`}
-            onChange={(e) => {
-              setNewGroupName(e.target.value);
-              setNewGroupError(null);
-            }}
-          />
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={pending}
-          data-testid={`eo-add-child-group-${parentOption.id}`}
-          onClick={() => {
-            const err = onAddNamedChildGroup(
-              { id: parentOption.id, label: parentOption.label },
-              newGroupName,
-            );
-            if (err) {
-              setNewGroupError(err);
-              return;
-            }
-            setNewGroupName("");
-            setNewGroupError(null);
-          }}
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Add selection group
-        </Button>
-        {newGroupError ? (
+        {availableCatalogGroups.length > 0 ? (
+          <>
+            <div className="min-w-[10rem] flex-1 space-y-1">
+              <Label className="text-xs text-muted-foreground">Include existing group</Label>
+              <select
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm"
+                value={pickGroupId}
+                disabled={pending}
+                data-testid={`eo-include-catalog-group-${parentOption.id}`}
+                onChange={(e) => {
+                  setPickGroupId(e.target.value);
+                  setIncludeError(null);
+                }}
+              >
+                <option value="">Choose a group…</option>
+                {availableCatalogGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                    {g.memberOfferingIds.length
+                      ? ` (${g.memberOfferingIds.length})`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pending || !pickGroupId}
+              data-testid={`eo-add-child-group-${parentOption.id}`}
+              onClick={() => {
+                const err = onIncludeCatalogGroup(
+                  {
+                    id: parentOption.id,
+                    label: parentOption.label,
+                    offeringId: parentOption.offeringId,
+                  },
+                  pickGroupId,
+                );
+                if (err) {
+                  setIncludeError(err);
+                  return;
+                }
+                setPickGroupId("");
+                setIncludeError(null);
+              }}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Include group
+            </Button>
+          </>
+        ) : configuredUnderParent.length === 0 ? (
+          <p className="text-xs text-muted-foreground" data-testid={`eo-catalog-groups-missing-${parentOption.id}`}>
+            Configure groups under this parent in Offerings, then return here to include them.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            All configured catalog groups for this parent are already included.
+          </p>
+        )}
+        {includeError ? (
           <p className="w-full text-xs text-destructive" role="alert">
-            {newGroupError}
+            {includeError}
           </p>
         ) : null}
       </div>
@@ -823,13 +867,16 @@ function ChildGroupEditor({
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-[10rem] flex-1 space-y-1">
-          <Label className="text-xs text-muted-foreground">Group name / instruction</Label>
+          <Label className="text-xs text-muted-foreground">
+            {group.offeringChoiceGroupId ? "Included group" : "Group name (legacy)"}
+          </Label>
           <Input
             value={name}
-            disabled={pending}
+            disabled={pending || Boolean(group.offeringChoiceGroupId)}
             data-testid={`eo-child-group-name-${group.id}`}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => {
+              if (group.offeringChoiceGroupId) return;
               if (name.trim() && name.trim() !== group.name) {
                 onSaveGroup(group, { name: name.trim() });
               } else {
@@ -837,6 +884,17 @@ function ChildGroupEditor({
               }
             }}
           />
+          {group.offeringChoiceGroupId ? (
+            <p className="text-[0.7rem] text-muted-foreground">
+              From Offerings catalog. Rename groups in Offerings; this package keeps the
+              name snapshotted when included.
+            </p>
+          ) : (
+            <p className="text-[0.7rem] text-muted-foreground">
+              Legacy template group (created before catalog groups). Prefer including
+              catalog groups for new work.
+            </p>
+          )}
         </div>
         <Button
           type="button"
