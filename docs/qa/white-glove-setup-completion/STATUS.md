@@ -2,32 +2,30 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | **NOT ACCEPTED** — code committed; Sandbox browser E2E pending serving SHA |
-| **Branch** | `feat/spaces-booking-e1-smart-fields` |
-| **Baseline serving** | `f07b838f…` (Offering-images deploy 40808769549 failed earlier; unrelated) |
+| **Status** | **NOT ACCEPTED** — tip redeploy in progress (proxy 401 + harness fixture fixes) |
+| **Product commit (WG)** | `5d690d4f` |
+| **Serving baseline** | `250796c072cddec30aa596e8fc7d8f9d48e5632e` |
+| **WG accept tip (this ship)** | branch `wg/sandbox-accept-250796c0-proxy-401` (proxy unauth `/api/admin` → JSON 401 + harness fixes) |
+| **Branch (main line)** | `feat/spaces-booking-e1-smart-fields` (kept separate; EO catalog tip not required) |
+| **Prior deploy** | [40812856415](https://github.com/jlcormier612/wevenu-website/actions/runs/40812856415) — success on `250796c0` |
 | **Production** | Untouched |
 
-## Evidence already confirmed (Sandbox DB / storage)
+## First browser run on serving `250796c0` — 29 pass / 6 fail
 
-- `documents` bucket **private**
-- Legacy material `public_url` → HTTP **400**
-- Same object via `createSignedUrl` → HTTP **200**
-- Path: `onboarding/{venueId}/…`
+Root causes (not product WG core regressions):
 
-## Implemented
+1. **Handoff blocked** — harness called `provision_enrollment_venue` without `p_is_owner: true`, so no owner `venue_staff`; Finish correctly showed "Owner relationship/membership is missing."
+2. **`same_name_space_capacity_update`** — harness selected nonexistent `max_capacity`; DB already had `capacity=175` (product OK).
+3. **`unauth_download_denied`** — unauthenticated `/api/admin/*` followed HTML `/login` redirect (200) instead of JSON 401; non-HQ still correctly 403. Proxy fix ships on this tip.
 
-1. HQ signed download `/api/admin/onboarding/materials/[id]/file` (`requireAdminUser` + path prefix)
-2. Upload validation + null `public_url` + orphan cleanup on metadata failure
-3. Resumable waiting page (list / add materials / edit intake via `?edit=1`)
-4. Prefill venue name + WG package known copy; identity/login boundary copy
-5. Same-name space capacity update (deterministic)
-6. CRM checklist → Product HQ workbench link; access not granted by CRM
-7. Import Wizard seeds from received material (no re-upload) for packages/inventory hints
-8. Unit tests: `lib/onboarding/materials.test.ts`, `intake-spaces.test.ts`, existing WG access/handoff suites
+## Fixes in this tip
 
-## Gaps / follow-ups
+- Proxy: unauthenticated `/api/admin` → `{ error: "unauthorized" }` **401** (no HTML login redirect)
+- Harness: `p_is_owner: true`, `full_name` on staff fallback, `capacity` column, `redirect: "manual"` on unauth download
+- Regression: `proxy-public-paths.test.ts`
 
-- Message-template auto-import pathway not fully wired (packages path prioritized)
-- Planning materials: guidance + open Planning Templates; no auto-apply playbook from PDF
-- Fresh purchase → welcome email E2E not run in this turn
-- Browser acceptance on serving SHA still required after deploy
+## Explicit gaps (do not overclaim)
+
+- Message-template auto-import — not fully wired
+- Planning — guidance only; no auto-apply playbook from PDF
+- Fresh Stripe purchase → welcome email path not separately exercised

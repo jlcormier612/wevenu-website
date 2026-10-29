@@ -332,6 +332,13 @@ export async function updateSession(
   if (!venueUser && !vendorPath && !isPublicPath(pathname)) {
     if (welcomePath && (vendorUser || welcomeCoupleToken)) {
       // Allow through — page/API resolve the correct jar.
+    } else if (pathname.startsWith("/api/admin")) {
+      // HQ APIs must not HTML-redirect to /login — clients expect JSON 401
+      // (parallel to non-HQ 403 JSON above). Never leak signed material URLs.
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+      );
     } else {
       const loginPath = loginRedirectWithNext(
         pathname,
