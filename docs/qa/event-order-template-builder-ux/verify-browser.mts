@@ -480,15 +480,27 @@ async function main() {
       "usability",
     );
 
-    // Select children under Buffet / Plated
-    await page.getByTestId(`eo-child-toggle-${buffetOpt!.id}-${zitiId}`).check({ force: true });
-    await page.waitForTimeout(1200);
-    await page.getByTestId(`eo-child-toggle-${buffetOpt!.id}-${cheesecakeId}`).check({ force: true });
-    await page.waitForTimeout(1200);
-    await page.getByTestId(`eo-child-toggle-${platedOpt!.id}-${marsalaId}`).check({ force: true });
-    await page.waitForTimeout(1200);
-    await page.getByTestId(`eo-child-toggle-${platedOpt!.id}-${vegId}`).check({ force: true });
-    await page.waitForTimeout(1500);
+    // Select children under Buffet / Plated (click — controlled checkboxes update via optimistic state)
+    async function toggleChild(parentOptionId: string, childOfferingId: string) {
+      const box = page.getByTestId(`eo-child-toggle-${parentOptionId}-${childOfferingId}`);
+      await box.click({ force: true });
+      for (let attempt = 0; attempt < 12; attempt++) {
+        if (await box.isChecked().catch(() => false)) return;
+        const { data } = await admin
+          .from("event_order_template_options")
+          .select("id")
+          .eq("template_id", tpl.id)
+          .eq("offering_id", childOfferingId)
+          .maybeSingle();
+        if (data?.id) return;
+        await page.waitForTimeout(400);
+      }
+    }
+    await toggleChild(buffetOpt!.id, zitiId);
+    await toggleChild(buffetOpt!.id, cheesecakeId);
+    await toggleChild(platedOpt!.id, marsalaId);
+    await toggleChild(platedOpt!.id, vegId);
+    await page.waitForTimeout(800);
 
     // Instructions + required choose-1 on root set
     const instr = page.getByTestId("eo-choice-instructions-0");

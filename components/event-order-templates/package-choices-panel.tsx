@@ -52,11 +52,35 @@ export function PackageChoicesPanel({
   const [pending, startTransition] = React.useTransition();
   const [pickBySet, setPickBySet] = React.useState<Record<string, string>>({});
   const [newSetPick, setNewSetPick] = React.useState("");
+  /** Optimistic child Offering checks — props lag until router.refresh completes. */
+  const [childOverrides, setChildOverrides] = React.useState<Record<string, boolean>>({});
 
   const choiceSets = React.useMemo(
     () => choiceSetsForSection(template, sectionId),
     [template, sectionId],
   );
+
+  React.useEffect(() => {
+    setChildOverrides((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const set of choiceSets) {
+        for (const opt of set.options) {
+          const view = parentChoiceView(opt, catalogOfferings, template.groups, template.options);
+          for (const child of view.catalogChildren) {
+            const key = `${opt.id}:${child.id}`;
+            if (next[key] === undefined) continue;
+            const persisted = view.selectedChildOfferingIds.has(child.id);
+            if (next[key] === persisted) {
+              delete next[key];
+              changed = true;
+            }
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [choiceSets, catalogOfferings, template.groups, template.options]);
 
   const available = React.useMemo(
     () => offeringsAvailableForCoupleChoices(catalogOfferings, template, sectionId),
@@ -177,11 +201,18 @@ export function PackageChoicesPanel({
     currentlySelected: boolean,
     selectedOptionId: string | undefined,
   ) {
+    const key = `${parentOption.id}:${child.id}`;
+    setChildOverrides((prev) => ({ ...prev, [key]: !currentlySelected }));
     startTransition(async () => {
       onPersist("saving");
       if (currentlySelected && selectedOptionId) {
         const r = await removeEventOrderTemplateOptionAction(template.id, selectedOptionId);
         if (!r.ok) {
+          setChildOverrides((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          });
           onPersist("error", r.message ?? "Could not remove child Offering.");
           return;
         }
@@ -191,6 +222,11 @@ export function PackageChoicesPanel({
       }
       const groupId = await ensureChildGroup(parentOption);
       if (!groupId) {
+        setChildOverrides((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
         onPersist("error", "Could not create options under this choice.");
         return;
       }
@@ -199,6 +235,11 @@ export function PackageChoicesPanel({
         optionInputFromOffering(groupId, child),
       );
       if (!r.ok) {
+        setChildOverrides((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
         onPersist("error", r.errors?.label ?? r.message ?? "Could not add child Offering.");
         return;
       }
@@ -329,6 +370,7 @@ export function PackageChoicesPanel({
           onToggleChild={toggleChild}
           onAddChildGroup={addChildGroupUnder}
           onSaveChildRule={(group, count, required) => saveSelectCount(group, count, required)}
+          childOverrides={childOverrides}
         />
       ))}
 
@@ -368,6 +410,7 @@ function ChoiceSetCard({
   onToggleChild,
   onAddChildGroup,
   onSaveChildRule,
+  childOverrides,
 }: {
   setIndex: number;
   set: ReturnType<typeof choiceSetsForSection>[number];
@@ -376,6 +419,7 @@ function ChoiceSetCard({
   available: OfferingWithCategory[];
   pickValue: string;
   pending: boolean;
+  childOverrides: Record<string, boolean>;
   onPickChange: (id: string) => void;
   onRemoveOption: (optionId: string) => void;
   onRemoveSet: () => void;
@@ -537,7 +581,11 @@ function ChoiceSetCard({
                   </p>
                   <ul className="space-y-1.5">
                     {view.catalogChildren.map((child) => {
-                      const selected = view.selectedChildOfferingIds.has(child.id);
+                      const overrideKey = `${opt.id}:${child.id}`;
+                      const selected =
+                        childOverrides[overrideKey] !== undefined
+                          ? childOverrides[overrideKey]!
+                          : view.selectedChildOfferingIds.has(child.id);
                       const selectedOpt = view.selectedChildOptions.find(
                         (o) => o.offeringId === child.id,
                       );
