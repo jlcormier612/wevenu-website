@@ -34,6 +34,7 @@ export function CommercialFacts({
   onWithdrawProposal,
   withdrawPending,
   onCreateContract,
+  contractHref = null,
   onSetupPayments,
   onRecordDeposit,
   invoiceReturnTo = null,
@@ -51,6 +52,8 @@ export function CommercialFacts({
   onWithdrawProposal?: () => void;
   withdrawPending?: boolean;
   onCreateContract: () => void;
+  /** Set when the client already exists, so Create contract is a native link. */
+  contractHref?: string | null;
   onSetupPayments: () => void;
   onRecordDeposit: () => void;
   /** Originating Lead or Client workspace for invoice-detail back nav. */
@@ -240,13 +243,25 @@ export function CommercialFacts({
                   </>
                 ) : null}
 
-                {row.key === "contract" && showCreateContract && (
+                {row.key === "contract" && showCreateContract && contractHref ? (
+                  <Button
+                    size="sm"
+                    variant={createContractPrimary ? "default" : "outline"}
+                    nativeButton={false}
+                    render={<Link href={contractHref} />}
+                    data-testid="create-contract"
+                  >
+                    Create contract
+                  </Button>
+                ) : null}
+                {row.key === "contract" && showCreateContract && !contractHref && (
                   <Button
                     type="button"
                     size="sm"
                     variant={createContractPrimary ? "default" : "outline"}
                     disabled={contractPending}
                     onClick={onCreateContract}
+                    data-testid="create-contract"
                   >
                     {contractPending ? "Preparing…" : "Create contract"}
                   </Button>

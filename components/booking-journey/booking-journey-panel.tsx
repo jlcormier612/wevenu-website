@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
+import { contractEditorHref } from "@/lib/booking-journey/model";
 import { proposalViewFromSelection } from "@/lib/booking-journey/proposal-view";
 import { publicAppOrigin } from "@/lib/env";
 import { remainingAmount } from "@/lib/commercial-selections/constants";
@@ -71,6 +72,7 @@ export function BookingJourneyPanel({
   workspaceReturnTo?: string | null;
 }) {
   const router = useRouter();
+  const [contractBusy, setContractBusy] = React.useState(false);
   const [selectOpen, setSelectOpen] = React.useState(false);
   const [termsOpen, setTermsOpen] = React.useState(false);
   const [proposalOpen, setProposalOpen] = React.useState(false);
@@ -96,8 +98,9 @@ export function BookingJourneyPanel({
   }, [openSetupPayments, selection]);
 
   function handleCreateContract() {
-    if (!selection) return;
-    startTransition(async () => {
+    if (!selection || contractBusy) return;
+    setContractBusy(true);
+    void (async () => {
       try {
         const result = await prepareCreateContractAction({
           selectionId: selection.id,
@@ -106,12 +109,14 @@ export function BookingJourneyPanel({
         });
         if (!result.ok) {
           toast.error(result.message);
+          setContractBusy(false);
           return;
         }
-        // Hard navigate — soft push + refresh races with rolling deploys and can
-        // leave the Lead detail route stuck on the parent loading skeleton.
+        // Hard navigate. Do not refresh this Lead first — that refresh can
+        // replace the page before assign runs, so the click appears to do nothing.
         window.location.assign(result.href);
       } catch (err) {
+        setContractBusy(false);
         const message = err instanceof Error ? err.message : "";
         if (/Failed to find Server Action|Server Action .* was not found|older or newer deployment/i.test(message)) {
           toast.error("The app was updated. Stay on this page, reload once, then try Create contract again.");
@@ -121,7 +126,7 @@ export function BookingJourneyPanel({
           toast.error("Could not open Create contract. Stay on this Lead and try again.");
         }
       }
-    });
+    })();
   }
 
   function copyShareLink() {
@@ -236,7 +241,13 @@ export function BookingJourneyPanel({
       <CommercialFacts
         journey={journey}
         today={businessToday}
-        contractPending={pending}
+        contractPending={contractBusy}
+        contractHref={selection ? contractEditorHref({
+          selectionId: selection.id,
+          clientId: selection.clientId ?? clientId,
+          eventId: selection.eventId ?? eventId,
+          leadId,
+        }) : null}
         onSelectPackage={() => setSelectOpen(true)}
         onEditFinancialTerms={() => setTermsOpen(true)}
         onCreateProposal={() => setProposalOpen(true)}

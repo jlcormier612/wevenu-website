@@ -215,6 +215,30 @@ export function canCreateContract(input: {
   );
 }
 
+/**
+ * Direct editor URL when the commercial customer already exists.
+ * A native link survives a click that never enters the React handler.
+ * Returns null when a client must still be created by prepareCreateContractAction.
+ */
+export function contractEditorHref(input: {
+  selectionId: string;
+  clientId?: string | null;
+  eventId?: string | null;
+  leadId?: string | null;
+}): string | null {
+  const clientId = input.clientId?.trim() ?? "";
+  const selectionId = input.selectionId.trim();
+  if (!clientId || !selectionId) return null;
+  const params = new URLSearchParams();
+  params.set("selectionId", selectionId);
+  params.set("clientId", clientId);
+  const eventId = input.eventId?.trim();
+  const leadId = input.leadId?.trim();
+  if (eventId) params.set("eventId", eventId);
+  if (leadId) params.set("leadId", leadId);
+  return `/contracts/new?${params.toString()}`;
+}
+
 function contractNewHref(input: JourneyInputs, selection: CommercialSelection): string {
   const params = new URLSearchParams();
   params.set("selectionId", selection.id);

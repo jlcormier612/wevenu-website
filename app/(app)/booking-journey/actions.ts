@@ -155,8 +155,8 @@ export async function prepareCreateContractAction(input: {
 > {
   const ensured = await ensureCommercialCustomerForSelection(input);
   if (!ensured.ok) return ensured;
-  if (input.leadId) revalidatePath(`/leads/${input.leadId}`);
-  revalidatePath(`/clients/${ensured.clientId}`);
+  // Do not revalidate the current Lead here. That refresh races the client's
+  // hard navigation and can drop the transition before the editor opens.
   const params = new URLSearchParams();
   params.set("selectionId", ensured.selectionId);
   params.set("clientId", ensured.clientId);

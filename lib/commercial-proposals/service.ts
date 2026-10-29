@@ -399,6 +399,7 @@ export async function getProposalByToken(token: string) {
 export async function selectProposalByToken(
   token: string,
   choices: ClientChoiceInput[],
+  notifyOptions?: { notify?: boolean },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const offer = await getProposalByToken(token);
   if (!offer) return { ok: false, message: "This proposal link is not valid." };
@@ -418,6 +419,9 @@ export async function selectProposalByToken(
       optionId: c.optionId,
       quantity: c.quantity ?? 1,
     })),
+    // Standalone select notifies. Combined approval passes notify: false so
+    // one client action does not also emit proposal_selected.
+    p_notify: notifyOptions?.notify !== false,
   });
   if (error || !data || typeof data !== "object") {
     return { ok: false, message: "Could not save your selection." };
@@ -442,7 +446,7 @@ export async function approveProposalByToken(
 > {
   // If choices provided, persist selection first (select + approve in one client action).
   if (choices && choices.length > 0) {
-    const selected = await selectProposalByToken(token, choices);
+    const selected = await selectProposalByToken(token, choices, { notify: false });
     if (!selected.ok) return selected;
   }
 

@@ -125,6 +125,18 @@ describe("Pipeline stage transition service contracts", () => {
     assert.match(fn, /source: "manual"/);
     assert.match(fn, /That stage is not mapped to Booked/);
     assert.match(fn, /attachSelectionToBookingFile|getActiveSelectedPackageForLead/);
+    const bookAt = fn.indexOf("const booked = await bookClient");
+    assert.ok(bookAt > 0);
+    assert.match(fn.slice(bookAt), /linkBookedCommercialSelection/);
+    assert.match(fn.slice(bookAt), /eventId: booked\.eventId/);
+  });
+
+  it("a second book reuses the existing event instead of inserting another", () => {
+    const sql = read("supabase/migrations/20261417100000_assignment_component_scheduled_dates.sql");
+    const fn = sql.slice(sql.indexOf("create or replace function public.book_relationship"));
+    assert.match(fn, /if v_event_id is not null and v_existing_booked_at is not null then/);
+    assert.match(fn, /v_newly := false/);
+    assert.doesNotMatch(fn, /commercial_selections/);
   });
 
   it("actions expose markLost and confirmBooked for board + detail parity", () => {

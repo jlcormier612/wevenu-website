@@ -595,6 +595,33 @@ export async function markLeadLost(
  * Confirmed Mark as Booked: reuse or create the client and event, then
  * run the same bookClient transition automatic booking uses.
  */
+async function linkBookedCommercialSelection(input: {
+  selectionId?: string | null;
+  leadId?: string | null;
+  clientId: string;
+  eventId: string | null;
+}): Promise<void> {
+  if (!input.eventId) return;
+  const {
+    getActiveSelectedPackageForLead,
+    getActiveSelectedPackageForClient,
+    attachSelectionToBookingFile,
+  } = await import("@/lib/commercial-selections/service");
+  let selectionId = input.selectionId ?? null;
+  if (!selectionId && input.leadId) {
+    selectionId = (await getActiveSelectedPackageForLead(input.leadId))?.id ?? null;
+  }
+  if (!selectionId) {
+    selectionId = (await getActiveSelectedPackageForClient(input.clientId))?.id ?? null;
+  }
+  if (!selectionId) return;
+  await attachSelectionToBookingFile(selectionId, {
+    clientId: input.clientId,
+    eventId: input.eventId,
+    leadId: input.leadId ?? undefined,
+  });
+}
+
 export async function confirmPipelineBookedMove(
   leadId: string,
   stageKeyOrId: string,
@@ -698,6 +725,15 @@ export async function confirmPipelineBookedMove(
     });
     if (!booked.ok) {
       return { ok: false as const, message: booked.message };
+    }
+
+    if (booked.eventId) {
+      await linkBookedCommercialSelection({
+        selectionId: attachId,
+        leadId: lead.id,
+        clientId: converted.clientId,
+        eventId: booked.eventId,
+      });
     }
 
     if (booked.eventId) {
@@ -888,6 +924,11 @@ export async function returnLeadToBooked(
     });
     if (!booked.ok) return { ok: false as const, message: booked.message };
     if (booked.eventId) {
+      await linkBookedCommercialSelection({
+        leadId,
+        clientId: linked.id,
+        eventId: booked.eventId,
+      });
       const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
       await applyEventAssignmentAfterBooking({
         supabase,
@@ -942,6 +983,10 @@ export async function returnClientToBooked(
     });
     if (!booked.ok) return { ok: false, message: booked.message } as LeadActionResult;
     if (booked.eventId) {
+      await linkBookedCommercialSelection({
+        clientId,
+        eventId: booked.eventId,
+      });
       const { applyEventAssignmentAfterBooking } = await import("@/lib/team/booking-assignment");
       await applyEventAssignmentAfterBooking({
         supabase,
