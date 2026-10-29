@@ -11,7 +11,7 @@ const sendSrc = readFileSync(resolve("shared/email/send.ts"), "utf8");
 
 describe("relationship email Resend tags", () => {
   it("sanitizes relationship id before tagging (venue:uuid safe)", () => {
-    assert.match(sendSrc, /replace\(\/\\[\^a-zA-Z0-9_-\]\\\/g/);
-    assert.match(sendSrc, /Synthetic WG ids/);
+    assert.ok(sendSrc.includes('input.relationshipId.replace(/[^a-zA-Z0-9_-]/g, "")'));
+    assert.ok(sendSrc.includes("Synthetic WG ids"));
   });
 });
