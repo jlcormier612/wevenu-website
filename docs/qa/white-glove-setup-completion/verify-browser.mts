@@ -22,6 +22,8 @@ const ssrUtils = require(
 );
 
 const APP = "https://app.sandbox.hellotocheers.com";
+/** Activation UI ships on the workspace app, not venue-app (see activationUrlFromToken). */
+const WORKSPACE = "https://workspace.sandbox.hellotocheers.com";
 const EXPECTED = (process.env.EXPECTED_SHA ?? "").slice(0, 40);
 const HQ_EMAIL = "jennifer@hellotocheers.com";
 const RUN = process.env.E2E_RUN_ID ?? `WG${Date.now().toString(36).toUpperCase()}`;
