@@ -87,14 +87,24 @@ export async function previewWhiteGloveMaterial(
   if (!loaded.ok) return loaded;
   if (kind === "messages") {
     const parsed = parseMessageTemplateSource(loaded.text);
-    return parsed.ok
-      ? { ok: true as const, fileName: loaded.fileName, kind, ...parsed }
-      : parsed;
+    if (!parsed.ok) return parsed;
+    return {
+      ok: true as const,
+      fileName: loaded.fileName,
+      kind,
+      proposals: parsed.proposals,
+      notes: parsed.notes,
+    };
   }
   const parsed = parsePlanningChecklist(loaded.text);
-  return parsed.ok
-    ? { ok: true as const, fileName: loaded.fileName, kind, ...parsed }
-    : parsed;
+  if (!parsed.ok) return parsed;
+  return {
+    ok: true as const,
+    fileName: loaded.fileName,
+    kind,
+    tasks: parsed.tasks,
+    notes: parsed.notes,
+  };
 }
 
 export type MessageApplyResult = {
