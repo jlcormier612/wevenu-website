@@ -42,6 +42,10 @@ describe("EO template builder — guided setup UX seams", () => {
       join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
       "utf8",
     );
+    const guided = readFileSync(
+      join(root, "lib/event-order-templates/guided-setup.ts"),
+      "utf8",
+    );
     assert.match(wizard, /eo-guided-setup-wizard/);
     assert.match(wizard, /eo-guided-step-categories/);
     assert.match(wizard, /eo-guided-step-workspace/);
@@ -56,6 +60,9 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /eo-guided-preview-non-sending/);
     assert.match(wizard, /Preview only — no send, no finalize/);
     assert.match(wizard, /phase !== "preview"/);
+    assert.match(wizard, /eo-guided-category-\$\{cat\.key\}/);
+    assert.match(guided, /\| "ceremony"/);
+    assert.match(guided, /key: "ceremony"/);
     assert.doesNotMatch(wizard, /eo-guided-step-patterns/);
     assert.doesNotMatch(wizard, /eo-guided-step-branches/);
     assert.doesNotMatch(wizard, /How should clients make their selections/);

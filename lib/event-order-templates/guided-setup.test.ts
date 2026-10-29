@@ -5,6 +5,7 @@ import {
   SUGGESTED_CATEGORIES,
   branchGuideForSection,
   buildReviewSummary,
+  canonicalSectionNameForSuggested,
   dependentCategoryGroupInput,
   detectPatternsForSection,
   emptyDependentGroupInput,
@@ -104,6 +105,24 @@ describe("guided setup — categories", () => {
     assert.ok(SUGGESTED_CATEGORIES.some((c) => c.key === "florals"));
   });
 
+  it("includes Ceremony as a typed suggested category with aliases", () => {
+    const ceremony = SUGGESTED_CATEGORIES.find((c) => c.key === "ceremony");
+    assert.ok(ceremony, "ceremony must be in SUGGESTED_CATEGORIES");
+    assert.equal(ceremony!.name, "Ceremony");
+    assert.ok(ceremony!.aliases.includes("ceremony"));
+    assert.ok(ceremony!.aliases.includes("aisle"));
+    assert.equal(matchSuggestedCategory("Ceremony")?.key, "ceremony");
+    assert.equal(matchSuggestedCategory("ceremony decor")?.key, "ceremony");
+    assert.equal(matchSuggestedCategory("Aisle")?.key, "ceremony");
+    assert.equal(canonicalSectionNameForSuggested("ceremony"), "Ceremony");
+    // Every SUGGESTED_CATEGORIES key (except custom) is assignable to SuggestedCategoryKey
+    // via the array typing — this also guards the Ceremony union membership that broke Sandbox.
+    for (const cat of SUGGESTED_CATEGORIES) {
+      assert.equal(typeof cat.key, "string");
+      assert.ok(cat.key.length > 0);
+    }
+  });
+
   it("derives selected keys from existing sections and keeps custom names", () => {
     const keys = selectedCategoryKeysFromTemplate([
       section({ id: "1", name: "Catering" }),
@@ -112,6 +131,15 @@ describe("guided setup — categories", () => {
     ]);
     assert.deepEqual(keys.suggested.sort(), ["bar", "catering"]);
     assert.deepEqual(keys.customNames, ["Specialty Lighting"]);
+  });
+
+  it("maps a persisted Ceremony section back to the ceremony suggested key", () => {
+    const keys = selectedCategoryKeysFromTemplate([
+      section({ id: "1", name: "Ceremony" }),
+      section({ id: "2", name: "Catering" }),
+    ]);
+    assert.deepEqual(keys.suggested.sort(), ["catering", "ceremony"]);
+    assert.deepEqual(keys.customNames, []);
   });
 });
 

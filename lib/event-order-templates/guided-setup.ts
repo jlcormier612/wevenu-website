@@ -167,9 +167,14 @@ export function normalizeCategoryLabel(value: string): string {
 
 export function matchSuggestedCategory(sectionName: string): SuggestedCategory | null {
   const n = normalizeCategoryLabel(sectionName);
+  // Exact name/alias first so “Ceremony décor” cannot lose to a later includes(“decor”).
   for (const cat of SUGGESTED_CATEGORIES) {
     const names = [cat.name, ...cat.aliases].map(normalizeCategoryLabel);
-    if (names.some((a) => a === n || n.includes(a) || a.includes(n))) return cat;
+    if (names.some((a) => a === n)) return cat;
+  }
+  for (const cat of SUGGESTED_CATEGORIES) {
+    const names = [cat.name, ...cat.aliases].map(normalizeCategoryLabel);
+    if (names.some((a) => n.includes(a) || a.includes(n))) return cat;
   }
   return null;
 }
