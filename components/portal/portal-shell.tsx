@@ -5162,6 +5162,7 @@ export function PortalShell({
             Our Story/Plans) stay on dashboard launch cards. Floor Plan is
             venue-shared and lives in this top row with other venue surfaces. */}
         {documentFocus ? null : (
+        <>
         <div className="mx-auto hidden max-w-6xl px-2 sm:px-3 lg:block" data-portal-nav="desktop">
           <nav className="flex items-stretch justify-between gap-0 py-0.5" aria-label="Portal">
             {navItems.map(item => {
@@ -5307,6 +5308,7 @@ export function PortalShell({
             </Sheet>
           </nav>
         </div>
+        </>
         )}
       </header>
 
