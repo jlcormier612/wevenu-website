@@ -189,13 +189,16 @@ export function WhiteGloveWaitingClient({
           You can update venue details you already submitted. Your login email and account
           ownership stay the same.
         </p>
-        <Button asChild variant="outline">
-          <Link
-            href={`/onboarding/white-glove/${encodeURIComponent(intakeToken)}?edit=1`}
-            data-testid="wg-waiting-edit-intake"
-          >
-            Review or update your information
-          </Link>
+        <Button
+          render={
+            <Link
+              href={`/onboarding/white-glove/${encodeURIComponent(intakeToken)}?edit=1`}
+              data-testid="wg-waiting-edit-intake"
+            />
+          }
+          variant="outline"
+        >
+          Review or update your information
         </Button>
       </section>
 
