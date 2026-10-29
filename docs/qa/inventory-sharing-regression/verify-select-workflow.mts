@@ -93,6 +93,22 @@ async function staffCookies() {
   ];
 }
 
+async function passLegal(page: {
+  getByRole: Function;
+  locator: Function;
+  waitForTimeout: Function;
+}) {
+  for (let i = 0; i < 5; i++) {
+    const t = await page.locator("body").innerText().catch(() => "");
+    if (!/End User Terms|I have reviewed and agree/i.test(t)) return;
+    const box = page.locator('input[type="checkbox"]');
+    if (await box.count()) await box.first().check({ force: true }).catch(() => undefined);
+    const btn = page.getByRole("button", { name: /Continue|Accept/i }).first();
+    if (await btn.count()) await btn.click({ force: true }).catch(() => undefined);
+    await page.waitForTimeout(900);
+  }
+}
+
 async function openInventory(page: {
   goto: Function;
   waitForTimeout: Function;
@@ -172,24 +188,11 @@ async function main() {
     const danceToggle = staff.getByTestId(`inventory-item-select-toggle-${DANCE}`);
     record("dance_select_control_present", (await danceToggle.count()) === 1, "toggle", "usability");
     await danceToggle.click({ force: true });
-    await staff.waitForTimeout(2000);
 
-    const { data: danceAfter } = await admin
-      .from("event_inventory_items")
-      .select("id,client_selectable,max_quantity")
-      .eq("id", DANCE)
-      .single();
-    record(
-      "dance_select_persists_client_selectable",
-      Boolean(danceAfter?.client_selectable),
-      JSON.stringify(danceAfter),
-      "persisted",
-    );
-
-    // CRITICAL: Share must enable from UI alone — no DB fallback
+    // CRITICAL: Share must enable from UI alone (optimistic Select) — no DB fallback
     let shareEnabled = !(await share.isDisabled());
-    for (let i = 0; i < 8 && !shareEnabled; i++) {
-      await staff.waitForTimeout(500);
+    for (let i = 0; i < 20 && !shareEnabled; i++) {
+      await staff.waitForTimeout(250);
       shareEnabled = !(await share.isDisabled());
     }
     const toggleText = await danceToggle.innerText();
@@ -198,6 +201,24 @@ async function main() {
       shareEnabled,
       `disabled=${await share.isDisabled()} toggle=${toggleText}`,
       "usability",
+    );
+
+    let danceAfter: { id: string; client_selectable: boolean | null; max_quantity: number | null } | null = null;
+    for (let i = 0; i < 20; i++) {
+      const { data } = await admin
+        .from("event_inventory_items")
+        .select("id,client_selectable,max_quantity")
+        .eq("id", DANCE)
+        .single();
+      danceAfter = data;
+      if (data?.client_selectable) break;
+      await staff.waitForTimeout(400);
+    }
+    record(
+      "dance_select_persists_client_selectable",
+      Boolean(danceAfter?.client_selectable),
+      JSON.stringify(danceAfter),
+      "persisted",
     );
     record(
       "row_shows_selectable_state",
@@ -283,7 +304,9 @@ async function main() {
 
     // Fresh couple browser — inventory selection, not invoice
     await couple.goto(inventoryUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await couple.waitForTimeout(2500);
+    await couple.waitForTimeout(1500);
+    await passLegal(couple);
+    await couple.waitForTimeout(1500);
     const coupleTitle = await couple.title();
     const coupleBody = await couple.locator("body").innerText();
     record(

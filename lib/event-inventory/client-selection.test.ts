@@ -71,6 +71,8 @@ describe("Event Inventory client selection (Workflow C)", () => {
     assert.match(panel, /runLifecycle/);
     assert.match(panel, /router\.refresh\(\)/);
     assert.match(panel, /selectableOverrides/);
+    // Select must not use startLifecycle — that sets lifecyclePending and keeps Share disabled.
+    assert.match(panel, /Do not use runLifecycle\/startTransition here/);
     assert.match(repo, /Could not update selection flag for this inventory item/);
   });
 

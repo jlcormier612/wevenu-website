@@ -423,9 +423,17 @@ export function EventInventoryPanel({
                 editable={!isFinalized && inv.status !== "submitted"}
                 onRemove={() => handleRemove(item)} removing={removingId === item.id}
                 onToggleSelectable={(next) => {
+                  // Do not use runLifecycle/startTransition here: that sets
+                  // lifecyclePending and keeps "Share for selection" disabled for
+                  // the whole server round-trip, defeating optimistic Select.
                   setSelectableOverrides((prev) => ({ ...prev, [item.id]: next }));
-                  runLifecycle(async () => {
-                    const result = await setInventoryItemClientSelectableAction(inv.id, eventId, item.id, next);
+                  void (async () => {
+                    const result = await setInventoryItemClientSelectableAction(
+                      inv.id,
+                      eventId,
+                      item.id,
+                      next,
+                    );
                     if (!result.ok) {
                       setSelectableOverrides((prev) => {
                         const rollback = { ...prev };
@@ -433,8 +441,10 @@ export function EventInventoryPanel({
                         return rollback;
                       });
                       toast.error(result.message ?? "Could not update selection flag.");
+                      return;
                     }
-                  });
+                    router.refresh();
+                  })();
                 }}
               />
             ))}
