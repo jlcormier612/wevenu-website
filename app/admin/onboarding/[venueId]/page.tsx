@@ -52,14 +52,21 @@ export default async function OnboardingWorkspacePage({ params }: Props) {
         validationIssues={operatorView.validationIssues}
       />
 
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div id="wg-import-wizard" className="rounded-xl border border-border bg-card p-6">
         <div className="mb-4">
           <h2 className="font-heading text-sm font-semibold text-heading">
             Import data for {detail.venue.name}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             The same Migration Center path the venue would use — every write lands in their
-            venue.
+            venue. Prefer “Use in Import Wizard” on a received material so you do not re-upload
+            the customer&apos;s file. Review staged rows before commit; a received file is not
+            finished configuration.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Planning checklists: open Planning Templates for this venue after reviewing the
+            uploaded guide — do not treat a planning PDF as an applied playbook until you
+            confirm the template.
           </p>
         </div>
         <ImportWizard venueId={venueId} />

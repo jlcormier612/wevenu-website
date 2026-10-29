@@ -182,26 +182,47 @@ export async function submitOnboardingIntake(input: {
   }
   await admin.from("venues").update(venueBasics).eq("id", input.venueId);
 
-  // Spaces — create missing by name (idempotent)
+  // Spaces — create missing by exact case-insensitive name; update capacity when
+  // the same named space already exists (deterministic, not fuzzy).
   const { data: existingSpaces } = await admin
     .from("venue_spaces")
-    .select("id, name")
+    .select("id, name, capacity")
     .eq("venue_id", input.venueId);
-  const existingNames = new Set(
-    (existingSpaces ?? []).map((s: { name: string }) => s.name.trim().toLowerCase()),
+  const byName = new Map(
+    (existingSpaces ?? []).map((s: { id: string; name: string; capacity: number | null }) => [
+      s.name.trim().toLowerCase(),
+      s,
+    ]),
   );
   for (let i = 0; i < spacesJson.length; i++) {
     const space = spacesJson[i];
     const key = space.name.trim().toLowerCase();
-    if (existingNames.has(key)) continue;
-    await admin.from("venue_spaces").insert({
-      venue_id: input.venueId,
-      name: space.name,
-      capacity: space.maxCapacity,
-      sort_order: i,
-      is_active: true,
-    });
-    existingNames.add(key);
+    const existing = byName.get(key);
+    if (existing) {
+      const nextCapacity = space.maxCapacity;
+      if (nextCapacity != null && nextCapacity !== existing.capacity) {
+        await admin
+          .from("venue_spaces")
+          .update({ capacity: nextCapacity, sort_order: i })
+          .eq("id", existing.id)
+          .eq("venue_id", input.venueId);
+      }
+      continue;
+    }
+    const { data: created } = await admin
+      .from("venue_spaces")
+      .insert({
+        venue_id: input.venueId,
+        name: space.name,
+        capacity: space.maxCapacity,
+        sort_order: i,
+        is_active: true,
+      })
+      .select("id, name, capacity")
+      .single();
+    if (created) {
+      byName.set(key, created as { id: string; name: string; capacity: number | null });
+    }
   }
 
   // Tours — only enable when Yes; never invent extra tour rules

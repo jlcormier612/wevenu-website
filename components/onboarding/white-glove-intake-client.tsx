@@ -2,25 +2,30 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { OnboardingIntakeForm, type IntakePrefill } from "@/components/onboarding/onboarding-intake-form";
 import type { OnboardingIntakeInput } from "@/lib/onboarding/types";
-import { Button } from "@/components/ui/button";
 
 export function WhiteGloveIntakeClient({
   intakeToken,
   prefill,
+  mode = "create",
 }: {
   intakeToken: string;
   prefill: IntakePrefill;
+  mode?: "create" | "edit";
+  knownMaterialsCount?: number;
 }) {
   const router = useRouter();
   const [uploads, setUploads] = React.useState<string[]>([]);
   const [uploading, setUploading] = React.useState(false);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
 
   async function uploadFiles(files: FileList | null) {
     if (!files?.length) return;
     setUploading(true);
+    setUploadError(null);
     try {
       for (const file of Array.from(files)) {
         const form = new FormData();
@@ -37,7 +42,7 @@ export function WhiteGloveIntakeClient({
         setUploads((prev) => [...prev, data.fileName || file.name]);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Upload failed");
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -57,60 +62,79 @@ export function WhiteGloveIntakeClient({
   }
 
   return (
-    <OnboardingIntakeForm
-      mode="white_glove"
-      prefill={prefill}
-      submitLabel="Submit"
-      onSubmit={onSubmit}
-      materialsSlot={
-        <div className="space-y-3">
-          <h2 className="text-lg font-medium">Have materials you&apos;d like us to use?</h2>
-          <p className="text-sm text-muted-foreground">
-            Upload whatever you already have. You don&apos;t need to organize or rename
-            everything first.
-          </p>
-          <p className="text-sm text-muted-foreground">Examples</p>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            <li>Venue brochure</li>
-            <li>Package/pricing sheets</li>
-            <li>Contracts</li>
-            <li>Proposals</li>
-            <li>Client questionnaires</li>
-            <li>Floor plans</li>
-            <li>Planning guides</li>
-            <li>Spreadsheets/exports</li>
-            <li>Other venue information</li>
-          </ul>
-          <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground hover:bg-muted/40">
-            <span className="font-medium text-foreground">Drop files here</span>
-            <span className="mt-1 text-xs">{uploading ? "Uploading…" : "or click to browse"}</span>
-            <input
-              type="file"
-              multiple
-              className="hidden"
-              disabled={uploading}
-              onChange={(e) => uploadFiles(e.target.files)}
-            />
-          </label>
-          {uploads.length > 0 ? (
-            <ul className="space-y-1 text-sm">
-              {uploads.map((name) => (
-                <li key={name}>✓ {name}</li>
-              ))}
-            </ul>
-          ) : null}
-          <div className="rounded-md border bg-muted/20 p-3">
-            <p className="text-sm font-medium">Don&apos;t have everything handy? That&apos;s okay.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Submit what you have and we&apos;ll get started. We&apos;ll ask if we need anything
-              else.
+    <div className="mx-auto max-w-xl space-y-4">
+      {mode === "edit" ? (
+        <p className="text-sm text-muted-foreground">
+          Updating your answers.{" "}
+          <Link
+            href={`/onboarding/white-glove/${encodeURIComponent(intakeToken)}/waiting`}
+            className="underline underline-offset-2"
+          >
+            Back to materials
+          </Link>
+        </p>
+      ) : null}
+      <OnboardingIntakeForm
+        mode="white_glove"
+        prefill={prefill}
+        submitLabel={mode === "edit" ? "Save updates" : "Submit"}
+        onSubmit={onSubmit}
+        materialsSlot={
+          <div className="space-y-3">
+            <h2 className="text-lg font-medium">Have materials you&apos;d like us to use?</h2>
+            <p className="text-sm text-muted-foreground">
+              Upload whatever you already have. You don&apos;t need to organize or rename
+              everything first. You can also add more later from the waiting page.
             </p>
+            <p className="text-sm text-muted-foreground">Examples</p>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              <li>Venue brochure</li>
+              <li>Package/pricing sheets</li>
+              <li>Contracts</li>
+              <li>Proposals</li>
+              <li>Client questionnaires</li>
+              <li>Floor plans</li>
+              <li>Planning guides</li>
+              <li>Spreadsheets/exports</li>
+              <li>Other venue information</li>
+            </ul>
+            <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground hover:bg-muted/40">
+              <span className="font-medium text-foreground">Drop files here</span>
+              <span className="mt-1 text-xs">{uploading ? "Uploading…" : "or click to browse"}</span>
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                disabled={uploading}
+                data-testid="wg-intake-upload"
+                onChange={(e) => {
+                  void uploadFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {uploads.length > 0 ? (
+              <ul className="space-y-1 text-sm" data-testid="wg-intake-upload-list">
+                {uploads.map((name, i) => (
+                  <li key={`${name}-${i}`}>✓ {name}</li>
+                ))}
+              </ul>
+            ) : null}
+            {uploadError ? (
+              <p className="text-sm text-destructive" data-testid="wg-intake-upload-error">
+                {uploadError}
+              </p>
+            ) : null}
+            <div className="rounded-md border bg-muted/20 p-3">
+              <p className="text-sm font-medium">Don&apos;t have everything handy? That&apos;s okay.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Submit what you have and we&apos;ll get started. We&apos;ll ask if we need anything
+                else.
+              </p>
+            </div>
           </div>
-          <Button type="button" variant="ghost" size="sm" disabled className="hidden">
-            noop
-          </Button>
-        </div>
-      }
-    />
+        }
+      />
+    </div>
   );
 }

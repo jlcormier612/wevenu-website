@@ -1,25 +1,53 @@
+import { createAdminClient } from "@/integrations/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/env";
 import { WhiteGloveBrandChrome } from "@/components/onboarding/white-glove-brand-chrome";
+import { WhiteGloveWaitingClient } from "@/components/onboarding/white-glove-waiting-client";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = { params: Promise<{ token: string }> };
 
 export default async function WhiteGloveWaitingPage({ params }: PageProps) {
-  await params;
+  const { token: raw } = await params;
+  const token = raw?.trim() || "";
+
+  if (!isSupabaseConfigured || !token) {
+    return (
+      <main className="mx-auto max-w-xl px-4 py-16">
+        <WhiteGloveBrandChrome />
+        <h1 className="text-2xl font-medium">Link unavailable</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          This intake link is invalid or expired. Reply to your welcome email and we&apos;ll
+          help.
+        </p>
+      </main>
+    );
+  }
+
+  const admin = createAdminClient();
+  const { data: enrollment } = await admin
+    .from("venue_enrollments")
+    .select("id, venue_id, venue_name, onboarding_type, status")
+    .eq("intake_token", token)
+    .maybeSingle();
+
+  if (!enrollment || enrollment.onboarding_type !== "white_glove" || !enrollment.venue_id) {
+    return (
+      <main className="mx-auto max-w-xl px-4 py-16">
+        <WhiteGloveBrandChrome />
+        <h1 className="text-2xl font-medium">Link unavailable</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          This intake link is invalid or expired.
+        </p>
+      </main>
+    );
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-16">
-      <WhiteGloveBrandChrome />
-      <h1 className="font-heading text-3xl font-medium tracking-tight">
-        We&apos;re getting your venue ready
-      </h1>
-      <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-        We&apos;ve received your information. We&apos;ll use it to build your Hello to Cheers
-        workspace.
-      </p>
-      <h2 className="mt-8 text-lg font-medium">You don&apos;t need to do anything right now.</h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        We&apos;ll let you know if we need a decision from you.
-      </p>
-    </main>
+    <WhiteGloveWaitingClient
+      intakeToken={token}
+      venueName={enrollment.venue_name}
+      activated={enrollment.status === "activated"}
+    />
   );
 }

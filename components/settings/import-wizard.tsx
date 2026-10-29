@@ -830,7 +830,104 @@ export function ImportWizard({
   const [mapping, setMapping]   = React.useState<FieldMapping>({});
   const [assisted, setAssisted] = React.useState(false);
   const [result, setResult]     = React.useState<ImportResult | null>(null);
+  const [seedNotice, setSeedNotice] = React.useState<string | null>(null);
+  const [seedBusy, setSeedBusy] = React.useState(false);
   const [pending, startTransition] = useTransition();
+
+  // White Glove: operator clicked "Use in Import Wizard" on a received material.
+  // Fetch via authorized signed URL and feed the existing parse path — no second upload.
+  React.useEffect(() => {
+    if (!venueId || typeof window === "undefined") return;
+    const key = `wg-seed-material:${venueId}`;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(key);
+      if (raw) sessionStorage.removeItem(key);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    let seed: { materialId?: string; fileName?: string; entity?: EntityType };
+    try {
+      seed = JSON.parse(raw) as typeof seed;
+    } catch {
+      return;
+    }
+    if (!seed.materialId || !seed.entity) return;
+    const entityType = seed.entity;
+    setEntity(entityType);
+    setStep(1);
+    setSeedBusy(true);
+    setSeedNotice(`Loading ${seed.fileName ?? "uploaded material"}…`);
+    void (async () => {
+      try {
+        const metaRes = await fetch(
+          `/api/admin/onboarding/materials/${encodeURIComponent(seed.materialId!)}/file?format=json`,
+          { credentials: "include" },
+        );
+        const meta = (await metaRes.json()) as {
+          ok?: boolean;
+          signedUrl?: string;
+          fileName?: string;
+          contentType?: string | null;
+          error?: string;
+        };
+        if (!metaRes.ok || !meta.signedUrl) {
+          setSeedNotice(meta.error || "Could not load the uploaded material.");
+          return;
+        }
+        const fileRes = await fetch(meta.signedUrl);
+        if (!fileRes.ok) {
+          setSeedNotice("Could not download the uploaded material.");
+          return;
+        }
+        const blob = await fileRes.blob();
+        const name = meta.fileName || seed.fileName || "material";
+        const file = new File([blob], name, {
+          type: meta.contentType || blob.type || "application/octet-stream",
+        });
+        setSeedNotice(`Received file ready for ${ENTITY_META[entityType].label} import — reviewing…`);
+        const lower = name.toLowerCase();
+        if (lower.endsWith(".csv")) {
+          Papa.parse<CsvRow>(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete(result) {
+              const headers = result.meta.fields ?? [];
+              if (headers.length === 0 || result.data.length === 0) {
+                setSeedNotice("That CSV has no usable rows.");
+                return;
+              }
+              handleParsed(headers, result.data, name, false);
+              setSeedNotice(
+                `Staged from White Glove material “${name}”. Review mapping before import — nothing is committed yet.`,
+              );
+            },
+            error(err) {
+              setSeedNotice(err.message);
+            },
+          });
+        } else {
+          const formData = new FormData();
+          formData.append("file", file);
+          const parsed = await parseImportFileAction(formData, entityType);
+          if (!parsed.ok) {
+            setSeedNotice(parsed.message);
+            return;
+          }
+          handleParsed(parsed.headers, parsed.rows as CsvRow[], name, parsed.assisted);
+          setSeedNotice(
+            `Staged from White Glove material “${name}”. Review mapping before import — nothing is committed yet.`,
+          );
+        }
+      } catch (err) {
+        setSeedNotice(err instanceof Error ? err.message : "Could not load material.");
+      } finally {
+        setSeedBusy(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot seed on mount
+  }, [venueId]);
 
   const { headers, rows } = React.useMemo(
     () => deriveHeadersRows(rawHeaders, rawRows, hasHeaderRow),
@@ -942,6 +1039,14 @@ export function ImportWizard({
   return (
     <div className="rounded-xl border border-border bg-card p-6">
       {showProgress && <ProgressBar step={step} total={totalSteps} />}
+      {seedNotice || seedBusy ? (
+        <p
+          className="mb-4 text-xs text-muted-foreground rounded-md border bg-muted/30 px-3 py-2"
+          data-testid="wg-import-seed-notice"
+        >
+          {seedBusy ? "Loading White Glove material…" : seedNotice}
+        </p>
+      ) : null}
       {datedEventsMessage && entity === "couples" ? (
         <p className="mb-4 text-xs text-amber-800 dark:text-amber-200">
           {datedEventsMessage} Clients without an event date can still be imported.

@@ -2,12 +2,17 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
   finishWhiteGloveSetupAction,
   startOperatorConfigureAction,
 } from "@/app/admin/onboarding/actions";
+import {
+  suggestImportEntityFromFileName,
+  suggestPlanningImport,
+} from "@/lib/onboarding/materials";
 
 export type OperatorStageStatus =
   | "we_can_finish"
@@ -23,6 +28,16 @@ export type OperatorStageRow = {
   detail?: string | null;
 };
 
+export type OperatorMaterialRow = {
+  id: string;
+  fileName: string;
+  contentType?: string | null;
+  byteSize?: number | null;
+  uploadedAt?: string;
+  downloadPath: string;
+  hasStorageObject: boolean;
+};
+
 const STATUS_LABEL: Record<OperatorStageStatus, string> = {
   we_can_finish: "We can finish this",
   decision_needed: "Your decision needed",
@@ -30,6 +45,13 @@ const STATUS_LABEL: Record<OperatorStageStatus, string> = {
   in_progress: "In progress",
   complete: "Complete",
 };
+
+function formatBytes(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function WhiteGloveOperatorPanel({
   venueId,
@@ -46,7 +68,7 @@ export function WhiteGloveOperatorPanel({
   whiteGloveStatus: string | null;
   accessEmailSentAt: string | null;
   stages: OperatorStageRow[];
-  materials: Array<{ id: string; fileName: string; url: string | null }>;
+  materials: OperatorMaterialRow[];
   intakeSummary: string | null;
   validationIssues: Array<{ code: string; message: string }>;
 }) {
@@ -54,6 +76,7 @@ export function WhiteGloveOperatorPanel({
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [downloadError, setDownloadError] = React.useState<string | null>(null);
 
   // Access email recorded = customer handoff complete. Token + pending status
   // without access_email_sent_at means email failed and Finish must be retried.
@@ -79,6 +102,25 @@ export function WhiteGloveOperatorPanel({
     router.refresh();
   }
 
+  async function openMaterial(m: OperatorMaterialRow) {
+    setDownloadError(null);
+    if (!m.hasStorageObject) {
+      setDownloadError(`${m.fileName} is missing its storage object.`);
+      return;
+    }
+    try {
+      const res = await fetch(`${m.downloadPath}?format=json`, { credentials: "include" });
+      const data = (await res.json()) as { ok?: boolean; signedUrl?: string; error?: string };
+      if (!res.ok || !data.signedUrl) {
+        setDownloadError(data.error || `Could not open ${m.fileName}.`);
+        return;
+      }
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      setDownloadError(`Could not open ${m.fileName}.`);
+    }
+  }
+
   return (
     <div className="space-y-6 rounded-xl border border-border bg-card p-6">
       <div>
@@ -86,8 +128,12 @@ export function WhiteGloveOperatorPanel({
           White Glove — {venueName}
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
+          Product HQ is the source of truth for setup progress and customer access.
+          CRM checklist tasks track engagement only — they do not grant access.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
           Status: {whiteGloveStatus ?? "unknown"} · Work on the real venue Setup Hub and
-          migration tools below. Do not graduate the venue for the customer.
+          migration tools below.
         </p>
         {pendingAccessEmail ? (
           <p className="mt-2 text-xs text-amber-800">
@@ -108,18 +154,84 @@ export function WhiteGloveOperatorPanel({
       {materials.length > 0 ? (
         <div>
           <p className="text-xs font-medium mb-2">Materials received</p>
-          <ul className="space-y-1 text-sm">
-            {materials.map((m) => (
-              <li key={m.id}>
-                {m.url ? (
-                  <a href={m.url} className="text-primary underline" target="_blank" rel="noreferrer">
-                    {m.fileName}
-                  </a>
-                ) : (
-                  m.fileName
-                )}
-              </li>
-            ))}
+          <p className="mb-2 text-xs text-muted-foreground">
+            File received ≠ configuration complete. Use Import below to stage packages or
+            planning content for review before committing product records.
+          </p>
+          {downloadError ? (
+            <p className="mb-2 text-xs text-destructive">{downloadError}</p>
+          ) : null}
+          <ul className="space-y-2 text-sm">
+            {materials.map((m) => {
+              const pkgHint = suggestImportEntityFromFileName(m.fileName);
+              const planningHint = suggestPlanningImport(m.fileName);
+              return (
+                <li
+                  key={m.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                  data-testid={`wg-material-${m.id}`}
+                >
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      className="text-left font-medium text-primary underline-offset-2 hover:underline"
+                      onClick={() => openMaterial(m)}
+                      data-testid={`wg-material-open-${m.id}`}
+                    >
+                      {m.fileName}
+                    </button>
+                    <p className="text-xs text-muted-foreground">
+                      Received
+                      {m.uploadedAt ? ` · ${new Date(m.uploadedAt).toLocaleString()}` : ""}
+                      {m.byteSize != null ? ` · ${formatBytes(m.byteSize)}` : ""}
+                      {!m.hasStorageObject ? " · file unavailable" : ""}
+                    </p>
+                    {pkgHint || planningHint ? (
+                      <p className="text-xs text-muted-foreground">
+                        Suggested next step:{" "}
+                        {pkgHint === "packages"
+                          ? "Package Templates import (review before commit)"
+                          : pkgHint === "inventory"
+                            ? "Inventory Templates import (review before commit)"
+                            : "Planning / playbook import (review before apply)"}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openMaterial(m)}
+                    >
+                      Open / download
+                    </Button>
+                    {pkgHint ? (
+                      <Link
+                        href={`#wg-import-wizard`}
+                        className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs"
+                        onClick={() => {
+                          try {
+                            sessionStorage.setItem(
+                              `wg-seed-material:${venueId}`,
+                              JSON.stringify({
+                                materialId: m.id,
+                                fileName: m.fileName,
+                                entity: pkgHint,
+                              }),
+                            );
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
+                      >
+                        Use in Import Wizard
+                      </Link>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : (
@@ -185,7 +297,8 @@ export function WhiteGloveOperatorPanel({
               in.
             </p>
             <p className="text-sm text-muted-foreground">
-              Once you finish, we&apos;ll send the owner their access information.
+              Once you finish, we&apos;ll send the owner their access information. CRM
+              checklist completion alone does not send access.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button type="button" disabled={busy} onClick={finish}>

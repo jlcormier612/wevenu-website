@@ -26,7 +26,7 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     getIntakeForVenue(venueId),
     admin
       .from("venue_onboarding_materials")
-      .select("id, file_name, public_url")
+      .select("id, file_name, content_type, byte_size, storage_path, public_url, uploaded_at")
       .eq("venue_id", venueId)
       .order("uploaded_at", { ascending: false }),
     admin.from("venue_setup_hub_state").select("*").eq("venue_id", venueId).maybeSingle(),
@@ -135,10 +135,23 @@ export async function getWhiteGloveOperatorView(venueId: string) {
     accessEmailSentAt: enrollmentRes.data?.access_email_sent_at ?? null,
     stages,
     materials: (materialsRes.data ?? []).map(
-      (m: { id: string; file_name: string; public_url: string | null }) => ({
+      (m: {
+        id: string;
+        file_name: string;
+        content_type: string | null;
+        byte_size: number | null;
+        storage_path: string | null;
+        public_url: string | null;
+        uploaded_at: string;
+      }) => ({
         id: m.id,
         fileName: m.file_name,
-        url: m.public_url,
+        contentType: m.content_type,
+        byteSize: m.byte_size,
+        uploadedAt: m.uploaded_at,
+        // Authorized short-lived download — never the dead public_url.
+        downloadPath: `/api/admin/onboarding/materials/${m.id}/file`,
+        hasStorageObject: Boolean(m.storage_path?.trim() || m.public_url?.trim()),
       }),
     ),
     intakeSummary,

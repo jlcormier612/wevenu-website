@@ -29,6 +29,8 @@ type Props = {
   canOverride: boolean;
   canEdit: boolean;
   timelineLabel: string;
+  /** Product venue id when bound — links to authoritative Product HQ workbench. */
+  productVenueId?: string | null;
 };
 
 export function WhiteGloveImplementationPanel({
@@ -46,7 +48,14 @@ export function WhiteGloveImplementationPanel({
   canOverride,
   canEdit,
   timelineLabel,
+  productVenueId,
 }: Props) {
+  const productHqBase = (
+    process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() || "https://app.sandbox.hellotocheers.com"
+  ).replace(/\/$/, "");
+  const productHqUrl = productVenueId
+    ? `${productHqBase}/admin/onboarding/${encodeURIComponent(productVenueId)}`
+    : null;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [notes, setNotes] = useState(initialNotes);
@@ -178,9 +187,27 @@ export function WhiteGloveImplementationPanel({
           </div>
         ) : null}
         <p className="mt-3 text-xs ws-muted">
-          This updates the CRM checklist only. Customer access is granted only via{" "}
-          <strong>Finish White Glove Setup</strong> in Product HQ.
+          This updates the CRM checklist only. Checking tasks here does not mean packages,
+          contracts, or templates are configured in the product. Customer access is granted
+          only via <strong>Finish White Glove Setup</strong> in Product HQ.
         </p>
+        {productHqUrl ? (
+          <p className="mt-2 text-sm">
+            <a
+              href={productHqUrl}
+              className="text-[var(--heritage-sage)] underline-offset-4 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Product HQ White Glove workbench →
+            </a>
+          </p>
+        ) : (
+          <p className="mt-2 text-xs ws-muted">
+            Bind this relationship to a product venue to open the authoritative setup
+            workbench.
+          </p>
+        )}
       </section>
 
       <section className="ws-panel p-6">

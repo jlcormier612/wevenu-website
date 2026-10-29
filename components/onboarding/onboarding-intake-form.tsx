@@ -21,6 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 export type IntakePrefill = Partial<OnboardingIntakeInput> & {
   venueName?: string;
+  /** When set, address fields are a suggestion (e.g. billing) — not verified venue location. */
+  addressSourceLabel?: string;
 };
 
 type Props = {
@@ -194,6 +196,11 @@ export function OnboardingIntakeForm({
       <section className="space-y-4">
         <h2 className="text-lg font-medium">Venue basics</h2>
         <Field label="Venue name" value={venueName} onChange={setVenueName} required />
+        {prefill.addressSourceLabel ? (
+          <p className="text-xs text-amber-900 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+            {prefill.addressSourceLabel}
+          </p>
+        ) : null}
         <Field label="Address" value={addressLine1} onChange={setAddressLine1} />
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="City" value={city} onChange={setCity} />

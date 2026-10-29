@@ -77,6 +77,7 @@ export default async function WhiteGloveImplementationPage({
       canOverride={canOverride}
       canEdit={canEdit}
       timelineLabel={whiteGloveTimelineLabel(settings.whiteGlove)}
+      productVenueId={relationship.productSync?.venueId ?? null}
     />
   );
 }
