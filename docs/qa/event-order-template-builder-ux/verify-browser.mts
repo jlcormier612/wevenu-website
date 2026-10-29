@@ -693,11 +693,27 @@ async function main() {
     if (marsalaOpt) {
       await page.getByTestId(`eo-preview-option-${marsalaOpt.id}`).click().catch(() => undefined);
       await page.waitForTimeout(300);
+      // Ceremony choice sets are also required — select one option from each root set
+      for (const opt of ceremonyOpts ?? []) {
+        const previewOpt = page.getByTestId(`eo-preview-option-${opt.id}`);
+        if (await previewOpt.count()) {
+          await previewOpt.click().catch(() => undefined);
+          await page.waitForTimeout(200);
+        }
+      }
       await page.getByTestId("eo-preview-check-selections").click();
       await page.waitForTimeout(400);
       const okHint = await page.getByTestId("eo-preview-validation-ok-hint").count();
       const stillErr = await page.getByTestId("eo-preview-validation-message").count();
-      record("preview_accepts_complete_plated_path", okHint === 1 && stillErr === 0, `okHint=${okHint} err=${stillErr}`, "preview");
+      const errText = stillErr
+        ? await page.getByTestId("eo-preview-validation-message").innerText().catch(() => "")
+        : "";
+      record(
+        "preview_accepts_complete_plated_path",
+        okHint === 1 && stillErr === 0,
+        `okHint=${okHint} err=${stillErr} ${errText}`,
+        "preview",
+      );
     } else {
       record("preview_accepts_complete_plated_path", false, "marsala option missing", "preview");
     }
