@@ -1,17 +1,38 @@
 "use client";
 
 /**
- * Stage 0 — One Event Order journey (Booking Details pattern) + staged panels.
- * Domain actions stay on ClientChoicesPanel / EventOrderPanel.
+ * Event Order tab — lead card rows (Event Order → Couple approval → New
+ * charges invoice → Payment plan) + the document editor below.
+ * Preview shows exactly what the couple sees; Send emails one /order/ link.
  * No competing spine/strip progress chrome. Inventory not in this presentation.
  */
 import * as React from "react";
 import type { ReactNode } from "react";
 
-import { evaluateEventOrderShareStaleAction } from "@/app/(app)/events/[id]/event-order-actions";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+import {
+  addSelectionsToExistingInvoiceAction,
+  createInvoiceFromEventOrderAction,
+  evaluateEventOrderShareStaleAction,
+  getEventOrderDocumentPreviewAction,
+  sendEventOrderToCoupleAction,
+} from "@/app/(app)/events/[id]/event-order-actions";
+import { ArtifactReviewOverlay } from "@/components/artifacts/artifact-review-overlay";
 import { ClientChoicesPanel } from "@/components/client-choices/client-choices-panel";
+import { EventOrderDocumentView } from "@/components/event-orders/event-order-document-view";
 import { EventOrderJourney } from "@/components/event-orders/event-order-journey";
 import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
+import { ShareDialog } from "@/components/sharing/share-dialog";
+import { Button } from "@/components/ui/button";
+import { isClientChoicesNeedsVenueReview } from "@/lib/client-choices/constants";
+import type { CoupleDocumentView } from "@/lib/event-orders/couple-document";
+import { eventOrderDocumentUrl } from "@/lib/event-orders/event-order-portal-link";
+import type { EventOrderJourneyAction } from "@/lib/event-orders/event-order-journey";
+import { publicAppOrigin } from "@/lib/env";
+import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import type { CommercialNavTarget, CommercialStatusInput } from "@/lib/event-orders/commercial-status";
 import type { SelectionsFinancialImpact } from "@/lib/client-choices/selections-billing";
 import type { ClientChoicesWithHistory } from "@/lib/client-choices/types";
@@ -22,10 +43,7 @@ import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Offering } from "@/lib/offerings/types";
 import type { Package, PackageWithItems } from "@/lib/packages/types";
-import {
-  panelEmphasisForStep,
-  shouldShowChoicesFinancialImpact,
-} from "@/lib/event-orders/event-order-journey";
+import { shouldShowChoicesFinancialImpact } from "@/lib/event-orders/event-order-journey";
 import {
   resolveCommercialWorkflowStep,
   type CommercialWorkflowStepId,
@@ -38,26 +56,29 @@ function StageSection({
   testId,
   title,
   emphasized,
+  collapsedByDefault = false,
   children,
 }: {
   id: string;
   testId: string;
   title: string;
   emphasized: boolean;
+  /** Secondary detail stays one click away unless it needs the venue. */
+  collapsedByDefault?: boolean;
   children: ReactNode;
 }) {
-  // Both stages stay open, matching the proposal → contract document flow.
-  // Collapsing the Event Order hid Start selections and the document itself.
+  if (!emphasized) {
+    return (
+      <section id={id} data-testid={testId} data-stage-emphasis="secondary" className="rounded-lg border border-border bg-card px-3 py-3">
+        <details open={!collapsedByDefault}>
+          <summary className="cursor-pointer text-sm font-medium text-heading">{title}</summary>
+          <div className="mt-3">{children}</div>
+        </details>
+      </section>
+    );
+  }
   return (
-    <section
-      id={id}
-      data-testid={testId}
-      data-stage-emphasis={emphasized ? "primary" : "secondary"}
-      className={emphasized ? undefined : "rounded-lg border border-border bg-card px-3 py-3"}
-    >
-      {emphasized ? null : (
-        <h3 className="mb-3 text-sm font-medium text-heading">{title}</h3>
-      )}
+    <section id={id} data-testid={testId} data-stage-emphasis="primary">
       {children}
     </section>
   );
@@ -147,20 +168,98 @@ export function EventCommercialWorkflow({
     };
   }, [eventOrder?.id, eventOrder?.sharedAt, eventOrder?.revision, eventOrder?.updatedAt, eventOrder?.lines?.length]);
 
-  const current = resolveCommercialWorkflowStep({
-    choices,
-    eventOrder: eventOrder
-      ? { sharedAt: eventOrder.sharedAt, status: eventOrder.status }
-      : null,
-    hasEoInvoice,
-    shareCommitmentStale,
-    unbilledAmount,
-  });
-  const { emphasizeChoices, emphasizeOrder } = panelEmphasisForStep(current);
+  const router = useRouter();
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [preview, setPreview] = React.useState<CoupleDocumentView | null>(null);
+  const [previewLoading, setPreviewLoading] = React.useState(false);
+  const [sendOpen, setSendOpen] = React.useState(false);
+  const [pendingAction, setPendingAction] = React.useState<EventOrderJourneyAction | null>(null);
+  const choicesNeedReview = choices.some((c) => isClientChoicesNeedsVenueReview(c.status));
   const showFinancialImpact = shouldShowChoicesFinancialImpact(
     hasEoInvoice,
     unbilledAmount,
   );
+  const coupleLink = eventOrder?.reviewToken
+    ? eventOrderDocumentUrl(publicAppOrigin(), eventOrder.reviewToken)
+    : null;
+  const shareMergeData = buildMergeData({
+    venueName: venueName ?? "Your venue", clientName: clientName ?? "", coordinatorName: venueName ?? "",
+    eventDate: overview.eventDate ?? null,
+  });
+  const sendDefaultMessage = mergeContent(
+    "We've shared your Event Order for {{event_date}}. Please make your choices and approve it when you have a chance.",
+    shareMergeData,
+  );
+  const canSend = Boolean(eventOrder && eventOrder.lines.length > 0 && clientId);
+
+  function openPreview() {
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    void getEventOrderDocumentPreviewAction(eventId).then((doc) => {
+      setPreview(doc);
+      setPreviewLoading(false);
+    });
+  }
+
+  function copyCoupleLink() {
+    if (!coupleLink) {
+      toast.error("Send the Event Order first to get the couple link.");
+      return;
+    }
+    void navigator.clipboard.writeText(coupleLink).then(
+      () => toast.success("Couple link copied."),
+      () => toast.error("Could not copy the link."),
+    );
+  }
+
+  async function invoiceNewCharges() {
+    if (!eventOrder || !clientId) return;
+    setPendingAction("invoice_new_charges");
+    const result = hasEoInvoice
+      ? await addSelectionsToExistingInvoiceAction(eventOrder.id, eventId)
+      : await createInvoiceFromEventOrderAction(eventOrder.id, eventId, clientId);
+    setPendingAction(null);
+    if (!result.ok) {
+      toast.error(result.message ?? "Could not open the invoice.");
+      return;
+    }
+    toast.success("Draft shows new charges only. Nothing is sent until you send it.");
+    router.push(`/invoices/${result.invoiceId}`);
+  }
+
+  function handleAction(action: EventOrderJourneyAction) {
+    switch (action) {
+      case "build":
+        onNavigate({ kind: "tab", tab: "event-order", anchor: "event-order-order" });
+        return;
+      case "review_choices":
+        onNavigate({ kind: "tab", tab: "event-order", anchor: "event-order-choices" });
+        return;
+      case "send":
+      case "resend":
+        if (!canSend) {
+          toast.error(clientId ? "Add at least one line before sending." : "Add a client to this event before sending.");
+          return;
+        }
+        setSendOpen(true);
+        return;
+      case "copy_link":
+        copyCoupleLink();
+        return;
+      case "invoice_new_charges":
+        void invoiceNewCharges();
+        return;
+      case "open_invoice":
+        if (eoLinkedInvoice) router.push(`/invoices/${eoLinkedInvoice.id}`);
+        return;
+      case "create_payment_plan":
+        if (eoLinkedInvoice) router.push(`/payments/new?invoiceId=${eoLinkedInvoice.id}`);
+        return;
+      case "open_payment_plan":
+        if (linkedScheduleId) router.push(`/payments/${linkedScheduleId}`);
+        return;
+    }
+  }
 
   return (
     <div className="space-y-4" data-testid="event-commercial-workflow">
@@ -172,43 +271,78 @@ export function EventCommercialWorkflow({
                 status: eventOrder.status,
                 sharedAt: eventOrder.sharedAt,
                 clientAgreedAt: eventOrder.clientAgreedAt ?? null,
+                clientAgreedRevision: eventOrder.clientAgreedRevision ?? null,
+                revision: eventOrder.revision,
               }
             : null,
           hasEoInvoice,
           eoInvoiceStatus: eoLinkedInvoice?.status ?? null,
           shareCommitmentStale,
           unbilledAmount,
+          hasPaymentPlan: Boolean(linkedScheduleId),
         }}
-        onNavigate={onNavigate}
+        pendingAction={pendingAction}
+        onAction={handleAction}
+        onPreview={openPreview}
       />
 
-      {/* Anchors preserved; emphasis follows current journey stage. No Inventory chrome. */}
-      <StageSection
-        id="event-order-choices"
-        testId="event-order-choices"
-        title="Client selections"
-        emphasized={emphasizeChoices}
+      <ArtifactReviewOverlay
+        open={previewOpen}
+        eyebrow="What the couple sees"
+        title={overview.eventName ? `Event Order — ${overview.eventName}` : "Event Order"}
+        onBack={() => setPreviewOpen(false)}
+        primary={
+          canSend ? (
+            <Button
+              type="button"
+              size="sm"
+              data-testid="event-order-preview-send"
+              onClick={() => {
+                setPreviewOpen(false);
+                setSendOpen(true);
+              }}
+            >
+              {eventOrder?.sharedAt ? "Send updated copy" : "Send to couple"}
+            </Button>
+          ) : undefined
+        }
       >
-        <ClientChoicesPanel
-          eventId={eventId}
-          eventOrderTemplates={eventOrderTemplates}
-          choices={choices}
-          financialImpact={showFinancialImpact ? financialImpact : null}
-          hasEventOrder={Boolean(eventOrder)}
-          showFinancialImpact={showFinancialImpact}
-          clientName={clientName}
-          clientEmail={clientEmail}
-          venueName={venueName}
-          eventName={overview.eventName}
-          eventDate={overview.eventDate}
+        {previewLoading || !preview ? (
+          <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading preview…
+          </div>
+        ) : (
+          <EventOrderDocumentView doc={preview} mode="preview" />
+        )}
+      </ArtifactReviewOverlay>
+
+      {eventOrder ? (
+        <ShareDialog
+          open={sendOpen}
+          onOpenChange={setSendOpen}
+          title={eventOrder.sharedAt ? "Send updated Event Order" : "Send Event Order"}
+          recipient={clientName ? { name: clientName, contact: clientEmail ?? null, relationshipLabel: "Client" } : null}
+          whatHappensNext="They get one link to their Event Order — no portal invite needed. They make their choices in each section and approve. This locks the current version; nothing is invoiced."
+          defaultMessage={sendDefaultMessage}
+          sendLabel="Send"
+          onSend={async (message) => {
+            const result = await sendEventOrderToCoupleAction(eventOrder.id, eventId, message);
+            if (result.ok) toast.success("Event Order sent to the couple.");
+            return result;
+          }}
+          onSent={() => {
+            setSendOpen(false);
+            router.refresh();
+          }}
         />
-      </StageSection>
+      ) : null}
 
       <StageSection
         id="event-order-order"
         testId="event-order-order"
         title="Event Order document"
-        emphasized={emphasizeOrder}
+        emphasized
       >
         <EventOrderPanel
           eventId={eventId}
@@ -231,6 +365,28 @@ export function EventCommercialWorkflow({
           overview={overview}
           shareCommitmentStale={shareCommitmentStale}
           choices={choices}
+        />
+      </StageSection>
+
+      <StageSection
+        id="event-order-choices"
+        testId="event-order-choices"
+        title="Couple's choices — details and history"
+        emphasized={false}
+        collapsedByDefault={!choicesNeedReview && !(showFinancialImpact && unbilledAmount > 0)}
+      >
+        <ClientChoicesPanel
+          eventId={eventId}
+          eventOrderTemplates={eventOrderTemplates}
+          choices={choices}
+          financialImpact={showFinancialImpact ? financialImpact : null}
+          hasEventOrder={Boolean(eventOrder)}
+          showFinancialImpact={showFinancialImpact}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          venueName={venueName}
+          eventName={overview.eventName}
+          eventDate={overview.eventDate}
         />
       </StageSection>
     </div>

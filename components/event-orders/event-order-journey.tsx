@@ -1,83 +1,91 @@
 "use client";
 
 /**
- * Event Order header — current step, one sentence, one primary action
- * (Booking Details pattern). Domain actions remain on ClientChoicesPanel / EventOrderPanel.
+ * Event Order rows — same layout as the lead card's Booking Details:
+ * Event Order → Couple approval → New charges invoice → Payment plan.
+ * Each row: status, one action, Preview where the couple sees something.
  * Action labels are always meaningful workflow verbs — never generic "View".
  */
+import { Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import type { CommercialNavTarget } from "@/lib/event-orders/commercial-status";
 import {
   describeEventOrderJourney,
+  type EventOrderJourneyAction,
   type EventOrderJourneyInput,
 } from "@/lib/event-orders/event-order-journey";
 
 export function EventOrderJourney({
   input,
-  onNavigate,
+  pendingAction = null,
+  onAction,
+  onPreview,
 }: {
   input: EventOrderJourneyInput;
-  onNavigate: (target: CommercialNavTarget) => void;
+  pendingAction?: EventOrderJourneyAction | null;
+  onAction: (action: EventOrderJourneyAction) => void;
+  onPreview: () => void;
 }) {
-  const { rows, currentStep } = describeEventOrderJourney(input);
-  const current = rows.find((r) => r.isCurrent) ?? rows[0]!;
+  const { rows, current } = describeEventOrderJourney(input);
 
   return (
     <section
       className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5"
       data-testid="event-order-journey"
-      data-current-step={currentStep}
+      data-current-row={current.key}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Event Order
-          </h2>
-          <p className="mt-1 text-sm font-medium text-heading" data-testid="event-order-journey-current-state">
-            {current.title}: {current.state}
-          </p>
-          {current.detail ? (
-            <p className="mt-1 text-xs text-muted-foreground" data-testid="event-order-journey-current-hint">
-              {current.detail}
-            </p>
-          ) : null}
-        </div>
-        {current.primaryLabel ? (
-          <Button
-            type="button"
-            size="sm"
-            className="shrink-0"
-            data-testid={`event-order-journey-primary-${current.key}`}
-            onClick={() => onNavigate(current.nav)}
-          >
-            {current.primaryLabel}
-          </Button>
-        ) : null}
-      </div>
+      <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+        Event Order
+      </h2>
+      <p className="mt-2 text-sm text-heading" data-testid="event-order-journey-current-state">
+        Next step: {current.title} — {current.state}
+      </p>
 
-      <ol className="mt-3 flex flex-wrap gap-2" data-testid="event-order-journey-rows">
-        {rows.map((row, index) => (
+      <ul className="mt-4 divide-y divide-border" data-testid="event-order-journey-rows">
+        {rows.map((row) => (
           <li
             key={row.key}
+            className="flex flex-col gap-2 py-3"
             data-testid={`event-order-journey-row-${row.key}`}
             data-current={row.isCurrent ? "true" : "false"}
           >
-            <button
-              type="button"
-              className={
-                row.isCurrent
-                  ? "rounded-full border border-heading bg-muted/40 px-3 py-1 text-xs font-medium text-heading"
-                  : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
-              }
-              data-testid={row.isCurrent ? undefined : `event-order-journey-goto-${row.key}`}
-              aria-current={row.isCurrent ? "step" : undefined}
-              onClick={() => onNavigate(row.nav)}
-            >
-              {index + 1}. {row.title} · {row.state}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-heading">{row.title}</p>
+                <p className="text-sm text-heading" data-testid={`event-order-journey-state-${row.key}`}>{row.state}</p>
+                {row.detail ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{row.detail}</p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[min(100%,20rem)] sm:justify-end">
+                {row.preview ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-testid={`event-order-journey-preview-${row.key}`}
+                    onClick={onPreview}
+                  >
+                    Preview
+                  </Button>
+                ) : null}
+                {row.action && row.primaryLabel ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={row.isCurrent ? "default" : "outline"}
+                    disabled={pendingAction === row.action}
+                    data-testid={`event-order-journey-action-${row.key}`}
+                    onClick={() => onAction(row.action!)}
+                  >
+                    {pendingAction === row.action ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : row.primaryLabel}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </li>
         ))}
-      </ol>
+      </ul>
     </section>
   );
 }

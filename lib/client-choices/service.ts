@@ -5,12 +5,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import {
-  financialDeltaFromLines,
-  conflictingSingleSelectLineIds,
-  resolveSelectedOptions,
-  choicesLineNotes,
-} from "@/lib/client-choices/apply-to-event-order";
+import { applyChoicesToEventOrder } from "@/lib/client-choices/apply-core";
 import { reconcileAnswersForDependencies } from "@/lib/client-choices/conditional-groups";
 import {
   amendBlocked,
@@ -37,15 +32,7 @@ import {
   selectionDefinitionNeedsHydration,
 } from "@/lib/event-order-templates/selection-definition";
 import * as templatesRepo from "@/lib/client-choices-templates/repository";
-import {
-  addLineFromOffering,
-  addCustomLine,
-  ensureEventOrder,
-  getEventOrder,
-  reopenEventOrder,
-  removeLine,
-} from "@/lib/event-orders/service";
-import { triggerAutoComplete } from "@/lib/playbooks/service";
+import { ensureEventOrder } from "@/lib/event-orders/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 async function withVenue<T>(
@@ -269,6 +256,36 @@ export async function sendClientChoices(choicesId: string): Promise<ClientChoice
 }
 
 /**
+ * Event Order share — the couple answers choices inside the Event Order
+ * document, so the packet the venue previewed must be answerable on the link.
+ * Same pick as the venue preview: the active packet, else one frozen from the
+ * order's template. No separate selection email — the Event Order email is it.
+ */
+export async function prepareCoupleChoicesForEventOrderShare(
+  eventId: string,
+  eventOrderTemplateId: string | null,
+): Promise<ClientChoicesActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { pickActiveChoices } = await import("@/lib/client-choices/couple-choice-preview");
+    const active = pickActiveChoices(await repo.listForEvent(supabase, venueId, eventId));
+    if (active) {
+      return active.status === "draft"
+        ? sendClientChoices(active.id)
+        : ({ ok: true } as ClientChoicesActionResult);
+    }
+    if (!eventOrderTemplateId) return { ok: true } as ClientChoicesActionResult;
+    const template = await eoTemplatesRepo.getTemplateWithDetails(supabase, venueId, eventOrderTemplateId);
+    if (!template || selectionDefinitionFromEventOrderTemplate(template).groups.length === 0) {
+      return { ok: true } as ClientChoicesActionResult;
+    }
+    const created = await createClientChoicesFromEventOrderTemplate(eventId, eventOrderTemplateId);
+    if (!created.ok) return { ok: false, message: created.message ?? "Could not prepare the couple's choices." } as ClientChoicesActionResult;
+    return sendClientChoices(created.choicesId);
+  });
+  return result as ClientChoicesActionResult;
+}
+
+/**
  * P2-C — Make available in portal (sendClientChoices), then submit selection-request email.
  * Email failure does not roll back portal status/task. Never reports email success from portal alone.
  */
@@ -411,128 +428,13 @@ export async function finalizeClientChoices(
       } as FinalizeClientChoicesResult;
     }
 
-    const lines = resolveSelectedOptions(row.definition, answers);
-    const delta = financialDeltaFromLines(lines);
-
-    // Ensure Event Order exists and is open for mutation.
+    // Ensure Event Order exists; the shared engine reopens and applies.
     const ensured = await ensureEventOrder(row.eventId);
     if (!ensured.ok) {
       return { ok: false, message: ensured.message ?? "Could not open Event Order." } as FinalizeClientChoicesResult;
     }
-    let eo = await getEventOrder(row.eventId);
-    if (!eo) {
-      return { ok: false, message: "Event Order not found." } as FinalizeClientChoicesResult;
-    }
-    if (eo.status === "finalized") {
-      const reopened = await reopenEventOrder(eo.id);
-      if (!reopened.ok) {
-        return { ok: false, message: reopened.message ?? "Could not reopen Event Order." } as FinalizeClientChoicesResult;
-      }
-      eo = await getEventOrder(row.eventId);
-      if (!eo) {
-        return { ok: false, message: "Event Order not found after reopen." } as FinalizeClientChoicesResult;
-      }
-    }
-
-    // Remove previously applied lines from this Choices instance (revision-safe).
-    for (const lineId of row.appliedLineIds) {
-      const existing = eo.lines.find((l) => l.id === lineId);
-      if (existing) {
-        await removeLine(eo.id, lineId, existing.description);
-      }
-    }
-    eo = await getEventOrder(row.eventId);
-    if (!eo) {
-      return { ok: false, message: "Event Order missing during apply." } as FinalizeClientChoicesResult;
-    }
-
-    // Required pick-one: clear any EO lines matching that group's option labels
-    // so legacy package dinners are not left beside the newly selected option.
-    const conflictIds = conflictingSingleSelectLineIds({
-      definition: row.definition,
-      answers: row.answers,
-      eventOrderLines: eo.lines.map((l) => ({ id: l.id, description: l.description })),
-      alreadyRemovingIds: row.appliedLineIds,
-    });
-    for (const lineId of conflictIds) {
-      const existing = eo.lines.find((l) => l.id === lineId);
-      if (existing) {
-        await removeLine(eo.id, lineId, existing.description);
-      }
-    }
-    if (conflictIds.length > 0) {
-      eo = await getEventOrder(row.eventId);
-      if (!eo) {
-        return { ok: false, message: "Event Order missing during apply." } as FinalizeClientChoicesResult;
-      }
-    }
-
-    const appliedIds: string[] = [];
-    for (const line of lines) {
-      const notes = choicesLineNotes(row.id, line.optionId);
-      const qty = String(line.quantity);
-      const price = line.unitPrice == null ? "" : String(line.unitPrice);
-      if (line.offeringId) {
-        const added = await addLineFromOffering(eo.id, {
-          offeringId: line.offeringId,
-          description: line.description,
-          quantity: qty,
-          unitPrice: price,
-          sectionId: null,
-          isIncluded: line.isIncluded,
-          notes,
-        });
-        if (added.ok) appliedIds.push(added.line.id);
-      } else {
-        const added = await addCustomLine(eo.id, {
-          description: line.description,
-          quantity: qty,
-          unitPrice: price,
-          sectionId: null,
-          isIncluded: line.isIncluded,
-          notes,
-        });
-        if (added.ok) appliedIds.push(added.line.id);
-      }
-    }
-
-    const submissionNumber = await repo.nextSubmissionNumber(supabase, row.id);
-    await repo.insertSubmission(supabase, venueId, {
-      clientChoicesId: row.id,
-      eventId: row.eventId,
-      submissionNumber,
-      outcomeStatus: "finalized",
-      snapshot: {
-        definition: row.definition,
-        answers: row.answers,
-        name: row.name,
-        appliedLineIds: appliedIds,
-        financialDelta: delta,
-      },
-      submittedBy: "venue",
-    });
-
-    await repo.updateInstance(supabase, venueId, row.id, {
-      status: "finalized",
-      finalized_at: new Date().toISOString(),
-      event_order_id: eo.id,
-      applied_line_ids: appliedIds,
-      finalized_submission_number: submissionNumber,
-      changes_requested_note: null,
-      changes_requested_at: null,
-    });
-
-    await repo.insertActivity(
-      supabase, venueId, row.id, "finalized",
-      "Finalized — applied to Event Order",
-      delta === 0
-        ? "No additional cost. Event Order updated operationally."
-        : `Additional cost from choices: $${delta.toFixed(2)}. Review Invoice / payment plan if needed.`,
-    );
-
-    await triggerAutoComplete(
-      supabase, venueId, row.eventId, "client_choices_finalized", "client_choices", row.id,
-    );
+    const applied = await applyChoicesToEventOrder(supabase, venueId, row, { submittedBy: "venue" });
+    if (!applied.ok) return applied;
 
     // Client email + portal notification after persist. Failure must not unlock.
     try {
@@ -564,12 +466,7 @@ export async function finalizeClientChoices(
       }
     } catch { /* non-blocking — finalized state already persisted */ }
 
-    return {
-      ok: true,
-      eventOrderId: eo.id,
-      financialDelta: delta,
-      appliedLineIds: appliedIds,
-    } as FinalizeClientChoicesResult;
+    return applied;
   });
   return result as FinalizeClientChoicesResult;
 }

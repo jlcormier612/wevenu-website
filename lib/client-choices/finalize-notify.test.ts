@@ -19,11 +19,15 @@ describe("Client Choices finalize notifications", () => {
     const start = service.indexOf("export async function finalizeClientChoices");
     const end = service.indexOf("export async function", start + 10);
     const body = service.slice(start, end > start ? end : undefined);
-    assert.match(body, /status: "finalized"/);
+    // The shared apply engine persists status finalized; finalize notifies after it returns.
+    const core = readFileSync(resolve("lib/client-choices/apply-core.ts"), "utf8");
+    assert.match(core, /status: "finalized"/);
     assert.match(body, /notifyClientChoicesFinalized/);
     assert.match(body, /finalized state already persisted/);
     const notifyAt = body.indexOf("notifyClientChoicesFinalized");
-    const statusAt = body.indexOf('status: "finalized"');
-    assert.ok(statusAt >= 0 && notifyAt > statusAt, "notify must follow finalized persist");
+    const persistAt = body.indexOf("await applyChoicesToEventOrder(");
+    const bailAt = body.indexOf("if (!applied.ok) return applied;");
+    assert.ok(persistAt >= 0 && notifyAt > persistAt, "notify must follow finalized persist");
+    assert.ok(bailAt > persistAt && bailAt < notifyAt, "a failed apply must not notify");
   });
 });

@@ -81,10 +81,11 @@ describe("couple choices render once, inside their section", () => {
 });
 
 describe("one header, no duplicated forms", () => {
-  it("journey shows a single primary action for the current step", () => {
+  it("journey rows each carry one action and the header names the one next step", () => {
     const journey = read("components/event-orders/event-order-journey.tsx");
-    assert.equal(journey.match(/event-order-journey-primary-/g)?.length, 1);
-    assert.match(journey, /rows\.find\(\(r\) => r\.isCurrent\)/);
+    assert.equal(journey.match(/event-order-journey-action-/g)?.length, 1);
+    assert.match(journey, /Next step: \{current\.title\}/);
+    assert.match(journey, /row\.isCurrent \? "default" : "outline"/);
   });
 
   it("selections panel does not render the full submitted form twice", () => {

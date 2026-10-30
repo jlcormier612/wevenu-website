@@ -23,6 +23,8 @@ export type EventOrder = {
   clientAgreedAt: string | null;
   clientAgreedName: string | null;
   clientAgreedRevision: number | null;
+  /** Secret couple document link token — /order/{reviewToken}. */
+  reviewToken?: string | null;
   templateId: string | null;
   createdAt: string;
   updatedAt: string;

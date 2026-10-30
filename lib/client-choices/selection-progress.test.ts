@@ -96,12 +96,17 @@ describe("portal + finalize seams", () => {
     const src = readFileSync("lib/client-choices/service.ts", "utf8");
     const finalize = src.slice(src.indexOf("export async function finalizeClientChoices"));
     const validateIdx = finalize.indexOf("validateChoicesAnswers");
-    const removeIdx = finalize.indexOf("removeLine");
+    const applyIdx = finalize.indexOf("applyChoicesToEventOrder(");
     assert.ok(validateIdx > 0, "finalize must call validateChoicesAnswers");
-    assert.ok(removeIdx > validateIdx, "validation must run before removeLine");
+    assert.ok(applyIdx > validateIdx, "validation must run before Event Order mutations");
     assert.doesNotMatch(
       finalize.slice(0, validateIdx + 40),
       /createInvoice/,
     );
+    // The shared engine (also used by the couple's Approve) re-validates before removeLine.
+    const core = readFileSync("lib/client-choices/apply-core.ts", "utf8");
+    const coreValidate = core.indexOf("validateChoicesAnswers(row.definition");
+    assert.ok(coreValidate > 0 && core.indexOf("eoRepo.removeLine") > coreValidate);
+    assert.equal(core.includes("createInvoice"), false);
   });
 });

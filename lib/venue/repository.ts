@@ -237,6 +237,20 @@ export async function getVenueForCurrentUser(
   return data ? mapVenue(data) : null;
 }
 
+/** A venue by id — for token-scoped public documents that have no staff session. */
+export async function getVenueById(
+  client: DbClient,
+  venueId: string,
+): Promise<Venue | null> {
+  const { data, error } = await client
+    .from("venues")
+    .select("*")
+    .eq("id", venueId)
+    .maybeSingle<VenueRow>();
+  if (error) throw error;
+  return data ? mapVenue(data) : null;
+}
+
 /**
  * Atomically upserts the setup payload; returns the venue id. `completed`
  * controls whether this is a final "Create venue" submit (true) or a

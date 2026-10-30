@@ -59,6 +59,7 @@ export const PUBLIC_PATHS = [
   "/join",           // staff team-invite acceptance - accessible before auth, same shape as /vendor/accept
   "/book",           // public tour scheduling - /book/{tour_embed_key}
   "/offer",          // Booking Journey couple offer accept - /offer/{accept_token}
+  "/order",          // couple Event Order document + Approve - /order/{review_token}
   "/w",              // public wedding website - /w/{slug}
   "/qr",             // QR Lead Capture scan-and-redirect - /qr/{code}, plus /qr/inactive
   "/rsvp",           // public RSVP submission - /rsvp/{rsvp_token}

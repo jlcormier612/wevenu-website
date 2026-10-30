@@ -11,9 +11,11 @@
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { getEvent } from "@/lib/events/service";
-import { getClient } from "@/lib/clients/service";
-import { getSpaces } from "@/lib/availability/service";
+import type { Venue } from "@/lib/venue/types";
+import * as eventsRepo from "@/lib/events/repository";
+import * as clientsRepo from "@/lib/clients/repository";
+import * as availabilityRepo from "@/lib/availability/repository";
+import type { CanonicalActor } from "@/lib/document-domain/types";
 import { shareBlockedWhenNotFinalized } from "@/lib/event-orders/lifecycle-gates";
 import { getEventOrder } from "@/lib/event-orders/service";
 import * as repo from "@/lib/event-orders/repository";
@@ -22,10 +24,7 @@ import { generateEventOrderPdf } from "@/lib/event-orders/pdf";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { EventOrderActionResult } from "@/lib/event-orders/types";
 import { publicAppOrigin } from "@/lib/env";
-import {
-  eventOrderReviewUrl,
-  pickEventOrderPortalSession,
-} from "@/lib/event-orders/event-order-portal-link";
+import { eventOrderDocumentUrl } from "@/lib/event-orders/event-order-portal-link";
 
 const BUCKET = "event-order-representations";
 
@@ -110,24 +109,34 @@ function renderTextSnapshot(eventOrder: Awaited<ReturnType<typeof getEventOrder>
   return lines.join("\n");
 }
 
-export async function shareEventOrderWithClient(eventOrderId: string, customMessage?: string): Promise<EventOrderActionResult & { url?: string }> {
-  const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, message: "No venue found." };
+type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-  const supabase = await createClient();
+/**
+ * The one share engine: freeze the couple-visible snapshot, store the PDF +
+ * Document version, and (optionally) email the couple their /order/{token}
+ * link. Staff Share calls it with the venue session; the couple's Approve on
+ * /order/{token} calls it with the token-scoped service client and no email.
+ */
+export async function shareEventOrderCore(
+  supabase: DbClient,
+  venue: Venue,
+  eventOrderId: string,
+  opts: { actor: CanonicalActor; customMessage?: string; emailClient: boolean },
+): Promise<EventOrderActionResult & { url?: string }> {
   const eventOrder = await repo.getEventOrderById(supabase, venue.id, eventOrderId);
   if (!eventOrder) return { ok: false, message: "Event Order not found." };
   const shareBlocked = shareBlockedWhenNotFinalized(eventOrder.status);
   if (shareBlocked) return shareBlocked;
+  if (!eventOrder.reviewToken) return { ok: false, message: "This Event Order has no couple link yet." };
 
-  const full = await getEventOrder(eventOrder.eventId);
+  const full = await repo.getEventOrderByEvent(supabase, venue.id, eventOrder.eventId);
   if (!full) return { ok: false, message: "Event Order not found." };
 
-  const event = await getEvent(eventOrder.eventId);
+  const event = await eventsRepo.getEvent(supabase, venue.id, eventOrder.eventId);
   if (!event) return { ok: false, message: "Event not found." };
   const [client, spaces] = await Promise.all([
-    event.clientId ? getClient(event.clientId) : Promise.resolve(null),
-    getSpaces(),
+    event.clientId ? clientsRepo.getClient(supabase, venue.id, event.clientId) : Promise.resolve(null),
+    availabilityRepo.getSpaces(supabase, venue.id),
   ]);
   const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
   const clientName = client ? clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName) : null;
@@ -143,12 +152,9 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   const uploaded = await uploadEventOrderPdfBytes(storagePath, pdfBytes);
   if (!uploaded.ok) return uploaded;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const actor = { type: "venue" as const, id: user?.id ?? venue.id };
-
   try {
     await documentIntegration.shareEventOrderDocument(
-      supabase, eventOrderId, eventOrder.eventId, `Event Order — ${event.name}`, renderTextSnapshot(full), actor,
+      supabase, eventOrderId, eventOrder.eventId, `Event Order — ${event.name}`, renderTextSnapshot(full), opts.actor,
       { storagePath, storageUrl: null, byteSize: pdfBytes.byteLength },
     );
   } catch (err) {
@@ -157,57 +163,48 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   }
 
   const isResend = !!eventOrder.sharedAt;
-  // Freeze client-visible content now. Reopen may edit live lines; portal
-  // continues reading this snapshot until the next share.
+  // Freeze client-visible content now. Reopen may edit live lines; the couple
+  // document continues reading this snapshot until the next share.
   await repo.insertShareSnapshot(
     supabase, venue.id, eventOrderId, full.revision, repo.buildSharePayload(full),
   );
   await repo.setSharedAt(supabase, venue.id, eventOrderId);
   await repo.insertActivity(supabase, venue.id, eventOrderId, "shared", isResend ? "Updated shared copy" : "Shared with client");
 
-  // Email uses ?view=event-order so click-tracking cannot drop the document
-  // target. The hash remains for in-app navigation. Never a financial token.
-  if (client?.email) {
+  // The secret document link opens only the Event Order — no portal session
+  // needed, so it works for clients who were never invited to the portal.
+  const documentUrl = eventOrderDocumentUrl(publicAppOrigin(), eventOrder.reviewToken);
+  if (opts.emailClient && client?.email) {
     try {
-      const portalService = await import("@/lib/portal/service");
-      const sessions = event.clientId ? await portalService.getPortalSessions(event.clientId) : [];
-      // Never email a financial payment token — that page is the invoice and
-      // ignores the Event Order view. Create a couple session when missing.
-      let session: Awaited<ReturnType<typeof portalService.createPortalSession>> =
-        pickEventOrderPortalSession(sessions);
-      if (!session && event.clientId) session = await portalService.createPortalSession(event.clientId, "Event Order", "couple");
-      if (session) {
-        const { buildMergeData, mergeContent } = await import("@/lib/message-templates/merge");
-        const { sendEmail } = await import("@/lib/email/send");
-        const portalUrl = eventOrderReviewUrl(publicAppOrigin(), session.accessToken);
-        const mergeData = buildMergeData({ venueName: venue.name ?? "Your venue", clientName: clientName ?? "", coordinatorName: venue.name ?? "", eventDate: event.eventDate, eventName: event.name });
-        const defaultText = `We've shared your Event Order for ${event.name}. Please review it when you have a chance.`;
-        const bodyText = customMessage?.trim() ? mergeContent(customMessage, mergeData) : defaultText;
-        const text = [`Hi ${client.firstName},`, "", bodyText, "", portalUrl, "", venue.name ?? ""].join("\n");
-        const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
-        const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
-        const emailResult = await sendEmail({
-          to: client.email,
-          subject: `${venue.name ?? "Your venue"}: Event Order for ${event.name}`,
-          text,
-          html: wrapConversationMessageHtml(emailBrandFromVenue(venue), text),
-          replyTo: venue.email ?? undefined,
+      const { buildMergeData, mergeContent } = await import("@/lib/message-templates/merge");
+      const { sendEmail } = await import("@/lib/email/send");
+      const mergeData = buildMergeData({ venueName: venue.name ?? "Your venue", clientName: clientName ?? "", coordinatorName: venue.name ?? "", eventDate: event.eventDate, eventName: event.name });
+      const defaultText = `We've shared your Event Order for ${event.name}. Please review it when you have a chance.`;
+      const bodyText = opts.customMessage?.trim() ? mergeContent(opts.customMessage, mergeData) : defaultText;
+      const text = [`Hi ${client.firstName},`, "", bodyText, "", documentUrl, "", venue.name ?? ""].join("\n");
+      const { wrapConversationMessageHtml } = await import("@/lib/email/conversation-brand");
+      const { emailBrandFromVenue } = await import("@/lib/email/venue-brand");
+      const emailResult = await sendEmail({
+        to: client.email,
+        subject: `${venue.name ?? "Your venue"}: Event Order for ${event.name}`,
+        text,
+        html: wrapConversationMessageHtml(emailBrandFromVenue(venue), text),
+        replyTo: venue.email ?? undefined,
+      });
+      try {
+        const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
+        await recordExternalClientOutbound(supabase, {
+          venueId: venue.id,
+          channel: "email",
+          body: text,
+          clientId: event.clientId,
+          providerId: emailResult.ok ? emailResult.providerId ?? null : null,
+          status: emailResult.ok ? "accepted" : "failed",
+          failureReason: emailResult.ok ? null : emailResult.message,
+          sourceType: "event_order_shared",
+          sourceId: eventOrderId,
         });
-        try {
-          const { recordExternalClientOutbound } = await import("@/lib/conversations/record-external-outbound");
-          await recordExternalClientOutbound(supabase, {
-            venueId: venue.id,
-            channel: "email",
-            body: text,
-            clientId: event.clientId,
-            providerId: emailResult.ok ? emailResult.providerId ?? null : null,
-            status: emailResult.ok ? "accepted" : "failed",
-            failureReason: emailResult.ok ? null : emailResult.message,
-            sourceType: "event_order_shared",
-            sourceId: eventOrderId,
-          });
-        } catch { /* non-blocking history write */ }
-      }
+      } catch { /* non-blocking history write */ }
     } catch { /* non-blocking — the share itself already succeeded above */ }
   }
 
@@ -219,7 +216,31 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
     await triggerAutoComplete(supabase, venue.id, eventOrder.eventId, "event_order_shared");
   } catch { /* non-blocking */ }
 
-  return { ok: true };
+  return { ok: true, url: documentUrl };
+}
+
+export async function shareEventOrderWithClient(eventOrderId: string, customMessage?: string): Promise<EventOrderActionResult & { url?: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const eventOrder = await repo.getEventOrderById(supabase, venue.id, eventOrderId);
+  if (!eventOrder) return { ok: false, message: "Event Order not found." };
+  const shareBlocked = shareBlockedWhenNotFinalized(eventOrder.status);
+  if (shareBlocked) return shareBlocked;
+
+  // Couple choices travel inside the Event Order document: make the active
+  // packet (or one frozen from this order's template) answerable on the link.
+  const { prepareCoupleChoicesForEventOrderShare } = await import("@/lib/client-choices/service");
+  const prepared = await prepareCoupleChoicesForEventOrderShare(eventOrder.eventId, eventOrder.templateId);
+  if (!prepared.ok) return prepared;
+
+  return shareEventOrderCore(supabase, venue, eventOrderId, {
+    actor: { type: "venue", id: user?.id ?? venue.id },
+    customMessage,
+    emailClient: true,
+  });
 }
 
 /** A fresh, short-lived signed URL for the durable shared PDF — never regenerated from live editable lines. */

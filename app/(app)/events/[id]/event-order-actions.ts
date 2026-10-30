@@ -256,6 +256,31 @@ export async function shareEventOrderWithClientAction(eventOrderId: string, even
   return result;
 }
 
+/**
+ * Send to couple — lock this version (finalize when still open), then share:
+ * one email with the /order/{token} link. Never invoices.
+ */
+export async function sendEventOrderToCoupleAction(
+  eventOrderId: string, eventId: string, customMessage?: string,
+): Promise<EventOrderActionResult> {
+  const { getEventOrder } = await import("@/lib/event-orders/service");
+  const order = await getEventOrder(eventId);
+  if (!order || order.id !== eventOrderId) return { ok: false, message: "Event Order not found." };
+  if (order.status !== "finalized") {
+    const finalized = await finalizeEventOrder(eventOrderId);
+    if (!finalized.ok) return finalized;
+  }
+  const result = await shareEventOrderWithClient(eventOrderId, customMessage);
+  revalidateEvent(eventId);
+  return result;
+}
+
+/** What the couple will see on their Event Order link (venue Preview). */
+export async function getEventOrderDocumentPreviewAction(eventId: string) {
+  const { buildEventOrderDocumentPreview } = await import("@/lib/event-orders/couple-document-preview");
+  return buildEventOrderDocumentPreview(eventId);
+}
+
 /** Whether live EO lines diverge from the last share snapshot the couple still sees. */
 export async function evaluateEventOrderShareStaleAction(eventOrderId: string): Promise<{
   hasBeenShared: boolean;

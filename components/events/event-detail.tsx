@@ -61,6 +61,7 @@ import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
 import { EventCommercialWorkflow } from "@/components/event-orders/event-commercial-workflow";
+import { eventOrderOverviewSummary } from "@/lib/event-orders/event-order-journey";
 import type { CommercialNavTarget } from "@/lib/event-orders/commercial-status";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
@@ -886,8 +887,25 @@ export function EventDetail({
           <Card size="sm" className="gap-2" id="inventory-event-order-card" data-testid="event-inventory-event-order-card">
             <CardHeader className="gap-0.5">
               <CardTitle className="text-base">Inventory &amp; Event Order</CardTitle>
-              <CardDescription className="text-xs leading-snug">
-                Commercial workspace for this event — selections, Event Order, and inventory handoff.
+              <CardDescription className="text-xs leading-snug" data-testid="event-order-overview-summary">
+                {eventOrderOverviewSummary({
+                  choices: clientChoices ?? [],
+                  eventOrder: eventOrder
+                    ? {
+                        status: eventOrder.status,
+                        sharedAt: eventOrder.sharedAt,
+                        clientAgreedAt: eventOrder.clientAgreedAt ?? null,
+                        clientAgreedRevision: eventOrder.clientAgreedRevision ?? null,
+                        revision: eventOrder.revision,
+                      }
+                    : null,
+                  hasEoInvoice: Boolean(eventOrder && invoices.some(
+                    (inv) => inv.eventOrderId === eventOrder.id && inv.status !== "void"
+                      && !(bookingCommitmentInvoiceIds ?? []).includes(inv.id),
+                  )),
+                  unbilledAmount: financialImpact?.unbilledAmount ?? 0,
+                  hasPaymentPlan: Boolean(linkedScheduleId),
+                })}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">

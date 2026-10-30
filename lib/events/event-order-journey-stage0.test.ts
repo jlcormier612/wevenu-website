@@ -9,112 +9,146 @@ import { resolve } from "node:path";
 
 import {
   describeEventOrderJourney,
+  eventOrderOverviewSummary,
+  isEventOrderApprovedNow,
   panelEmphasisForStep,
   shouldShowChoicesFinancialImpact,
 } from "@/lib/event-orders/event-order-journey";
 
-describe("Stage 0 Event Order journey facts", () => {
-  it("marks selections current when building", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [],
-      eventOrder: null,
-      hasEoInvoice: false,
-    });
-    assert.equal(currentStep, "build");
+describe("Event Order journey rows (lead card pattern)", () => {
+  const sent = "2026-10-01T00:00:00Z";
+
+  it("has the four lead-card rows in order, exactly one current", () => {
+    const { rows } = describeEventOrderJourney({ choices: [], eventOrder: null, hasEoInvoice: false });
+    assert.deepEqual(rows.map((r) => r.title), [
+      "Event Order", "Couple approval", "New charges invoice", "Payment plan",
+    ]);
     assert.equal(rows.filter((r) => r.isCurrent).length, 1);
-    assert.equal(rows.find((r) => r.isCurrent)?.key, "selections");
-    assert.equal(rows.find((r) => r.key === "selections")?.primaryLabel, "Build selections");
-  });
-
-  it("marks selections current on couple submission with Review selections", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [{ status: "submitted" }],
-      eventOrder: { status: "draft", sharedAt: null },
-      hasEoInvoice: false,
-    });
-    assert.equal(currentStep, "review");
-    assert.equal(rows.find((r) => r.isCurrent)?.key, "selections");
-    assert.equal(rows.find((r) => r.key === "selections")!.primaryLabel, "Review selections");
-  });
-
-  it("marks event_order current after selections applied, before finalize", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [{ status: "finalized" }],
-      eventOrder: { status: "draft", sharedAt: null },
-      hasEoInvoice: false,
-    });
-    assert.equal(currentStep, "order");
     assert.equal(rows.find((r) => r.isCurrent)?.key, "event_order");
-    assert.equal(rows.find((r) => r.key === "event_order")!.primaryLabel, "Review Event Order");
+    assert.equal(rows[0]!.primaryLabel, "Build Event Order");
   });
 
-  it("marks invoice current after Event Order finalize (share not required)", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [{ status: "finalized" }],
-      eventOrder: { status: "finalized", sharedAt: null },
+  it("draft Event Order: Send to couple with Preview", () => {
+    const { current } = describeEventOrderJourney({
+      choices: [{ status: "draft" }],
+      eventOrder: { status: "open", sharedAt: null },
       hasEoInvoice: false,
     });
-    assert.equal(currentStep, "invoice");
-    assert.equal(rows.find((r) => r.isCurrent)?.key, "invoice");
-    assert.equal(
-      rows.find((r) => r.key === "invoice")!.primaryLabel,
-      "Create invoice & payment plan",
-    );
+    assert.equal(current.key, "event_order");
+    assert.equal(current.action, "send");
+    assert.equal(current.primaryLabel, "Send to couple");
+    assert.equal(current.preview, true);
   });
 
-  it("invoice action becomes Open invoice & payment plan when linked", () => {
+  it("sent and waiting: approval row is next, with Copy couple link", () => {
+    const { current, rows } = describeEventOrderJourney({
+      choices: [{ status: "in_progress" }],
+      eventOrder: { status: "finalized", sharedAt: sent, revision: 2 },
+      hasEoInvoice: false,
+    });
+    assert.equal(current.key, "approval");
+    assert.equal(current.state, "Waiting on couple");
+    assert.equal(current.action, "copy_link");
+    assert.match(rows[0]!.state, /^Sent /);
+  });
+
+  it("approved with new charges: next step is Invoice new charges (never automatic)", () => {
+    const { current, rows } = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "finalized", sharedAt: sent, clientAgreedAt: sent, clientAgreedRevision: 3, revision: 3 },
+      hasEoInvoice: false,
+      unbilledAmount: 450,
+    });
+    assert.match(rows.find((r) => r.key === "approval")!.state, /^Approved /);
+    assert.equal(current.key, "invoice");
+    assert.equal(current.primaryLabel, "Invoice new charges");
+    assert.match(current.state, /\$450\.00 not invoiced yet/);
+    assert.match(current.detail, /Nothing is sent until you send it/);
+  });
+
+  it("approved with nothing to invoice: next step shows Approved", () => {
+    const { current } = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "finalized", sharedAt: sent, clientAgreedAt: sent, clientAgreedRevision: 3, revision: 3 },
+      hasEoInvoice: false,
+      unbilledAmount: 0,
+    });
+    assert.equal(current.key, "approval");
+    assert.match(current.state, /^Approved /);
+    assert.equal(current.action, null);
+  });
+
+  it("venue change after approval asks the couple again", () => {
+    const reopened = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "open", sharedAt: sent, clientAgreedAt: null, revision: 3 },
+      hasEoInvoice: false,
+    });
+    assert.equal(reopened.current.key, "event_order");
+    assert.equal(reopened.current.primaryLabel, "Send updated copy");
+    assert.equal(reopened.rows.find((r) => r.key === "approval")!.state, "Approval needed again");
+
+    const stale = describeEventOrderJourney({
+      choices: [{ status: "finalized" }],
+      eventOrder: { status: "finalized", sharedAt: sent, clientAgreedAt: sent, clientAgreedRevision: 3, revision: 3 },
+      hasEoInvoice: false,
+      shareCommitmentStale: true,
+    });
+    assert.equal(stale.current.action, "resend");
+    assert.equal(stale.rows.find((r) => r.key === "approval")!.state, "Approval needed again");
+  });
+
+  it("approval at an older revision is not current approval", () => {
+    assert.equal(isEventOrderApprovedNow({ status: "finalized", clientAgreedAt: sent, clientAgreedRevision: 2, revision: 3 }), false);
+    assert.equal(isEventOrderApprovedNow({ status: "finalized", clientAgreedAt: sent, clientAgreedRevision: 3, revision: 3 }), true);
+  });
+
+  it("portal-submitted choices still route the venue to Review choices", () => {
+    const { current } = describeEventOrderJourney({
+      choices: [{ status: "submitted" }],
+      eventOrder: { status: "finalized", sharedAt: sent, revision: 2 },
+      hasEoInvoice: false,
+    });
+    assert.equal(current.key, "approval");
+    assert.equal(current.action, "review_choices");
+  });
+
+  it("invoice and payment plan rows follow the linked invoice", () => {
     const { rows } = describeEventOrderJourney({
       choices: [{ status: "finalized" }],
-      eventOrder: { status: "finalized", sharedAt: null },
+      eventOrder: { status: "finalized", sharedAt: sent, clientAgreedAt: sent, clientAgreedRevision: 3, revision: 3 },
       hasEoInvoice: true,
       eoInvoiceStatus: "sent",
     });
-    assert.equal(
-      rows.find((r) => r.key === "invoice")!.primaryLabel,
-      "Open invoice & payment plan",
-    );
+    assert.equal(rows.find((r) => r.key === "invoice")!.primaryLabel, "Open invoice");
+    assert.equal(rows.find((r) => r.key === "payment_plan")!.primaryLabel, "Create payment plan");
+    const withPlan = describeEventOrderJourney({
+      choices: [], eventOrder: { status: "finalized", sharedAt: sent }, hasEoInvoice: true, hasPaymentPlan: true,
+    });
+    assert.equal(withPlan.rows.find((r) => r.key === "payment_plan")!.primaryLabel, "Open payment plan");
   });
 
-  it("every row keeps a meaningful action label (never View)", () => {
-    const { rows } = describeEventOrderJourney({
-      choices: [{ status: "draft" }],
-      eventOrder: null,
-      hasEoInvoice: false,
-    });
-    for (const row of rows) {
-      assert.ok(row.primaryLabel, `${row.key} missing label`);
-      assert.doesNotMatch(row.primaryLabel, /^View$/i);
+  it("no row ever uses a generic View label", () => {
+    for (const input of [
+      { choices: [], eventOrder: null, hasEoInvoice: false },
+      { choices: [{ status: "sent" }], eventOrder: { status: "finalized", sharedAt: sent }, hasEoInvoice: true, unbilledAmount: 10 },
+    ]) {
+      for (const row of describeEventOrderJourney(input).rows) {
+        if (row.primaryLabel) assert.doesNotMatch(row.primaryLabel, /^View$/i);
+      }
     }
   });
 
-  it("awaiting copy does not claim email was sent", () => {
-    const { rows } = describeEventOrderJourney({
-      choices: [{ status: "sent" }],
-      eventOrder: null,
-      hasEoInvoice: false,
-    });
-    const detail = rows.find((r) => r.key === "selections")!.detail;
-    assert.doesNotMatch(detail, /email (was |has been )?sent/i);
-    assert.match(detail, /portal/i);
+  it("overview summary names the next step", () => {
+    assert.equal(
+      eventOrderOverviewSummary({ choices: [], eventOrder: { status: "open", sharedAt: null }, hasEoInvoice: false }),
+      "Event Order: Draft — not sent yet",
+    );
   });
 
   it("emphasizes choices for build/awaiting/review and order for order/invoice", () => {
-    assert.deepEqual(panelEmphasisForStep("build"), {
-      emphasizeChoices: true,
-      emphasizeOrder: false,
-    });
-    assert.deepEqual(panelEmphasisForStep("review"), {
-      emphasizeChoices: true,
-      emphasizeOrder: false,
-    });
-    assert.deepEqual(panelEmphasisForStep("order"), {
-      emphasizeChoices: false,
-      emphasizeOrder: true,
-    });
-    assert.deepEqual(panelEmphasisForStep("invoice"), {
-      emphasizeChoices: false,
-      emphasizeOrder: true,
-    });
+    assert.deepEqual(panelEmphasisForStep("build"), { emphasizeChoices: true, emphasizeOrder: false });
+    assert.deepEqual(panelEmphasisForStep("invoice"), { emphasizeChoices: false, emphasizeOrder: true });
   });
 
   it("hides Choices financial impact when EO-linked invoice exists and nothing is unbilled", () => {
@@ -122,47 +156,6 @@ describe("Stage 0 Event Order journey facts", () => {
     assert.equal(shouldShowChoicesFinancialImpact(true), false);
     assert.equal(shouldShowChoicesFinancialImpact(true, 0), false);
     assert.equal(shouldShowChoicesFinancialImpact(true, 200), true);
-  });
-
-  it("reopened open EO with prior invoice does not push Finalize as unfinished next step", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [{ status: "finalized" }],
-      eventOrder: { status: "open", sharedAt: "2026-10-01T00:00:00Z" },
-      hasEoInvoice: true,
-      eoInvoiceStatus: "sent",
-      unbilledAmount: 0,
-    });
-    assert.equal(currentStep, "invoice");
-    const eo = rows.find((r) => r.key === "event_order")!;
-    assert.match(eo.state, /invoice already issued/i);
-    assert.doesNotMatch(eo.state, /needs finalize/i);
-    assert.equal(eo.primaryLabel, "Review Event Order");
-  });
-
-  it("stale shared commitment owns re-share before first invoice", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [{ status: "finalized" }],
-      eventOrder: { status: "finalized", sharedAt: "2026-10-01T00:00:00Z" },
-      hasEoInvoice: false,
-      shareCommitmentStale: true,
-    });
-    assert.equal(currentStep, "order");
-    assert.equal(rows.find((r) => r.isCurrent)?.key, "event_order");
-    assert.equal(rows.find((r) => r.key === "event_order")!.primaryLabel, "Re-share Event Order");
-    assert.equal(rows.find((r) => r.key === "invoice")!.primaryLabel, "Re-share Event Order");
-  });
-
-  it("open EO with invoice + unbilled charges points to Invoice new charges", () => {
-    const { currentStep, rows } = describeEventOrderJourney({
-      choices: [{ status: "finalized" }],
-      eventOrder: { status: "open", sharedAt: "2026-10-01T00:00:00Z" },
-      hasEoInvoice: true,
-      eoInvoiceStatus: "sent",
-      unbilledAmount: 450,
-    });
-    assert.equal(currentStep, "invoice");
-    assert.equal(rows.find((r) => r.key === "invoice")!.primaryLabel, "Invoice new charges");
-    assert.match(rows.find((r) => r.key === "event_order")!.state, /additional charges/i);
   });
 });
 

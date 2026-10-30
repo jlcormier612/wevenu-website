@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import { inventoryPortalStatusCopy } from "@/lib/event-inventory/inventory-portal-status";
 import { inventoryReviewUrl } from "@/lib/event-inventory/inventory-portal-link";
-import { eventOrderReviewUrl } from "@/lib/event-orders/event-order-portal-link";
+import { eventOrderDocumentUrl, eventOrderReviewUrl } from "@/lib/event-orders/event-order-portal-link";
 import { documentPortalReturnPath } from "@/lib/portal/document-return";
 
 const shell = readFileSync(resolve("components/portal/portal-shell.tsx"), "utf8");
@@ -51,8 +51,17 @@ describe("document email landing", () => {
     assert.match(shell, /documentFocus \? null : \(/);
     assert.match(shell, /data-portal-document=\{documentFocus \? "focus"/);
     assert.match(page, /isEventOrderPortalView/);
-    assert.match(eoShare, /eventOrderReviewUrl/);
-    assert.match(eoShare, /pickEventOrderPortalSession/);
     assert.doesNotMatch(eoShare, /\$\{appUrl\}\/p\/\$\{session\.accessToken\}#event-order/);
+  });
+
+  it("event order email opens the standalone document link for every client", () => {
+    assert.equal(
+      eventOrderDocumentUrl("https://app.sandbox.hellotocheers.com/", "tok"),
+      "https://app.sandbox.hellotocheers.com/order/tok",
+    );
+    assert.match(eoShare, /eventOrderDocumentUrl\(publicAppOrigin\(\), eventOrder\.reviewToken\)/);
+    // No portal invite needed — sharing never creates a portal session.
+    assert.doesNotMatch(eoShare, /createPortalSession/);
+    assert.doesNotMatch(eoShare, /eventOrderReviewUrl/);
   });
 });

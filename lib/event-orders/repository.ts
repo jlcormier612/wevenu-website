@@ -12,6 +12,7 @@ type OrderRow = {
   id: string; venue_id: string; event_id: string | null; client_id?: string | null; status: "open" | "finalized";
   revision: number; finalized_at: string | null; shared_at: string | null;
   client_agreed_at?: string | null; client_agreed_name?: string | null; client_agreed_revision?: number | null;
+  review_token?: string | null;
   template_id: string | null;
   created_at: string; updated_at: string;
 };
@@ -39,6 +40,7 @@ const mapOrder = (r: OrderRow): EventOrder => ({
   clientAgreedAt: r.client_agreed_at ?? null,
   clientAgreedName: r.client_agreed_name ?? null,
   clientAgreedRevision: r.client_agreed_revision ?? null,
+  reviewToken: r.review_token ?? null,
   templateId: r.template_id,
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
