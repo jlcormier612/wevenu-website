@@ -53,8 +53,9 @@ export function EventEditForm({
       const result = await updateEventAction(event.id, input);
       if (result.ok) {
         if (result.timelineWarning) toast.warning(result.timelineWarning);
+        if (result.headcountNotice) toast.warning(result.headcountNotice);
         if (result.timingRecalc) {
-          if (!result.timelineWarning) {
+          if (!result.timelineWarning && !result.headcountNotice) {
             toast.success(
               result.timingRecalc.dateChanged
                 ? "Wedding dates saved. Review your timeline so item dates still match."
@@ -65,7 +66,7 @@ export function EventEditForm({
           setRecalcOpen(true);
           return;
         }
-        if (!result.timelineWarning) toast.success("Event updated.");
+        if (!result.timelineWarning && !result.headcountNotice) toast.success("Event updated.");
         router.push(`/events/${event.id}`);
         router.refresh();
         return;

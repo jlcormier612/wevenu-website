@@ -153,7 +153,14 @@ export type EventTimingRecalcHint = {
 };
 
 export type EventActionResult =
-  | { ok: true; timingRecalc?: EventTimingRecalcHint; timelineWarning?: string; flagWarning?: string }
+  | {
+      ok: true;
+      timingRecalc?: EventTimingRecalcHint;
+      timelineWarning?: string;
+      flagWarning?: string;
+      /** Narrow B armor — Save notice when headcount-bound EO lines did not auto-update. */
+      headcountNotice?: string;
+    }
   | { ok: false; errors?: EventErrors; message?: string; code?: OccupancyCode };
 
 export type CreateEventResult =

@@ -47,10 +47,14 @@ Support living headcounts the way banquet tools do — without silent money move
 
 ## Feature flag
 
-- `headcountRecalcEnabled()` — env-gated (`HEADCOUNT_RECALC_ENABLED`). Default **on** in sandbox/test, **off** in production unless explicitly enabled.
+- Plan name: **`narrow_headcount_v1`**. Runtime kill switch: env `HEADCOUNT_RECALC_ENABLED` via `headcountRecalcEnabled()`.
+  - One switch kills living recalc without reverting schema (Estimated/Guaranteed columns and `bound_to_headcount` stay).
+  - Not venue-DB-scoped in v1 — env is enough for Sandbox-on / Production-off.
+- Default **on** in sandbox/test, **off** in production unless explicitly enabled (`1`/`true`/`on`). Explicit `0`/`false`/`off` forces off everywhere.
 - B2: flag on + open + unshared + unapproved + no EO invoice → silent live recalc.
 - B3: flag on + shared + unapproved (+ reopen if finalized) → live recalc so share-stale / **Send updated copy** lights up. Couple still sees last snapshot until re-share. Approved stays frozen.
 - B4: any non-void EO-linked invoice (`draft` or issued) → **block recalc**; write EO activity; never update invoice rows. Void invoices do not block.
+- Armor: Save returns `headcountNotice` when recalc is skipped for flag-off / approved / draft invoice / issued invoice (venue toast). Flag-off characterization: apply null→1 / 120→120 unchanged; with flag off, recalc returns before any DB work.
 
 ## Legacy mapping
 

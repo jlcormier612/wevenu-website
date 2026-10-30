@@ -64,6 +64,24 @@ export function classifyBlockingEoInvoice(
   return "eo_invoice_issued";
 }
 
+/** Venue-facing Save notice when auto-recalc did not apply. Null = stay quiet. */
+export function venueNoticeForHeadcountSkip(
+  reason: HeadcountRecalcSkipReason | undefined,
+): string | null {
+  switch (reason) {
+    case "flag_off":
+      return "Guest count saved. Automatic Event Order quantity updates are turned off.";
+    case "approved":
+      return "Guest count saved. Approved Event Order quantities stay frozen until you send an updated copy.";
+    case "eo_invoice_draft":
+      return "Guest count saved. Event Order quantities were left unchanged because a draft Event Order invoice exists. Void or finish that invoice first.";
+    case "eo_invoice_issued":
+      return "Guest count saved. Event Order quantities and invoice amounts stay frozen — headcount edits never reprice an issued invoice.";
+    default:
+      return null;
+  }
+}
+
 export async function recalculateBoundEventOrderLinesForEvent(
   supabase: DbClient,
   venueId: string,

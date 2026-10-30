@@ -142,8 +142,9 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       if (fail) return fail as EventActionResult;
       throw err;
     }
-    // Narrow B2 — when Guaranteed ?? Estimated changes, recalc open unshared
-    // unapproved bound EO lines (flag-gated; never touches invoices).
+    // Narrow B2–B4 — when Guaranteed ?? Estimated changes, recalc bound EO lines
+    // (flag-gated; never touches invoices). Surface a Save notice when blocked.
+    let headcountNotice: string | undefined;
     if (before) {
       const { boundHeadcountForApply } = await import("@/lib/events/headcount");
       const nextEstimated = input.guestCount.trim() ? parseInt(input.guestCount, 10) : null;
@@ -153,16 +154,23 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       const prevBound = boundHeadcountForApply(before.guestCount, before.guaranteedGuestCount);
       const nextBound = boundHeadcountForApply(nextEstimated, nextGuaranteed);
       if (prevBound !== nextBound) {
-        const { recalculateBoundEventOrderLinesForEvent } = await import(
-          "@/lib/events/headcount-recalc"
-        );
-        await recalculateBoundEventOrderLinesForEvent(
+        const {
+          recalculateBoundEventOrderLinesForEvent,
+          venueNoticeForHeadcountSkip,
+        } = await import("@/lib/events/headcount-recalc");
+        const recalc = await recalculateBoundEventOrderLinesForEvent(
           supabase,
           venueId,
           eventId,
           nextEstimated,
           nextGuaranteed,
         );
+        const notice = venueNoticeForHeadcountSkip(recalc.skippedReason);
+        if (notice) headcountNotice = notice;
+        else if (recalc.reopened) {
+          headcountNotice =
+            "Guest count saved. Live Event Order quantities updated — send the updated copy to the couple.";
+        }
       }
     }
     let reconciledViaAssignments = false;
@@ -280,10 +288,11 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
         },
         timelineWarning,
         flagWarning,
+        headcountNotice,
       } as EventActionResult;
     }
 
-    return { ok: true, timelineWarning, flagWarning } as EventActionResult;
+    return { ok: true, timelineWarning, flagWarning, headcountNotice } as EventActionResult;
   });
   return result as EventActionResult;
 }
