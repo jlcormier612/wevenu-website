@@ -46,8 +46,8 @@ Support living headcounts the way banquet tools do — without silent money move
 
 ## Feature flag
 
-- `headcountRecalcEnabled()` — **false in B0/B1**. Enables B2+ recalc only when proven.
-- Guaranteed field storage/UI ships in B0 without enabling recalc.
+- `headcountRecalcEnabled()` — env-gated (`HEADCOUNT_RECALC_ENABLED`). Default **on** in sandbox/test, **off** in production unless explicitly enabled.
+- B2 recalc only runs when the flag is on **and** the Event Order is open, unshared, unapproved, with no non-void EO-linked invoice.
 
 ## Legacy mapping
 

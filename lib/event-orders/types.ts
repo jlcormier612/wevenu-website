@@ -65,6 +65,8 @@ export type EventOrderLine = {
   amount: number;
   isIncluded: boolean;
   notes: string | null;
+  /** True when quantity should follow Guaranteed ?? Estimated (Narrow B). */
+  boundToHeadcount: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -97,6 +99,7 @@ export type AddCustomLineInput = {
   isIncluded?: boolean;
   notes?: string;
   descriptionDetail?: string;
+  boundToHeadcount?: boolean;
 };
 
 export type AddInventoryLineInput = {
@@ -108,6 +111,7 @@ export type AddInventoryLineInput = {
   unit?: string;
   isIncluded?: boolean;
   notes?: string;
+  boundToHeadcount?: boolean;
 };
 
 export type AddOfferingLineInput = {
@@ -121,6 +125,7 @@ export type AddOfferingLineInput = {
   notes?: string;
   descriptionDetail?: string;
   inventoryItemId?: string | null;
+  boundToHeadcount?: boolean;
 };
 
 export type UpdateLineInput = {

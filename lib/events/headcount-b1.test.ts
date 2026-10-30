@@ -39,11 +39,11 @@ describe("B1 bound headcount for new apply/seed", () => {
     assert.equal(startingQuantityForLine(dinner, boundHeadcountForApply(120, null)), 120);
   });
 
-  it("recalc stays off — no headcount-change rewrite path", () => {
-    assert.equal(headcountRecalcEnabled(), false);
+  it("B1 apply/seed path does not itself rewrite lines on headcount change", () => {
+    // Recalc lives in headcount-recalc (B2), not in template apply/seed.
     const service = read("lib/event-orders/service.ts");
-    assert.doesNotMatch(service, /headcountRecalcEnabled/);
-    assert.doesNotMatch(service, /recalc.*guest|guest.*recalc/i);
+    assert.doesNotMatch(service, /recalculateBoundEventOrderLinesForEvent/);
+    assert.equal(typeof headcountRecalcEnabled(), "boolean");
   });
 });
 

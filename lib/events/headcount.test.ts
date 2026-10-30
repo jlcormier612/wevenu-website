@@ -28,8 +28,11 @@ describe("headcount helpers (B0)", () => {
     assert.equal(boundHeadcountForApply(null, null), null);
   });
 
-  it("recalc flag stays off in B0", () => {
-    assert.equal(headcountRecalcEnabled(), false);
+  it("recalc flag is env-gated (B2 enables in sandbox/test)", () => {
+    // B0 shipped the helper as false; B2 flips the sandbox/test default on.
+    // Production remains fail-closed unless HEADCOUNT_RECALC_ENABLED is set.
+    assert.equal(typeof headcountRecalcEnabled(), "boolean");
+    assert.match(read("lib/events/headcount.ts"), /HEADCOUNT_RECALC_ENABLED/);
   });
 });
 

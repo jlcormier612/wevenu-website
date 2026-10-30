@@ -19,6 +19,7 @@ import * as proposalsRepo from "@/lib/commercial-proposals/repository";
 import {
   applyQuantityForLine,
   canApplyTemplateToEventOrder,
+  normalizeTemplatePricingModel,
   packageStartingSelections,
   snapshotTemplateOfferingForEvent,
   type TemplateApplySelection,
@@ -175,6 +176,7 @@ async function seedBookingPackageInclusions(
       unit: item.unit ?? undefined,
       isIncluded: true,
       notes,
+      boundToHeadcount: item.perGuest === true,
     };
     const offering = item.offeringId ? offeringsById.get(item.offeringId) : undefined;
     if (item.offeringId && offering) {
@@ -287,6 +289,7 @@ async function copyTemplateSnapshotsIntoOrder(
       unit: snapshot.unit ?? undefined,
       isIncluded: snapshot.isIncluded,
       notes: snapshot.notes ?? undefined,
+      boundToHeadcount: normalizeTemplatePricingModel(line.pricingModel) === "per_person",
     };
     if (snapshot.offeringId) {
       await repo.insertLineFromOffering(supabase, venueId, eventOrderId, {

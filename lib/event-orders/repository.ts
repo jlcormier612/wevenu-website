@@ -27,7 +27,9 @@ type LineRow = {
   package_id: string | null; inventory_item_id: string | null; offering_id: string | null;
   description: string; description_detail: string | null;
   quantity: number; unit: string | null; unit_price: number | null; amount: number;
-  is_included: boolean; notes: string | null; sort_order: number;
+  is_included: boolean; notes: string | null;
+  bound_to_headcount?: boolean | null;
+  sort_order: number;
   created_at: string; updated_at: string;
 };
 type ActivityRow = {
@@ -60,6 +62,7 @@ const mapLine = (r: LineRow): EventOrderLine => ({
   quantity: Number(r.quantity), unit: r.unit ?? null,
   unitPrice: r.unit_price == null ? null : Number(r.unit_price),
   amount: Number(r.amount), isIncluded: r.is_included ?? true, notes: r.notes ?? null,
+  boundToHeadcount: r.bound_to_headcount === true,
   sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapActivity = (r: ActivityRow): EventOrderActivity => ({
@@ -315,6 +318,7 @@ export async function insertLineFromInventory(
       description: input.description.trim(), quantity, unit: input.unit?.trim() || null,
       unit_price: unitPrice, amount: lineAmount(quantity, unitPrice),
       is_included: input.isIncluded ?? true, notes: input.notes?.trim() || null,
+      bound_to_headcount: input.boundToHeadcount === true,
       sort_order: sortOrder,
     }).select().single<LineRow>();
   if (error) throw error;
@@ -336,6 +340,7 @@ export async function insertLineFromOffering(
       quantity, unit: input.unit?.trim() || null,
       unit_price: unitPrice, amount: lineAmount(quantity, unitPrice),
       is_included: input.isIncluded ?? true, notes: input.notes?.trim() || null,
+      bound_to_headcount: input.boundToHeadcount === true,
       sort_order: sortOrder,
     }).select().single<LineRow>();
   if (error) throw error;
@@ -355,10 +360,30 @@ export async function insertCustomLine(
       quantity, unit: input.unit?.trim() || null,
       unit_price: unitPrice, amount: lineAmount(quantity, unitPrice),
       is_included: input.isIncluded ?? true, notes: input.notes?.trim() || null,
+      bound_to_headcount: input.boundToHeadcount === true,
       sort_order: sortOrder,
     }).select().single<LineRow>();
   if (error) throw error;
   return mapLine(data);
+}
+
+/** B2 — set quantity/amount on a bound line without clearing headcount binding. */
+export async function updateLineQuantityKeepingBound(
+  client: DbClient,
+  venueId: string,
+  lineId: string,
+  quantity: number,
+  unitPrice: number | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_order_lines") as any)
+    .update({
+      quantity,
+      amount: lineAmount(quantity, unitPrice),
+    })
+    .eq("id", lineId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 export async function updateLine(

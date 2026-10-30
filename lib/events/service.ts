@@ -142,6 +142,29 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       if (fail) return fail as EventActionResult;
       throw err;
     }
+    // Narrow B2 — when Guaranteed ?? Estimated changes, recalc open unshared
+    // unapproved bound EO lines (flag-gated; never touches invoices).
+    if (before) {
+      const { boundHeadcountForApply } = await import("@/lib/events/headcount");
+      const nextEstimated = input.guestCount.trim() ? parseInt(input.guestCount, 10) : null;
+      const nextGuaranteed = (input.guaranteedGuestCount ?? "").trim()
+        ? parseInt(input.guaranteedGuestCount, 10)
+        : null;
+      const prevBound = boundHeadcountForApply(before.guestCount, before.guaranteedGuestCount);
+      const nextBound = boundHeadcountForApply(nextEstimated, nextGuaranteed);
+      if (prevBound !== nextBound) {
+        const { recalculateBoundEventOrderLinesForEvent } = await import(
+          "@/lib/events/headcount-recalc"
+        );
+        await recalculateBoundEventOrderLinesForEvent(
+          supabase,
+          venueId,
+          eventId,
+          nextEstimated,
+          nextGuaranteed,
+        );
+      }
+    }
     let reconciledViaAssignments = false;
     if (input.spaceAssignments !== undefined) {
       const venue = await getCurrentVenue();
