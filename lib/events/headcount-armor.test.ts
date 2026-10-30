@@ -95,13 +95,16 @@ describe("Armor — venue Save notices", () => {
     assert.equal(venueNoticeForHeadcountSkip(undefined), null);
   });
 
-  it("updateEvent_ returns headcountNotice; edit form toasts it", () => {
+  it("updateEvent_ returns headcountNotice; edit form toasts it; approved writes activity", () => {
     const svc = read("lib/events/service.ts");
     assert.match(svc, /venueNoticeForHeadcountSkip/);
     assert.match(svc, /headcountNotice/);
     const form = read("components/events/event-edit-form.tsx");
     assert.match(form, /result\.headcountNotice/);
     assert.match(form, /toast\.warning\(result\.headcountNotice\)/);
+    const recalc = read("lib/events/headcount-recalc.ts");
+    assert.match(recalc, /gate === "approved"/);
+    assert.match(recalc, /already approved this Event Order/);
   });
 
   it("decision lock documents HEADCOUNT_RECALC_ENABLED as narrow_headcount_v1 kill switch", () => {

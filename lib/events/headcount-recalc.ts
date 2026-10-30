@@ -105,6 +105,16 @@ export async function recalculateBoundEventOrderLinesForEvent(
 
   const gate = shouldRecalcBoundLines(order);
   if (gate) {
+    if (gate === "approved") {
+      await eoRepo.insertActivity(
+        supabase,
+        venueId,
+        order.id,
+        "headcount_recalc_blocked",
+        "Headcount changed — Event Order quantities left unchanged",
+        "The couple already approved this Event Order, so bound lines stay frozen until you send an updated copy.",
+      );
+    }
     return { attempted: false, updated: 0, skippedReason: gate };
   }
 
