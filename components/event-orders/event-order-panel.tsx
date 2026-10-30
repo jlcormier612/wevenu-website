@@ -29,7 +29,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
+import { DISPLAY_STATUS_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
 import {
   NO_COUPLE_CHOICES_MESSAGE, coupleChoicePreview, pickActiveChoices,
@@ -38,7 +38,7 @@ import type { ClientChoicesWithHistory } from "@/lib/client-choices/types";
 import { isBillableEventOrderLineForInvoice } from "@/lib/client-choices/unbilled-delta";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
-import { packageNameFromSelectionNotes } from "@/lib/event-orders/seed-package-inclusions";
+import { matchChoiceGroupsToSections, splitSetupLines, staffLineNotesLabel } from "@/lib/event-orders/document-view";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -73,20 +73,19 @@ function LineRow({
   removing: boolean;
   inventoryName?: string | null;
 }) {
-  const fromPackage = packageNameFromSelectionNotes(line.notes);
-  const notesLabel = fromPackage ? `From package: ${fromPackage}` : line.notes;
+  const notesLabel = staffLineNotesLabel(line.notes);
   return (
-    <div className="grid grid-cols-1 gap-2 border-b border-border py-3 last:border-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:items-center sm:gap-2 text-sm">
+    <div
+      className="grid grid-cols-1 gap-2 border-b border-border py-3 last:border-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:items-center sm:gap-2 text-sm"
+      data-testid="eo-line"
+      data-provenance={line.provenance}
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-foreground">{line.description}</span>
-          <Badge variant={line.isIncluded ? "muted" : "accent"} className="text-[10px]">
-            {line.isIncluded ? "Included" : "Additional"}
-          </Badge>
           {line.isIncluded ? (
-            <span className="text-[10px] text-muted-foreground" data-testid="eo-line-included-extra">$0 extra</span>
+            <span className="text-[10px] text-muted-foreground" data-testid="eo-line-included-extra">Included · $0 extra</span>
           ) : null}
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{PROVENANCE_LABEL[line.provenance]}</span>
         </div>
         {(notesLabel || line.unit || inventoryName) && (
           <p className="mt-0.5 text-xs text-muted-foreground" data-testid="eo-line-meta">
@@ -114,14 +113,54 @@ function LineRow({
   );
 }
 
+type CouplePreview = ReturnType<typeof coupleChoicePreview>;
+type CoupleGroup = Extract<CouplePreview, { groups: unknown }>["groups"][number];
+
+/** Source line + any choice groups that don't belong to an Event Order section. */
 function CoupleWillChooseSection({
-  eventOrder, choices,
+  loading, preview, unmatched,
 }: {
-  eventOrder: EventOrderWithDetails;
-  choices: ClientChoicesWithHistory[];
+  loading: boolean;
+  preview: CouplePreview;
+  unmatched: CoupleGroup[];
 }) {
+  const showSelected = preview.kind === "packet" && preview.showAnswers;
+  return (
+    <div className="space-y-2" data-testid="eo-couple-will-choose">
+      {loading ? (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading this Event Order&apos;s template…
+        </p>
+      ) : preview.kind === "none" ? (
+        <p className="text-xs text-muted-foreground" data-testid="eo-couple-will-choose-empty">
+          {NO_COUPLE_CHOICES_MESSAGE}
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground" data-testid="eo-couple-will-choose-source" data-source={preview.kind}>
+            {preview.kind === "packet"
+              ? `Couple choices from “${preview.name}” · ${preview.statusLabel}.`
+              : `Couple choices from template “${preview.templateName}” — not sent yet.`}
+          </p>
+          {unmatched.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-heading">The couple will choose</p>
+              <ul className="space-y-2">
+                {unmatched.map((group) => (
+                  <CoupleChoiceGroupCard key={group.id} group={group} showSelected={showSelected} />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function useCoupleChoicePreview(eventOrder: EventOrderWithDetails | null, choices: ClientChoicesWithHistory[]) {
   const hasActivePacket = pickActiveChoices(choices) != null;
-  const templateId = hasActivePacket ? null : eventOrder.templateId;
+  const templateId = hasActivePacket || !eventOrder ? null : eventOrder.templateId;
   const [templateDetail, setTemplateDetail] = React.useState<EventOrderTemplateWithDetails | null>(null);
   const [loadedTemplateId, setLoadedTemplateId] = React.useState<string | null>(null);
 
@@ -141,62 +180,41 @@ function CoupleWillChooseSection({
     choices,
     eventOrderTemplate: templateId && loadedTemplateId === templateId ? templateDetail : null,
   });
+  return { loading, preview };
+}
 
+function CoupleChoiceGroupCard({ group, showSelected }: { group: CoupleGroup; showSelected: boolean }) {
   return (
-    <div className="rounded-lg border border-border p-4 space-y-3" data-testid="eo-couple-will-choose">
-      <p className="text-sm font-semibold text-heading">The couple will choose</p>
-      {loading ? (
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading this Event Order&apos;s template…
-        </p>
-      ) : preview.kind === "none" ? (
-        <p className="text-sm text-muted-foreground" data-testid="eo-couple-will-choose-empty">
-          {NO_COUPLE_CHOICES_MESSAGE}
-        </p>
+    <li className="rounded-sm border border-dashed border-border p-3 space-y-1.5" data-testid="eo-couple-choice-group" data-group-id={group.id}>
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Couple chooses</span>
+        <span className="text-sm font-medium text-heading">{group.name}</span>
+        <span className="text-xs text-muted-foreground" data-testid="eo-couple-choice-rule">
+          {group.ruleLabel}
+          {group.allowQuantity ? " · quantity per option" : ""}
+          {group.shownWhen.length > 0 ? ` · only if ${group.shownWhen.map((l) => `“${l}”`).join(" or ")}` : ""}
+        </span>
+      </div>
+      {group.options.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No options configured.</p>
       ) : (
-        <>
-          <p className="text-xs text-muted-foreground" data-testid="eo-couple-will-choose-source" data-source={preview.kind}>
-            {preview.kind === "packet"
-              ? `From the selection request “${preview.name}” · ${preview.statusLabel}. These are the groups the couple answers; the lines below are not choices.`
-              : `From this Event Order's template “${preview.templateName}” — not sent yet. Prepare a selection request in Client selections to ask the couple.`}
-          </p>
-          <ul className="space-y-3">
-            {preview.groups.map((group) => (
-              <li key={group.id} className="rounded-sm border border-border/70 p-3 space-y-1.5" data-testid="eo-couple-choice-group" data-group-id={group.id}>
-                <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="text-sm font-medium text-heading">{group.name}</span>
-                  {group.sectionName ? <span className="text-xs text-muted-foreground">{group.sectionName}</span> : null}
-                </div>
-                <p className="text-xs text-muted-foreground" data-testid="eo-couple-choice-rule">
-                  {group.ruleLabel}
-                  {group.allowQuantity ? " · quantity per option" : ""}
-                  {group.shownWhen.length > 0 ? ` · shown only if ${group.shownWhen.map((l) => `“${l}”`).join(" or ")} is chosen` : ""}
-                </p>
-                {group.options.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No options configured.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {group.options.map((opt) => (
-                      <li key={opt.id} className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm" data-testid="eo-couple-choice-option" data-option-id={opt.id}>
-                        <span className="text-foreground">
-                          {opt.label}
-                          {preview.kind === "packet" && preview.showAnswers && opt.chosen ? (
-                            <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-primary">
-                              Selected{opt.chosenQuantity != null ? ` ×${opt.chosenQuantity}` : ""}
-                            </span>
-                          ) : null}
-                        </span>
-                        <span className="text-xs text-muted-foreground">{opt.priceLabel}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="space-y-1">
+          {group.options.map((opt) => (
+            <li key={opt.id} className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm" data-testid="eo-couple-choice-option" data-option-id={opt.id}>
+              <span className="text-foreground">
+                {opt.label}
+                {showSelected && opt.chosen ? (
+                  <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-primary">
+                    Selected{opt.chosenQuantity != null ? ` ×${opt.chosenQuantity}` : ""}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-xs text-muted-foreground">{opt.priceLabel}</span>
+            </li>
+          ))}
+        </ul>
       )}
-    </div>
+    </li>
   );
 }
 
@@ -248,7 +266,21 @@ function SectionFloorPlanLink({
   eventOrderId: string; eventId: string; section: EventOrderSection; floorPlans: FloorPlan[]; disabled: boolean;
 }) {
   const [pending, startTransition] = React.useTransition();
+  const [picking, setPicking] = React.useState(false);
   if (floorPlans.length === 0) return null;
+  if (!section.floorPlanId && !picking) {
+    if (disabled) return null;
+    return (
+      <button
+        type="button"
+        className="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+        data-testid={`eo-section-link-floor-plan-${section.id}`}
+        onClick={() => setPicking(true)}
+      >
+        Link floor plan
+      </button>
+    );
+  }
 
   const options = [
     { value: "none", label: "No floor plan linked" },
@@ -259,6 +291,7 @@ function SectionFloorPlanLink({
     startTransition(async () => {
       const result = await setSectionFloorPlanAction(eventOrderId, eventId, section.id, value === "none" ? null : value);
       if (!result.ok) toast.error(result.message ?? "Could not link floor plan.");
+      setPicking(false);
     });
   }
 
@@ -330,6 +363,7 @@ export function EventOrderPanel({
   const [applyTemplate, setApplyTemplate] = React.useState<EventOrderTemplateWithDetails | null>(null);
 
   function refresh() { router.refresh(); }
+  const couple = useCoupleChoicePreview(eventOrder, choices);
 
   // Profile-configured Event Order should already exist after booking / prepare-release.
   // Recover once so this tab is an editor, not a second setup wizard.
@@ -541,6 +575,26 @@ export function EventOrderPanel({
   const isFinalized = order.status === "finalized";
   const unsectioned = order.lines.filter((l) => !l.sectionId);
   const inventoryNameById = new Map(inventoryItems.map((i) => [i.id, i.printableName || i.name]));
+  const unsectionedSplit = splitSetupLines(unsectioned);
+  const coupleGroups = couple.preview.kind === "none" ? [] : couple.preview.groups;
+  const groupPlacement = matchChoiceGroupsToSections(coupleGroups, order.sections);
+  const showSelectedChoices = couple.preview.kind === "packet" && couple.preview.showAnswers;
+
+  function renderLine(line: EventOrderLine) {
+    return (
+      <LineRow
+        key={line.id}
+        line={line}
+        sections={order.sections}
+        eventOrderId={order.id}
+        eventId={scopeId}
+        canEdit={!isFinalized}
+        inventoryName={line.inventoryItemId ? inventoryNameById.get(line.inventoryItemId) : null}
+        removing={removingId === line.id}
+        onRemove={() => handleRemoveLine(line)}
+      />
+    );
+  }
 
   async function handleRemoveLine(line: EventOrderLine) {
     setRemovingId(line.id);
@@ -599,26 +653,17 @@ export function EventOrderPanel({
             )
           }
         />
-        <p className="text-xs text-muted-foreground -mt-1">
-          What this event is receiving. Delivery subtotal (for reference):{" "}
-          <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
-          {" "}— amount due is on Invoice / Payments.
-        </p>
         <p className="text-xs text-muted-foreground -mt-1" data-testid="eo-additional-extra-total">
-          Extra charges (Additional lines with a price):{" "}
+          Total <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
+          {" · "}Extra charges{" "}
           <span className="font-medium text-foreground">
             {formatMoney(eventOrder.lines.filter(isBillableEventOrderLineForInvoice).reduce((sum, l) => sum + l.amount, 0))}
           </span>
-          {" "}— Included lines add $0.
+          {selectedPackageName ? <>{" · "}Package <span className="font-medium text-foreground">{selectedPackageName}</span></> : null}
         </p>
         {preBooking && (
           <p className="text-xs text-muted-foreground -mt-1">
             Finalize, share with the client, and the invoice link wait until this relationship is Booked. They describe the booked occasion.
-          </p>
-        )}
-        {selectedPackageName && (
-          <p className="text-xs text-muted-foreground -mt-1">
-            Package context: <span className="font-medium text-foreground">{selectedPackageName}</span> (commercial purchase — not this Event Order)
           </p>
         )}
         {eventOrder.sharedAt && (shareCommitmentStale || !isFinalized) && (
@@ -628,16 +673,11 @@ export function EventOrderPanel({
             role="status"
           >
             <p>
-              Clients still see the shared Event Order from{" "}
+              The couple still sees the copy shared{" "}
               {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               {shareCommitmentStale
-                ? " — and that copy no longer matches the lines on this screen (selections or prices may differ)."
-                : "."}
-            </p>
-            <p>
-              {shareCommitmentStale
-                ? "Re-share so their Accept view matches what you intend to invoice. Issuing the original invoice is blocked until the shared copy matches."
-                : "Re-share when you are ready to publish revisions. Until then, their portal Order stays on the last shared snapshot."}
+                ? ", which no longer matches these lines. Re-share before invoicing."
+                : ". Re-share when you're ready to publish changes."}
             </p>
           </div>
         )}
@@ -672,7 +712,6 @@ export function EventOrderPanel({
         {eventOrder.sharedAt && isFinalized && (
           <p className="text-xs text-muted-foreground -mt-1">
             Shared with client {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
-            Re-sharing publishes a new frozen copy for the client.
           </p>
         )}
         {clientId && (
@@ -693,35 +732,34 @@ export function EventOrderPanel({
       </CardHeader>
       <CardContent className="space-y-6">
         {(overview || clientName || venueName) && (
-          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Event Overview</p>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {(overview?.eventName || clientName) && (
-                <div><span className="text-muted-foreground">Event </span><span className="font-medium text-foreground">{overview?.eventName || clientName}</span></div>
-              )}
-              {clientName && (
-                <div><span className="text-muted-foreground">Client </span><span className="font-medium text-foreground">{clientName}</span></div>
-              )}
-              {overview?.eventDate && (
-                <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>
-              )}
-              {overview?.guestCount != null && (
-                <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{overview.guestCount}</span></div>
-              )}
-              {overview?.spaceName && (
-                <div><span className="text-muted-foreground">Spaces </span><span className="font-medium text-foreground">{overview.spaceName}</span></div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Drawn from the event booking — edit those details on Overview, not here.</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm" data-testid="eo-overview">
+            {(overview?.eventName || clientName) && (
+              <div><span className="text-muted-foreground">Event </span><span className="font-medium text-foreground">{overview?.eventName || clientName}</span></div>
+            )}
+            {clientName && (
+              <div><span className="text-muted-foreground">Client </span><span className="font-medium text-foreground">{clientName}</span></div>
+            )}
+            {overview?.eventDate && (
+              <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>
+            )}
+            {overview?.guestCount != null && (
+              <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{overview.guestCount}</span></div>
+            )}
+            {overview?.spaceName && (
+              <div><span className="text-muted-foreground">Spaces </span><span className="font-medium text-foreground">{overview.spaceName}</span></div>
+            )}
           </div>
         )}
 
-        {!preBooking && <CoupleWillChooseSection eventOrder={eventOrder} choices={choices} />}
+        {!preBooking && (
+          <CoupleWillChooseSection loading={couple.loading} preview={couple.preview} unmatched={groupPlacement.unmatched} />
+        )}
 
         {eventOrder.sections.map((section) => {
-          const lines = eventOrder.lines.filter((l) => l.sectionId === section.id);
+          const { main, setup } = splitSetupLines(eventOrder.lines.filter((l) => l.sectionId === section.id));
+          const sectionGroups = groupPlacement.bySectionId.get(section.id) ?? [];
           return (
-            <div key={section.id} className="space-y-2">
+            <div key={section.id} className="space-y-2" data-testid="eo-section" data-section-id={section.id}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1">
                   <p className="text-sm font-semibold text-heading">{section.name}</p>
@@ -748,104 +786,94 @@ export function EventOrderPanel({
                   )}
                 </div>
               </div>
-              {lines.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No items in this section yet.</p>
-              ) : (
-                <div>
-                  {lines.map((line) => (
-                    <LineRow
-                      key={line.id}
-                      line={line}
-                      sections={eventOrder.sections}
-                      eventOrderId={eventOrder.id}
-                      eventId={scopeId}
-                      canEdit={!isFinalized}
-                      inventoryName={line.inventoryItemId ? inventoryNameById.get(line.inventoryItemId) : null}
-                      removing={removingId === line.id}
-                      onRemove={() => handleRemoveLine(line)}
-                    />
+              {main.length === 0 && setup.length === 0 && sectionGroups.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No items yet.</p>
+              ) : null}
+              {main.length > 0 ? <div>{main.map(renderLine)}</div> : null}
+              {sectionGroups.length > 0 ? (
+                <ul className="space-y-2">
+                  {sectionGroups.map((group) => (
+                    <CoupleChoiceGroupCard key={group.id} group={group} showSelected={showSelectedChoices} />
                   ))}
-                </div>
-              )}
+                </ul>
+              ) : null}
+              {setup.length > 0 ? (
+                <details className="rounded-md border border-border/70 px-3 py-2" data-testid="eo-included-setup-items">
+                  <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                    Included setup items ({setup.length})
+                  </summary>
+                  <div className="mt-1">{setup.map(renderLine)}</div>
+                </details>
+              ) : null}
             </div>
           );
         })}
 
-        <div className="space-y-2">
-          {eventOrder.sections.length > 0 && <p className="text-sm font-semibold text-heading">General</p>}
-          {unsectioned.length === 0 ? (
-            eventOrder.sections.length > 0 && <p className="text-xs text-muted-foreground py-2">Nothing unsectioned.</p>
-          ) : (
-            <div>
-              {unsectioned.map((line) => (
-                <LineRow
-                  key={line.id}
-                  line={line}
-                  sections={eventOrder.sections}
-                  eventOrderId={eventOrder.id}
-                  eventId={scopeId}
-                  canEdit={!isFinalized}
-                  inventoryName={line.inventoryItemId ? inventoryNameById.get(line.inventoryItemId) : null}
-                  removing={removingId === line.id}
-                  onRemove={() => handleRemoveLine(line)}
-                />
-              ))}
-            </div>
-          )}
-          {eventOrder.lines.length === 0 && eventOrder.sections.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nothing added yet. Add items from Offerings, or add sections first.</p>
-          )}
-        </div>
-
-        {!isFinalized && templates.length > 0 && (
-          <div className="flex w-full min-w-0 flex-col gap-2 rounded-md border border-border/70 p-3">
-            <p className="text-sm text-muted-foreground">Apply a template to add sections and selected offerings. Existing lines stay as they are.</p>
-            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <Select
-                value={templateId}
-                onValueChange={setTemplateId}
-                items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({
-                  value: t.id,
-                  label: t.name,
-                }))]}
-              >
-                <SelectTrigger className="w-full min-w-0 sm:max-w-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="blank">Choose a template…</SelectItem>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}
-                onClick={() => startStarting(async () => {
-                  const detail = await getEventOrderTemplateDetailAction(templateId);
-                  if (!detail) {
-                    toast.error("Could not load that template.");
-                    return;
-                  }
-                  setApplyTemplate(detail);
-                  setApplyOpen(true);
-                })}>
-                Apply a template
-              </Button>
-            </div>
+        {(unsectionedSplit.main.length > 0 || unsectionedSplit.setup.length > 0) && (
+          <div className="space-y-2">
+            {eventOrder.sections.length > 0 && <p className="text-sm font-semibold text-heading">General</p>}
+            {unsectionedSplit.main.length > 0 ? <div>{unsectionedSplit.main.map(renderLine)}</div> : null}
+            {unsectionedSplit.setup.length > 0 ? (
+              <details className="rounded-md border border-border/70 px-3 py-2" data-testid="eo-included-setup-items">
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                  Included setup items ({unsectionedSplit.setup.length})
+                </summary>
+                <div className="mt-1">{unsectionedSplit.setup.map(renderLine)}</div>
+              </details>
+            ) : null}
           </div>
+        )}
+        {eventOrder.lines.length === 0 && eventOrder.sections.length === 0 && (
+          <p className="text-sm text-muted-foreground py-4 text-center">Nothing added yet. Add items from Offerings, or add sections first.</p>
         )}
 
         {!isFinalized && (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
-            <AddSectionInline eventOrderId={eventOrder.id} eventId={scopeId} disabled={lifecyclePending} />
-            <AddLineSheet
-              eventOrderId={eventOrder.id}
-              eventId={scopeId}
-              sectionId={null}
-              offerings={offerings}
-              packages={packages}
-              packagesWithItems={packagesWithItems}
-              inventoryItems={inventoryItems}
-              onAdded={() => refresh()}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <AddSectionInline eventOrderId={eventOrder.id} eventId={scopeId} disabled={lifecyclePending} />
+              <AddLineSheet
+                eventOrderId={eventOrder.id}
+                eventId={scopeId}
+                sectionId={null}
+                offerings={offerings}
+                packages={packages}
+                packagesWithItems={packagesWithItems}
+                inventoryItems={inventoryItems}
+                onAdded={() => refresh()}
+              />
+            </div>
+            {templates.length > 0 && (
+              <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center" data-testid="eo-apply-template">
+                <Select
+                  value={templateId}
+                  onValueChange={setTemplateId}
+                  items={[{ value: "blank", label: "Choose a template…" }, ...templates.map((t) => ({
+                    value: t.id,
+                    label: t.name,
+                  }))]}
+                >
+                  <SelectTrigger className="w-full min-w-0 sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blank">Choose a template…</SelectItem>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="sm" disabled={starting || templateId === "blank"}
+                  onClick={() => startStarting(async () => {
+                    const detail = await getEventOrderTemplateDetailAction(templateId);
+                    if (!detail) {
+                      toast.error("Could not load that template.");
+                      return;
+                    }
+                    setApplyTemplate(detail);
+                    setApplyOpen(true);
+                  })}>
+                  Apply a template
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

@@ -29,6 +29,7 @@ export function OfferingEditorSheet({
   sectionId,
   sectionName = null,
   line,
+  defaultIncluded = false,
   catalogOfferings,
   pending,
   onSave,
@@ -38,6 +39,8 @@ export function OfferingEditorSheet({
   sectionId: string | null;
   sectionName?: string | null;
   line: EventOrderTemplateLine | null;
+  /** Starting "covered by the package price" value for a new line. */
+  defaultIncluded?: boolean;
   catalogOfferings: OfferingWithCategory[];
   pending: boolean;
   onSave: (input: AddTemplateLineInput) => Promise<boolean>;
@@ -78,12 +81,12 @@ export function OfferingEditorSheet({
       setPricingModel("flat");
       setUnit("");
       setQuantity("1");
-      setIncluded(false);
+      setIncluded(defaultIncluded);
       setOfferingId(null);
       setCustomMode(available.length === 0);
     }
     setError("");
-  }, [open, line, available.length]);
+  }, [open, line, available.length, defaultIncluded]);
 
   function applyCatalog(id: string) {
     const offering = available.find((o) => o.id === id);
@@ -117,7 +120,7 @@ export function OfferingEditorSheet({
     setPricingModel("flat");
     setUnit("");
     setQuantity("1");
-    setIncluded(false);
+    setIncluded(defaultIncluded);
   }
 
   const showFields = Boolean(line) || Boolean(offeringId) || customMode;

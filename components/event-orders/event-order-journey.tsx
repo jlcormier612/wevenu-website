@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Stage 0 — Booking Details–style Event Order journey (one primary progress UI).
- * Domain actions remain on ClientChoicesPanel / EventOrderPanel.
+ * Event Order header — current step, one sentence, one primary action
+ * (Booking Details pattern). Domain actions remain on ClientChoicesPanel / EventOrderPanel.
  * Action labels are always meaningful workflow verbs — never generic "View".
  */
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export function EventOrderJourney({
   onNavigate: (target: CommercialNavTarget) => void;
 }) {
   const { rows, currentStep } = describeEventOrderJourney(input);
+  const current = rows.find((r) => r.isCurrent) ?? rows[0]!;
 
   return (
     <section
@@ -27,57 +28,56 @@ export function EventOrderJourney({
       data-testid="event-order-journey"
       data-current-step={currentStep}
     >
-      <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        Event Order
-      </h2>
-      <p className="mt-2 text-sm font-medium text-heading">Commercial journey for this booked event</p>
-      <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-        Client selections → Event Order → Invoice & payments. Same progression pattern as
-        Package/Proposal → Contract → Invoice. Inventory stays on its own card and tab.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Event Order
+          </h2>
+          <p className="mt-1 text-sm font-medium text-heading" data-testid="event-order-journey-current-state">
+            {current.title}: {current.state}
+          </p>
+          {current.detail ? (
+            <p className="mt-1 text-xs text-muted-foreground" data-testid="event-order-journey-current-hint">
+              {current.detail}
+            </p>
+          ) : null}
+        </div>
+        {current.primaryLabel ? (
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0"
+            data-testid={`event-order-journey-primary-${current.key}`}
+            onClick={() => onNavigate(current.nav)}
+          >
+            {current.primaryLabel}
+          </Button>
+        ) : null}
+      </div>
 
-      <ul className="mt-4 divide-y divide-border" data-testid="event-order-journey-rows">
-        {rows.map((row) => (
+      <ol className="mt-3 flex flex-wrap gap-2" data-testid="event-order-journey-rows">
+        {rows.map((row, index) => (
           <li
             key={row.key}
-            className="flex flex-col gap-2 py-3"
             data-testid={`event-order-journey-row-${row.key}`}
             data-current={row.isCurrent ? "true" : "false"}
           >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-heading">{row.title}</p>
-                <p className="text-sm text-heading">{row.state}</p>
-                {row.detail ? (
-                  <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{row.detail}</p>
-                ) : null}
-                {row.isCurrent ? (
-                  <p className="mt-1 text-xs font-medium text-heading" data-testid="event-order-journey-current-hint">
-                    Current step
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[min(100%,20rem)] sm:justify-end">
-                {row.primaryLabel ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={row.isCurrent ? "default" : "outline"}
-                    data-testid={
-                      row.isCurrent
-                        ? `event-order-journey-primary-${row.key}`
-                        : `event-order-journey-goto-${row.key}`
-                    }
-                    onClick={() => onNavigate(row.nav)}
-                  >
-                    {row.primaryLabel}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
+            <button
+              type="button"
+              className={
+                row.isCurrent
+                  ? "rounded-full border border-heading bg-muted/40 px-3 py-1 text-xs font-medium text-heading"
+                  : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+              }
+              data-testid={row.isCurrent ? undefined : `event-order-journey-goto-${row.key}`}
+              aria-current={row.isCurrent ? "step" : undefined}
+              onClick={() => onNavigate(row.nav)}
+            >
+              {index + 1}. {row.title} · {row.state}
+            </button>
           </li>
         ))}
-      </ul>
+      </ol>
     </section>
   );
 }

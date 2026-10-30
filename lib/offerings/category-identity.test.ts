@@ -67,13 +67,14 @@ describe("offering category identity", () => {
     assert.match(provision, /event_order_template_sections/);
   });
 
-  it("guided wizard exposes Change package categories on configure", () => {
+  it("guided builder lets the venue add and remove package sections in place", () => {
     const wizard = readFileSync(
       join(process.cwd(), "components/event-order-templates/guided-setup-wizard.tsx"),
       "utf8",
     );
     assert.match(wizard, /eo-guided-edit-package-categories/);
     assert.match(wizard, /openPackageCategories/);
-    assert.match(wizard, /Package categories/);
+    assert.match(wizard, /Add section/);
+    assert.match(wizard, /eo-guided-remove-section-/);
   });
 });

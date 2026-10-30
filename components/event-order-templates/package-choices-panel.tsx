@@ -315,10 +315,8 @@ export function PackageChoicesPanel({
 
   return (
     <div className="space-y-6" data-testid="eo-package-choices-panel">
-      <p className="text-sm text-muted-foreground">
-        Add parent Offerings the couple may choose between. Under each parent, include the
-        existing choice groups from your Offerings catalog, then set how many options the
-        couple must choose for this package.
+      <p className="text-xs text-muted-foreground">
+        Offerings the couple picks between, and how many they must choose.
       </p>
 
       {choiceSets.length === 0 ? (

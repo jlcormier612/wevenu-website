@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -14,29 +14,23 @@ import {
   removeEventOrderTemplateLineAction,
   updateEventOrderTemplateLineAction,
 } from "@/app/(app)/library/event-order-templates/actions";
-import { ConditionalChoicePreview } from "@/components/event-order-templates/event-order-template-choice-groups";
 import { EventOrderTemplateChoiceGroups } from "@/components/event-order-templates/event-order-template-choice-groups";
 import { OfferingEditorSheet } from "@/components/event-order-templates/offering-editor-sheet";
 import { PackageChoicesPanel } from "@/components/event-order-templates/package-choices-panel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   SUGGESTED_CATEGORIES,
   buildReviewSummary,
   canonicalSectionNameForSuggested,
-  matchSuggestedCategory,
   selectedCategoryKeysFromTemplate,
-  type CategoryConfigureSubstep,
-  type SuggestedCategoryKey,
-  type WizardPhase,
 } from "@/lib/event-order-templates/guided-setup";
 import { formatTemplateOfferingPrice, linesForSection } from "@/lib/event-order-templates/offerings";
-import { groupsForSection, rootGroupsInList } from "@/lib/event-order-templates/section-workspace";
+import { groupsForSection } from "@/lib/event-order-templates/section-workspace";
 import type {
   AddTemplateLineInput,
   EventOrderTemplateLine,
+  EventOrderTemplateSection,
   EventOrderTemplateWithDetails,
 } from "@/lib/event-order-templates/types";
 import type { OfferingChoiceGroup } from "@/lib/offerings/choice-groups";
@@ -49,6 +43,13 @@ type Props = {
   onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
 };
 
+type EditorTarget = {
+  section: EventOrderTemplateSection;
+  line: EventOrderTemplateLine | null;
+  defaultIncluded: boolean;
+};
+
+/** One scrolling page: each section shows Included, Couple chooses, and Add-ons. */
 export function GuidedSetupWizard({
   template,
   catalogOfferings = [],
@@ -56,171 +57,65 @@ export function GuidedSetupWizard({
   onPersist,
 }: Props) {
   const router = useRouter();
-  const existing = selectedCategoryKeysFromTemplate(template.sections);
-  const [phase, setPhase] = React.useState<WizardPhase>(() =>
-    template.sections.length === 0 ? "categories" : "configure",
-  );
-  const [suggestedSelected, setSuggestedSelected] = React.useState<SuggestedCategoryKey[]>(
-    () => existing.suggested,
-  );
-  const [customNames, setCustomNames] = React.useState<string[]>(() => existing.customNames);
-  const [customDraft, setCustomDraft] = React.useState("");
-  const [categoryIndex, setCategoryIndex] = React.useState(0);
-  const [substep, setSubstep] = React.useState<CategoryConfigureSubstep>("workspace");
   const [pending, startTransition] = React.useTransition();
-  const [editorOpen, setEditorOpen] = React.useState(false);
-  const [editingLine, setEditingLine] = React.useState<EventOrderTemplateLine | null>(null);
+  const [editor, setEditor] = React.useState<EditorTarget | null>(null);
   const [editorPending, startEditor] = React.useTransition();
-  const [specialistOpen, setSpecialistOpen] = React.useState(false);
+  const [addingSection, setAddingSection] = React.useState(template.sections.length === 0);
+  const [customDraft, setCustomDraft] = React.useState("");
 
   const sectionsOrdered = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
-  const activeSection = sectionsOrdered[categoryIndex] ?? null;
+  const existing = selectedCategoryKeysFromTemplate(template.sections);
+  const remainingSuggested = SUGGESTED_CATEGORIES.filter((c) => !existing.suggested.includes(c.key));
+  const review = buildReviewSummary(template);
+  const warningsBySection = new Map(review.map((r) => [r.sectionId, r.incompleteMessages]));
 
-  React.useEffect(() => {
-    if (categoryIndex >= sectionsOrdered.length && sectionsOrdered.length > 0) {
-      setCategoryIndex(sectionsOrdered.length - 1);
-    }
-  }, [categoryIndex, sectionsOrdered.length]);
-
-  function toggleSuggested(key: SuggestedCategoryKey) {
-    setSuggestedSelected((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
-  }
-
-  function addCustomCategory() {
-    const name = customDraft.trim();
-    if (!name) return;
-    if (customNames.some((n) => n.toLowerCase() === name.toLowerCase())) {
-      toast.error("That category is already listed.");
-      return;
-    }
-    if (SUGGESTED_CATEGORIES.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
-      toast.error("Use the suggested card for that category instead.");
-      return;
-    }
-    setCustomNames((prev) => [...prev, name]);
+  function openPackageCategories() {
     setCustomDraft("");
+    setAddingSection(true);
   }
 
-  async function syncCategoriesAndContinue() {
-    const desiredNames = [
-      ...suggestedSelected.map((k) => canonicalSectionNameForSuggested(k)).filter(Boolean),
-      ...customNames,
-    ];
-    const desiredNorm = new Set(desiredNames.map((n) => n.toLowerCase()));
-
-    const toRemove = sectionsOrdered.filter((s) => {
-      const match = matchSuggestedCategory(s.name);
-      if (match && suggestedSelected.includes(match.key)) return false;
-      if (customNames.some((n) => n.toLowerCase() === s.name.toLowerCase())) return false;
-      if (desiredNorm.has(s.name.toLowerCase())) return false;
-      return true;
-    });
-
-    for (const s of toRemove) {
-      const hasContent =
-        linesForSection(template.lines, s.id).length > 0
-        || groupsForSection(template.groups, s.id).length > 0;
-      const msg = hasContent
-        ? `Remove “${s.name}” and its configured items from this template? Event Orders already created are not changed.`
-        : `Remove “${s.name}” from this template setup?`;
-      if (!confirm(msg)) return;
+  function addSection(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (sectionsOrdered.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error("That section is already on this template.");
+      return;
     }
-
     startTransition(async () => {
       onPersist("saving");
-      for (const s of toRemove) {
-        const r = await removeEventOrderTemplateSectionAction(template.id, s.id);
-        if (!r.ok) {
-          onPersist("error", r.message ?? "Could not remove category.");
-          return;
-        }
-      }
-      for (const name of desiredNames) {
-        const exists = template.sections.some(
-          (s) => s.name.toLowerCase() === name.toLowerCase()
-            || matchSuggestedCategory(s.name)?.name.toLowerCase() === name.toLowerCase(),
-        );
-        const aliasExists = template.sections.some((s) => {
-          const m = matchSuggestedCategory(s.name);
-          const want = matchSuggestedCategory(name);
-          return Boolean(m && want && m.key === want.key);
-        });
-        if (exists || aliasExists) continue;
-        const r = await addEventOrderTemplateSectionAction(template.id, name, null);
-        if (!r.ok) {
-          onPersist("error", r.message ?? "Could not add category.");
-          return;
-        }
+      const r = await addEventOrderTemplateSectionAction(template.id, trimmed, null);
+      if (!r.ok) {
+        onPersist("error", r.message ?? "Could not add section.");
+        return;
       }
       onPersist("saved");
-      setCategoryIndex(0);
-      setSubstep("workspace");
-      setPhase(desiredNames.length === 0 ? "review" : "configure");
+      setCustomDraft("");
+      setAddingSection(false);
       router.refresh();
     });
   }
 
-  function goNextCategory() {
-    if (categoryIndex >= sectionsOrdered.length - 1) {
-      setPhase("review");
-      return;
-    }
-    setCategoryIndex((i) => i + 1);
-    setSubstep("workspace");
-  }
-
-  function advanceFromWorkspace() {
-    if (!activeSection) return;
-    const roots = rootGroupsInList(groupsForSection(template.groups, activeSection.id));
-    const emptyRoot = roots.find(
-      (g) => template.options.filter((o) => o.groupId === g.id).length === 0,
-    );
-    if (emptyRoot) {
-      toast.error(`Add at least one option to “${emptyRoot.name}” before continuing.`);
-      return;
-    }
-    goNextCategory();
-  }
-
-  /** Re-enter package category selection without discarding other category config. */
-  function openPackageCategories() {
-    const next = selectedCategoryKeysFromTemplate(template.sections);
-    setSuggestedSelected(next.suggested);
-    setCustomNames(next.customNames);
-    setCustomDraft("");
-    setPhase("categories");
-  }
-
-  function goBack() {
-    if (phase === "preview") {
-      setPhase("review");
-      return;
-    }
-    if (phase === "review") {
-      if (sectionsOrdered.length === 0) {
-        openPackageCategories();
-        return;
+  function removeSection(section: EventOrderTemplateSection) {
+    const hasContent =
+      linesForSection(template.lines, section.id).length > 0
+      || groupsForSection(template.groups, section.id).length > 0;
+    const msg = hasContent
+      ? `Remove “${section.name}” and its items from this template? Event Orders already created are not changed.`
+      : `Remove “${section.name}” from this template?`;
+    if (!confirm(msg)) return;
+    startTransition(async () => {
+      onPersist("saving");
+      const r = await removeEventOrderTemplateSectionAction(template.id, section.id);
+      if (!r.ok) onPersist("error", r.message ?? "Could not remove section.");
+      else {
+        onPersist("saved");
+        router.refresh();
       }
-      setPhase("configure");
-      setCategoryIndex(Math.max(0, sectionsOrdered.length - 1));
-      setSubstep("workspace");
-      return;
-    }
-    if (phase === "configure" && activeSection) {
-      if (categoryIndex > 0) {
-        setCategoryIndex((i) => i - 1);
-        setSubstep("workspace");
-      } else {
-        openPackageCategories();
-      }
-      return;
-    }
-    openPackageCategories();
+    });
   }
 
   async function persistLine(input: AddTemplateLineInput) {
+    const editingLine = editor?.line ?? null;
     return await new Promise<boolean>((resolve) => {
       startEditor(async () => {
         onPersist("saving");
@@ -239,520 +134,275 @@ export function GuidedSetupWizard({
     });
   }
 
-  const review = buildReviewSummary(template);
-  const progressLabel = (() => {
-    if (phase === "categories") return "What you offer";
-    if (phase === "configure" && activeSection) {
-      const catN = categoryIndex + 1;
-      const catTotal = sectionsOrdered.length || 1;
-      return `Category ${catN} of ${catTotal}: ${activeSection.name}`;
+  async function removeLine(lineId: string) {
+    onPersist("saving");
+    const r = await removeEventOrderTemplateLineAction(template.id, lineId);
+    if (!r.ok) onPersist("error", r.message);
+    else {
+      onPersist("saved");
+      router.refresh();
     }
-    if (phase === "review") return "Review complete setup";
-    return "Preview client experience";
-  })();
+  }
 
   return (
     <div className="space-y-6" data-testid="eo-guided-setup-wizard">
-      <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          Event Order package setup
-        </p>
-        <p className="mt-1 text-sm font-medium text-heading" data-testid="eo-guided-progress">
-          {progressLabel}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pick categories, then for each one add items always on the package and Offerings the couple
-          can choose from. Specialist rules stay available for unusual cases.
-        </p>
-      </div>
-
-      {phase === "categories" ? (
-        <section className="space-y-4" data-testid="eo-guided-step-categories">
-          <div>
-            <h2 className="font-heading text-xl text-heading">What does this package include?</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Select the categories this package covers (for example Catering or Bar). Skip what you do
-              not manage. Next you will add always-on items and couple choices from your Offerings.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {SUGGESTED_CATEGORIES.map((cat) => {
-              const on = suggestedSelected.includes(cat.key);
-              return (
-                <button
-                  key={cat.key}
-                  type="button"
-                  data-testid={`eo-guided-category-${cat.key}`}
-                  aria-pressed={on}
-                  onClick={() => toggleSuggested(cat.key)}
-                  className={`rounded-lg border p-4 text-left transition-colors ${
-                    on
-                      ? "border-heading bg-heading/5 ring-1 ring-heading"
-                      : "border-border bg-background hover:bg-muted/30"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-heading">{cat.name}</p>
-                    {on ? <Check className="h-4 w-4 shrink-0 text-heading" /> : null}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{cat.description}</p>
-                </button>
-              );
-            })}
-          </div>
-          <div className="space-y-2 rounded-lg border border-dashed border-border p-4">
-            <Label>Other / custom category</Label>
-            <p className="text-xs text-muted-foreground">
-              Add a category you define yourself (for example a specialty service).
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Input
-                value={customDraft}
-                onChange={(e) => setCustomDraft(e.target.value)}
-                placeholder="Category name"
-                data-testid="eo-guided-custom-category-input"
-              />
-              <Button type="button" variant="outline" onClick={addCustomCategory} data-testid="eo-guided-custom-category-add">
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add
-              </Button>
-            </div>
-            {customNames.length > 0 ? (
-              <ul className="mt-2 flex flex-wrap gap-2">
-                {customNames.map((n) => (
-                  <li key={n}>
-                    <Badge variant="secondary" className="gap-2">
-                      {n}
-                      <button
-                        type="button"
-                        className="underline"
-                        onClick={() => setCustomNames((prev) => prev.filter((x) => x !== n))}
-                      >
-                        Remove
-                      </button>
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap justify-between gap-2">
-            <Button type="button" variant="ghost" disabled>
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back
-            </Button>
-            <Button
-              type="button"
-              disabled={pending}
-              data-testid="eo-guided-categories-continue"
-              onClick={() => void syncCategoriesAndContinue()}
+      <div className="space-y-6" data-testid="eo-guided-step-workspace">
+        {sectionsOrdered.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            No sections yet. Add the first thing you sell, like Catering or Bar Service.
+          </p>
+        ) : null}
+        {sectionsOrdered.map((section) => {
+          const lines = linesForSection(template.lines, section.id);
+          const included = lines.filter((l) => l.includedByDefault);
+          const addOns = lines.filter((l) => !l.includedByDefault);
+          const warnings = warningsBySection.get(section.id) ?? [];
+          return (
+            <section
+              key={section.id}
+              className="rounded-lg border border-border p-4 space-y-5"
+              data-testid={`eo-guided-configure-${section.id}`}
             >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                <>
-                  Continue
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </div>
-        </section>
-      ) : null}
-
-      {phase === "configure" && activeSection ? (
-        <section className="space-y-4" data-testid={`eo-guided-configure-${activeSection.id}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              {sectionsOrdered.map((s, i) => (
-                <button
-                  key={s.id}
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-heading text-lg text-heading">{section.name}</h2>
+                <Button
                   type="button"
-                  className={`rounded-md border px-3 py-1.5 text-sm ${
-                    i === categoryIndex
-                      ? "border-heading bg-heading text-background"
-                      : i < categoryIndex
-                        ? "border-border bg-muted/40 text-heading"
-                        : "border-border text-muted-foreground"
-                  }`}
-                  onClick={() => {
-                    setCategoryIndex(i);
-                    setSubstep("workspace");
-                  }}
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={pending}
+                  aria-label={`Remove ${section.name}`}
+                  data-testid={`eo-guided-remove-section-${section.id}`}
+                  onClick={() => removeSection(section)}
                 >
-                  {s.name}
-                </button>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {warnings.map((m) => (
+                <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">{m}</p>
               ))}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              data-testid="eo-guided-edit-package-categories"
-              onClick={() => openPackageCategories()}
-            >
-              Change package categories
-            </Button>
-          </div>
 
-          {substep === "workspace" ? (
-            <div className="space-y-8" data-testid="eo-guided-step-workspace">
-              <div>
-                <h2 className="font-heading text-xl text-heading">
-                  Set up {activeSection.name}
-                </h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Work top to bottom: items always on this package, then Offerings the couple can
-                  choose from. Select Offerings from your catalog — you do not need to create
-                  questions first.
-                </p>
-              </div>
+              <TemplateLinesBlock
+                title="Included"
+                hint="Always on the package, covered by the package price."
+                testId={`eo-guided-step-fixed-${section.id}`}
+                addTestId={`eo-add-offering-${section.id}`}
+                addLabel="Add included item"
+                lines={included}
+                onAdd={() => setEditor({ section, line: null, defaultIncluded: true })}
+                onEdit={(line) => setEditor({ section, line, defaultIncluded: true })}
+                onRemove={removeLine}
+              />
 
-              <div className="space-y-4" data-testid="eo-guided-step-fixed">
-                <h3 className="font-heading text-lg text-heading">
-                  Always on the package
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  These belong to {activeSection.name} without a couple choice. When you add each item,
-                  set whether it is covered by the package price or billed as an additional charge —
-                  “always on the package” does not mean free.
-                </p>
-                <p className="text-xs text-muted-foreground" data-testid="eo-guided-item-source-help">
-                  Prefer a reusable Offering from your catalog when you sell it across events; use a
-                  template-only entry for one-off lines on this package only.
-                </p>
-                <FixedLinesPanel
-                  template={template}
-                  sectionId={activeSection.id}
-                  onEdit={(line) => {
-                    setEditingLine(line);
-                    setEditorOpen(true);
-                  }}
-                  onAdd={() => {
-                    setEditingLine(null);
-                    setEditorOpen(true);
-                  }}
-                  onRemove={async (lineId) => {
-                    onPersist("saving");
-                    const r = await removeEventOrderTemplateLineAction(template.id, lineId);
-                    if (!r.ok) onPersist("error", r.message);
-                    else {
-                      onPersist("saved");
-                      router.refresh();
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="space-y-4" data-testid="eo-guided-step-choices">
-                <h3 className="font-heading text-lg text-heading">
-                  Couple&apos;s choices
-                </h3>
+              <div className="space-y-2" data-testid={`eo-guided-step-choices-${section.id}`}>
+                <h3 className="text-sm font-semibold text-heading">Couple chooses</h3>
                 <PackageChoicesPanel
                   template={template}
                   catalogOfferings={catalogOfferings}
                   catalogChoiceGroups={catalogChoiceGroups}
-                  sectionId={activeSection.id}
-                  sectionName={activeSection.name}
+                  sectionId={section.id}
+                  sectionName={section.name}
                   onPersist={onPersist}
                 />
               </div>
-            </div>
-          ) : null}
 
-          <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
-            <Button type="button" variant="outline" onClick={goBack} data-testid="eo-guided-back">
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              {categoryIndex === 0 ? "Package categories" : "Back"}
-            </Button>
-            <Button
-              type="button"
-              disabled={pending}
-              data-testid="eo-guided-continue"
-              onClick={() => advanceFromWorkspace()}
-            >
-              Continue
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        </section>
-      ) : null}
+              <TemplateLinesBlock
+                title="Add-ons"
+                hint="Always on the package, billed as an extra charge."
+                testId={`eo-guided-step-addons-${section.id}`}
+                addTestId={`eo-add-addon-${section.id}`}
+                addLabel="Add add-on"
+                lines={addOns}
+                onAdd={() => setEditor({ section, line: null, defaultIncluded: false })}
+                onEdit={(line) => setEditor({ section, line, defaultIncluded: false })}
+                onRemove={removeLine}
+              />
 
-      {phase === "review" ? (
-        <section className="space-y-4" data-testid="eo-guided-step-review">
-          <h2 className="font-heading text-xl text-heading">Review your complete setup</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Always-on package items, couple choices from your Offerings, selection rules, and
-            pricing. Return to a category to edit.
-          </p>
-          {review.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-              No categories selected. Clients will not see commercial category choices from this
-              template until you add some.
-            </p>
-          ) : null}
-          {review.map((cat) => (
-            <div key={cat.sectionId} className="rounded-lg border border-border p-4 space-y-3" data-testid={`eo-guided-review-${cat.sectionId}`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-heading text-lg text-heading">{cat.name}</h3>
+              <SpecialistRules template={template} sectionId={section.id} catalogOfferings={catalogOfferings} onPersist={onPersist} />
+            </section>
+          );
+        })}
+      </div>
+
+      {addingSection ? (
+        <section className="space-y-3 rounded-lg border border-dashed border-border p-4" data-testid="eo-guided-step-categories">
+          <h2 className="text-sm font-semibold text-heading">Add section</h2>
+          {remainingSuggested.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {remainingSuggested.map((cat) => (
                 <Button
+                  key={cat.key}
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    const idx = sectionsOrdered.findIndex((s) => s.id === cat.sectionId);
-                    if (idx >= 0) {
-                      setCategoryIndex(idx);
-                      setSubstep("workspace");
-                      setPhase("configure");
-                    }
-                  }}
+                  disabled={pending}
+                  data-testid={`eo-guided-category-${cat.key}`}
+                  onClick={() => addSection(canonicalSectionNameForSuggested(cat.key) || cat.name)}
                 >
-                  Edit category
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  {cat.name}
                 </Button>
-              </div>
-              {cat.incompleteMessages.map((m) => (
-                <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">
-                  {m} — use Edit category to finish this configuration.
-                </p>
               ))}
-              {cat.fixedLines.length > 0 ? (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Package items
-                  </p>
-                  <ul className="mt-1 space-y-1 text-sm">
-                    {cat.fixedLines.map((l) => (
-                      <li key={l.id}>
-                        {l.description}
-                        {l.included
-                          ? " · covered by package price"
-                          : l.price != null
-                            ? ` · additional charge · $${l.price}`
-                            : " · not covered by package price"}
-                        {l.catalog ? " · from Offerings" : " · template-only"}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {cat.groups.map((g) => (
-                <ReviewGroupBlock key={g.id} group={g} depth={0} />
-              ))}
-              {cat.previewPathHint ? (
-                <p className="text-xs text-muted-foreground" data-testid={`eo-guided-review-path-${cat.sectionId}`}>
-                  {cat.previewPathHint}
-                </p>
-              ) : null}
             </div>
-          ))}
-          <div className="flex flex-wrap justify-between gap-2">
-            <Button type="button" variant="outline" onClick={goBack}>
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back
-            </Button>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                data-testid="eo-guided-edit-package-categories"
-                onClick={() => openPackageCategories()}
-              >
-                Change package categories
-              </Button>
-              <Button type="button" data-testid="eo-guided-goto-preview" onClick={() => setPhase("preview")}>
-                Preview client experience
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {phase === "preview" ? (
-        <section className="space-y-4" data-testid="eo-guided-step-preview">
-          <h2 className="font-heading text-xl text-heading">Preview the client experience</h2>
-          <p className="text-sm text-muted-foreground">
-            Interactive preview of the saved template. Try paths such as{" "}
-            <span className="font-medium text-heading">Catering → Plated Dinner → Entrée choice</span>.
-            This preview does not send an Event Order to a client and does not finalize anything.
-          </p>
-          <p
-            className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
-            data-testid="eo-guided-preview-non-sending"
-          >
-            Preview only — no send, no finalize.
-          </p>
-          {review.some((c) => c.incompleteMessages.length > 0) ? (
-            <p className="rounded-md border border-amber-600/40 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="eo-guided-preview-incomplete">
-              Some follow-up lists are still empty. Return to setup to finish them or remove empty branches
-              so clients do not see incomplete choices. Incomplete configuration does not block this
-              preview, and preview still does not send or finalize.
-            </p>
           ) : null}
-          <div className="rounded-lg border border-border p-4" data-testid="eo-template-client-preview">
-            <ConditionalChoicePreview template={template} />
-          </div>
-          <div className="flex flex-wrap justify-between gap-2">
-            <Button type="button" variant="outline" onClick={goBack} data-testid="eo-guided-preview-back">
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back to review
-            </Button>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addSection(customDraft); }}
+              placeholder="Or name your own section"
+              className="max-w-xs"
+              data-testid="eo-guided-custom-category-input"
+            />
             <Button
               type="button"
               variant="outline"
-              render={<Link href={`/library/event-order-templates/${template.id}/preview`} />}
+              disabled={pending || !customDraft.trim()}
+              data-testid="eo-guided-custom-category-add"
+              onClick={() => addSection(customDraft)}
             >
-              Full-page preview
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
             </Button>
+            {sectionsOrdered.length > 0 ? (
+              <Button type="button" variant="ghost" onClick={() => setAddingSection(false)}>Cancel</Button>
+            ) : null}
           </div>
         </section>
-      ) : null}
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid="eo-guided-edit-package-categories"
+          onClick={() => openPackageCategories()}
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add section
+        </Button>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+        <p className="text-xs text-muted-foreground" data-testid="eo-guided-preview-non-sending">
+          Preview only — no send, no finalize.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid="eo-guided-goto-preview"
+          render={<Link href={`/library/event-order-templates/${template.id}/preview`} />}
+        >
+          Preview the couple&apos;s view
+        </Button>
+      </div>
 
       <OfferingEditorSheet
-        open={editorOpen}
-        onOpenChange={setEditorOpen}
-        sectionId={activeSection?.id ?? null}
-        sectionName={activeSection?.name ?? null}
-        line={editingLine}
+        open={editor !== null}
+        onOpenChange={(open) => { if (!open) setEditor(null); }}
+        sectionId={editor?.section.id ?? null}
+        sectionName={editor?.section.name ?? null}
+        line={editor?.line ?? null}
+        defaultIncluded={editor?.defaultIncluded}
         catalogOfferings={catalogOfferings}
         pending={editorPending}
         onSave={persistLine}
       />
-
-      {phase !== "preview" ? (
-        <details
-          className="rounded-lg border border-border/60 p-3 text-sm text-muted-foreground"
-          data-testid="eo-specialist-selection-rules"
-          open={specialistOpen}
-          onToggle={(e) => setSpecialistOpen((e.target as HTMLDetailsElement).open)}
-        >
-          <summary className="cursor-pointer font-medium text-heading">Specialist selection rules</summary>
-          <p className="mt-2 mb-3">
-            Unusual cross-group relationships, unassigned groups, and other specialist controls. Ordinary
-            always-on items and Offering-based couple choices do not require this section.
-          </p>
-          {specialistOpen && activeSection ? (
-            <EventOrderTemplateChoiceGroups
-              template={template}
-              catalogOfferings={catalogOfferings}
-              onPersist={onPersist}
-              lockedSectionId={activeSection.id}
-              compact
-              showPreview={false}
-              nestBranches
-              specialistMode
-            />
-          ) : specialistOpen ? (
-            <p>Select or create a category first.</p>
-          ) : null}
-        </details>
-      ) : null}
     </div>
   );
 }
 
-function ReviewGroupBlock({
-  group,
-  depth,
-}: {
-  group: ReturnType<typeof buildReviewSummary>[number]["groups"][number];
-  depth: number;
-}) {
-  return (
-    <div
-      className={`rounded-md border border-border/70 p-3 text-sm ${depth > 0 ? "ml-3 border-l-4 border-l-heading/25" : ""}`}
-      data-testid={`eo-guided-review-group-${group.id}`}
-      data-dependent={group.isDependent ? "true" : "false"}
-    >
-      <p className="font-medium text-heading">
-        {depth > 0 ? "Follow-up: " : ""}
-        {group.name}
-        {group.incomplete ? " — incomplete" : ""}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {group.selectionMode === "single" ? "Choose one" : "Choose multiple"}
-        {group.required ? " · required" : " · optional"}
-        {group.dependsOnLabels.length > 0
-          ? ` · shown after: ${group.dependsOnLabels.join(", ")}`
-          : ""}
-      </p>
-      <ul className="mt-1 space-y-2">
-        {group.options.map((o) => (
-          <li key={o.id}>
-            <span>
-              {o.label}
-              {o.isIncluded
-                ? " · included"
-                : o.unitPrice != null
-                  ? ` · additional $${o.unitPrice}`
-                  : ""}
-              {o.catalog ? " · Offering" : " · template-only"}
-            </span>
-            {o.followUps.length > 0 ? (
-              <div className="mt-2 space-y-2">
-                {o.followUps.map((fu) => (
-                  <ReviewGroupBlock key={fu.id} group={fu} depth={depth + 1} />
-                ))}
-              </div>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function packageItemPriceTreatment(line: EventOrderTemplateLine): string {
-  const price = formatTemplateOfferingPrice(line);
-  if (line.includedByDefault) {
-    return `Covered by package price · ${price}`;
-  }
-  return `Additional charge (not covered by package price) · ${price}`;
-}
-
-function FixedLinesPanel({
+function SpecialistRules({
   template,
   sectionId,
-  onEdit,
-  onAdd,
-  onRemove,
+  catalogOfferings,
+  onPersist,
 }: {
   template: EventOrderTemplateWithDetails;
   sectionId: string;
-  onEdit: (line: EventOrderTemplateLine) => void;
+  catalogOfferings: OfferingWithCategory[];
+  onPersist: Props["onPersist"];
+}) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <details
+      className="text-sm text-muted-foreground"
+      data-testid={`eo-specialist-selection-rules-${sectionId}`}
+      open={open}
+      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+    >
+      <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Specialist selection rules</summary>
+      {open ? (
+        <div className="mt-3">
+          <EventOrderTemplateChoiceGroups
+            template={template}
+            catalogOfferings={catalogOfferings}
+            onPersist={onPersist}
+            lockedSectionId={sectionId}
+            compact
+            showPreview={false}
+            nestBranches
+            specialistMode
+          />
+        </div>
+      ) : null}
+    </details>
+  );
+}
+
+function TemplateLinesBlock({
+  title,
+  hint,
+  testId,
+  addTestId,
+  addLabel,
+  lines,
+  onAdd,
+  onEdit,
+  onRemove,
+}: {
+  title: string;
+  hint: string;
+  testId: string;
+  addTestId: string;
+  addLabel: string;
+  lines: EventOrderTemplateLine[];
   onAdd: () => void;
+  onEdit: (line: EventOrderTemplateLine) => void;
   onRemove: (lineId: string) => void | Promise<void>;
 }) {
-  const offerings = linesForSection(template.lines, sectionId);
   return (
-    <div className="space-y-3">
-      {offerings.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-          No package items yet. Add items that always belong on this package — they are not couple
-          choices.
-        </p>
-      ) : (
-        offerings.map((line) => (
-          <div
-            key={line.id}
-            className="rounded-md border border-border p-3"
-            data-testid={`eo-package-item-${line.id}`}
-            data-included-by-default={line.includedByDefault ? "true" : "false"}
-          >
-            <p className="text-sm font-medium text-heading">{line.description}</p>
-            <p className="text-xs text-muted-foreground">
-              {line.offeringId ? "From Offerings catalog" : "Template-only"} ·{" "}
-              {packageItemPriceTreatment(line)}
-            </p>
-            <div className="mt-2 flex gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => onEdit(line)}>Edit</Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => void onRemove(line.id)}>Remove</Button>
-            </div>
-          </div>
-        ))
-      )}
-      <Button type="button" size="sm" onClick={onAdd} data-testid={`eo-add-offering-${sectionId}`}>
+    <div className="space-y-2" data-testid={testId}>
+      <div>
+        <h3 className="text-sm font-semibold text-heading">{title}</h3>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </div>
+      {lines.length > 0 ? (
+        <ul className="divide-y divide-border rounded-md border border-border">
+          {lines.map((line) => (
+            <li
+              key={line.id}
+              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+              data-testid={`eo-package-item-${line.id}`}
+              data-included-by-default={line.includedByDefault ? "true" : "false"}
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-heading">{line.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatTemplateOfferingPrice(line)}
+                  {line.offeringId ? "" : " · one-off item"}
+                </p>
+              </div>
+              <div className="flex gap-1">
+                <Button type="button" size="sm" variant="ghost" onClick={() => onEdit(line)}>Edit</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => void onRemove(line.id)}>Remove</Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <Button type="button" size="sm" variant="outline" onClick={onAdd} data-testid={addTestId}>
         <Plus className="mr-1.5 h-3.5 w-3.5" />
-        Add package item
+        {addLabel}
       </Button>
     </div>
   );

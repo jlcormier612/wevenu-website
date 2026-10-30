@@ -37,7 +37,7 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.doesNotMatch(page, /follow-ups under each answer/i);
   });
 
-  it("wizard covers categories → workspace → review → preview without pattern quiz", () => {
+  it("builder is one scrolling page — Included / Couple chooses / Add-ons per section, no pattern quiz", () => {
     const wizard = readFileSync(
       join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
       "utf8",
@@ -51,16 +51,19 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /eo-guided-step-workspace/);
     assert.match(wizard, /eo-guided-step-fixed/);
     assert.match(wizard, /eo-guided-step-choices/);
-    assert.match(wizard, /eo-guided-step-review/);
-    assert.match(wizard, /eo-guided-step-preview/);
-    assert.match(wizard, /What does this package include/);
-    assert.match(wizard, /Set up \{activeSection\.name\}/);
+    assert.match(wizard, /eo-guided-step-addons/);
+    assert.match(wizard, /sectionsOrdered\.map\(\(section\)/);
+    assert.match(wizard, /title="Included"/);
+    assert.match(wizard, /Couple chooses/);
+    assert.match(wizard, /title="Add-ons"/);
+    assert.match(wizard, /Add section/);
     assert.match(wizard, /Specialist selection rules/);
     assert.match(wizard, /eo-specialist-selection-rules/);
     assert.match(wizard, /eo-guided-preview-non-sending/);
     assert.match(wizard, /Preview only — no send, no finalize/);
-    assert.match(wizard, /phase !== "preview"/);
+    assert.match(wizard, /\/library\/event-order-templates\/\$\{template\.id\}\/preview/);
     assert.match(wizard, /eo-guided-category-\$\{cat\.key\}/);
+    assert.doesNotMatch(wizard, /setPhase|categoryIndex|eo-guided-continue/);
     assert.match(guided, /\| "ceremony"/);
     assert.match(guided, /key: "ceremony"/);
     assert.doesNotMatch(wizard, /eo-guided-step-patterns/);
@@ -91,7 +94,6 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(groups, /specialistMode/);
     assert.match(wizard, /PackageChoicesPanel/);
     assert.match(wizard, /specialistMode/);
-    assert.match(wizard, /eo-guided-item-source-help/);
     assert.match(wizard, /eo-package-choices-panel|PackageChoicesPanel/);
     assert.match(panel, /eo-package-choices-panel/);
     assert.match(panel, /CategorizedOfferingSelect/);
@@ -108,8 +110,9 @@ describe("EO template builder — guided setup UX seams", () => {
       join(root, "components/event-order-templates/package-choices-panel.tsx"),
       "utf8",
     );
-    assert.match(wizard, /Always on the package/);
-    assert.match(wizard, /Couple.*s choices/);
+    assert.match(wizard, /Always on the package, covered by the package price/);
+    assert.match(wizard, /Always on the package, billed as an extra charge/);
+    assert.match(wizard, /Couple chooses/);
     assert.match(panel, /eo-couple-choice-offering-select/);
     assert.match(panel, /Dependent option groups/);
     assert.match(panel, /How many must the couple choose\?/);

@@ -171,7 +171,7 @@ function ChoicesComposerActions({
           {actor === "venue" ? " · Venue to act" : actor === "client" ? " · Client to act" : ""}
           {needsReview ? " · Couple submission (not yet on Event Order)" : ""}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">{summarizeAnswers(row)}</p>
+        {needsReview ? null : <p className="mt-1 text-xs text-muted-foreground">{summarizeAnswers(row)}</p>}
         {appliedLineIds.length > 0 ? (
           <p className="text-xs text-muted-foreground mt-1" data-testid="choices-prior-applied">
             Previously applied {appliedLineIds.length} Event Order line
@@ -348,7 +348,10 @@ function ChoicesComposerActions({
           data-testid="choices-submission-summary"
         >
           <p className="text-xs font-medium text-heading">Couple-submitted choices</p>
-          <ChoicesDefinitionView definition={row.definition} answers={row.answers} mode="review" />
+          <p className="text-sm text-foreground">{summarizeAnswers(row)}</p>
+          <p className="text-xs text-muted-foreground">
+            Each answer also shows in its section of the Event Order below. Review selections opens their full form.
+          </p>
         </div>
       ) : null}
 
@@ -532,9 +535,7 @@ export function ClientChoicesPanel({
       <CardHeader>
         <CardTitle className="text-base">Client selections</CardTitle>
         <CardDescription>
-          Choose an Event Order template, review the complete offering, then send a selection
-          request. Same composer pattern as Package/Proposal — sending does not finalize the Event
-          Order or create an invoice.
+          Choose a template, then send the couple a selection request.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -630,26 +631,37 @@ export function ClientChoicesPanel({
               ) : null}
             </div>
 
-            {/* Right: full template / packet preview (proposal composer pattern) */}
+            {/* Right: template preview; an active packet's full form stays folded (choices show in the Event Order). */}
+            {active ? (
+              <details
+                className="min-w-0 rounded-lg border border-border bg-muted/20 p-4"
+                data-testid="choices-template-preview"
+              >
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                  Show the full selection request
+                </summary>
+                <div className="mt-3">
+                  <ChoicesDefinitionView
+                    definition={active.definition}
+                    answers={active.answers}
+                    mode={isClientChoicesNeedsVenueReview(active.status) ? "review" : "preview"}
+                    testId="choices-composer-definition-preview"
+                  />
+                </div>
+              </details>
+            ) : (
             <aside
               className="min-w-0 rounded-lg border border-border bg-muted/20 p-4 lg:sticky lg:top-4 lg:max-h-[min(70vh,40rem)] lg:overflow-y-auto"
               data-testid="choices-template-preview"
             >
               <p className="mb-3 text-[0.7rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                {active ? "Selection request preview" : "Template preview"}
+                Template preview
               </p>
-              {detailLoading && !active ? (
+              {detailLoading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading template…
                 </div>
-              ) : active ? (
-                <ChoicesDefinitionView
-                  definition={active.definition}
-                  answers={active.answers}
-                  mode={isClientChoicesNeedsVenueReview(active.status) ? "review" : "preview"}
-                  testId="choices-composer-definition-preview"
-                />
               ) : templateDetail ? (
                 <EventOrderTemplatePreviewView template={templateDetail} />
               ) : (
@@ -658,6 +670,7 @@ export function ClientChoicesPanel({
                 </p>
               )}
             </aside>
+            )}
           </div>
         )}
 
