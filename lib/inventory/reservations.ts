@@ -170,4 +170,11 @@ export function stockSentence(s: EventItemStock, date: string): string {
   return s.short > 0 ? `${head} — ${s.short} short` : head;
 }
 
+/** Right-hand text on an item's upcoming row. Waiting rows show the outcome if the couple approves. */
+export function upcomingRowSentence(r: ItemDateRow, owned: number): string {
+  const total = `${r.reservedWithOthers} of ${owned} reserved at that time`;
+  if (r.state === "pending") return r.short > 0 ? `If approved: ${r.short} short` : `If approved: ${total}`;
+  return r.short > 0 ? `${total} — ${r.short} short` : total;
+}
+
 export { shortDate as formatStockDate };

@@ -11,6 +11,7 @@ import {
   stockSentence,
   stockWindow,
   upcomingForItem,
+  upcomingRowSentence,
   type StockEvent,
   type StockSharingSettings,
 } from "@/lib/inventory/reservations";
@@ -98,6 +99,17 @@ describe("inventory item upcoming dates", () => {
     assert.deepEqual(rows.map((r) => [r.name, r.reservedWithOthers, r.short]), [["shower", 160, 40], ["wedding", 160, 40]]);
     const shared = upcomingForItem(chair, [wedding, shower], byTime, "2026-10-30");
     assert.ok(shared.every((r) => r.short === 0));
+  });
+  it("a waiting row reads as what happens if approved, not as already reserved", () => {
+    const pendingBrunch = ev("brunch", { state: "pending", quantities: { chair: 50 } });
+    const rows = upcomingForItem(chair, [wedding, shower, pendingBrunch], sameDay, "2026-10-30");
+    const row = (n: string) => rows.find((r) => r.name === n)!;
+    assert.equal(row("brunch").reservedWithOthers, 210);
+    assert.equal(upcomingRowSentence(row("brunch"), 120), "If approved: 90 short");
+    assert.equal(upcomingRowSentence(row("wedding"), 120), "160 of 120 reserved at that time — 40 short");
+    const small = upcomingForItem(chair, [ev("brunch", { state: "pending", quantities: { chair: 50 } })], sameDay, "2026-10-30");
+    assert.equal(upcomingRowSentence(small[0]!, 120), "If approved: 50 of 120 reserved at that time");
+    assert.match(read("components/inventory/item-upcoming-reservations.tsx"), /upcomingRowSentence\(r, owned\)/);
   });
 });
 

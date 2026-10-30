@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { formatStockDate, type ItemDateRow } from "@/lib/inventory/reservations";
+import { formatStockDate, upcomingRowSentence, type ItemDateRow } from "@/lib/inventory/reservations";
 
 /** Upcoming events using this item: reserved (couple approved) or waiting on approval. */
 export function ItemUpcomingReservations({ owned, rows }: { owned: number; rows: ItemDateRow[] }) {
@@ -36,7 +36,7 @@ export function ItemUpcomingReservations({ owned, rows }: { owned: number; rows:
                 </span>
                 {owned > 0 ? (
                   <span className={r.short > 0 ? "text-amber-800" : "text-muted-foreground"}>
-                    {r.reservedWithOthers} of {owned} reserved at that time{r.short > 0 ? ` — ${r.short} short` : ""}
+                    {upcomingRowSentence(r, owned)}
                   </span>
                 ) : null}
               </li>
