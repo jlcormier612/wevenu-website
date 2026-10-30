@@ -320,7 +320,7 @@ jobs:
               "ParameterKey=ResendInboundAddress,ParameterValue=${{ vars.RESEND_INBOUND_ADDRESS }}" \
               "ParameterKey=CronSecret,ParameterValue=${{ secrets.CRON_SECRET }}" \
               "ParameterKey=NotificationsSecret,ParameterValue=${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
-              "ParameterKey=CommunicationMode,ParameterValue=disabled" \
+              "ParameterKey=CommunicationMode,ParameterValue=real" \
               "ParameterKey=StripePriceStarter,ParameterValue=price_1U42LNErUqJH7nktdpRin9ev" \
               "ParameterKey=StripePriceGrowing,ParameterValue=price_1U5rfoErUqJH7nkts2RnCCtg" \
               "ParameterKey=StripePriceGrowingFounder,ParameterValue=price_1U5rfoErUqJH7nktxJONRlCq" \
@@ -408,7 +408,7 @@ jobs:
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
               CronSecret="${{ secrets.CRON_SECRET }}" \
               NotificationsSecret="${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
-              CommunicationMode=disabled \
+              CommunicationMode=real \
               StripePriceStarter=price_1U42LNErUqJH7nktdpRin9ev \
               StripePriceGrowing=price_1U5rfoErUqJH7nkts2RnCCtg \
               StripePriceGrowingFounder=price_1U5rfoErUqJH7nktxJONRlCq \
@@ -444,14 +444,14 @@ jobs:
       # stack parameter, the deployed template wiring, and that every running
       # venue-app task uses the stack-registered revision. The deploy role has
       # no ecs:DescribeTaskDefinition, so the revision is matched via stack events.
-      - name: Verify venue-app email is disabled
+      - name: Verify venue-app email mode is real
         env:
           STACK: ${{ vars.CFN_STACK_NAME }}
         run: |
           mode=$(aws cloudformation describe-stacks --stack-name "$STACK" \
             --query "Stacks[0].Parameters[?ParameterKey=='CommunicationMode'].ParameterValue" --output text)
-          if [ "$mode" != "disabled" ]; then
-            echo "::error::Stack CommunicationMode is '$mode', expected 'disabled'."
+          if [ "$mode" != "real" ]; then
+            echo "::error::Stack CommunicationMode is '$mode', expected 'real'."
             exit 1
           fi
 
@@ -493,7 +493,7 @@ jobs:
             echo "::error::venue-app deployment is not fully on $svc_td: $deployments"
             exit 1
           fi
-          echo "venue-app COMMUNICATION_MODE=disabled on $svc_td ($dep_running/$dep_desired tasks)"
+          echo "venue-app COMMUNICATION_MODE=real on $svc_td ($dep_running/$dep_desired tasks)"
 
       - name: Verify ALB endpoints
         run: |

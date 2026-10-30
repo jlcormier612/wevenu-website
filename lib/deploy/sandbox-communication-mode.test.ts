@@ -60,9 +60,9 @@ describe("Sandbox COMMUNICATION_MODE", () => {
     assert.ok((venue.Secrets ?? []).some((s) => s.Name === "RESEND_API_KEY"));
   });
 
-  it("passes disabled on both Sandbox deploy paths", () => {
-    assert.match(changeSetBlock, /"ParameterKey=CommunicationMode,ParameterValue=disabled"/);
-    assert.match(deployBlock, /^\s*CommunicationMode=disabled \\$/m);
+  it("passes real on both Sandbox deploy paths", () => {
+    assert.match(changeSetBlock, /"ParameterKey=CommunicationMode,ParameterValue=real"/);
+    assert.match(deployBlock, /^\s*CommunicationMode=real \\$/m);
     const deployJob = workflow.slice(workflow.indexOf("\n  deploy:"), workflow.indexOf("\n  verify:"));
     assert.equal((deployJob.match(/CommunicationMode/g) ?? []).length, 2, "no other value is passed anywhere");
   });
@@ -78,13 +78,13 @@ describe("Sandbox COMMUNICATION_MODE", () => {
     }
   });
 
-  it("fails the deploy run unless the running venue-app revision has email disabled", () => {
+  it("fails the deploy run unless the running venue-app revision sends real email", () => {
     const stable = verifyJob.indexOf("aws ecs wait services-stable");
-    const step = verifyJob.indexOf("- name: Verify venue-app email is disabled");
+    const step = verifyJob.indexOf("- name: Verify venue-app email mode is real");
     assert.ok(stable > 0 && step > stable, "check runs after services stabilize");
     const body = verifyJob.slice(step, verifyJob.indexOf("- name: Verify ALB endpoints"));
     assert.match(body, /ParameterKey=='CommunicationMode'/);
-    assert.match(body, /"\$mode" != "disabled"/);
+    assert.match(body, /"\$mode" != "real"/);
     assert.match(body, /"Name": "COMMUNICATION_MODE", "Value": \{"Ref": "CommunicationMode"\}/);
     assert.match(body, /LogicalResourceId=='VenueAppTaskDefinition'/);
     assert.doesNotMatch(body, /\| \[0\]\.PhysicalResourceId/, "per-page --query indexing returns stale revisions");
