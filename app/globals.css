@@ -311,6 +311,62 @@ html.dark:has(.htc-staff) {
 }
 
 /*
+ * DARK STAFF — status ink legibility.
+ * Light-mode warning/error utilities (amber-800 text, amber-50 fills, dusty-rose
+ * destructive/taupe warning ink) drop to ~1–2.6:1 on Forest/Heritage Sage.
+ * Remap them to light ink + translucent tints so every label clears WCAG AA
+ * (≥4.5:1 on Heritage Sage cards). Elements that already declare their own
+ * dark: color for that property are left alone.
+ */
+html.dark:has(.htc-staff) :is(
+  [class~="text-amber-500"], [class~="text-amber-600"], [class~="text-amber-700"],
+  [class~="text-amber-800"], [class~="text-amber-900"], [class~="text-amber-950"],
+  [class*="text-amber-800/"], [class*="text-amber-900/"],
+  [class~="text-yellow-700"], [class~="text-yellow-900"], [class~="text-orange-700"]
+):not([class*="dark:text-"]) {
+  color: #fef3c7;
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"],
+  [class~="text-red-800"], [class~="text-red-900"],
+  [class~="text-destructive"]
+):not([class*="dark:text-"]) {
+  color: color-mix(in oklch, var(--dusty-rose) 22%, var(--true-white));
+}
+
+html.dark:has(.htc-staff) [class~="text-warning"]:not([class*="dark:text-"]) {
+  color: color-mix(in oklch, var(--taupe-dark) 22%, var(--true-white));
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="bg-amber-50"], [class*="bg-amber-50/"], [class~="bg-amber-100"],
+  [class~="bg-yellow-50"], [class~="bg-orange-50"]
+):not([class*="dark:bg-"]) {
+  background-color: color-mix(in oklch, #f59e0b 16%, transparent);
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="bg-red-50"], [class~="bg-red-100"], [class*="bg-rose-50/"]
+):not([class*="dark:bg-"]) {
+  background-color: color-mix(in oklch, var(--dusty-rose) 20%, transparent);
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="border-amber-100"], [class~="border-amber-200"], [class*="border-amber-200/"],
+  [class~="border-amber-300"], [class*="border-amber-300/"], [class~="border-orange-100"]
+):not([class*="dark:border-"]) {
+  border-color: color-mix(in oklch, #fcd34d 50%, transparent);
+}
+
+html.dark:has(.htc-staff) :is(
+  [class~="border-red-100"], [class~="border-red-200"], [class~="border-red-300"],
+  [class*="border-rose-200/"]
+):not([class*="dark:border-"]) {
+  border-color: color-mix(in oklch, var(--dusty-rose) 55%, transparent);
+}
+
+/*
  * STAFF PRIMITIVES — CRM-like chrome for shared shadcn slots.
  * Unlayered so these beat Tailwind utilities (rounded-xl, shadow-sm, etc.).
  * Prefer `html:has(.htc-staff)` so portaled popups get the same treatment.

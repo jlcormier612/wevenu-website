@@ -269,7 +269,10 @@ export function NotificationBell() {
                           </p>
                         )}
                         {href && (
-                          <p className="mt-1.5 text-[10px] font-semibold" style={{ color: "#9B4F54" }}>
+                          <p
+                            data-testid="notification-cta"
+                            className="mt-1.5 text-[10px] font-semibold text-[#9B4F54] dark:text-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--true-white))]"
+                          >
                             {getCta(n.type)} →
                           </p>
                         )}
