@@ -207,7 +207,10 @@ export function computeRequiredVsPlaced(input: {
 }
 
 export function rowSentence(row: RvpRow): string {
-  if (row.status === "not_ordered") return `${row.placed} on the plan, not on the Event Order`;
+  // Soft informational note — furniture placed for seating/décor often has no EO line.
+  if (row.status === "not_ordered") {
+    return `${row.placed} on this layout · not listed on the Event Order`;
+  }
   const base = `${row.required} required · ${row.placed} placed`;
   if (row.status === "short") return `${base} · ${row.required - row.placed} short`;
   if (row.status === "over") return `${base} · ${row.placed - row.required} over`;

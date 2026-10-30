@@ -958,16 +958,14 @@ export function FloorPlanWorkspace({
 
   return (
     <div className="space-y-4" data-testid="floor-plan-operational-workspace">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground" data-testid="floor-plan-workspace-intro">
         {preBooking
-          ? "Sketch the room for this client. Sharing a plan and client layout choice wait until this relationship is Booked."
+          ? "Sketch the room for this client. Sharing with the couple waits until this relationship is Booked."
           : (
             <>
-              Create, edit, and share layouts for this event. The{" "}
-              <span className="font-medium text-foreground">working layout</span> is for venue prep — sharing a
-              floor plan, seating access, and couple preference approval stay separate controls. Offer Library
-              layouts under Event setup → Change for this event. Multiple layouts may coexist without a setup
-              package.
+              Start with a layout, place furniture, then Share when the couple should see it. The{" "}
+              <span className="font-medium text-foreground">working layout</span> is the one you are preparing
+              for the day — sharing and seating are separate steps you turn on when ready.
             </>
           )}
       </p>
@@ -1056,20 +1054,20 @@ export function FloorPlanWorkspace({
             </>
           ) : activeOffers.length === 1 ? (
             <p data-testid="floor-plan-sole-offer-working">
-              Sole offered layout
-              {workingPlan ? ` seeds the working layout (${workingPlan.name}) and can share layout view` : " can seed the working layout when unset"}
-              . Seating access and preference approval stay venue-controlled — a sole offer is not approval.
+              One layout is offered
+              {workingPlan ? ` — working layout is ${workingPlan.name}` : " and can become the working layout"}
+              . Sharing and seating still wait for you; offering alone does not approve anything.
             </p>
           ) : activeOffers.length > 1 ? (
             <p data-testid="floor-plan-client-pending">
-              Client has not saved a preference yet.
+              The couple has not picked a preferred layout yet.
               {workingPlan
                 ? ` Working layout is ${workingPlan.name}.`
-                : " No working layout is designated — set one explicitly; multiple offers will not invent a fallback."}
+                : " Choose Set as working layout on a plan when you are ready — offering several options does not pick one for you."}
             </p>
           ) : (
             <p data-testid="floor-plan-no-offers-status">
-              No layouts are offered for this event yet. Use Event setup → Change for this event to offer a Library layout.
+              No Library layouts are offered yet. Add a layout below, or offer options from Event setup when the couple should choose.
             </p>
           )}
         </div>
@@ -1089,29 +1087,31 @@ export function FloorPlanWorkspace({
         />
       )}
 
+      {/* Optional tools stay one click away so the first screen stays about arranging the room. */}
       {!preBooking && eventId ? (
-        <FloorPlanSetupPackagePanel
-          eventId={eventId}
-          floorPlans={floorPlans}
-          canEdit={canEdit}
-        />
-      ) : null}
-
-      {!preBooking && eventId ? (
-        <FloorPlanReviewFlagsPanel
-          eventId={eventId}
-          floorPlans={floorPlans}
-          spaces={spaces}
-          canEdit={canEdit}
-        />
-      ) : null}
-
-      {!preBooking && eventId ? (
-        <FloorPlanFlipPanel
-          eventId={eventId}
-          floorPlans={floorPlans}
-          canEdit={canEdit}
-        />
+        <details className="rounded-lg border border-border bg-muted/10 px-3 py-2" data-testid="floor-plan-advanced-tools">
+          <summary className="cursor-pointer text-sm font-medium text-heading">
+            More layout tools (optional)
+          </summary>
+          <div className="mt-3 space-y-3">
+            <FloorPlanSetupPackagePanel
+              eventId={eventId}
+              floorPlans={floorPlans}
+              canEdit={canEdit}
+            />
+            <FloorPlanReviewFlagsPanel
+              eventId={eventId}
+              floorPlans={floorPlans}
+              spaces={spaces}
+              canEdit={canEdit}
+            />
+            <FloorPlanFlipPanel
+              eventId={eventId}
+              floorPlans={floorPlans}
+              canEdit={canEdit}
+            />
+          </div>
+        </details>
       ) : null}
 
       {!preBooking && eventId
@@ -1159,13 +1159,13 @@ export function FloorPlanWorkspace({
           className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border py-12 px-4 text-center"
           data-testid="floor-plan-empty-no-working"
         >
-          <p className="text-sm font-medium text-heading">No working layout for this event yet</p>
+          <p className="text-sm font-medium text-heading">No layout for this event yet</p>
           <p className="max-w-md text-xs text-muted-foreground">
             {activeOffers.length === 1
-              ? "One layout is already offered for this event. Refresh this page if it does not appear as the working layout, or open Event setup → Change for this event to confirm the offer."
+              ? "One layout is already offered. Refresh if it does not appear, or confirm the offer under Event setup."
               : activeOffers.length > 1
-                ? "Several layouts are offered. Next step here: open a plan below (after refresh) and choose Set as working layout. Preference alone does not pick one."
-                : "Two different starts: Offer a Library layout in Event setup when you want the couple to choose a preferred option. Additional layout builds venue layouts here — after you Share, the couple can arrange and submit the shared working layout without needing a preference chooser."}
+                ? "Several layouts are offered. Open one and choose Set as working layout — the couple's preference alone does not pick it."
+                : "Add a layout to arrange the room. Share it when the couple should see it."}
           </p>
           {canEdit && activeOffers.length === 0 ? (
             <div className="mt-2 flex flex-col items-center gap-2">
@@ -1173,6 +1173,15 @@ export function FloorPlanWorkspace({
                 <Button
                   type="button"
                   size="sm"
+                  data-testid="floor-plan-first-additional-layout-cta"
+                  onClick={() => { reset(); setOpen(true); }}
+                >
+                  + Add a layout
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
                   data-testid="floor-plan-first-layout-setup-cta"
                   onClick={() => {
                     window.location.hash = "overview";
@@ -1184,25 +1193,16 @@ export function FloorPlanWorkspace({
                     }, 80);
                   }}
                 >
-                  Offer a layout in Event setup
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  data-testid="floor-plan-first-additional-layout-cta"
-                  onClick={() => { reset(); setOpen(true); }}
-                >
-                  + Additional layout here
+                  Offer options in Event setup
                 </Button>
               </div>
               <p className="max-w-md text-[11px] text-muted-foreground" data-testid="floor-plan-first-use-path-hint">
-                Offer = couple preference among options. Additional + Share = collaborate on your working layout (submit does not invent a preference).
+                Most events start with Add a layout here. Offer options in Event setup only when the couple should choose among layouts.
               </p>
             </div>
           ) : canEdit ? (
             <Button type="button" size="sm" className="mt-2" variant="outline" onClick={() => { reset(); setOpen(true); }}>
-              + Additional layout
+              + Add a layout
             </Button>
           ) : null}
         </div>

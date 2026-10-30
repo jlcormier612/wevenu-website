@@ -95,7 +95,7 @@ describe("computeRequiredVsPlaced", () => {
     assert.equal(byKey.has("linen"), false, "items not available for floor plans never count");
     assert.equal(r.shortCount, 2);
     assert.equal(rowSentence(byKey.get("round60")!), "14 required · 10 placed · 4 short");
-    assert.equal(rowSentence(byKey.get("arbor")!), "1 on the plan, not on the Event Order");
+    assert.equal(rowSentence(byKey.get("arbor")!), "1 on this layout · not listed on the Event Order");
     assert.equal(summarySentence(r), "2 items short");
   });
 

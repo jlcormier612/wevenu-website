@@ -33,11 +33,12 @@ describe("FP-RA-1 Additional-layout + Share collaboration path", () => {
     assert.match(portal, /Save a preferred layout in the chooser above/);
   });
 
-  it("venue empty state distinguishes Offer vs Additional + Share", () => {
+  it("venue empty state puts Add a layout first and keeps Offer as a secondary path", () => {
     assert.match(workspace, /floor-plan-first-use-path-hint/);
-    assert.match(workspace, /Offer = couple preference among options/);
-    assert.match(workspace, /Additional \+ Share = collaborate on your working layout/);
+    assert.match(workspace, /Most events start with Add a layout here/);
+    assert.match(workspace, /Offer options in Event setup only when the couple should choose/);
     assert.match(workspace, /floor-plan-first-additional-layout-cta/);
+    assert.match(workspace, /\+ Add a layout/);
   });
 
   it("venue review finds submitted layouts by client_layout_status, not only couple_selected", () => {

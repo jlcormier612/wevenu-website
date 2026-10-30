@@ -70,13 +70,19 @@ export function FloorPlanRequiredVsPlacedPanel({
       )}
 
       {extras.length > 0 ? (
-        <ul className="space-y-0.5" data-testid="floor-plan-rvp-extras">
-          {extras.map((row) => (
-            <li key={row.key} className="text-xs text-muted-foreground" data-testid="floor-plan-rvp-extra">
-              {row.label}: {rowSentence(row)}
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-1" data-testid="floor-plan-rvp-extras-wrap">
+          <p className="text-xs font-medium text-muted-foreground">Also on this layout</p>
+          <ul className="space-y-0.5" data-testid="floor-plan-rvp-extras">
+            {extras.map((row) => (
+              <li key={row.key} className="text-xs text-muted-foreground" data-testid="floor-plan-rvp-extra">
+                {row.label}: {rowSentence(row)}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            Fine when you place tables or décor that are not separate Event Order lines.
+          </p>
+        </div>
       ) : null}
 
       <p className="text-xs text-muted-foreground">

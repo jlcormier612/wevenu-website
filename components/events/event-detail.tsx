@@ -1245,8 +1245,7 @@ export function EventDetail({
             <CardHeader>
               <CardTitle className="text-base">Floor Plans</CardTitle>
               <CardDescription>
-                Working layout for this event — arrange the space and assign seats. Offer layouts
-                to the client from Event setup.
+                Arrange furniture for this event. Add a layout, place items, then share when the couple should see it.
               </CardDescription>
             </CardHeader>
             <CardContent>

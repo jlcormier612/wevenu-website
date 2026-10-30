@@ -66,7 +66,7 @@ describe("Floor Plans Phase 1 — multi-layout coexistence without package claim
   it("surfaces other layouts with progressive, non-package guidance", () => {
     assert.match(workspace, /floor-plan-multi-layout-note/);
     assert.match(workspace, /not a finished setup-package or\s+multi-phase system/);
-    assert.match(workspace, /Multiple layouts may coexist without a setup\s+package/);
+    assert.match(workspace, /These layouts coexist on this event/);
     assert.match(workspace, /\+ Additional layout/);
   });
 
