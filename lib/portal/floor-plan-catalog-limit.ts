@@ -14,5 +14,6 @@ export function catalogLimitLabel(item: PortalFloorPlanCatalogItem): string {
   if (item.quantityConfigured) {
     return item.remaining > 0 ? `${item.remaining} more available` : "None left to add";
   }
+  if (item.limitSource === "stock") return "None left for your date";
   return "Not on your order";
 }

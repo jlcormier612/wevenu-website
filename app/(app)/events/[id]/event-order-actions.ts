@@ -306,3 +306,9 @@ export async function evaluateEventOrderShareStaleAction(eventOrderId: string): 
 export async function getEventOrderPdfUrlAction(eventOrderId: string) {
   return getEventOrderPdfUrl(eventOrderId);
 }
+
+/** Stock reserved by other events around this event's date, per Event Order item. Read-only. */
+export async function getEventOrderStockAction(eventId: string) {
+  const { getEventOrderStock } = await import("@/lib/inventory/reservations-service");
+  return getEventOrderStock(eventId);
+}

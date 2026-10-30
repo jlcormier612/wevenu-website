@@ -6,14 +6,16 @@ import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/l
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { InventoryLibrarySection } from "@/components/inventory/inventory-library-section";
+import { StockSharingSetting } from "@/components/inventory/stock-sharing-setting";
 import { ensureInventoryStartersForCurrentVenue } from "@/lib/inventory/provision";
+import { getStockSharingForCurrentVenue } from "@/lib/inventory/reservations-service";
 import { getItemsForLibrary } from "@/lib/inventory/service";
 
 export const metadata: Metadata = { title: "Inventory" };
 
 export default async function InventoryLibraryPage() {
   await ensureInventoryStartersForCurrentVenue();
-  const items = await getItemsForLibrary();
+  const [items, stockSharing] = await Promise.all([getItemsForLibrary(), getStockSharingForCurrentVenue()]);
   return (
     <div className="space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
@@ -44,6 +46,7 @@ export default async function InventoryLibraryPage() {
         Used when placing furniture on floor plans and when adding stock to an event&apos;s inventory.
       </LibraryDependencyNote>
       <InventoryLibrarySection initialItems={items} />
+      <StockSharingSetting initial={stockSharing} />
     </div>
   );
 }

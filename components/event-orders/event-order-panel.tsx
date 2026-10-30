@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import {
   addSectionAction, applyEventOrderTemplateAction, ensureEventOrderAction, finalizeEventOrderAction, getEventOrderPdfUrlAction,
-  removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanSetupAction,
+  getEventOrderStockAction, removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanSetupAction,
   shareEventOrderWithClientAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
 import { ensureClientEventOrderAction } from "@/app/(app)/clients/planning-actions";
@@ -41,6 +41,8 @@ import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventO
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import { matchChoiceGroupsToSections, splitSetupLines, staffLineNotesLabel } from "@/lib/event-orders/document-view";
 import { resolveSectionSetup } from "@/lib/floor-plans/required-vs-placed";
+import { stockSentence } from "@/lib/inventory/reservations";
+import type { EventOrderStock } from "@/lib/inventory/reservations-service";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -64,7 +66,7 @@ type EventOrderOverview = {
 };
 
 function LineRow({
-  line, sections, eventOrderId, eventId, canEdit, onRemove, removing, inventoryName,
+  line, sections, eventOrderId, eventId, canEdit, onRemove, removing, inventoryName, stock,
 }: {
   line: EventOrderLine;
   sections: EventOrderSection[];
@@ -74,6 +76,7 @@ function LineRow({
   onRemove: () => void;
   removing: boolean;
   inventoryName?: string | null;
+  stock?: { text: string; short: boolean } | null;
 }) {
   const notesLabel = staffLineNotesLabel(line.notes);
   return (
@@ -98,6 +101,15 @@ function LineRow({
             ].filter(Boolean).join(" · ")}
           </p>
         )}
+        {stock ? (
+          <p
+            className={`mt-0.5 text-xs ${stock.short ? "text-amber-800" : "text-muted-foreground"}`}
+            data-testid="eo-line-stock"
+            data-short={stock.short ? "true" : "false"}
+          >
+            {stock.text}
+          </p>
+        ) : null}
       </div>
       <span className="text-muted-foreground sm:text-right sm:w-14">{line.quantity}×</span>
       <span className="text-muted-foreground sm:text-right sm:w-20">{formatOptionalMoney(line.unitPrice)}</span>
@@ -256,6 +268,17 @@ function AddSectionInline({ eventOrderId, eventId, disabled }: { eventOrderId: s
 
 type SetupOption = { id: string; name: string };
 
+function useEventOrderStock(eventId: string | null | undefined, linesKey: string): EventOrderStock | null {
+  const [stock, setStock] = React.useState<EventOrderStock | null>(null);
+  React.useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    void getEventOrderStockAction(eventId).then((s) => { if (!cancelled) setStock(s); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [eventId, linesKey]);
+  return stock;
+}
+
 function useEventFloorPlanSetups(eventId: string | null | undefined): SetupOption[] {
   const [setups, setSetups] = React.useState<SetupOption[]>([]);
   React.useEffect(() => {
@@ -385,6 +408,10 @@ export function EventOrderPanel({
   function refresh() { router.refresh(); }
   const couple = useCoupleChoicePreview(eventOrder, choices);
   const floorPlanSetups = useEventFloorPlanSetups(eventOrder?.eventId ?? (eventId || null));
+  const eventOrderStock = useEventOrderStock(
+    eventOrder?.eventId ?? null,
+    eventOrder?.lines.map((l) => `${l.id}:${l.quantity}:${l.inventoryItemId ?? ""}:${l.offeringId ?? ""}`).join("|") ?? "",
+  );
 
   // Profile-configured Event Order should already exist after booking / prepare-release.
   // Recover once so this tab is an editor, not a second setup wizard.
@@ -618,6 +645,13 @@ export function EventOrderPanel({
     return r.kind === "every_layout" && r.reason === "unmatched";
   }
 
+  function lineStock(line: EventOrderLine): { text: string; short: boolean } | null {
+    if (!eventOrderStock?.date) return null;
+    const itemId = line.inventoryItemId ?? (line.offeringId ? offeringItemById.get(line.offeringId) : null);
+    const s = itemId ? eventOrderStock.items.find((i) => i.itemId === itemId) : undefined;
+    return s ? { text: stockSentence(s, eventOrderStock.date), short: s.short > 0 } : null;
+  }
+
   function renderLine(line: EventOrderLine) {
     return (
       <LineRow
@@ -628,6 +662,7 @@ export function EventOrderPanel({
         eventId={scopeId}
         canEdit={!isFinalized}
         inventoryName={line.inventoryItemId ? inventoryNameById.get(line.inventoryItemId) : null}
+        stock={lineStock(line)}
         removing={removingId === line.id}
         onRemove={() => handleRemoveLine(line)}
       />
