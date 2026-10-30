@@ -87,6 +87,8 @@ describe("Sandbox COMMUNICATION_MODE", () => {
     assert.match(body, /"\$mode" != "disabled"/);
     assert.match(body, /"Name": "COMMUNICATION_MODE", "Value": \{"Ref": "CommunicationMode"\}/);
     assert.match(body, /LogicalResourceId=='VenueAppTaskDefinition'/);
+    assert.doesNotMatch(body, /\| \[0\]\.PhysicalResourceId/, "per-page --query indexing returns stale revisions");
+    assert.match(body, /ResourceStatus=='UPDATE_COMPLETE'/, "replaced revisions are reported as UPDATE_COMPLETE");
     assert.match(body, /"\$svc_td" != "\$stack_td"/);
     assert.match(body, /"\$running" != "\$svc_td"/);
     assert.equal((body.match(/exit 1/g) ?? []).length >= 4, true);

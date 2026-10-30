@@ -467,8 +467,12 @@ jobs:
               sys.exit(1)
           PY
 
+          # Updates replace the task definition and report the new revision as
+          # UPDATE_COMPLETE. The CLI applies --query per page of events, so take
+          # the newest match from the combined output instead of indexing.
           stack_td=$(aws cloudformation describe-stack-events --stack-name "$STACK" \
-            --query "StackEvents[?LogicalResourceId=='VenueAppTaskDefinition' && ResourceStatus=='CREATE_COMPLETE'] | [0].PhysicalResourceId" --output text)
+            --query "StackEvents[?LogicalResourceId=='VenueAppTaskDefinition' && (ResourceStatus=='UPDATE_COMPLETE' || ResourceStatus=='CREATE_COMPLETE')].PhysicalResourceId" --output text \
+            | tr '\t' '\n' | awk '/task-definition\// && !found { print; found = 1 }')
           svc_td=$(aws ecs describe-services --cluster htc-sandbox --services htc-sandbox-venue-app \
             --query "services[0].taskDefinition" --output text)
           if [ -z "$stack_td" ] || [ "$stack_td" = "None" ] || [ "$svc_td" != "$stack_td" ]; then
