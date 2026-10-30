@@ -6,6 +6,7 @@
 import {
   choicesLineNotes,
   conflictingSingleSelectLineIds,
+  duplicateMultiSelectLineIds,
   financialDeltaFromLines,
   resolveSelectedOptions,
 } from "@/lib/client-choices/apply-to-event-order";
@@ -81,6 +82,15 @@ export async function applyChoicesToEventOrder(
     alreadyRemovingIds: row.appliedLineIds,
   });
   for (const lineId of conflictIds) await removeLine(lineId);
+
+  const duplicateIds = duplicateMultiSelectLineIds({
+    definition: row.definition,
+    answers: row.answers,
+    eventOrderLines: eo.lines.map((l) => ({ id: l.id, description: l.description, sectionId: l.sectionId })),
+    sectionIdByGroup: sectionIdByGroup(row, eo),
+    alreadyRemovingIds: [...row.appliedLineIds, ...conflictIds],
+  });
+  for (const lineId of duplicateIds) await removeLine(lineId);
 
   eo = await eoRepo.getEventOrderByEvent(supabase, venueId, row.eventId);
   if (!eo) return { ok: false, message: "Event Order missing during apply." };

@@ -145,3 +145,40 @@ export function conflictingSingleSelectLineIds(input: {
   }
   return out;
 }
+
+/**
+ * Pick-any add-ons the couple selected replace an Event Order line with the
+ * same name in the same section, so an add-on already on the order is not
+ * added a second time. Only selected options count — unselected or empty
+ * pick-any answers never remove venue-authored lines.
+ */
+export function duplicateMultiSelectLineIds(input: {
+  definition: ChoicesDefinition;
+  answers: ChoicesAnswers;
+  eventOrderLines: Array<{ id: string; description: string; sectionId: string | null }>;
+  /** Event Order section id for each choice group (matched by section name). */
+  sectionIdByGroup: Map<string, string>;
+  /** Already scheduled for removal (prior appliedLineIds, pick-one conflicts) — skipped here. */
+  alreadyRemovingIds?: Iterable<string>;
+}): string[] {
+  const already = new Set(input.alreadyRemovingIds ?? []);
+  const multiGroupIds = new Set(
+    input.definition.groups.filter((g) => g.selectionMode !== "single").map((g) => g.id),
+  );
+  const selectedKeys = new Set<string>();
+  for (const line of resolveSelectedOptions(input.definition, input.answers)) {
+    if (!multiGroupIds.has(line.groupId)) continue;
+    const sectionId = input.sectionIdByGroup.get(line.groupId) ?? null;
+    selectedKeys.add(`${sectionId ?? ""}::${normalizeLineDescription(line.description)}`);
+  }
+  if (selectedKeys.size === 0) return [];
+
+  const out: string[] = [];
+  for (const line of input.eventOrderLines) {
+    if (already.has(line.id)) continue;
+    if (selectedKeys.has(`${line.sectionId ?? ""}::${normalizeLineDescription(line.description)}`)) {
+      out.push(line.id);
+    }
+  }
+  return out;
+}

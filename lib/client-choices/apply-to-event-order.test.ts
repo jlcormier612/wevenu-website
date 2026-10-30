@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import {
   conflictingSingleSelectLineIds,
+  duplicateMultiSelectLineIds,
   financialDeltaFromLines,
   isPriceNeutralChange,
   resolveSelectedOptions,
@@ -117,6 +120,56 @@ describe("conflictingSingleSelectLineIds", () => {
         { id: "chicken", description: "Chicken" },
         { id: "salmon", description: "Salmon" },
       ],
+    });
+    assert.deepEqual(ids, []);
+  });
+});
+
+describe("duplicateMultiSelectLineIds", () => {
+  const sectionIdByGroup = new Map([["g1", "eo-dinner"], ["g2", "eo-dinner"]]);
+
+  it("a selected add-on already on the Event Order in the same section is replaced, not added twice", () => {
+    const ids = duplicateMultiSelectLineIds({
+      definition,
+      answers: { g2: { optionIds: ["o-linen"] } },
+      eventOrderLines: [
+        { id: "legacy-linen", description: "  premium   linen ", sectionId: "eo-dinner" },
+        { id: "other-section-linen", description: "Premium Linen", sectionId: "eo-rentals" },
+        { id: "snack", description: "Late Night Snack", sectionId: "eo-dinner" },
+      ],
+      sectionIdByGroup,
+    });
+    assert.deepEqual(ids, ["legacy-linen"]);
+  });
+
+  it("unselected or empty pick-any answers never remove venue lines", () => {
+    const lines = [
+      { id: "linen", description: "Premium Linen", sectionId: "eo-dinner" },
+      { id: "snack", description: "Late Night Snack", sectionId: "eo-dinner" },
+    ];
+    assert.deepEqual(duplicateMultiSelectLineIds({ definition, answers: {}, eventOrderLines: lines, sectionIdByGroup }), []);
+    assert.deepEqual(duplicateMultiSelectLineIds({
+      definition, answers: { g2: { optionIds: ["o-snack"] } }, eventOrderLines: lines, sectionIdByGroup,
+    }), ["snack"]);
+  });
+
+  it("the shared apply engine removes duplicates before inserting the couple's lines", () => {
+    const core = readFileSync(join(process.cwd(), "lib/client-choices/apply-core.ts"), "utf8");
+    const dup = core.indexOf("duplicateMultiSelectLineIds({");
+    assert.ok(dup > core.indexOf("conflictingSingleSelectLineIds({"));
+    assert.ok(dup < core.indexOf("insertCustomLine("));
+  });
+
+  it("pick-one groups and lines already being removed are left to the existing paths", () => {
+    const ids = duplicateMultiSelectLineIds({
+      definition,
+      answers: { g1: { optionIds: ["o-salmon"] }, g2: { optionIds: ["o-snack"] } },
+      eventOrderLines: [
+        { id: "salmon", description: "Salmon", sectionId: "eo-dinner" },
+        { id: "prior-snack", description: "Late Night Snack", sectionId: "eo-dinner" },
+      ],
+      sectionIdByGroup,
+      alreadyRemovingIds: ["prior-snack"],
     });
     assert.deepEqual(ids, []);
   });
