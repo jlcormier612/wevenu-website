@@ -29,6 +29,12 @@ describe("sandbox ops early-warning seams", () => {
     assert.match(wf, /hellotocheers-test\.invalid/);
     assert.doesNotMatch(wf, /status["']:\s*["']sent["']/);
     assert.doesNotMatch(wf, /print\(key\)/);
+    const create = wf.indexOf('f"{SUPABASE_URL}/rest/v1/leads"');
+    const silence = wf.indexOf("_silence_lead_notifications(key, lead_id)");
+    assert.ok(create > 0 && silence > create, "the new-lead email is switched off right after the lead is created");
+    assert.match(wf, /"PATCH",\s*_lead_notifications_url\(lead_id\),[\s\S]*?\{"needs_email": False\}/);
+    assert.match(wf, /_delete\(key, "leads", lead_id\)\s*_http_json\(\s*"DELETE",\s*_lead_notifications_url\(lead_id\)/, "cleanup removes the lead's notifications too");
+    assert.match(wf, /venue_notifications"\s*f"\?venue_id=eq\.\{FANCY_VENUE_ID\}&link=like\.\/leads\/\{lead_id\}\*"/);
     const deploy = readFileSync(resolve(root, "deploy-sandbox-ops.sh"), "utf8");
     assert.match(deploy, /htc-sandbox-workflow-synthetic/);
     assert.match(deploy, /htc-sandbox-inquiry-write-path-down/);

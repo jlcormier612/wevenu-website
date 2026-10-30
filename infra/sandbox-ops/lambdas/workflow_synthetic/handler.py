@@ -97,6 +97,29 @@ def _delete(key: str, table: str, row_id: str) -> None:
     )
 
 
+def _lead_notifications_url(lead_id: str) -> str:
+    return (
+        f"{SUPABASE_URL}/rest/v1/venue_notifications"
+        f"?venue_id=eq.{FANCY_VENUE_ID}&link=like./leads/{lead_id}*"
+    )
+
+
+def _silence_lead_notifications(key: str, lead_id: str) -> None:
+    """The new-lead trigger queues a staff email; the disposable inquiry must never send one."""
+    _http_json(
+        "PATCH",
+        _lead_notifications_url(lead_id),
+        {
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+            "Prefer": "return=minimal",
+        },
+        {"needs_email": False},
+    )
+
+
 def handler(event, context):  # noqa: ANN001, ARG001
     detail: dict[str, Any] = {
         "health": None,
@@ -162,6 +185,7 @@ def handler(event, context):  # noqa: ANN001, ARG001
         detail["lead_id"] = lead_id
         if not lead_id:
             raise RuntimeError(f"lead create failed status={create_status} body={created}")
+        _silence_lead_notifications(key, lead_id)
 
         get_status, got = _http_json(
             "GET",
@@ -357,6 +381,16 @@ def handler(event, context):  # noqa: ANN001, ARG001
                 _delete(key, "tour_appointments", tour_id)
             if lead_id:
                 _delete(key, "leads", lead_id)
+                _http_json(
+                    "DELETE",
+                    _lead_notifications_url(lead_id),
+                    {
+                        "apikey": key,
+                        "Authorization": f"Bearer {key}",
+                        "User-Agent": USER_AGENT,
+                        "Prefer": "return=minimal",
+                    },
+                )
 
     _put(
         [
