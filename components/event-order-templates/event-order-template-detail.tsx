@@ -186,10 +186,10 @@ export function EventOrderTemplateDetail({
       ) : null}
 
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground" data-testid="eo-template-detail-intro">
-        Each section has three parts: <span className="font-medium text-heading">Included</span> (always
-        on the package, covered by its price), <span className="font-medium text-heading">Couple chooses</span>{" "}
+        Each section has three parts: <span className="font-medium text-heading">Included</span>{" "}
+        (always on the package, covered by its price), <span className="font-medium text-heading">Couple chooses</span>{" "}
         (options from your Offerings catalog), and <span className="font-medium text-heading">Add-ons</span>{" "}
-        (always on the package, billed extra).{" "}
+        (extras billed on top of the package price).{" "}
         <Link href="/library/offerings" className="font-medium text-heading hover:underline">
           Manage Offerings →
         </Link>

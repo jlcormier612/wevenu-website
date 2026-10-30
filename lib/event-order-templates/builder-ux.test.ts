@@ -111,7 +111,7 @@ describe("EO template builder — guided setup UX seams", () => {
       "utf8",
     );
     assert.match(wizard, /Always on the package, covered by the package price/);
-    assert.match(wizard, /Always on the package, billed as an extra charge/);
+    assert.match(wizard, /Extras billed on top of the package price/);
     assert.match(wizard, /Couple chooses/);
     assert.match(panel, /eo-couple-choice-offering-select/);
     assert.match(panel, /Dependent option groups/);

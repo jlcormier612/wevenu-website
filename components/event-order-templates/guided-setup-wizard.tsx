@@ -208,7 +208,7 @@ export function GuidedSetupWizard({
 
               <TemplateLinesBlock
                 title="Add-ons"
-                hint="Always on the package, billed as an extra charge."
+                hint="Extras billed on top of the package price. Pick which ones to include when you apply the template."
                 testId={`eo-guided-step-addons-${section.id}`}
                 addTestId={`eo-add-addon-${section.id}`}
                 addLabel="Add add-on"
