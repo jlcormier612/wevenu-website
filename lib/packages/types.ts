@@ -5,6 +5,8 @@ export type PackageItem = {
   description: string;
   quantity: number;
   unit: string | null;
+  /** Catalog Offering this inclusion stands for; null = text-only inclusion. */
+  offeringId?: string | null;
   sortOrder: number;
   createdAt: string;
 };
@@ -36,7 +38,7 @@ export type Package = {
 
 export type PackageWithItems = Package & { items: PackageItem[] };
 
-export type PackageItemInput = { description: string; quantity: string; unit: string };
+export type PackageItemInput = { description: string; quantity: string; unit: string; offeringId?: string | null };
 
 export type PackageInput = {
   name: string;

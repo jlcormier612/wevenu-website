@@ -5,6 +5,7 @@ import { PackageForm } from "@/components/packages/package-form";
 import { PackageInclusionsEditor } from "@/components/packages/package-inclusions-editor";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { listOfferings } from "@/lib/offerings/service";
 import { getPackage } from "@/lib/packages/service";
 
 type Props = { params: Promise<{ id: string }> };
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EditPackagePage({ params }: Props) {
   const { id } = await params;
-  const pkg = await getPackage(id);
+  const [pkg, offerings] = await Promise.all([getPackage(id), listOfferings()]);
   if (!pkg) notFound();
   return (
     <div className="space-y-6">
@@ -44,7 +45,7 @@ export default async function EditPackagePage({ params }: Props) {
           <CardDescription>List everything a client receives in this package. Inclusions appear on invoices and print documents.</CardDescription>
         </CardHeader>
         <CardContent>
-          <PackageInclusionsEditor packageId={pkg.id} initialItems={pkg.items} />
+          <PackageInclusionsEditor packageId={pkg.id} initialItems={pkg.items} offerings={offerings} />
         </CardContent>
       </Card>
     </div>

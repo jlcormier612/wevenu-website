@@ -14,7 +14,7 @@ type PkgRow = {
   eligible_space_ids?: string[] | null;
   created_at: string; updated_at: string;
 };
-type ItemRow = { id: string; package_id: string; venue_id: string; description: string; quantity: number; unit: string | null; sort_order: number; created_at: string; };
+type ItemRow = { id: string; package_id: string; venue_id: string; description: string; quantity: number; unit: string | null; offering_id?: string | null; sort_order: number; created_at: string; };
 
 const map = (r: PkgRow): Package => ({
   id: r.id,
@@ -36,7 +36,8 @@ const map = (r: PkgRow): Package => ({
 });
 const mapItem = (r: ItemRow): PackageItem => ({
   id: r.id, packageId: r.package_id, venueId: r.venue_id, description: r.description,
-  quantity: Number(r.quantity), unit: r.unit, sortOrder: r.sort_order, createdAt: r.created_at,
+  quantity: Number(r.quantity), unit: r.unit, offeringId: r.offering_id ?? null,
+  sortOrder: r.sort_order, createdAt: r.created_at,
 });
 
 function resolveBasePrice(raw: string): number | null {
@@ -88,10 +89,27 @@ export async function insertPackageItem(client: DbClient, venueId: string, packa
   const { data: existing } = await client.from("package_items").select("sort_order").eq("package_id", packageId).order("sort_order", { ascending: false }).limit(1);
   const sortOrder = ((existing?.[0] as { sort_order: number } | undefined)?.sort_order ?? -1) + 1;
   const { data, error } = await client.from("package_items")
-    .insert({ package_id: packageId, venue_id: venueId, description: input.description.trim(), quantity: parseFloat(input.quantity) || 1, unit: input.unit.trim() || null, sort_order: sortOrder })
+    .insert({
+      package_id: packageId, venue_id: venueId, description: input.description.trim(),
+      quantity: parseFloat(input.quantity) || 1, unit: input.unit.trim() || null, sort_order: sortOrder,
+      ...(input.offeringId ? { offering_id: input.offeringId } : {}),
+    })
     .select().single<ItemRow>();
   if (error) throw error;
   return mapItem(data);
+}
+
+export async function setPackageItemOffering(
+  client: DbClient, venueId: string, itemId: string, offeringId: string | null,
+): Promise<PackageItem | null> {
+  const { data, error } = await client.from("package_items")
+    .update({ offering_id: offeringId })
+    .eq("id", itemId)
+    .eq("venue_id", venueId)
+    .select()
+    .maybeSingle<ItemRow>();
+  if (error) throw error;
+  return data ? mapItem(data) : null;
 }
 
 export async function deletePackageItem(client: DbClient, venueId: string, itemId: string): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -180,6 +198,7 @@ export async function duplicatePackage(client: DbClient, venueId: string, source
       source.items.map((item) => ({
         package_id: data.id, venue_id: venueId, description: item.description,
         quantity: item.quantity, unit: item.unit, sort_order: item.sortOrder,
+        offering_id: item.offeringId,
       })),
     );
     if (itemsError) throw itemsError;

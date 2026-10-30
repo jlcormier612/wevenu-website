@@ -14,6 +14,8 @@ export type CommercialSelectionItem = {
   lineTotal?: number;
   offerRole?: "primary" | "addon";
   sourcePackageId?: string | null;
+  /** Frozen catalog Offering link from the package inclusion (direct Select package). */
+  offeringId?: string | null;
 };
 
 export type CommercialSelection = {

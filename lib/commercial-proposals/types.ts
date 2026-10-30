@@ -12,6 +12,8 @@ export type ProposalOptionItem = {
   description: string;
   quantity: number;
   unit: string | null;
+  /** Frozen catalog Offering link from the package inclusion, when set. */
+  offeringId?: string | null;
 };
 
 export type CommercialProposalOption = {

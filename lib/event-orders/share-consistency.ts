@@ -12,6 +12,8 @@
  * - Previously issued invoices: immutable freeze; never rewritten by EO edits.
  */
 
+import { PACKAGE_SELECTION_NOTES_PREFIX } from "@/lib/event-orders/seed-package-inclusions";
+
 export type ShareLineFingerprintInput = {
   description: string;
   quantity: number;
@@ -71,6 +73,7 @@ export function isInternalChoicesProvenanceNote(notes: string | null | undefined
 export function coupleVisibleLineNotes(notes: string | null | undefined): string | null {
   if (!notes?.trim()) return null;
   if (isInternalChoicesProvenanceNote(notes)) return null;
+  if (notes.trim().startsWith(PACKAGE_SELECTION_NOTES_PREFIX)) return null;
   return notes;
 }
 

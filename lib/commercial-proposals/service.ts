@@ -153,6 +153,7 @@ export async function createCommercialProposal(
           description: i.description,
           quantity: i.quantity,
           unit: i.unit,
+          ...(i.offeringId ? { offeringId: i.offeringId } : {}),
         })),
         sortOrder: sort++,
         frozenAt: null,

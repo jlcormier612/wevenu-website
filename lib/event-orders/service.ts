@@ -10,7 +10,10 @@ import * as repo from "@/lib/event-orders/repository";
 import {
   filterPackageInclusionsToSeed,
   packageSelectionNotes,
+  resolveSelectionInclusions,
+  type PackageInclusionSeedItem,
 } from "@/lib/event-orders/seed-package-inclusions";
+import * as proposalsRepo from "@/lib/commercial-proposals/repository";
 import {
   applyQuantityForLine,
   canApplyTemplateToEventOrder,
@@ -122,18 +125,43 @@ async function seedBookingPackageInclusions(
       );
     }
   }
-  if (!selection || selection.includedItems.length === 0) return 0;
+  if (!selection) return 0;
+
+  let chosenOptions: { includedItems: PackageInclusionSeedItem[] }[] | null = null;
+  if (selection.proposalId) {
+    const proposal = await proposalsRepo.getProposal(supabase, venueId, selection.proposalId);
+    if (proposal) {
+      const chosen = new Set(proposal.choices.map((c) => c.optionId));
+      chosenOptions = proposal.options.filter((o) => chosen.has(o.id));
+    }
+  }
+  const inclusions = resolveSelectionInclusions(selection, chosenOptions);
+  if (inclusions.length === 0) return 0;
 
   const toAdd = filterPackageInclusionsToSeed(
-    selection.includedItems,
+    inclusions,
     details.lines.map((l) => l.description),
   );
   if (toAdd.length === 0) return 0;
 
+  const linkedIds = [...new Set(toAdd.map((i) => i.offeringId).filter((id): id is string => !!id))];
+  const offeringsById = new Map<string, { inventoryItemId: string | null }>();
+  if (linkedIds.length > 0) {
+    const { data: offeringRows } = await supabase
+      .from("offerings")
+      .select("id, inventory_item_id")
+      .eq("venue_id", venueId)
+      .in("id", linkedIds);
+    for (const row of (offeringRows ?? []) as { id: string; inventory_item_id: string | null }[]) {
+      offeringsById.set(row.id, { inventoryItemId: row.inventory_item_id });
+    }
+  }
+
   const notes = packageSelectionNotes(selection.id, selection.name);
   let lineSort = await repo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
+  let asOfferings = 0;
   for (const item of toAdd) {
-    await repo.insertCustomLine(supabase, venueId, eventOrderId, {
+    const input = {
       description: item.description,
       quantity: String(item.quantity),
       unitPrice: "",
@@ -141,7 +169,18 @@ async function seedBookingPackageInclusions(
       unit: item.unit ?? undefined,
       isIncluded: true,
       notes,
-    }, lineSort++);
+    };
+    const offering = item.offeringId ? offeringsById.get(item.offeringId) : undefined;
+    if (item.offeringId && offering) {
+      await repo.insertLineFromOffering(supabase, venueId, eventOrderId, {
+        ...input,
+        offeringId: item.offeringId,
+        inventoryItemId: offering.inventoryItemId,
+      }, lineSort++);
+      asOfferings += 1;
+    } else {
+      await repo.insertCustomLine(supabase, venueId, eventOrderId, input, lineSort++);
+    }
   }
   await repo.insertActivity(
     supabase,
@@ -149,7 +188,9 @@ async function seedBookingPackageInclusions(
     eventOrderId,
     "line_added",
     `Imported ${toAdd.length} package inclusion${toAdd.length === 1 ? "" : "s"} from selected package: ${selection.name}`,
-    "Seeded from booking Selected Package. Included custom lines — not Offerings or a package fee.",
+    asOfferings > 0
+      ? `Seeded from booking Selected Package as included lines (${asOfferings} linked to catalog offerings). Not a package fee.`
+      : "Seeded from booking Selected Package. Included custom lines — not Offerings or a package fee.",
   );
   return toAdd.length;
 }

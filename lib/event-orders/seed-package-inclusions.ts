@@ -1,15 +1,18 @@
 /**
  * Seed Event Order lines from the booking-spine Selected Package (commercial_selection).
  *
- * Package inclusions are frozen text on commercial_selections — not Offering FKs.
- * Seeding creates included custom EO lines (provenance custom) with an auditable
- * notes stamp. Never invents Offering links or matches by catalog name.
+ * Package inclusions are frozen on the selection (direct Select package) or on the
+ * chosen proposal options (proposal-approved selections, whose included_items list
+ * the chosen packages themselves). Inclusions explicitly linked to an Offering seed
+ * as included Offering lines; the rest seed as included custom lines. Both carry an
+ * auditable notes stamp. Never matches catalog items by name.
  */
 
 export type PackageInclusionSeedItem = {
   description: string;
   quantity: number;
   unit: string | null;
+  offeringId?: string | null;
 };
 
 export const PACKAGE_SELECTION_NOTES_PREFIX = "package-selection:";
@@ -20,6 +23,39 @@ export function packageInclusionDedupeKey(description: string): string {
 
 export function packageSelectionNotes(selectionId: string, packageName: string): string {
   return `${PACKAGE_SELECTION_NOTES_PREFIX}${selectionId}|${packageName.trim()}`;
+}
+
+/** Package name from a seed stamp, or null when the notes are not a seed stamp. */
+export function packageNameFromSelectionNotes(notes: string | null | undefined): string | null {
+  const trimmed = notes?.trim();
+  if (!trimmed?.startsWith(PACKAGE_SELECTION_NOTES_PREFIX)) return null;
+  const bar = trimmed.indexOf("|");
+  return bar >= 0 ? trimmed.slice(bar + 1).trim() || null : null;
+}
+
+type SelectionForSeed = {
+  proposalId: string | null;
+  includedItems: PackageInclusionSeedItem[];
+};
+
+type ChosenProposalOption = {
+  includedItems: PackageInclusionSeedItem[];
+};
+
+/**
+ * Inclusions to seed for a selection. Proposal-approved selections use the frozen
+ * contents of the options the couple chose; when none are recorded, falls back to
+ * the selection's own items.
+ */
+export function resolveSelectionInclusions(
+  selection: SelectionForSeed,
+  chosenOptions: ChosenProposalOption[] | null,
+): PackageInclusionSeedItem[] {
+  if (selection.proposalId && chosenOptions) {
+    const contents = chosenOptions.flatMap((o) => o.includedItems ?? []);
+    if (contents.length > 0) return contents;
+  }
+  return selection.includedItems;
 }
 
 /**
@@ -43,6 +79,7 @@ export function filterPackageInclusionsToSeed(
       description: item.description.trim(),
       quantity: item.quantity > 0 ? item.quantity : 1,
       unit: item.unit,
+      ...(item.offeringId ? { offeringId: item.offeringId } : {}),
     });
   }
   return out;

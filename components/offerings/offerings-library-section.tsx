@@ -41,6 +41,7 @@ import {
   parentIdsOf,
   topLevelOfferings,
 } from "@/lib/offerings/hierarchy";
+import { isRentalCategoryName, isUnpriced, needsInventoryLink } from "@/lib/offerings/readiness";
 import type { OfferingCategory, OfferingInput, OfferingWithCategory } from "@/lib/offerings/types";
 
 export const OfferingsLibrarySection = React.forwardRef<
@@ -180,6 +181,16 @@ export const OfferingsLibrarySection = React.forwardRef<
                     {o.categoryName && <Badge variant="muted">{o.categoryName}</Badge>}
                     <Badge variant="outline">{offeringRoleLabel(role)}</Badge>
                     {o.isArchived && <Badge variant="outline">Archived</Badge>}
+                    {isUnpriced(o) && (
+                      <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-unpriced-${o.id}`}>
+                        Unpriced
+                      </Badge>
+                    )}
+                    {needsInventoryLink(o) && (
+                      <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-no-inventory-${o.id}`}>
+                        No inventory link
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {isChild && underLabel
@@ -650,6 +661,11 @@ function OfferingFormSheet({
               <Input value={defaultUnitPrice} onChange={(e) => setDefaultUnitPrice(e.target.value)} placeholder="—" className="h-9 text-sm" />
             </div>
           </div>
+          {defaultUnitPrice.trim() === "" && (
+            <p className="-mt-1 text-[0.7rem] text-amber-800" data-testid="offering-unpriced-hint">
+              No price yet — Event Orders and templates that use this offering will start unpriced until you set one.
+            </p>
+          )}
           <div>
             <Label className="text-xs">Link to Inventory (optional — rentals)</Label>
             <select
@@ -662,6 +678,11 @@ function OfferingFormSheet({
                 <option key={i.id} value={i.id}>{i.printableName || i.name}</option>
               ))}
             </select>
+            {!inventoryItemId && isRentalCategoryName(categories.find((c) => c.id === categoryId)?.name) && (
+              <p className="mt-1 text-[0.7rem] text-amber-800" data-testid="offering-inventory-link-hint">
+                Rentals should point at the inventory item they use, so each unit on an Event Order counts one of that item.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">

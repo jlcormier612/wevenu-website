@@ -54,8 +54,32 @@ export async function getPackage(id: string): Promise<PackageWithItems | null> {
 export async function addPackageItem(packageId: string, input: PackageItemInput): Promise<{ ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult> {
   if (!input.description.trim()) return { ok: false, message: "Description is required." };
   const result = await withVenue(async (c, venueId) => {
-    const item = await repo.insertPackageItem(c, venueId, packageId, input);
-    return { ok: true, item };
+    try {
+      const item = await repo.insertPackageItem(c, venueId, packageId, input);
+      return { ok: true, item };
+    } catch (e) {
+      const message = String((e as { message?: unknown })?.message ?? e);
+      if (message.includes("offering_not_in_venue")) return { ok: false, message: "That offering is not in this venue's catalog." };
+      throw e;
+    }
+  });
+  return result as { ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult;
+}
+
+export async function linkPackageItemOffering(
+  itemId: string,
+  offeringId: string | null,
+): Promise<{ ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    try {
+      const item = await repo.setPackageItemOffering(c, venueId, itemId, offeringId || null);
+      if (!item) return { ok: false, message: "Inclusion not found." };
+      return { ok: true, item };
+    } catch (e) {
+      const message = String((e as { message?: unknown })?.message ?? e);
+      if (message.includes("offering_not_in_venue")) return { ok: false, message: "That offering is not in this venue's catalog." };
+      throw e;
+    }
   });
   return result as { ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult;
 }

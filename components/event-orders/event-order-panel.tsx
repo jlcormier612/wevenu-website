@@ -38,6 +38,7 @@ import type { ClientChoicesWithHistory } from "@/lib/client-choices/types";
 import { isBillableEventOrderLineForInvoice } from "@/lib/client-choices/unbilled-delta";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
+import { packageNameFromSelectionNotes } from "@/lib/event-orders/seed-package-inclusions";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -61,7 +62,7 @@ type EventOrderOverview = {
 };
 
 function LineRow({
-  line, sections, eventOrderId, eventId, canEdit, onRemove, removing,
+  line, sections, eventOrderId, eventId, canEdit, onRemove, removing, inventoryName,
 }: {
   line: EventOrderLine;
   sections: EventOrderSection[];
@@ -70,7 +71,10 @@ function LineRow({
   canEdit: boolean;
   onRemove: () => void;
   removing: boolean;
+  inventoryName?: string | null;
 }) {
+  const fromPackage = packageNameFromSelectionNotes(line.notes);
+  const notesLabel = fromPackage ? `From package: ${fromPackage}` : line.notes;
   return (
     <div className="grid grid-cols-1 gap-2 border-b border-border py-3 last:border-0 sm:grid-cols-[1fr_auto_auto_auto_auto] sm:items-center sm:gap-2 text-sm">
       <div className="min-w-0">
@@ -84,9 +88,13 @@ function LineRow({
           ) : null}
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{PROVENANCE_LABEL[line.provenance]}</span>
         </div>
-        {(line.notes || line.unit) && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {[line.unit ? `Unit: ${line.unit}` : null, line.notes].filter(Boolean).join(" · ")}
+        {(notesLabel || line.unit || inventoryName) && (
+          <p className="mt-0.5 text-xs text-muted-foreground" data-testid="eo-line-meta">
+            {[
+              line.unit ? `Unit: ${line.unit}` : null,
+              inventoryName ? `Uses inventory: ${inventoryName}` : null,
+              notesLabel,
+            ].filter(Boolean).join(" · ")}
           </p>
         )}
       </div>
@@ -532,6 +540,7 @@ export function EventOrderPanel({
   const displayStatus = eventOrderDisplayStatus(order);
   const isFinalized = order.status === "finalized";
   const unsectioned = order.lines.filter((l) => !l.sectionId);
+  const inventoryNameById = new Map(inventoryItems.map((i) => [i.id, i.printableName || i.name]));
 
   async function handleRemoveLine(line: EventOrderLine) {
     setRemovingId(line.id);
@@ -751,6 +760,7 @@ export function EventOrderPanel({
                       eventOrderId={eventOrder.id}
                       eventId={scopeId}
                       canEdit={!isFinalized}
+                      inventoryName={line.inventoryItemId ? inventoryNameById.get(line.inventoryItemId) : null}
                       removing={removingId === line.id}
                       onRemove={() => handleRemoveLine(line)}
                     />
@@ -775,6 +785,7 @@ export function EventOrderPanel({
                   eventOrderId={eventOrder.id}
                   eventId={scopeId}
                   canEdit={!isFinalized}
+                  inventoryName={line.inventoryItemId ? inventoryNameById.get(line.inventoryItemId) : null}
                   removing={removingId === line.id}
                   onRemove={() => handleRemoveLine(line)}
                 />
