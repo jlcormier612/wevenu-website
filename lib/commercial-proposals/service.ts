@@ -143,19 +143,39 @@ export async function createCommercialProposal(
 
     let sort = 0;
     for (const row of optionRows) {
+      // Read inclusions from the DB here (not only the mapped getPackage view) so
+      // per_guest / offering_id always freeze even if a mapper lags a new column.
+      const { data: itemRows } = await supabase
+        .from("package_items")
+        .select("description, quantity, unit, offering_id, per_guest")
+        .eq("package_id", row.pkg.id)
+        .eq("venue_id", venueId)
+        .order("sort_order");
+      const includedItems = (itemRows ?? []).map((i: {
+        description: string; quantity: number; unit: string | null;
+        offering_id: string | null; per_guest: boolean | null;
+      }) => ({
+        description: i.description,
+        quantity: Number(i.quantity) > 0 ? Number(i.quantity) : 1,
+        unit: i.unit,
+        ...(i.offering_id ? { offeringId: i.offering_id } : {}),
+        ...(i.per_guest === true ? { perGuest: true } : {}),
+      }));
       await repo.insertProposalOption(supabase, venueId, proposal.id, {
         sourcePackageId: row.pkg.id,
         offerRole: row.offerRole,
         name: row.pkg.name,
         description: row.pkg.description,
         unitPrice: Number(row.pkg.basePrice),
-        includedItems: row.pkg.items.map((i) => ({
-          description: i.description,
-          quantity: i.quantity,
-          unit: i.unit,
-          ...(i.offeringId ? { offeringId: i.offeringId } : {}),
-          ...(i.perGuest ? { perGuest: true } : {}),
-        })),
+        includedItems: includedItems.length > 0
+          ? includedItems
+          : row.pkg.items.map((i) => ({
+            description: i.description,
+            quantity: i.quantity,
+            unit: i.unit,
+            ...(i.offeringId ? { offeringId: i.offeringId } : {}),
+            ...(i.perGuest ? { perGuest: true } : {}),
+          })),
         sortOrder: sort++,
         frozenAt: null,
       });

@@ -87,7 +87,8 @@ describe("package inclusions can count per guest", () => {
     assert.equal(out[0]?.offeringId, "off");
   });
   it("proposals and direct selections freeze the flag; seeding applies it", () => {
-    assert.match(read("lib/commercial-proposals/service.ts"), /\.\.\.\(i\.perGuest \? \{ perGuest: true \} : \{\}\)/);
+    assert.match(read("lib/commercial-proposals/service.ts"), /per_guest === true \? \{ perGuest: true \}/);
+    assert.match(read("lib/commercial-proposals/service.ts"), /select\("description, quantity, unit, offering_id, per_guest"\)/);
     assert.match(read("lib/commercial-selections/service.ts"), /\.\.\.\(item\.perGuest \? \{ perGuest: true \} : \{\}\)/);
     assert.match(read("lib/event-orders/service.ts"), /quantity: String\(seededInclusionQuantity\(item, guestCount\)\)/);
     const repo = read("lib/packages/repository.ts");
