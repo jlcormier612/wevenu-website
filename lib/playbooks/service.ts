@@ -5,6 +5,7 @@ import {
   STANDARD_VENUE_WORKFLOW_MILESTONES, STANDARD_VENUE_WORKFLOW_TASKS,
 } from "@/lib/playbooks/constants";
 import * as repo from "@/lib/playbooks/repository";
+import { applyAcceptedPackageToTasks, hasAcceptedPackage, isPackageChoiceTask } from "@/lib/playbooks/package-choice-task";
 import type {
   CreatePlaybookResult,
   EventPlaybookApplication,
@@ -240,7 +241,24 @@ export async function getEventTasks(eventId: string): Promise<EventTask[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getEventTasks(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  const tasks = await repo.getEventTasks(supabase, venue.id, eventId);
+  if (!tasks.some(isPackageChoiceTask)) return tasks;
+  return applyAcceptedPackageToTasks(tasks, await eventPackageAccepted(supabase, venue.id, eventId));
+}
+
+async function eventPackageAccepted(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  eventId: string,
+): Promise<boolean> {
+  const { data: event } = await supabase
+    .from("events")
+    .select("client_id")
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ client_id: string | null }>();
+  return event?.client_id ? hasAcceptedPackage(supabase, venueId, event.client_id) : false;
 }
 
 export async function getClientTasks(clientId: string): Promise<EventTask[]> {
@@ -758,7 +776,13 @@ export async function getEventTaskReadinessByKind(eventId: string): Promise<{ cl
   if (!isSupabaseConfigured) return { client: null, venue: null };
   const venue = await getCurrentVenue();
   if (!venue) return { client: null, venue: null };
-  return repo.computeEventTaskReadinessByKind(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  return repo.computeEventTaskReadinessByKind(
+    supabase,
+    venue.id,
+    eventId,
+    await eventPackageAccepted(supabase, venue.id, eventId),
+  );
 }
 
 // ---- Create from the Standard reference templates ---------------------------

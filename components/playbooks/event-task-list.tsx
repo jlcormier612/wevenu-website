@@ -48,6 +48,7 @@ import {
   internalNotesLabel,
 } from "@/lib/notes/internal-notes-copy";
 import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
+import { PACKAGE_APPROVED_LABEL } from "@/lib/playbooks/package-choice-task";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
 import {
   isQuestionnaireLinkedTask,
@@ -602,6 +603,11 @@ function TaskRow({
               Submitted — needs venue review
             </p>
           )}
+          {task.packageApproved && (
+            <p className="text-xs text-muted-foreground" data-testid="task-package-approved">
+              Done — {PACKAGE_APPROVED_LABEL.toLowerCase()}
+            </p>
+          )}
           {task.autoCompleteTrigger && !isComplete && (
             <p className="text-xs text-muted-foreground italic">
               {task.autoCompleteTrigger === "vendor_selected"
@@ -685,7 +691,7 @@ function TaskRow({
           </div>
         )}
 
-        {isComplete && (
+        {isComplete && !task.packageApproved && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <Button type="button" size="sm" variant="ghost" onClick={handleReopen} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">
               {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reopen"}

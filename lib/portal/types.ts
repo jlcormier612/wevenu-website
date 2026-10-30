@@ -101,6 +101,8 @@ export type PortalTask = {
   canUndo: boolean;
   /** Web links attached via playbook attachments / event context links. */
   links: PortalTaskLink[];
+  /** "Choose your package" read as done because an accepted package exists (never persisted). */
+  packageApproved?: boolean;
 };
 
 /** Vendor-owned task projected into the portal (not an event_tasks row). */

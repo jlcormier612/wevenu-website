@@ -190,6 +190,8 @@ export type EventTask = {
   // a coordinator has chosen to turn this task into a client-facing Request.
   // Independent lifecycle: completing the Request never completes this task.
   requestId: string | null;
+  /** "Choose your package" read as done because an accepted package exists (never persisted). */
+  packageApproved?: boolean;
   // Scheduled Activity (Calendar Integration — Phase 1): a due date answers
   // "when should this be finished"; these answer "when does this actually
   // happen." All four are independently nullable — most tasks stay due-date

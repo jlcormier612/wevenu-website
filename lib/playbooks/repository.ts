@@ -2,6 +2,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { cadenceIntervalDays, getReminderCadence } from "@/lib/notifications/obligations";
 import { scheduledReminderAt } from "@/lib/notifications/schedule-times";
 import { clampDaysOffset, daysBetween, offsetDate } from "@/lib/playbooks/due-dates";
+import { applyAcceptedPackageToTasks } from "@/lib/playbooks/package-choice-task";
 import { getVenueTimezone } from "@/lib/venue/timezone";
 import type {
   EventPlaybookApplication,
@@ -1074,8 +1075,9 @@ export async function computeEventTaskReadinessByKind(
   client: DbClient,
   venueId: string,
   eventId: string,
+  packageAccepted = false,
 ): Promise<{ client: EventReadiness | null; venue: EventReadiness | null }> {
-  const tasks = await getEventTasks(client, venueId, eventId);
+  const tasks = applyAcceptedPackageToTasks(await getEventTasks(client, venueId, eventId), packageAccepted);
   const clientTasks = tasks.filter((t) => t.ownerType === "couple");
   const venueTasks = tasks.filter((t) => t.ownerType !== "couple");
   return { client: readinessFromTasks(clientTasks), venue: readinessFromTasks(venueTasks) };
