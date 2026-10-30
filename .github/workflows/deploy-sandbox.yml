@@ -320,6 +320,7 @@ jobs:
               "ParameterKey=ResendInboundAddress,ParameterValue=${{ vars.RESEND_INBOUND_ADDRESS }}" \
               "ParameterKey=CronSecret,ParameterValue=${{ secrets.CRON_SECRET }}" \
               "ParameterKey=NotificationsSecret,ParameterValue=${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
+              "ParameterKey=CommunicationMode,ParameterValue=disabled" \
               "ParameterKey=StripePriceStarter,ParameterValue=price_1U42LNErUqJH7nktdpRin9ev" \
               "ParameterKey=StripePriceGrowing,ParameterValue=price_1U5rfoErUqJH7nkts2RnCCtg" \
               "ParameterKey=StripePriceGrowingFounder,ParameterValue=price_1U5rfoErUqJH7nktxJONRlCq" \
@@ -407,6 +408,7 @@ jobs:
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
               CronSecret="${{ secrets.CRON_SECRET }}" \
               NotificationsSecret="${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
+              CommunicationMode=disabled \
               StripePriceStarter=price_1U42LNErUqJH7nktdpRin9ev \
               StripePriceGrowing=price_1U5rfoErUqJH7nkts2RnCCtg \
               StripePriceGrowingFounder=price_1U5rfoErUqJH7nktxJONRlCq \
@@ -435,6 +437,58 @@ jobs:
           aws ecs wait services-stable \
             --cluster htc-sandbox \
             --services htc-sandbox-venue-app htc-sandbox-marketing htc-sandbox-workspace htc-sandbox-scheduler
+
+      # The venue app sends real email unless COMMUNICATION_MODE says
+      # otherwise (lib/communication/mode.ts), so a revision without it
+      # emails the staff inbox on the next notification cron. Proves the
+      # stack parameter, the deployed template wiring, and that every running
+      # venue-app task uses the stack-registered revision. The deploy role has
+      # no ecs:DescribeTaskDefinition, so the revision is matched via stack events.
+      - name: Verify venue-app email is disabled
+        env:
+          STACK: ${{ vars.CFN_STACK_NAME }}
+        run: |
+          mode=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Parameters[?ParameterKey=='CommunicationMode'].ParameterValue" --output text)
+          if [ "$mode" != "disabled" ]; then
+            echo "::error::Stack CommunicationMode is '$mode', expected 'disabled'."
+            exit 1
+          fi
+
+          aws cloudformation get-template --stack-name "$STACK" --query TemplateBody --output json > /tmp/deployed-template.json
+          python3 <<'PY'
+          import json, sys
+          body = json.load(open("/tmp/deployed-template.json"))
+          if isinstance(body, str):
+              body = json.loads(body)
+          env = body["Resources"]["VenueAppTaskDefinition"]["Properties"]["ContainerDefinitions"][0].get("Environment", [])
+          if {"Name": "COMMUNICATION_MODE", "Value": {"Ref": "CommunicationMode"}} not in env:
+              print("::error::Deployed VenueAppTaskDefinition does not set COMMUNICATION_MODE from CommunicationMode.")
+              sys.exit(1)
+          PY
+
+          stack_td=$(aws cloudformation describe-stack-events --stack-name "$STACK" \
+            --query "StackEvents[?LogicalResourceId=='VenueAppTaskDefinition' && ResourceStatus=='CREATE_COMPLETE'] | [0].PhysicalResourceId" --output text)
+          svc_td=$(aws ecs describe-services --cluster htc-sandbox --services htc-sandbox-venue-app \
+            --query "services[0].taskDefinition" --output text)
+          if [ -z "$stack_td" ] || [ "$stack_td" = "None" ] || [ "$svc_td" != "$stack_td" ]; then
+            echo "::error::venue-app service runs '$svc_td', not the stack-registered '$stack_td'."
+            exit 1
+          fi
+
+          tasks=$(aws ecs list-tasks --cluster htc-sandbox --service-name htc-sandbox-venue-app \
+            --desired-status RUNNING --query taskArns --output text)
+          if [ -z "$tasks" ] || [ "$tasks" = "None" ]; then
+            echo "::error::No running venue-app tasks."
+            exit 1
+          fi
+          running=$(aws ecs describe-tasks --cluster htc-sandbox --tasks $tasks \
+            --query "tasks[].taskDefinitionArn" --output text | tr '\t' '\n' | sort -u)
+          if [ "$running" != "$svc_td" ]; then
+            echo "::error::Running venue-app tasks use: $running (expected only $svc_td)."
+            exit 1
+          fi
+          echo "venue-app COMMUNICATION_MODE=disabled on $svc_td"
 
       - name: Verify ALB endpoints
         run: |
