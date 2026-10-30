@@ -9,6 +9,7 @@ import {
   groupsForParent,
   memberOfferingsForGroup,
   orderCatalogListWithChoiceGroups,
+  planConvertItemToCategory,
   sanitizeChoiceGroupName,
   type OfferingChoiceGroup,
 } from "@/lib/offerings/choice-groups";
@@ -249,5 +250,56 @@ describe("builder catalog include path", () => {
     assert.match(lib, /orderCatalogListWithChoiceGroups/);
     assert.match(lib, /offering-manage-groups-/);
     assert.match(lib, /offering-choice-group-row-/);
+  });
+});
+
+describe("Offerings three-level catalog (Major → Category → items)", () => {
+  const plated = offering({ id: "plated", name: "Plated Dinner" });
+  const buffet = offering({ id: "buffet", name: "Buffet Style Dinner" });
+  const entreesItem = offering({ id: "entrees", name: "Entrees", parentOfferingIds: ["plated", "buffet"] });
+  const chicken = offering({ id: "chicken", name: "Chicken", parentOfferingIds: ["plated"] });
+  const beef = offering({ id: "beef", name: "Beef", parentOfferingIds: ["plated", "buffet"] });
+  const ziti = offering({ id: "ziti", name: "Baked Ziti", parentOfferingIds: ["buffet"] });
+  const archived = offering({ id: "old", name: "Old fish", parentOfferingIds: ["plated"], isArchived: true });
+  const catalog = [plated, buffet, entreesItem, chicken, beef, ziti, archived];
+
+  it("plans a legacy 'Entrees' item into a category under each of its majors with sibling candidates", () => {
+    const plan = planConvertItemToCategory(entreesItem, catalog, []);
+    assert.deepEqual(plan.map((t) => t.parentOfferingId), ["plated", "buffet"]);
+    assert.deepEqual(plan[0]!.candidateMemberIds, ["chicken", "beef"]);
+    assert.deepEqual(plan[1]!.candidateMemberIds, ["beef", "ziti"]);
+    assert.ok(plan.every((t) => t.existingGroupId === null));
+    assert.ok(!plan.flatMap((t) => t.candidateMemberIds).includes("entrees"), "never puts itself in");
+    assert.ok(!plan.flatMap((t) => t.candidateMemberIds).includes("old"), "skips archived");
+  });
+
+  it("reuses an existing same-named category instead of duplicating it", () => {
+    const existing = group({ id: "g1", name: "entrees", parentOfferingId: "plated", memberOfferingIds: ["chicken"] });
+    const plan = planConvertItemToCategory(entreesItem, catalog, [existing]);
+    assert.equal(plan[0]!.existingGroupId, "g1");
+    assert.deepEqual(plan[0]!.alreadyMemberIds, ["chicken"]);
+    assert.equal(plan[1]!.existingGroupId, null);
+  });
+
+  it("catalog list renders Major → Category → item rows", () => {
+    const g = group({ id: "g1", name: "Entrées", parentOfferingId: "plated", memberOfferingIds: ["chicken", "beef"] });
+    const rows = orderCatalogListWithChoiceGroups([plated, chicken, beef], [g]);
+    assert.deepEqual(
+      rows.map((r) => (r.kind === "choice-group" ? `cat:${r.group.name}` : `${r.offering.name}@${r.nestUnderGroupId ?? "-"}`)),
+      ["Plated Dinner@-", "cat:Entrées", "Chicken@g1", "Beef@g1"],
+    );
+  });
+
+  it("Offerings list exposes Category rows with + Category / + Item in this category / Make this a category", () => {
+    const lib = readFileSync(join(process.cwd(), "components/offerings/offerings-library-section.tsx"), "utf8");
+    assert.match(lib, /<Badge variant="outline">Category<\/Badge>/);
+    assert.doesNotMatch(lib, /<Badge variant="outline">Choice group<\/Badge>/);
+    assert.match(lib, /\+ Category under this/);
+    assert.match(lib, /offering-category-add-item-/);
+    assert.match(lib, /\+ Item in this category/);
+    assert.match(lib, /addOfferingChoiceGroupMemberAction\(groupId, o\.id\)/);
+    assert.match(lib, /offering-convert-category-/);
+    assert.match(lib, /planConvertItemToCategory/);
+    assert.match(lib, /setOfferingArchivedAction\(item\.id, true\)/);
   });
 });

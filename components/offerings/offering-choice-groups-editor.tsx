@@ -55,7 +55,7 @@ export function OfferingChoiceGroupsEditor({
   function createGroup() {
     const name = newName.trim();
     if (!name) {
-      toast.error("Enter a group name (for example Entrées).");
+      toast.error("Enter a category name (for example Entrées).");
       return;
     }
     startTransition(async () => {
@@ -73,16 +73,16 @@ export function OfferingChoiceGroupsEditor({
   return (
     <div className="space-y-3" data-testid="offering-choice-groups-editor">
       <div>
-        <p className="text-sm font-medium text-heading">Choice groups</p>
+        <p className="text-sm font-medium text-heading">Categories</p>
         <p className="text-xs text-muted-foreground">
-          Organize items under {parentOffering.name} into reusable groups (for example Entrées
-          or Desserts). Event Order templates can include these groups without retyping names.
+          Organize items under {parentOffering.name} into categories (for example Entrées
+          or Desserts). Event Order templates can include these categories without retyping names.
         </p>
       </div>
 
       {parentGroups.length === 0 ? (
         <p className="text-xs text-muted-foreground" data-testid="offering-choice-groups-empty">
-          No groups yet. Create one, then assign catalog items that belong under this parent.
+          No categories yet. Add one, then put the items the couple picks from into it.
         </p>
       ) : null}
 
@@ -158,7 +158,7 @@ export function OfferingChoiceGroupsEditor({
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-[10rem] flex-1 space-y-1">
-          <Label className="text-xs text-muted-foreground">New group name</Label>
+          <Label className="text-xs text-muted-foreground">New category name</Label>
           <Input
             value={newName}
             disabled={pending}
@@ -182,7 +182,7 @@ export function OfferingChoiceGroupsEditor({
           onClick={createGroup}
         >
           {pending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}
-          Add group
+          Add category
         </Button>
       </div>
     </div>
@@ -273,7 +273,7 @@ function ChoiceGroupCard({
           );
         })}
         {group.memberOfferingIds.length === 0 ? (
-          <li className="text-xs text-muted-foreground">No items in this group yet.</li>
+          <li className="text-xs text-muted-foreground">No items in this category yet.</li>
         ) : null}
       </ul>
 
@@ -302,7 +302,7 @@ function ChoiceGroupCard({
       ) : (
         <p className="text-xs text-muted-foreground">
           {group.memberOfferingIds.length > 0
-            ? "All eligible child Offerings under this parent are already in this group."
+            ? "All items under this major are already in this category."
             : "No child Offerings are linked under this parent yet. Use “+ Item under this” or Edit → Belongs under major choices, then assign them here."}
         </p>
       )}

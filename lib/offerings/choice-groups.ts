@@ -139,6 +139,55 @@ export function eligibleChildrenNotInGroup(
   });
 }
 
+export type ConvertToCategoryTarget = {
+  parentOfferingId: string;
+  /** Existing category under this parent with the same name (reused, not duplicated). */
+  existingGroupId: string | null;
+  /** Sibling items under this parent that can move into the new category. */
+  candidateMemberIds: string[];
+  /** Candidates already in that existing category. */
+  alreadyMemberIds: string[];
+};
+
+/**
+ * Plan for turning a legacy item that is really a category (for example an
+ * "Entrées" Offering under Plated Dinner) into a real category under each of
+ * its parents. Siblings stay catalog items; the venue picks which move in.
+ */
+export function planConvertItemToCategory(
+  item: OfferingWithCategory,
+  catalog: OfferingWithCategory[],
+  groups: OfferingChoiceGroup[],
+): ConvertToCategoryTarget[] {
+  const name = sanitizeChoiceGroupName(item.name).toLocaleLowerCase();
+  const parents = parentIdsOf(item).length > 0
+    ? parentIdsOf(item)
+    : item.parentOfferingId
+      ? [item.parentOfferingId]
+      : [];
+  return parents.map((parentOfferingId) => {
+    const existing = groupsForParent(groups, parentOfferingId).find(
+      (g) => g.name.toLocaleLowerCase() === name,
+    );
+    const candidateMemberIds = catalog
+      .filter(
+        (o) =>
+          o.id !== item.id &&
+          !o.isArchived &&
+          (parentIdsOf(o).includes(parentOfferingId) || o.parentOfferingId === parentOfferingId),
+      )
+      .map((o) => o.id);
+    return {
+      parentOfferingId,
+      existingGroupId: existing?.id ?? null,
+      candidateMemberIds,
+      alreadyMemberIds: existing
+        ? candidateMemberIds.filter((id) => existing.memberOfferingIds.includes(id))
+        : [],
+    };
+  });
+}
+
 export function sanitizeChoiceGroupName(raw: string): string {
   return raw.trim().replace(/\s+/g, " ").slice(0, 80);
 }

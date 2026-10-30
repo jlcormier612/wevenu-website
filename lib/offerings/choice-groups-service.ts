@@ -16,7 +16,7 @@ export type ChoiceGroupActionResult =
 function writeErrorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err ?? "");
   if (/unique|duplicate/i.test(raw)) {
-    return "A group with that name already exists under this parent Offering.";
+    return "A category with that name already exists under this major.";
   }
   if (/top-level major/i.test(raw)) {
     return "Choice groups can only be created under a parent (major) Offering.";

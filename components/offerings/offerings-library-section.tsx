@@ -7,8 +7,10 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  addOfferingChoiceGroupMemberAction,
   createOfferingAction,
   createOfferingCategoryAction,
+  createOfferingChoiceGroupAction,
   setOfferingArchivedAction,
   updateOfferingAction,
   updateOfferingImageAction,
@@ -30,6 +32,7 @@ import { formatOptionalMoney } from "@/lib/event-orders/constants";
 import type { InventoryItem } from "@/lib/inventory/types";
 import {
   orderCatalogListWithChoiceGroups,
+  planConvertItemToCategory,
   type OfferingChoiceGroup,
 } from "@/lib/offerings/choice-groups";
 import {
@@ -67,11 +70,13 @@ export const OfferingsLibrarySection = React.forwardRef<
   const [editing, setEditing] = React.useState<OfferingWithCategory | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [createParentId, setCreateParentId] = React.useState<string | null>(null);
+  const [createGroupId, setCreateGroupId] = React.useState<string | null>(null);
   const [managingGroupsFor, setManagingGroupsFor] = React.useState<OfferingWithCategory | null>(null);
+  const [convertingItem, setConvertingItem] = React.useState<OfferingWithCategory | null>(null);
   const [showArchived, setShowArchived] = React.useState(false);
 
   React.useImperativeHandle(ref, () => ({
-    openCreate: () => { setEditing(null); setCreateParentId(null); setCreating(true); },
+    openCreate: () => { setEditing(null); setCreateParentId(null); setCreateGroupId(null); setCreating(true); },
   }));
 
   const visible = offerings.filter((o) => showArchived || !o.isArchived);
@@ -91,7 +96,7 @@ export const OfferingsLibrarySection = React.forwardRef<
             type="button"
             size="sm"
             data-testid="offerings-new"
-            onClick={() => { setEditing(null); setCreateParentId(null); setCreating(true); }}
+            onClick={() => { setEditing(null); setCreateParentId(null); setCreateGroupId(null); setCreating(true); }}
           >
             + New Offering
           </Button>
@@ -107,6 +112,8 @@ export const OfferingsLibrarySection = React.forwardRef<
           {listRows.map((row) => {
             if (row.kind === "choice-group") {
               const parentName = nameById.get(row.nestUnderParentId) ?? "this major";
+              const parentOffering = offerings.find((x) => x.id === row.nestUnderParentId) ?? null;
+              const memberCount = row.group.memberOfferingIds.length;
               return (
                 <li
                   key={`group::${row.group.id}`}
@@ -118,11 +125,42 @@ export const OfferingsLibrarySection = React.forwardRef<
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-heading">{row.group.name}</p>
-                      <Badge variant="outline">Choice group</Badge>
+                      <Badge variant="outline">Category</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Under {parentName} · organizational layer for Event Order choices — not an offering
+                      Category under {parentName} · {memberCount} item{memberCount === 1 ? "" : "s"} the couple can pick from
                     </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid={`offering-category-add-item-${row.group.id}`}
+                      onClick={() => {
+                        setEditing(null);
+                        setCreateParentId(row.nestUnderParentId);
+                        setCreateGroupId(row.group.id);
+                        setCreating(true);
+                      }}
+                    >
+                      + Item in this category
+                    </Button>
+                    {parentOffering ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`offering-category-manage-${row.group.id}`}
+                        onClick={() => {
+                          setCreating(false);
+                          setEditing(null);
+                          setManagingGroupsFor(parentOffering);
+                        }}
+                      >
+                        Edit category
+                      </Button>
+                    ) : null}
                   </div>
                 </li>
               );
@@ -216,10 +254,11 @@ export const OfferingsLibrarySection = React.forwardRef<
                           setCreating(false);
                           setEditing(null);
                           setCreateParentId(null);
+                          setCreateGroupId(null);
                           setManagingGroupsFor(o);
                         }}
                       >
-                        Choice groups
+                        + Category under this
                       </Button>
                       <Button
                         type="button"
@@ -229,6 +268,7 @@ export const OfferingsLibrarySection = React.forwardRef<
                         onClick={() => {
                           setEditing(null);
                           setCreateParentId(o.id);
+                          setCreateGroupId(null);
                           setCreating(true);
                         }}
                       >
@@ -236,7 +276,22 @@ export const OfferingsLibrarySection = React.forwardRef<
                       </Button>
                     </>
                   ) : null}
-                  <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setCreateParentId(null); setEditing(o); }}>
+                  {role === "item" && !o.isArchived && nestUnderGroupId == null && isUnpriced(o) ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid={`offering-convert-category-${o.id}`}
+                      onClick={() => {
+                        setCreating(false);
+                        setEditing(null);
+                        setConvertingItem(o);
+                      }}
+                    >
+                      Make this a category
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setCreateParentId(null); setCreateGroupId(null); setEditing(o); }}>
                     Edit
                   </Button>
                   <Button
@@ -268,18 +323,23 @@ export const OfferingsLibrarySection = React.forwardRef<
             setCreating(false);
             setEditing(null);
             setCreateParentId(null);
+            setCreateGroupId(null);
           }
         }}
         venueId={venueId}
         offering={editing}
         defaultParentId={createParentId}
+        targetGroupName={
+          creating && createGroupId ? groupNameById.get(createGroupId) ?? null : null
+        }
         offerings={offerings}
         categories={cats}
         inventoryItems={inventoryItems}
         choiceGroups={choiceGroups}
         onChoiceGroupsChange={setChoiceGroups}
         onCategoryCreated={(c) => setCats((prev) => [...prev, c])}
-        onSaved={(o) => {
+        onSaved={async (o) => {
+          const groupId = creating ? createGroupId : null;
           setOfferings((prev) => {
             const idx = prev.findIndex((x) => x.id === o.id);
             if (idx >= 0) {
@@ -292,6 +352,32 @@ export const OfferingsLibrarySection = React.forwardRef<
           setCreating(false);
           setEditing(null);
           setCreateParentId(null);
+          setCreateGroupId(null);
+          if (groupId) {
+            const r = await addOfferingChoiceGroupMemberAction(groupId, o.id);
+            if (!r.ok) {
+              toast.error(r.message ?? "Item saved, but it could not be added to the category.");
+              return;
+            }
+            setChoiceGroups((prev) =>
+              prev.map((g) =>
+                g.id === groupId ? { ...g, memberOfferingIds: [...g.memberOfferingIds, o.id] } : g,
+              ),
+            );
+          }
+        }}
+      />
+
+      <ConvertToCategorySheet
+        key={convertingItem?.id ?? "none"}
+        item={convertingItem}
+        offerings={offerings}
+        choiceGroups={choiceGroups}
+        onClose={() => setConvertingItem(null)}
+        onConverted={({ groups, archivedId }) => {
+          setChoiceGroups(groups);
+          setOfferings((prev) => prev.map((x) => (x.id === archivedId ? { ...x, isArchived: true } : x)));
+          setConvertingItem(null);
         }}
       />
 
@@ -304,14 +390,14 @@ export const OfferingsLibrarySection = React.forwardRef<
         <SheetContent className="overflow-y-auto sm:max-w-lg">
           <SheetHeader>
             <SheetTitle>
-              Choice groups{managingGroupsFor ? ` · ${managingGroupsFor.name}` : ""}
+              Categories{managingGroupsFor ? ` · ${managingGroupsFor.name}` : ""}
             </SheetTitle>
           </SheetHeader>
           {managingGroupsFor ? (
             <div className="mt-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Create named groups under this major (for example Entrées or Desserts), then assign
-                existing items that already belong under it. Groups are not offerings.
+                Add categories under {managingGroupsFor.name} (for example Entrées, Sides, Desserts),
+                then put the items the couple picks from into each one (for example Chicken, Beef, Fish).
               </p>
               <OfferingChoiceGroupsEditor
                 parentOffering={managingGroupsFor}
@@ -333,8 +419,130 @@ export const OfferingsLibrarySection = React.forwardRef<
   );
 });
 
+function ConvertToCategorySheet({
+  item, offerings, choiceGroups, onClose, onConverted,
+}: {
+  item: OfferingWithCategory | null;
+  offerings: OfferingWithCategory[];
+  choiceGroups: OfferingChoiceGroup[];
+  onClose: () => void;
+  onConverted: (result: { groups: OfferingChoiceGroup[]; archivedId: string }) => void;
+}) {
+  const [pending, startTransition] = React.useTransition();
+  const plan = React.useMemo(
+    () => (item ? planConvertItemToCategory(item, offerings, choiceGroups) : []),
+    [item, offerings, choiceGroups],
+  );
+  const [selected, setSelected] = React.useState<Set<string>>(
+    () => new Set(plan.flatMap((t) => t.alreadyMemberIds.map((id) => `${t.parentOfferingId}::${id}`))),
+  );
+  const nameById = new Map(offerings.map((o) => [o.id, o.name]));
+
+  function toggle(key: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function convert() {
+    if (!item) return;
+    startTransition(async () => {
+      let groups = [...choiceGroups];
+      for (const target of plan) {
+        let groupId = target.existingGroupId;
+        if (!groupId) {
+          const created = await createOfferingChoiceGroupAction(target.parentOfferingId, item.name);
+          if (!created.ok || !created.group) {
+            toast.error(created.ok ? "Could not create the category." : created.message);
+            return;
+          }
+          groupId = created.group.id;
+          groups = [...groups, created.group];
+        }
+        for (const memberId of target.candidateMemberIds) {
+          if (!selected.has(`${target.parentOfferingId}::${memberId}`)) continue;
+          if (target.alreadyMemberIds.includes(memberId)) continue;
+          const added = await addOfferingChoiceGroupMemberAction(groupId, memberId);
+          if (!added.ok) {
+            toast.error(added.message);
+            return;
+          }
+          const gid = groupId;
+          groups = groups.map((g) =>
+            g.id === gid ? { ...g, memberOfferingIds: [...g.memberOfferingIds, memberId] } : g,
+          );
+        }
+      }
+      const archived = await setOfferingArchivedAction(item.id, true);
+      if (!archived.ok) {
+        toast.error(archived.message ?? "Category created, but the old item could not be archived.");
+        onConverted({ groups, archivedId: "" });
+        return;
+      }
+      toast.success(`“${item.name}” is now a category.`);
+      onConverted({ groups, archivedId: item.id });
+    });
+  }
+
+  return (
+    <Sheet open={!!item} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <SheetContent className="overflow-y-auto sm:max-w-lg" data-testid="offering-convert-sheet">
+        <SheetHeader>
+          <SheetTitle>Make “{item?.name}” a category</SheetTitle>
+        </SheetHeader>
+        {item ? (
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              “{item.name}” becomes a category under{" "}
+              {plan.map((t) => nameById.get(t.parentOfferingId) ?? "its major").join(" and ")}. Check the
+              items that belong in it. The old “{item.name}” item is archived, so you can restore it later.
+            </p>
+            {plan.map((t) => (
+              <div key={t.parentOfferingId} className="space-y-1.5" data-testid={`offering-convert-parent-${t.parentOfferingId}`}>
+                <p className="text-sm font-medium text-heading">
+                  {nameById.get(t.parentOfferingId) ?? "Major"} → {item.name}
+                </p>
+                {t.candidateMemberIds.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No other items under this major yet.</p>
+                ) : (
+                  <div className="space-y-1 rounded-md border border-border p-2">
+                    {t.candidateMemberIds.map((id) => {
+                      const key = `${t.parentOfferingId}::${id}`;
+                      return (
+                        <label key={key} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted/40">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(key)}
+                            disabled={pending || t.alreadyMemberIds.includes(id)}
+                            onChange={() => toggle(key)}
+                            data-testid={`offering-convert-member-${t.parentOfferingId}-${id}`}
+                          />
+                          <span>{nameById.get(id) ?? id}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" disabled={pending} onClick={onClose}>Cancel</Button>
+              <Button type="button" disabled={pending || plan.length === 0} onClick={convert} data-testid="offering-convert-confirm">
+                {pending ? "Converting…" : "Make category"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function OfferingFormSheet({
-  open, onOpenChange, venueId, offering, defaultParentId, offerings, categories, inventoryItems,
+  open, onOpenChange, venueId, offering, defaultParentId, targetGroupName, offerings, categories, inventoryItems,
   choiceGroups, onChoiceGroupsChange, onSaved, onCategoryCreated,
 }: {
   open: boolean;
@@ -342,6 +550,7 @@ function OfferingFormSheet({
   venueId: string;
   offering: OfferingWithCategory | null;
   defaultParentId: string | null;
+  targetGroupName: string | null;
   offerings: OfferingWithCategory[];
   categories: OfferingCategory[];
   inventoryItems: InventoryItem[];
@@ -568,9 +777,11 @@ function OfferingFormSheet({
           <SheetTitle>
             {offering
               ? "Edit offering"
-              : hasAnyParent
-                ? "Add item under major choice"
-                : "Add offering"}
+              : targetGroupName
+                ? `Add item to ${targetGroupName}`
+                : hasAnyParent
+                  ? "Add item under major choice"
+                  : "Add offering"}
           </SheetTitle>
         </SheetHeader>
         <div className="space-y-3">
