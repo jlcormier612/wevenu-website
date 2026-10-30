@@ -47,7 +47,8 @@ Support living headcounts the way banquet tools do — without silent money move
 ## Feature flag
 
 - `headcountRecalcEnabled()` — env-gated (`HEADCOUNT_RECALC_ENABLED`). Default **on** in sandbox/test, **off** in production unless explicitly enabled.
-- B2 recalc only runs when the flag is on **and** the Event Order is open, unshared, unapproved, with no non-void EO-linked invoice.
+- B2: flag on + open + unshared + unapproved + no EO invoice → silent live recalc.
+- B3: flag on + shared + unapproved (+ reopen if finalized) → live recalc so share-stale / **Send updated copy** lights up. Couple still sees last snapshot until re-share. Approved stays frozen.
 
 ## Legacy mapping
 

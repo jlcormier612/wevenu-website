@@ -14,13 +14,9 @@ import { headcountRecalcEnabled } from "@/lib/events/headcount";
 const read = (rel: string) => readFileSync(resolve(rel), "utf8");
 
 describe("B2 gate helpers", () => {
-  it("allows open unshared unapproved only", () => {
+  it("allows open unshared unapproved; blocks finalized-unshared and approved", () => {
     assert.equal(shouldRecalcBoundLines({ status: "open", sharedAt: null, clientAgreedAt: null }), null);
     assert.equal(shouldRecalcBoundLines({ status: "finalized", sharedAt: null, clientAgreedAt: null }), "not_open");
-    assert.equal(
-      shouldRecalcBoundLines({ status: "open", sharedAt: "2026-01-01T00:00:00Z", clientAgreedAt: null }),
-      "shared",
-    );
     assert.equal(
       shouldRecalcBoundLines({ status: "open", sharedAt: null, clientAgreedAt: "2026-01-01T00:00:00Z" }),
       "approved",
@@ -54,9 +50,8 @@ describe("B2 wiring contracts", () => {
     assert.match(svc, /prevBound !== nextBound/);
   });
 
-  it("recalc module blocks shared, approved, and EO invoices; never updates invoices", () => {
+  it("recalc module blocks approved and EO invoices; never updates invoices", () => {
     const recalc = read("lib/events/headcount-recalc.ts");
-    assert.match(recalc, /return "shared"/);
     assert.match(recalc, /return "approved"/);
     assert.match(recalc, /skippedReason: "eo_invoice_present"/);
     assert.match(recalc, /updateLineQuantityKeepingBound/);
