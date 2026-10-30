@@ -90,7 +90,10 @@ describe("Sandbox COMMUNICATION_MODE", () => {
     assert.doesNotMatch(body, /\| \[0\]\.PhysicalResourceId/, "per-page --query indexing returns stale revisions");
     assert.match(body, /ResourceStatus=='UPDATE_COMPLETE'/, "replaced revisions are reported as UPDATE_COMPLETE");
     assert.match(body, /"\$svc_td" != "\$stack_td"/);
-    assert.match(body, /"\$running" != "\$svc_td"/);
+    assert.match(body, /"\$dep_td" != "\$svc_td"/);
+    assert.match(body, /"\$dep_state" != "COMPLETED"/);
+    assert.match(body, /"\$dep_running" != "\$dep_desired"/);
+    assert.doesNotMatch(body, /aws ecs (list-tasks|describe-task-definition)/, "the deploy role is not granted these");
     assert.equal((body.match(/exit 1/g) ?? []).length >= 4, true);
   });
 });

@@ -480,19 +480,20 @@ jobs:
             exit 1
           fi
 
-          tasks=$(aws ecs list-tasks --cluster htc-sandbox --service-name htc-sandbox-venue-app \
-            --desired-status RUNNING --query taskArns --output text)
-          if [ -z "$tasks" ] || [ "$tasks" = "None" ]; then
-            echo "::error::No running venue-app tasks."
+          # ecs:ListTasks is not granted on the task resource, so prove every
+          # running task is on this revision from the service's deployments.
+          deployments=$(aws ecs describe-services --cluster htc-sandbox --services htc-sandbox-venue-app \
+            --query "services[0].deployments[].[taskDefinition,rolloutState,runningCount,desiredCount]" --output text)
+          if [ "$(printf '%s\n' "$deployments" | wc -l)" -ne 1 ]; then
+            echo "::error::venue-app has more than one deployment: $deployments"
             exit 1
           fi
-          running=$(aws ecs describe-tasks --cluster htc-sandbox --tasks $tasks \
-            --query "tasks[].taskDefinitionArn" --output text | tr '\t' '\n' | sort -u)
-          if [ "$running" != "$svc_td" ]; then
-            echo "::error::Running venue-app tasks use: $running (expected only $svc_td)."
+          read -r dep_td dep_state dep_running dep_desired <<< "$deployments"
+          if [ "$dep_td" != "$svc_td" ] || [ "$dep_state" != "COMPLETED" ] || [ "$dep_running" -lt 1 ] || [ "$dep_running" != "$dep_desired" ]; then
+            echo "::error::venue-app deployment is not fully on $svc_td: $deployments"
             exit 1
           fi
-          echo "venue-app COMMUNICATION_MODE=disabled on $svc_td"
+          echo "venue-app COMMUNICATION_MODE=disabled on $svc_td ($dep_running/$dep_desired tasks)"
 
       - name: Verify ALB endpoints
         run: |
