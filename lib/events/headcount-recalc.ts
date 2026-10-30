@@ -1,12 +1,14 @@
 /**
- * Narrow B / B2–B3 — recalc headcount-bound Event Order lines when
+ * Narrow B / B2–B4 — recalc headcount-bound Event Order lines when
  * Guaranteed ?? Estimated changes.
  *
  * B2: open + unshared + unapproved → silent live update.
  * B3: shared + unapproved → reopen if finalized, update live lines so the
  *     existing share-stale / "Send updated copy" path lights up. Couple still
  *     sees the last share snapshot until the venue re-shares.
- * Approved (clientAgreedAt) and EO-linked invoices stay frozen.
+ * B4: any non-void EO-linked invoice blocks recalc (draft and issued).
+ *     Invoice rows are never updated from a headcount edit.
+ * Approved (clientAgreedAt) stays frozen.
  */
 import type { createClient } from "@/integrations/supabase/server";
 import * as eoRepo from "@/lib/event-orders/repository";
@@ -17,17 +19,20 @@ import {
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
+export type HeadcountRecalcSkipReason =
+  | "flag_off"
+  | "no_bound_count"
+  | "no_event_order"
+  | "not_open"
+  | "approved"
+  | "eo_invoice_draft"
+  | "eo_invoice_issued";
+
 export type HeadcountRecalcResult = {
   attempted: boolean;
   updated: number;
   reopened?: boolean;
-  skippedReason?:
-    | "flag_off"
-    | "no_bound_count"
-    | "no_event_order"
-    | "not_open"
-    | "approved"
-    | "eo_invoice_present";
+  skippedReason?: HeadcountRecalcSkipReason;
 };
 
 /**
@@ -38,12 +43,25 @@ export function shouldRecalcBoundLines(order: {
   status: string;
   sharedAt: string | null;
   clientAgreedAt: string | null;
-}): HeadcountRecalcResult["skippedReason"] | null {
+}): HeadcountRecalcSkipReason | null {
   if (order.clientAgreedAt) return "approved";
   if (order.status === "open") return null;
   // B3: finalized + shared + unapproved → reopen then recalc.
   if (order.status === "finalized" && order.sharedAt) return null;
   return "not_open";
+}
+
+/**
+ * B4 — any non-void EO-linked invoice blocks auto-recalc.
+ * Draft is called out separately so the venue knows the careful v1 rule.
+ */
+export function classifyBlockingEoInvoice(
+  invoices: Array<{ status: string }>,
+): "eo_invoice_draft" | "eo_invoice_issued" | null {
+  const live = invoices.filter((inv) => inv.status !== "void");
+  if (live.length === 0) return null;
+  if (live.some((inv) => inv.status === "draft")) return "eo_invoice_draft";
+  return "eo_invoice_issued";
 }
 
 export async function recalculateBoundEventOrderLinesForEvent(
@@ -79,8 +97,19 @@ export async function recalculateBoundEventOrderLinesForEvent(
     .eq("event_order_id", order.id)
     .neq("status", "void");
   if (invErr) throw invErr;
-  if ((invoices ?? []).length > 0) {
-    return { attempted: false, updated: 0, skippedReason: "eo_invoice_present" };
+  const invoiceBlock = classifyBlockingEoInvoice(invoices ?? []);
+  if (invoiceBlock) {
+    await eoRepo.insertActivity(
+      supabase,
+      venueId,
+      order.id,
+      "headcount_recalc_blocked",
+      "Headcount changed — Event Order quantities left unchanged",
+      invoiceBlock === "eo_invoice_draft"
+        ? "A draft Event Order invoice exists, so bound lines were not refreshed. Void or finish that invoice before relying on automatic headcount updates."
+        : "An Event Order invoice was already issued, so bound lines and invoice amounts stay frozen. Headcount edits never reprice a sent or paid invoice.",
+    );
+    return { attempted: false, updated: 0, skippedReason: invoiceBlock };
   }
 
   let reopened = false;

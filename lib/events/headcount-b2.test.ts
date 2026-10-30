@@ -53,7 +53,8 @@ describe("B2 wiring contracts", () => {
   it("recalc module blocks approved and EO invoices; never updates invoices", () => {
     const recalc = read("lib/events/headcount-recalc.ts");
     assert.match(recalc, /return "approved"/);
-    assert.match(recalc, /skippedReason: "eo_invoice_present"/);
+    assert.match(recalc, /eo_invoice_draft/);
+    assert.match(recalc, /eo_invoice_issued/);
     assert.match(recalc, /updateLineQuantityKeepingBound/);
     assert.doesNotMatch(recalc, /from\("invoices"\)[\s\S]*\.update\(/);
   });

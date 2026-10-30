@@ -32,7 +32,8 @@ Support living headcounts the way banquet tools do — without silent money move
 1. Sent/paid invoices never reprice from a headcount edit.
 2. Couple-approved EO quantities do not change from a headcount edit alone.
 3. Changing Guaranteed after Approve requires Send updated copy (existing re-approval path).
-4. Draft EO-linked invoice: block recalc (do not silently refresh) until B4 proves a safer rule.
+4. Draft EO-linked invoice: block recalc (do not silently refresh) — B4 proves this v1 rule.
+5. Issued (sent / partially_paid / paid) EO-linked invoice: block recalc; invoice amounts never change from a headcount edit.
 
 ## Slice order (each GREEN on Sandbox before the next)
 
@@ -49,6 +50,7 @@ Support living headcounts the way banquet tools do — without silent money move
 - `headcountRecalcEnabled()` — env-gated (`HEADCOUNT_RECALC_ENABLED`). Default **on** in sandbox/test, **off** in production unless explicitly enabled.
 - B2: flag on + open + unshared + unapproved + no EO invoice → silent live recalc.
 - B3: flag on + shared + unapproved (+ reopen if finalized) → live recalc so share-stale / **Send updated copy** lights up. Couple still sees last snapshot until re-share. Approved stays frozen.
+- B4: any non-void EO-linked invoice (`draft` or issued) → **block recalc**; write EO activity; never update invoice rows. Void invoices do not block.
 
 ## Legacy mapping
 
