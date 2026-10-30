@@ -361,6 +361,7 @@ export function EventOrderPanel({
   shareCommitmentStale = false,
   choices = [],
   guestCount = null,
+  actionsOwnedByJourney = false,
 }: {
   eventId: string;
   planningClientId?: string | null;
@@ -389,6 +390,11 @@ export function EventOrderPanel({
   choices?: ClientChoicesWithHistory[];
   /** Guest count when there is no event overview (client planning Event Order). */
   guestCount?: number | null;
+  /**
+   * When true (Event Order tab journey), Send / Invoice CTAs live on the lead-card
+   * rows — hide competing Finalize, Share, and Create invoice controls here.
+   */
+  actionsOwnedByJourney?: boolean;
 }) {
   const router = useRouter();
   const applyGuestCount = overview?.guestCount ?? guestCount;
@@ -513,7 +519,7 @@ export function EventOrderPanel({
           <CardHeader>
             <CardTitle className="text-base">Event Order</CardTitle>
             <CardDescription>
-              Preparing the profile starting Event Order template for this event. Draft only — not an invoice, contract, or payment plan.
+              Preparing a draft from this event&apos;s starting template. The couple sees nothing until you send it.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -526,12 +532,11 @@ export function EventOrderPanel({
       );
     }
     return (
-      <Card>
+      <Card data-testid="eo-empty-start">
         <CardHeader>
           <CardTitle className="text-base">Event Order</CardTitle>
           <CardDescription>
-            Manage this event&apos;s Event Order — the agreed deliverables record. An Event Order is
-            not itself an invoice, contract, or payment plan.
+            Pick a template or start blank below. The couple sees nothing until you send it.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -542,9 +547,7 @@ export function EventOrderPanel({
               </p>
             )}
             <p className="max-w-md text-sm text-muted-foreground">
-              Optional — use when you need a detailed delivery list. Events that use a sales Package only can skip this.
-              Event Order templates copy selected sections and offerings into this event. That snapshot is not an invoice, contract, or payment.
-              When a Setup Profile starting Event Order template is configured, use Release to client portal from Overview instead of starting here.
+              A template fills in sections and offerings for this event. You can edit the draft before you send it.
             </p>
             <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Button type="button" size="sm" disabled={starting}
@@ -705,7 +708,13 @@ export function EventOrderPanel({
           }
           lastUpdated={new Date(eventOrder.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={
-            preBooking ? undefined : !isFinalized ? (
+            preBooking || actionsOwnedByJourney
+              ? (isFinalized && eventOrder.sharedAt ? (
+                <Button type="button" size="sm" disabled={downloading} onClick={() => handleDownload(eventOrder.id)}>
+                  {downloading ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Opening…</> : "Download PDF"}
+                </Button>
+              ) : undefined)
+              : !isFinalized ? (
               <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
                 onClick={() => requestFinalize(eventOrder.id, eventOrder.total, eventOrder.lines.length)}>
                 {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize Event Order"}
@@ -761,7 +770,7 @@ export function EventOrderPanel({
         )}
         {isFinalized && (
           <div className="flex items-center gap-2 -mt-1">
-            {eventOrder.sharedAt && (
+            {eventOrder.sharedAt && !actionsOwnedByJourney && (
               <>
                 <Button type="button" variant="ghost" size="sm" onClick={() => requestShareDialog("update")}>Update Shared Copy</Button>
                 <ShareDialog
@@ -792,9 +801,8 @@ export function EventOrderPanel({
             Shared with client {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
           </p>
         )}
-        {clientId && (
+        {clientId && !preBooking && !actionsOwnedByJourney && (
           <div className="pt-3 mt-3 border-t border-border/60">
-            {!preBooking && (
             <EventOrderInvoiceLink
               eventOrderId={eventOrder.id}
               eventId={scopeId}
@@ -804,7 +812,6 @@ export function EventOrderPanel({
               hasPricedContent={eventOrder.total > 0}
               linkedScheduleId={linkedScheduleId}
             />
-            )}
           </div>
         )}
       </CardHeader>

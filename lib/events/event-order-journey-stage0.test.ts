@@ -173,9 +173,11 @@ describe("Stage 0 workflow composition source", () => {
     assert.match(workflow, /event-order-order/);
     assert.match(workflow, /ClientChoicesPanel/);
     assert.match(workflow, /EventOrderPanel/);
+    assert.match(workflow, /actionsOwnedByJourney/);
+    assert.match(workflow, /selectionRequestComposer=\{false\}/);
   });
 
-  it("portal-only CTA remains distinct from email send", () => {
+  it("portal-only CTA remains available on the full selection-request composer", () => {
     const panel = readFileSync(
       resolve("components/client-choices/client-choices-panel.tsx"),
       "utf8",
@@ -184,6 +186,7 @@ describe("Stage 0 workflow composition source", () => {
     assert.match(panel, /choices-portal-only/);
     assert.match(panel, /No email was sent/);
     assert.match(panel, /Send selection request/);
+    assert.match(panel, /selectionRequestComposer/);
   });
 
   it("composer includes template select, RH preview, and ArtifactReviewOverlay", () => {
@@ -206,7 +209,7 @@ describe("Stage 0 workflow composition source", () => {
     assert.doesNotMatch(journeyUi, />\s*View\s*</);
   });
 
-  it("invoice link uses Create/Open invoice & payment plan labels", () => {
+  it("invoice link component retains Create/Open labels for non-journey surfaces", () => {
     const link = readFileSync(
       resolve("components/event-orders/event-order-invoice-link.tsx"),
       "utf8",

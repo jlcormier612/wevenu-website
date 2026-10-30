@@ -87,12 +87,15 @@ function ChoicesComposerActions({
   hasEventOrder,
   shareContext,
   onPreviewSend,
+  selectionRequestComposer = true,
 }: {
   eventId: string;
   row: ClientChoicesWithHistory | ClientChoices;
   hasEventOrder: boolean;
   shareContext: ShareRecipientProps;
   onPreviewSend: () => void;
+  /** False when Send to couple owns the selection request (Event Order journey). */
+  selectionRequestComposer?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -182,15 +185,17 @@ function ChoicesComposerActions({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          data-testid="choices-staff-preview"
-          onClick={onPreviewSend}
-        >
-          Preview selection request
-        </Button>
+        {selectionRequestComposer ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid="choices-staff-preview"
+            onClick={onPreviewSend}
+          >
+            Preview selection request
+          </Button>
+        ) : null}
         {needsReview ? (
           <Button
             type="button"
@@ -202,7 +207,7 @@ function ChoicesComposerActions({
             Review selections
           </Button>
         ) : null}
-        {canEmailRequest ? (
+        {selectionRequestComposer && canEmailRequest ? (
           <>
             <Button
               type="button"
@@ -294,7 +299,7 @@ function ChoicesComposerActions({
             </Button>
           </>
         ) : null}
-        {row.status === "finalized" ? (
+        {selectionRequestComposer && row.status === "finalized" ? (
           <Button
             type="button"
             size="sm"
@@ -468,6 +473,7 @@ export function ClientChoicesPanel({
   financialImpact = null,
   hasEventOrder = false,
   showFinancialImpact = true,
+  selectionRequestComposer = true,
   clientName = null,
   clientEmail = null,
   venueName = null,
@@ -483,6 +489,11 @@ export function ClientChoicesPanel({
   hasEventOrder?: boolean;
   /** False when the Event Order panel already owns the invoice handoff. */
   showFinancialImpact?: boolean;
+  /**
+   * When false, hide Prepare/Send selection request — the Event Order journey
+   * "Send to couple" path owns that. Keep review/history only.
+   */
+  selectionRequestComposer?: boolean;
   clientName?: string | null;
   clientEmail?: string | null;
   venueName?: string | null;
@@ -533,13 +544,48 @@ export function ClientChoicesPanel({
   return (
     <Card className="mb-4" data-testid="client-choices-panel">
       <CardHeader>
-        <CardTitle className="text-base">Client selections</CardTitle>
+        <CardTitle className="text-base">
+          {selectionRequestComposer ? "Client selections" : "Couple's choices"}
+        </CardTitle>
         <CardDescription>
-          Choose a template, then send the couple a selection request.
+          {selectionRequestComposer
+            ? "Choose a template, then send the couple a selection request."
+            : "Details and history. The couple makes choices on their Event Order link after you send it."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {eventOrderTemplates.length === 0 ? (
+        {!selectionRequestComposer ? (
+          <div className="space-y-4" data-testid="choices-review-only">
+            {active ? (
+              <ChoicesComposerActions
+                eventId={eventId}
+                row={active}
+                hasEventOrder={hasEventOrder}
+                shareContext={shareContext}
+                onPreviewSend={() => setSendPreviewOpen(true)}
+                selectionRequestComposer={false}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No active selection packet yet. Send the Event Order above when you are ready.
+              </p>
+            )}
+            {otherChoices.length > 0 ? (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">
+                  Other selection packets ({otherChoices.length})
+                </summary>
+                <ul className="mt-2 space-y-1 pl-2">
+                  {otherChoices.map((c) => (
+                    <li key={c.id}>
+                      {c.name} · {clientChoicesDisplayLabel(c.status)}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        ) : eventOrderTemplates.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No Event Order Templates yet.{" "}
             <Link href="/library/event-order-templates" className="text-primary hover:underline">
@@ -601,6 +647,7 @@ export function ClientChoicesPanel({
                   hasEventOrder={hasEventOrder}
                   shareContext={shareContext}
                   onPreviewSend={() => setSendPreviewOpen(true)}
+                  selectionRequestComposer
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -675,7 +722,7 @@ export function ClientChoicesPanel({
         )}
 
         {/* Full send preview — ArtifactReviewOverlay (same pattern as proposal send) */}
-        {active ? (
+        {selectionRequestComposer && active ? (
           <ArtifactReviewOverlay
             open={sendPreviewOpen}
             eyebrow="This is a preview — nothing has been sent"

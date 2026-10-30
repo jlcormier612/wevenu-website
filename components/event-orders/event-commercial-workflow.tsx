@@ -43,7 +43,6 @@ import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Offering } from "@/lib/offerings/types";
 import type { Package, PackageWithItems } from "@/lib/packages/types";
-import { shouldShowChoicesFinancialImpact } from "@/lib/event-orders/event-order-journey";
 import {
   resolveCommercialWorkflowStep,
   type CommercialWorkflowStepId,
@@ -175,10 +174,6 @@ export function EventCommercialWorkflow({
   const [sendOpen, setSendOpen] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<EventOrderJourneyAction | null>(null);
   const choicesNeedReview = choices.some((c) => isClientChoicesNeedsVenueReview(c.status));
-  const showFinancialImpact = shouldShowChoicesFinancialImpact(
-    hasEoInvoice,
-    unbilledAmount,
-  );
   const coupleLink = eventOrder?.reviewToken
     ? eventOrderDocumentUrl(publicAppOrigin(), eventOrder.reviewToken)
     : null;
@@ -365,23 +360,27 @@ export function EventCommercialWorkflow({
           overview={overview}
           shareCommitmentStale={shareCommitmentStale}
           choices={choices}
+          actionsOwnedByJourney
         />
       </StageSection>
 
+      {/* Review/history only — Send to couple owns the selection request; no leftover Prepare/Send panel. */}
+      {choices.length > 0 ? (
       <StageSection
         id="event-order-choices"
         testId="event-order-choices"
         title="Couple's choices — details and history"
         emphasized={false}
-        collapsedByDefault={!choicesNeedReview && !(showFinancialImpact && unbilledAmount > 0)}
+        collapsedByDefault={!choicesNeedReview}
       >
         <ClientChoicesPanel
           eventId={eventId}
           eventOrderTemplates={eventOrderTemplates}
           choices={choices}
-          financialImpact={showFinancialImpact ? financialImpact : null}
+          financialImpact={null}
           hasEventOrder={Boolean(eventOrder)}
-          showFinancialImpact={showFinancialImpact}
+          showFinancialImpact={false}
+          selectionRequestComposer={false}
           clientName={clientName}
           clientEmail={clientEmail}
           venueName={venueName}
@@ -389,6 +388,7 @@ export function EventCommercialWorkflow({
           eventDate={overview.eventDate}
         />
       </StageSection>
+      ) : null}
     </div>
   );
 }
