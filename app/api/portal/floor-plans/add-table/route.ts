@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const code = result?.error ?? "add_failed";
     const status =
       code === "add_not_permitted" || code === "plan_ready" || code === "type_not_permitted"
-        || code === "quantity_exceeded" || code === "quantity_not_configured" ? 403
+        || code === "quantity_exceeded" || code === "quantity_not_configured" || code === "order_limit_reached" ? 403
         : code === "not_shared" || code === "inventory_not_found" ? 404
           : code === "insufficient_access" || code === "invalid_token" ? 403
             : code === "outside_room" ? 400

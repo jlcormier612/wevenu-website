@@ -20,6 +20,7 @@ type ItemRow = {
   quantity_available: number; width: number | null; length: number | null; height: number | null;
   shape: InventoryShape | null; color: string | null; image_url: string | null; printable_name: string | null;
   is_archived: boolean; available_for_floor_plans: boolean;
+  counts_as_seats?: boolean | null;
   created_at: string; updated_at: string;
 };
 
@@ -35,6 +36,7 @@ const mapItem = (r: ItemRow): InventoryItem => ({
   height: r.height !== null ? Number(r.height) : null,
   shape: r.shape, color: r.color, imageUrl: r.image_url, printableName: r.printable_name,
   isArchived: r.is_archived, availableForFloorPlans: r.available_for_floor_plans,
+  countsAsSeats: r.counts_as_seats ?? false,
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -96,6 +98,7 @@ function itemRow(input: InventoryItemInput) {
     color: input.color?.trim() || null,
     printable_name: input.printableName?.trim() || null,
     available_for_floor_plans: input.availableForFloorPlans,
+    ...(input.countsAsSeats === undefined ? {} : { counts_as_seats: input.countsAsSeats }),
   };
 }
 

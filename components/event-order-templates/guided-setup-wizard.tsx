@@ -17,6 +17,7 @@ import {
 import { EventOrderTemplateChoiceGroups } from "@/components/event-order-templates/event-order-template-choice-groups";
 import { OfferingEditorSheet } from "@/components/event-order-templates/offering-editor-sheet";
 import { PackageChoicesPanel } from "@/components/event-order-templates/package-choices-panel";
+import { SectionFloorPlanDefault } from "@/components/event-order-templates/section-floor-plan-default";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -181,6 +182,7 @@ export function GuidedSetupWizard({
               {warnings.map((m) => (
                 <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">{m}</p>
               ))}
+              <SectionFloorPlanDefault templateId={template.id} section={section} onPersist={onPersist} />
 
               <TemplateLinesBlock
                 title="Included"

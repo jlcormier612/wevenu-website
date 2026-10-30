@@ -19,6 +19,7 @@ type OrderRow = {
 type SectionRow = {
   id: string; event_order_id: string; venue_id: string; name: string; sort_order: number;
   floor_plan_id: string | null; created_at: string; updated_at: string;
+  floor_plan_setup_id?: string | null; floor_plan_setup_name?: string | null; not_on_floor_plan?: boolean | null;
 };
 type LineRow = {
   id: string; event_order_id: string; venue_id: string; section_id: string | null;
@@ -47,6 +48,9 @@ const mapOrder = (r: OrderRow): EventOrder => ({
 const mapSection = (r: SectionRow): EventOrderSection => ({
   id: r.id, eventOrderId: r.event_order_id, venueId: r.venue_id, name: r.name,
   sortOrder: r.sort_order, floorPlanId: r.floor_plan_id, createdAt: r.created_at, updatedAt: r.updated_at,
+  floorPlanSetupId: r.floor_plan_setup_id ?? null,
+  floorPlanSetupName: r.floor_plan_setup_name ?? null,
+  notOnFloorPlan: r.not_on_floor_plan ?? false,
 });
 const mapLine = (r: LineRow): EventOrderLine => ({
   id: r.id, eventOrderId: r.event_order_id, venueId: r.venue_id, sectionId: r.section_id,
@@ -237,12 +241,19 @@ export function buildSharePayload(order: EventOrderWithDetails): EventOrderShare
 
 // ---- sections -------------------------------------------------------------------
 
-export async function insertSection(client: DbClient, venueId: string, eventOrderId: string, name: string, sortOrder: number): Promise<EventOrderSection> {
-  const { data, error } = await client.from("event_order_sections")
-    .insert({ event_order_id: eventOrderId, venue_id: venueId, name: name.trim(), sort_order: sortOrder })
-    .select().single<SectionRow>();
+export async function insertSection(
+  client: DbClient, venueId: string, eventOrderId: string, name: string, sortOrder: number,
+  floorPlanDefaults?: { floorPlanSetupName?: string | null; notOnFloorPlan?: boolean },
+): Promise<EventOrderSection> {
+  const row: Record<string, unknown> = { event_order_id: eventOrderId, venue_id: venueId, name: name.trim(), sort_order: sortOrder };
+  if (floorPlanDefaults?.floorPlanSetupName?.trim()) row.floor_plan_setup_name = floorPlanDefaults.floorPlanSetupName.trim();
+  if (floorPlanDefaults?.notOnFloorPlan) row.not_on_floor_plan = true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_order_sections") as any)
+    .insert(row)
+    .select().single();
   if (error) throw error;
-  return mapSection(data);
+  return mapSection(data as SectionRow);
 }
 
 export async function updateSectionFloorPlan(
@@ -251,6 +262,17 @@ export async function updateSectionFloorPlan(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_order_sections") as any)
     .update({ floor_plan_id: floorPlanId }).eq("id", sectionId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function updateSectionFloorPlanSetup(
+  client: DbClient, venueId: string, eventOrderId: string, sectionId: string,
+  input: { floorPlanSetupId: string | null; notOnFloorPlan: boolean },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_order_sections") as any)
+    .update({ floor_plan_setup_id: input.floorPlanSetupId, not_on_floor_plan: input.notOnFloorPlan, floor_plan_id: null })
+    .eq("id", sectionId).eq("event_order_id", eventOrderId).eq("venue_id", venueId);
   if (error) throw error;
 }
 

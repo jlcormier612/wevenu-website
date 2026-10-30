@@ -73,7 +73,8 @@ export async function updateEventOrderTemplateSectionGuidanceAction(
 }
 
 export async function updateEventOrderTemplateSectionAction(
-  templateId: string, sectionId: string, input: { name?: string; guidance?: string | null },
+  templateId: string, sectionId: string,
+  input: { name?: string; guidance?: string | null; floorPlanSetupName?: string | null; notOnFloorPlan?: boolean },
 ): Promise<EventOrderTemplateActionResult> {
   const result = await updateSection(sectionId, input);
   if (result.ok) revalidateLibrary(templateId);

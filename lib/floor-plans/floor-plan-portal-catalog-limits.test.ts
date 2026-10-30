@@ -65,7 +65,8 @@ describe("Floor plan portal furniture catalog + quantity limits", () => {
     assert.match(portalSection, /floor-plan-room-boundary/);
     assert.match(portalSection, /floor-plan-room-scale/);
     assert.match(portalSection, /floor-plan-remove-table/);
-    assert.match(portalSection, /Quantity not set by venue/);
+    assert.match(portalSection, /catalogLimitLabel\(item\)/);
+    assert.match(portalSection, /Ask your venue about adding more/);
     assert.match(portalView, /seats/);
     assert.doesNotMatch(portalSection, /objectType: "table_round"/);
   });

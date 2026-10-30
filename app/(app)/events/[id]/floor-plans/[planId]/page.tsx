@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import { FloorPlanFinalizeControl } from "@/components/floor-plan/floor-plan-finalize-control";
-import { FloorPlanReconciliationBanner } from "@/components/floor-plan/floor-plan-reconciliation-banner";
+import { FloorPlanRequiredVsPlacedPanel } from "@/components/floor-plan/floor-plan-required-vs-placed";
 import { getSpaces } from "@/lib/availability/service";
 import { getEvent } from "@/lib/events/service";
 import { canEditFloorPlans } from "@/lib/floor-plans/authorize";
-import { getFloorPlan, getFloorPlanReconciliation } from "@/lib/floor-plans/service";
+import { getRequiredVsPlacedForPlan } from "@/lib/floor-plans/required-vs-placed-service";
+import { getFloorPlan } from "@/lib/floor-plans/service";
 import { getCategories, getFloorPlanEligibleItems, getUsageForEvent } from "@/lib/inventory/service";
 import { getCurrentUserRole } from "@/lib/venue/service";
 
@@ -28,13 +29,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function FloorPlanEditorPage({ params }: Props) {
   const { id, planId } = await params;
-  const [event, plan, inventoryItems, inventoryCategories, inventoryUsage, reconciliation, role, spaces] = await Promise.all([
+  const [event, plan, inventoryItems, inventoryCategories, inventoryUsage, requiredVsPlaced, role, spaces] = await Promise.all([
     getEvent(id),
     getFloorPlan(planId),
     getFloorPlanEligibleItems(),
     getCategories(),
     getUsageForEvent(id),
-    getFloorPlanReconciliation(planId),
+    getRequiredVsPlacedForPlan(id, planId),
     getCurrentUserRole(),
     getSpaces(),
   ]);
@@ -54,7 +55,10 @@ export default async function FloorPlanEditorPage({ params }: Props) {
         relationship={event.clientId ? { name: event.name, href: `/clients/${event.clientId}` } : { name: event.name }}
         primaryAction={canEdit ? <FloorPlanFinalizeControl planId={plan.id} eventId={event.id} finalizedAt={plan.finalizedAt} /> : null}
       />
-      <FloorPlanReconciliationBanner reconciliation={reconciliation} />
+      <FloorPlanRequiredVsPlacedPanel
+        result={requiredVsPlaced}
+        eventOrderHref={`/events/${event.id}?tab=event-order#event-order-order`}
+      />
       <FloorPlanEditor
         initialPlan={plan}
         eventId={event.id}

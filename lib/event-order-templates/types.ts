@@ -33,6 +33,9 @@ export type EventOrderTemplateSection = {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  /** Usual floor plan setup (e.g. Reception) — copied to new event sections. */
+  floorPlanSetupName?: string | null;
+  notOnFloorPlan?: boolean;
 };
 
 export type EventOrderTemplateLine = {

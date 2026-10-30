@@ -217,6 +217,10 @@ export type PortalFloorPlanCatalogItem = {
   quantityUsed: number;
   remaining: number;
   quantityConfigured: boolean;
+  /** Quantity on the couple's Event Order; when > 0 it is the limit. */
+  orderQuantity?: number;
+  /** What sets the limit: the Event Order, or venue stock. */
+  limitSource?: "event_order" | "stock" | null;
   addable: boolean;
   unavailableReason?: string | null;
   categoryName?: string | null;

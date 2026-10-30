@@ -57,6 +57,7 @@ export function InventoryItemForm({
   const [color, setColor] = React.useState(item?.color ?? "");
   const [printableName, setPrintableName] = React.useState(item?.printableName ?? "");
   const [availableForFloorPlans, setAvailableForFloorPlans] = React.useState(item?.availableForFloorPlans ?? false);
+  const [countsAsSeats, setCountsAsSeats] = React.useState(item?.countsAsSeats ?? false);
   const [file, setFile] = React.useState<File | null>(null);
   const [pending, setPending] = React.useState(false);
 
@@ -71,11 +72,17 @@ export function InventoryItemForm({
     color: item?.color ?? "",
     printableName: item?.printableName ?? "",
     availableForFloorPlans: item?.availableForFloorPlans ?? false,
+    countsAsSeats: item?.countsAsSeats ?? false,
   }));
   const dirty = JSON.stringify({
-    name, categoryId, quantityAvailable, width, length, height, shape, color, printableName, availableForFloorPlans,
+    name, categoryId, quantityAvailable, width, length, height, shape, color, printableName, availableForFloorPlans, countsAsSeats,
   }) !== baseline || !!file;
   const { confirmLeave } = useLibraryUnsavedGuard(dirty);
+
+  function handleCategoryChange(next: string) {
+    setCategoryId(next);
+    if (categories.find((c) => c.id === next)?.name.trim().toLowerCase() === "chairs") setCountsAsSeats(true);
+  }
 
   async function handleAddCategory() {
     const proposed = window.prompt("New category name");
@@ -139,6 +146,7 @@ export function InventoryItemForm({
         color: color.trim() || null,
         printableName: printableName.trim() || null,
         availableForFloorPlans,
+        countsAsSeats,
       };
 
       let itemId: string;
@@ -173,7 +181,7 @@ export function InventoryItemForm({
       <div className="space-y-1.5">
         <Label className="text-xs">Category <span className="font-normal text-muted-foreground">(optional)</span></Label>
         <div className="flex items-center gap-2">
-          <Select value={categoryId} onValueChange={setCategoryId} items={[{ value: NO_CATEGORY, label: "No category" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}>
+          <Select value={categoryId} onValueChange={handleCategoryChange} items={[{ value: NO_CATEGORY, label: "No category" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}>
             <SelectTrigger className="h-9 flex-1 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value={NO_CATEGORY}>No category</SelectItem>
@@ -251,6 +259,16 @@ export function InventoryItemForm({
       <div className="flex items-center gap-2">
         <Switch checked={availableForFloorPlans} onCheckedChange={setAvailableForFloorPlans} />
         <Label className="text-xs cursor-pointer">Available for use in Floor Plans</Label>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Switch checked={countsAsSeats} onCheckedChange={setCountsAsSeats} data-testid="inventory-counts-as-seats" />
+          <Label className="text-xs cursor-pointer">Counts as seats</Label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          For chairs. Floor plans compare this item with the seats at tables plus any chairs placed one by one.
+        </p>
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-2">

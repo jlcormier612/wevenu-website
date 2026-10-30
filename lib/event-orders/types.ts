@@ -39,6 +39,12 @@ export type EventOrderSection = {
   floorPlanId: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Venue override: floor plan setup this section is laid out on. */
+  floorPlanSetupId?: string | null;
+  /** Template default setup name, matched to the event's setups by name. */
+  floorPlanSetupName?: string | null;
+  /** Venue choice: not compared with any floor plan. */
+  notOnFloorPlan?: boolean;
 };
 
 export type EventOrderLine = {

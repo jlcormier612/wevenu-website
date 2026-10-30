@@ -37,6 +37,7 @@ import type {
   PortalFloorPlanOfferSummary,
   PortalFloorPlanSummary,
 } from "@/lib/portal/types";
+import { catalogLimitLabel, isLimitReason } from "@/lib/portal/floor-plan-catalog-limit";
 
 const SAGE = "#5F8A5B";
 const SEATABLE = new Set(["table_round", "table_rect", "table_oval"]);
@@ -904,10 +905,12 @@ export default function FloorPlanSection({
         return "This layout is with your venue for review — editing is paused.";
       case "plan_approved":
         return "Your venue approved this layout — placement is locked.";
+      case "order_limit_reached":
+        return "You've placed all of that item on your order. Ask your venue about adding more.";
       case "quantity_exceeded":
-        return "No more of that item are available for this event.";
+        return "No more of that item are available. Ask your venue about adding more.";
       case "quantity_not_configured":
-        return "Your venue has not set how many of this item are available. Ask them to set inventory quantity.";
+        return "Ask your venue about adding more of that item.";
       case "outside_room":
         return "That placement is outside the room boundary.";
       case "type_not_permitted":
@@ -1411,8 +1414,8 @@ export default function FloorPlanSection({
                     <div>
                       <p className="text-sm font-semibold text-heading">Venue furniture</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Choose from your venue&apos;s catalog. Quantities and dimensions come from venue inventory —
-                        items without a configured quantity cannot be added.
+                        Tables on your order can be placed up to the number you ordered. Other tables are limited
+                        to what your venue has. Counts are for this layout.
                       </p>
                     </div>
                     <button
@@ -1457,22 +1460,29 @@ export default function FloorPlanSection({
                                     {catalogDimsLabel(item)}
                                     {item.capacity != null ? ` · ${item.capacity} seats` : ""}
                                   </p>
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {item.quantityConfigured
-                                      ? `${item.remaining} of ${item.quantityAvailable} remaining (venue inventory)`
-                                      : "Quantity not set by venue"}
+                                  <p className="text-[11px] text-muted-foreground" data-testid="floor-plan-catalog-item-limit">
+                                    {catalogLimitLabel(item)}
                                   </p>
                                 </div>
-                                <button
-                                  type="button"
-                                  disabled={!item.addable || adding}
-                                  onClick={() => void addFromCatalog(item)}
-                                  className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border border-border disabled:opacity-40"
-                                  style={item.addable ? { background: SAGE, color: "#fff", borderColor: SAGE } : undefined}
-                                  data-testid="floor-plan-catalog-add"
-                                >
-                                  {item.addable ? (adding ? "Adding…" : "Add") : "Unavailable"}
-                                </button>
+                                {!item.addable && isLimitReason(item.unavailableReason) ? (
+                                  <p
+                                    className="shrink-0 max-w-[9rem] text-right text-[11px] text-muted-foreground"
+                                    data-testid="floor-plan-catalog-ask-venue"
+                                  >
+                                    Ask your venue about adding more
+                                  </p>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={!item.addable || adding}
+                                    onClick={() => void addFromCatalog(item)}
+                                    className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border border-border disabled:opacity-40"
+                                    style={item.addable ? { background: SAGE, color: "#fff", borderColor: SAGE } : undefined}
+                                    data-testid="floor-plan-catalog-add"
+                                  >
+                                    {item.addable ? (adding ? "Adding…" : "Add") : "Unavailable"}
+                                  </button>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -1501,7 +1511,7 @@ export default function FloorPlanSection({
                                     {catalogDimsLabel(item)}
                                     {item.capacity != null ? ` · ${item.capacity} seats` : ""}
                                     {" · "}
-                                    {item.remaining} remaining (cap {item.quantityAvailable})
+                                    {item.remaining} more can be added
                                   </p>
                                 </div>
                                 <button

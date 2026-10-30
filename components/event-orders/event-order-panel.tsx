@@ -7,10 +7,11 @@ import { toast } from "sonner";
 
 import {
   addSectionAction, applyEventOrderTemplateAction, ensureEventOrderAction, finalizeEventOrderAction, getEventOrderPdfUrlAction,
-  removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanAction,
+  removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanSetupAction,
   shareEventOrderWithClientAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
 import { ensureClientEventOrderAction } from "@/app/(app)/clients/planning-actions";
+import { listSetupsWithMembersAction } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { getEventOrderTemplateDetailAction } from "@/app/(app)/library/event-order-templates/actions";
 import { ApplyEventOrderTemplateSheet } from "@/components/event-order-templates/apply-event-order-template-sheet";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
@@ -39,6 +40,7 @@ import { isBillableEventOrderLineForInvoice } from "@/lib/client-choices/unbille
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import { matchChoiceGroupsToSections, splitSetupLines, staffLineNotesLabel } from "@/lib/event-orders/document-view";
+import { resolveSectionSetup } from "@/lib/floor-plans/required-vs-placed";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -252,60 +254,78 @@ function AddSectionInline({ eventOrderId, eventId, disabled }: { eventOrderId: s
   );
 }
 
+type SetupOption = { id: string; name: string };
+
+function useEventFloorPlanSetups(eventId: string | null | undefined): SetupOption[] {
+  const [setups, setSetups] = React.useState<SetupOption[]>([]);
+  React.useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    void listSetupsWithMembersAction(eventId).then((rows) => {
+      if (!cancelled) setSetups(rows.map((r) => ({ id: r.id, name: r.name })));
+    });
+    return () => { cancelled = true; };
+  }, [eventId]);
+  return setups;
+}
+
 /**
- * Phase 4 — which Floor Plan (if any) this Section reconciles against.
- * Purely an Event Order authoring choice: Event Order owns which Floor Plan
- * a Section corresponds to; this never creates, edits, or reads placement
- * data on the Floor Plan itself. Hidden entirely when the event has no
- * Floor Plans at all, so a booking that doesn't use Floor Plans sees
- * nothing new here.
+ * Which floor plan setup this section's items are compared with. Comparison
+ * only — never changes lines or the couple's copy. Shown on sections that
+ * hold floor-plan items, or that already carry a venue choice.
  */
-function SectionFloorPlanLink({
-  eventOrderId, eventId, section, floorPlans, disabled,
+function SectionSetupLink({
+  eventOrderId, eventId, section, setups, hasFloorPlanItems, floorPlans,
 }: {
-  eventOrderId: string; eventId: string; section: EventOrderSection; floorPlans: FloorPlan[]; disabled: boolean;
+  eventOrderId: string; eventId: string; section: EventOrderSection; setups: SetupOption[]; hasFloorPlanItems: boolean; floorPlans: FloorPlan[];
 }) {
   const [pending, startTransition] = React.useTransition();
-  const [picking, setPicking] = React.useState(false);
-  if (floorPlans.length === 0) return null;
-  if (!section.floorPlanId && !picking) {
-    if (disabled) return null;
-    return (
-      <button
-        type="button"
-        className="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-        data-testid={`eo-section-link-floor-plan-${section.id}`}
-        onClick={() => setPicking(true)}
-      >
-        Link floor plan
-      </button>
-    );
-  }
+  const resolution = resolveSectionSetup(
+    section,
+    setups.map((s) => ({ ...s, memberPlanIds: [], operationalPlanId: null })),
+  );
+  const explicit = Boolean(section.notOnFloorPlan || section.floorPlanSetupId || section.floorPlanId);
+  if (!hasFloorPlanItems && !explicit) return null;
 
+  const autoLabel = resolution.kind === "setup" && resolution.how !== "chosen"
+    ? `Floor plan: ${resolution.setupName} (matched by name)`
+    : resolution.kind === "plan"
+      ? `Floor plan: ${floorPlans.find((p) => p.id === resolution.planId)?.name ?? "linked layout"}`
+      : setups.length === 0
+      ? "Floor plan: every layout"
+      : "Floor plan: no matching setup";
+  const value = section.notOnFloorPlan ? "none" : section.floorPlanSetupId ? `setup:${section.floorPlanSetupId}` : "auto";
   const options = [
-    { value: "none", label: "No floor plan linked" },
-    ...floorPlans.map((p) => ({ value: p.id, label: p.name })),
+    { value: "auto", label: autoLabel },
+    ...setups.map((s) => ({ value: `setup:${s.id}`, label: `Floor plan: ${s.name}` })),
+    { value: "none", label: "Not on a floor plan" },
   ];
+  const unmatched = resolution.kind === "every_layout" && resolution.reason === "unmatched" && hasFloorPlanItems;
 
-  function handleChange(value: string) {
+  function handleChange(next: string) {
+    const choice = next === "auto" ? "auto" as const : next === "none" ? "none" as const : { setupId: next.slice("setup:".length) };
     startTransition(async () => {
-      const result = await setSectionFloorPlanAction(eventOrderId, eventId, section.id, value === "none" ? null : value);
-      if (!result.ok) toast.error(result.message ?? "Could not link floor plan.");
-      setPicking(false);
+      const result = await setSectionFloorPlanSetupAction(eventOrderId, eventId, section.id, choice);
+      if (!result.ok) toast.error(result.message ?? "Could not save the floor plan setup.");
     });
   }
 
   return (
-    <Select value={section.floorPlanId ?? "none"} onValueChange={handleChange} items={options} disabled={disabled || pending}>
-      <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <>
+      <Select value={value} onValueChange={(v) => { if (v) handleChange(v); }} items={options} disabled={pending}>
+        <SelectTrigger
+          className={`h-7 w-auto gap-1 border-none bg-transparent px-2 text-xs hover:text-foreground ${unmatched ? "text-amber-800" : "text-muted-foreground"}`}
+          data-testid={`eo-section-setup-${section.id}`}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
   );
 }
 
@@ -364,6 +384,7 @@ export function EventOrderPanel({
 
   function refresh() { router.refresh(); }
   const couple = useCoupleChoicePreview(eventOrder, choices);
+  const floorPlanSetups = useEventFloorPlanSetups(eventOrder?.eventId ?? (eventId || null));
 
   // Profile-configured Event Order should already exist after booking / prepare-release.
   // Recover once so this tab is an editor, not a second setup wizard.
@@ -579,6 +600,23 @@ export function EventOrderPanel({
   const coupleGroups = couple.preview.kind === "none" ? [] : couple.preview.groups;
   const groupPlacement = matchChoiceGroupsToSections(coupleGroups, order.sections);
   const showSelectedChoices = couple.preview.kind === "packet" && couple.preview.showAnswers;
+  const floorPlanItemIds = new Set(inventoryItems.filter((i) => i.availableForFloorPlans).map((i) => i.id));
+  const offeringItemById = new Map(offerings.map((o) => [o.id, o.inventoryItemId]));
+  function sectionHasFloorPlanItems(sectionId: string): boolean {
+    return order.lines.some((l) => {
+      if (l.sectionId !== sectionId) return false;
+      const itemId = l.inventoryItemId ?? (l.offeringId ? offeringItemById.get(l.offeringId) : null);
+      return Boolean(itemId && floorPlanItemIds.has(itemId));
+    });
+  }
+  function sectionUnmatched(section: EventOrderSection): boolean {
+    if (!order.eventId || floorPlanSetups.length === 0 || !sectionHasFloorPlanItems(section.id)) return false;
+    const r = resolveSectionSetup(
+      section,
+      floorPlanSetups.map((x) => ({ ...x, memberPlanIds: [], operationalPlanId: null })),
+    );
+    return r.kind === "every_layout" && r.reason === "unmatched";
+  }
 
   function renderLine(line: EventOrderLine) {
     return (
@@ -763,7 +801,16 @@ export function EventOrderPanel({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1">
                   <p className="text-sm font-semibold text-heading">{section.name}</p>
-                  <SectionFloorPlanLink eventOrderId={eventOrder.id} eventId={scopeId} section={section} floorPlans={floorPlans} disabled={isFinalized} />
+                  {order.eventId ? (
+                    <SectionSetupLink
+                      eventOrderId={eventOrder.id}
+                      eventId={order.eventId}
+                      section={section}
+                      setups={floorPlanSetups}
+                      hasFloorPlanItems={sectionHasFloorPlanItems(section.id)}
+                      floorPlans={floorPlans}
+                    />
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   {!isFinalized && (
@@ -786,6 +833,11 @@ export function EventOrderPanel({
                   )}
                 </div>
               </div>
+              {sectionUnmatched(section) ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" data-testid={`eo-section-setup-unmatched-${section.id}`}>
+                  &ldquo;{section.name}&rdquo; doesn&apos;t match a floor plan setup by name, so its items are counted on every layout. Pick the setup it belongs to above, or choose &ldquo;Not on a floor plan&rdquo;.
+                </p>
+              ) : null}
               {main.length === 0 && setup.length === 0 && sectionGroups.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-2">No items yet.</p>
               ) : null}

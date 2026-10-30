@@ -7,6 +7,7 @@ import {
   reopenBlockedWhenNotFinalized,
 } from "@/lib/event-orders/lifecycle-gates";
 import * as repo from "@/lib/event-orders/repository";
+import * as floorPlansRepo from "@/lib/floor-plans/repository";
 import {
   filterPackageInclusionsToSeed,
   packageSelectionNotes,
@@ -212,7 +213,9 @@ async function copyTemplateSnapshotsIntoOrder(
       sectionIdMap.set(s.id, already);
       continue;
     }
-    const created = await repo.insertSection(supabase, venueId, eventOrderId, s.name, sectionSort++);
+    const created = await repo.insertSection(supabase, venueId, eventOrderId, s.name, sectionSort++, {
+      floorPlanSetupName: s.floorPlanSetupName, notOnFloorPlan: s.notOnFloorPlan,
+    });
     sectionIdMap.set(s.id, created.id);
     existingByName.set(s.name, created.id);
   }
@@ -505,6 +508,35 @@ export async function setSectionFloorPlan(
     const guard = await assertOpen(supabase, venueId, eventOrderId);
     if (guard) return guard;
     await repo.updateSectionFloorPlan(supabase, venueId, sectionId, floorPlanId);
+    return { ok: true } as EventOrderActionResult;
+  });
+  return result as EventOrderActionResult;
+}
+
+/**
+ * Which floor plan setup a section is compared with: "auto" (template name,
+ * then section name), "none" (not on a floor plan), or a setup id on the
+ * same event. Comparison only — allowed after sending; never changes lines.
+ */
+export async function setSectionFloorPlanSetup(
+  eventOrderId: string, sectionId: string, choice: "auto" | "none" | { setupId: string },
+): Promise<EventOrderActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const header = await repo.getEventOrderById(supabase, venueId, eventOrderId);
+    if (!header) return { ok: false, message: "Event Order not found." } as EventOrderActionResult;
+    let setupId: string | null = null;
+    if (typeof choice === "object") {
+      if (!header.eventId) return { ok: false, message: "This Event Order has no event yet." } as EventOrderActionResult;
+      const setups = await floorPlansRepo.listEventFloorPlanSetups(supabase, venueId, header.eventId);
+      if (!setups.some((s) => s.id === choice.setupId)) {
+        return { ok: false, message: "That setup isn't on this event." } as EventOrderActionResult;
+      }
+      setupId = choice.setupId;
+    }
+    await repo.updateSectionFloorPlanSetup(supabase, venueId, eventOrderId, sectionId, {
+      floorPlanSetupId: setupId,
+      notOnFloorPlan: choice === "none",
+    });
     return { ok: true } as EventOrderActionResult;
   });
   return result as EventOrderActionResult;

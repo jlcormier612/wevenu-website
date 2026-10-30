@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   addCustomLine, addLineFromInventory, addLineFromOffering, addLineFromPackage, addSection,
   applyTemplateToEventOrder, ensureEventOrder, finalizeEventOrder, importPackageInclusions, removeLine, removeSection,
-  reopenEventOrder, replaceEventOrderFromTemplate, setSectionFloorPlan, startOrApplyEventOrderTemplate, updateLine,
+  reopenEventOrder, replaceEventOrderFromTemplate, setSectionFloorPlan, setSectionFloorPlanSetup, startOrApplyEventOrderTemplate, updateLine,
 } from "@/lib/event-orders/service";
 import type {
   AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddOfferingLineInput,
@@ -116,6 +116,17 @@ export async function addSectionAction(eventOrderId: string, eventId: string, na
 export async function removeSectionAction(eventOrderId: string, eventId: string, sectionId: string, sectionName: string): Promise<EventOrderActionResult> {
   const result = await removeSection(eventOrderId, sectionId, sectionName);
   if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function setSectionFloorPlanSetupAction(
+  eventOrderId: string, eventId: string, sectionId: string, choice: "auto" | "none" | { setupId: string },
+): Promise<EventOrderActionResult> {
+  const result = await setSectionFloorPlanSetup(eventOrderId, sectionId, choice);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidatePath(`/events/${eventId}/floor-plans`);
+  }
   return result;
 }
 

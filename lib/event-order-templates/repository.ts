@@ -24,6 +24,7 @@ type SectionRow = {
   id: string; template_id: string; venue_id: string; name: string;
   guidance: string | null; sort_order: number;
   created_at: string; updated_at: string;
+  floor_plan_setup_name?: string | null; not_on_floor_plan?: boolean | null;
 };
 type LineRow = {
   id: string; template_id: string; venue_id: string; section_id: string | null;
@@ -59,6 +60,8 @@ const mapSection = (r: SectionRow): EventOrderTemplateSection => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, name: r.name,
   guidance: r.guidance ?? null,
   sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+  floorPlanSetupName: r.floor_plan_setup_name ?? null,
+  notOnFloorPlan: r.not_on_floor_plan ?? false,
 });
 const mapLine = (r: LineRow): EventOrderTemplateLine => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, sectionId: r.section_id,
@@ -234,7 +237,9 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
 
   const sectionIdMap = new Map<string, string>();
   for (const s of [...source.sections].sort((a, b) => a.sortOrder - b.sortOrder)) {
-    const created = await insertSection(client, venueId, newId, s.name, s.sortOrder, s.guidance);
+    const created = await insertSection(client, venueId, newId, s.name, s.sortOrder, s.guidance, {
+      floorPlanSetupName: s.floorPlanSetupName, notOnFloorPlan: s.notOnFloorPlan,
+    });
     sectionIdMap.set(s.id, created.id);
   }
   for (const l of [...source.lines].sort((a, b) => a.sortOrder - b.sortOrder)) {
@@ -282,27 +287,41 @@ export async function duplicateTemplate(client: DbClient, venueId: string, sourc
 
 // ---- sections ---------------------------------------------------------------------
 
+export type SectionUpdateInput = {
+  name?: string;
+  guidance?: string | null;
+  floorPlanSetupName?: string | null;
+  notOnFloorPlan?: boolean;
+};
+
 export async function insertSection(
   client: DbClient, venueId: string, templateId: string, name: string, sortOrder: number,
   guidance: string | null = null,
+  floorPlanDefaults?: { floorPlanSetupName?: string | null; notOnFloorPlan?: boolean },
 ): Promise<EventOrderTemplateSection> {
-  const { data, error } = await client.from("event_order_template_sections")
-    .insert({
-      template_id: templateId, venue_id: venueId, name: name.trim(), sort_order: sortOrder,
-      guidance: guidance?.trim() || null,
-    })
-    .select().single<SectionRow>();
+  const row: Record<string, unknown> = {
+    template_id: templateId, venue_id: venueId, name: name.trim(), sort_order: sortOrder,
+    guidance: guidance?.trim() || null,
+  };
+  if (floorPlanDefaults?.floorPlanSetupName?.trim()) row.floor_plan_setup_name = floorPlanDefaults.floorPlanSetupName.trim();
+  if (floorPlanDefaults?.notOnFloorPlan) row.not_on_floor_plan = true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("event_order_template_sections") as any)
+    .insert(row)
+    .select().single();
   if (error) throw error;
-  return mapSection(data);
+  return mapSection(data as SectionRow);
 }
 
 export async function updateSection(
   client: DbClient, venueId: string, sectionId: string,
-  input: { name?: string; guidance?: string | null },
+  input: SectionUpdateInput,
 ): Promise<void> {
   const patch: Record<string, unknown> = {};
   if (input.name !== undefined) patch.name = input.name.trim();
   if (input.guidance !== undefined) patch.guidance = input.guidance?.trim() || null;
+  if (input.floorPlanSetupName !== undefined) patch.floor_plan_setup_name = input.floorPlanSetupName?.trim() || null;
+  if (input.notOnFloorPlan !== undefined) patch.not_on_floor_plan = input.notOnFloorPlan;
   if (Object.keys(patch).length === 0) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_order_template_sections") as any)

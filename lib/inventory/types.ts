@@ -39,6 +39,8 @@ export type InventoryItem = {
   printableName: string | null;
   isArchived: boolean;
   availableForFloorPlans: boolean;
+  /** Chairs: compared on floor plans with seats at tables plus chairs placed individually. */
+  countsAsSeats?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -58,6 +60,7 @@ export type InventoryItemInput = {
   color: string | null;
   printableName: string | null;
   availableForFloorPlans: boolean;
+  countsAsSeats?: boolean;
 };
 
 /** One inventory item's usage across every floor plan on a single booking — reporting only, see Requirement 6. */

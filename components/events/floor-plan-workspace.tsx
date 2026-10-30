@@ -48,6 +48,7 @@ import {
   duplicateClientFloorPlanAction,
 } from "@/app/(app)/clients/planning-actions";
 import { FloorPlanFlipPanel } from "@/components/events/floor-plan-flip-panel";
+import { FloorPlanRequiredStatus } from "@/components/events/floor-plan-required-status";
 import {
   FloorPlanReviewFlagsPanel,
   LayoutRoomEditorInline,
@@ -970,6 +971,8 @@ export function FloorPlanWorkspace({
             </>
           )}
       </p>
+
+      {!preBooking && eventId ? <FloorPlanRequiredStatus eventId={eventId} floorPlans={floorPlans} /> : null}
 
       {!preBooking && (
         <div

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getRequiredVsPlacedSummaryForEvent } from "@/lib/floor-plans/required-vs-placed-service";
+
 import {
   addObject,
   applyTemplate,
@@ -335,6 +337,13 @@ export async function getFloorPlanReconciliationAction(
   planId: string,
 ): Promise<FloorPlanSectionReconciliation[]> {
   return getFloorPlanReconciliation(planId);
+}
+
+/** Required vs placed — one line per setup (or layout). Read-only. */
+export async function getFloorPlanRequiredStatusAction(
+  eventId: string, plans: { id: string; name: string }[],
+): Promise<Awaited<ReturnType<typeof getRequiredVsPlacedSummaryForEvent>>> {
+  return getRequiredVsPlacedSummaryForEvent(eventId, plans);
 }
 
 export async function setFloorPlanCoupleMayAddTablesAction(

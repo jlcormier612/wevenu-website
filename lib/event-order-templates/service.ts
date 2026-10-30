@@ -117,7 +117,7 @@ export async function addSection(
 }
 
 export async function updateSection(
-  sectionId: string, input: { name?: string; guidance?: string | null },
+  sectionId: string, input: repo.SectionUpdateInput,
 ): Promise<EventOrderTemplateActionResult> {
   if (input.name !== undefined) {
     const nameError = validateSectionName(input.name);
