@@ -66,6 +66,16 @@ describe("couple choices render once, inside their section", () => {
     assert.deepEqual(unmatched.map((g) => g.id), ["g3", "g4"]);
   });
 
+  it("places an unlinked group under a section named in the group title (Bar package → Bar)", () => {
+    const sections = [{ id: "s-bar", name: "Bar" }, { id: "s-cat", name: "Catering" }];
+    const { bySectionId, unmatched } = matchChoiceGroupsToSections(
+      [{ id: "g-bar", name: "Bar package", sectionName: null }],
+      sections,
+    );
+    assert.deepEqual(bySectionId.get("s-bar")?.map((g) => g.id), ["g-bar"]);
+    assert.deepEqual(unmatched, []);
+  });
+
   it("EO panel renders matched groups in sections and folds setup items", () => {
     const panel = read("components/event-orders/event-order-panel.tsx");
     assert.match(panel, /matchChoiceGroupsToSections\(coupleGroups, order\.sections\)/);

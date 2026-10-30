@@ -239,7 +239,7 @@ function EventOrderCard({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-heading truncate">{doc.name || "Event Order"}</span>
           <Badge className={`text-[10px] px-1.5 py-0 border ${agreed ? "bg-green-50 text-green-700 border-green-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-            {agreed ? "Reviewed" : "Shared"}
+            {agreed ? "Approved" : "Shared"}
           </Badge>
         </div>
         <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">

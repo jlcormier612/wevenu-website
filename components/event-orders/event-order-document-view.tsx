@@ -73,7 +73,11 @@ export function EventOrderDocumentView({
   const visibleGroups = definition ? orderedVisibleChoiceGroups(definition, answers) : [];
   const sectionNameById = new Map((definition?.sections ?? []).map((s) => [s.id, s.name]));
   const placement = matchChoiceGroupsToSections(
-    visibleGroups.map((g) => ({ group: g, sectionName: g.sectionId ? sectionNameById.get(g.sectionId) ?? null : null })),
+    visibleGroups.map((g) => ({
+      group: g,
+      name: g.name,
+      sectionName: g.sectionId ? sectionNameById.get(g.sectionId) ?? null : null,
+    })),
     doc.sections,
   );
   const validation = definition ? validateChoicesAnswers(definition, answers) : { ok: true as const };

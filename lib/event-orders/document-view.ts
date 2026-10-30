@@ -34,8 +34,29 @@ function sectionKey(name: string | null | undefined): string {
   return (name ?? "").trim().toLowerCase();
 }
 
+/**
+ * When a choice group was never linked to a section (section_id null), place it
+ * under a section whose name is the leading word(s) of the group name —
+ * e.g. "Bar package" → "Bar". Prefer the longest matching section name.
+ */
+function sectionIdFromGroupName(
+  groupName: string | null | undefined,
+  idByName: Map<string, string>,
+): string | undefined {
+  const g = sectionKey(groupName);
+  if (!g) return undefined;
+  let best: { id: string; len: number } | null = null;
+  for (const [name, id] of idByName) {
+    if (!name) continue;
+    if (g === name || g.startsWith(`${name} `) || g.startsWith(`${name}-`) || g.startsWith(`${name}—`)) {
+      if (!best || name.length > best.len) best = { id, len: name.length };
+    }
+  }
+  return best?.id;
+}
+
 /** Couple choice groups render inside the Event Order section of the same name. */
-export function matchChoiceGroupsToSections<G extends { sectionName: string | null }>(
+export function matchChoiceGroupsToSections<G extends { sectionName: string | null; name?: string }>(
   groups: G[],
   sections: { id: string; name: string }[],
 ): { bySectionId: Map<string, G[]>; unmatched: G[] } {
@@ -47,7 +68,8 @@ export function matchChoiceGroupsToSections<G extends { sectionName: string | nu
   const bySectionId = new Map<string, G[]>();
   const unmatched: G[] = [];
   for (const group of groups) {
-    const id = idByName.get(sectionKey(group.sectionName));
+    const id = idByName.get(sectionKey(group.sectionName))
+      ?? sectionIdFromGroupName(group.name, idByName);
     if (!id) {
       unmatched.push(group);
       continue;

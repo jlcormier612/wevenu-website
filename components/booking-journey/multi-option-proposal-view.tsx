@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { OfferOptionView, OfferView } from "@/lib/booking-journey/offer";
 import type { ProposalBrand } from "@/lib/booking-journey/proposal-view";
+import { inclusionUnitLabel } from "@/lib/commercial-proposals/inclusion-display";
 import { calculateProposalTotal } from "@/lib/commercial-proposals/types";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { DEFAULT_VENUE_BRAND, venueBrandSurfaceStyle } from "@/lib/theme/venue-brand-surface";
@@ -253,13 +254,16 @@ function OptionCard({
         ) : null}
         {inclusions.length > 0 ? (
           <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-            {inclusions.map((item, i) => (
-              <li key={`${opt.id}-inc-${i}`}>
-                {item.description}
-                {item.quantity > 1 ? ` × ${item.quantity}` : ""}
-                {item.unit ? ` ${item.unit}` : ""}
-              </li>
-            ))}
+            {inclusions.map((item, i) => {
+              const unit = inclusionUnitLabel(item.description, item.unit);
+              return (
+                <li key={`${opt.id}-inc-${i}`}>
+                  {item.description}
+                  {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+                  {unit ? ` ${unit}` : ""}
+                </li>
+              );
+            })}
           </ul>
         ) : null}
       </div>

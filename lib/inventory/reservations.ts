@@ -156,7 +156,9 @@ export function reservationState(order: { sharedAt: string | null; clientAgreedA
 
 function shortDate(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
 }
 
 /** One-line venue copy for an Event Order line, e.g. "120 owned · 40 reserved by other events on Jun 12 — 16 short". */

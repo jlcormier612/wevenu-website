@@ -16,6 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { inclusionUnitLabel } from "@/lib/commercial-proposals/inclusion-display";
 import { remainingAmount, suggestDepositAmount } from "@/lib/commercial-selections/constants";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { PackageWithItems } from "@/lib/packages/types";
@@ -182,13 +183,16 @@ export function SelectPackageSheet({
             </div>
             {selected.items.length > 0 && (
               <ul className="space-y-1 text-xs text-muted-foreground">
-                {selected.items.map((item) => (
-                  <li key={item.id}>
-                    • {item.description}
-                    {item.quantity ? ` × ${item.quantity}` : ""}
-                    {item.unit ? ` ${item.unit}` : ""}
-                  </li>
-                ))}
+                {selected.items.map((item) => {
+                  const unit = inclusionUnitLabel(item.description, item.unit);
+                  return (
+                    <li key={item.id}>
+                      • {item.description}
+                      {item.quantity ? ` × ${item.quantity}` : ""}
+                      {unit ? ` ${unit}` : ""}
+                    </li>
+                  );
+                })}
               </ul>
             )}
             {initialPaymentRequired ? (

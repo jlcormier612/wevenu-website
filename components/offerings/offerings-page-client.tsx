@@ -58,7 +58,7 @@ export function OfferingsPageClient({
         which choices or additional items clients can select.
       </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Optionally link an offering to a physical inventory item — that does not reserve stock. Distinct from Available Inventory."
+        detail="Optionally link an offering to a physical inventory item. Stock is reserved when the couple approves the Event Order. Distinct from Available Inventory."
         action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
         secondaryActions={[
           { href: "/library/inventory", label: "Manage Available Inventory" },

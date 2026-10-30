@@ -53,7 +53,7 @@ export default async function EventOrderTemplatesPage() {
         </p>
       </div>
       <LibraryDependencyNote
-        detail="Prefer reusable Offerings for items you sell across events; use a template-only line when it belongs only here. Linking an Offering to Inventory elsewhere does not reserve stock. Applying copies a snapshot — later catalog price edits do not rewrite existing event orders."
+        detail="Prefer reusable Offerings for items you sell across events; use a template-only line when it belongs only here. Linking an Offering to Inventory connects it to stock — reserved when the couple approves the Event Order. Applying copies a snapshot — later catalog price edits do not rewrite existing event orders."
         action={{ href: "/library/offerings", label: "Manage Offerings" }}
       >
         Templates can use your Offerings catalog or template-only items.

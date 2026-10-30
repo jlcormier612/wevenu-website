@@ -25,6 +25,7 @@ function sectionIdByGroup(row: ClientChoices, eo: EventOrderWithDetails): Map<st
   const sectionNameById = new Map(row.definition.sections.map((s) => [s.id, s.name]));
   const groups = row.definition.groups.map((g) => ({
     groupId: g.id,
+    name: g.name,
     sectionName: g.sectionId ? sectionNameById.get(g.sectionId) ?? null : null,
   }));
   const { bySectionId } = matchChoiceGroupsToSections(groups, eo.sections);

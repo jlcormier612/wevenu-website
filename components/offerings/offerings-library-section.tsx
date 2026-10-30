@@ -327,7 +327,7 @@ export const OfferingsLibrarySection = React.forwardRef<
       <p className="text-xs text-muted-foreground">
         Physical stock and floor-plan items live in{" "}
         <Link href="/library/inventory" className="text-primary underline">Inventory</Link>.
-        Linking an offering to inventory does not reserve stock.
+        Linking an offering to inventory connects it to stock. Stock is reserved when the couple approves the Event Order.
       </p>
     </div>
   );

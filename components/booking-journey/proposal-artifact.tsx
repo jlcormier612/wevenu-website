@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { ProposalBrand, ProposalView } from "@/lib/booking-journey/proposal-view";
+import { inclusionUnitLabel } from "@/lib/commercial-proposals/inclusion-display";
 import { formatCurrency } from "@/lib/invoices/constants";
 import { DEFAULT_VENUE_BRAND, venueBrandSurfaceStyle } from "@/lib/theme/venue-brand-surface";
 
@@ -99,13 +100,16 @@ export function ProposalArtifact({
             What&apos;s included
           </p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            {proposal.includedItems.map((item, i) => (
-              <li key={`${item.description}-${i}`}>
-                • {item.description}
-                {item.quantity ? ` × ${item.quantity}` : ""}
-                {item.unit ? ` ${item.unit}` : ""}
-              </li>
-            ))}
+            {proposal.includedItems.map((item, i) => {
+              const unit = inclusionUnitLabel(item.description, item.unit);
+              return (
+                <li key={`${item.description}-${i}`}>
+                  • {item.description}
+                  {item.quantity ? ` × ${item.quantity}` : ""}
+                  {unit ? ` ${unit}` : ""}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

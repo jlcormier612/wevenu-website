@@ -37,7 +37,8 @@ describe("Offerings page copy", () => {
   it("keeps EO Templates and Available Inventory links with unique inventory guidance", () => {
     assert.match(page, /Open Event Order Templates/);
     assert.match(page, /Manage Available Inventory/);
-    assert.match(page, /does not reserve stock/);
+    assert.match(page, /Stock is reserved when the couple approves the Event Order/);
+    assert.doesNotMatch(page, /does not reserve stock/);
     assert.match(page, /Distinct from Available Inventory/);
     assert.match(page, /Used by Event Order Templates/);
   });

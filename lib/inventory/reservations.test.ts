@@ -74,13 +74,13 @@ describe("Event Order line stock picture", () => {
     assert.deepEqual(s!.pendingElsewhere.map((u) => u.eventId), ["brunch"]);
     assert.equal(s!.short, 40, "100 here + 60 approved − 120 owned");
     assert.equal(stockSentence(s!, "2056-06-12"),
-      "120 owned · 60 reserved by other events around Jun 12 · 50 more waiting on couple approval — 40 short");
+      "120 owned · 60 reserved by other events around Jun 12, 2056 · 50 more waiting on couple approval — 40 short");
   });
 
   it("by_time sharing removes the shortage", () => {
     const [s] = stockForEvent(wedding, [shower], [chair], byTime);
     assert.equal(s!.short, 0);
-    assert.equal(stockSentence(s!, "2056-06-12"), "120 owned · none reserved by other events around Jun 12");
+    assert.equal(stockSentence(s!, "2056-06-12"), "120 owned · none reserved by other events around Jun 12, 2056");
   });
 
   it("untracked items (quantity 0) never warn", () => {
