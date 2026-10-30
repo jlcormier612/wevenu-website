@@ -189,8 +189,17 @@ export function EventFormFields({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Guest count" htmlFor="gc" error={errors.guestCount}>
+        <Field label="Estimated guest count" htmlFor="gc" error={errors.guestCount}>
           <Input id="gc" type="number" value={input.guestCount} onChange={(e) => set("guestCount", e.target.value)} placeholder="150" />
+        </Field>
+        <Field label="Guaranteed guest count" htmlFor="ggc" error={errors.guaranteedGuestCount}>
+          <Input
+            id="ggc"
+            type="number"
+            value={input.guaranteedGuestCount ?? ""}
+            onChange={(e) => set("guaranteedGuestCount", e.target.value)}
+            placeholder="Optional"
+          />
         </Field>
       </div>
 

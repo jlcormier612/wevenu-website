@@ -1269,6 +1269,7 @@ async function commitOneRecord(
         setupTime: n.setupTime ?? "",
         teardownTime: n.teardownTime ?? "",
         guestCount: n.guestCount ?? "",
+        guaranteedGuestCount: "",
         clientId: clientRef.clientId,
         spaceId: space.ok ? (space.spaceId ?? "") : "",
       };

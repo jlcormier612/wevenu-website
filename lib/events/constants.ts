@@ -82,6 +82,7 @@ export function createInitialEventInput(
     eventDate: string;
     eventEndDate: string | null;
     guestCount: number | null;
+    guaranteedGuestCount?: number | null;
     clientId: string;
     spaceId: string | null;
   }> | null,
@@ -96,6 +97,8 @@ export function createInitialEventInput(
     setupTime: "",
     teardownTime: "",
     guestCount: source?.guestCount != null ? String(source.guestCount) : "",
+    guaranteedGuestCount:
+      source?.guaranteedGuestCount != null ? String(source.guaranteedGuestCount) : "",
     clientId: source?.clientId ?? "",
     spaceId: source?.spaceId ?? "",
     externalCeremonyLocation: "",
@@ -114,6 +117,8 @@ export function eventInputFromVenueEvent(ev: VenueEvent): EventInput {
     setupTime: ev.setupTime ?? "",
     teardownTime: ev.teardownTime ?? "",
     guestCount: ev.guestCount != null ? String(ev.guestCount) : "",
+    guaranteedGuestCount:
+      ev.guaranteedGuestCount != null ? String(ev.guaranteedGuestCount) : "",
     clientId: ev.clientId ?? "",
     spaceId: ev.spaceId ?? "",
     externalCeremonyLocation: ev.externalCeremonyLocation ?? "",

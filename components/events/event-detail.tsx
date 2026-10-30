@@ -283,9 +283,17 @@ function EventHeroCard({
               </div>
             ) : null}
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Guests</p>
+              <p className="text-xs text-muted-foreground">Estimated</p>
               <p className="mt-0.5 text-sm leading-snug text-foreground">
                 {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Guaranteed</p>
+              <p className="mt-0.5 text-sm leading-snug text-foreground">
+                {event.guaranteedGuestCount != null
+                  ? `${event.guaranteedGuestCount.toLocaleString()} guests`
+                  : "Not set"}
               </p>
             </div>
             {dayGroups.map((group) => (
@@ -323,9 +331,17 @@ function EventHeroCard({
               <dd className="mt-0.5 leading-snug text-foreground">{timeLabel}</dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-xs text-muted-foreground">Guests</dt>
+              <dt className="text-xs text-muted-foreground">Estimated</dt>
               <dd className="mt-0.5 leading-snug text-foreground">
                 {event.guestCount != null ? `${event.guestCount.toLocaleString()} guests` : "Not recorded"}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs text-muted-foreground">Guaranteed</dt>
+              <dd className="mt-0.5 leading-snug text-foreground">
+                {event.guaranteedGuestCount != null
+                  ? `${event.guaranteedGuestCount.toLocaleString()} guests`
+                  : "Not set"}
               </dd>
             </div>
             <div className="min-w-0 sm:col-span-2 lg:col-span-1">

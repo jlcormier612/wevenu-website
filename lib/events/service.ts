@@ -100,6 +100,10 @@ export async function createEvent(input: EventInput): Promise<CreateEventResult>
       },
     });
     if (!booked.ok) return { ok: false, message: booked.message } as CreateEventResult;
+    // book_relationship does not yet accept Guaranteed; persist it after create (B0).
+    if ((input.guaranteedGuestCount ?? "").trim()) {
+      await repo.updateEvent(supabase, venueId, booked.eventId, input);
+    }
     if (input.spaceAssignments && input.spaceAssignments.length > 0) {
       const { replaceEventSpaceAssignments } = await import("@/lib/events/space-assignments");
       const venue = await getCurrentVenue();

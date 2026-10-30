@@ -33,7 +33,10 @@ export type VenueEvent = {
   endTime: string | null;
   setupTime: string | null;
   teardownTime: string | null;
+  /** Estimated guest count (`events.guest_count`). */
   guestCount: number | null;
+  /** Optional Guaranteed guest count (`events.guaranteed_guest_count`). */
+  guaranteedGuestCount: number | null;
   /** Operational owner. Null or omitted until the venue assigns someone. */
   assignedStaffId?: string | null;
   /**
@@ -119,6 +122,8 @@ export type EventInput = {
   setupTime: string;
   teardownTime: string;
   guestCount: string;
+  /** Optional Guaranteed; empty string = unset. */
+  guaranteedGuestCount: string;
   clientId: string;
   spaceId: string;   // empty string = no space assigned
   externalCeremonyLocation?: string;
