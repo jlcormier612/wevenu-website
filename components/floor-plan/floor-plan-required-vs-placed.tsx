@@ -37,6 +37,11 @@ export function FloorPlanRequiredVsPlacedPanel({
               : "Compared with the whole Event Order."}
           {" "}Only Event Order items linked to inventory are counted.
         </p>
+        {result.comparedSectionNames.length > 0 ? (
+          <p className="text-xs text-muted-foreground" data-testid="floor-plan-rvp-sections">
+            Sections counted: {result.comparedSectionNames.join(", ")}
+          </p>
+        ) : null}
       </div>
 
       {result.unmatchedSections.length > 0 ? (
