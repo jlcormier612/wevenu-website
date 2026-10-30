@@ -45,6 +45,7 @@ import {
 import { defaultApplySelections, type TemplateApplySelection } from "@/lib/event-order-templates/offerings";
 import { templateHasSelectableGroups } from "@/lib/event-order-templates/selection-definition";
 import { EVENT_ORDER_STARTER_MASTERS, type EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
+import { boundHeadcountForApply } from "@/lib/events/headcount";
 import { isEventOrderTemplateUnfinished } from "@/lib/library/template-readiness";
 import type { ChoicesAnswers } from "@/lib/client-choices/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
@@ -180,7 +181,8 @@ function UseOrSendEventOrderSheet({
     startLoading(async () => {
       const loaded = await getEventOrderTemplateDetailAction(template.id);
       setDetail(loaded);
-      setSelections(loaded ? defaultApplySelections(loaded.lines, ev.guestCount) : []);
+      const applyCount = boundHeadcountForApply(ev.guestCount, ev.guaranteedGuestCount);
+      setSelections(loaded ? defaultApplySelections(loaded.lines, applyCount) : []);
       setAnswers(loaded ? initialAnswersForTemplate(loaded) : {});
     });
   }
@@ -305,7 +307,12 @@ function UseOrSendEventOrderSheet({
               </div>
               {detail ? (
                 <>
-                  <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} guestCount={selected?.guestCount} />
+                  <TemplateApplyChooser
+                    template={detail}
+                    selections={selections}
+                    onChange={setSelections}
+                    guestCount={boundHeadcountForApply(selected?.guestCount, selected?.guaranteedGuestCount)}
+                  />
                   {templateHasSelectableGroups(detail) ? (
                     <TemplateGroupAnswerChooser
                       template={detail}

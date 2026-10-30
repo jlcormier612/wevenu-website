@@ -53,7 +53,8 @@ Support living headcounts the way banquet tools do — without silent money move
 
 - `events.guest_count` = Estimated (no column rename in B0).
 - Existing rows: Estimated = current `guest_count`; Guaranteed = null.
-- Read helper for later slices: `guaranteed ?? estimated ?? null`. B0 callers must not use it for EO apply yet.
+- Read helper: `guaranteed ?? estimated ?? null` (`boundHeadcountForApply`).
+- B1+: new EO apply/seed uses the bound helper. Existing line quantities stay frozen until B2 recalc.
 
 ## Production
 

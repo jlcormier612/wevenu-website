@@ -1,8 +1,8 @@
 /**
  * Narrow B headcount helpers.
  *
- * B0: storage + UI only. Event Order apply/seed still uses Estimated (`guest_count`).
- * Do not wire `boundHeadcountForApply` into EO paths until slice B1.
+ * B1: new Event Order apply/seed uses `boundHeadcountForApply` (Guaranteed ?? Estimated).
+ * Recalc of existing lines stays off until B2 (`headcountRecalcEnabled`).
  */
 
 /** Recalc of open EO lines when a bound headcount changes — off through B1. */
@@ -10,7 +10,7 @@ export function headcountRecalcEnabled(): boolean {
   return false;
 }
 
-/** Estimated = today's `events.guest_count` (no rename in B0). */
+/** Estimated = today's `events.guest_count` (no rename). */
 export function estimatedHeadcount(guestCount: number | null | undefined): number | null {
   if (guestCount == null || !Number.isFinite(guestCount)) return null;
   const n = Math.trunc(guestCount);
@@ -27,8 +27,8 @@ export function guaranteedHeadcount(
 }
 
 /**
- * Bound count for later apply/seed (B1+): Guaranteed if set, else Estimated.
- * B0 callers must not use this for Event Order apply yet.
+ * Bound count for new apply/seed (B1+): Guaranteed if set, else Estimated.
+ * Do not use this to rewrite existing EO line quantities until B2.
  */
 export function boundHeadcountForApply(
   estimated: number | null | undefined,

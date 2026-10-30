@@ -31,6 +31,7 @@ import type {
   AddSectionResult, EnsureEventOrderResult, EventOrderActionResult, EventOrderWithDetails,
   UpdateLineInput,
 } from "@/lib/event-orders/types";
+import { boundHeadcountForApply } from "@/lib/events/headcount";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 async function withVenue<T>(
@@ -212,15 +213,28 @@ async function loadEventOrderGuestCount(
     .eq("venue_id", venueId)
     .maybeSingle<{ event_id: string | null; client_id: string | null }>();
   if (!order) return null;
-  const { data } = order.event_id
-    ? await supabase.from("events").select("guest_count").eq("id", order.event_id).eq("venue_id", venueId)
-      .maybeSingle<{ guest_count: number | null }>()
-    : order.client_id
-      ? await supabase.from("clients").select("guest_count").eq("id", order.client_id).eq("venue_id", venueId)
-        .maybeSingle<{ guest_count: number | null }>()
-      : { data: null };
-  const count = Number(data?.guest_count ?? 0);
-  return count > 0 ? count : null;
+  if (order.event_id) {
+    const { data } = await supabase
+      .from("events")
+      .select("guest_count, guaranteed_guest_count")
+      .eq("id", order.event_id)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ guest_count: number | null; guaranteed_guest_count: number | null }>();
+    const bound = boundHeadcountForApply(data?.guest_count, data?.guaranteed_guest_count);
+    return bound != null && bound > 0 ? bound : null;
+  }
+  if (order.client_id) {
+    // Clients have Estimated only (no Guaranteed column).
+    const { data } = await supabase
+      .from("clients")
+      .select("guest_count")
+      .eq("id", order.client_id)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ guest_count: number | null }>();
+    const count = Number(data?.guest_count ?? 0);
+    return count > 0 ? count : null;
+  }
+  return null;
 }
 
 async function copyTemplateSnapshotsIntoOrder(

@@ -135,6 +135,7 @@ export function EventCommercialWorkflow({
     eventDate: string | null;
     eventType?: string | null;
     guestCount: number | null;
+    guaranteedGuestCount?: number | null;
     spaceName: string | null;
     ceremonyStartTime: string | null;
     receptionStartTime: string | null;

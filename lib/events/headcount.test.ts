@@ -33,7 +33,7 @@ describe("headcount helpers (B0)", () => {
   });
 });
 
-describe("B0 contracts — schema, UI labels, EO still Estimated-only", () => {
+describe("B0 contracts — schema + UI labels", () => {
   it("migration adds guaranteed_guest_count without rewriting guest_count", () => {
     const sql = read("supabase/migrations/20261427000000_events_guaranteed_guest_count.sql");
     assert.match(sql, /add column if not exists guaranteed_guest_count integer/);
@@ -52,19 +52,11 @@ describe("B0 contracts — schema, UI labels, EO still Estimated-only", () => {
     assert.match(detail, /guaranteedGuestCount/);
   });
 
-  it("EO apply/seed still selects guest_count only (not guaranteed)", () => {
-    const service = read("lib/event-orders/service.ts");
-    assert.match(service, /from\("events"\)\.select\("guest_count"\)/);
-    assert.doesNotMatch(service, /guaranteed_guest_count/);
-    assert.doesNotMatch(service, /boundHeadcountForApply/);
-    assert.doesNotMatch(service, /headcountRecalcEnabled/);
-  });
-
-  it("repo persists guaranteed without using it for EO", () => {
+  it("repo persists guaranteed; B0 schema/UI remain", () => {
     const repo = read("lib/events/repository.ts");
     assert.match(repo, /guaranteed_guest_count/);
     assert.match(repo, /guaranteedGuestCount/);
-    const headcount = read("lib/events/headcount.ts");
-    assert.match(headcount, /Do not wire `boundHeadcountForApply` into EO paths until slice B1/);
   });
 });
+
+// B1 apply/seed wiring lives in headcount-b1.test.ts (Guaranteed ?? Estimated).

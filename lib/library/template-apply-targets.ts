@@ -8,7 +8,10 @@ export type TemplateApplyEventTarget = {
   name: string;
   eventDate: string;
   status: string;
+  /** Estimated (`events.guest_count`). */
   guestCount?: number | null;
+  /** Optional Guaranteed (`events.guaranteed_guest_count`). */
+  guaranteedGuestCount?: number | null;
   clientId: string;
   clientDisplayName: string;
 };

@@ -31,6 +31,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { DISPLAY_STATUS_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
+import { boundHeadcountForApply } from "@/lib/events/headcount";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
 import {
   NO_COUPLE_CHOICES_MESSAGE, coupleChoicePreview, pickActiveChoices,
@@ -59,7 +60,10 @@ type EventOrderOverview = {
   eventName?: string | null;
   eventDate: string | null;
   eventType?: string | null;
+  /** Estimated guest count. */
   guestCount: number | null;
+  /** Optional Guaranteed — used with Estimated for new apply/seed (B1). */
+  guaranteedGuestCount?: number | null;
   spaceName: string | null;
   ceremonyStartTime: string | null;
   receptionStartTime: string | null;
@@ -397,7 +401,10 @@ export function EventOrderPanel({
   actionsOwnedByJourney?: boolean;
 }) {
   const router = useRouter();
-  const applyGuestCount = overview?.guestCount ?? guestCount;
+  // B1: new apply/seed uses Guaranteed ?? Estimated. Existing lines are not recalced.
+  const applyGuestCount = overview
+    ? boundHeadcountForApply(overview.guestCount, overview.guaranteedGuestCount)
+    : guestCount;
   const chargeSplit = eventOrderChargeSplit(eventOrder?.lines ?? []);
   const scopeId = eventId || planningClientId || "";
   const preBooking = Boolean(planningClientId) && !eventId;
@@ -827,8 +834,8 @@ export function EventOrderPanel({
             {overview?.eventDate && (
               <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>
             )}
-            {overview?.guestCount != null && (
-              <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{overview.guestCount}</span></div>
+            {applyGuestCount != null && (
+              <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{applyGuestCount}</span></div>
             )}
             {overview?.spaceName && (
               <div><span className="text-muted-foreground">Spaces </span><span className="font-medium text-foreground">{overview.spaceName}</span></div>

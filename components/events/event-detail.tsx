@@ -1410,6 +1410,7 @@ export function EventDetail({
               eventDate: event.eventDate,
               eventType: event.eventType,
               guestCount: event.guestCount,
+              guaranteedGuestCount: event.guaranteedGuestCount,
               spaceName,
               ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
               receptionStartTime: questionnaire?.receptionStartTime ?? null,

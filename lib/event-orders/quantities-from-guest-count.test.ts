@@ -58,14 +58,17 @@ describe("per-person template lines start at the guest count", () => {
   it("server default path loads the guest count; apply sheets get it from the event", () => {
     const service = read("lib/event-orders/service.ts");
     assert.match(service, /packageStartingSelections\(template\.lines, await loadEventOrderGuestCount\(/);
-    assert.match(service, /from\("events"\)\.select\("guest_count"\)/);
-    assert.match(service, /from\("clients"\)\.select\("guest_count"\)/);
+    // B1: events bind Guaranteed ?? Estimated; clients stay Estimated-only.
+    assert.match(service, /select\("guest_count, guaranteed_guest_count"\)/);
+    assert.match(service, /boundHeadcountForApply/);
+    assert.match(service, /from\("clients"\)[\s\S]*?select\("guest_count"\)/);
     const panel = read("components/event-orders/event-order-panel.tsx");
     assert.equal((panel.match(/guestCount=\{applyGuestCount\}/g) ?? []).length, 2);
+    assert.match(panel, /boundHeadcountForApply\(overview\.guestCount, overview\.guaranteedGuestCount\)/);
     const sheet = read("components/event-order-templates/apply-event-order-template-sheet.tsx");
     assert.match(sheet, /defaultApplySelections\(template\.lines, guestCount\)/);
     const list = read("components/event-order-templates/event-order-template-list.tsx");
-    assert.match(list, /defaultApplySelections\(loaded\.lines, ev\.guestCount\)/);
+    assert.match(list, /boundHeadcountForApply\(ev\.guestCount, ev\.guaranteedGuestCount\)/);
   });
 });
 
