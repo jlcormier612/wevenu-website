@@ -47,6 +47,8 @@ export type EventInventoryItem = {
   /** Null = included at no extra charge; the Master Catalog has no price field at all today (confirmed), so this is always directly entered, never looked up. */
   unitPrice: number | null;
   isIncluded: boolean;
+  /** False = Venue only: counts operationally, never shown to the couple, handed to the Event Order, or billed. Independent of isIncluded. */
+  clientVisible: boolean;
   notes: string | null;
   sortOrder: number;
   /** When true (select mode), couple may choose 0..maxQuantity. */
@@ -98,6 +100,8 @@ export type InventoryTemplateItem = {
   quantity: number;
   unitPrice: number | null;
   isIncluded: boolean;
+  /** False = Venue only; carried onto event inventory when the template is applied. */
+  clientVisible: boolean;
   notes: string | null;
   sortOrder: number;
   createdAt: string;
@@ -113,6 +117,8 @@ export type InventoryItemInput = {
   quantity: string;
   unitPrice?: string;
   isIncluded: boolean;
+  /** Omitted → visible on insert, unchanged on update. */
+  clientVisible?: boolean;
   notes?: string;
   /** Optional explicit photo URL; when omitted and inventoryItemId is set, catalog image_url is snapshotted. */
   imageUrl?: string | null;

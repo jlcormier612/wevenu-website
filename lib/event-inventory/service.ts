@@ -4,6 +4,7 @@ import {
   eventInventoryItemsPendingForEventOrder,
   inventoryHandoffBillableTotal,
 } from "@/lib/event-inventory/handoff";
+import { VENUE_ONLY_NOT_SELECTABLE_MESSAGE } from "@/lib/event-inventory/couple-bands";
 import * as repo from "@/lib/event-inventory/repository";
 import {
   INVENTORY_SELECT_SHARE_CONFIG_ERROR,
@@ -193,6 +194,9 @@ export async function setInventoryItemClientSelectable(
         ok: false,
         message: "Included items stay informational — only additional items can be offered for selection.",
       } as EventInventoryActionResult;
+    }
+    if (clientSelectable && !item.clientVisible) {
+      return { ok: false, message: VENUE_ONLY_NOT_SELECTABLE_MESSAGE } as EventInventoryActionResult;
     }
     const max = maxQuantity == null || maxQuantity <= 0 ? item.quantity : maxQuantity;
     try {
@@ -412,7 +416,9 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
   if (pending.length === 0) {
     return {
       ok: false,
-      message: "Everything here has already been added to the Event Order.",
+      message: inv.items.some((i) => !i.addedToEventOrderAt)
+        ? "Only venue-only items remain — they stay off the Event Order."
+        : "Everything here has already been added to the Event Order.",
     };
   }
 
@@ -486,6 +492,13 @@ export async function updateItem(
   const result = await withVenue(async (supabase, venueId) => {
     const guard = await assertNotFinalized(supabase, venueId, eventInventoryId);
     if (guard) return guard;
+    if (input.clientVisible === false) {
+      const inv = await repo.getEventInventoryById(supabase, venueId, eventInventoryId);
+      const details = inv ? await repo.getEventInventoryByEvent(supabase, venueId, inv.eventId) : null;
+      if (details?.items.find((i) => i.id === itemId)?.clientSelectable) {
+        return { ok: false, message: VENUE_ONLY_NOT_SELECTABLE_MESSAGE } as EventInventoryActionResult;
+      }
+    }
     const outcome = await repo.updateItem(supabase, venueId, itemId, input, expectedUpdatedAt);
     if (!outcome.ok) {
       return {

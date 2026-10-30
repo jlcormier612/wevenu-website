@@ -18,6 +18,7 @@ type ItemRow = {
   name: string; category: string | null; image_url?: string | null;
   quantity: number; unit_price: number | null;
   is_included: boolean; notes: string | null; sort_order: number;
+  client_visible?: boolean | null;
   client_selectable?: boolean | null;
   max_quantity?: number | null;
   client_draft_quantity?: number | null;
@@ -36,7 +37,7 @@ type TemplateRow = {
 type TemplateItemRow = {
   id: string; template_id: string; venue_id: string; inventory_item_id: string | null;
   name: string; category: string | null; quantity: number; unit_price: number | null;
-  is_included: boolean; notes: string | null; sort_order: number; created_at: string; updated_at: string;
+  is_included: boolean; client_visible?: boolean | null; notes: string | null; sort_order: number; created_at: string; updated_at: string;
 };
 
 const mapInventory = (r: InventoryRow): EventInventory => ({
@@ -49,7 +50,7 @@ const mapItem = (r: ItemRow): EventInventoryItem => ({
   id: r.id, eventInventoryId: r.event_inventory_id, venueId: r.venue_id, inventoryItemId: r.inventory_item_id,
   name: r.name, category: r.category, imageUrl: r.image_url ?? null, quantity: Number(r.quantity),
   unitPrice: r.unit_price == null ? null : Number(r.unit_price),
-  isIncluded: r.is_included, notes: r.notes, sortOrder: r.sort_order,
+  isIncluded: r.is_included, clientVisible: r.client_visible !== false, notes: r.notes, sortOrder: r.sort_order,
   clientSelectable: !!r.client_selectable,
   maxQuantity: r.max_quantity == null ? null : Number(r.max_quantity),
   clientDraftQuantity: r.client_draft_quantity == null ? null : Number(r.client_draft_quantity),
@@ -86,7 +87,8 @@ const mapTemplateItem = (r: TemplateItemRow): InventoryTemplateItem => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, inventoryItemId: r.inventory_item_id,
   name: r.name, category: r.category, quantity: Number(r.quantity),
   unitPrice: r.unit_price == null ? null : Number(r.unit_price),
-  isIncluded: r.is_included, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+  isIncluded: r.is_included, clientVisible: r.client_visible !== false,
+  notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
 // ---- event inventory: reads -----------------------------------------------------
@@ -224,6 +226,7 @@ export async function insertItem(client: DbClient, venueId: string, eventInvento
       name: input.name.trim(), category: input.category?.trim() || null,
       image_url: imageUrl,
       quantity, unit_price: unitPrice, is_included: input.isIncluded,
+      client_visible: input.clientVisible !== false,
       notes: input.notes?.trim() || null, sort_order: sortOrder,
     }).select().single<ItemRow>();
   if (error) throw error;
@@ -259,6 +262,7 @@ export async function updateItem(
       name: input.name.trim(), category: input.category?.trim() || null,
       image_url: imageUrl,
       quantity, unit_price: unitPrice, is_included: input.isIncluded, notes: input.notes?.trim() || null,
+      ...(input.clientVisible === undefined ? {} : { client_visible: input.clientVisible }),
     } as any)
     .eq("id", itemId).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
     .select("id");
@@ -382,6 +386,7 @@ export async function insertTemplateItem(client: DbClient, venueId: string, temp
       template_id: templateId, venue_id: venueId, inventory_item_id: input.inventoryItemId || null,
       name: input.name.trim(), category: input.category?.trim() || null,
       quantity, unit_price: unitPrice, is_included: input.isIncluded,
+      client_visible: input.clientVisible !== false,
       notes: input.notes?.trim() || null, sort_order: sortOrder,
     }).select().single<TemplateItemRow>();
   if (error) throw error;
@@ -401,6 +406,7 @@ export async function updateTemplateItem(
     .update({
       name: input.name.trim(), category: input.category?.trim() || null,
       quantity, unit_price: unitPrice, is_included: input.isIncluded, notes: input.notes?.trim() || null,
+      ...(input.clientVisible === undefined ? {} : { client_visible: input.clientVisible }),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
     .eq("id", itemId).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
@@ -444,7 +450,7 @@ export async function applyTemplateItems(client: DbClient, venueId: string, even
     name: t.name, category: t.category,
     image_url: t.inventoryItemId ? (imageByCatalogId.get(t.inventoryItemId) ?? null) : null,
     quantity: t.quantity, unit_price: t.unitPrice,
-    is_included: t.isIncluded, notes: t.notes, sort_order: i,
+    is_included: t.isIncluded, client_visible: t.clientVisible !== false, notes: t.notes, sort_order: i,
   }));
   const { error } = await client.from("event_inventory_items").insert(rows);
   if (error) throw error;
@@ -464,6 +470,7 @@ export async function duplicateTemplate(
       quantity: String(item.quantity),
       unitPrice: item.unitPrice != null ? String(item.unitPrice) : "",
       isIncluded: item.isIncluded,
+      clientVisible: item.clientVisible,
       notes: item.notes ?? "",
     }, i);
   }

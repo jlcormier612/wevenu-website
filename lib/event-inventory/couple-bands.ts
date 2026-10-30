@@ -10,39 +10,50 @@
  *
  * Library template rows have no selectable flag, so they classify as Included
  * or Additional — venue sets, the same as a freshly applied event copy.
+ *
+ * Venue-only rows (clientVisible === false) never reach the couple, so they
+ * get their own band regardless of Included/Additional.
  */
 
-export type InventoryCoupleBand = "couple_can_choose" | "included" | "additional_venue_sets";
+export type InventoryCoupleBand = "couple_can_choose" | "included" | "additional_venue_sets" | "venue_only";
 
 export const INVENTORY_COUPLE_BAND_ORDER: readonly InventoryCoupleBand[] = [
   "couple_can_choose",
   "included",
   "additional_venue_sets",
+  "venue_only",
 ];
 
 export const INVENTORY_COUPLE_BAND_LABEL: Record<InventoryCoupleBand, string> = {
   couple_can_choose: "Couple can choose",
   included: "Included",
   additional_venue_sets: "Additional — venue sets",
+  venue_only: "Venue only",
 };
 
 export const INVENTORY_COUPLE_BAND_HINT: Record<InventoryCoupleBand, string> = {
   couple_can_choose: "Additional items the couple can pick a quantity for when you share.",
   included: "Shown to the couple as included — no extra charge. Cannot be offered for selection.",
   additional_venue_sets: "Additional items at the quantity you set. The couple sees them but cannot change them.",
+  venue_only: "Counted for your team's planning and floor plans. Never shown to the couple, added to the Event Order, or billed.",
 };
 
 export const INVENTORY_VISIBILITY_DISCLOSURE =
-  "All inventory rows are currently visible to the couple when you share. Venue-only items are not supported yet.";
+  "Rows marked Venue only stay in your operational counts but are never shown to the couple, shared, added to the Event Order, or billed. Every other row is visible to the couple when you share.";
+
+export const VENUE_ONLY_NOT_SELECTABLE_MESSAGE =
+  "Venue-only items are never shown to the couple, so they can't be offered for selection. Turn off Select or Venue only first.";
 
 export type InventoryBandInput = {
   isIncluded: boolean | null | undefined;
+  clientVisible?: boolean | null;
   clientSelectable?: boolean | null;
   quantity: number;
   maxQuantity?: number | null;
 };
 
 export function inventoryCoupleBand(row: InventoryBandInput): InventoryCoupleBand {
+  if (row.clientVisible === false) return "venue_only";
   if (row.isIncluded) return "included";
   if (row.clientSelectable) return "couple_can_choose";
   return "additional_venue_sets";

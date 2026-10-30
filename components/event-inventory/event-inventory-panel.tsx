@@ -23,6 +23,7 @@ import {
 import {
   INVENTORY_COUPLE_BAND_HINT, INVENTORY_VISIBILITY_DISCLOSURE, groupInventoryByCoupleBand, inventoryCoupleMaxQuantity,
 } from "@/lib/event-inventory/couple-bands";
+import { eventInventoryItemsPendingForEventOrder } from "@/lib/event-inventory/handoff";
 import { eventInventoryListPriceLabel } from "@/lib/event-inventory/list-display";
 import type { EventInventoryItem, EventInventoryStatus, EventInventoryWithDetails, InventoryTemplate } from "@/lib/event-inventory/types";
 import type { InventoryItem } from "@/lib/inventory/types";
@@ -70,6 +71,11 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
               : ""}
           </p>
         )}
+        {!item.clientVisible && (
+          <p className="mt-0.5 text-xs text-muted-foreground" data-testid={`inventory-item-venue-only-${item.id}`}>
+            Venue only — not shown to the couple
+          </p>
+        )}
         {item.addedToEventOrderAt && <p className="mt-0.5 text-xs text-success">✓ In the Event Order</p>}
       </div>
       <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
@@ -94,7 +100,7 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
       </Badge>
       {editable ? (
         <div className="flex items-center gap-0.5 justify-self-end">
-          {!item.isIncluded && onToggleSelectable && (
+          {!item.isIncluded && item.clientVisible && onToggleSelectable && (
             <button
               type="button"
               className={`rounded px-1.5 py-1 text-[10px] font-medium ${
@@ -279,10 +285,10 @@ export function EventInventoryPanel({
     inv.status === "changes_requested";
   const canConfirm = inv.status === "submitted";
   const billableTotal = items.reduce(
-    (sum, i) => i.isIncluded ? sum : sum + (i.unitPrice ?? 0) * i.quantity,
+    (sum, i) => i.isIncluded || !i.clientVisible ? sum : sum + (i.unitPrice ?? 0) * i.quantity,
     0,
   );
-  const hasUnpushedItems = items.some((i) => !i.addedToEventOrderAt);
+  const hasUnpushedItems = eventInventoryItemsPendingForEventOrder(items).length > 0;
   const selectableCount = items.filter((i) => i.clientSelectable).length;
 
   async function handleRemove(item: EventInventoryItem) {

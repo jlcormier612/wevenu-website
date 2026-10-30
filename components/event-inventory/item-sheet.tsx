@@ -43,6 +43,7 @@ export function ItemSheet({
   const [quantity, setQuantity] = React.useState(String(existingItem?.quantity ?? 1));
   const [unitPrice, setUnitPrice] = React.useState(existingItem?.unitPrice != null ? String(existingItem.unitPrice) : "");
   const [isIncluded, setIsIncluded] = React.useState(existingItem?.isIncluded ?? true);
+  const [venueOnly, setVenueOnly] = React.useState(existingItem ? !existingItem.clientVisible : false);
   const [notes, setNotes] = React.useState(existingItem?.notes ?? "");
   const [error, setError] = React.useState("");
   const [pending, startTransition] = React.useTransition();
@@ -52,13 +53,14 @@ export function ItemSheet({
     if (!open) return;
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset reads latest existingItem
-  }, [existingItem?.id, existingItem?.updatedAt, existingItem?.unitPrice, existingItem?.isIncluded, open]);
+  }, [existingItem?.id, existingItem?.updatedAt, existingItem?.unitPrice, existingItem?.isIncluded, existingItem?.clientVisible, open]);
 
   function reset() {
     setCatalogItemId(existingItem?.inventoryItemId ?? ""); setName(existingItem?.name ?? "");
     setCategory(existingItem?.category ?? ""); setQuantity(String(existingItem?.quantity ?? 1));
     setUnitPrice(existingItem?.unitPrice != null ? String(existingItem.unitPrice) : "");
-    setIsIncluded(existingItem?.isIncluded ?? true); setNotes(existingItem?.notes ?? ""); setError("");
+    setIsIncluded(existingItem?.isIncluded ?? true); setVenueOnly(existingItem ? !existingItem.clientVisible : false);
+    setNotes(existingItem?.notes ?? ""); setError("");
   }
 
   function handlePickCatalog(id: string) {
@@ -70,7 +72,8 @@ export function ItemSheet({
   function handleSubmit() {
     if (!name.trim()) { setError("Name is required."); return; }
     const input: InventoryItemInput = {
-      inventoryItemId: catalogItemId || null, name, category, quantity, unitPrice, isIncluded, notes,
+      inventoryItemId: catalogItemId || null, name, category, quantity, unitPrice, isIncluded,
+      clientVisible: !venueOnly, notes,
     };
     startTransition(async () => {
       if (isEdit && existingItem) {
@@ -171,6 +174,18 @@ export function ItemSheet({
             />
             <Label htmlFor="is-included" className="text-sm font-normal text-foreground cursor-pointer">
               Included in the base package (not an extra cost)
+            </Label>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="is-venue-only"
+              checked={venueOnly}
+              onCheckedChange={(v) => setVenueOnly(v === true)}
+              data-testid="inventory-item-venue-only-checkbox"
+            />
+            <Label htmlFor="is-venue-only" className="text-sm font-normal text-foreground cursor-pointer">
+              Venue only — counted for your team, never shown to the couple, added to the Event Order, or billed
             </Label>
           </div>
 

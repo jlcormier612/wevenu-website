@@ -33,6 +33,7 @@ export function TemplateItemEditSheet({
   const [quantity, setQuantity] = React.useState(String(item.quantity));
   const [unitPrice, setUnitPrice] = React.useState(item.unitPrice != null ? String(item.unitPrice) : "");
   const [isIncluded, setIsIncluded] = React.useState(item.isIncluded);
+  const [venueOnly, setVenueOnly] = React.useState(!item.clientVisible);
   const [notes, setNotes] = React.useState(item.notes ?? "");
   const [error, setError] = React.useState("");
   const [pending, startTransition] = React.useTransition();
@@ -43,6 +44,7 @@ export function TemplateItemEditSheet({
     setQuantity(String(item.quantity));
     setUnitPrice(item.unitPrice != null ? String(item.unitPrice) : "");
     setIsIncluded(item.isIncluded);
+    setVenueOnly(!item.clientVisible);
     setNotes(item.notes ?? "");
     setError("");
   }
@@ -50,7 +52,8 @@ export function TemplateItemEditSheet({
   function handleSubmit() {
     if (!name.trim()) { setError("Name is required."); return; }
     const input: InventoryItemInput = {
-      inventoryItemId: item.inventoryItemId, name, category, quantity, unitPrice, isIncluded, notes,
+      inventoryItemId: item.inventoryItemId, name, category, quantity, unitPrice, isIncluded,
+      clientVisible: !venueOnly, notes,
     };
     startTransition(async () => {
       onPersist("saving");
@@ -111,6 +114,18 @@ export function TemplateItemEditSheet({
             <Checkbox id={`tmpl-item-included-${item.id}`} checked={isIncluded} onCheckedChange={(v) => setIsIncluded(v === true)} />
             <Label htmlFor={`tmpl-item-included-${item.id}`} className="text-sm font-normal text-foreground cursor-pointer">
               Included in the base package (not an extra cost)
+            </Label>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`tmpl-item-venue-only-${item.id}`}
+              checked={venueOnly}
+              onCheckedChange={(v) => setVenueOnly(v === true)}
+              data-testid="template-item-venue-only-checkbox"
+            />
+            <Label htmlFor={`tmpl-item-venue-only-${item.id}`} className="text-sm font-normal text-foreground cursor-pointer">
+              Venue only — counted for your team, never shown to the couple, added to the Event Order, or billed
             </Label>
           </div>
 

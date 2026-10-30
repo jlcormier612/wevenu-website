@@ -69,12 +69,13 @@ describe("inventory couple bands", () => {
       { id: "b", isIncluded: false, clientSelectable: true, quantity: 20, maxQuantity: null },
       { id: "c", isIncluded: false, clientSelectable: false, quantity: 2 },
       { id: "d", isIncluded: true, clientSelectable: false, quantity: 15 },
+      { id: "e", isIncluded: true, clientVisible: false, clientSelectable: false, quantity: 6 },
     ];
     const groups = groupInventoryByCoupleBand(rows);
     assert.deepEqual(groups.map((g) => g.band), [...INVENTORY_COUPLE_BAND_ORDER]);
-    assert.deepEqual(groups.map((g) => g.rows.map((r) => r.id)), [["b"], ["a", "d"], ["c"]]);
+    assert.deepEqual(groups.map((g) => g.rows.map((r) => r.id)), [["b"], ["a", "d"], ["c"], ["e"]]);
     const ids = groups.flatMap((g) => g.rows.map((r) => r.id)).sort();
-    assert.deepEqual(ids, ["a", "b", "c", "d"]);
+    assert.deepEqual(ids, ["a", "b", "c", "d", "e"]);
 
     const onlyIncluded = groupInventoryByCoupleBand([rows[0]!]);
     assert.deepEqual(onlyIncluded.map((g) => g.band), ["included"]);
@@ -109,12 +110,13 @@ describe("inventory surfaces use the shared bands", () => {
     assert.match(panel, /groupInventoryByCoupleBand\(items\)/);
     assert.match(panel, /inventory-visibility-disclosure/);
     assert.match(panel, /INVENTORY_VISIBILITY_DISCLOSURE/);
-    assert.match(INVENTORY_VISIBILITY_DISCLOSURE, /All inventory rows are currently visible to the couple/);
-    assert.doesNotMatch(panel, /Venue only/);
+    assert.match(INVENTORY_VISIBILITY_DISCLOSURE, /Venue only/);
+    assert.doesNotMatch(INVENTORY_VISIBILITY_DISCLOSURE, /not supported yet/);
+    assert.match(panel, /Venue only — not shown to the couple/);
   });
 
-  it("Inventory tab keeps Select restricted to Additional rows", () => {
-    assert.match(panel, /!item\.isIncluded && onToggleSelectable/);
+  it("Inventory tab keeps Select restricted to visible Additional rows", () => {
+    assert.match(panel, /!item\.isIncluded && item\.clientVisible && onToggleSelectable/);
     assert.match(panel, /setInventoryItemClientSelectableAction/);
   });
 
