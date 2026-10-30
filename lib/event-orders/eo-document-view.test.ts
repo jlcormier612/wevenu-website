@@ -75,7 +75,8 @@ describe("couple choices render once, inside their section", () => {
     assert.match(panel, /eo-included-setup-items/);
     assert.match(panel, /staffLineNotesLabel\(line\.notes\)/);
     assert.doesNotMatch(panel, /PROVENANCE_LABEL/);
-    assert.match(panel, /Link floor plan/);
+    assert.match(panel, /<SectionSetupLink/);
+    assert.match(panel, /"Not on a floor plan"/);
     assert.doesNotMatch(panel, /Delivery subtotal \(for reference\)/);
   });
 });
