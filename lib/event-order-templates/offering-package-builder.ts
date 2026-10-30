@@ -323,3 +323,17 @@ export function packageBuilderPriceLabel(
   if (unitPrice === 0) return "No extra charge";
   return `$${unitPrice.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
+
+/**
+ * Item picker for one category on a template: that catalog category's members
+ * when it has any, otherwise every item under the parent choice. Never sibling
+ * top choices.
+ */
+export function itemsEligibleForCategory(
+  underParent: OfferingWithCategory[],
+  catalogGroup: { memberOfferingIds: string[] } | null,
+): OfferingWithCategory[] {
+  if (!catalogGroup || catalogGroup.memberOfferingIds.length === 0) return underParent;
+  const members = new Set(catalogGroup.memberOfferingIds);
+  return underParent.filter((o) => members.has(o.id));
+}

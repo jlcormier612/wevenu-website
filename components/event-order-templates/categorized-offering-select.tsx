@@ -78,8 +78,8 @@ export function CategorizedOfferingSelect({
     authoringScope.kind === "primary"
       ? "Showing top-level major choices and standalone offerings (not nested menu items)."
       : authoringScope.kind === "underMajor"
-        ? hierarchy.usedFallback
-          ? `No catalog items are nested under “${authoringScope.parentLabel ?? "this choice"}” yet — showing other top-level offerings in this category. Add associated items on the Offerings page for a cleaner list.`
+        ? hierarchy.items.length === 0
+          ? `Nothing is set up under “${authoringScope.parentLabel ?? "this choice"}” yet. Add categories and items under it on the Offerings page.`
           : `Showing items associated with “${authoringScope.parentLabel ?? "this major choice"}” in your catalog.`
         : null;
 
@@ -124,7 +124,7 @@ export function CategorizedOfferingSelect({
       </div>
       {scopeHint ? (
         <p
-          className={`text-xs ${hierarchy.usedFallback ? "text-amber-800" : "text-muted-foreground"}`}
+          className="text-xs text-muted-foreground"
           data-testid="eo-offering-hierarchy-hint"
         >
           {scopeHint}

@@ -12,6 +12,7 @@ import {
   removeEventOrderTemplateOptionAction,
   updateEventOrderTemplateGroupAction,
 } from "@/app/(app)/library/event-order-templates/actions";
+import { createOfferingChoiceGroupAction } from "@/app/(app)/library/offerings/actions";
 import { CategorizedOfferingSelect } from "@/components/event-order-templates/categorized-offering-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
 import {
   catalogOptionsEligibleForParentGroup,
   choiceSetsForSection,
+  itemsEligibleForCategory,
   newRootChoiceSetInput,
   offeringsAvailableForCoupleChoices,
   optionInputFromOffering,
@@ -264,6 +266,38 @@ export function PackageChoicesPanel({
     return null;
   }
 
+  function createCategoryUnderParent(
+    parentOption: { id: string; label: string; offeringId: string | null },
+    rawName: string,
+  ): string | null {
+    const name = rawName.trim();
+    if (!name) return "Enter a category name (for example Entrées).";
+    if (!parentOption.offeringId) {
+      return "This choice is not linked to a catalog Offering, so categories cannot be added under it.";
+    }
+    const parentOfferingId = parentOption.offeringId;
+    startTransition(async () => {
+      onPersist("saving");
+      const created = await createOfferingChoiceGroupAction(parentOfferingId, name);
+      if (!created.ok || !created.group) {
+        onPersist("error", created.ok ? "Could not create category." : created.message);
+        return;
+      }
+      const r = await includeCatalogChoiceGroupAction({
+        templateId: template.id,
+        sectionId,
+        parentOptionId: parentOption.id,
+        catalogGroupId: created.group.id,
+      });
+      if (!r.ok) onPersist("error", r.message ?? "Category created in Offerings, but it could not be added here.");
+      else {
+        onPersist("saved");
+        refresh();
+      }
+    });
+    return null;
+  }
+
   function removeChildGroup(groupId: string) {
     startTransition(async () => {
       onPersist("saving");
@@ -325,10 +359,10 @@ export function PackageChoicesPanel({
           data-testid="eo-package-choices-empty"
         >
           <p className="text-sm text-muted-foreground">
-            No couple choices yet. Add a parent Offering to start.
+            No couple choices yet. Add the first top choice (for example Plated Dinner) to start.
           </p>
           <div className="space-y-2" data-testid="eo-package-choices-add-first">
-            <Label className="text-xs text-muted-foreground">Add parent Offering</Label>
+            <Label className="text-xs text-muted-foreground">Add a top choice</Label>
             <CategorizedOfferingSelect
               offerings={available}
               sectionName={sectionName}
@@ -365,6 +399,7 @@ export function PackageChoicesPanel({
           onRemoveSet={() => removeChoiceSet(set.group.id)}
           onSaveGroup={saveGroupFields}
           onIncludeCatalogGroup={includeCatalogGroup}
+          onCreateCategory={createCategoryUnderParent}
           onRemoveChildGroup={removeChildGroup}
           onAddCatalogOption={addCatalogOptionToGroup}
           onAddWriteIn={addWriteInToGroup}
@@ -405,6 +440,7 @@ function ChoiceSetCard({
   onRemoveSet,
   onSaveGroup,
   onIncludeCatalogGroup,
+  onCreateCategory,
   onRemoveChildGroup,
   onAddCatalogOption,
   onAddWriteIn,
@@ -433,6 +469,7 @@ function ChoiceSetCard({
     parent: { id: string; label: string; offeringId: string | null },
     catalogGroupId: string,
   ) => string | null;
+  onCreateCategory: CreateCategoryFn;
   onRemoveChildGroup: (groupId: string) => void;
   onAddCatalogOption: (groupId: string, offeringId: string) => void;
   onAddWriteIn: (groupId: string, label: string) => string | null;
@@ -600,6 +637,7 @@ function ChoiceSetCard({
                 pending={pending}
                 onSaveGroup={onSaveGroup}
                 onIncludeCatalogGroup={onIncludeCatalogGroup}
+                onCreateCategory={onCreateCategory}
                 onRemoveChildGroup={onRemoveChildGroup}
                 onRemoveOption={onRemoveOption}
                 onAddCatalogOption={onAddCatalogOption}
@@ -611,7 +649,15 @@ function ChoiceSetCard({
       </ul>
 
       <div className="space-y-2" data-testid={`eo-choice-set-add-${setIndex}`}>
-        <Label className="text-xs text-muted-foreground">Add parent Offering</Label>
+        <Label className="text-xs text-muted-foreground">
+          {set.options.length > 0 ? "Add another top choice" : "Add a top choice"}
+        </Label>
+        {set.options.length > 0 ? (
+          <p className="text-xs text-muted-foreground" data-testid={`eo-choice-set-add-hint-${setIndex}`}>
+            The couple picks between top choices (for example Plated Dinner or Buffet Style Dinner).
+            To add what goes under a choice, use the category box under that choice.
+          </p>
+        ) : null}
         <CategorizedOfferingSelect
           offerings={available}
           sectionName={sectionName}
@@ -636,6 +682,7 @@ function DependentGroupsUnderParent({
   pending,
   onSaveGroup,
   onIncludeCatalogGroup,
+  onCreateCategory,
   onRemoveChildGroup,
   onRemoveOption,
   onAddCatalogOption,
@@ -652,12 +699,14 @@ function DependentGroupsUnderParent({
     parent: { id: string; label: string; offeringId: string | null },
     catalogGroupId: string,
   ) => string | null;
+  onCreateCategory: CreateCategoryFn;
   onRemoveChildGroup: (groupId: string) => void;
   onRemoveOption: (optionId: string) => void;
   onAddCatalogOption: (groupId: string, offeringId: string) => void;
   onAddWriteIn: (groupId: string, label: string) => string | null;
 }) {
   const [pickGroupId, setPickGroupId] = React.useState("");
+  const [newCategoryName, setNewCategoryName] = React.useState("");
   const [includeError, setIncludeError] = React.useState<string | null>(null);
 
   const parentOfferingId = parentOption.offeringId;
@@ -680,19 +729,19 @@ function DependentGroupsUnderParent({
     >
       <div>
         <p className="text-xs font-medium text-heading">
-          If the couple chooses {parentOption.label}
+          Under {parentOption.label}: categories the couple picks from
         </p>
         <p className="text-xs text-muted-foreground">
-          Include existing Offerings groups for this parent. Each included group keeps its
-          catalog items and you configure how many the couple must choose on this package.
+          Shown only when the couple chooses {parentOption.label}. Add a category (for example
+          Entrées or Desserts), then set how many items the couple picks from it.
         </p>
       </div>
 
       {dependentGroups.length === 0 ? (
         <p className="text-xs text-muted-foreground" data-testid={`eo-no-child-groups-${parentOption.id}`}>
           {configuredUnderParent.length === 0
-            ? "No groups are configured for this parent in Offerings yet. Open Offerings, edit this parent, and create groups such as Entrées or Desserts."
-            : "No groups included yet. Choose an existing group below."}
+            ? `No categories under ${parentOption.label} yet. Create one below, or set them up in Offerings.`
+            : "No categories added yet. Choose one below."}
         </p>
       ) : null}
 
@@ -700,12 +749,16 @@ function DependentGroupsUnderParent({
         const optionsInGroup = template.options
           .filter((o) => o.groupId === dg.id)
           .sort((a, b) => a.sortOrder - b.sortOrder);
-        const eligibleCatalog = catalogOptionsEligibleForParentGroup(
+        const underParent = catalogOptionsEligibleForParentGroup(
           catalogOfferings,
           parentOption.offeringId,
           parentOption.id,
           template.groups,
           template.options,
+        );
+        const eligibleCatalog = itemsEligibleForCategory(
+          underParent,
+          catalogChoiceGroups.find((g) => g.id === dg.offeringChoiceGroupId) ?? null,
         );
         return (
           <ChildGroupEditor
@@ -731,7 +784,7 @@ function DependentGroupsUnderParent({
         {availableCatalogGroups.length > 0 ? (
           <>
             <div className="min-w-[10rem] flex-1 space-y-1">
-              <Label className="text-xs text-muted-foreground">Include existing group</Label>
+              <Label className="text-xs text-muted-foreground">Add a category from Offerings</Label>
               <select
                 className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm"
                 value={pickGroupId}
@@ -742,7 +795,7 @@ function DependentGroupsUnderParent({
                   setIncludeError(null);
                 }}
               >
-                <option value="">Choose a group…</option>
+                <option value="">Choose a category…</option>
                 {availableCatalogGroups.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
@@ -777,18 +830,56 @@ function DependentGroupsUnderParent({
               }}
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
-              Include group
+              Add category
             </Button>
           </>
         ) : configuredUnderParent.length === 0 ? (
-          <p className="text-xs text-muted-foreground" data-testid={`eo-catalog-groups-missing-${parentOption.id}`}>
-            Configure groups under this parent in Offerings, then return here to include them.
+          <p className="w-full text-xs text-muted-foreground" data-testid={`eo-catalog-groups-missing-${parentOption.id}`}>
+            No categories under {parentOption.label} in Offerings yet.
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">
-            All configured catalog groups for this parent are already included.
+          <p className="w-full text-xs text-muted-foreground">
+            Every category under {parentOption.label} is already added.
           </p>
         )}
+        {parentOption.offeringId ? (
+          <div className="flex w-full flex-wrap items-end gap-2">
+            <div className="min-w-[10rem] flex-1 space-y-1">
+              <Label className="text-xs text-muted-foreground">Or create a new category</Label>
+              <Input
+                value={newCategoryName}
+                disabled={pending}
+                placeholder="e.g. Entrées"
+                data-testid={`eo-new-category-name-${parentOption.id}`}
+                onChange={(e) => {
+                  setNewCategoryName(e.target.value);
+                  setIncludeError(null);
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pending || !newCategoryName.trim()}
+              data-testid={`eo-create-category-${parentOption.id}`}
+              onClick={() => {
+                const err = onCreateCategory(
+                  { id: parentOption.id, label: parentOption.label, offeringId: parentOption.offeringId },
+                  newCategoryName,
+                );
+                if (err) {
+                  setIncludeError(err);
+                  return;
+                }
+                setNewCategoryName("");
+              }}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Create category
+            </Button>
+          </div>
+        ) : null}
         {includeError ? (
           <p className="w-full text-xs text-destructive" role="alert">
             {includeError}
@@ -798,6 +889,11 @@ function DependentGroupsUnderParent({
     </div>
   );
 }
+
+type CreateCategoryFn = (
+  parent: { id: string; label: string; offeringId: string | null },
+  name: string,
+) => string | null;
 
 type ChoiceSetCardPropsSave = (
   group: TemplateGroup,
@@ -833,6 +929,7 @@ function ChildGroupEditor({
   onAddWriteIn: (label: string) => string | null;
 }) {
   const [name, setName] = React.useState(group.name);
+  const [instructions, setInstructions] = React.useState(group.instructions ?? "");
   const [count, setCount] = React.useState(() => countDraftFromGroup(group));
   const [required, setRequired] = React.useState(group.minSelect > 0);
   const [countError, setCountError] = React.useState<string | null>(null);
@@ -843,10 +940,11 @@ function ChildGroupEditor({
 
   React.useEffect(() => {
     setName(group.name);
+    setInstructions(group.instructions ?? "");
     setRequired(group.minSelect > 0);
     setCount(countDraftFromGroup(group));
     setCountError(null);
-  }, [group.id, group.name, group.minSelect, group.maxSelect]);
+  }, [group.id, group.name, group.instructions, group.minSelect, group.maxSelect]);
 
   const impossible = impossibleSelectionGroupMessage(group, options.length);
 
@@ -866,7 +964,7 @@ function ChildGroupEditor({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-[10rem] flex-1 space-y-1">
           <Label className="text-xs text-muted-foreground">
-            {group.offeringChoiceGroupId ? "Included group" : "Group name (legacy)"}
+            {group.offeringChoiceGroupId ? "Category" : "Group name (legacy)"}
           </Label>
           <Input
             value={name}
@@ -884,8 +982,8 @@ function ChildGroupEditor({
           />
           {group.offeringChoiceGroupId ? (
             <p className="text-[0.7rem] text-muted-foreground">
-              From Offerings catalog. Rename groups in Offerings; this package keeps the
-              name snapshotted when included.
+              From Offerings. Rename categories in Offerings; this template keeps the name it
+              had when added.
             </p>
           ) : (
             <p className="text-[0.7rem] text-muted-foreground">
@@ -905,6 +1003,22 @@ function ChildGroupEditor({
         >
           <Trash2 className="h-4 w-4" />
         </Button>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Instructions for the couple</Label>
+        <Input
+          value={instructions}
+          disabled={pending}
+          placeholder={`e.g. Choose 2 ${group.name.toLowerCase()} for your guests`}
+          data-testid={`eo-child-instructions-${group.id}`}
+          onChange={(e) => setInstructions(e.target.value)}
+          onBlur={() => {
+            if ((group.instructions ?? "") !== instructions) {
+              onSaveGroup(group, { instructions });
+            }
+          }}
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -989,11 +1103,11 @@ function ChildGroupEditor({
       </ul>
 
       <div className="space-y-2" data-testid={`eo-add-catalog-option-${group.id}`}>
-        <Label className="text-xs text-muted-foreground">Add catalog option</Label>
+        <Label className="text-xs text-muted-foreground">Add item</Label>
         {eligibleCatalog.length > 0 ? (
           <CategorizedOfferingSelect
             offerings={eligibleCatalog}
-            sectionName={group.name}
+            sectionName={null}
             value={catalogPick}
             onChange={(id) => {
               setCatalogPick(id);
@@ -1011,14 +1125,14 @@ function ChildGroupEditor({
                   }
                 : { kind: "all" }
             }
-            emptyLabel="Choose a catalog Offering…"
+            emptyLabel={`Choose an item under ${parentOption.label}…`}
             testId={`eo-child-catalog-select-${group.id}`}
             disabled={pending}
           />
         ) : (
           <p className="text-xs text-muted-foreground">
-            No unused catalog children for this parent. Use a write-in option, or add child
-            Offerings in the catalog.
+            No more items under {parentOption.label} in Offerings. Use a write-in option, or add
+            items under {parentOption.label} on the Offerings page.
           </p>
         )}
       </div>
@@ -1100,3 +1214,4 @@ function countDraftFromGroup(group: Pick<TemplateGroup, "selectionMode" | "minSe
   if (group.minSelect > 0) return String(group.minSelect);
   return "";
 }
+

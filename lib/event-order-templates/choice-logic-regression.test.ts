@@ -101,9 +101,9 @@ describe("EO choice logic — parent / group / option model", () => {
       join(root, "components/event-order-templates/package-choices-panel.tsx"),
       "utf8",
     );
-    assert.match(panel, /Add catalog option/);
+    assert.match(panel, />Add item</);
     assert.match(panel, /Add write-in option/);
-    assert.match(panel, /Include group|Include existing group/);
+    assert.match(panel, /Add a category from Offerings/);
     assert.doesNotMatch(panel, /New selection group name/);
     assert.doesNotMatch(panel, /How many from this group\?/);
     assert.doesNotMatch(panel, /Add another selection group under/);

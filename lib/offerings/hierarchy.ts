@@ -75,8 +75,8 @@ export function childOfferings<T extends OfferingHierarchyFields>(
 /**
  * Filter catalog picks for Event Order authoring.
  * - primary: top-level majors/standalones (never child rows)
- * - underMajor: children of that major; if none exist yet, fall back to same-category
- *   top-level so venues are not blocked mid-migration (caller may warn)
+ * - underMajor: only items nested under that major — never sibling majors
+ *   (Buffet must not appear as something "under" Plated); empty until set up
  * - all: no hierarchy filter
  */
 export function filterOfferingsForAuthoringContext<T extends OfferingHierarchyFields>(
@@ -85,21 +85,11 @@ export function filterOfferingsForAuthoringContext<T extends OfferingHierarchyFi
     | { kind: "primary" }
     | { kind: "underMajor"; parentOfferingId: string }
     | { kind: "all" },
-): { items: T[]; usedFallback: boolean } {
+): { items: T[] } {
   const active = offerings.filter((o) => !o.isArchived);
-  if (context.kind === "all") return { items: active, usedFallback: false };
-  if (context.kind === "primary") {
-    return { items: topLevelOfferings(active), usedFallback: false };
-  }
-  const children = childOfferings(active, context.parentOfferingId);
-  if (children.length > 0) return { items: children, usedFallback: false };
-  const parent = active.find((o) => o.id === context.parentOfferingId);
-  const fallback = topLevelOfferings(active).filter((o) => {
-    if (o.id === context.parentOfferingId) return false;
-    if (!parent?.categoryId) return true;
-    return o.categoryId === parent.categoryId;
-  });
-  return { items: fallback, usedFallback: fallback.length > 0 };
+  if (context.kind === "all") return { items: active };
+  if (context.kind === "primary") return { items: topLevelOfferings(active) };
+  return { items: childOfferings(active, context.parentOfferingId) };
 }
 
 /**

@@ -236,7 +236,7 @@ describe("builder catalog include path", () => {
       "utf8",
     );
     assert.match(panel, /includeCatalogChoiceGroupAction/);
-    assert.match(panel, /Include existing group/);
+    assert.match(panel, /Add a category from Offerings/);
     assert.doesNotMatch(panel, /New selection group name/);
     assert.doesNotMatch(panel, /eo-new-child-group-name-/);
   });

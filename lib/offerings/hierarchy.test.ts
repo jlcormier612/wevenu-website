@@ -88,8 +88,19 @@ describe("Offerings hierarchy helpers", () => {
       kind: "underMajor",
       parentOfferingId: "buffet",
     });
-    assert.equal(under.usedFallback, false);
     assert.deepEqual(under.items.map((o) => o.id), ["chicken"]);
+  });
+
+  it("underMajor never offers a sibling major when the major has no items yet", () => {
+    const bare = [
+      { id: "plated", name: "Plated Dinner", categoryId: "cat", parentOfferingId: null },
+      { id: "buffet", name: "Buffet Style Dinner", categoryId: "cat", parentOfferingId: null },
+    ];
+    const under = filterOfferingsForAuthoringContext(bare, {
+      kind: "underMajor",
+      parentOfferingId: "plated",
+    });
+    assert.deepEqual(under.items, []);
   });
 
   it("orders children under parents", () => {
