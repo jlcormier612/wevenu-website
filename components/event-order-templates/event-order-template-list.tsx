@@ -180,7 +180,7 @@ function UseOrSendEventOrderSheet({
     startLoading(async () => {
       const loaded = await getEventOrderTemplateDetailAction(template.id);
       setDetail(loaded);
-      setSelections(loaded ? defaultApplySelections(loaded.lines) : []);
+      setSelections(loaded ? defaultApplySelections(loaded.lines, ev.guestCount) : []);
       setAnswers(loaded ? initialAnswersForTemplate(loaded) : {});
     });
   }
@@ -305,7 +305,7 @@ function UseOrSendEventOrderSheet({
               </div>
               {detail ? (
                 <>
-                  <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} />
+                  <TemplateApplyChooser template={detail} selections={selections} onChange={setSelections} guestCount={selected?.guestCount} />
                   {templateHasSelectableGroups(detail) ? (
                     <TemplateGroupAnswerChooser
                       template={detail}

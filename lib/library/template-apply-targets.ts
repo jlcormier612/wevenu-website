@@ -8,6 +8,7 @@ export type TemplateApplyEventTarget = {
   name: string;
   eventDate: string;
   status: string;
+  guestCount?: number | null;
   clientId: string;
   clientDisplayName: string;
 };

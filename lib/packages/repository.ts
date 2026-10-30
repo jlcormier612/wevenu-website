@@ -14,7 +14,7 @@ type PkgRow = {
   eligible_space_ids?: string[] | null;
   created_at: string; updated_at: string;
 };
-type ItemRow = { id: string; package_id: string; venue_id: string; description: string; quantity: number; unit: string | null; offering_id?: string | null; sort_order: number; created_at: string; };
+type ItemRow = { id: string; package_id: string; venue_id: string; description: string; quantity: number; unit: string | null; offering_id?: string | null; per_guest?: boolean | null; sort_order: number; created_at: string; };
 
 const map = (r: PkgRow): Package => ({
   id: r.id,
@@ -36,7 +36,7 @@ const map = (r: PkgRow): Package => ({
 });
 const mapItem = (r: ItemRow): PackageItem => ({
   id: r.id, packageId: r.package_id, venueId: r.venue_id, description: r.description,
-  quantity: Number(r.quantity), unit: r.unit, offeringId: r.offering_id ?? null,
+  quantity: Number(r.quantity), unit: r.unit, offeringId: r.offering_id ?? null, perGuest: r.per_guest === true,
   sortOrder: r.sort_order, createdAt: r.created_at,
 });
 
@@ -93,6 +93,7 @@ export async function insertPackageItem(client: DbClient, venueId: string, packa
       package_id: packageId, venue_id: venueId, description: input.description.trim(),
       quantity: parseFloat(input.quantity) || 1, unit: input.unit.trim() || null, sort_order: sortOrder,
       ...(input.offeringId ? { offering_id: input.offeringId } : {}),
+      ...(input.perGuest ? { per_guest: true } : {}),
     })
     .select().single<ItemRow>();
   if (error) throw error;
@@ -104,6 +105,19 @@ export async function setPackageItemOffering(
 ): Promise<PackageItem | null> {
   const { data, error } = await client.from("package_items")
     .update({ offering_id: offeringId })
+    .eq("id", itemId)
+    .eq("venue_id", venueId)
+    .select()
+    .maybeSingle<ItemRow>();
+  if (error) throw error;
+  return data ? mapItem(data) : null;
+}
+
+export async function setPackageItemQuantity(
+  client: DbClient, venueId: string, itemId: string, quantity: number, perGuest: boolean,
+): Promise<PackageItem | null> {
+  const { data, error } = await client.from("package_items")
+    .update({ quantity, per_guest: perGuest })
     .eq("id", itemId)
     .eq("venue_id", venueId)
     .select()
@@ -199,6 +213,7 @@ export async function duplicatePackage(client: DbClient, venueId: string, source
         package_id: data.id, venue_id: venueId, description: item.description,
         quantity: item.quantity, unit: item.unit, sort_order: item.sortOrder,
         offering_id: item.offeringId,
+        per_guest: item.perGuest === true,
       })),
     );
     if (itemsError) throw itemsError;

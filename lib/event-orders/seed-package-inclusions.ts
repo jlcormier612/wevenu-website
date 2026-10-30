@@ -13,6 +13,7 @@ export type PackageInclusionSeedItem = {
   quantity: number;
   unit: string | null;
   offeringId?: string | null;
+  perGuest?: boolean;
 };
 
 export const PACKAGE_SELECTION_NOTES_PREFIX = "package-selection:";
@@ -80,7 +81,17 @@ export function filterPackageInclusionsToSeed(
       quantity: item.quantity > 0 ? item.quantity : 1,
       unit: item.unit,
       ...(item.offeringId ? { offeringId: item.offeringId } : {}),
+      ...(item.perGuest ? { perGuest: true } : {}),
     });
   }
   return out;
+}
+
+/** Event Order quantity for a seeded inclusion: per-guest counts scale with the guest count. */
+export function seededInclusionQuantity(
+  item: Pick<PackageInclusionSeedItem, "quantity" | "perGuest">,
+  guestCount: number | null,
+): number {
+  if (item.perGuest && guestCount && guestCount > 0) return Number((item.quantity * guestCount).toFixed(2));
+  return item.quantity;
 }

@@ -273,6 +273,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
             invoices={[]}
             floorPlans={floorPlans}
             templates={eventOrderTemplates}
+            guestCount={client.guestCount}
           />
         </section>
         <section id="vendors" className="space-y-3">

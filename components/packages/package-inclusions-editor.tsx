@@ -5,7 +5,7 @@ import * as React from "react";
 import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { addPackageItemAction, linkPackageItemOfferingAction, removePackageItemAction } from "@/app/(app)/packages/actions";
+import { addPackageItemAction, linkPackageItemOfferingAction, removePackageItemAction, setPackageItemQuantityAction } from "@/app/(app)/packages/actions";
 import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,52 @@ function OfferingOptions({ offerings, current }: { offerings: OfferingWithCatego
   );
 }
 
+function InclusionCount({
+  item,
+  disabled,
+  onSave,
+}: {
+  item: PackageItem;
+  disabled: boolean;
+  onSave: (quantity: number, perGuest: boolean) => void;
+}) {
+  const [qty, setQty] = React.useState(String(item.quantity));
+  const perGuest = item.perGuest === true;
+
+  function commitQty() {
+    const n = Number(qty);
+    if (!Number.isFinite(n) || n <= 0) { setQty(String(item.quantity)); return; }
+    if (n !== item.quantity) onSave(n, perGuest);
+  }
+
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground" data-testid={`package-inclusion-count-${item.id}`}>
+      <Input
+        type="number"
+        min="0"
+        step="1"
+        aria-label={`How many for ${item.description}`}
+        className="h-8 w-16 text-xs"
+        value={qty}
+        disabled={disabled}
+        onChange={(e) => setQty(e.target.value)}
+        onBlur={commitQty}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      />
+      <label className="flex items-center gap-1">
+        <input
+          type="checkbox"
+          className="size-3.5"
+          checked={perGuest}
+          disabled={disabled}
+          onChange={(e) => onSave(Number(qty) > 0 ? Number(qty) : item.quantity, e.target.checked)}
+        />
+        per guest
+      </label>
+    </span>
+  );
+}
+
 export function PackageInclusionsEditor({
   packageId,
   initialItems,
@@ -52,6 +98,7 @@ export function PackageInclusionsEditor({
   const [description, setDescription] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
   const [unit, setUnit] = React.useState("");
+  const [perGuest, setPerGuest] = React.useState(false);
   const [offeringId, setOfferingId] = React.useState("");
   const [addPending, startAdd] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
@@ -70,10 +117,10 @@ export function PackageInclusionsEditor({
     if (!description.trim()) return;
     startAdd(async () => {
       saveUi.markSaving();
-      const result = await addPackageItemAction(packageId, { description, quantity, unit, offeringId: offeringId || null });
+      const result = await addPackageItemAction(packageId, { description, quantity, unit, offeringId: offeringId || null, perGuest });
       if (result.ok && "item" in result) {
         setItems((p) => [...p, result.item]);
-        setDescription(""); setQuantity("1"); setUnit(""); setOfferingId(""); setShowAdd(false);
+        setDescription(""); setQuantity("1"); setUnit(""); setPerGuest(false); setOfferingId(""); setShowAdd(false);
         saveUi.markSaved();
       } else {
         saveUi.markError();
@@ -93,6 +140,20 @@ export function PackageInclusionsEditor({
     } else {
       saveUi.markError();
       toast.error("message" in result ? result.message ?? "Could not link." : "Could not link.");
+    }
+  }
+
+  async function handleCount(itemId: string, nextQuantity: number, nextPerGuest: boolean) {
+    setLinkingId(itemId);
+    saveUi.markSaving();
+    const result = await setPackageItemQuantityAction(packageId, itemId, nextQuantity, nextPerGuest);
+    setLinkingId(null);
+    if (result.ok && "item" in result) {
+      setItems((p) => p.map((i) => (i.id === itemId ? result.item : i)));
+      saveUi.markSaved();
+    } else {
+      saveUi.markError();
+      toast.error("message" in result ? result.message ?? "Could not save the count." : "Could not save the count.");
     }
   }
 
@@ -119,6 +180,7 @@ export function PackageInclusionsEditor({
       {offerings.length > 0 && (
         <p className="text-xs text-muted-foreground" data-testid="package-inclusion-offering-hint">
           Link an inclusion to a catalog offering so it carries onto the Event Order as that offering when this package is accepted.
+          Set how many go on each Event Order, or tick per guest (for example 1 chair per guest).
         </p>
       )}
       {items.length === 0 && !showAdd && (
@@ -130,9 +192,14 @@ export function PackageInclusionsEditor({
             <li key={item.id} className="group flex flex-wrap items-center gap-2 text-sm" data-testid={`package-inclusion-${item.id}`}>
               <Check className="h-3.5 w-3.5 shrink-0 text-success" />
               <span className="min-w-[10rem] flex-1 text-foreground">
-                {item.quantity !== 1 && <span className="text-muted-foreground mr-1">{item.quantity}{item.unit ? ` ${item.unit}` : ""}</span>}
+                {!item.offeringId && (item.quantity !== 1 || item.perGuest) && (
+                  <span className="text-muted-foreground mr-1">{item.quantity}{item.unit ? ` ${item.unit}` : ""}{item.perGuest ? " per guest" : ""}</span>
+                )}
                 {item.description}
               </span>
+              {item.offeringId && (
+                <InclusionCount key={`${item.quantity}:${item.perGuest === true}`} item={item} disabled={linkingId === item.id} onSave={(q, pg) => void handleCount(item.id, q, pg)} />
+              )}
               {offerings.length > 0 && (
                 <select
                   aria-label={`Catalog offering for ${item.description}`}
@@ -178,6 +245,10 @@ export function PackageInclusionsEditor({
           <div className="space-y-1.5">
             <Label className="text-xs">Qty</Label>
             <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-16" min="0" step="1" />
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              <input type="checkbox" className="size-3.5" checked={perGuest} onChange={(e) => setPerGuest(e.target.checked)} data-testid="package-inclusion-new-per-guest" />
+              per guest
+            </label>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Unit</Label>

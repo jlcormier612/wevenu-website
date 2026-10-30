@@ -26,6 +26,22 @@ export function isBillableEventOrderLineForInvoice(
   return line.amount > 0;
 }
 
+/**
+ * Venue header split: what the couple will be charged for beyond the package,
+ * and the listed value of lines the package already covers.
+ */
+export function eventOrderChargeSplit(
+  lines: Pick<UnbilledEventOrderLine, "amount" | "unitPrice" | "isIncluded">[],
+): { newCharges: number; coveredByPackage: number } {
+  let newCharges = 0;
+  let coveredByPackage = 0;
+  for (const line of lines) {
+    if (isBillableEventOrderLineForInvoice(line)) newCharges += line.amount;
+    else if (line.isIncluded && line.amount > 0) coveredByPackage += line.amount;
+  }
+  return { newCharges: Number(newCharges.toFixed(2)), coveredByPackage: Number(coveredByPackage.toFixed(2)) };
+}
+
 export function unbilledSelectionsTotal(
   lines: UnbilledEventOrderLine[],
   frozenEventOrderLineIds: Iterable<string>,

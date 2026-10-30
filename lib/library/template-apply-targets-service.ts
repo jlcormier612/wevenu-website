@@ -25,6 +25,7 @@ type EventRow = {
   name: string;
   event_date: string;
   status: string;
+  guest_count: number | null;
   client_id: string | null;
   clients: ClientEmbed | ClientEmbed[] | null;
 };
@@ -42,7 +43,7 @@ export async function getTemplateApplyClientGroups(): Promise<TemplateApplyClien
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id, name, event_date, status, client_id, clients(first_name, last_name, partner_first_name, partner_last_name, status)",
+      "id, name, event_date, status, guest_count, client_id, clients(first_name, last_name, partner_first_name, partner_last_name, status)",
     )
     .eq("venue_id", venue.id)
     .neq("status", "cancelled")
@@ -59,6 +60,7 @@ export async function getTemplateApplyClientGroups(): Promise<TemplateApplyClien
       name: row.name,
       eventDate: row.event_date,
       status: row.status,
+      guestCount: row.guest_count,
       clientId: row.client_id,
       clientDisplayName: formatClientDisplayName({
         firstName: client.first_name,

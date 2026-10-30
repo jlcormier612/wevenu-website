@@ -14,6 +14,8 @@ export type ProposalOptionItem = {
   unit: string | null;
   /** Frozen catalog Offering link from the package inclusion, when set. */
   offeringId?: string | null;
+  /** Frozen from the package inclusion: quantity is per guest. */
+  perGuest?: boolean;
 };
 
 export type CommercialProposalOption = {

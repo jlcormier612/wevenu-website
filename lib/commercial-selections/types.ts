@@ -16,6 +16,8 @@ export type CommercialSelectionItem = {
   sourcePackageId?: string | null;
   /** Frozen catalog Offering link from the package inclusion (direct Select package). */
   offeringId?: string | null;
+  /** Frozen from the package inclusion: quantity is per guest. */
+  perGuest?: boolean;
 };
 
 export type CommercialSelection = {

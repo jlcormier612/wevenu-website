@@ -12,6 +12,7 @@ import {
   filterPackageInclusionsToSeed,
   packageSelectionNotes,
   resolveSelectionInclusions,
+  seededInclusionQuantity,
   type PackageInclusionSeedItem,
 } from "@/lib/event-orders/seed-package-inclusions";
 import * as proposalsRepo from "@/lib/commercial-proposals/repository";
@@ -159,12 +160,15 @@ async function seedBookingPackageInclusions(
   }
 
   const notes = packageSelectionNotes(selection.id, selection.name);
+  const guestCount = toAdd.some((i) => i.perGuest)
+    ? await loadEventOrderGuestCount(supabase, venueId, eventOrderId)
+    : null;
   let lineSort = await repo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
   let asOfferings = 0;
   for (const item of toAdd) {
     const input = {
       description: item.description,
-      quantity: String(item.quantity),
+      quantity: String(seededInclusionQuantity(item, guestCount)),
       unitPrice: "",
       sectionId: null,
       unit: item.unit ?? undefined,
@@ -196,6 +200,29 @@ async function seedBookingPackageInclusions(
   return toAdd.length;
 }
 
+async function loadEventOrderGuestCount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  eventOrderId: string,
+): Promise<number | null> {
+  const { data: order } = await supabase
+    .from("event_orders")
+    .select("event_id, client_id")
+    .eq("id", eventOrderId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ event_id: string | null; client_id: string | null }>();
+  if (!order) return null;
+  const { data } = order.event_id
+    ? await supabase.from("events").select("guest_count").eq("id", order.event_id).eq("venue_id", venueId)
+      .maybeSingle<{ guest_count: number | null }>()
+    : order.client_id
+      ? await supabase.from("clients").select("guest_count").eq("id", order.client_id).eq("venue_id", venueId)
+        .maybeSingle<{ guest_count: number | null }>()
+      : { data: null };
+  const count = Number(data?.guest_count ?? 0);
+  return count > 0 ? count : null;
+}
+
 async function copyTemplateSnapshotsIntoOrder(
   supabase: Awaited<ReturnType<typeof createClient>>,
   venueId: string,
@@ -222,7 +249,8 @@ async function copyTemplateSnapshotsIntoOrder(
 
   // Setup / inherit materializes the full package. Explicit Apply-sheet selections
   // still win when provided. Optionals keep isIncluded=false via snapshot.
-  const resolved = selections ?? packageStartingSelections(template.lines);
+  const resolved = selections
+    ?? packageStartingSelections(template.lines, await loadEventOrderGuestCount(supabase, venueId, eventOrderId));
   const selected = new Map(resolved.map((s) => [s.lineId, s]));
   const existingKeys = new Set(
     (existing?.lines ?? []).map((l) => lineDedupeKey(l.description, l.sectionId)),
@@ -288,7 +316,7 @@ export async function ensureEventOrder(
             venueId,
             existing.id,
             template,
-            selections ?? packageStartingSelections(template.lines),
+            selections,
             existing,
           );
           if (copied > 0) {
@@ -413,11 +441,10 @@ export async function replaceEventOrderFromTemplate(
       return { ok: false, message: "Select an active Event Order template." } as EventOrderActionResult;
     }
     let existing = await repo.getEventOrderByEvent(supabase, venueId, eventId);
-    const starting = packageStartingSelections(template.lines);
     if (!existing) {
       const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId, templateId);
       await copyTemplateSnapshotsIntoOrder(
-        supabase, venueId, eventOrderId, template, starting, null,
+        supabase, venueId, eventOrderId, template, undefined, null,
       );
       await repo.insertActivity(
         supabase, venueId, eventOrderId, "started",
@@ -441,7 +468,7 @@ export async function replaceEventOrderFromTemplate(
     await repo.clearEventOrderContents(supabase, venueId, existing.id);
     await repo.setEventOrderTemplateId(supabase, venueId, existing.id, templateId);
     const copied = await copyTemplateSnapshotsIntoOrder(
-      supabase, venueId, existing.id, template, starting, null,
+      supabase, venueId, existing.id, template, undefined, null,
     );
     await repo.insertActivity(
       supabase, venueId, existing.id, "template_replaced",

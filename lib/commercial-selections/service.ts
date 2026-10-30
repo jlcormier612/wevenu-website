@@ -161,6 +161,7 @@ export async function createSelectedPackageFromLibrary(input: {
     quantity: item.quantity,
     unit: item.unit,
     ...(item.offeringId ? { offeringId: item.offeringId } : {}),
+    ...(item.perGuest ? { perGuest: true } : {}),
   }));
 
   const financial = {

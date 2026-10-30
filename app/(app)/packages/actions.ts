@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { addPackageItem, createPackage, deletePackage_, duplicatePackage_, linkPackageItemOffering, removePackageItem, updatePackage_ } from "@/lib/packages/service";
+import { addPackageItem, createPackage, deletePackage_, duplicatePackage_, linkPackageItemOffering, removePackageItem, setPackageItemQuantity, updatePackage_ } from "@/lib/packages/service";
 import type { CreatePackageResult, PackageActionResult, PackageInput, PackageItemInput, PackageItem } from "@/lib/packages/types";
 
 export async function createPackageAction(input: PackageInput): Promise<CreatePackageResult> {
@@ -55,6 +55,17 @@ export async function linkPackageItemOfferingAction(
   offeringId: string | null,
 ): Promise<{ ok: true; item: PackageItem } | PackageActionResult> {
   const result = await linkPackageItemOffering(itemId, offeringId);
+  if (result.ok) revalidatePath(`/packages/${packageId}`);
+  return result;
+}
+
+export async function setPackageItemQuantityAction(
+  packageId: string,
+  itemId: string,
+  quantity: number,
+  perGuest: boolean,
+): Promise<{ ok: true; item: PackageItem } | PackageActionResult> {
+  const result = await setPackageItemQuantity(itemId, quantity, perGuest);
   if (result.ok) revalidatePath(`/packages/${packageId}`);
   return result;
 }

@@ -66,6 +66,20 @@ export async function addPackageItem(packageId: string, input: PackageItemInput)
   return result as { ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult;
 }
 
+export async function setPackageItemQuantity(
+  itemId: string,
+  quantity: number,
+  perGuest: boolean,
+): Promise<{ ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult> {
+  if (!Number.isFinite(quantity) || quantity <= 0) return { ok: false, message: "Enter a quantity above zero." };
+  const result = await withVenue(async (c, venueId) => {
+    const item = await repo.setPackageItemQuantity(c, venueId, itemId, quantity, perGuest);
+    if (!item) return { ok: false, message: "Inclusion not found." };
+    return { ok: true, item };
+  });
+  return result as { ok: true; item: import("@/lib/packages/types").PackageItem } | PackageActionResult;
+}
+
 export async function linkPackageItemOffering(
   itemId: string,
   offeringId: string | null,

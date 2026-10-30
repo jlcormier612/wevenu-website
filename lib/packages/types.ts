@@ -7,6 +7,8 @@ export type PackageItem = {
   unit: string | null;
   /** Catalog Offering this inclusion stands for; null = text-only inclusion. */
   offeringId?: string | null;
+  /** Quantity is per guest; the Event Order line uses quantity × guest count. */
+  perGuest?: boolean;
   sortOrder: number;
   createdAt: string;
 };
@@ -38,7 +40,7 @@ export type Package = {
 
 export type PackageWithItems = Package & { items: PackageItem[] };
 
-export type PackageItemInput = { description: string; quantity: string; unit: string; offeringId?: string | null };
+export type PackageItemInput = { description: string; quantity: string; unit: string; offeringId?: string | null; perGuest?: boolean };
 
 export type PackageInput = {
   name: string;

@@ -36,7 +36,7 @@ import {
   NO_COUPLE_CHOICES_MESSAGE, coupleChoicePreview, pickActiveChoices,
 } from "@/lib/client-choices/couple-choice-preview";
 import type { ClientChoicesWithHistory } from "@/lib/client-choices/types";
-import { isBillableEventOrderLineForInvoice } from "@/lib/client-choices/unbilled-delta";
+import { eventOrderChargeSplit } from "@/lib/client-choices/unbilled-delta";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
 import { matchChoiceGroupsToSections, splitSetupLines, staffLineNotesLabel } from "@/lib/event-orders/document-view";
@@ -360,6 +360,7 @@ export function EventOrderPanel({
   preferredTemplateId = null,
   shareCommitmentStale = false,
   choices = [],
+  guestCount = null,
 }: {
   eventId: string;
   planningClientId?: string | null;
@@ -386,8 +387,12 @@ export function EventOrderPanel({
   shareCommitmentStale?: boolean;
   /** Event selection packets (already loaded by the page) for the read-only couple-choice preview. */
   choices?: ClientChoicesWithHistory[];
+  /** Guest count when there is no event overview (client planning Event Order). */
+  guestCount?: number | null;
 }) {
   const router = useRouter();
+  const applyGuestCount = overview?.guestCount ?? guestCount;
+  const chargeSplit = eventOrderChargeSplit(eventOrder?.lines ?? []);
   const scopeId = eventId || planningClientId || "";
   const preBooking = Boolean(planningClientId) && !eventId;
   const [starting, startStarting] = React.useTransition();
@@ -592,6 +597,7 @@ export function EventOrderPanel({
               onOpenChange={setApplyOpen}
               template={applyTemplate}
               pending={applying}
+              guestCount={applyGuestCount}
               onApply={async (selections) => {
                 if (!applyTemplate) return;
                 await new Promise<void>((resolve) => {
@@ -727,11 +733,10 @@ export function EventOrderPanel({
           }
         />
         <p className="text-xs text-muted-foreground -mt-1" data-testid="eo-additional-extra-total">
-          Total <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
-          {" · "}Extra charges{" "}
-          <span className="font-medium text-foreground">
-            {formatMoney(eventOrder.lines.filter(isBillableEventOrderLineForInvoice).reduce((sum, l) => sum + l.amount, 0))}
-          </span>
+          New charges <span className="font-medium text-foreground">{formatMoney(chargeSplit.newCharges)}</span>
+          {chargeSplit.coveredByPackage > 0 ? (
+            <>{" · "}Covered by package{" "}<span className="font-medium text-foreground">{formatMoney(chargeSplit.coveredByPackage)}</span></>
+          ) : null}
           {selectedPackageName ? <>{" · "}Package <span className="font-medium text-foreground">{selectedPackageName}</span></> : null}
         </p>
         {preBooking && (
@@ -980,6 +985,7 @@ export function EventOrderPanel({
       onOpenChange={setApplyOpen}
       template={applyTemplate}
       pending={applying}
+      guestCount={applyGuestCount}
       onApply={async (selections) => {
         if (!applyTemplate) return;
         await new Promise<void>((resolve) => {

@@ -157,7 +157,11 @@ describe("Event Order tab wiring", () => {
 
   it("included lines say $0 extra and the extra total uses the invoice rule", () => {
     assert.match(panel, /\$0 extra/);
-    assert.match(panel, /lines\.filter\(isBillableEventOrderLineForInvoice\)/);
+    assert.match(panel, /eventOrderChargeSplit\(eventOrder\?\.lines \?\? \[\]\)/);
+    assert.match(
+      readFileSync(resolve(process.cwd(), "lib/client-choices/unbilled-delta.ts"), "utf8"),
+      /if \(isBillableEventOrderLineForInvoice\(line\)\) newCharges \+= line\.amount;/,
+    );
   });
 
   it("Client selections panel and the preview share one active-packet rule", () => {
