@@ -162,6 +162,13 @@ export default async function WorkspaceLayout({
   }
 
   void recordStaffActivity(user.id);
+
+  // The Documents viewer frames print pages; they must render without the
+  // sidebar and header around them.
+  if (headerList.get("sec-fetch-dest") === "iframe") {
+    return <>{children}</>;
+  }
+
   const staffRole = await getCurrentUserRole();
 
   return (

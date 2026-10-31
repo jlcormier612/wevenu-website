@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import {
-  ClipboardList, Download, Eye, ExternalLink, FileSignature, FileText,
+  ClipboardList, Download, Eye, ExternalLink, FileSignature, FileText, Info,
   Loader2, MapPin, MoreHorizontal, Receipt, Share2, Star, History, ListOrdered,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -45,6 +45,7 @@ export function WorkspaceDocumentCard({
   doc,
   pinned,
   onOpenPreview,
+  onOpenView,
   onOpenVersionHistory,
   onPinChange,
   pinningEnabled = true,
@@ -52,6 +53,8 @@ export function WorkspaceDocumentCard({
   doc: WorkspaceDocument;
   pinned: boolean;
   onOpenPreview: (doc: WorkspaceDocument) => void;
+  /** Opens the readable document; the details panel stays on Details. */
+  onOpenView: (doc: WorkspaceDocument) => void;
   onOpenVersionHistory: (doc: WorkspaceDocument) => void;
   onPinChange?: (pinned: boolean) => void;
   /** Pinned Documents is venue-tenant state (document_workspace_pins is RLS-scoped to current_user_venue_id()) — a vendor session has no venue_id, so pinning cannot function there. False hides the control rather than surfacing an action that would just fail. */
@@ -80,6 +83,11 @@ export function WorkspaceDocumentCard({
   function handlePreview() {
     void recordDocumentInteractionAction(doc.docType, doc.id, "viewed");
     onOpenPreview(doc);
+  }
+
+  function handleView() {
+    void recordDocumentInteractionAction(doc.docType, doc.id, "viewed");
+    onOpenView(doc);
   }
 
   function handleOpen() {
@@ -112,7 +120,7 @@ export function WorkspaceDocumentCard({
 
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <button type="button" onClick={handlePreview} className="text-sm font-medium text-heading truncate hover:underline text-left">
+          <button type="button" onClick={handleView} className="text-sm font-medium text-heading truncate hover:underline text-left" data-testid="workspace-doc-title">
             {doc.name}
           </button>
           <WorkspaceCategoryBadge category={doc.category} />
@@ -151,8 +159,11 @@ export function WorkspaceDocumentCard({
           <button type="button" onClick={handleOpen} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open">
             <ExternalLink className="h-3.5 w-3.5" />
           </button>
-          <button type="button" onClick={handlePreview} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Preview">
+          <button type="button" onClick={handleView} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="View">
             <Eye className="h-3.5 w-3.5" />
+          </button>
+          <button type="button" onClick={handlePreview} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Details">
+            <Info className="h-3.5 w-3.5" />
           </button>
           {perms.share && (
             <button type="button" onClick={handlePreview} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Share">

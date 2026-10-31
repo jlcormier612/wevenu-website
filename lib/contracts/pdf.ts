@@ -95,10 +95,13 @@ function ContractPdfDocument({
   contract,
   venue,
   signers = [],
+  statusNote = null,
 }: {
   contract: Contract;
   venue: Venue;
   signers?: SignatureEvidence[];
+  /** Documents viewer only — the finalized PDF never carries one. */
+  statusNote?: string | null;
 }) {
   // Prefer branding frozen at release; pre-existing contracts without a
   // snapshot fall back to live venue branding (no silent backfill).
@@ -135,6 +138,9 @@ function ContractPdfDocument({
             React.createElement(Text, { style: styles.title }, contract.title),
             React.createElement(Text, { style: styles.statusLine },
               contract.status === "signed" ? "Signed Agreement" : "Contract"),
+            statusNote
+              ? React.createElement(Text, { style: [styles.statusLine, { color: brand.primary, fontFamily: "Helvetica-Bold" }] }, statusNote)
+              : null,
           ),
         ),
 
@@ -207,8 +213,9 @@ export async function generateContractPdf(
   contract: Contract,
   venue: Venue,
   signers: SignatureEvidence[] = [],
+  statusNote: string | null = null,
 ): Promise<Buffer> {
   return renderToBuffer(
-    React.createElement(ContractPdfDocument, { contract, venue, signers }) as never,
+    React.createElement(ContractPdfDocument, { contract, venue, signers, statusNote }) as never,
   );
 }

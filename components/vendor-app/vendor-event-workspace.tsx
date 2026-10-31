@@ -1571,6 +1571,7 @@ function DocumentsTab({
         documents={workspaceDocuments}
         initialPinnedKeys={[]}
         pinningEnabled={false}
+        viewerScope="files"
       />
       <VendorEventSharePanel
         assignmentId={detail.assignmentId}

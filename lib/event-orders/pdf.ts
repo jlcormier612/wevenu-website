@@ -24,6 +24,8 @@ export type EventOrderPdfContext = {
   guestCount: number | null;
   spaceName: string | null;
   clientName: string | null;
+  /** Documents viewer only — the shared PDF never carries one. */
+  statusNote?: string | null;
 };
 
 const styles = StyleSheet.create({
@@ -94,6 +96,9 @@ function EventOrderPdfDocument({ eventOrder, venue, ctx }: { eventOrder: EventOr
         React.createElement(View, { style: styles.titleBlock },
           React.createElement(Text, { style: styles.title }, "Event Order"),
           React.createElement(Text, { style: styles.statusLine }, ctx.eventName),
+          ctx.statusNote
+            ? React.createElement(Text, { style: [styles.statusLine, { color: brand.primary, fontFamily: "Helvetica-Bold" }] }, ctx.statusNote)
+            : null,
         ),
       ),
 

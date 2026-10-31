@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { WorkspaceDocumentCard } from "@/components/document-workspace/document-card";
 import { DocumentPreviewSheet } from "@/components/document-workspace/document-preview";
+import { DocumentViewerDialog } from "@/components/document-workspace/document-viewer";
 import { VersionHistorySheet } from "@/components/document-workspace/version-history";
 import { WorkspaceEmptyState } from "@/components/document-workspace/empty-states";
 import { WorkspaceUploadButton } from "@/components/document-workspace/upload-button";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { filterDocuments, searchDocuments, sortDocuments } from "@/lib/document-workspace/filter-sort";
 import { workspaceDocKey } from "@/lib/document-workspace/normalize";
+import { documentViewSource, type DocumentViewerScope } from "@/lib/document-workspace/viewer";
 import {
   countUserFacingGroups,
   filterByUserFacingGroup,
@@ -48,6 +50,7 @@ export function DocumentWorkspace({
   initialPinnedKeys,
   uploadTarget,
   pinningEnabled = true,
+  viewerScope = "venue",
   returnTo,
 }: {
   title: string;
@@ -58,6 +61,8 @@ export function DocumentWorkspace({
   uploadTarget?: { entityType: DocumentEntityType; entityId: string; venueId: string };
   /** False for vendor-session contexts — document_workspace_pins is venue-tenant RLS, which a vendor session can't satisfy. Hides Pinned entirely rather than showing a section that can never populate. */
   pinningEnabled?: boolean;
+  /** "files" for vendor sessions — the print pages and PDFs are venue-only. */
+  viewerScope?: DocumentViewerScope;
   /**
    * Originating workflow path for Contract Detail back navigation
    * (e.g. /leads/{id}, /clients/{id}, /documents).
@@ -85,8 +90,16 @@ export function DocumentWorkspace({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [historyDoc, setHistoryDoc] = React.useState<WorkspaceDocument | null>(null);
   const [historyOpen, setHistoryOpen] = React.useState(false);
+  const [viewDoc, setViewDoc] = React.useState<WorkspaceDocument | null>(null);
+  const [viewOpen, setViewOpen] = React.useState(false);
 
   function openPreview(doc: WorkspaceDocument) { setPreviewDoc(doc); setPreviewOpen(true); }
+  function openView(doc: WorkspaceDocument) {
+    if (!documentViewSource(doc, viewerScope)) { openPreview(doc); return; }
+    setViewDoc(doc);
+    setViewOpen(true);
+  }
+  function openDetailsFromViewer(doc: WorkspaceDocument) { setViewOpen(false); openPreview(doc); }
   function openHistory(doc: WorkspaceDocument) { setHistoryDoc(doc); setHistoryOpen(true); }
 
   const filters: WorkspaceFilters = {
@@ -145,7 +158,7 @@ export function DocumentWorkspace({
               <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pinned</h2>
               <div className="space-y-2">
                 {pinned.map((d) => (
-                  <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned onOpenPreview={openPreview} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
+                  <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned onOpenPreview={openPreview} onOpenView={openView} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
                 ))}
               </div>
             </section>
@@ -194,7 +207,7 @@ export function DocumentWorkspace({
             ) : (
               <div className="space-y-2">
                 {filtered.map((d) => (
-                  <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned={pinnedKeys.has(workspaceDocKey(d.docType, d.id))} onOpenPreview={openPreview} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
+                  <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned={pinnedKeys.has(workspaceDocKey(d.docType, d.id))} onOpenPreview={openPreview} onOpenView={openView} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
                 ))}
               </div>
             )}
@@ -202,6 +215,13 @@ export function DocumentWorkspace({
         </>
       )}
 
+      <DocumentViewerDialog
+        doc={viewDoc}
+        source={viewDoc ? documentViewSource(viewDoc, viewerScope) : null}
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+        onOpenDetails={openDetailsFromViewer}
+      />
       <DocumentPreviewSheet doc={previewDoc} open={previewOpen} onOpenChange={setPreviewOpen} onOpenVersionHistory={openHistory} />
       <VersionHistorySheet doc={historyDoc} open={historyOpen} onOpenChange={setHistoryOpen} />
     </div>
