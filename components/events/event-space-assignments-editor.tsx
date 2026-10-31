@@ -124,7 +124,7 @@ export function EventSpaceAssignmentsEditor({
             })),
           ];
           const scheduledDate = (current?.scheduledDate ?? "").trim();
-          const issues = withTimes && showMissing ? assignmentRowIssues(current) : {};
+          const issues = withTimes && showMissing ? assignmentRowIssues(current, { eventDate, eventEndDate: rangeEnd }) : {};
           return (
             <div
               key={u.key}

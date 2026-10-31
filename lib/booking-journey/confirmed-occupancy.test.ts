@@ -229,6 +229,10 @@ describe("confirmed booking occupancy", () => {
     assert.deepEqual(assignmentRowIssues({ ...row, scheduledDate: null, startTime: "14:00", endTime: "17:00" }), { date: "Required" });
     assert.deepEqual(assignmentRowIssues({ ...row, startTime: "14:00", endTime: "17:00" }), {});
     assert.deepEqual(assignmentRowIssues({ ...row, spaceId: "" }), {});
+    const timed = { ...row, startTime: "14:00", endTime: "17:00" };
+    assert.deepEqual(assignmentRowIssues(timed, { eventDate: "2027-07-08" }), { date: "Outside the event dates" });
+    assert.deepEqual(assignmentRowIssues(timed, { eventDate: "2027-07-06", eventEndDate: "2027-07-06" }), { date: "Outside the event dates" });
+    assert.deepEqual(assignmentRowIssues(timed, { eventDate: "2027-07-06", eventEndDate: "2027-07-08" }), {});
   });
 
   it("Confirm booking with a missing component time shows what is missing next to the button", () => {

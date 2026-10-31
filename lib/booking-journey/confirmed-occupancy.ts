@@ -45,12 +45,19 @@ export function selectedSpaceIds(value: ConfirmedBookingOccupancy): string[] {
 export type AssignmentRowIssues = { date?: string; start?: string; end?: string };
 
 /** Per-field markers for an assigned row, matching the rules in bookingConfirmationError. */
-export function assignmentRowIssues(row: EventSpaceAssignmentInput | undefined): AssignmentRowIssues {
+export function assignmentRowIssues(
+  row: EventSpaceAssignmentInput | undefined,
+  range: { eventDate?: string; eventEndDate?: string } = {},
+): AssignmentRowIssues {
   if (!row?.spaceId?.trim()) return {};
   const issues: AssignmentRowIssues = {};
   const start = cleanTime(row.startTime);
   const end = cleanTime(row.endTime);
-  if (!DATE.test(row.scheduledDate?.trim() ?? "")) issues.date = "Required";
+  const scheduled = row.scheduledDate?.trim() ?? "";
+  const first = range.eventDate?.trim() ?? "";
+  const last = range.eventEndDate?.trim() ?? "";
+  if (!DATE.test(scheduled)) issues.date = "Required";
+  else if ((first && scheduled < first) || (last && scheduled > last)) issues.date = "Outside the event dates";
   if (!start) issues.start = "Required";
   if (!end) issues.end = "Required";
   else if (start && end <= start) issues.end = "Must be after start";
