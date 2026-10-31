@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { AlertCircle } from "lucide-react";
 
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { EventSpaceField } from "@/components/availability/event-space-field";
@@ -54,7 +55,9 @@ export function PipelineBookedConfirmDialog({
   const [assignments, setAssignments] = React.useState<EventSpaceAssignmentInput[]>([]);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [availabilityBlocked, setAvailabilityBlocked] = React.useState(false);
+  const [showMissing, setShowMissing] = React.useState(false);
   const [assignedStaffId, setAssignedStaffId] = React.useState("");
+  const panelRef = React.useRef<HTMLDivElement>(null);
   /** Live draft refresh must not wipe an Event team member already chosen this open. */
   const eventAssigneeSeededRef = React.useRef(false);
   const hydrationRef = React.useRef<DraftHydrationState>(CLOSED_DRAFT_HYDRATION);
@@ -89,6 +92,7 @@ export function PipelineBookedConfirmDialog({
     }
     if (plan.firstForRecord) {
       setFormError(null);
+      setShowMissing(false);
       setAvailabilityBlocked(false);
     }
   }, [open, draft]);
@@ -110,20 +114,28 @@ export function PipelineBookedConfirmDialog({
   const showAssignments = multi && relevantUses.length > 0;
   const spacesRequired = maxSimultaneousEvents >= 2;
 
+  const occupancy = toConfirmedBookingOccupancy({
+    eventDate,
+    eventEndDate,
+    startTime,
+    endTime,
+    spaceId: showAssignments ? "" : spaceId,
+    assignments: showAssignments ? assignments : [],
+    weddingFamily: experience.isWeddingSpecific,
+  });
+  const currentError = bookingConfirmationError(occupancy, maxSimultaneousEvents);
+
   function submit() {
     if (!draft) return;
-    const occupancy = toConfirmedBookingOccupancy({
-      eventDate,
-      eventEndDate,
-      startTime,
-      endTime,
-      spaceId: showAssignments ? "" : spaceId,
-      assignments: showAssignments ? assignments : [],
-      weddingFamily: experience.isWeddingSpecific,
-    });
-    const message = bookingConfirmationError(occupancy, maxSimultaneousEvents);
+    const message = currentError;
     if (message) {
       setFormError(message);
+      setShowMissing(true);
+      requestAnimationFrame(() => {
+        const first = panelRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+        first?.scrollIntoView({ block: "center", behavior: "smooth" });
+        first?.focus({ preventScroll: true });
+      });
       return;
     }
     setFormError(null);
@@ -158,7 +170,7 @@ export function PipelineBookedConfirmDialog({
         data-testid="booking-confirmation"
         className="relative z-10 flex max-h-[min(90vh,42rem)] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg"
       >
-        <div className="space-y-4 overflow-y-auto p-5">
+        <div ref={panelRef} className="space-y-4 overflow-y-auto p-5">
           <div>
             <h2 id="pipeline-booked-title" className="text-base font-semibold text-heading">
               Confirm this booking
@@ -234,6 +246,7 @@ export function PipelineBookedConfirmDialog({
                     )}
                     uses={relevantUses}
                     withTimes
+                    showMissing={showMissing}
                     eventDate={eventDate}
                     eventEndDate={eventEndDate}
                   />
@@ -294,8 +307,6 @@ export function PipelineBookedConfirmDialog({
                 />
               ) : null}
 
-              {formError && <p className="text-sm text-destructive">{formError}</p>}
-
               <section className="rounded-lg border border-border bg-muted/40 px-3 py-2.5" data-testid="booking-team-assignment">
                 <h3 className="text-sm font-semibold text-heading">Team assignment</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -335,7 +346,17 @@ export function PipelineBookedConfirmDialog({
           )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
+          {showMissing && currentError ? (
+            <p
+              role="alert"
+              data-testid="booking-confirm-missing"
+              className="mr-auto flex min-w-0 flex-1 basis-60 items-center gap-1.5 text-sm font-medium text-foreground"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+              {currentError}
+            </p>
+          ) : null}
           <Button type="button" variant="outline" autoFocus disabled={confirming} onClick={onCancel}>
             Cancel
           </Button>

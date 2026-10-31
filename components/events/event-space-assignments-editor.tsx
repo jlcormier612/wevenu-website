@@ -24,6 +24,7 @@ import {
   type EventSpaceAssignmentInput,
 } from "@/lib/venue-spaces/assignments";
 import { labelForUseKey } from "@/lib/venue-spaces/uses";
+import { assignmentRowIssues } from "@/lib/booking-journey/confirmed-occupancy";
 
 const NONE = "__none__";
 
@@ -35,6 +36,7 @@ export function EventSpaceAssignmentsEditor({
   withTimes = false,
   eventDate = "",
   eventEndDate = "",
+  showMissing = false,
 }: {
   spaces: VenueSpace[];
   value: EventSpaceAssignmentInput[];
@@ -47,6 +49,8 @@ export function EventSpaceAssignmentsEditor({
   eventDate?: string;
   /** Overall booking end — bounds component dates when withTimes. */
   eventEndDate?: string;
+  /** Mark empty or invalid date/time fields on assigned rows (withTimes only). */
+  showMissing?: boolean;
 }) {
   const uses = usesProp ?? configuredUsesFromSpaces(spaces);
   const rangeEnd = eventEndDate && eventEndDate >= eventDate ? eventEndDate : eventDate;
@@ -120,6 +124,7 @@ export function EventSpaceAssignmentsEditor({
             })),
           ];
           const scheduledDate = (current?.scheduledDate ?? "").trim();
+          const issues = withTimes && showMissing ? assignmentRowIssues(current) : {};
           return (
             <div
               key={u.key}
@@ -155,11 +160,12 @@ export function EventSpaceAssignmentsEditor({
               </Field>
               {withTimes ? (
                 <>
-                  <Field label="Date" htmlFor={`esa-${u.key}-date`}>
+                  <Field label="Date" htmlFor={`esa-${u.key}-date`} error={issues.date}>
                     <Input
                       id={`esa-${u.key}-date`}
                       type="date"
                       data-testid={`esa-date-${u.key}`}
+                      aria-invalid={issues.date ? true : undefined}
                       value={scheduledDate}
                       min={eventDate || undefined}
                       max={rangeEnd || undefined}
@@ -170,19 +176,21 @@ export function EventSpaceAssignmentsEditor({
                       })}
                     />
                   </Field>
-                  <Field label="Start time" htmlFor={`esa-${u.key}-start`}>
+                  <Field label="Start time" htmlFor={`esa-${u.key}-start`} error={issues.start}>
                     <Input
                       id={`esa-${u.key}-start`}
                       type="time"
+                      aria-invalid={issues.start ? true : undefined}
                       value={(current?.startTime ?? "").slice(0, 5)}
                       disabled={!currentSpace}
                       onChange={(e) => writeRow(u.key, u.label, { spaceId: currentSpace, startTime: e.target.value })}
                     />
                   </Field>
-                  <Field label="End time" htmlFor={`esa-${u.key}-end`}>
+                  <Field label="End time" htmlFor={`esa-${u.key}-end`} error={issues.end}>
                     <Input
                       id={`esa-${u.key}-end`}
                       type="time"
+                      aria-invalid={issues.end ? true : undefined}
                       value={(current?.endTime ?? "").slice(0, 5)}
                       disabled={!currentSpace}
                       onChange={(e) => writeRow(u.key, u.label, { spaceId: currentSpace, endTime: e.target.value })}

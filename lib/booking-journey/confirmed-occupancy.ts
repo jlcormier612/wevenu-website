@@ -42,6 +42,21 @@ export function selectedSpaceIds(value: ConfirmedBookingOccupancy): string[] {
   return [...ids];
 }
 
+export type AssignmentRowIssues = { date?: string; start?: string; end?: string };
+
+/** Per-field markers for an assigned row, matching the rules in bookingConfirmationError. */
+export function assignmentRowIssues(row: EventSpaceAssignmentInput | undefined): AssignmentRowIssues {
+  if (!row?.spaceId?.trim()) return {};
+  const issues: AssignmentRowIssues = {};
+  const start = cleanTime(row.startTime);
+  const end = cleanTime(row.endTime);
+  if (!DATE.test(row.scheduledDate?.trim() ?? "")) issues.date = "Required";
+  if (!start) issues.start = "Required";
+  if (!end) issues.end = "Required";
+  else if (start && end <= start) issues.end = "Must be after start";
+  return issues;
+}
+
 /** UI and service gate. The database booking path remains the availability authority. */
 export function bookingConfirmationError(
   value: ConfirmedBookingOccupancy,

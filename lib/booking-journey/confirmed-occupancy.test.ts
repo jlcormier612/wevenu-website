@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
-import { bookingConfirmationError } from "@/lib/booking-journey/confirmed-occupancy";
+import { assignmentRowIssues, bookingConfirmationError } from "@/lib/booking-journey/confirmed-occupancy";
 import { prefillBookingConfirmation } from "@/lib/booking-journey/confirmation-draft";
 
 const root = resolve(process.cwd());
@@ -220,5 +220,24 @@ describe("confirmed booking occupancy", () => {
       }],
     });
     assert.equal(prefill.assignments[0]?.scheduledDate, "2027-09-03");
+  });
+
+  it("marks exactly which fields an assigned space is missing", () => {
+    const row = { useKey: "getting_ready", useLabel: "Getting Ready", spaceId: "villa", scheduledDate: "2027-07-07", startTime: null, endTime: null };
+    assert.deepEqual(assignmentRowIssues(row), { start: "Required", end: "Required" });
+    assert.deepEqual(assignmentRowIssues({ ...row, startTime: "14:00", endTime: "13:00" }), { end: "Must be after start" });
+    assert.deepEqual(assignmentRowIssues({ ...row, scheduledDate: null, startTime: "14:00", endTime: "17:00" }), { date: "Required" });
+    assert.deepEqual(assignmentRowIssues({ ...row, startTime: "14:00", endTime: "17:00" }), {});
+    assert.deepEqual(assignmentRowIssues({ ...row, spaceId: "" }), {});
+  });
+
+  it("Confirm booking with a missing component time shows what is missing next to the button", () => {
+    const editor = read("components/events/event-space-assignments-editor.tsx");
+    assert.match(dialog, /showMissing=\{showMissing\}/);
+    assert.match(dialog, /setShowMissing\(true\)/);
+    assert.match(dialog, /data-testid="booking-confirm-missing"/);
+    assert.match(dialog, /querySelector<HTMLElement>\('\[aria-invalid="true"\]'\)/);
+    assert.match(editor, /aria-invalid=\{issues\.start \? true : undefined\}/);
+    assert.match(editor, /aria-invalid=\{issues\.end \? true : undefined\}/);
   });
 });
