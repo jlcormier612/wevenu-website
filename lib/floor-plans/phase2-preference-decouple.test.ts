@@ -87,8 +87,9 @@ describe("Phase 2 — ensureWorkingLayoutForEvent decoupling", () => {
   });
 
   it("sole offer is not preference approval", () => {
-    assert.match(workspace, /offering alone does not approve anything/i);
-    assert.match(workspace, /Sharing and seating still wait for you/i);
+    assert.match(workspace, /One layout is offered to the couple/);
+    const sole = workspace.slice(workspace.indexOf('data-testid="floor-plan-sole-offer-working"'), workspace.indexOf('data-testid="floor-plan-client-pending"'));
+    assert.doesNotMatch(sole, /Action\(/);
   });
 });
 
@@ -278,6 +279,7 @@ describe("Phase 2 — Phase 1 independence preserved in copy", () => {
     assert.match(workspace, /Seating open|Seating paused/);
     assert.match(workspace, /Set as working layout/);
     assert.doesNotMatch(workspace, />\s*Operational\s*</);
-    assert.match(workspace, /sharing and seating are separate steps/i);
+    assert.match(workspace, /testId="floor-plan-switch-couple-view"/);
+    assert.match(workspace, /testId="floor-plan-switch-seating"/);
   });
 });

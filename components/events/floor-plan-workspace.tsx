@@ -47,6 +47,7 @@ import {
   createClientFloorPlanAction,
   duplicateClientFloorPlanAction,
 } from "@/app/(app)/clients/planning-actions";
+import { offeredLayoutsView, preferenceReviewIsActionable } from "@/lib/floor-plans/workspace-status";
 import { FloorPlanFlipPanel } from "@/components/events/floor-plan-flip-panel";
 import { FloorPlanRequiredStatus } from "@/components/events/floor-plan-required-status";
 import {
@@ -78,6 +79,33 @@ function spaceName(spaces: VenueSpace[], spaceId: string | null): string | null 
   return spaceId ? spaces.find((s) => s.id === spaceId)?.name ?? null : null;
 }
 
+function PlanSwitchRow({
+  label, hint, on, pending, onToggle, testId,
+}: {
+  label: string; hint: string; on: boolean; pending: boolean; onToggle: (e: React.MouseEvent) => void; testId?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-foreground">{label}</p>
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        disabled={pending}
+        onClick={onToggle}
+        data-testid={testId}
+        className={`inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 ${on ? "bg-primary" : "bg-input"}`}
+      >
+        <span className={`block size-4 rounded-full bg-white shadow-sm transition-transform ${on ? "translate-x-4" : "translate-x-0"}`} />
+      </button>
+    </div>
+  );
+}
+
 /**
  * Seating access toggle. Layout assignment/selection opens seating
  * automatically (client_access=view). This control remains as an override
@@ -101,21 +129,14 @@ function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: Floor
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={
-        <button type="button" onClick={toggle} disabled={pending}
-          className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-            shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
-          }`}>
-          {pending ? "…" : shared ? "Seating open" : "Seating paused"}
-        </button>
-      } />
-      <TooltipContent>
-        {shared
-          ? "Couple can assign guests to tables. Click to pause seating access."
-          : "Seating is paused. Assignment and selection open seating automatically; use this only to re-enable."}
-      </TooltipContent>
-    </Tooltip>
+    <PlanSwitchRow
+      label="Couple can seat guests"
+      hint={shared ? "Seating open — they can assign guests to tables." : "Seating paused."}
+      on={shared}
+      pending={pending}
+      onToggle={toggle}
+      testId="floor-plan-switch-seating"
+    />
   );
 }
 
@@ -137,21 +158,14 @@ function ShareFloorPlanToggle({ eventId, plan }: { eventId: string; plan: FloorP
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={
-        <button type="button" onClick={toggle} disabled={pending}
-          className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-            shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
-          }`}>
-          {pending ? "…" : shared ? "Shared Floor Plan" : "Share Floor Plan"}
-        </button>
-      } />
-      <TooltipContent>
-        {shared
-          ? "Couple can view this layout in Your Wedding → Floor Plan. Click to unshare."
-          : "Share this layout for the couple to view (reference-only). Independent of Seating."}
-      </TooltipContent>
-    </Tooltip>
+    <PlanSwitchRow
+      label="Couple can see it"
+      hint="View only, in their portal under Floor Plan."
+      on={shared}
+      pending={pending}
+      onToggle={toggle}
+      testId="floor-plan-switch-couple-view"
+    />
   );
 }
 
@@ -215,31 +229,37 @@ function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: Floo
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={
-        <button type="button" onClick={toggle} disabled={pending}
-          className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-            shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
-          }`}>
-          {pending ? "…" : shared ? "Shared with Vendors" : "Share with Vendors"}
-        </button>
-      } />
-      <TooltipContent>
-        {shared ? "Visible to any vendor assigned to this event. Click to unshare." : "Not visible to vendors yet. Click to share."}
-      </TooltipContent>
-    </Tooltip>
+    <PlanSwitchRow
+      label="Vendors can see it"
+      hint="Any vendor assigned to this event."
+      on={shared}
+      pending={pending}
+      onToggle={toggle}
+      testId="floor-plan-switch-vendors"
+    />
   );
 }
 
+type LayoutTool = "setups" | "flip";
+
 function FloorPlanCard({
   eventId, planningClientId = null, plan, spaces, busy, isOperational, isCoupleSelected, canEdit, canDelete, onRename, onDelete,
+  onOpenTool,
 }: {
   eventId: string; planningClientId?: string | null; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean;
   isOperational: boolean; isCoupleSelected: boolean;
   canEdit: boolean; canDelete: boolean;
   onRename: () => void; onDelete: () => void;
+  onOpenTool?: (tool: LayoutTool) => void;
 }) {
+  const router = useRouter();
   const preBooking = Boolean(planningClientId) && !eventId;
+  function clearWorking() {
+    void setOperationalFloorPlanAction(eventId, null).then((result) => {
+      if (result.ok) router.refresh();
+      else toast.error(result.message ?? "Could not update working layout.");
+    });
+  }
   return (
     <Link
       href={preBooking
@@ -257,6 +277,19 @@ function FloorPlanCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {canEdit && <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>}
+                {canEdit && !preBooking && isOperational && (
+                  <DropdownMenuItem onClick={clearWorking} data-testid="floor-plan-clear-working">Clear working layout</DropdownMenuItem>
+                )}
+                {canEdit && onOpenTool && (
+                  <>
+                    <DropdownMenuItem onClick={() => onOpenTool("setups")} data-testid="floor-plan-open-setups">
+                      Organize wedding setups…
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onOpenTool("flip")} data-testid="floor-plan-open-flip">
+                      Link before/after layouts…
+                    </DropdownMenuItem>
+                  </>
+                )}
                 {canDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive">Delete</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -336,20 +369,23 @@ function FloorPlanCard({
         </div>
       )}
       {canEdit && !preBooking && (
-        <div className="flex flex-col gap-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Couple visibility & seating</p>
-          <div className="flex flex-wrap gap-1.5">
-            <ShareFloorPlanToggle eventId={eventId} plan={plan} />
-            <ShareForSeatingToggle eventId={eventId} plan={plan} />
-            <ShareWithVendorsToggle eventId={eventId} plan={plan} />
-          </div>
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground pt-0.5">Venue prep</p>
-          <div className="flex flex-wrap gap-1.5">
-            <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
-            <CoupleMayAddTablesToggle eventId={eventId} plan={plan} />
-          </div>
+        <div
+          className="mt-1 divide-y divide-border/60 border-t border-border/60 pt-1"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          data-testid="floor-plan-card-switches"
+        >
+          <ShareFloorPlanToggle eventId={eventId} plan={plan} />
+          <ShareForSeatingToggle eventId={eventId} plan={plan} />
+          <CoupleMayAddTablesToggle eventId={eventId} plan={plan} />
+          <ShareWithVendorsToggle eventId={eventId} plan={plan} />
+          {!isOperational ? (
+            <div className="pt-2">
+              <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
+            </div>
+          ) : null}
         </div>
       )}
+      <span className="mt-1 text-xs font-medium text-primary">Open layout →</span>
     </Link>
   );
 }
@@ -359,14 +395,15 @@ function CoupleMayAddTablesToggle({ eventId, plan }: { eventId: string; plan: Fl
   const [pending, startTransition] = React.useTransition();
   const allowed = plan.coupleMayAddTables !== false;
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      className="h-7 text-[11px]"
-      disabled={pending}
-      data-testid="floor-plan-couple-may-add"
-      onClick={() => {
+    <PlanSwitchRow
+      label="Couple can add tables"
+      hint={allowed ? "Client may add tables to this layout." : "Client cannot add tables."}
+      on={allowed}
+      pending={pending}
+      testId="floor-plan-couple-may-add"
+      onToggle={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
         startTransition(async () => {
           const result = await setFloorPlanCoupleMayAddTablesAction(plan.id, eventId, !allowed);
           if (!result.ok) {
@@ -377,9 +414,7 @@ function CoupleMayAddTablesToggle({ eventId, plan }: { eventId: string; plan: Fl
           router.refresh();
         });
       }}
-    >
-      {allowed ? "Client may add tables" : "Client cannot add tables"}
-    </Button>
+    />
   );
 }
 
@@ -557,9 +592,14 @@ function PreferenceReviewPanel({
     });
   }
 
+  const multipleSeated = floorPlans.filter((p) => (seatCounts[p.id] ?? 0) > 0).length > 1 && canEdit;
+  if (!preferenceReviewIsActionable({ status, hasPreferred: Boolean(preferred), multipleSeated, hasError: Boolean(error) })) {
+    return null;
+  }
+
   return (
     <div
-      className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-3 text-xs text-foreground space-y-2"
+      className="rounded-md border border-primary/30 bg-card px-3 py-3 text-xs text-foreground space-y-2"
       data-testid="floor-plan-preference-review"
     >
       <p className="text-sm font-medium text-heading" data-testid="floor-plan-preference-headline">
@@ -930,6 +970,9 @@ export function FloorPlanWorkspace({
 
   const sharedPlans = floorPlans.filter((p) => p.clientAccess !== "hidden");
   const activeOffers = offers.filter((o) => o.isOffered);
+  const offeredLayouts = offeredLayoutsView(offers, floorPlans, coupleSelectedFloorPlanId);
+  const [tool, setTool] = React.useState<LayoutTool | null>(null);
+  const openTool = !preBooking && eventId && canEdit ? setTool : undefined;
   const workingPlan =
     (operationalFloorPlanId && floorPlans.find((p) => p.id === operationalFloorPlanId))
     || null;
@@ -958,120 +1001,123 @@ export function FloorPlanWorkspace({
 
   return (
     <div className="space-y-4" data-testid="floor-plan-operational-workspace">
-      <p className="text-sm text-muted-foreground" data-testid="floor-plan-workspace-intro">
-        {preBooking
-          ? "Sketch the room for this client. Sharing with the couple waits until this relationship is Booked."
-          : (
-            <>
-              Start with a layout, place furniture, then Share when the couple should see it. The{" "}
-              <span className="font-medium text-foreground">working layout</span> is the one you are preparing
-              for the day — sharing and seating are separate steps you turn on when ready.
-            </>
-          )}
-      </p>
-
       {!preBooking && eventId ? <FloorPlanRequiredStatus eventId={eventId} floorPlans={floorPlans} /> : null}
+
+      {preBooking ? (
+        <p className="text-sm text-muted-foreground" data-testid="floor-plan-workspace-intro">
+          Sketch the room for this client. Sharing with the couple waits until this relationship is Booked.
+        </p>
+      ) : null}
 
       {!preBooking && (
         <div
-          className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground space-y-1"
+          className="rounded-md border border-border bg-card px-3 py-2.5 text-sm text-foreground"
           data-testid="floor-plan-selection-status"
         >
           {coupleSelectedFloorPlanId ? (
-            <>
-              <p data-testid="floor-plan-client-selected">
-                Couple preference:{" "}
-                <span className="font-medium text-foreground">
-                  {floorPlans.find((p) => p.id === coupleSelectedFloorPlanId)?.name ?? "Saved layout"}
+            (() => {
+              const selected = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);
+              const pick = (
+                <span data-testid="floor-plan-client-selected">
+                  Couple&apos;s pick: <span className="font-medium">{selected?.name ?? "Saved layout"}</span>.{" "}
                 </span>
-                {" "}
-                (
-                {normalizeCouplePreferenceStatus(couplePreferenceStatus, coupleSelectedFloorPlanId)
-                  ?? "pending"}
-                ). Preference is not the same as working layout, sharing, or seating access.
-              </p>
-              {(() => {
-                const selected = floorPlans.find((p) => p.id === coupleSelectedFloorPlanId);
-                if (!selected) return null;
-                const seatingOpen = selected.clientAccess !== "hidden";
-                const ready = Boolean(selected.finalizedAt);
-                const layoutStatus = normalizeClientLayoutStatus(selected.clientLayoutStatus);
-                if (layoutStatus === "submitted") {
-                  return (
-                    <p data-testid="floor-plan-next-review-submission">
-                      Client submitted furniture placement for review ({clientLayoutStatusLabel(layoutStatus)}).
-                      That furniture review is separate from preference approval. Use the review panel below
-                      before <span className="font-medium text-foreground">Mark as Ready</span>.
-                    </p>
-                  );
-                }
-                if (selected.sharedWithCouple && !seatingOpen) {
-                  return (
-                    <p data-testid="floor-plan-next-share-seating">
-                      Layout is shared; seating is paused on this plan. Re-open seating from the plan card if the couple should assign guests again.
-                    </p>
-                  );
-                }
-                if (layoutStatus === "changes_requested") {
-                  return (
-                    <p data-testid="floor-plan-next-awaiting-resubmit">
-                      You asked the couple for furniture updates. They can edit again and resubmit.
-                    </p>
-                  );
-                }
-                if (layoutStatus === "approved" && !ready) {
-                  return (
-                    <p data-testid="floor-plan-next-mark-ready-after-approve">
-                      Furniture layout is approved. When print/setup-ready, open it and{" "}
-                      <span className="font-medium text-foreground">Mark as Ready</span>.
-                    </p>
-                  );
-                }
-                if (selected.sharedWithCouple && seatingOpen && !ready) {
-                  return (
-                    <p data-testid="floor-plan-next-mark-ready">
-                      This layout is shared and seating is open. Furniture review and preference approval stay separate.
-                      When print/setup-ready, open it and{" "}
-                      <span className="font-medium text-foreground">Mark as Ready</span>.
-                    </p>
-                  );
-                }
-                if (ready) {
-                  return (
-                    <p data-testid="floor-plan-ready-confirmed">
-                      Working layout is <span className="font-medium text-foreground">Ready</span> for the event.
-                      Couple edits are locked until you Make Changes.
-                    </p>
-                  );
-                }
+              );
+              if (!selected) return <p>{pick}</p>;
+              const seatingOpen = selected.clientAccess !== "hidden";
+              const ready = Boolean(selected.finalizedAt);
+              const layoutStatus = normalizeClientLayoutStatus(selected.clientLayoutStatus);
+              if (normalizeCouplePreferenceStatus(couplePreferenceStatus, coupleSelectedFloorPlanId) === "pending") {
+                return <p data-testid="floor-plan-next-review-preference">{pick}Review it below.</p>;
+              }
+              if (layoutStatus === "submitted") {
                 return (
-                  <p data-testid="floor-plan-preference-awaiting-share">
-                    Preference is recorded. Share the floor plan and open seating only when you intend those
-                    controls — neither follows automatically from preference.
+                  <p data-testid="floor-plan-next-review-submission">
+                    {pick}They sent their furniture placement ({clientLayoutStatusLabel(layoutStatus)}) — review it below.
                   </p>
                 );
-              })()}
-            </>
+              }
+              if (selected.sharedWithCouple && !seatingOpen) {
+                return (
+                  <p data-testid="floor-plan-next-share-seating">
+                    {pick}Shared, but seating is paused — turn on &quot;Couple can seat guests&quot; if they should seat guests.
+                  </p>
+                );
+              }
+              if (layoutStatus === "changes_requested") {
+                return <p data-testid="floor-plan-next-awaiting-resubmit">{pick}Waiting for them to update their furniture placement.</p>;
+              }
+              if (ready) {
+                return (
+                  <p data-testid="floor-plan-ready-confirmed">
+                    {pick}Ready for the day. Couple edits are locked until you make changes.
+                  </p>
+                );
+              }
+              if (layoutStatus === "approved" || (selected.sharedWithCouple && seatingOpen)) {
+                return (
+                  <p data-testid="floor-plan-next-mark-ready">
+                    {pick}Open it and <span className="font-medium">Mark as Ready</span> when it&apos;s set for the day.
+                  </p>
+                );
+              }
+              return (
+                <p data-testid="floor-plan-preference-awaiting-share">
+                  {pick}Turn on &quot;Couple can see it&quot; when they should see it.
+                </p>
+              );
+            })()
           ) : activeOffers.length === 1 ? (
             <p data-testid="floor-plan-sole-offer-working">
-              One layout is offered
-              {workingPlan ? ` — working layout is ${workingPlan.name}` : " and can become the working layout"}
-              . Sharing and seating still wait for you; offering alone does not approve anything.
+              One layout is offered to the couple
+              {workingPlan ? <> — you&apos;re preparing <span className="font-medium">{workingPlan.name}</span>.</> : "."}
             </p>
           ) : activeOffers.length > 1 ? (
             <p data-testid="floor-plan-client-pending">
-              The couple has not picked a preferred layout yet.
-              {workingPlan
-                ? ` Working layout is ${workingPlan.name}.`
-                : " Choose Set as working layout on a plan when you are ready — offering several options does not pick one for you."}
+              The couple is choosing between {activeOffers.length} layouts — nothing picked yet.
+            </p>
+          ) : workingPlan ? (
+            <p data-testid="floor-plan-no-offers-status">
+              You&apos;re preparing <span className="font-medium">{workingPlan.name}</span>. Turn on &quot;Couple can see it&quot; when they should see it.
             </p>
           ) : (
-            <p data-testid="floor-plan-no-offers-status">
-              No Library layouts are offered yet. Add a layout below, or offer options from Event setup when the couple should choose.
-            </p>
+            <p data-testid="floor-plan-no-offers-status">No layout yet — add one below.</p>
           )}
         </div>
       )}
+
+      {!preBooking && eventId && offeredLayouts.length > 0 ? (
+        <div className="space-y-1.5" data-testid="floor-plan-offered-layouts">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Layouts offered to the couple</p>
+            <button
+              type="button"
+              className="text-xs font-medium text-foreground underline-offset-2 hover:underline"
+              data-testid="floor-plan-edit-offers"
+              onClick={() => {
+                window.location.hash = "overview";
+                window.setTimeout(() => {
+                  document.getElementById("event-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 80);
+              }}
+            >
+              Edit options
+            </button>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {offeredLayouts.map((o) => (
+              <li
+                key={o.id}
+                className={`rounded-md border px-3 py-1.5 text-xs ${o.isCouplePick ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-foreground"}`}
+                data-testid="floor-plan-offered-layout"
+                data-couple-pick={o.isCouplePick ? "true" : "false"}
+              >
+                {o.label}
+                {o.isCouplePick ? <span className="ml-1.5 font-semibold text-primary">· Couple&apos;s pick</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {!preBooking && eventId && (
         <PreferenceReviewPanel
@@ -1087,31 +1133,31 @@ export function FloorPlanWorkspace({
         />
       )}
 
-      {/* Optional tools stay one click away so the first screen stays about arranging the room. */}
       {!preBooking && eventId ? (
-        <details className="rounded-lg border border-border bg-muted/10 px-3 py-2" data-testid="floor-plan-advanced-tools">
-          <summary className="cursor-pointer text-sm font-medium text-heading">
-            More layout tools (optional)
-          </summary>
-          <div className="mt-3 space-y-3">
-            <FloorPlanSetupPackagePanel
-              eventId={eventId}
-              floorPlans={floorPlans}
-              canEdit={canEdit}
-            />
-            <FloorPlanReviewFlagsPanel
-              eventId={eventId}
-              floorPlans={floorPlans}
-              spaces={spaces}
-              canEdit={canEdit}
-            />
-            <FloorPlanFlipPanel
-              eventId={eventId}
-              floorPlans={floorPlans}
-              canEdit={canEdit}
-            />
-          </div>
-        </details>
+        <FloorPlanReviewFlagsPanel
+          eventId={eventId}
+          floorPlans={floorPlans}
+          spaces={spaces}
+          canEdit={canEdit}
+          hideWhenEmpty
+        />
+      ) : null}
+
+      {!preBooking && eventId ? (
+        <Sheet open={tool !== null} onOpenChange={(next) => { if (!next) setTool(null); }}>
+          <SheetContent className="w-full overflow-y-auto sm:max-w-xl" data-testid="floor-plan-tool-sheet">
+            <SheetHeader>
+              <SheetTitle>{tool === "flip" ? "Link before/after layouts" : "Organize wedding setups"}</SheetTitle>
+            </SheetHeader>
+            <div className="px-4 pb-6">
+              {tool === "setups" ? (
+                <FloorPlanSetupPackagePanel eventId={eventId} floorPlans={floorPlans} canEdit={canEdit} />
+              ) : tool === "flip" ? (
+                <FloorPlanFlipPanel eventId={eventId} floorPlans={floorPlans} canEdit={canEdit} />
+              ) : null}
+            </div>
+          </SheetContent>
+        </Sheet>
       ) : null}
 
       {!preBooking && eventId
@@ -1221,6 +1267,7 @@ export function FloorPlanWorkspace({
             canDelete={canDelete}
             onRename={() => handleRenamePlan(workingPlan)}
             onDelete={() => handleDeletePlan(workingPlan)}
+            onOpenTool={openTool}
           />
           {otherPlans.length > 0 ? (
             <div className="space-y-2" data-testid="floor-plan-other-layouts">
@@ -1244,6 +1291,7 @@ export function FloorPlanWorkspace({
                     canDelete={canDelete}
                     onRename={() => handleRenamePlan(plan)}
                     onDelete={() => handleDeletePlan(plan)}
+                    onOpenTool={openTool}
                   />
                 ))}
               </div>
@@ -1262,6 +1310,7 @@ export function FloorPlanWorkspace({
               canDelete={canDelete}
               onRename={() => handleRenamePlan(plan)}
               onDelete={() => handleDeletePlan(plan)}
+              onOpenTool={openTool}
             />
           ))}
         </div>

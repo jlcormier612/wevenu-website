@@ -45,7 +45,8 @@ describe("Floor Plans Phase 1 — share vs seating remain distinct", () => {
     assert.match(workspace, /Seating open|Seating paused/);
     assert.match(workspace, /setCoupleShareAction/);
     assert.match(workspace, /setClientAccessAction/);
-    assert.match(workspace, /Independent of Seating/);
+    assert.match(workspace, /label="Couple can see it"/);
+    assert.match(workspace, /label="Couple can seat guests"/);
   });
 
   it("does not treat shared or working layout as furniture-placement approval", () => {

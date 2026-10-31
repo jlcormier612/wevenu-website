@@ -217,6 +217,14 @@ export function rowSentence(row: RvpRow): string {
   return base;
 }
 
+/** Floor Plans tab shows the Event Order comparison only when something is short or unmatched. */
+export function requiredStatusNeedsAttention(status: {
+  lines: Array<{ shortCount: number }>;
+  unmatchedSections: unknown[];
+}): boolean {
+  return status.unmatchedSections.length > 0 || status.lines.some((line) => line.shortCount > 0);
+}
+
 /** One-line status for a layout, e.g. "2 items short". */
 export function summarySentence(result: RequiredVsPlaced): string {
   const ordered = result.rows.filter((r) => r.status !== "not_ordered");

@@ -5,6 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 
 import { getFloorPlanRequiredStatusAction } from "@/app/(app)/events/[id]/floor-plan-actions";
+import { requiredStatusNeedsAttention } from "@/lib/floor-plans/required-vs-placed";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 
 type Status = Awaited<ReturnType<typeof getFloorPlanRequiredStatusAction>>;
@@ -22,7 +23,7 @@ export function FloorPlanRequiredStatus({ eventId, floorPlans }: { eventId: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, planKey]);
 
-  if (!status || status.lines.length === 0) return null;
+  if (!status || !requiredStatusNeedsAttention(status)) return null;
 
   return (
     <div className="rounded-md border border-border px-3 py-2 text-xs space-y-1" data-testid="floor-plan-required-status">

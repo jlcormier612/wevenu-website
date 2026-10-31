@@ -38,6 +38,8 @@ type Props = {
   floorPlans: FloorPlan[];
   spaces: VenueSpace[];
   canEdit: boolean;
+  /** Render nothing unless a review is open (Floor Plans tab). */
+  hideWhenEmpty?: boolean;
 };
 
 function spaceLabel(spaces: VenueSpace[], id: string | null | undefined): string {
@@ -64,6 +66,7 @@ export function FloorPlanReviewFlagsPanel({
   floorPlans,
   spaces,
   canEdit,
+  hideWhenEmpty = false,
 }: Props) {
   const router = useRouter();
   const [flags, setFlags] = React.useState<ReviewFlagRow[]>([]);
@@ -163,6 +166,7 @@ export function FloorPlanReviewFlagsPanel({
       ? "None assigned"
       : bookingRoomIds.map((id) => spaceLabel(spaces, id)).join(", ");
   const showMismatchBanner = !loading && !loadError && flags.length > 0;
+  if (hideWhenEmpty && !loadError && (loading || flags.length === 0)) return null;
 
   return (
     <div

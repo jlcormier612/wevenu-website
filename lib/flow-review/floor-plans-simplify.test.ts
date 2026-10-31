@@ -22,9 +22,10 @@ describe("Floor plans simplify (7–9)", () => {
     const workspace = read("components/events/floor-plan-workspace.tsx");
     const detail = read("components/events/event-detail.tsx");
     assert.match(workspace, /floor-plan-workspace-intro/);
-    assert.match(workspace, /Start with a layout, place furniture, then Share/);
-    assert.match(workspace, /floor-plan-advanced-tools/);
-    assert.match(workspace, /More layout tools \(optional\)/);
+    assert.match(workspace, /floor-plan-selection-status/);
+    assert.match(workspace, /floor-plan-offered-layouts/);
+    assert.match(workspace, /floor-plan-tool-sheet/);
+    assert.doesNotMatch(workspace, /More layout tools \(optional\)/);
     assert.match(workspace, /Most events start with Add a layout here/);
     assert.match(detail, /Arrange furniture for this event/);
     assert.doesNotMatch(detail, /Offer layouts\s+to the client from Event setup/);
