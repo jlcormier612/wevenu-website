@@ -38,6 +38,13 @@ import * as templatesRepo from "@/lib/client-choices-templates/repository";
 import { ensureEventOrder } from "@/lib/event-orders/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
+function unanswerableSendMessage(definition: ChoicesDefinition): string | null {
+  const message = unanswerableRequiredGroupMessage(definition);
+  return message
+    ? `${message} Fix it in the Event Order template before sending, or the couple can't approve.`
+    : null;
+}
+
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
 ): Promise<T | ClientChoicesActionResult> {
@@ -239,13 +246,8 @@ export async function sendClientChoices(choicesId: string): Promise<ClientChoice
     const row = await hydrateClientChoicesDefinitionFromEventOrderTemplate(
       supabase, venueId, loaded,
     );
-    const unanswerable = unanswerableRequiredGroupMessage(row.definition);
-    if (unanswerable) {
-      return {
-        ok: false,
-        message: `${unanswerable} Fix it in the Event Order template before sending, or the couple can't approve.`,
-      } as ClientChoicesActionResult;
-    }
+    const unanswerable = unanswerableSendMessage(row.definition);
+    if (unanswerable) return { ok: false, message: unanswerable } as ClientChoicesActionResult;
     if (row.status === "draft") {
       await repo.updateInstance(supabase, venueId, choicesId, {
         status: "sent",
@@ -285,14 +287,40 @@ export async function prepareCoupleChoicesForEventOrderShare(
     }
     if (!eventOrderTemplateId) return { ok: true } as ClientChoicesActionResult;
     const template = await eoTemplatesRepo.getTemplateWithDetails(supabase, venueId, eventOrderTemplateId);
-    if (!template || selectionDefinitionFromEventOrderTemplate(template).groups.length === 0) {
+    const definition = template ? selectionDefinitionFromEventOrderTemplate(template) : null;
+    if (!definition || definition.groups.length === 0) {
       return { ok: true } as ClientChoicesActionResult;
     }
+    const unanswerable = unanswerableSendMessage(definition);
+    if (unanswerable) return { ok: false, message: unanswerable } as ClientChoicesActionResult;
     const created = await createClientChoicesFromEventOrderTemplate(eventId, eventOrderTemplateId);
     if (!created.ok) return { ok: false, message: created.message ?? "Could not prepare the couple's choices." } as ClientChoicesActionResult;
     return sendClientChoices(created.choicesId);
   });
   return result as ClientChoicesActionResult;
+}
+
+/**
+ * Checked before Send to couple locks the Event Order: the couple choices that
+ * share would deliver must be answerable. Null when sending can proceed.
+ */
+export async function eventOrderShareChoicesBlocker(
+  eventId: string,
+  eventOrderTemplateId: string | null,
+): Promise<string | null> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { pickActiveChoices } = await import("@/lib/client-choices/couple-choice-preview");
+    const active = pickActiveChoices(await repo.listForEvent(supabase, venueId, eventId));
+    if (active) {
+      if (active.status !== "draft") return null;
+      const row = await hydrateClientChoicesDefinitionFromEventOrderTemplate(supabase, venueId, active);
+      return unanswerableSendMessage(row.definition);
+    }
+    if (!eventOrderTemplateId) return null;
+    const template = await eoTemplatesRepo.getTemplateWithDetails(supabase, venueId, eventOrderTemplateId);
+    return template ? unanswerableSendMessage(selectionDefinitionFromEventOrderTemplate(template)) : null;
+  });
+  return typeof result === "string" ? result : null;
 }
 
 /**

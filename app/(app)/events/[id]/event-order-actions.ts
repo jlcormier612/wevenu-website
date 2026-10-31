@@ -277,6 +277,9 @@ export async function sendEventOrderToCoupleAction(
   const { getEventOrder } = await import("@/lib/event-orders/service");
   const order = await getEventOrder(eventId);
   if (!order || order.id !== eventOrderId) return { ok: false, message: "Event Order not found." };
+  const { eventOrderShareChoicesBlocker } = await import("@/lib/client-choices/service");
+  const blocked = await eventOrderShareChoicesBlocker(eventId, order.templateId);
+  if (blocked) return { ok: false, message: blocked };
   if (order.status !== "finalized") {
     const finalized = await finalizeEventOrder(eventOrderId);
     if (!finalized.ok) return finalized;
