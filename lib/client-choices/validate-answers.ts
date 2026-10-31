@@ -9,6 +9,7 @@ import {
   reconcileAnswersForDependencies,
 } from "@/lib/client-choices/conditional-groups";
 import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
+import { impossibleSelectionGroupMessage } from "@/lib/event-order-templates/guided-setup";
 
 export type ChoicesAnswersValidation =
   | { ok: true }
@@ -106,6 +107,22 @@ export function validateChoicesAnswers(
     }
   }
   return { ok: true };
+}
+
+/**
+ * A required group with fewer options than it demands can never be answered,
+ * so the couple could never submit or approve. Returns the first such message.
+ */
+export function unanswerableRequiredGroupMessage(definition: ChoicesDefinition): string | null {
+  const optionCount = new Map<string, number>();
+  for (const opt of definition.options) {
+    optionCount.set(opt.groupId, (optionCount.get(opt.groupId) ?? 0) + 1);
+  }
+  for (const group of definition.groups) {
+    const message = impossibleSelectionGroupMessage(group, optionCount.get(group.id) ?? 0);
+    if (message) return message;
+  }
+  return null;
 }
 
 /** Reconcile then validate — preferred before save/submit from UI. */

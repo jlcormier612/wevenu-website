@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
+import {
+  unanswerableRequiredGroupMessage,
+  validateChoicesAnswers,
+} from "@/lib/client-choices/validate-answers";
 import type { ChoicesDefinition } from "@/lib/client-choices/types";
 
 const definition: ChoicesDefinition = {
@@ -395,5 +398,37 @@ describe("validateChoicesAnswers", () => {
       "g-plated": { optionIds: ["o-detail"] },
     });
     assert.equal(orphan.ok, false);
+  });
+});
+
+describe("unanswerableRequiredGroupMessage (send guard)", () => {
+  it("passes a definition whose required groups have enough options", () => {
+    assert.equal(unanswerableRequiredGroupMessage(definition), null);
+  });
+
+  it("blocks a required group with no options", () => {
+    const empty: ChoicesDefinition = {
+      ...definition,
+      options: definition.options.filter((o) => o.groupId !== "g-dinner"),
+    };
+    assert.match(unanswerableRequiredGroupMessage(empty) ?? "", /“Dinner service” is required but has no options/);
+  });
+
+  it("blocks a required pick-2 group with one option", () => {
+    const pickTwo: ChoicesDefinition = {
+      ...definition,
+      groups: definition.groups.map((g) =>
+        g.id === "g-dinner" ? { ...g, selectionMode: "multi" as const, minSelect: 2, maxSelect: 2 } : g),
+      options: definition.options.filter((o) => o.id !== "o-buffet"),
+    };
+    assert.match(unanswerableRequiredGroupMessage(pickTwo) ?? "", /requires 2 selections but only has 1 option/);
+  });
+
+  it("allows an optional group with no options", () => {
+    const optionalEmpty: ChoicesDefinition = {
+      ...definition,
+      options: definition.options.filter((o) => o.groupId !== "g-arbor"),
+    };
+    assert.equal(unanswerableRequiredGroupMessage(optionalEmpty), null);
   });
 });

@@ -488,6 +488,7 @@ function ChoiceSetCard({
 
   const sectionName =
     template.sections.find((s) => s.id === set.group.sectionId)?.name ?? "Package";
+  const impossible = impossibleSelectionGroupMessage(set.group, set.options.length);
 
   function commitCount(nextCount: string, nextRequired: boolean) {
     const err = onSaveGroup(set.group, {
@@ -577,6 +578,15 @@ function ChoiceSetCard({
         {countError ? (
           <p className="w-full text-xs text-destructive" role="alert">
             {countError}
+          </p>
+        ) : null}
+        {impossible ? (
+          <p
+            className="w-full text-xs text-destructive"
+            role="alert"
+            data-testid={`eo-choice-set-impossible-${setIndex}`}
+          >
+            {impossible}
           </p>
         ) : null}
       </div>

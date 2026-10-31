@@ -23,7 +23,10 @@ import type {
   FinalizeClientChoicesResult,
   SendClientChoicesRequestResult,
 } from "@/lib/client-choices/types";
-import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
+import {
+  unanswerableRequiredGroupMessage,
+  validateChoicesAnswers,
+} from "@/lib/client-choices/validate-answers";
 import * as eoTemplatesRepo from "@/lib/event-order-templates/repository";
 import {
   defaultAnswersFromEventOrderTemplate,
@@ -236,6 +239,13 @@ export async function sendClientChoices(choicesId: string): Promise<ClientChoice
     const row = await hydrateClientChoicesDefinitionFromEventOrderTemplate(
       supabase, venueId, loaded,
     );
+    const unanswerable = unanswerableRequiredGroupMessage(row.definition);
+    if (unanswerable) {
+      return {
+        ok: false,
+        message: `${unanswerable} Fix it in the Event Order template before sending, or the couple can't approve.`,
+      } as ClientChoicesActionResult;
+    }
     if (row.status === "draft") {
       await repo.updateInstance(supabase, venueId, choicesId, {
         status: "sent",
