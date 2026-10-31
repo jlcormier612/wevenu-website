@@ -17,6 +17,28 @@ export const MISSING_ADDITIONAL_ITEMS = "No additional or optional items are lis
 export const MISSING_PAYMENT_SCHEDULE = "No payment schedule is on file for this celebration yet.";
 export const MISSING_COORDINATOR_NAME = "Your venue team";
 
+/**
+ * Venue-facing note on Review when the agreement still has blank sections.
+ * Spaces come from the lead card; payment terms from the package on the initial
+ * proposal plus the payment plan in Settings. Null when nothing is blank.
+ */
+export function contractReviewSourceNote(
+  content: string,
+  blanks: { spaces: string[] },
+): string | null {
+  const parts: string[] = [];
+  if (blanks.spaces.some((b) => content.includes(b))) {
+    parts.push("Event spaces fill in from the Spaces on the lead card.");
+  }
+  if (content.includes(MISSING_PAYMENT_SCHEDULE)) {
+    parts.push(
+      "Payment terms fill in from the package on the initial proposal and your payment plan in Settings.",
+    );
+  }
+  if (parts.length === 0) return null;
+  return `Some sections are still blank. ${parts.join(" ")} Add them there to complete this agreement, or send it as written.`;
+}
+
 /** Join required client signer names for contract party wording. */
 export function formatRequiredClientPartyName(signerNames: string[]): string {
   const names = signerNames.map((n) => n.trim()).filter(Boolean);

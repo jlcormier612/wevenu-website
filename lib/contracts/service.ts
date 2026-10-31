@@ -30,6 +30,7 @@ import {
   resolveReceptionSpace,
   type CeremonyReceptionPreferenceSource,
 } from "@/lib/contracts/ceremony-reception-merge";
+import { configuredPaymentTermsSummary } from "@/lib/contracts/configured-payment-terms";
 import { pickPaymentScheduleForBooking } from "@/lib/contracts/payment-schedule-merge";
 import {
   summarizeResendDeliveries,
@@ -581,6 +582,7 @@ export async function buildContractMergeData(opts: {
   let contractedTotalAmount: number | null = null;
   let coordinatorName: string | null = null;
   let packageFromSelection = false;
+  let selectionDepositAmount = 0;
   let ceremonySpaceLabel: string | null = null;
   let receptionSpaceLabel: string | null = null;
   let ceremonyAsgName: string | null = null;
@@ -621,6 +623,7 @@ export async function buildContractMergeData(opts: {
       }
       // Final agreed total (package − discount + exclusive tax), not package alone.
       contractedTotalAmount = selection.totalAmount;
+      selectionDepositAmount = selection.depositAmount;
       contractTotal = formatContractTotalAmount(selection.totalAmount);
       // No qualifying payments yet on this path — full balance remains.
       // depositAmount must not reduce balance_remaining.
@@ -863,6 +866,16 @@ export async function buildContractMergeData(opts: {
       }
     }
   } catch { /* optional */ }
+
+  // No schedule yet (the usual case before booking): state the venue's Settings payment plan.
+  if (paymentScheduleSummary === MISSING_PAYMENT_SCHEDULE && venue && contractedTotalAmount != null) {
+    paymentScheduleSummary = configuredPaymentTermsSummary({
+      prefs: venue.commercialBookingPrefs,
+      contractedTotal: contractedTotalAmount,
+      depositAmount: selectionDepositAmount,
+      formatAmount: (n) => formatCurrency(n),
+    }) ?? MISSING_PAYMENT_SCHEDULE;
+  }
 
   const venueAccessHours = formatVenueAccessHours({
     setupTime: event?.setupTime ?? null,

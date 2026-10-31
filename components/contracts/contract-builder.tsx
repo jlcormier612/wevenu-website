@@ -33,6 +33,12 @@ import type { ContractSigner } from "@/lib/contracts/signers";
 import type { ContractBrandingSnapshot } from "@/lib/contracts/branding";
 import { resolveContractBrandPresentation } from "@/lib/contracts/branding";
 import {
+  CEREMONY_SPACE_UNLISTED,
+  RECEPTION_SPACE_UNLISTED,
+} from "@/lib/contracts/ceremony-reception-merge";
+import { EMPTY_EVENT_SPACES_LABEL } from "@/lib/contracts/event-spaces-merge";
+import { contractReviewSourceNote } from "@/lib/contracts/merge-extras";
+import {
   buildSignerCandidates,
   defaultSelectedSignerIds,
   selectedIdsFromExistingSigners,
@@ -116,6 +122,11 @@ export function ContractBuilder({
   const [previewPending, startPreview] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewContent, setPreviewContent] = React.useState<string | null>(null);
+  const reviewSourceNote = previewContent
+    ? contractReviewSourceNote(previewContent, {
+        spaces: [CEREMONY_SPACE_UNLISTED, RECEPTION_SPACE_UNLISTED, EMPTY_EVENT_SPACES_LABEL],
+      })
+    : null;
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [releaseMessage, setReleaseMessage] = React.useState("");
   const [sendPending, startSend] = React.useTransition();
@@ -657,6 +668,11 @@ export function ContractBuilder({
           }
           footer={
             <div className="space-y-2">
+              {reviewSourceNote ? (
+                <p className="text-xs text-muted-foreground" data-testid="contract-review-source-note">
+                  {reviewSourceNote}
+                </p>
+              ) : null}
               <Label htmlFor="contract-release-message" className="text-xs text-muted-foreground">
                 Message to the couple (optional)
               </Label>
