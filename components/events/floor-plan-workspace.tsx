@@ -1210,7 +1210,7 @@ export function FloorPlanWorkspace({
             {activeOffers.length === 1
               ? "One layout is already offered. Refresh if it does not appear, or confirm the offer under Event setup."
               : activeOffers.length > 1
-                ? "Several layouts are offered. Open one and choose Set as working layout — the couple's preference alone does not pick it."
+                ? "The couple is choosing from the layouts above. When they pick one, you'll review it here. You can also add a layout yourself."
                 : "Add a layout to arrange the room. Share it when the couple should see it."}
           </p>
           {canEdit && activeOffers.length === 0 ? (
