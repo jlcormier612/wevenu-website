@@ -57,6 +57,7 @@ import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { SetupPaymentsSheet } from "@/components/booking-journey/setup-payments-sheet";
 import type { BookingJourneyModel } from "@/lib/booking-journey/model";
 import { venueToday } from "@/lib/venue/timezone";
+import { eventTypeLabel } from "@/lib/event-types/canonical";
 import type { CommercialSelection } from "@/lib/commercial-selections/types";
 import type { PackageWithItems } from "@/lib/packages/types";
 import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
@@ -220,6 +221,14 @@ function EventHeroCard({
       <CardContent className="flex h-full flex-col text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-0">
+            {eventTypeLabel(event.eventType) ? (
+              <p
+                className="text-xs font-semibold uppercase tracking-wide text-primary"
+                data-testid="event-booking-summary-type"
+              >
+                {eventTypeLabel(event.eventType)}
+              </p>
+            ) : null}
             <p className="font-heading text-2xl font-medium tracking-tight text-heading leading-tight">
               {formatEventDateRange(event.eventDate, event.eventEndDate)}
             </p>

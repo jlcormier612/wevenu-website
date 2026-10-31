@@ -27,6 +27,16 @@ describe("client page compact booking + staffing layout", () => {
     assert.match(celebration, /href=\{`\/leads\/\$\{client\.leadId\}`\}/);
   });
 
+  it("names the event type above the date in the booking summary card", () => {
+    const card = detail.slice(
+      detail.indexOf('data-testid="event-booking-summary"'),
+      detail.indexOf("formatEventDateRange(event.eventDate, event.eventEndDate)"),
+    );
+    assert.match(card, /data-testid="event-booking-summary-type"/);
+    assert.match(card, /\{eventTypeLabel\(event\.eventType\)\}/);
+    assert.match(detail, /import \{ eventTypeLabel \} from "@\/lib\/event-types\/canonical";/);
+  });
+
   it("places booking and compact team assignment in one upper region", () => {
     const region = detail.slice(
       detail.indexOf('data-testid="client-booking-staff-region"'),
