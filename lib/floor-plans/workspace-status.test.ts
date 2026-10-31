@@ -59,6 +59,7 @@ describe("Floor Plans tab — offered layouts and status", () => {
     assert.match(flags, /if \(hideWhenEmpty && !loadError && \(loading \|\| flags\.length === 0\)\) return null;/);
     assert.doesNotMatch(workspace, /bg-amber-50\/40/);
     assert.doesNotMatch(workspace, /Open one and choose Set as working layout/);
+    assert.match(workspace, /Mark as Ready<\/span>\{" "\}when it&apos;s set for the day\./);
     assert.match(workspace, /The couple is choosing from the layouts above\. When they pick one, you'll review it here\./);
   });
 });

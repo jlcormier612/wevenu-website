@@ -1056,7 +1056,7 @@ export function FloorPlanWorkspace({
               if (layoutStatus === "approved" || (selected.sharedWithCouple && seatingOpen)) {
                 return (
                   <p data-testid="floor-plan-next-mark-ready">
-                    {pick}Open it and <span className="font-medium">Mark as Ready</span> when it&apos;s set for the day.
+                    {pick}Open it and <span className="font-medium">Mark as Ready</span>{" "}when it&apos;s set for the day.
                   </p>
                 );
               }
