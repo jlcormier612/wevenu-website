@@ -409,12 +409,31 @@ export async function applyTemplateToEventOrder(
     const copied = await copyTemplateSnapshotsIntoOrder(
       supabase, venueId, eventOrderId, template, selections, details,
     );
+    // Couple choices come from the order's starting template. Until the couple has
+    // seen anything, an applied template with choices becomes that source.
+    let choicesSource = false;
+    if (header.templateId !== template.id && !header.sharedAt) {
+      const { selectionDefinitionFromEventOrderTemplate } = await import(
+        "@/lib/event-order-templates/selection-definition"
+      );
+      if (selectionDefinitionFromEventOrderTemplate(template).groups.length > 0) {
+        const choicesRepo = await import("@/lib/client-choices/repository");
+        const packets = await choicesRepo.listForEvent(supabase, venueId, header.eventId);
+        if (packets.length === 0) {
+          await repo.setEventOrderTemplateId(supabase, venueId, eventOrderId, template.id);
+          choicesSource = true;
+        }
+      }
+    }
     await repo.insertActivity(
       supabase, venueId, eventOrderId, "template_applied",
       `Applied template: ${template.name}`,
-      copied > 0
-        ? "Copied template structure into this Event Order. This is not an invoice or contract."
-        : "Copied template sections. No offerings were selected.",
+      [
+        copied > 0
+          ? "Copied template structure into this Event Order. This is not an invoice or contract."
+          : "Copied template sections. No offerings were selected.",
+        choicesSource ? `The couple's choices now come from ${template.name}.` : null,
+      ].filter(Boolean).join(" "),
     );
     return { ok: true } as EventOrderActionResult;
   });
