@@ -288,6 +288,12 @@ describe("H. customer-facing actions are Preview, Send, and Edit", () => {
     assert.doesNotMatch(detail, /Send copy of payment plan and invoice/);
   });
 
+  it("one Preview/Send button opens the preview; there is no separate Send button", () => {
+    assert.match(detail, /onClick=\{\(\) => setPreviewOpen\(true\)\}\s*\n\s*data-testid="send-invoice-and-payment-plan">\s*\n\s*<Mail className="mr-1 h-3.5 w-3.5" \/> Preview\/Send/);
+    assert.doesNotMatch(detail, /onClick=\{openSendReview\}/);
+    assert.equal(detail.match(/data-testid="send-invoice-and-payment-plan"/g)?.length, 1);
+  });
+
   it("Preview offers Send to Client via the authoritative send-review path", () => {
     assert.match(detail, /data-testid="preview-send-invoice-and-payment-plan"/);
     assert.match(detail, /Send to Client/);

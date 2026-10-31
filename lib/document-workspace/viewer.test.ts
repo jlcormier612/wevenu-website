@@ -121,6 +121,14 @@ describe("wiring", () => {
     }
   });
 
+  it("PDFs are never stuck behind a load spinner; framed pages hide their own toolbar", () => {
+    const viewer = readFileSync(resolve("components/document-workspace/document-viewer.tsx"), "utf8");
+    assert.match(viewer, /const waitsForLoad = source\?\.kind === "page";/);
+    assert.match(viewer, /\{waitsForLoad && !loaded && \(/);
+    assert.match(viewer, /disabled=\{waitsForLoad && !loaded\} data-testid="document-viewer-print"/);
+    assert.match(viewer, /\.no-print, \.print\\\\:hidden \{ display: none !important; \}/);
+  });
+
   it("vendor sessions get the files-only viewer", () => {
     assert.match(vendor, /pinningEnabled=\{false\}\s*viewerScope="files"/);
   });

@@ -31,9 +31,25 @@ export function DocumentViewerDialog({
   const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
   const [downloading, setDownloading] = React.useState(false);
   const loaded = !!source && loadedSrc === source.src;
+  // PDFs and files may never fire load (no built-in PDF viewer, downloads), so
+  // only print pages wait for it.
+  const waitsForLoad = source?.kind === "page";
 
   if (!doc || !source) return null;
   const framed = source.kind !== "file" || source.previewable;
+
+  function handleFrameLoad() {
+    if (!source) return;
+    setLoadedSrc(source.src);
+    if (source.kind !== "page") return;
+    try {
+      const frameDoc = frameRef.current?.contentDocument;
+      if (!frameDoc?.head) return;
+      const style = frameDoc.createElement("style");
+      style.textContent = ".no-print, .print\\:hidden { display: none !important; }";
+      frameDoc.head.appendChild(style);
+    } catch { /* the page keeps its own toolbar */ }
+  }
 
   function printDocument() {
     if (!source) return;
@@ -81,10 +97,10 @@ export function DocumentViewerDialog({
           </div>
           <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} docType={doc.docType} />
           <div className="flex flex-wrap items-center gap-1.5">
-            <Button size="sm" variant="outline" onClick={printDocument} disabled={framed && !loaded} data-testid="document-viewer-print">
+            <Button size="sm" variant="outline" onClick={printDocument} disabled={waitsForLoad && !loaded} data-testid="document-viewer-print">
               <Printer className="mr-1 h-3.5 w-3.5" />Print
             </Button>
-            <Button size="sm" variant="outline" onClick={download} disabled={downloading || (source.kind === "page" && !loaded)} data-testid="document-viewer-download">
+            <Button size="sm" variant="outline" onClick={download} disabled={downloading || (waitsForLoad && !loaded)} data-testid="document-viewer-download">
               {downloading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
               {source.kind === "file" ? "Download" : source.kind === "page" ? "Save as PDF" : "Download PDF"}
             </Button>
@@ -102,7 +118,7 @@ export function DocumentViewerDialog({
         <div className="relative min-h-0 flex-1 bg-muted/40">
           {framed ? (
             <>
-              {!loaded && (
+              {waitsForLoad && !loaded && (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading document…
                 </div>
@@ -112,7 +128,7 @@ export function DocumentViewerDialog({
                 key={source.src}
                 src={source.src}
                 title={doc.name}
-                onLoad={() => setLoadedSrc(source.src)}
+                onLoad={handleFrameLoad}
                 className="h-full w-full border-0 bg-white"
                 data-testid="document-viewer-frame"
               />

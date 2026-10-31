@@ -417,28 +417,25 @@ export function InvoiceDetail({
             </Button>
           )}
           {invoice.clientId && status !== "void" && (
-            <Button type="button" variant="outline" size="sm"
-              title="What the client will receive. Preview does not send."
-              onClick={() => setPreviewOpen(true)}>
-              <Mail className="mr-1 h-3.5 w-3.5" /> Preview
-            </Button>
-          )}
-          {invoice.clientId && status !== "void" && linkedScheduleId && (
-            paymentRequestSent ? (
-              <p className="text-xs text-muted-foreground self-center" data-testid="payment-request-already-sent">
-                Sent. A new send is not available for this invoice.
-              </p>
+            linkedScheduleId && !paymentRequestSent ? (
+              <Button type="button" size="sm"
+                title="See what the client will receive, then send it from the preview."
+                onClick={() => setPreviewOpen(true)}
+                data-testid="send-invoice-and-payment-plan">
+                <Mail className="mr-1 h-3.5 w-3.5" /> Preview/Send
+              </Button>
             ) : (
-              <Button
-                type="button"
-                size="sm"
-                disabled={emailPending || planMismatch}
-                onClick={openSendReview}
-                data-testid="send-invoice-and-payment-plan"
-              >
-                Send
+              <Button type="button" variant="outline" size="sm"
+                title="What the client will receive. Preview does not send."
+                onClick={() => setPreviewOpen(true)}>
+                <Mail className="mr-1 h-3.5 w-3.5" /> Preview
               </Button>
             )
+          )}
+          {invoice.clientId && status !== "void" && linkedScheduleId && paymentRequestSent && (
+            <p className="text-xs text-muted-foreground self-center" data-testid="payment-request-already-sent">
+              Sent. A new send is not available for this invoice.
+            </p>
           )}
           {status !== "void" && status !== "paid" && (
             <Button type="button" variant="outline" size="sm"
