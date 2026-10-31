@@ -14,6 +14,15 @@ export async function getClientInvitationAction(clientId: string): Promise<Clien
   return getClientInvitation(clientId);
 }
 
+/** Status of the invoice payment link only — never its token. */
+export async function getPaymentLinkStatusAction(
+  clientId: string,
+): Promise<{ sentAt: string; lastOpenedAt: string | null } | null> {
+  const { getPortalSessions } = await import("@/lib/portal/service");
+  const session = (await getPortalSessions(clientId)).find((s) => s.accessLevel === "financial");
+  return session ? { sentAt: session.createdAt, lastOpenedAt: session.lastAccessedAt } : null;
+}
+
 /** Preview only — does not insert an invitation or send email. */
 export async function previewClientInviteAction(
   email: string,

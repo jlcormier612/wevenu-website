@@ -6,7 +6,7 @@ import { Loader2, Mail, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  getClientInvitationAction, inviteClientAction, previewClientInviteAction,
+  getClientInvitationAction, getPaymentLinkStatusAction, inviteClientAction, previewClientInviteAction,
   previewResendClientInviteAction, resendClientInvitationAction,
   revokeClientInvitationAction, revokeClientAccessAction,
   getSupportAccessGrantsAction, openSupportAccessAction,
@@ -19,6 +19,10 @@ import { initialPortalInviteEmail } from "@/lib/client-auth/initial-portal-invit
 import type { ClientInvitation, SupportAccessGrant } from "@/lib/client-auth/types";
 
 const ROSE = "#D8A7AA";
+
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 /**
  * The client owns their workspace. This widget only lets the venue invite,
@@ -45,6 +49,7 @@ export function PortalLinkWidget({
 }) {
   const [invitation, setInvitation] = React.useState<ClientInvitation | null>(null);
   const [grants, setGrants] = React.useState<SupportAccessGrant[]>([]);
+  const [paymentLink, setPaymentLink] = React.useState<{ sentAt: string; lastOpenedAt: string | null } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [email, setEmail] = React.useState(() => initialPortalInviteEmail(primaryEmail));
   const [inviting, setInviting] = React.useState(false);
@@ -60,7 +65,8 @@ export function PortalLinkWidget({
     Promise.all([
       getClientInvitationAction(clientId),
       getSupportAccessGrantsAction(clientId),
-    ]).then(([inv, g]) => { setInvitation(inv); setGrants(g); setLoading(false); });
+      getPaymentLinkStatusAction(clientId),
+    ]).then(([inv, g, pay]) => { setInvitation(inv); setGrants(g); setPaymentLink(pay); setLoading(false); });
   }, [clientId]);
 
   React.useEffect(() => { refresh(); }, [refresh]);
@@ -165,8 +171,28 @@ export function PortalLinkWidget({
     return <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /></div>;
   }
 
+  const inviteStatus =
+    !invitation || invitation.status === "revoked"
+      ? "Not sent"
+      : invitation.status === "accepted"
+        ? `Accepted${invitation.acceptedAt ? ` ${shortDate(invitation.acceptedAt)}` : ""}`
+        : `Sent ${shortDate(invitation.createdAt)} · awaiting account`;
+
   return (
     <div className="space-y-3">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs" data-testid="client-access-links">
+        <dt className="font-semibold text-heading">Planning invite</dt>
+        <dd className="text-muted-foreground" data-testid="client-access-planning-invite">
+          {inviteStatus} — their account for the planning workspace
+        </dd>
+        <dt className="font-semibold text-heading">Payment link</dt>
+        <dd className="text-muted-foreground" data-testid="client-access-payment-link">
+          {paymentLink
+            ? `Sent with invoice ${shortDate(paymentLink.sentAt)}${paymentLink.lastOpenedAt ? ` · opened ${shortDate(paymentLink.lastOpenedAt)}` : ""}`
+            : "Not sent"}{" "}
+          — opens Invoice &amp; Payment Plan only, not the planning workspace
+        </dd>
+      </dl>
       {!invitation || invitation.status === "revoked" ? (
         <div className="rounded-xl border border-dashed border-border p-4 space-y-3">
           <div>

@@ -650,7 +650,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
   // (e.g. get_seating_data) deliberately return zeroed-out stats for that
   // access level, and it's also the wrong link to hand a coordinator who
   // just wants "open the couple's portal."
-  const portalSession = sessions.find((s) => s.accessLevel !== "financial") ?? sessions[0] ?? null;
+  const portalSession = sessions.find((s) => s.accessLevel !== "financial") ?? null;
   const portalToken = portalSession?.accessToken ?? null;
 
   const eoLinkedInvoice = eventOrder
