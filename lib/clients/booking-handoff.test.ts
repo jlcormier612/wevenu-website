@@ -210,9 +210,9 @@ describe("booked page — conversion and copy seams", () => {
     assert.match(page, /getEventPlaybookApplications/);
     assert.match(page, /getTemplates/);
     assert.doesNotMatch(celebration, /PreparePlanningPanel/);
-    assert.match(celebration, /FinancialReadinessPanel/);
-    assert.match(celebration, /EventExperienceReviewPanel/);
-    assert.match(celebration, /CommunicationsReviewPanel/);
+    assert.match(celebration, /BookedNextSteps/);
+    assert.match(celebration, /financial\.rows/);
+    assert.doesNotMatch(celebration, /FinancialReadinessPanel|EventExperienceReviewPanel|CommunicationsReviewPanel/);
   });
 
   it("does not invite at convertLeadToClient and does not apply planning", () => {
@@ -227,5 +227,26 @@ describe("booked page — conversion and copy seams", () => {
     assert.doesNotMatch(fn, /updateLeadSalesStage/);
     assert.doesNotMatch(fn, /applyPlaybookToEvent/);
     assert.doesNotMatch(fn, /releasePlaybookApplication/);
+  });
+});
+
+describe("booked page next steps", () => {
+  const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
+  const page = readFileSync(resolve("app/(app)/clients/[id]/booked/page.tsx"), "utf8");
+
+  it("orders event setup, then release, then invite — and offers no invite action here", () => {
+    const setup = celebration.indexOf('key: "event_setup"');
+    const release = celebration.indexOf('key: "release"');
+    const invite = celebration.indexOf('key: "invite"');
+    assert.ok(setup > 0 && setup < release && release < invite);
+    assert.match(celebration, /an invitation can't be taken back/);
+    assert.doesNotMatch(celebration, /inviteClientAction|previewClientInviteAction|Invite client/);
+    assert.match(celebration, /data-testid="booked-continue-event-setup"/);
+    assert.match(page, /tagline = "Planning stays private until you release it in Event setup\."/);
+  });
+
+  it("uses theme colors so the card stays readable in dark mode", () => {
+    assert.doesNotMatch(celebration, /#FDF8F8|#9ca3af|#3D2F30|#5A3235/);
+    assert.match(celebration, /bg-card/);
   });
 });

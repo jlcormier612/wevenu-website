@@ -143,8 +143,7 @@ export default async function BookedPage({ params, searchParams }: Props) {
     ? `${selection.name} · ${formatCurrency(selection.totalAmount)}`
     : "This client is booked.";
   handoff.prepareHeading = "What to do next";
-  handoff.tagline =
-    "Booked does not release planning to the couple. Continue on Event setup on their client workspace — it stays available after you leave this screen.";
+  handoff.tagline = "Planning stays private until you release it in Event setup.";
   handoff.primaryLabel = "Continue event setup";
   handoff.primaryHref = `/clients/${client.id}#event-setup`;
 

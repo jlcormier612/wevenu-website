@@ -271,9 +271,9 @@ describe("Phase 5 communications review seams", () => {
     const celebration = readFileSync(resolve("components/clients/booking-celebration.tsx"), "utf8");
     assert.match(celebration, /eventTypeLabel/);
     assert.doesNotMatch(celebration, /PreparePlanningPanel/);
-    assert.match(celebration, /FinancialReadinessPanel/);
-    assert.match(celebration, /EventExperienceReviewPanel/);
-    assert.match(celebration, /CommunicationsReviewPanel/);
+    assert.match(celebration, /BookedNextSteps/);
+    assert.match(celebration, /financial\.rows/);
+    assert.doesNotMatch(celebration, /FinancialReadinessPanel|EventExperienceReviewPanel|CommunicationsReviewPanel/);
     assert.doesNotMatch(celebration, /Their workspace is ready/);
     assert.doesNotMatch(celebration, /Wedding website ready/);
   });
