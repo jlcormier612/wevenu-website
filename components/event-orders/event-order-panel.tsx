@@ -33,6 +33,7 @@ import {
 import { DISPLAY_STATUS_LABEL, eventOrderDisplayStatus, formatMoney, formatOptionalMoney } from "@/lib/event-orders/constants";
 import { boundHeadcountForApply } from "@/lib/events/headcount";
 import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
+import { packageLinesIgnoreHeadcount } from "@/lib/event-orders/seed-package-inclusions";
 import {
   NO_COUPLE_CHOICES_MESSAGE, coupleChoicePreview, pickActiveChoices,
 } from "@/lib/client-choices/couple-choice-preview";
@@ -774,6 +775,16 @@ export function EventOrderPanel({
                 : ". Re-share when you're ready to publish changes."}
             </p>
           </div>
+        )}
+        {!preBooking && !isFinalized && templates.length > 0 && packageLinesIgnoreHeadcount(eventOrder.lines) && (
+          <p
+            className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-foreground"
+            data-testid="event-order-package-headcount-banner"
+            role="status"
+          >
+            Package inclusions are fixed quantities. If catering should follow the Guaranteed
+            headcount, use Apply a template below with a per-person template.
+          </p>
         )}
         {isFinalized && (
           <div className="flex items-center gap-2 -mt-1">

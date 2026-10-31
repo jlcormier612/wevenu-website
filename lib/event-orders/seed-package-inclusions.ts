@@ -34,6 +34,19 @@ export function packageNameFromSelectionNotes(notes: string | null | undefined):
   return bar >= 0 ? trimmed.slice(bar + 1).trim() || null : null;
 }
 
+/**
+ * Package-seeded lines keep fixed quantities unless the package marked them per guest.
+ * True when the order has package lines but nothing follows the headcount.
+ */
+export function packageLinesIgnoreHeadcount(
+  lines: { notes: string | null; boundToHeadcount: boolean }[],
+): boolean {
+  return (
+    lines.some((l) => packageNameFromSelectionNotes(l.notes) !== null) &&
+    !lines.some((l) => l.boundToHeadcount)
+  );
+}
+
 type SelectionForSeed = {
   proposalId: string | null;
   includedItems: PackageInclusionSeedItem[];

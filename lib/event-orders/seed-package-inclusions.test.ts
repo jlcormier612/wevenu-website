@@ -8,6 +8,7 @@ import { join } from "node:path";
 
 import {
   filterPackageInclusionsToSeed,
+  packageLinesIgnoreHeadcount,
   PACKAGE_SELECTION_NOTES_PREFIX,
   packageInclusionDedupeKey,
   packageSelectionNotes,
@@ -100,5 +101,30 @@ describe("ensureEventOrder wires booking package inclusion seed", () => {
       panel,
       /if \(eventOrder \|\| !preferredExists/,
     );
+  });
+});
+
+describe("package EO headcount nudge", () => {
+  const seeded = { notes: packageSelectionNotes("sel-1", "Garden Package"), boundToHeadcount: false };
+  const custom = { notes: null, boundToHeadcount: false };
+
+  it("flags an order whose package lines all keep fixed quantities", () => {
+    assert.equal(packageLinesIgnoreHeadcount([seeded, custom]), true);
+  });
+
+  it("stays quiet once any line follows the headcount", () => {
+    assert.equal(packageLinesIgnoreHeadcount([seeded, { notes: null, boundToHeadcount: true }]), false);
+    assert.equal(packageLinesIgnoreHeadcount([{ ...seeded, boundToHeadcount: true }]), false);
+  });
+
+  it("stays quiet when nothing came from a package", () => {
+    assert.equal(packageLinesIgnoreHeadcount([custom]), false);
+    assert.equal(packageLinesIgnoreHeadcount([]), false);
+  });
+
+  it("renders on the booked, editable Event Order next to Apply a template", () => {
+    const panel = readFileSync(join(process.cwd(), "components/event-orders/event-order-panel.tsx"), "utf8");
+    assert.match(panel, /!preBooking && !isFinalized && templates\.length > 0 && packageLinesIgnoreHeadcount\(eventOrder\.lines\)/);
+    assert.match(panel, /event-order-package-headcount-banner/);
   });
 });
