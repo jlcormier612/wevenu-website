@@ -167,7 +167,15 @@ function BookedNextSteps({
         <ul className="space-y-1">
           {financial.rows.map((row) => (
             <li key={row.key} className="flex items-center gap-2">
-              <span aria-hidden className={row.onFile ? "text-success" : "text-destructive"}>
+              <span
+                aria-hidden
+                className={
+                  row.onFile
+                    ? "flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success/15 text-[10px] font-bold text-success"
+                    : "flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground"
+                }
+                data-testid={row.onFile ? "on-file-ok" : "on-file-missing"}
+              >
                 {row.onFile ? "✓" : "!"}
               </span>
               <span className="min-w-0 flex-1 text-foreground">

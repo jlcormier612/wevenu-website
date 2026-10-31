@@ -248,5 +248,6 @@ describe("booked page next steps", () => {
   it("uses theme colors so the card stays readable in dark mode", () => {
     assert.doesNotMatch(celebration, /#FDF8F8|#9ca3af|#3D2F30|#5A3235/);
     assert.match(celebration, /bg-card/);
+    assert.match(celebration, /rounded-full bg-destructive text-\[10px\] font-bold text-destructive-foreground/);
   });
 });
