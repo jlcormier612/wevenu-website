@@ -235,6 +235,20 @@ describe("confirmed booking occupancy", () => {
     assert.deepEqual(assignmentRowIssues(timed, { eventDate: "2027-07-06", eventEndDate: "2027-07-08" }), {});
   });
 
+  it("names a component date problem before missing times, matching field order", () => {
+    assert.equal(
+      bookingConfirmationError({
+        eventDate: "2061-05-11",
+        eventEndDate: null,
+        startTime: null,
+        endTime: null,
+        spaceId: null,
+        assignments: [{ useKey: "ceremony", useLabel: "Ceremony", spaceId: "barn", scheduledDate: "2071-11-13", startTime: null, endTime: null }],
+      }, 1),
+      "Each component date must fall within the overall event dates.",
+    );
+  });
+
   it("Confirm booking with a missing component time shows what is missing next to the button", () => {
     const editor = read("components/events/event-space-assignments-editor.tsx");
     assert.match(dialog, /showMissing=\{showMissing\}/);

@@ -55,7 +55,7 @@ export function assignmentRowIssues(
   const end = cleanTime(row.endTime);
   const scheduled = row.scheduledDate?.trim() ?? "";
   const first = range.eventDate?.trim() ?? "";
-  const last = range.eventEndDate?.trim() ?? "";
+  const last = range.eventEndDate?.trim() || first;
   if (!DATE.test(scheduled)) issues.date = "Required";
   else if ((first && scheduled < first) || (last && scheduled > last)) issues.date = "Outside the event dates";
   if (!start) issues.start = "Required";
@@ -87,6 +87,15 @@ export function bookingConfirmationError(
     }
   }
   for (const row of value.assignments) {
+    const scheduled = row.scheduledDate?.trim() ?? "";
+    // Timed components must carry an explicit calendar date — the UI must not
+    // display a phantom eventDate while persisting null.
+    if (!scheduled || !DATE.test(scheduled)) {
+      return "Enter a date for each event component.";
+    }
+    if (scheduled < eventDate || scheduled > (end || eventDate)) {
+      return "Each component date must fall within the overall event dates.";
+    }
     const start = cleanTime(row.startTime);
     const endTime = cleanTime(row.endTime);
     if (!start || !endTime) {
@@ -94,15 +103,6 @@ export function bookingConfirmationError(
     }
     if (endTime <= start) {
       return "The end time must be after the start time.";
-    }
-    const scheduled = row.scheduledDate?.trim() ?? "";
-    // Timed components must carry an explicit calendar date — the UI must not
-    // display a phantom eventDate while persisting null.
-    if (!scheduled || !DATE.test(scheduled)) {
-      return "Enter a date for each event component.";
-    }
-    if (scheduled < eventDate || (end && scheduled > end)) {
-      return "Each component date must fall within the overall event dates.";
     }
   }
   const intra = intraEventSpaceOverlapError(value.assignments);
