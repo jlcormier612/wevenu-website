@@ -248,3 +248,19 @@ describe("runSetupPaymentsFromSelection — failure / retry safety", () => {
     assert.equal(result.scheduleId, "sch-1");
   });
 });
+
+describe("Set up payments — no stranded $0 drafts", () => {
+  const sheet = readFileSync("components/booking-journey/setup-payments-sheet.tsx", "utf8");
+  const service = readFileSync("lib/booking-journey/setup-payments.ts", "utf8");
+
+  it("the sheet refuses to close while the create is saving", () => {
+    assert.match(sheet, /if \(!next && pending\) return;/);
+    assert.match(sheet, /showCloseButton=\{!pending\}/);
+  });
+
+  it("a retry removes a never-sent draft left without a plan", () => {
+    const recover = service.slice(service.indexOf("async function findRecoverableCommitment"));
+    const body = recover.slice(0, recover.indexOf("async function compensateSetupWrites"));
+    assert.match(body, /if \(!schedule\) \{[\s\S]*inv\.status === "draft"[\s\S]*\.delete\(\)[\s\S]*\.eq\("status", "draft"\)/);
+  });
+});

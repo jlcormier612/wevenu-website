@@ -55,11 +55,21 @@ export function SetupPaymentsSheet({
   /** Originating Lead or Client workspace for invoice-detail back nav. */
   returnTo?: string | null;
 }) {
+  // Closing mid-save used to strand a half-written $0 draft invoice.
+  const [pending, startTransition] = React.useTransition();
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && pending) return;
+        onOpenChange(next);
+      }}
+    >
       {open ? (
         <SetupPaymentsSheetBody
           key={`${selection.id}:${selection.totalAmount}:${eventDate ?? ""}:${defaultScheduleStructure}`}
+          pending={pending}
+          startTransition={startTransition}
           onOpenChange={onOpenChange}
           selection={selection}
           clientId={clientId}
@@ -81,6 +91,8 @@ export function SetupPaymentsSheet({
 }
 
 function SetupPaymentsSheetBody({
+  pending,
+  startTransition,
   onOpenChange,
   selection,
   clientId,
@@ -95,6 +107,8 @@ function SetupPaymentsSheetBody({
   today,
   returnTo,
 }: {
+  pending: boolean;
+  startTransition: React.TransitionStartFunction;
   onOpenChange: (open: boolean) => void;
   selection: CommercialSelection;
   clientId?: string;
@@ -112,7 +126,6 @@ function SetupPaymentsSheetBody({
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<1 | 2>(1);
-  const [pending, startTransition] = React.useTransition();
 
   function create(lines: CommitBuilderLine[]) {
     startTransition(async () => {
@@ -148,7 +161,12 @@ function SetupPaymentsSheetBody({
   }
 
   return (
-    <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+    <SheetContent
+      side="right"
+      className="w-full overflow-y-auto sm:max-w-lg"
+      showCloseButton={!pending}
+      data-testid="setup-payments-sheet"
+    >
       <SheetHeader className="mb-6">
         <SheetTitle>Set up payments</SheetTitle>
         <p className="text-sm text-muted-foreground">

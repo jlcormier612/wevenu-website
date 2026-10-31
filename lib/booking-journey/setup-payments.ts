@@ -515,7 +515,18 @@ async function findRecoverableCommitment(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle<{ id: string }>();
-    if (!schedule) continue;
+    if (!schedule) {
+      // Interrupted create: a never-sent draft with no plan. RLS limits delete to Owner/Manager.
+      if (inv.status === "draft") {
+        await supabase
+          .from("invoices")
+          .delete()
+          .eq("venue_id", venue.id)
+          .eq("id", inv.id)
+          .eq("status", "draft");
+      }
+      continue;
+    }
 
     return { invoiceId: inv.id, scheduleId: schedule.id };
   }
