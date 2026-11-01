@@ -180,8 +180,10 @@
  * Additive scope: do NOT flip root `:root` (client portal stays Inter /
  * soft white). next-themes puts `.dark` on <html>, so dark staff rules are
  * `.dark .htc-staff` / `html.dark:has(.htc-staff)` (not `.htc-staff.dark`).
- * Token values mirror workspace/app/globals.css (cream/warm canvas, body ink,
- * sharper radius, sidebar recipe).
+ * Token values mirror workspace/app/globals.css (light-sage canvas, body ink,
+ * sharper radius, sidebar recipe). Light staff canvas is Soft Sage washed with
+ * white — not warm beige — so cards in True White read clearly against it.
+ * Sidebar tokens stay on the taupe recipe unless explicitly changed.
  *
  * `html:has(.htc-staff)` mirrors tokens onto the document so Base UI portals
  * (dropdown / select / sheet / tooltip) inherit staff radius + surfaces even
@@ -233,8 +235,9 @@ html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-thumb:hover {
 html:has(.htc-staff) {
   --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;
 
-  --warm-gray: #f8f7f4;
-  --natural-cream: #fefefc;
+  /* Soft Sage wash (palette-exact mix) — replaces warm beige staff canvas */
+  --warm-gray: color-mix(in oklch, var(--soft-sage) 22%, white);
+  --natural-cream: var(--true-white);
   --header-linen: #efe9e1;
 
   --background: var(--warm-gray);
@@ -244,9 +247,9 @@ html:has(.htc-staff) {
   --card-foreground: var(--forest-sage);
   --popover: var(--true-white);
   --popover-foreground: var(--forest-sage);
-  --muted: var(--natural-cream);
+  --muted: var(--true-white);
   --muted-foreground: color-mix(in oklch, var(--forest-sage) 80%, transparent);
-  --secondary: var(--natural-cream);
+  --secondary: var(--true-white);
   --secondary-foreground: var(--forest-sage);
   --border: var(--taupe-medium);
   --input: var(--taupe-medium);
@@ -254,6 +257,7 @@ html:has(.htc-staff) {
   /* Sharper than portal’s 1rem soft radius — CRM panels use rounded-sm */
   --radius: 0.375rem;
 
+  /* Nav bar — leave as-is (taupe wash); do not retarget with the sage canvas */
   --sidebar: color-mix(in oklch, var(--taupe-dark) 40%, white);
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
