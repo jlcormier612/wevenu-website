@@ -168,7 +168,7 @@ function TimelineEntryRow({
     return (
       <TimelineEntryForm
         eventId={eventId} venueId={venueId} entryId={entry.id} sections={sections}
-        eventDate={eventDate} eventEndDate={eventEndDate}
+        eventDate={eventDate} eventEndDate={eventEndDate} eventStartTime={eventStartTime}
         initial={{
           title: entry.title,
           description: entry.description ?? "",
@@ -481,7 +481,7 @@ function TimelineSectionBlock({
             {showAddButton && (addFormOpenFor === sectionKey ? (
               <TimelineEntryForm
                 eventId={eventId} venueId={venueId} entryId={null} sections={sections}
-                eventDate={eventDate} eventEndDate={eventEndDate}
+                eventDate={eventDate} eventEndDate={eventEndDate} eventStartTime={eventStartTime}
                 initial={{
                   title: "", description: "", notes: "", entryTime: "",
                   dayOffset: defaultDayOffset,
@@ -1150,7 +1150,7 @@ export function TimelineView({
           const dayAddForm = addFormOpenFor === unsectionedKey ? (
             <TimelineEntryForm
               eventId={eventId} venueId={venueId} entryId={null} sections={sections}
-              eventDate={eventDate} eventEndDate={eventEndDate}
+              eventDate={eventDate} eventEndDate={eventEndDate} eventStartTime={eventStartTime}
               initial={{
                 title: "", description: "", notes: "", entryTime: "",
                 dayOffset: dayKey ?? 0,

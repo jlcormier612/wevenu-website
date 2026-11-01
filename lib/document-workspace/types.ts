@@ -154,6 +154,8 @@ export type WorkspacePermissions = {
   comment: false;
   share: boolean;
   download: boolean;
+  /** Generic uploads only — contracts/invoices/etc. are removed from their own producers. */
+  delete: boolean;
   archive: boolean;
   lock: boolean;
 };

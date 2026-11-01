@@ -35,7 +35,7 @@ import type {
 } from "@/lib/timeline/types";
 import { VENUE_OWNED_DEFAULT_AUDIENCES } from "@/lib/timeline/audience-ownership";
 import { VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
-import { addDaysToIsoDate, timelineDayOptions } from "@/lib/timeline/constants";
+import { addDaysToIsoDate, formatTime, resolveEntryTimeFromOffset, timelineDayOptions } from "@/lib/timeline/constants";
 import {
   provenanceFromVenueChoice,
   type TimingProvenance,
@@ -43,6 +43,7 @@ import {
 import type { TimelineDayAnchor } from "@/lib/timeline/timing-presentation";
 import type { StaffMember } from "@/lib/team/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
+import { toast } from "sonner";
 
 const NO_SECTION = "__none__";
 const NO_ASSIGNEE = "__none__";
@@ -58,6 +59,7 @@ export function TimelineEntryForm({
   relatedLinks = [], eventTasks = [], vendorAssignments = [], floorPlans = [], conversationId = null, invoices = [], onRelatedChanged,
   teamMembers = [],
   eventDate = null, eventEndDate = null,
+  eventStartTime = null,
 }: {
   eventId: string;
   venueId: string;
@@ -83,6 +85,8 @@ export function TimelineEntryForm({
   teamMembers?: StaffMember[];
   eventDate?: string | null;
   eventEndDate?: string | null;
+  /** Day-of schedule start (`events.start_time`) — not ceremony/reception. */
+  eventStartTime?: string | null;
 }) {
   const [title, setTitle] = React.useState(initial.title);
   const [description, setDescription] = React.useState(initial.description);
@@ -129,7 +133,21 @@ export function TimelineEntryForm({
   function handleSave() {
     const displayOffset = Number(dayOffset) || 0;
     const clockIntent = clockMode === "relative" ? "relative" as const : clockMode === "clock" && entryTime ? "explicit" as const : "untimed" as const;
-    const timing = dayMode === "unset" ? undefined : provenanceFromVenueChoice({
+    if (clockIntent === "relative") {
+      if (!eventStartTime) {
+        toast.error("Set the Day-of schedule start on the event before using minutes from that start.");
+        return;
+      }
+      if (resolveEntryTimeFromOffset(Number(relativeMinutes) || 0, eventStartTime) == null) {
+        toast.error("Those minutes fall outside the same calendar day as the Day-of schedule start.");
+        return;
+      }
+    }
+    if (dayMode === "unset") {
+      toast.error("Choose relative to the event or a fixed calendar date before saving.");
+      return;
+    }
+    const timing = provenanceFromVenueChoice({
       choice: dayMode,
       dayAnchor,
       relativeDayOffset: dayAnchor === "event_end" ? Number(endRelativeOffset) || 0 : displayOffset,
@@ -141,20 +159,25 @@ export function TimelineEntryForm({
       previousDayOffset: initial.dayOffset ?? displayOffset,
       clockIntent,
       relativeMinutes: clockMode === "relative" ? Number(relativeMinutes) || 0 : null,
-      explicitEntryTime: entryTime || null,
+      explicitEntryTime: clockIntent === "explicit" ? (entryTime || null) : null,
       clockOverridden: clockIntent === "explicit" || Boolean(initial.timing?.clockOverridden && clockIntent !== "relative"),
+      eventStartTime,
     });
     onSave({
-      title, description, notes, entryTime: timing?.entryTime ?? entryTime,
-      dayOffset: timing?.dayOffset ?? displayOffset,
+      title, description, notes, entryTime: timing.entryTime,
+      dayOffset: timing.dayOffset,
       audiences,
       sectionId: sectionId === NO_SECTION ? null : sectionId,
       lockState: isLocked ? "locked" : "editable",
       status: initial.status ?? "not_started",
       assignedToStaffId: assignedToStaffId === NO_ASSIGNEE ? null : assignedToStaffId,
-      ...(timing ? { timing } : {}),
+      timing,
     });
   }
+
+  const relativePreview = clockMode === "relative" && eventStartTime
+    ? resolveEntryTimeFromOffset(Number(relativeMinutes) || 0, eventStartTime)
+    : null;
 
   return (
     <div className="space-y-3 rounded-sm border border-ring bg-card p-4">
@@ -197,27 +220,39 @@ export function TimelineEntryForm({
           ) : null}
           {initial.timing?.attention === "missing_event_end" || initial.timing?.attention === "invalid_event_end" ? (
             <p className="text-[11px] text-amber-800 max-w-xs" data-testid="timeline-timing-end-attention">
-              Needs a wedding end date. The saved day was not rewritten.
+              Needs an event end date. The saved day was not rewritten.
             </p>
           ) : null}
-          <div className="space-y-1.5">
-            <Label htmlFor="et-time" className="text-xs">Time</Label>
-            <TimeAmPmInput
-              id="et-time"
-              value={entryTime}
-              onChange={setEntryTime}
-              className="w-32"
-              data-testid="timeline-entry-time"
-            />
-          </div>
+          {clockMode === "clock" ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="et-time" className="text-xs">Time</Label>
+              <TimeAmPmInput
+                id="et-time"
+                value={entryTime}
+                onChange={setEntryTime}
+                className="w-32"
+                data-testid="timeline-entry-time"
+              />
+            </div>
+          ) : clockMode === "relative" ? (
+            <p className="text-[11px] text-muted-foreground max-w-[14rem]" data-testid="timeline-relative-clock-preview">
+              {eventStartTime
+                ? (relativePreview
+                  ? `Shows as ${formatTime(relativePreview)} (${Number(relativeMinutes) || 0} min from Day-of start ${formatTime(eventStartTime.slice(0, 5))}).`
+                  : "Those minutes fall outside the same calendar day as the Day-of schedule start.")
+                : "Set the Day-of schedule start on the event to resolve this clock."}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground italic">No clock time on the list.</p>
+          )}
         </div>
       </div>
 
-      <details className="rounded-sm border border-border px-3 py-2" data-testid="timeline-timing-controls">
+      <details className="rounded-sm border border-border px-3 py-2" data-testid="timeline-timing-controls" open={legacyTiming || undefined}>
         <summary className="cursor-pointer text-xs font-medium text-heading">Day and clock timing</summary>
         <div className="mt-2 space-y-2">
           <p className="text-[11px] text-muted-foreground">
-            Relative days move with the wedding date. A fixed date stays on that calendar day. Sharing this timeline does not by itself change either one.
+            Relative days move with the event date. A fixed date stays on that calendar day. Sharing this timeline does not by itself change either one.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -225,7 +260,7 @@ export function TimelineEntryForm({
               className={`rounded-full border px-2.5 py-1 text-[11px] ${dayMode === "relative" ? "border-primary bg-primary/10" : "border-border text-muted-foreground"}`}
               onClick={() => setDayMode("relative")}
             >
-              Relative to the wedding
+              Relative to the event
             </button>
             <button
               type="button"
@@ -244,15 +279,17 @@ export function TimelineEntryForm({
                   value={dayAnchor}
                   onChange={(e) => setDayAnchor(e.target.value as TimelineDayAnchor)}
                 >
-                  <option value="event_start">Wedding start</option>
-                  <option value="event_end">Wedding end</option>
+                  <option value="event_start">Event start date</option>
+                  <option value="event_end">Event end date</option>
                 </select>
               </label>
               {dayAnchor === "event_start" ? (
-                <p className="text-[11px] text-muted-foreground">Use the Day menu for how many days before or after the wedding start.</p>
+                <p className="text-[11px] text-muted-foreground">
+                  The event&apos;s first calendar day (not ceremony or reception). Use the Day menu for how many days before or after that date.
+                </p>
               ) : (
                 <label className="block text-[11px] text-muted-foreground">
-                  Days from the wedding end (negative is before)
+                  Days from the event end date (negative is before)
                   <input
                     type="number"
                     className="mt-1 block h-8 w-28 rounded-sm border border-border bg-card px-2 text-xs text-foreground"
@@ -280,24 +317,32 @@ export function TimelineEntryForm({
             <select
               className="mt-1 block h-8 rounded-sm border border-border bg-card px-2 text-xs text-foreground"
               value={clockMode}
-              onChange={(e) => setClockMode(e.target.value as "clock" | "relative" | "untimed")}
+              onChange={(e) => {
+                const next = e.target.value as "clock" | "relative" | "untimed";
+                setClockMode(next);
+                if (next === "clock" && !entryTime && eventStartTime) setEntryTime(eventStartTime.slice(0, 5));
+              }}
             >
               <option value="clock">Exact time</option>
-              <option value="relative">Minutes from Day-of start</option>
+              <option value="relative">Minutes from Day-of schedule start</option>
               <option value="untimed">No clock time</option>
             </select>
           </label>
           {clockMode === "relative" ? (
             <label className="block text-[11px] text-muted-foreground">
-              Minutes after Day-of start (negative for before)
+              Minutes after Day-of schedule start{eventStartTime ? ` (${formatTime(eventStartTime.slice(0, 5))})` : ""} — negative is before
               <input
                 type="number"
                 className="mt-1 block h-8 w-28 rounded-sm border border-border bg-card px-2 text-xs text-foreground"
                 value={relativeMinutes}
                 onChange={(e) => setRelativeMinutes(e.target.value)}
+                data-testid="timeline-relative-minutes"
               />
             </label>
           ) : null}
+          <p className="text-[11px] text-muted-foreground">
+            Day-of schedule start is the event&apos;s overall start time on the booking card — not a ceremony or reception row.
+          </p>
         </div>
       </details>
 

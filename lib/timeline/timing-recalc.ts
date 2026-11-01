@@ -59,10 +59,10 @@ function entryTiming(entry: TimelineEntry): TimingProvenance {
 function dateSummary(proj: DateChangeProjection, entry: TimelineEntry): string {
   if (proj.eligible) {
     if (entry.timing?.dayIntent === "fixed") {
-      return `Fixed calendar date stays ${proj.fixedDate}; display day updates to match the new wedding start.`;
+      return `Fixed calendar date stays ${proj.fixedDate}; display day updates to match the new event start.`;
     }
     if (proj.dayOffset === entry.dayOffset && proj.entryTime === entry.entryTime) {
-      return "Relative timing already matches the new wedding dates.";
+      return "Relative timing already matches the new event dates.";
     }
     return `Relative day moves from day ${entry.dayOffset} to day ${proj.dayOffset}.`;
   }
@@ -70,10 +70,10 @@ function dateSummary(proj: DateChangeProjection, entry: TimelineEntry): string {
     return "Timing intent is unknown — choose relative or fixed on the Timeline before recalculating.";
   }
   if (proj.blockedReason === "missing_event_end") {
-    return "This item is tied to the wedding end date, which is missing — set a valid end date or edit the item.";
+    return "This item is tied to the event end date, which is missing — set a valid end date or edit the item.";
   }
   if (proj.blockedReason === "invalid_event_end") {
-    return "This item is tied to the wedding end date, which is invalid — fix the end date or edit the item.";
+    return "This item is tied to the event end date, which is invalid — fix the end date or edit the item.";
   }
   return "This item needs a venue decision before its day can be recalculated.";
 }

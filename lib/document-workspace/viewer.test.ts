@@ -113,6 +113,15 @@ describe("wiring", () => {
     assert.match(workspace, /if \(!documentViewSource\(doc, viewerScope\)\) \{ openPreview\(doc\); return; \}/);
   });
 
+  it("generic uploads offer Delete in the more menu with a permanent confirmation step", () => {
+    assert.match(card, /data-testid="workspace-doc-delete"/);
+    assert.match(card, /LibraryDeleteConfirmDialog/);
+    assert.match(card, /itemLabel="document"/);
+    assert.match(card, /\bpermanent\b/);
+    const perms = readFileSync(resolve("lib/document-workspace/permissions.ts"), "utf8");
+    assert.match(perms, /delete: doc\.docType === "document"/);
+  });
+
   it("framed pages drop the shell only after every auth and venue gate", () => {
     const frame = layout.indexOf('"sec-fetch-dest") === "iframe"');
     assert.ok(frame > 0);

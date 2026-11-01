@@ -378,6 +378,20 @@ export function provenanceFromTemplateApply(input: {
 }
 
 /** Venue chooses relative or fixed. Does not guess when choice is omitted. */
+function entryTimeForVenueClock(input: {
+  clockIntent: TimingClockIntent | null;
+  relativeMinutes: number | null;
+  explicitEntryTime: string | null;
+  eventStartTime: string | null;
+}): string | null {
+  if (input.clockIntent === "untimed") return null;
+  if (input.clockIntent === "relative") {
+    return resolveEntryTimeFromOffset(input.relativeMinutes, input.eventStartTime);
+  }
+  if (input.clockIntent === "explicit") return input.explicitEntryTime;
+  return input.explicitEntryTime;
+}
+
 export function provenanceFromVenueChoice(input: {
   choice: "relative" | "fixed";
   dayAnchor: TimelineDayAnchor;
@@ -392,8 +406,16 @@ export function provenanceFromVenueChoice(input: {
   relativeMinutes: number | null;
   explicitEntryTime: string | null;
   clockOverridden: boolean;
+  /** Day-of schedule start (`events.start_time`) — used to bake relative clocks onto the list. */
+  eventStartTime?: string | null;
 }): TimingWrite {
   const overridden = input.templateDayOffset != null && input.relativeDayOffset !== input.templateDayOffset;
+  const entryTime = entryTimeForVenueClock({
+    clockIntent: input.clockIntent,
+    relativeMinutes: input.relativeMinutes,
+    explicitEntryTime: input.explicitEntryTime,
+    eventStartTime: input.eventStartTime ?? null,
+  });
   if (input.choice === "fixed") {
     const fixed = input.fixedDate;
     return {
@@ -409,7 +431,7 @@ export function provenanceFromVenueChoice(input: {
       clockOverridden: input.clockOverridden || input.clockIntent === "explicit",
       attention: fixed ? null : "unknown_intent",
       dayOffset: input.previousDayOffset,
-      entryTime: input.explicitEntryTime,
+      entryTime,
     };
   }
   const resolved = resolveAnchoredDayOffset(
@@ -431,7 +453,7 @@ export function provenanceFromVenueChoice(input: {
     clockOverridden: input.clockOverridden || input.clockIntent === "explicit",
     attention: resolved.ok ? null : resolved.attention,
     dayOffset: resolved.ok ? resolved.dayOffset : input.previousDayOffset,
-    entryTime: input.explicitEntryTime,
+    entryTime,
   };
 }
 

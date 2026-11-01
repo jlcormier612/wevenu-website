@@ -1,18 +1,23 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
 import {
   ClipboardList, Download, Eye, ExternalLink, FileSignature, FileText, Info,
   Loader2, MapPin, MoreHorizontal, Receipt, Share2, Star, History, ListOrdered,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { WorkspaceCategoryBadge, WorkspaceStatusBadge } from "@/components/document-workspace/badges";
-import { Button } from "@/components/ui/button";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { deleteDocumentAction } from "@/app/(app)/documents/actions";
+import { deleteLibraryDocumentAction } from "@/app/(app)/library/documents/actions";
 import { downloadFile } from "@/lib/download-file";
 import { formatBytes } from "@/lib/documents/constants";
+import type { DocumentEntityType } from "@/lib/documents/types";
 import { pinDocumentAction, recordDocumentInteractionAction, unpinDocumentAction } from "@/lib/document-workspace/actions";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import { computeVenuePermissions } from "@/lib/document-workspace/permissions";
@@ -41,6 +46,14 @@ function relationshipLabel(doc: WorkspaceDocument): string | null {
   return doc.relationshipName ?? doc.eventName ?? null;
 }
 
+function resolveEntity(doc: WorkspaceDocument): { type: DocumentEntityType; id: string } | null {
+  if (doc.eventId) return { type: "event", id: doc.eventId };
+  if (doc.clientId) return { type: "client", id: doc.clientId };
+  if (doc.leadId) return { type: "lead", id: doc.leadId };
+  if (doc.vendorId) return { type: "vendor", id: doc.vendorId };
+  return null;
+}
+
 export function WorkspaceDocumentCard({
   doc,
   pinned,
@@ -49,6 +62,7 @@ export function WorkspaceDocumentCard({
   onOpenVersionHistory,
   onPinChange,
   pinningEnabled = true,
+  onDeleted,
 }: {
   doc: WorkspaceDocument;
   pinned: boolean;
@@ -59,10 +73,14 @@ export function WorkspaceDocumentCard({
   onPinChange?: (pinned: boolean) => void;
   /** Pinned Documents is venue-tenant state (document_workspace_pins is RLS-scoped to current_user_venue_id()) — a vendor session has no venue_id, so pinning cannot function there. False hides the control rather than surfacing an action that would just fail. */
   pinningEnabled?: boolean;
+  onDeleted?: (doc: WorkspaceDocument) => void;
 }) {
+  const router = useRouter();
   const [pinBusy, startPin] = React.useTransition();
   const [isPinned, setIsPinned] = React.useState(pinned);
   const [downloading, setDownloading] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [deletePending, setDeletePending] = React.useState(false);
   const perms = computeVenuePermissions(doc);
 
   React.useEffect(() => setIsPinned(pinned), [pinned]);
@@ -108,6 +126,23 @@ export function WorkspaceDocumentCard({
     } finally {
       setDownloading(false);
     }
+  }
+
+  async function confirmDeleteDocument() {
+    setDeletePending(true);
+    const entity = resolveEntity(doc);
+    const result = entity
+      ? await deleteDocumentAction(doc.id, entity.type, entity.id)
+      : await deleteLibraryDocumentAction(doc.id);
+    setDeletePending(false);
+    if (!result.ok) {
+      toast.error(result.message ?? "Could not delete this document.");
+      return;
+    }
+    setConfirmDelete(false);
+    toast.success("Document deleted.");
+    onDeleted?.(doc);
+    router.refresh();
   }
 
   const relationship = relationshipLabel(doc);
@@ -187,10 +222,30 @@ export function WorkspaceDocumentCard({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handlePreview}>View details</DropdownMenuItem>
               {perms.edit && <DropdownMenuItem disabled>Edit (from its own list)</DropdownMenuItem>}
+              {perms.delete && (
+                <DropdownMenuItem
+                  variant="destructive"
+                  data-testid="workspace-doc-delete"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+
+      <LibraryDeleteConfirmDialog
+        open={confirmDelete}
+        itemName={doc.name}
+        itemLabel="document"
+        permanent
+        pending={deletePending}
+        onConfirm={() => void confirmDeleteDocument()}
+        onCancel={() => { if (!deletePending) setConfirmDelete(false); }}
+      />
     </div>
   );
 }

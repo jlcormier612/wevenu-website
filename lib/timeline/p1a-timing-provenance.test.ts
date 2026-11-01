@@ -194,6 +194,44 @@ describe("P1a timing provenance", () => {
     assert.equal(chosen.entryTime, "09:15");
     assert.equal(chosen.clockIntent, "explicit");
     assert.equal(clockRecalcEligible(chosen), false);
+
+    const relativeClock = provenanceFromVenueChoice({
+      choice: "relative",
+      dayAnchor: "event_start",
+      relativeDayOffset: 0,
+      templateDayOffset: 0,
+      templateDayAnchor: "event_start",
+      fixedDate: null,
+      eventDate: "2028-10-05",
+      eventEndDate: null,
+      previousDayOffset: 0,
+      clockIntent: "relative",
+      relativeMinutes: -120,
+      explicitEntryTime: "18:00",
+      clockOverridden: false,
+      eventStartTime: "17:00",
+    });
+    assert.equal(relativeClock.entryTime, "15:00");
+    assert.equal(relativeClock.relativeMinutes, -120);
+    assert.equal(relativeClock.clockIntent, "relative");
+
+    const untimed = provenanceFromVenueChoice({
+      choice: "relative",
+      dayAnchor: "event_start",
+      relativeDayOffset: 0,
+      templateDayOffset: null,
+      templateDayAnchor: null,
+      fixedDate: null,
+      eventDate: "2028-10-05",
+      eventEndDate: null,
+      previousDayOffset: 0,
+      clockIntent: "untimed",
+      relativeMinutes: null,
+      explicitEntryTime: "18:00",
+      clockOverridden: false,
+      eventStartTime: "17:00",
+    });
+    assert.equal(untimed.entryTime, null);
   });
 
   it("leaves unknown legacy intent ineligible (D3)", () => {
@@ -502,7 +540,7 @@ describe("P1a boundaries in source", () => {
     assert.equal(overridden.timingColumns.timing_clock_intent, "untimed");
 
     assert.match(scheduleSync, /scheduleSyncWriteForExistingRow/);
-    assert.match(scheduleSync, /\.insert\(payload\)/);
+    assert.match(scheduleSync, /reconcile_timeline_from_schedule/);
     assert.doesNotMatch(scheduleSync, /timing_day_intent:\s*["']relative["']/);
     assert.doesNotMatch(scheduleSync, /projectTimingAfterEventDateChange/);
   });
