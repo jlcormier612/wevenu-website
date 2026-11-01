@@ -5,8 +5,11 @@ import { describe, it } from "node:test";
 
 import {
   catalogGroupsAvailableToInclude,
+  convertibleCategoryCandidates,
   eligibleChildrenNotInGroup,
+  groupIdsContainingOffering,
   groupsForParent,
+  groupsUnderParents,
   memberOfferingsForGroup,
   orderCatalogListWithChoiceGroups,
   planConvertItemToCategory,
@@ -76,6 +79,42 @@ describe("choice group helpers", () => {
     assert.deepEqual(
       groupsForParent(groups, "p1").map((g) => g.id),
       ["g1", "g2"],
+    );
+  });
+
+  it("lists categories under selected majors for item placement", () => {
+    const groups = [
+      group({ id: "g-e-p", name: "Entrees", parentOfferingId: "plated", memberOfferingIds: ["chicken"] }),
+      group({ id: "g-e-b", name: "Entrees", parentOfferingId: "buffet" }),
+      group({ id: "g-d", name: "Desserts", parentOfferingId: "plated" }),
+      group({ id: "g-x", name: "Other", parentOfferingId: "arch" }),
+    ];
+    assert.deepEqual(
+      groupsUnderParents(groups, ["plated", "buffet"]).map((g) => g.id),
+      ["g-d", "g-e-b", "g-e-p"],
+    );
+    assert.deepEqual(groupIdsContainingOffering(groups, "chicken"), ["g-e-p"]);
+  });
+
+  it("surfaces section-named sibling folder items as convertible categories", () => {
+    const plated = offering({ id: "plated", name: "Plated Dinner" });
+    const entrees = offering({ id: "entrees", name: "Entrees", parentOfferingIds: ["plated"] });
+    const chicken = offering({ id: "chicken", name: "Chicken Marsala", parentOfferingIds: ["plated"] });
+    const caesar = offering({ id: "caesar", name: "Caesar salad", parentOfferingIds: ["plated"] });
+    const already = group({ id: "g1", name: "Entrees", parentOfferingId: "plated" });
+    assert.deepEqual(
+      convertibleCategoryCandidates(
+        [plated, entrees, chicken, caesar],
+        [],
+        ["plated"],
+        "chicken",
+      ).map((o) => o.id),
+      ["entrees"],
+      "dishes are not offered as categories",
+    );
+    assert.deepEqual(
+      convertibleCategoryCandidates([plated, entrees, chicken], [already], ["plated"], "chicken"),
+      [],
     );
   });
 
@@ -297,9 +336,20 @@ describe("Offerings three-level catalog (Major → Category → items)", () => {
     assert.match(lib, /\+ Category under this/);
     assert.match(lib, /offering-category-add-item-/);
     assert.match(lib, /\+ Item in this category/);
-    assert.match(lib, /addOfferingChoiceGroupMemberAction\(groupId, o\.id\)/);
+    assert.match(lib, /addOfferingChoiceGroupMemberAction\(g\.id, offeringId\)/);
     assert.match(lib, /offering-convert-category-/);
+    assert.match(lib, /looksLikeCategoryLabel\(o\.name\)/);
     assert.match(lib, /planConvertItemToCategory/);
     assert.match(lib, /setOfferingArchivedAction\(item\.id, true\)/);
+  });
+
+  it("Edit/create item form can place Chicken under Entrees (category under major)", () => {
+    const lib = readFileSync(join(process.cwd(), "components/offerings/offerings-library-section.tsx"), "utf8");
+    assert.match(lib, /List under category/);
+    assert.match(lib, /offering-list-under-categories/);
+    assert.match(lib, /groupsUnderParents/);
+    assert.match(lib, /convertibleCategoryCandidates/);
+    assert.match(lib, /removeOfferingChoiceGroupMemberAction/);
+    assert.match(lib, /showAllMajors/);
   });
 });

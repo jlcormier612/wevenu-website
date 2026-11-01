@@ -308,9 +308,10 @@ describe("Offerings hierarchy migration + UI seams", () => {
 
   it("catalog UI exposes multi major association without duplicating dependency model", () => {
     assert.match(library, /Belongs under major choices/);
+    assert.match(library, /List under category/);
     assert.match(library, /offerings-parents|offering-parents/);
     assert.match(library, /type="checkbox"/);
-    assert.match(library, /Removing a check removes only that association/);
+    assert.match(library, /Layer 1 — check Plated Dinner/);
     assert.match(library, /data-nest-under/);
     assert.match(library, /orderCatalogListWithChoiceGroups/);
     // Multi-parent association lives on the Offerings catalog, not EO choice-group dependency UI.

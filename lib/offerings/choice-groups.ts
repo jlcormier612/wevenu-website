@@ -86,6 +86,72 @@ export function groupsForParent(
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 }
 
+/** Categories under any of the selected majors (for item edit / create). */
+export function groupsUnderParents(
+  groups: OfferingChoiceGroup[],
+  parentOfferingIds: string[],
+): OfferingChoiceGroup[] {
+  const parents = new Set(parentOfferingIds.filter(Boolean));
+  if (parents.size === 0) return [];
+  return groups
+    .filter((g) => parents.has(g.parentOfferingId))
+    .sort(
+      (a, b) =>
+        a.name.localeCompare(b.name) ||
+        a.sortOrder - b.sortOrder ||
+        a.parentOfferingId.localeCompare(b.parentOfferingId),
+    );
+}
+
+/** Choice-group ids that already include this offering. */
+export function groupIdsContainingOffering(
+  groups: OfferingChoiceGroup[],
+  offeringId: string,
+): string[] {
+  return groups.filter((g) => g.memberOfferingIds.includes(offeringId)).map((g) => g.id);
+}
+
+/** Names that are menu sections, not dishes — safe to offer as “convert to category”. */
+const CATEGORY_LABEL_NAME =
+  /^(entr[eé]es?|mains?|main courses?|sides?|side dishes?|desserts?|appetizers?|starters?|salads?|beverages?|drinks?|soups?|kids'?\s*menus?|extras?)$/i;
+
+export function looksLikeCategoryLabel(name: string): boolean {
+  return CATEGORY_LABEL_NAME.test(sanitizeChoiceGroupName(name));
+}
+
+/**
+ * Unpriced sibling rows under the selected majors that are still Offerings
+ * (for example an "Entrees" item) and do not yet have a same-named Category
+ * under those majors — candidates to convert into the middle hierarchy layer.
+ * Only section-like names are offered so Chicken Marsala is never treated as a category.
+ */
+export function convertibleCategoryCandidates(
+  catalog: OfferingWithCategory[],
+  groups: OfferingChoiceGroup[],
+  parentOfferingIds: string[],
+  excludeOfferingId?: string | null,
+): OfferingWithCategory[] {
+  const parents = new Set(parentOfferingIds.filter(Boolean));
+  if (parents.size === 0) return [];
+  const existingNames = new Set(
+    groups
+      .filter((g) => parents.has(g.parentOfferingId))
+      .map((g) => g.name.toLocaleLowerCase()),
+  );
+  return catalog
+    .filter((o) => {
+      if (excludeOfferingId && o.id === excludeOfferingId) return false;
+      if (o.isArchived) return false;
+      if (o.defaultUnitPrice != null) return false;
+      if (!looksLikeCategoryLabel(o.name)) return false;
+      const oParents = parentIdsOf(o);
+      if (!oParents.some((p) => parents.has(p))) return false;
+      if (existingNames.has(sanitizeChoiceGroupName(o.name).toLocaleLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /**
  * Catalog groups under a parent that are not already linked on a template
  * under the given parent option (by offering_choice_group_id).

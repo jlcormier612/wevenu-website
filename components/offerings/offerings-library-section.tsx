@@ -11,6 +11,7 @@ import {
   createOfferingAction,
   createOfferingCategoryAction,
   createOfferingChoiceGroupAction,
+  removeOfferingChoiceGroupMemberAction,
   setOfferingArchivedAction,
   updateOfferingAction,
   updateOfferingImageAction,
@@ -31,8 +32,13 @@ import { validateCatalogImageFile } from "@/lib/catalog-images/validate";
 import { formatOptionalMoney } from "@/lib/event-orders/constants";
 import type { InventoryItem } from "@/lib/inventory/types";
 import {
+  convertibleCategoryCandidates,
+  groupIdsContainingOffering,
+  groupsUnderParents,
+  looksLikeCategoryLabel,
   orderCatalogListWithChoiceGroups,
   planConvertItemToCategory,
+  sanitizeChoiceGroupName,
   type OfferingChoiceGroup,
 } from "@/lib/offerings/choice-groups";
 import {
@@ -276,7 +282,7 @@ export const OfferingsLibrarySection = React.forwardRef<
                       </Button>
                     </>
                   ) : null}
-                  {role === "item" && !o.isArchived && nestUnderGroupId == null && isUnpriced(o) ? (
+                  {role === "item" && !o.isArchived && nestUnderGroupId == null && looksLikeCategoryLabel(o.name) ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -329,6 +335,7 @@ export const OfferingsLibrarySection = React.forwardRef<
         venueId={venueId}
         offering={editing}
         defaultParentId={createParentId}
+        defaultGroupId={creating ? createGroupId : null}
         targetGroupName={
           creating && createGroupId ? groupNameById.get(createGroupId) ?? null : null
         }
@@ -337,9 +344,9 @@ export const OfferingsLibrarySection = React.forwardRef<
         inventoryItems={inventoryItems}
         choiceGroups={choiceGroups}
         onChoiceGroupsChange={setChoiceGroups}
+        onOfferingsChange={setOfferings}
         onCategoryCreated={(c) => setCats((prev) => [...prev, c])}
-        onSaved={async (o) => {
-          const groupId = creating ? createGroupId : null;
+        onSaved={(o) => {
           setOfferings((prev) => {
             const idx = prev.findIndex((x) => x.id === o.id);
             if (idx >= 0) {
@@ -353,18 +360,6 @@ export const OfferingsLibrarySection = React.forwardRef<
           setEditing(null);
           setCreateParentId(null);
           setCreateGroupId(null);
-          if (groupId) {
-            const r = await addOfferingChoiceGroupMemberAction(groupId, o.id);
-            if (!r.ok) {
-              toast.error(r.message ?? "Item saved, but it could not be added to the category.");
-              return;
-            }
-            setChoiceGroups((prev) =>
-              prev.map((g) =>
-                g.id === groupId ? { ...g, memberOfferingIds: [...g.memberOfferingIds, o.id] } : g,
-              ),
-            );
-          }
         }}
       />
 
@@ -542,26 +537,32 @@ function ConvertToCategorySheet({
 }
 
 function OfferingFormSheet({
-  open, onOpenChange, venueId, offering, defaultParentId, targetGroupName, offerings, categories, inventoryItems,
-  choiceGroups, onChoiceGroupsChange, onSaved, onCategoryCreated,
+  open, onOpenChange, venueId, offering, defaultParentId, defaultGroupId, targetGroupName, offerings, categories, inventoryItems,
+  choiceGroups, onChoiceGroupsChange, onOfferingsChange, onSaved, onCategoryCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   venueId: string;
   offering: OfferingWithCategory | null;
   defaultParentId: string | null;
+  defaultGroupId: string | null;
   targetGroupName: string | null;
   offerings: OfferingWithCategory[];
   categories: OfferingCategory[];
   inventoryItems: InventoryItem[];
   choiceGroups: OfferingChoiceGroup[];
   onChoiceGroupsChange: (groups: OfferingChoiceGroup[]) => void;
+  onOfferingsChange: (offerings: OfferingWithCategory[]) => void;
   onSaved: (o: OfferingWithCategory) => void;
   onCategoryCreated: (c: OfferingCategory) => void;
 }) {
   const [name, setName] = React.useState("");
   const [categoryId, setCategoryId] = React.useState("");
   const [parentOfferingIds, setParentOfferingIds] = React.useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = React.useState<string[]>([]);
+  const [convertItemIds, setConvertItemIds] = React.useState<string[]>([]);
+  const [newListCategory, setNewListCategory] = React.useState("");
+  const [showAllMajors, setShowAllMajors] = React.useState(false);
   const [description, setDescription] = React.useState("");
   const [unit, setUnit] = React.useState("");
   const [defaultUnitPrice, setDefaultUnitPrice] = React.useState("");
@@ -573,7 +574,24 @@ function OfferingFormSheet({
 
   const majorsWithChildren = majorOfferingIds(offerings);
   const editingIsMajorWithChildren = Boolean(offering && majorsWithChildren.has(offering.id));
-  const parentCandidates = topLevelOfferings(offerings).filter((o) => o.id !== offering?.id);
+  const allParentCandidates = topLevelOfferings(offerings).filter((o) => o.id !== offering?.id);
+  const sameServiceParents = categoryId
+    ? allParentCandidates.filter((o) => o.categoryId === categoryId)
+    : allParentCandidates;
+  const parentCandidates = showAllMajors || sameServiceParents.length === 0
+    ? allParentCandidates
+    : sameServiceParents;
+  const listCategories = groupsUnderParents(choiceGroups, parentOfferingIds);
+  const convertibleFolders = convertibleCategoryCandidates(
+    offerings,
+    choiceGroups,
+    parentOfferingIds,
+    offering?.id,
+  );
+  const nameById = React.useMemo(
+    () => new Map(offerings.map((o) => [o.id, o.name])),
+    [offerings],
+  );
 
   React.useEffect(() => {
     if (!open) return;
@@ -586,6 +604,15 @@ function OfferingFormSheet({
     setParentOfferingIds(existingParents);
     const firstParent = offerings.find((o) => o.id === existingParents[0]);
     setCategoryId(offering?.categoryId ?? firstParent?.categoryId ?? "");
+    const existingGroups = offering
+      ? groupIdsContainingOffering(choiceGroups, offering.id)
+      : defaultGroupId
+        ? [defaultGroupId]
+        : [];
+    setSelectedGroupIds(existingGroups);
+    setConvertItemIds([]);
+    setNewListCategory("");
+    setShowAllMajors(false);
     setDescription(offering?.description ?? "");
     setUnit(offering?.unit ?? "");
     setDefaultUnitPrice(offering?.defaultUnitPrice != null ? String(offering.defaultUnitPrice) : "");
@@ -593,7 +620,7 @@ function OfferingFormSheet({
     setImageUrl(offering?.imageUrl ?? null);
     setFile(null);
     setNewCategory("");
-  }, [open, offering, defaultParentId, offerings]);
+  }, [open, offering, defaultParentId, defaultGroupId, offerings, choiceGroups]);
 
   function toggleParent(id: string) {
     setParentOfferingIds((prev) => {
@@ -602,8 +629,28 @@ function OfferingFormSheet({
         const parent = offerings.find((o) => o.id === id);
         if (parent?.categoryId) setCategoryId(parent.categoryId);
       }
+      const allowed = new Set(groupsUnderParents(choiceGroups, next).map((g) => g.id));
+      setSelectedGroupIds((ids) => ids.filter((gid) => allowed.has(gid)));
+      setConvertItemIds((ids) =>
+        ids.filter((itemId) => {
+          const item = offerings.find((o) => o.id === itemId);
+          return item ? parentIdsOf(item).some((p) => next.includes(p)) : false;
+        }),
+      );
       return next;
     });
+  }
+
+  function toggleGroup(id: string) {
+    setSelectedGroupIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function toggleConvertItem(id: string) {
+    setConvertItemIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   }
 
   function input(): OfferingInput {
@@ -706,12 +753,125 @@ function OfferingFormSheet({
     });
   }
 
+  async function ensureCategoriesAndMembership(offeringId: string): Promise<boolean> {
+    if (editingIsMajorWithChildren || parentOfferingIds.length === 0) return true;
+
+    let groups = [...choiceGroups];
+    let nextSelected = [...selectedGroupIds];
+    let nextOfferings = [...offerings];
+
+    for (const convertId of convertItemIds) {
+      const item = nextOfferings.find((o) => o.id === convertId);
+      if (!item || item.isArchived) continue;
+      const plan = planConvertItemToCategory(item, nextOfferings, groups).filter((t) =>
+        parentOfferingIds.includes(t.parentOfferingId),
+      );
+      for (const target of plan) {
+        let groupId = target.existingGroupId;
+        if (!groupId) {
+          const created = await createOfferingChoiceGroupAction(target.parentOfferingId, item.name);
+          if (!created.ok || !created.group) {
+            toast.error(created.ok ? "Could not create the category." : created.message);
+            return false;
+          }
+          groupId = created.group.id;
+          groups = [...groups, created.group];
+        }
+        if (!nextSelected.includes(groupId)) nextSelected.push(groupId);
+      }
+      const archived = await setOfferingArchivedAction(item.id, true);
+      if (!archived.ok) {
+        toast.error(archived.message ?? "Could not convert the folder item into a category.");
+        return false;
+      }
+      nextOfferings = nextOfferings.map((o) =>
+        o.id === item.id ? { ...o, isArchived: true } : o,
+      );
+    }
+
+    const newName = sanitizeChoiceGroupName(newListCategory);
+    if (newName) {
+      for (const parentId of parentOfferingIds) {
+        const existing = groups.find(
+          (g) =>
+            g.parentOfferingId === parentId &&
+            g.name.toLocaleLowerCase() === newName.toLocaleLowerCase(),
+        );
+        if (existing) {
+          if (!nextSelected.includes(existing.id)) nextSelected.push(existing.id);
+          continue;
+        }
+        const created = await createOfferingChoiceGroupAction(parentId, newName);
+        if (!created.ok || !created.group) {
+          toast.error(created.ok ? "Could not create the category." : created.message);
+          return false;
+        }
+        groups = [...groups, created.group];
+        nextSelected.push(created.group.id);
+      }
+      // If a peer "Entrees" item still exists, archive it so the category owns that name.
+      const peer = nextOfferings.find(
+        (o) =>
+          !o.isArchived &&
+          o.id !== offeringId &&
+          sanitizeChoiceGroupName(o.name).toLocaleLowerCase() === newName.toLocaleLowerCase() &&
+          parentIdsOf(o).some((p) => parentOfferingIds.includes(p)) &&
+          o.defaultUnitPrice == null,
+      );
+      if (peer) {
+        const archived = await setOfferingArchivedAction(peer.id, true);
+        if (archived.ok) {
+          nextOfferings = nextOfferings.map((o) =>
+            o.id === peer.id ? { ...o, isArchived: true } : o,
+          );
+        }
+      }
+    }
+
+    const relevant = groupsUnderParents(groups, parentOfferingIds);
+    const want = new Set(nextSelected);
+    for (const g of relevant) {
+      const isIn = g.memberOfferingIds.includes(offeringId);
+      const should = want.has(g.id);
+      if (should && !isIn) {
+        const r = await addOfferingChoiceGroupMemberAction(g.id, offeringId);
+        if (!r.ok) {
+          toast.error(r.message ?? "Could not add this item to the category.");
+          return false;
+        }
+        groups = groups.map((x) =>
+          x.id === g.id ? { ...x, memberOfferingIds: [...x.memberOfferingIds, offeringId] } : x,
+        );
+      } else if (!should && isIn) {
+        const r = await removeOfferingChoiceGroupMemberAction(g.id, offeringId);
+        if (!r.ok) {
+          toast.error(r.message ?? "Could not remove this item from the category.");
+          return false;
+        }
+        groups = groups.map((x) =>
+          x.id === g.id
+            ? { ...x, memberOfferingIds: x.memberOfferingIds.filter((id) => id !== offeringId) }
+            : x,
+        );
+      }
+    }
+
+    onChoiceGroupsChange(groups);
+    onOfferingsChange(nextOfferings);
+    setSelectedGroupIds(nextSelected);
+    setConvertItemIds([]);
+    setNewListCategory("");
+    return true;
+  }
+
   function handleSave() {
     startTransition(async () => {
       if (offering) {
         const result = await updateOfferingAction(offering.id, input());
         if (!result.ok) { toast.error(result.message ?? "Could not save."); return; }
         const nextImage = await persistImage(offering.id);
+        const ok = await ensureCategoriesAndMembership(offering.id);
+        if (!ok) return;
         onSaved({
           ...buildSaved({
             id: offering.id,
@@ -728,6 +888,8 @@ function OfferingFormSheet({
         const result = await createOfferingAction(input());
         if (!result.ok) { toast.error(result.message ?? "Could not create."); return; }
         const nextImage = await persistImage(result.offeringId);
+        const ok = await ensureCategoriesAndMembership(result.offeringId);
+        if (!ok) return;
         onSaved({
           ...buildSaved({
             id: result.offeringId,
@@ -806,7 +968,7 @@ function OfferingFormSheet({
             </div>
           </div>
           <div>
-            <Label className="text-xs">Belongs under major choices (optional)</Label>
+            <Label className="text-xs">1. Belongs under major choices (optional)</Label>
             {editingIsMajorWithChildren ? (
               <p className="mt-1 text-[0.7rem] text-muted-foreground" data-testid="offering-parent-locked">
                 This offering is already a major choice with items under it, so it stays top-level.
@@ -850,14 +1012,104 @@ function OfferingFormSheet({
                     })
                   )}
                 </div>
+                {categoryId && sameServiceParents.length > 0 && sameServiceParents.length < allParentCandidates.length ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-[0.7rem] text-primary underline"
+                    data-testid="offering-parents-show-all"
+                    onClick={() => setShowAllMajors((v) => !v)}
+                  >
+                    {showAllMajors
+                      ? "Show only this service category’s majors"
+                      : "Show majors from other service categories"}
+                  </button>
+                ) : null}
                 <p className="mt-1 text-[0.7rem] text-muted-foreground">
-                  Select one or more major service choices (for example Plated Dinner and Buffet Dinner)
-                  so the same catalog item can appear under each. Leave none selected for a major choice
-                  or standalone offering. Removing a check removes only that association.
+                  Layer 1 — check Plated Dinner and/or Buffet Style Service (same item can sit under both).
+                  Leave none selected for a major choice or standalone offering.
                 </p>
               </>
             )}
           </div>
+          {!editingIsMajorWithChildren && parentOfferingIds.length > 0 ? (
+            <div>
+              <Label className="text-xs">2. List under category (Entrees, Sides…)</Label>
+              <div
+                className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-border bg-background p-2"
+                data-testid="offering-list-under-categories"
+                role="group"
+                aria-label="Categories under the selected majors"
+              >
+                {listCategories.length === 0 && convertibleFolders.length === 0 ? (
+                  <p className="px-1 py-1 text-xs text-muted-foreground">
+                    No categories under these majors yet. Create one below (for example Entrees), or use
+                    “+ Category under this” / “Make this a category” on the list.
+                  </p>
+                ) : null}
+                {listCategories.map((g) => {
+                  const checked = selectedGroupIds.includes(g.id);
+                  const parentLabel = nameById.get(g.parentOfferingId) ?? "major";
+                  return (
+                    <label
+                      key={g.id}
+                      className="flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-sm hover:bg-muted/40"
+                      data-testid={`offering-list-category-${g.id}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={checked}
+                        onChange={() => toggleGroup(g.id)}
+                        data-testid={`offering-list-category-check-${g.id}`}
+                      />
+                      <span>
+                        {g.name}
+                        <span className="text-muted-foreground"> · under {parentLabel}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+                {convertibleFolders.map((folder) => {
+                  const checked = convertItemIds.includes(folder.id);
+                  return (
+                    <label
+                      key={`convert-${folder.id}`}
+                      className="flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-sm hover:bg-muted/40"
+                      data-testid={`offering-convert-folder-${folder.id}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={checked}
+                        onChange={() => toggleConvertItem(folder.id)}
+                        data-testid={`offering-convert-folder-check-${folder.id}`}
+                      />
+                      <span>
+                        {folder.name}
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · still an item — check to turn into a category and place this dish under it
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  placeholder="New category (e.g. Entrees)"
+                  value={newListCategory}
+                  onChange={(e) => setNewListCategory(e.target.value)}
+                  className="h-9 text-sm"
+                  data-testid="offering-new-list-category"
+                />
+              </div>
+              <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                Layer 2 — Entrees / Desserts / Sides under the majors above. Layer 3 is this dish
+                (Chicken Marsala). Checking a still-item folder converts it into a real category on Save.
+              </p>
+            </div>
+          ) : null}
           <div>
             <Label className="text-xs">Description</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="text-sm" />
