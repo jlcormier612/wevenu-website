@@ -180,10 +180,10 @@
  * Additive scope: do NOT flip root `:root` (client portal stays Inter /
  * soft white). next-themes puts `.dark` on <html>, so dark staff rules are
  * `.dark .htc-staff` / `html.dark:has(.htc-staff)` (not `.htc-staff.dark`).
- * Token values mirror workspace/app/globals.css (light-sage canvas, body ink,
- * sharper radius, sidebar recipe). Light staff canvas is Soft Sage washed with
- * white — not warm beige — so cards in True White read clearly against it.
- * Sidebar tokens stay on the taupe recipe unless explicitly changed.
+ * Token values mirror workspace/app/globals.css (body ink, sharper radius).
+ * Light staff = Modern Botanical Luxury: bright warm-white workspace, pale
+ * blush sidebar, Soft Sage only for supporting/selected surfaces — never a
+ * uniform sage page wash. Dark staff remap below is untouched.
  *
  * `html:has(.htc-staff)` mirrors tokens onto the document so Base UI portals
  * (dropdown / select / sheet / tooltip) inherit staff radius + surfaces even
@@ -235,41 +235,59 @@ html:has(.htc-staff) main[data-workspace-main]::-webkit-scrollbar-thumb:hover {
 html:has(.htc-staff) {
   --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;
 
-  /* Soft Sage wash (palette-exact mix) — replaces warm beige staff canvas */
-  --warm-gray: color-mix(in oklch, var(--soft-sage) 22%, white);
-  --natural-cream: var(--true-white);
-  --header-linen: #efe9e1;
+  /*
+   * Modern Botanical Luxury — Light Mode (staff only)
+   * Workspace: True White. Supporting: Soft Sage wash. Accent wash: Dusty Rose.
+   * All mixes stay on the founder-locked nine-swatch palette.
+   */
+  --warm-gray: var(--true-white);
+  --natural-cream: color-mix(in oklch, var(--soft-sage) 14%, white);
+  --header-linen: var(--true-white);
+  --panel-blush: color-mix(in oklch, var(--dusty-rose) 10%, white);
+  --panel-sage: color-mix(in oklch, var(--soft-sage) 22%, white);
 
-  --background: var(--warm-gray);
+  --background: var(--true-white);
   --foreground: var(--forest-sage);
   --heading: var(--forest-sage);
   --card: var(--true-white);
   --card-foreground: var(--forest-sage);
   --popover: var(--true-white);
   --popover-foreground: var(--forest-sage);
-  --muted: var(--true-white);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 80%, transparent);
+  --muted: var(--panel-sage);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 88%, transparent);
   --secondary: var(--true-white);
-  --secondary-foreground: var(--forest-sage);
-  --border: var(--taupe-medium);
-  --input: var(--taupe-medium);
+  --secondary-foreground: var(--heritage-sage);
+  --border: color-mix(in oklch, var(--forest-sage) 16%, var(--taupe-light));
+  --input: color-mix(in oklch, var(--forest-sage) 12%, var(--taupe-light));
+  --primary: var(--heritage-sage);
+  --primary-foreground: var(--true-white);
+  --accent: var(--soft-sage);
+  --accent-foreground: var(--forest-sage);
 
   /* Sharper than portal’s 1rem soft radius — CRM panels use rounded-sm */
   --radius: 0.375rem;
 
-  /* Nav bar — leave as-is (taupe wash); do not retarget with the sage canvas */
-  --sidebar: color-mix(in oklch, var(--taupe-dark) 40%, white);
+  /* Sidebar: very pale blush, clearly separated from the white workspace */
+  --sidebar: color-mix(in oklch, var(--dusty-rose) 8%, white);
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--sidebar-primary) 20%, var(--sidebar));
+  --sidebar-accent: color-mix(in oklch, var(--heritage-sage) 18%, white);
   --sidebar-accent-foreground: var(--forest-sage);
-  --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
+  --sidebar-border: color-mix(in oklch, var(--dusty-rose) 16%, var(--taupe-light));
   --sidebar-ring: var(--heritage-sage);
 
-  --selected: color-mix(in oklch, var(--primary) 20%, var(--background));
-  --selected-foreground: var(--primary);
-  --selected-border: color-mix(in oklch, var(--primary) 45%, var(--border));
+  --selected: color-mix(in oklch, var(--soft-sage) 42%, white);
+  --selected-foreground: var(--forest-sage);
+  --selected-border: color-mix(in oklch, var(--heritage-sage) 40%, var(--soft-sage));
+}
+
+/* Soft depth on staff cards — palette-tinted, not heavy chrome */
+.htc-staff [data-slot="card"],
+html:has(.htc-staff) [data-slot="card"] {
+  box-shadow:
+    0 1px 2px color-mix(in oklch, var(--forest-sage) 7%, transparent),
+    0 6px 18px color-mix(in oklch, var(--forest-sage) 5%, transparent);
 }
 
 /* CRM dark remap under staff scope (html.dark from next-themes) */

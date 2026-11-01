@@ -11,11 +11,11 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80",
         outline:
-          "border-border bg-background text-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-primary/40 bg-card text-primary hover:bg-selected hover:text-primary aria-expanded:bg-selected aria-expanded:text-primary dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-input/50 dark:hover:text-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-accent/40 aria-expanded:bg-accent/40 aria-expanded:text-secondary-foreground",
+          "border border-primary/35 bg-card text-primary hover:bg-selected aria-expanded:bg-selected aria-expanded:text-primary dark:border-transparent dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-accent/40",
         ghost:
-          "text-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "text-primary hover:bg-selected hover:text-primary aria-expanded:bg-selected aria-expanded:text-primary dark:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         destructive:
           // Solid dusty-rose + destructive-foreground (black). Soft fill +
           // theme foreground failed on light amber banners when .dark set
