@@ -164,7 +164,7 @@ export function TimelineEntryForm({
       eventStartTime,
     });
     onSave({
-      title, description, notes, entryTime: timing.entryTime,
+      title, description, notes, entryTime: timing.entryTime ?? "",
       dayOffset: timing.dayOffset,
       audiences,
       sectionId: sectionId === NO_SECTION ? null : sectionId,

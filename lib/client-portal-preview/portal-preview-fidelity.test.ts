@@ -85,8 +85,17 @@ describe("Client portal preview fidelity", () => {
   it("preview locks light tokens so dark staff theme cannot wash out cream surfaces", () => {
     assert.match(preview, /data-theme-lock="light"/);
     assert.match(preview, /PUBLIC_FORM_LIGHT_VARS/);
-    assert.match(preview, /natural-cream|PUBLIC_FORM_LIGHT_VARS/);
+    assert.match(preview, /backgroundColor: "var\(--background\)"/);
     assert.doesNotMatch(preview, /bg-\[#F7F5F1\]/);
+    const lightVars = readFileSync(resolve("lib/theme/public-form-surface.ts"), "utf8");
+    const block = lightVars.slice(
+      lightVars.indexOf("export const PUBLIC_FORM_LIGHT_VARS"),
+      lightVars.indexOf("} as CSSProperties"),
+    );
+    assert.match(block, /"--true-white": "#ffffff"/);
+    assert.match(block, /"--natural-cream": "#f7f5f1"/);
+    assert.match(block, /"--forest-sage": "#4f5f4f"/);
+    assert.match(block, /"--black": "#000000"/);
   });
 
   it("preview loader no longer loads commercial Event Order or Inventory", () => {

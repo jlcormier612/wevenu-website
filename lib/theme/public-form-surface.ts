@@ -1,14 +1,27 @@
 import type { CSSProperties } from "react";
 
 /**
- * Public inquiry / tour forms are a light brand surface. next-themes can put
- * `.dark` on <html> from the visitor's system preference, which remaps
- * --background to Forest Sage and --foreground to white. These forms still
- * paint light cards, so inherited white ink disappears and gray utilities
- * fail on the dark page. Re-pin the light tokens on the form root — the same
- * contract as venue login — so every descendant resolves readable ink.
+ * Public inquiry / tour forms / Client Portal Preview are a light brand surface.
+ * next-themes (and dark staff `.htc-staff`) remap semantic tokens — including
+ * `--natural-cream` → Heritage Sage — so a lock that only reassigns
+ * `--muted: var(--natural-cream)` still paints dark green. Re-pin the palette
+ * hexes first, then the semantic tokens, so every descendant resolves light
+ * readable ink even when an ancestor remapped cream/background.
  */
 export const PUBLIC_FORM_LIGHT_VARS = {
+  /* Palette anchors — must be hex, not var(), or dark staff remaps win */
+  "--true-white": "#ffffff",
+  "--black": "#000000",
+  "--natural-cream": "#f7f5f1",
+  "--linen": "#f5f4f2",
+  "--soft-sage": "#b9d1c2",
+  "--heritage-sage": "#5d6f5d",
+  "--forest-sage": "#4f5f4f",
+  "--taupe-light": "#ded6ca",
+  "--taupe-medium": "#d2cbbf",
+  "--taupe-dark": "#b8aea1",
+  "--dusty-rose": "#d8a7aa",
+
   "--background": "var(--true-white)",
   "--foreground": "var(--black)",
   "--card": "var(--true-white)",

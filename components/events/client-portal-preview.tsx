@@ -34,13 +34,13 @@ export function ClientPortalPreview({ data }: { data: PortalPreviewData }) {
   const [tab, setTab] = React.useState<ClientPortalPreviewTab>("planning");
 
   // Staff app may be in dark mode; couple portal is always a light surface.
-  // Hardcoding cream without re-pinning light tokens made text-heading /
-  // muted-foreground resolve to dark-theme white → illegible on cream.
+  // PUBLIC_FORM_LIGHT_VARS re-pins palette hexes so dark staff remaps of
+  // --natural-cream / --background cannot wash this preview into Forest Sage.
   const previewSurfaceStyle = {
     ...PUBLIC_FORM_LIGHT_VARS,
     color: "var(--foreground)",
     colorScheme: "light",
-    backgroundColor: "var(--natural-cream)",
+    backgroundColor: "var(--background)",
   } as React.CSSProperties;
 
   return (
