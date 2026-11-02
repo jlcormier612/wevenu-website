@@ -1,5 +1,5 @@
 /**
- * Staff light mode — Modern Botanical Luxury tokens (palette-exact mixes).
+ * Staff light mode — Contemporary Botanical (Stage 2B designer-directed).
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -8,24 +8,35 @@ import { describe, it } from "node:test";
 
 const css = readFileSync(resolve("app/globals.css"), "utf8");
 const staff = css.slice(css.indexOf(".htc-staff,"), css.indexOf("/* CRM dark remap"));
+const nav = readFileSync(resolve("components/shell/sidebar-nav.tsx"), "utf8");
 
-describe("staff light canvas — Modern Botanical Luxury", () => {
-  it("uses True White workspace, not a uniform sage page wash", () => {
-    assert.match(staff, /--background:\s*var\(--true-white\)/);
-    assert.match(staff, /--card:\s*var\(--true-white\)/);
-    assert.doesNotMatch(staff, /--background:\s*var\(--warm-gray\)/);
-    assert.doesNotMatch(staff, /--warm-gray:\s*color-mix\(in oklch, var\(--soft-sage\)/);
+describe("staff light canvas — Contemporary Botanical Stage 2B", () => {
+  it("implements the designer-specified HEX roles", () => {
+    assert.match(staff, /--primary:\s*#446b56/i);
+    assert.match(staff, /--accent:\s*#a7c2af/i);
+    assert.match(staff, /--destructive:\s*#d99a9e/i);
+    assert.match(staff, /--panel-blush:\s*#f7e9eb/i);
+    assert.match(staff, /--card:\s*#ffffff/i);
+    assert.match(staff, /--background:\s*#fafcfa/i);
+    assert.match(staff, /--foreground:\s*#24332b/i);
+    assert.match(staff, /--muted-foreground:\s*#5f6f68/i);
+    assert.match(staff, /--border:\s*#e3e7e4/i);
   });
 
-  it("uses Soft Sage only for supporting/selected surfaces", () => {
-    assert.match(staff, /--panel-sage:\s*color-mix\(in oklch, var\(--soft-sage\)/);
-    assert.match(staff, /--muted:\s*var\(--panel-sage\)/);
-    assert.match(staff, /--selected:\s*color-mix\(in oklch, var\(--soft-sage\)/);
+  it("uses a pure white sidebar — never blush or pale-green chrome", () => {
+    assert.match(staff, /--sidebar:\s*#ffffff/i);
+    assert.doesNotMatch(staff, /--sidebar:\s*color-mix\(in oklch, var\(--dusty-rose\)/);
+    assert.doesNotMatch(staff, /--sidebar:\s*#f7e9eb/i);
   });
 
-  it("separates the sidebar with a pale Dusty Rose wash", () => {
-    assert.match(staff, /--sidebar:\s*color-mix\(in oklch, var\(--dusty-rose\)/);
-    assert.match(staff, /--sidebar-accent:\s*color-mix\(in oklch, var\(--heritage-sage\)/);
+  it("keeps dark ink on refined blush (never white-on-blush)", () => {
+    assert.match(staff, /--destructive-foreground:\s*#24332b/i);
+  });
+
+  it("marks active nav with botanical indicator + eucalyptus wash", () => {
+    assert.match(nav, /before:bg-sidebar-primary/);
+    assert.match(nav, /text-sidebar-primary/);
+    assert.match(staff, /--sidebar-accent:\s*color-mix\(in oklch, #a7c2af/);
   });
 
   it("does not rewrite the dark staff remap block", () => {

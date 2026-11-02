@@ -87,11 +87,11 @@ export function SidebarNav({
               <div
                 key={item.id}
                 className={cn(
-                  "group/nav flex items-center gap-3 rounded-sm px-3 py-2.5 text-base tracking-wide transition-colors",
+                  "group/nav relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-base tracking-wide transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   "focus-within:outline-none focus-within:ring-2 focus-within:ring-sidebar-ring",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    ? "bg-sidebar-accent font-medium text-sidebar-primary before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-sidebar-primary"
                     : "text-sidebar-foreground",
                 )}
               >

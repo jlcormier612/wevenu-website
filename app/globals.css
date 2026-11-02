@@ -236,58 +236,68 @@ html:has(.htc-staff) {
   --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;
 
   /*
-   * Modern Botanical Luxury — Light Mode (staff only)
-   * Workspace: True White. Supporting: Soft Sage wash. Accent wash: Dusty Rose.
-   * All mixes stay on the founder-locked nine-swatch palette.
+   * Contemporary Botanical — staff Light Mode (Stage 2B designer-directed).
+   * Exact HEX from design authority. Dark remap below is untouched.
    */
-  --warm-gray: var(--true-white);
-  --natural-cream: color-mix(in oklch, var(--soft-sage) 14%, white);
-  --header-linen: var(--true-white);
-  --panel-blush: color-mix(in oklch, var(--dusty-rose) 10%, white);
-  --panel-sage: color-mix(in oklch, var(--soft-sage) 22%, white);
+  --htc-botanical: #446b56;
+  --htc-eucalyptus: #a7c2af;
+  --htc-blush: #d99a9e;
+  --htc-soft-blush: #f7e9eb;
+  --htc-workspace: #fafcfa;
 
-  --background: var(--true-white);
-  --foreground: var(--forest-sage);
-  --heading: var(--forest-sage);
-  --card: var(--true-white);
-  --card-foreground: var(--forest-sage);
-  --popover: var(--true-white);
-  --popover-foreground: var(--forest-sage);
-  --muted: var(--panel-sage);
-  --muted-foreground: color-mix(in oklch, var(--forest-sage) 88%, transparent);
-  --secondary: var(--true-white);
-  --secondary-foreground: var(--heritage-sage);
-  --border: color-mix(in oklch, var(--forest-sage) 16%, var(--taupe-light));
-  --input: color-mix(in oklch, var(--forest-sage) 12%, var(--taupe-light));
-  --primary: var(--heritage-sage);
-  --primary-foreground: var(--true-white);
-  --accent: var(--soft-sage);
-  --accent-foreground: var(--forest-sage);
+  --warm-gray: #fafcfa;
+  --natural-cream: #fafcfa;
+  --header-linen: #ffffff;
+  --panel-blush: #f7e9eb;
+  --panel-sage: color-mix(in oklch, #a7c2af 22%, white);
+
+  --background: #fafcfa;
+  --foreground: #24332b;
+  --heading: #24332b;
+  --card: #ffffff;
+  --card-foreground: #24332b;
+  --popover: #ffffff;
+  --popover-foreground: #24332b;
+  --muted: color-mix(in oklch, #a7c2af 18%, white);
+  --muted-foreground: #5f6f68;
+  --secondary: #ffffff;
+  --secondary-foreground: #446b56;
+  --border: #e3e7e4;
+  --input: #e3e7e4;
+  --primary: #446b56;
+  --primary-foreground: #ffffff;
+  --accent: #a7c2af;
+  --accent-foreground: #24332b;
+  --destructive: #d99a9e;
+  /* Dark ink on refined blush — white on #D99A9E fails WCAG AA. */
+  --destructive-foreground: #24332b;
+  --ring: #446b56;
 
   /* Sharper than portal’s 1rem soft radius — CRM panels use rounded-sm */
   --radius: 0.375rem;
 
-  /* Sidebar: very pale blush, clearly separated from the white workspace */
-  --sidebar: color-mix(in oklch, var(--dusty-rose) 8%, white);
-  --sidebar-foreground: var(--forest-sage);
-  --sidebar-primary: var(--heritage-sage);
-  --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--heritage-sage) 18%, white);
-  --sidebar-accent-foreground: var(--forest-sage);
-  --sidebar-border: color-mix(in oklch, var(--dusty-rose) 16%, var(--taupe-light));
-  --sidebar-ring: var(--heritage-sage);
+  /* Sidebar: pure white — never blush, beige, or pale-green chrome */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #24332b;
+  --sidebar-primary: #446b56;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in oklch, #a7c2af 28%, white);
+  --sidebar-accent-foreground: #446b56;
+  --sidebar-border: #e3e7e4;
+  --sidebar-ring: #446b56;
 
-  --selected: color-mix(in oklch, var(--soft-sage) 42%, white);
-  --selected-foreground: var(--forest-sage);
-  --selected-border: color-mix(in oklch, var(--heritage-sage) 40%, var(--soft-sage));
+  --selected: color-mix(in oklch, #a7c2af 32%, white);
+  --selected-foreground: #24332b;
+  --selected-border: #a7c2af;
 }
 
-/* Soft depth on staff cards — palette-tinted, not heavy chrome */
+/* Soft depth on staff cards — defined against workspace white */
 .htc-staff [data-slot="card"],
 html:has(.htc-staff) [data-slot="card"] {
+  border: 1px solid #e3e7e4;
   box-shadow:
-    0 1px 2px color-mix(in oklch, var(--forest-sage) 7%, transparent),
-    0 6px 18px color-mix(in oklch, var(--forest-sage) 5%, transparent);
+    0 1px 2px color-mix(in oklch, #24332b 6%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
 }
 
 /* CRM dark remap under staff scope (html.dark from next-themes) */
