@@ -1,10 +1,11 @@
 # Findings remediation — Wave A+ (email CTA, ceremony clarity, add-ons, Next Steps, floor setups)
 
-**Mode:** Commit + Sandbox migration/deploy **in flight** — browser exercise pending SHA match.  
+**Mode:** Migration APPLIED; redeploy in flight after venue-app typecheck fix + template streamline elevation.  
 **Branch:** `feat/spaces-booking-e1-smart-fields`  
-**Commit:** `41ed64641baf838e2e65ac715f129b3c9dfa2c8d`  
-**Migration run:** https://github.com/jlcormier612/wevenu-website/actions/runs/41530570343  
-**Deploy run:** https://github.com/jlcormier612/wevenu-website/actions/runs/41530574175  
+**Commit:** `72ea7a0c71d5a97cb9b3e4389831689078345eef`  
+**Migration run:** https://github.com/jlcormier612/wevenu-website/actions/runs/41530570343 — **success** (…273…progress_state + …274…budget_category_remove_custom)  
+**Prior deploy (failed typecheck):** https://github.com/jlcormier612/wevenu-website/actions/runs/41530574175 — venue-app `AddSectionResult.message` narrowing (fixed in this commit)  
+**Redeploy:** pending dispatch after push of `72ea7a0c…`  
 **No Production deploy from this work.** Unrelated dirty tree preserved.
 
 ## Decisions locked (product)
@@ -86,7 +87,7 @@
 
 - Catalog-first defaults / write-in demotion (elevation item 5 — deferred)
 - Full builder spine reorder / second builder
-- Sandbox DB apply for migrations `…273…progress_state` and `…274…budget_category_remove_custom` (deploy may already be in flight from prior authorize)
+- Browser exercise / STATUS GREEN until Sandbox serves `72ea7a0c…`
 
 ## Migration note
 

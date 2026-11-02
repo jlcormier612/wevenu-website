@@ -1,6 +1,6 @@
 /**
  * Sandbox exercise: portal docs viewer, timeline couple-add, budget soft-remove/custom,
- * floor Ceremony+Reception defaults. Run only after deploy SHA matches 41ed6464…
+ * floor Ceremony+Reception defaults. Run only after deploy SHA matches 72ea7a0c…
  *
  *   npx tsx docs/qa/staff-light-canvas/findings-wave-a-status/verify-sandbox.mts
  */
@@ -10,7 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
 
 const APP = process.env.HTC_APP_URL ?? "https://app.sandbox.hellotocheers.com";
-const EXPECT_SHA = process.env.EXPECT_SHA ?? "41ed64641baf838e2e65ac715f129b3c9dfa2c8d";
+const EXPECT_SHA = process.env.EXPECT_SHA ?? "72ea7a0c71d5a97cb9b3e4389831689078345eef";
 const OUT = join(process.cwd(), "docs/qa/staff-light-canvas/findings-wave-a-status");
 mkdirSync(OUT, { recursive: true });
 
