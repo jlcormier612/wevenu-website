@@ -118,9 +118,10 @@ describe("EO choice logic — parent / group / option model", () => {
     assert.doesNotMatch(panel, /New selection group name/);
     assert.doesNotMatch(panel, /How many from this group\?/);
     assert.doesNotMatch(panel, /Add another selection group under/);
-    assert.match(panel, /How many options may they choose\?/);
-    assert.match(panel, /Required \(exactly this many\)/);
+    assert.match(panel, /SelectionRuleControls/);
+    assert.match(panel, /Couples must choose/);
     assert.match(panel, /2 of Arch, Runner, Petals/);
+    assert.match(panel, /eo-choice-path-preview/);
     assert.match(panel, /eo-parent-dependent-groups-/);
   });
 

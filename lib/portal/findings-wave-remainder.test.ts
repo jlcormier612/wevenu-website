@@ -88,4 +88,33 @@ describe("EO template streamline + workflow chrome", () => {
     assert.match(read("components/event-order-templates/event-order-template-detail.tsx"), /TemplateWorkflowChrome/);
     assert.match(read("app/(app)/library/event-order-templates/[id]/preview/page.tsx"), /current="preview"/);
   });
+
+  it("elevation slices: collapse, path-preview, split Use/Send, unified rule, couple summary", () => {
+    const wizard = read("components/event-order-templates/guided-setup-wizard.tsx");
+    assert.match(wizard, /sectionBuilderHealthChip/);
+    assert.match(wizard, /eo-guided-section-toggle-/);
+    assert.match(wizard, /Advanced — Specialist selection rules/);
+
+    const panel = read("components/event-order-templates/package-choices-panel.tsx");
+    assert.match(panel, /SelectionRuleControls/);
+    assert.match(panel, /pathPreviewOptionId/);
+    assert.match(panel, /eo-choice-path-preview/);
+    assert.match(panel, /Couples must choose/);
+
+    const list = read("components/event-order-templates/event-order-template-list.tsx");
+    assert.match(list, /"pick" \| "lines" \| "choices"/);
+    assert.match(list, /event-order-use-lines-step/);
+    assert.match(list, /event-order-use-choices-step/);
+    assert.match(list, /event-order-use-continue-choices/);
+
+    const controls = read("components/event-order-templates/selection-rule-controls.tsx");
+    assert.match(controls, /Couples must choose/);
+    assert.match(controls, /eo-choice-count-preset|ids\.preset/);
+
+    const doc = read("components/event-orders/event-order-document-view.tsx");
+    assert.match(doc, /buildCoupleApproveSummary/);
+    assert.match(doc, /order-approve-summary/);
+    assert.match(doc, /What&apos;s included|What's included/);
+    assert.match(doc, /What you choose/);
+  });
 });

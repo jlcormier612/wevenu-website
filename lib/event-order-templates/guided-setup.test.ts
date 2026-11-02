@@ -613,16 +613,102 @@ describe("guided setup — review summary", () => {
     });
     assert.equal(
       plainSelectionRuleLabel({ selectionMode: "multi", minSelect: 3, maxSelect: 3 }),
-      "Choose 3",
+      "Choose exactly 3",
     );
     assert.equal(
       plainSelectionRuleLabel({ selectionMode: "single", minSelect: 1, maxSelect: 1 }),
-      "Choose 1",
+      "Choose exactly 1",
     );
     assert.equal(
       plainSelectionRuleLabel({ selectionMode: "multi", minSelect: 0, maxSelect: 2 }),
       "Optional — choose exactly 2 or skip",
     );
+  });
+
+  it("sectionBuilderHealthChip summarizes included, choice groups, and staff add-ons", async () => {
+    const { sectionBuilderHealthChip } = await import("@/lib/event-order-templates/guided-setup");
+    const empty = sectionBuilderHealthChip(
+      {
+        id: "t",
+        venueId: "v",
+        name: "T",
+        description: null,
+        sourceMasterKey: null,
+        isArchived: false,
+        createdAt: "",
+        updatedAt: "",
+        sections: [{ id: "s1", templateId: "t", name: "Catering", sortOrder: 0, floorPlanTemplateId: null }],
+        lines: [],
+        groups: [],
+        options: [],
+      } as never,
+      "s1",
+    );
+    assert.match(empty, /Empty/);
+
+    const filled = sectionBuilderHealthChip(
+      {
+        id: "t",
+        venueId: "v",
+        name: "T",
+        description: null,
+        sourceMasterKey: null,
+        isArchived: false,
+        createdAt: "",
+        updatedAt: "",
+        sections: [{ id: "s1", templateId: "t", name: "Catering", sortOrder: 0, floorPlanTemplateId: null }],
+        lines: [
+          {
+            id: "l1",
+            templateId: "t",
+            sectionId: "s1",
+            offeringId: null,
+            description: "Coordinator",
+            descriptionDetail: null,
+            quantity: 1,
+            unitPrice: null,
+            unit: null,
+            pricingModel: null,
+            includedByDefault: true,
+            sortOrder: 0,
+          },
+          {
+            id: "l2",
+            templateId: "t",
+            sectionId: "s1",
+            offeringId: null,
+            description: "Extra hour",
+            descriptionDetail: null,
+            quantity: 1,
+            unitPrice: 100,
+            unit: null,
+            pricingModel: null,
+            includedByDefault: false,
+            sortOrder: 1,
+          },
+        ],
+        groups: [
+          {
+            id: "g1",
+            templateId: "t",
+            sectionId: "s1",
+            name: "Dinner",
+            instructions: null,
+            selectionMode: "single",
+            minSelect: 1,
+            maxSelect: 1,
+            sortOrder: 0,
+            dependsOnOptionIds: [],
+            offeringChoiceGroupId: null,
+          },
+        ],
+        options: [],
+      } as never,
+      "s1",
+    );
+    assert.match(filled, /1 included/);
+    assert.match(filled, /1 choice group/);
+    assert.match(filled, /1 staff add-on/);
   });
 
   it("parseCoupleSelectCount rejects blank and non-integers", async () => {

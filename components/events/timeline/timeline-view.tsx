@@ -1126,11 +1126,11 @@ export function TimelineView({
               onClick={() => {
                 startSectionAdd(async () => {
                   const result = await ensureCoupleAdditionsSectionAction(eventId);
-                  if (result.ok && result.section) {
+                  if (result.ok) {
                     setSections((p) => (
-                      p.some((s) => s.id === result.section!.id)
-                        ? p.map((s) => (s.id === result.section!.id ? result.section! : s))
-                        : [...p, result.section!]
+                      p.some((s) => s.id === result.section.id)
+                        ? p.map((s) => (s.id === result.section.id ? result.section : s))
+                        : [...p, result.section]
                     ));
                     toast.success("Couples can add items under “Your additions”.");
                   } else {

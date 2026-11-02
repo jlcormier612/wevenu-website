@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -24,6 +24,7 @@ import {
   SUGGESTED_CATEGORIES,
   buildReviewSummary,
   canonicalSectionNameForSuggested,
+  sectionBuilderHealthChip,
   selectedCategoryKeysFromTemplate,
 } from "@/lib/event-order-templates/guided-setup";
 import { formatTemplateOfferingPrice, linesForSection } from "@/lib/event-order-templates/offerings";
@@ -63,12 +64,63 @@ export function GuidedSetupWizard({
   const [editorPending, startEditor] = React.useTransition();
   const [addingSection, setAddingSection] = React.useState(template.sections.length === 0);
   const [customDraft, setCustomDraft] = React.useState("");
+  /** Collapsed by default; incomplete sections (and checklist anchors) open on demand. */
+  const [expandedSectionIds, setExpandedSectionIds] = React.useState<Set<string>>(() => new Set());
 
   const sectionsOrdered = [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   const existing = selectedCategoryKeysFromTemplate(template.sections);
   const remainingSuggested = SUGGESTED_CATEGORIES.filter((c) => !existing.suggested.includes(c.key));
   const review = buildReviewSummary(template);
   const warningsBySection = new Map(review.map((r) => [r.sectionId, r.incompleteMessages]));
+
+  const incompleteSectionKey = review
+    .filter((r) => r.incompleteMessages.length > 0)
+    .map((r) => r.sectionId)
+    .sort()
+    .join(",");
+
+  React.useEffect(() => {
+    if (!incompleteSectionKey) return;
+    const incompleteIds = incompleteSectionKey.split(",");
+    setExpandedSectionIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of incompleteIds) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [incompleteSectionKey]);
+
+  React.useEffect(() => {
+    function expandFromHash() {
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const match = /^#eo-guided-configure-(.+)$/.exec(hash);
+      if (!match?.[1]) return;
+      const sectionId = match[1];
+      setExpandedSectionIds((prev) => {
+        if (prev.has(sectionId)) return prev;
+        const next = new Set(prev);
+        next.add(sectionId);
+        return next;
+      });
+    }
+    expandFromHash();
+    window.addEventListener("hashchange", expandFromHash);
+    return () => window.removeEventListener("hashchange", expandFromHash);
+  }, []);
+
+  function toggleSection(sectionId: string) {
+    setExpandedSectionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  }
 
   function openPackageCategories() {
     setCustomDraft("");
@@ -182,20 +234,44 @@ export function GuidedSetupWizard({
           const included = lines.filter((l) => l.includedByDefault);
           const addOns = lines.filter((l) => !l.includedByDefault);
           const warnings = warningsBySection.get(section.id) ?? [];
+          const expanded = expandedSectionIds.has(section.id);
+          const health = sectionBuilderHealthChip(template, section.id);
           return (
             <section
               key={section.id}
               id={`eo-guided-configure-${section.id}`}
-              className="rounded-lg border border-border p-4 space-y-5 scroll-mt-28"
+              className="rounded-lg border border-border p-4 space-y-3 scroll-mt-28"
               data-testid={`eo-guided-configure-${section.id}`}
+              data-section-expanded={expanded ? "true" : "false"}
             >
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="font-heading text-lg text-heading">{section.name}</h2>
+              <div className="flex items-start justify-between gap-2">
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                  aria-expanded={expanded}
+                  data-testid={`eo-guided-section-toggle-${section.id}`}
+                  onClick={() => toggleSection(section.id)}
+                >
+                  {expanded ? (
+                    <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  ) : (
+                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  )}
+                  <span className="min-w-0">
+                    <span className="font-heading text-lg text-heading block">{section.name}</span>
+                    <span
+                      className="mt-0.5 block text-xs text-muted-foreground"
+                      data-testid={`eo-guided-section-health-${section.id}`}
+                    >
+                      {health}
+                    </span>
+                  </span>
+                </button>
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="text-muted-foreground hover:text-destructive"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
                   disabled={pending}
                   aria-label={`Remove ${section.name}`}
                   data-testid={`eo-guided-remove-section-${section.id}`}
@@ -204,48 +280,57 @@ export function GuidedSetupWizard({
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              {warnings.map((m) => (
-                <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">{m}</p>
-              ))}
-              <SectionFloorPlanDefault templateId={template.id} section={section} onPersist={onPersist} />
+              {!expanded && warnings.length > 0 ? (
+                <p className="pl-6 text-xs text-amber-800" data-testid="eo-guided-review-warning-collapsed">
+                  {warnings.length} item{warnings.length === 1 ? "" : "s"} to finish — expand to edit
+                </p>
+              ) : null}
+              {expanded ? (
+                <div className="space-y-5 pl-0 sm:pl-6" data-testid={`eo-guided-section-body-${section.id}`}>
+                  {warnings.map((m) => (
+                    <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">{m}</p>
+                  ))}
+                  <SectionFloorPlanDefault templateId={template.id} section={section} onPersist={onPersist} />
 
-              <TemplateLinesBlock
-                title="Included"
-                hint="Always on the package, covered by the package price."
-                testId={`eo-guided-step-fixed-${section.id}`}
-                addTestId={`eo-add-offering-${section.id}`}
-                addLabel="Add included item"
-                lines={included}
-                onAdd={() => setEditor({ section, line: null, defaultIncluded: true })}
-                onEdit={(line) => setEditor({ section, line, defaultIncluded: true })}
-                onRemove={removeLine}
-              />
+                  <TemplateLinesBlock
+                    title="Included"
+                    hint="Always on the package, covered by the package price."
+                    testId={`eo-guided-step-fixed-${section.id}`}
+                    addTestId={`eo-add-offering-${section.id}`}
+                    addLabel="Add included item"
+                    lines={included}
+                    onAdd={() => setEditor({ section, line: null, defaultIncluded: true })}
+                    onEdit={(line) => setEditor({ section, line, defaultIncluded: true })}
+                    onRemove={removeLine}
+                  />
 
-              <div className="space-y-2" data-testid={`eo-guided-step-choices-${section.id}`}>
-                <h3 className="text-sm font-semibold text-heading">Couple chooses</h3>
-                <PackageChoicesPanel
-                  template={template}
-                  catalogOfferings={catalogOfferings}
-                  catalogChoiceGroups={catalogChoiceGroups}
-                  sectionId={section.id}
-                  sectionName={section.name}
-                  onPersist={onPersist}
-                />
-              </div>
+                  <div className="space-y-2" data-testid={`eo-guided-step-choices-${section.id}`}>
+                    <h3 className="text-sm font-semibold text-heading">Couple chooses</h3>
+                    <PackageChoicesPanel
+                      template={template}
+                      catalogOfferings={catalogOfferings}
+                      catalogChoiceGroups={catalogChoiceGroups}
+                      sectionId={section.id}
+                      sectionName={section.name}
+                      onPersist={onPersist}
+                    />
+                  </div>
 
-              <TemplateLinesBlock
-                title="Add-ons"
-                hint="Staff-only extras billed on top of the package — toggled when you apply the template. For couple-facing extras (Champagne toast, signature cocktail), use Couple chooses → Add optional add-ons group instead."
-                testId={`eo-guided-step-addons-${section.id}`}
-                addTestId={`eo-add-addon-${section.id}`}
-                addLabel="Add add-on"
-                lines={addOns}
-                onAdd={() => setEditor({ section, line: null, defaultIncluded: false })}
-                onEdit={(line) => setEditor({ section, line, defaultIncluded: false })}
-                onRemove={removeLine}
-              />
+                  <TemplateLinesBlock
+                    title="Add-ons"
+                    hint="Staff-only extras billed on top of the package — toggled when you apply the template. For couple-facing extras (Champagne toast, signature cocktail), use Couple chooses → Add optional add-ons group instead."
+                    testId={`eo-guided-step-addons-${section.id}`}
+                    addTestId={`eo-add-addon-${section.id}`}
+                    addLabel="Add add-on"
+                    lines={addOns}
+                    onAdd={() => setEditor({ section, line: null, defaultIncluded: false })}
+                    onEdit={(line) => setEditor({ section, line, defaultIncluded: false })}
+                    onRemove={removeLine}
+                  />
 
-              <SpecialistRules template={template} sectionId={section.id} catalogOfferings={catalogOfferings} onPersist={onPersist} />
+                  <SpecialistRules template={template} sectionId={section.id} catalogOfferings={catalogOfferings} onPersist={onPersist} />
+                </div>
+              ) : null}
             </section>
           );
         })}
@@ -357,7 +442,9 @@ function SpecialistRules({
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Specialist selection rules</summary>
+      <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+        Advanced — Specialist selection rules
+      </summary>
       {open ? (
         <div className="mt-3">
           <EventOrderTemplateChoiceGroups

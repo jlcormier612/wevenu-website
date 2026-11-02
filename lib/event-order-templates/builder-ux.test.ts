@@ -118,9 +118,11 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.match(wizard, /Add optional add-ons group/);
     assert.match(panel, /eo-couple-choice-offering-select/);
     assert.match(panel, /categories the couple picks from/);
-    assert.match(panel, /How many options may they choose\?/);
-    assert.match(panel, /Required \(exactly this many\)/);
+    assert.match(panel, /SelectionRuleControls/);
+    assert.match(panel, /Couples must choose/);
     assert.match(panel, /arch \/ runner/);
+    assert.match(panel, /Try this path|Try a couple path/);
+    assert.match(panel, /eo-choice-path-preview/);
     assert.match(panel, /eo-add-optional-addons-group/);
     assert.match(panel, /optional add-ons/);
     assert.match(panel, /Add write-in option/);
@@ -139,6 +141,19 @@ describe("EO template builder — guided setup UX seams", () => {
     assert.doesNotMatch(wizard, /Included in \{activeSection\.name\}/);
     assert.doesNotMatch(panel, /Add a primary question/);
     assert.doesNotMatch(panel, /follow-up question/i);
+  });
+
+  it("guided sections collapse by default with health chips; specialist rules stay under Advanced", () => {
+    const wizard = readFileSync(
+      join(root, "components/event-order-templates/guided-setup-wizard.tsx"),
+      "utf8",
+    );
+    assert.match(wizard, /sectionBuilderHealthChip/);
+    assert.match(wizard, /eo-guided-section-toggle-/);
+    assert.match(wizard, /eo-guided-section-health-/);
+    assert.match(wizard, /data-section-expanded/);
+    assert.match(wizard, /expandedSectionIds/);
+    assert.match(wizard, /Advanced — Specialist selection rules/);
   });
 
   it("preview validates under-selection with the shared choices validator", () => {

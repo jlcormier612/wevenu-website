@@ -24,6 +24,7 @@ import {
   eventOrderPortalAdditionalReferenceTotal,
   eventOrderPortalLineMoneyLabel,
 } from "@/lib/client-portal/event-order-portal-display";
+import { buildCoupleApproveSummary } from "@/lib/event-orders/couple-approve-summary";
 import type { CoupleDocumentView } from "@/lib/event-orders/couple-document";
 import { matchChoiceGroupsToSections } from "@/lib/event-orders/document-view";
 import {
@@ -89,6 +90,14 @@ export function EventOrderDocumentView({
     ? "Your venue is updating this Event Order. You'll get a new link when it's ready."
     : !validation.ok
       ? validation.message ?? "Finish your choices to approve."
+      : null;
+  const approveSummary =
+    !doc.approved && !doc.updating
+      ? buildCoupleApproveSummary({
+          lines: doc.lines,
+          definition: definition ?? null,
+          answers,
+        })
       : null;
 
   function toggle(group: ChoicesDefinitionGroup, optionId: string) {
@@ -291,6 +300,47 @@ export function EventOrderDocumentView({
 
       {!doc.approved ? (
         <div className="mt-6">
+          {approveSummary && (approveSummary.included.length > 0 || approveSummary.choices.length > 0) ? (
+            <section
+              className="mb-4 space-y-3 rounded-lg border px-4 py-3 text-sm"
+              style={{ borderColor: "var(--venue-primary)", backgroundColor: "var(--venue-card)" }}
+              data-testid="order-approve-summary"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Before you approve
+              </p>
+              {approveSummary.included.length > 0 ? (
+                <div data-testid="order-approve-summary-included">
+                  <p className="font-medium text-heading">What&apos;s included</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
+                    {approveSummary.included.slice(0, 8).map((l) => (
+                      <li key={l.id}>{l.description}</li>
+                    ))}
+                    {approveSummary.included.length > 8 ? (
+                      <li>+{approveSummary.included.length - 8} more</li>
+                    ) : null}
+                  </ul>
+                </div>
+              ) : null}
+              {approveSummary.choices.length > 0 ? (
+                <div data-testid="order-approve-summary-choices">
+                  <p className="font-medium text-heading">What you choose</p>
+                  <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {approveSummary.choices.map((c) => (
+                      <li key={c.groupId}>
+                        <span className="font-medium text-heading">{c.groupName}:</span>{" "}
+                        {c.optionLabels.join(", ")}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : canPick ? (
+                <p className="text-xs text-muted-foreground" data-testid="order-approve-summary-choices-empty">
+                  Make your choices above — they&apos;ll appear here before you approve.
+                </p>
+              ) : null}
+            </section>
+          ) : null}
           {limitMessage ? <p className="mb-2 text-sm text-destructive" role="alert">{limitMessage}</p> : null}
           <Button
             type="button"

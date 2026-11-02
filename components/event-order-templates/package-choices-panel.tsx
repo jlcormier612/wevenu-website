@@ -14,6 +14,7 @@ import {
 } from "@/app/(app)/library/event-order-templates/actions";
 import { createOfferingChoiceGroupAction } from "@/app/(app)/library/offerings/actions";
 import { CategorizedOfferingSelect } from "@/components/event-order-templates/categorized-offering-select";
+import { SelectionRuleControls } from "@/components/event-order-templates/selection-rule-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -367,12 +368,14 @@ export function PackageChoicesPanel({
   return (
     <div className="space-y-6" data-testid="eo-package-choices-panel">
       <p className="text-xs text-muted-foreground">
-        Offerings the couple picks between, and how many they must choose. Set the count
+        Offerings the couple picks between, and how many they must choose. Use{" "}
+        <span className="font-medium text-heading">Couples must choose</span> with presets
         (for example <span className="font-medium text-heading">2</span> for arch / runner /
-        petals) and use Required for exactly that many, or leave Required unchecked for up
+        petals) and Required for exactly that many, or leave Required unchecked for up
         to that many or skip. Keep primary packages in one choice set; put Champagne toast–
         style extras in a separate <span className="font-medium text-heading">optional add-ons</span>{" "}
-        set so they can be selected together with a package.
+        set so they can be selected together with a package. When a choice has follow-ups,
+        use <span className="font-medium text-heading">Try this path</span> to open only that branch.
       </p>
 
       {choiceSets.length === 0 ? (
@@ -525,6 +528,8 @@ function ChoiceSetCard({
   const [selectCount, setSelectCount] = React.useState(() => countDraftFromGroup(set.group));
   const [required, setRequired] = React.useState(set.group.minSelect > 0);
   const [countError, setCountError] = React.useState<string | null>(null);
+  /** Path-preview: only one parent option's follow-ups fully open at a time. */
+  const [pathPreviewOptionId, setPathPreviewOptionId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setInstructionsDraft(set.group.instructions ?? "");
@@ -536,6 +541,10 @@ function ChoiceSetCard({
   const sectionName =
     template.sections.find((s) => s.id === set.group.sectionId)?.name ?? "Package";
   const impossible = impossibleSelectionGroupMessage(set.group, set.options.length);
+  const optionsWithDependents = set.options.filter((opt) => {
+    const view = parentChoiceView(opt, catalogOfferings, template.groups, template.options);
+    return view.dependentGroups.length > 0;
+  });
 
   function commitCount(nextCount: string, nextRequired: boolean) {
     const err = onSaveGroup(set.group, {
@@ -590,62 +599,69 @@ function ChoiceSetCard({
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3" data-testid={`eo-choice-set-rules-${setIndex}`}>
-        <div className="space-y-1">
-          <Label htmlFor={`eo-count-${set.group.id}`} className="text-xs text-muted-foreground">
-            How many options may they choose?
-          </Label>
-          <Input
-            id={`eo-count-${set.group.id}`}
-            className="w-20"
-            inputMode="numeric"
-            value={selectCount}
-            disabled={pending}
-            data-testid={`eo-choice-select-count-${setIndex}`}
-            onChange={(e) => {
-              setSelectCount(e.target.value);
-              setCountError(null);
-            }}
-            onBlur={() => commitCount(selectCount, required)}
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={required}
-            disabled={pending}
-            data-testid={`eo-choice-required-${setIndex}`}
-            onChange={(e) => {
-              setRequired(e.target.checked);
-              commitCount(selectCount, e.target.checked);
-            }}
-          />
-          Required (exactly this many)
-        </label>
+      <SelectionRuleControls
+        group={set.group}
+        selectCount={selectCount}
+        required={required}
+        pending={pending}
+        countError={countError}
+        exampleHint="2 of Arch, Runner, Petals"
+        ids={{
+          rules: `eo-choice-set-rules-${setIndex}`,
+          count: `eo-choice-select-count-${setIndex}`,
+          required: `eo-choice-required-${setIndex}`,
+          hint: `eo-choice-set-rule-hint-${setIndex}`,
+          preset: (n) => `eo-choice-count-preset-${setIndex}-${n}`,
+        }}
+        onSelectCountChange={(raw) => {
+          setSelectCount(raw);
+          setCountError(null);
+        }}
+        onRequiredChange={setRequired}
+        onCommit={commitCount}
+      />
+      {impossible ? (
         <p
-          className="w-full text-xs text-muted-foreground"
-          data-testid={`eo-choice-set-rule-hint-${setIndex}`}
+          className="text-xs text-destructive"
+          role="alert"
+          data-testid={`eo-choice-set-impossible-${setIndex}`}
         >
-          {required
-            ? `Required — couple must choose exactly ${selectCount || "N"} (e.g. 2 of Arch, Runner, Petals).`
-            : `Optional — choose up to ${selectCount || "N"}, or skip.`}{" "}
-          Live rule: {plainSelectionRuleLabel(set.group)}.
+          {impossible}
         </p>
-        {countError ? (
-          <p className="w-full text-xs text-destructive" role="alert">
-            {countError}
+      ) : null}
+
+      {optionsWithDependents.length > 0 ? (
+        <div
+          className="space-y-2 rounded-md border border-dashed border-border bg-muted/20 px-3 py-2"
+          data-testid={`eo-choice-path-preview-${setIndex}`}
+        >
+          <p className="text-xs font-medium text-heading">Try a couple path to edit follow-ups</p>
+          <p className="text-xs text-muted-foreground">
+            Only the selected path&apos;s categories stay open — other branches stay collapsed.
           </p>
-        ) : null}
-        {impossible ? (
-          <p
-            className="w-full text-xs text-destructive"
-            role="alert"
-            data-testid={`eo-choice-set-impossible-${setIndex}`}
-          >
-            {impossible}
-          </p>
-        ) : null}
-      </div>
+          <div className="flex flex-wrap gap-2">
+            {optionsWithDependents.map((opt) => {
+              const active = pathPreviewOptionId === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  disabled={pending}
+                  data-testid={`eo-choice-path-preview-option-${opt.id}`}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background text-foreground hover:bg-muted"
+                  }`}
+                  onClick={() => setPathPreviewOptionId(active ? null : opt.id)}
+                >
+                  {active ? `Editing: ${opt.label}` : `Try ${opt.label}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <ul className="space-y-4" data-testid={`eo-choice-set-options-${setIndex}`}>
         {set.options.map((opt) => {
@@ -655,11 +671,14 @@ function ChoiceSetCard({
             template.groups,
             template.options,
           );
+          const hasDependents = view.dependentGroups.length > 0;
+          const pathOpen = !hasDependents || pathPreviewOptionId === opt.id;
           return (
             <li
               key={opt.id}
               className="rounded-md border border-border/80 bg-muted/20 p-3"
               data-testid={`eo-choice-option-${opt.id}`}
+              data-path-preview={hasDependents ? (pathOpen ? "open" : "collapsed") : "none"}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex min-w-0 items-start gap-3">
@@ -694,21 +713,33 @@ function ChoiceSetCard({
                 </Button>
               </div>
 
-              <DependentGroupsUnderParent
-                parentOption={opt}
-                dependentGroups={view.dependentGroups}
-                template={template}
-                catalogOfferings={catalogOfferings}
-                catalogChoiceGroups={catalogChoiceGroups}
-                pending={pending}
-                onSaveGroup={onSaveGroup}
-                onIncludeCatalogGroup={onIncludeCatalogGroup}
-                onCreateCategory={onCreateCategory}
-                onRemoveChildGroup={onRemoveChildGroup}
-                onRemoveOption={onRemoveOption}
-                onAddCatalogOption={onAddCatalogOption}
-                onAddWriteIn={onAddWriteIn}
-              />
+              {hasDependents && !pathOpen ? (
+                <button
+                  type="button"
+                  className="mt-3 w-full rounded-md border border-dashed border-border bg-background px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted/40"
+                  data-testid={`eo-choice-path-collapsed-${opt.id}`}
+                  onClick={() => setPathPreviewOptionId(opt.id)}
+                >
+                  {view.dependentGroups.length} follow-up categor
+                  {view.dependentGroups.length === 1 ? "y" : "ies"} — try this path to edit
+                </button>
+              ) : (
+                <DependentGroupsUnderParent
+                  parentOption={opt}
+                  dependentGroups={view.dependentGroups}
+                  template={template}
+                  catalogOfferings={catalogOfferings}
+                  catalogChoiceGroups={catalogChoiceGroups}
+                  pending={pending}
+                  onSaveGroup={onSaveGroup}
+                  onIncludeCatalogGroup={onIncludeCatalogGroup}
+                  onCreateCategory={onCreateCategory}
+                  onRemoveChildGroup={onRemoveChildGroup}
+                  onRemoveOption={onRemoveOption}
+                  onAddCatalogOption={onAddCatalogOption}
+                  onAddWriteIn={onAddWriteIn}
+                />
+              )}
             </li>
           );
         })}
@@ -1087,52 +1118,26 @@ function ChildGroupEditor({
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">
-            How many options may they choose?
-          </Label>
-          <Input
-            className="w-20"
-            inputMode="numeric"
-            value={count}
-            disabled={pending}
-            data-testid={`eo-child-select-count-${group.id}`}
-            onChange={(e) => {
-              setCount(e.target.value);
-              setCountError(null);
-            }}
-            onBlur={() => commitCount(count, required)}
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={required}
-            disabled={pending}
-            data-testid={`eo-child-required-${group.id}`}
-            onChange={(e) => {
-              setRequired(e.target.checked);
-              commitCount(count, e.target.checked);
-            }}
-          />
-          Required (exactly this many)
-        </label>
-        <p
-          className="w-full text-xs text-muted-foreground"
-          data-testid={`eo-child-rule-hint-${group.id}`}
-        >
-          {required
-            ? `Required — exactly ${count || "N"}.`
-            : `Optional — up to ${count || "N"}, or skip.`}{" "}
-          Live rule: {plainSelectionRuleLabel(group)}.
-        </p>
-      </div>
-      {countError ? (
-        <p className="text-xs text-destructive" role="alert">
-          {countError}
-        </p>
-      ) : null}
+      <SelectionRuleControls
+        group={group}
+        selectCount={count}
+        required={required}
+        pending={pending}
+        countError={countError}
+        ids={{
+          rules: `eo-child-group-rule-controls-${group.id}`,
+          count: `eo-child-select-count-${group.id}`,
+          required: `eo-child-required-${group.id}`,
+          hint: `eo-child-rule-hint-${group.id}`,
+          preset: (n) => `eo-child-count-preset-${group.id}-${n}`,
+        }}
+        onSelectCountChange={(raw) => {
+          setCount(raw);
+          setCountError(null);
+        }}
+        onRequiredChange={setRequired}
+        onCommit={commitCount}
+      />
       {impossible ? (
         <p
           className="text-xs text-destructive"

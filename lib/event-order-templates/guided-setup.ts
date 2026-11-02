@@ -643,11 +643,11 @@ export function plainSelectionRuleLabel(
   g: Pick<EventOrderTemplateGroup, "selectionMode" | "minSelect" | "maxSelect">,
 ): string {
   if (g.selectionMode === "single") {
-    if (g.minSelect > 0) return "Choose 1";
+    if (g.minSelect > 0) return "Choose exactly 1";
     return "Optional — choose 1 or skip";
   }
   if (g.minSelect > 0 && g.maxSelect != null && g.minSelect === g.maxSelect) {
-    return `Choose ${g.minSelect}`;
+    return `Choose exactly ${g.minSelect}`;
   }
   if (g.minSelect > 0 && g.maxSelect != null) {
     return `Choose ${g.minSelect}–${g.maxSelect}`;
@@ -662,6 +662,27 @@ export function plainSelectionRuleLabel(
     return `Optional — choose exactly ${g.maxSelect} or skip`;
   }
   return "Optional — choose any";
+}
+
+/** One-line health chip for a collapsed section header. */
+export function sectionBuilderHealthChip(
+  template: EventOrderTemplateWithDetails,
+  sectionId: string,
+): string {
+  const lines = linesForSection(template.lines, sectionId);
+  const included = lines.filter((l) => l.includedByDefault).length;
+  const staffAddOns = lines.filter((l) => !l.includedByDefault).length;
+  const roots = rootGroupsInList(groupsForSection(template.groups, sectionId));
+  const parts: string[] = [];
+  if (included > 0) parts.push(`${included} included`);
+  if (roots.length > 0) {
+    parts.push(
+      roots.length === 1 ? "1 choice group" : `${roots.length} choice groups`,
+    );
+  }
+  if (staffAddOns > 0) parts.push(`${staffAddOns} staff add-on${staffAddOns === 1 ? "" : "s"}`);
+  if (parts.length === 0) return "Empty — add included items or couple choices";
+  return parts.join(" · ");
 }
 
 /**

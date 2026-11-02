@@ -138,7 +138,7 @@ function StarterMenu({ missingKeys }: { missingKeys: EventOrderStarterMasterKey[
 
 export type EventOrderEventOption = { id: string; name: string; eventDate: string };
 
-type UseStep = "pick" | "confirm";
+type UseStep = "pick" | "lines" | "choices";
 
 function UseOrSendEventOrderSheet({
   template,
@@ -177,7 +177,7 @@ function UseOrSendEventOrderSheet({
   function pickEvent(ev: TemplateApplyEventTarget) {
     if (!template) return;
     setSelected(ev);
-    setStep("confirm");
+    setStep("lines");
     startLoading(async () => {
       const loaded = await getEventOrderTemplateDetailAction(template.id);
       setDetail(loaded);
@@ -261,11 +261,21 @@ function UseOrSendEventOrderSheet({
   }
 
   const title = mode === "send" ? LIBRARY_LABELS.sendToClient : "Use Template";
+  const hasChoiceGroups = Boolean(detail && templateHasSelectableGroups(detail));
   const confirmCta = sendBlockedNoGroups
     ? (pending ? "Applying…" : "Apply to event instead")
     : mode === "send"
       ? (pending ? "Sending…" : "Send to client")
       : (pending ? "Applying…" : "Apply to event");
+
+  function linesContinue() {
+    if (!detail) return;
+    if (hasChoiceGroups && !sendBlockedNoGroups) {
+      setStep("choices");
+      return;
+    }
+    requestApply();
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -278,13 +288,17 @@ function UseOrSendEventOrderSheet({
                 ? <>Choose a client event to send &ldquo;{template?.name}&rdquo; for client selections (requires choice groups).</>
                 : <>Choose a client. This starts that booking&apos;s Event Order from &ldquo;{template?.name}&rdquo;.</>}
             </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
+          ) : step === "lines" ? (
+            <p className="text-sm text-muted-foreground" data-testid="event-order-use-lines-copy">
               {sendBlockedNoGroups
-                ? "This template has fixed offerings only — nothing for the client to select. Apply it to the Event Order, then Finalize and Share from the event."
-                : mode === "send"
-                  ? "Fixed offerings apply now. Choice groups go to the client for selection — you finalize into the Event Order after they submit."
-                  : "Choose fixed offerings and fill any choice groups. This applies on the venue side — no client round-trip."}
+                ? "This template has fixed offerings only — nothing for the client to select. Confirm included items and staff add-ons, then apply."
+                : "Step 1 of 2 — confirm included items and staff add-ons. Couple choice groups come next."}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground" data-testid="event-order-use-choices-copy">
+              {mode === "send"
+                ? "Step 2 of 2 — choice groups go to the client for selection. Confirm the packet, then send."
+                : "Step 2 of 2 — fill couple choice groups on the venue side. No client round-trip."}
             </p>
           )}
         </SheetHeader>
@@ -306,28 +320,31 @@ function UseOrSendEventOrderSheet({
                 <p><span className="text-muted-foreground">Event</span> · {selected.name} · {selected.eventDate}</p>
               </div>
               {detail ? (
-                <>
-                  <TemplateApplyChooser
-                    template={detail}
-                    selections={selections}
-                    onChange={setSelections}
-                    guestCount={boundHeadcountForApply(selected?.guestCount, selected?.guaranteedGuestCount)}
-                  />
-                  {templateHasSelectableGroups(detail) ? (
+                step === "lines" ? (
+                  <div data-testid="event-order-use-lines-step">
+                    <TemplateApplyChooser
+                      template={detail}
+                      selections={selections}
+                      onChange={setSelections}
+                      guestCount={boundHeadcountForApply(selected?.guestCount, selected?.guaranteedGuestCount)}
+                    />
+                  </div>
+                ) : (
+                  <div data-testid="event-order-use-choices-step">
                     <TemplateGroupAnswerChooser
                       template={detail}
                       answers={answers}
                       onChange={setAnswers}
                     />
-                  ) : null}
-                </>
+                  </div>
+                )
               ) : (
                 <p className="text-sm text-muted-foreground">Loading offerings…</p>
               )}
               <p className="text-xs text-muted-foreground">
                 If this event already has a finalized Event Order, applying is blocked. Open orders receive additional structure without replacing existing lines.
               </p>
-              {sendBlockedNoGroups ? (
+              {sendBlockedNoGroups && step === "lines" ? (
                 <p
                   className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground"
                   data-testid="event-order-send-fixed-only-notice"
@@ -338,15 +355,43 @@ function UseOrSendEventOrderSheet({
               ) : null}
             </div>
             <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-popover pt-4" data-testid="event-order-use-footer">
-              <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
               <Button
                 type="button"
-                disabled={pending || !detail}
-                onClick={requestApply}
-                data-testid={sendBlockedNoGroups ? "event-order-apply-instead" : mode === "send" ? "event-order-send-confirm" : "event-order-apply-confirm"}
+                variant="outline"
+                disabled={pending}
+                onClick={() => setStep(step === "choices" ? "lines" : "pick")}
               >
-                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{confirmCta}</> : confirmCta}
+                Back
               </Button>
+              {step === "lines" ? (
+                <Button
+                  type="button"
+                  disabled={pending || !detail}
+                  onClick={linesContinue}
+                  data-testid={
+                    sendBlockedNoGroups || !hasChoiceGroups
+                      ? (sendBlockedNoGroups ? "event-order-apply-instead" : mode === "send" ? "event-order-send-confirm" : "event-order-apply-confirm")
+                      : "event-order-use-continue-choices"
+                  }
+                >
+                  {pending ? (
+                    <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{confirmCta}</>
+                  ) : sendBlockedNoGroups || !hasChoiceGroups ? (
+                    confirmCta
+                  ) : (
+                    "Continue to choices"
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={pending || !detail}
+                  onClick={requestApply}
+                  data-testid={mode === "send" ? "event-order-send-confirm" : "event-order-apply-confirm"}
+                >
+                  {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{confirmCta}</> : confirmCta}
+                </Button>
+              )}
             </div>
           </div>
         )}
