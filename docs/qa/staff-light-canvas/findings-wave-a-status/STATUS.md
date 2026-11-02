@@ -1,11 +1,11 @@
 # Findings remediation — Wave A+ (email CTA, ceremony clarity, add-ons, Next Steps, floor setups)
 
-**Mode:** Migration APPLIED; redeploy in flight after venue-app typecheck fix + template streamline elevation.  
+**Mode:** Migration APPLIED; Sandbox redeploy **queued** — browser exercise pending SHA match.  
 **Branch:** `feat/spaces-booking-e1-smart-fields`  
-**Commit:** `72ea7a0c71d5a97cb9b3e4389831689078345eef`  
+**Commit (serving tip):** `cf84a4ee98eedc3d630737478e97ffecad9c519d` (streamline + typecheck fix in `72ea7a0c…`)  
 **Migration run:** https://github.com/jlcormier612/wevenu-website/actions/runs/41530570343 — **success** (…273…progress_state + …274…budget_category_remove_custom)  
-**Prior deploy (failed typecheck):** https://github.com/jlcormier612/wevenu-website/actions/runs/41530574175 — venue-app `AddSectionResult.message` narrowing (fixed in this commit)  
-**Redeploy:** pending dispatch after push of `72ea7a0c…`  
+**Prior deploy (failed typecheck):** https://github.com/jlcormier612/wevenu-website/actions/runs/41530574175  
+**Redeploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/41532627678 — queued/in progress for `cf84a4ee…`  
 **No Production deploy from this work.** Unrelated dirty tree preserved.
 
 ## Decisions locked (product)

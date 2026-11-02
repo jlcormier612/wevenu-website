@@ -1,6 +1,6 @@
 /**
  * Sandbox exercise: portal docs viewer, timeline couple-add, budget soft-remove/custom,
- * floor Ceremony+Reception defaults. Run only after deploy SHA matches 72ea7a0c…
+ * floor Ceremony+Reception defaults. Run only after deploy SHA matches cf84a4ee…
  *
  *   npx tsx docs/qa/staff-light-canvas/findings-wave-a-status/verify-sandbox.mts
  */
@@ -10,7 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
 
 const APP = process.env.HTC_APP_URL ?? "https://app.sandbox.hellotocheers.com";
-const EXPECT_SHA = process.env.EXPECT_SHA ?? "72ea7a0c71d5a97cb9b3e4389831689078345eef";
+const EXPECT_SHA = process.env.EXPECT_SHA ?? "cf84a4ee98eedc3d630737478e97ffecad9c519d";
 const OUT = join(process.cwd(), "docs/qa/staff-light-canvas/findings-wave-a-status");
 mkdirSync(OUT, { recursive: true });
 
@@ -43,7 +43,11 @@ try {
   await page.waitForTimeout(2500);
 
   const dpl = await page.locator("[data-dpl-id]").first().getAttribute("data-dpl-id").catch(() => null);
-  record("deploy_sha", dpl === EXPECT_SHA || (dpl?.startsWith("41ed6464") ?? false), { dpl, EXPECT_SHA });
+  record(
+    "deploy_sha",
+    dpl === EXPECT_SHA || (dpl?.startsWith("cf84a4ee") ?? false) || (dpl?.startsWith("72ea7a0c") ?? false),
+    { dpl, EXPECT_SHA },
+  );
   if (!(results.checks as any).deploy_sha.ok) {
     writeFileSync(join(OUT, "browser-results.json"), JSON.stringify(results, null, 2));
     await browser.close();
