@@ -33,10 +33,12 @@ describe("staff light canvas — Contemporary Botanical Stage 2B", () => {
     assert.match(staff, /--destructive-foreground:\s*#24332b/i);
   });
 
-  it("marks active nav with botanical indicator + eucalyptus wash", () => {
+  it("marks active nav with botanical indicator + eucalyptus wash + dark label", () => {
     assert.match(nav, /before:bg-sidebar-primary/);
-    assert.match(nav, /text-sidebar-primary/);
+    assert.match(nav, /bg-sidebar-accent font-medium text-sidebar-foreground/);
+    assert.doesNotMatch(nav, /isActive[\s\S]*\?[\s\S]*text-sidebar-primary/);
     assert.match(staff, /--sidebar-accent:\s*color-mix\(in oklch, #a7c2af/);
+    assert.match(staff, /--sidebar-accent-foreground:\s*#24332b/i);
   });
 
   it("does not rewrite the dark staff remap block", () => {

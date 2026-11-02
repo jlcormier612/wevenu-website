@@ -32,40 +32,44 @@ export function OfferingsPageClient({
   const sectionRef = React.useRef<{ openCreate: () => void } | null>(null);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Offerings"
-        description="Organize the services, packages, and options your venue offers. Group related items under choices, such as dinner styles or bar packages, so you can reuse them across Event Order Templates."
-        actions={
-          <Button
-            type="button"
-            data-testid="offerings-new"
-            onClick={() => {
-              const open = () => sectionRef.current?.openCreate();
-              open();
-              // Sheet mounts via client ref — retry once if first paint raced the click.
-              if (!sectionRef.current) requestAnimationFrame(open);
-            }}
-          >
-            + New Offering
-          </Button>
-        }
-      />
-      <LibraryHowItWorks>
-        <strong className="font-medium text-heading">How Offerings work.</strong> Maintain your
-        catalog here. Event Order Templates use these offerings to define what&apos;s included and
-        which choices or additional items clients can select.
-      </LibraryHowItWorks>
-      <LibraryDependencyNote
-        detail="Optionally link an offering to a physical inventory item. Stock is reserved when the couple approves the Event Order. Distinct from Available Inventory."
-        action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
-        secondaryActions={[
-          { href: "/library/inventory", label: "Manage Available Inventory" },
-        ]}
-      >
-        Used by Event Order Templates.
-      </LibraryDependencyNote>
+      <div className="htc-hospitality-heading">
+        <PageHeader
+          title="Offerings"
+          description="Organize the services, packages, and options your venue offers. Group related items under choices, such as dinner styles or bar packages, so you can reuse them across Event Order Templates."
+          actions={
+            <Button
+              type="button"
+              data-testid="offerings-new"
+              onClick={() => {
+                const open = () => sectionRef.current?.openCreate();
+                open();
+                // Sheet mounts via client ref — retry once if first paint raced the click.
+                if (!sectionRef.current) requestAnimationFrame(open);
+              }}
+            >
+              + New Offering
+            </Button>
+          }
+        />
+      </div>
+      <div className="space-y-2.5 sm:space-y-3">
+        <LibraryHowItWorks tone="blush" title="How Offerings work">
+          Maintain your catalog here. Event Order Templates use these offerings to define
+          what&apos;s included and which choices or additional items clients can select.
+        </LibraryHowItWorks>
+        <LibraryDependencyNote
+          tone="eucalyptus"
+          detail="Optionally link an offering to a physical inventory item. Stock is reserved when the couple approves the Event Order. Distinct from Available Inventory."
+          action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
+          secondaryActions={[
+            { href: "/library/inventory", label: "Manage Available Inventory" },
+          ]}
+        >
+          Used by Event Order Templates
+        </LibraryDependencyNote>
+      </div>
       <OfferingsLibrarySection
         ref={sectionRef}
         venueId={venueId}

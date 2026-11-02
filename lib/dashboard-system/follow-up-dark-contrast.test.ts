@@ -30,10 +30,8 @@ describe("dashboard Follow up dark-mode contrast", () => {
   });
 
   it("FocusAttentionRow and ClassifiedRow still use warning-foreground for warning severity", () => {
-    assert.match(
-      row,
-      /severity === "warning" \? "text-warning-foreground"/,
-    );
+    assert.match(row, /severity === "warning"/);
+    assert.match(row, /text-warning-foreground/);
     assert.match(
       page,
       /severity === "warning" \? "text-warning-foreground"/,

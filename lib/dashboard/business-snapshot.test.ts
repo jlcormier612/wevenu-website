@@ -221,6 +221,17 @@ describe("Dashboard Business Snapshot wiring", () => {
     assert.match(snap, /LEAD_FLOW_OPEN_HREF/);
   });
 
+  it("applies hospitality Snapshot surfaces without green body action text", () => {
+    const ui = read("components/dashboard/business-snapshot.tsx");
+    assert.match(ui, /htc-eucalyptus-surface/);
+    assert.match(ui, /outstandingActive/);
+    assert.match(ui, /outstandingEmpty/);
+    assert.match(ui, /htc-green-mist/);
+    assert.match(ui, /htc-botanical-pale/);
+    assert.match(ui, /!card\.empty/);
+    assert.doesNotMatch(ui, /text-primary/);
+  });
+
   it("Leads page honors attention=open with the same terminal lifecycle set", () => {
     const leadsPage = read("app/(app)/leads/page.tsx");
     const list = read("components/leads/lead-list.tsx");

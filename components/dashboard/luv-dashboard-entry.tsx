@@ -10,6 +10,7 @@ import type { LuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
 /**
  * Restrained Dashboard Luv card — interpretation only, not a second task list.
+ * Ivory working surface + blush accent (not a full blush alert panel).
  * Dismiss is only offered when luv_recommendations can persist it:
  * a Guide-gap / recommendation id, or a computed observation's stable id.
  */
@@ -48,10 +49,15 @@ export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
 
   return (
     <section>
-      <Card className="border-rose-200/40" style={{ background: "color-mix(in oklch, var(--destructive) 2%, var(--card))" }}>
+      <Card className="overflow-hidden rounded-[0.75rem] border-[color:var(--htc-border-warm)] bg-[var(--htc-ivory)] ring-0">
+        <div
+          className="h-1.5 w-full bg-[var(--htc-soft-blush)]"
+          data-luv-accent=""
+          aria-hidden
+        />
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2 text-sm text-heading">
               <span aria-hidden>💗</span> Luv
             </CardTitle>
             {canPersistDismiss ? (
@@ -73,7 +79,7 @@ export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
           )}
           <Link
             href={entry.actionHref}
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:underline"
           >
             {entry.actionLabel}
             <ChevronRight className="h-3 w-3" />

@@ -53,17 +53,19 @@ export default async function ClientsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Clients"
-        description="All Bookings is the active book. Coming up is event dates from today through the next 30 days. Needs Attention is an active booking with a past-due payment, a past-due required task, or a message that needs a response. Cancelled and Past are history."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" render={<Link href="/settings/import?type=couples" />}>Import Clients</Button>
-            <Button render={<Link href="/clients/new" />}>+ New Client</Button>
-          </div>
-        }
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading">
+        <PageHeader
+          title="Clients"
+          description="All Bookings is the active book. Coming up is event dates from today through the next 30 days. Needs Attention is an active booking with a past-due payment, a past-due required task, or a message that needs a response. Cancelled and Past are history."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" render={<Link href="/settings/import?type=couples" />}>Import Clients</Button>
+              <Button render={<Link href="/clients/new" />}>+ New Client</Button>
+            </div>
+          }
+        />
+      </div>
       <Suspense fallback={null}>
         <ClientList
           clients={clients}

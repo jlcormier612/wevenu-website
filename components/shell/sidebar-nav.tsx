@@ -91,7 +91,7 @@ export function SidebarNav({
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   "focus-within:outline-none focus-within:ring-2 focus-within:ring-sidebar-ring",
                   isActive
-                    ? "bg-sidebar-accent font-medium text-sidebar-primary before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-sidebar-primary"
+                    ? "bg-sidebar-accent font-medium text-sidebar-foreground before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-sidebar-primary"
                     : "text-sidebar-foreground",
                 )}
               >
@@ -105,7 +105,7 @@ export function SidebarNav({
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
                       isActive
-                        ? "text-sidebar-primary"
+                        ? "text-sidebar-foreground"
                         : "text-sidebar-foreground/70 group-hover/nav:text-sidebar-accent-foreground",
                     )}
                   />

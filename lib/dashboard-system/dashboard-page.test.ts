@@ -14,8 +14,14 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /FocusAttentionRow/);
     assert.match(page, /filterDismissedFocusItems/);
     assert.match(page, /What requires attention today/);
+    assert.match(page, /headerBand="eucalyptus"/);
     assert.doesNotMatch(page, /title="Morning Briefing"/);
     assert.doesNotMatch(page, /title="Today's Attention"/);
+  });
+
+  it("wraps the page in hospitality canvas and heading card", () => {
+    assert.match(page, /htc-hospitality-page/);
+    assert.match(page, /htc-hospitality-heading/);
   });
 
   it("places Luv after Today's Focus and before Coming up", () => {

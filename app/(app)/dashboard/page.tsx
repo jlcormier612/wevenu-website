@@ -70,7 +70,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       path: "dashboard_unavailable",
     });
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="htc-hospitality-page flex flex-col items-center justify-center py-24 text-center">
         <p className="text-muted-foreground">Dashboard unavailable.</p>
       </div>
     );
@@ -113,14 +113,16 @@ export default async function DashboardPage({ searchParams }: Props) {
   forensicExtra("rsc_serialization", "UNKNOWN");
 
   return (
-    <div className="space-y-8">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <MilestoneToast milestone={data.nextPendingMilestone} />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
-        <Button render={<Link href="/leads/new" />} className="sm:shrink-0">
-          + New Lead
-        </Button>
+      <div className="htc-hospitality-heading">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
+          <Button render={<Link href="/leads/new" />} className="w-full sm:w-auto sm:shrink-0">
+            + New Lead
+          </Button>
+        </div>
       </div>
 
       <DashboardLuvIntro
@@ -133,6 +135,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon={<CalendarClock className="h-4 w-4 text-primary" />}
           title="Today's Focus"
           description="What requires attention today."
+          headerBand="eucalyptus"
           headerRight={allFocusItems.length > focusItems.length ? <span className="text-xs text-muted-foreground">{focusItems.length} of {allFocusItems.length}</span> : undefined}
           items={focusItems}
           getKey={(i) => i.id}
@@ -152,6 +155,8 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
           title="Coming up"
           description="Events in the next 30 days."
+          headerBand="none"
+          className="bg-[var(--htc-linen)]"
           items={upcomingItems}
           getKey={(i) => i.id}
           emptyState={
@@ -168,7 +173,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       <section>
         <Link
           href="/reporting"
-          className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
+          className="flex items-center justify-between rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
         >
           <span className="font-medium text-foreground">View Reports</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />

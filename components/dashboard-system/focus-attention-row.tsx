@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 
 import { dismissDashboardAttentionAction } from "@/app/(app)/dashboard/actions";
 import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
+import { cn } from "@/lib/utils";
 
 const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = {
   critical: "critical",
@@ -23,8 +24,14 @@ export function FocusAttentionRow({ item }: { item: ClassifiedItem }): ReactNode
   if (hidden) return null;
 
   const severity = item.rightSeverity ?? PRIORITY_SEVERITY[item.priority];
-  const colorClass = severity === "critical" ? "text-destructive" : severity === "warning" ? "text-warning-foreground" : "text-muted-foreground";
+  const colorClass =
+    severity === "critical"
+      ? "text-destructive"
+      : severity === "warning"
+        ? "text-warning-foreground"
+        : "text-muted-foreground";
   const canDismiss = Boolean(item.dismissalKey);
+  const isCritical = severity === "critical";
 
   function dismiss() {
     if (!item.dismissalKey) return;
@@ -37,7 +44,15 @@ export function FocusAttentionRow({ item }: { item: ClassifiedItem }): ReactNode
   }
 
   return (
-    <div className="relative flex items-start gap-2 py-3 -mx-2 px-2 pr-9 rounded-lg hover:bg-muted/40 transition-colors">
+    <div
+      data-severity={severity ?? "default"}
+      className={cn(
+        "relative flex items-start gap-2 py-3 -mx-2 pr-9 rounded-lg transition-colors",
+        isCritical
+          ? "border-l-[3px] border-l-[var(--htc-soft-rose)] bg-[var(--htc-ivory)] pl-[calc(0.5rem-1px)] hover:bg-[var(--htc-warm-pale)]"
+          : "px-2 hover:bg-muted/40",
+      )}
+    >
       <Link
         href={item.href}
         data-testid="todays-focus-item-link"

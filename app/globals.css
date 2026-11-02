@@ -244,6 +244,30 @@ html:has(.htc-staff) {
   --htc-blush: #d99a9e;
   --htc-soft-blush: #f7e9eb;
   --htc-workspace: #fafcfa;
+  /* Warm neutral page canvas — hospitality pages; not global staff chrome. */
+  --htc-canvas: #f8f7f3;
+  --htc-eucalyptus-surface: #dce8e0;
+  --htc-border-warm: #e6e3dc;
+
+  /*
+   * Expanded hospitality shades — coordinated with locked bases above.
+   * See docs/design/htc-visual-system.md. Do not invent a parallel theme.
+   */
+  /* Botanical family */
+  --htc-leaf-muted: #7e9e88;
+  --htc-soft-sage: #c9d9ce;
+  --htc-botanical-pale: #e8f0ea;
+  --htc-green-mist: #f1f5f2;
+  /* Blush / rose family */
+  --htc-dusty-rose: #d99a9e; /* alias of --htc-blush */
+  --htc-soft-rose: #e8c5c8;
+  --htc-petal: #f0d8db;
+  --htc-blush-pale: #fbf6f7;
+  /* Warm neutrals */
+  --htc-linen: #f3f0e9;
+  --htc-oatmeal: #ede9e1;
+  --htc-ivory: #faf9f5;
+  --htc-warm-pale: #f5f3ee;
 
   --warm-gray: #fafcfa;
   --natural-cream: #fafcfa;
@@ -261,7 +285,8 @@ html:has(.htc-staff) {
   --muted: color-mix(in oklch, #a7c2af 18%, white);
   --muted-foreground: #5f6f68;
   --secondary: #ffffff;
-  --secondary-foreground: #446b56;
+  /* Dark ink on light surfaces — never botanical-green as default text. */
+  --secondary-foreground: #24332b;
   --border: #e3e7e4;
   --input: #e3e7e4;
   --primary: #446b56;
@@ -282,7 +307,8 @@ html:has(.htc-staff) {
   --sidebar-primary: #446b56;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: color-mix(in oklch, #a7c2af 28%, white);
-  --sidebar-accent-foreground: #446b56;
+  /* Active nav labels stay dark; botanical is reserved for the left bar. */
+  --sidebar-accent-foreground: #24332b;
   --sidebar-border: #e3e7e4;
   --sidebar-ring: #446b56;
 
@@ -298,6 +324,213 @@ html:has(.htc-staff) [data-slot="card"] {
   box-shadow:
     0 1px 2px color-mix(in oklch, #24332b 6%, transparent),
     0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/*
+ * HTC hospitality surface system — see docs/design/htc-visual-system.md.
+ * Warm canvas behind white content; eucalyptus/blush for secondary & attention.
+ * Scoped to hospitality pages — not the default for every staff route.
+ */
+.htc-staff .htc-hospitality-page {
+  margin: -1rem -1rem 0;
+  padding: 1rem 1rem 1.75rem;
+  min-height: calc(100% + 1rem);
+  background: var(--htc-canvas);
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-page {
+    margin: -1.5rem -1.5rem 0;
+    padding: 1.5rem 1.5rem 2rem;
+    min-height: calc(100% + 1.5rem);
+  }
+}
+@media (min-width: 1024px) {
+  .htc-staff .htc-hospitality-page {
+    margin: -2.5rem -2.5rem 0;
+    padding: 2.5rem 2.5rem 2.5rem;
+    min-height: calc(100% + 2.5rem);
+  }
+}
+
+.htc-staff .htc-hospitality-elevated {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-hospitality-heading {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.9rem 1rem;
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 4%, transparent),
+    0 3px 10px color-mix(in oklch, #24332b 3%, transparent);
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-heading {
+    padding: 1.15rem 1.35rem;
+  }
+}
+
+.htc-staff .htc-hospitality-toolbar {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.85rem 1rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-hospitality-table {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-header"] tr {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-header"] th {
+  color: var(--heading);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr {
+  border-bottom-color: color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+  background: var(--card);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"] {
+  background: var(--htc-soft-blush);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr:hover {
+  background: color-mix(in oklch, var(--htc-canvas) 70%, white);
+}
+
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"]:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 82%, white);
+}
+
+.htc-staff .htc-hospitality-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-catalog {
+    gap: 0.75rem;
+  }
+}
+
+.htc-staff .htc-catalog-section {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Ordinary / standalone majors: white — no blush, no decorative botanical stripe. */
+.htc-staff .htc-catalog-major {
+  background: var(--card);
+  border-left: 3px solid transparent;
+}
+
+/*
+ * Parent majors with nested content: full eucalyptus surface + botanical indicator.
+ * Full token (not a diluted OKLCH mix) so parents read clearly green next to white children.
+ */
+.htc-staff .htc-catalog-major[data-has-children="true"] {
+  background: var(--htc-eucalyptus-surface);
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 45%, var(--htc-border-warm));
+  border-left-color: var(--htc-botanical);
+}
+
+.htc-staff .htc-catalog-major[data-standalone="true"] {
+  border-bottom: none;
+}
+
+/*
+ * Categories: white under the eucalyptus parent — eucalyptus left guide + indent
+ * keep nesting readable without adjacent green-on-green merge.
+ */
+.htc-staff .htc-catalog-category {
+  background: var(--card);
+  border-left: 3px solid var(--htc-eucalyptus);
+}
+
+.htc-staff .htc-catalog-item {
+  background: var(--card);
+  border-left: 3px solid transparent;
+}
+
+/* Nested items: white, indented under category with a quieter eucalyptus guide. */
+.htc-staff .htc-catalog-item-nested {
+  background: var(--card);
+  border-left: 3px solid color-mix(in oklch, var(--htc-eucalyptus) 55%, transparent);
+}
+
+.htc-staff .htc-catalog-section ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.htc-staff .htc-catalog-section li + li {
+  border-top: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+}
+
+/* Dark Mode — hospitality utilities follow staff dark surfaces (no warm canvas). */
+.dark .htc-staff .htc-hospitality-page,
+html.dark:has(.htc-staff) .htc-hospitality-page {
+  background: var(--background);
+}
+.dark .htc-staff .htc-hospitality-heading,
+.dark .htc-staff .htc-hospitality-toolbar,
+.dark .htc-staff .htc-hospitality-elevated,
+.dark .htc-staff .htc-hospitality-table,
+.dark .htc-staff .htc-catalog-section,
+html.dark:has(.htc-staff) .htc-hospitality-heading,
+html.dark:has(.htc-staff) .htc-hospitality-toolbar,
+html.dark:has(.htc-staff) .htc-hospitality-elevated,
+html.dark:has(.htc-staff) .htc-hospitality-table,
+html.dark:has(.htc-staff) .htc-catalog-section {
+  border-color: var(--border);
+  background: var(--card);
+  box-shadow: none;
+}
+.dark .htc-staff .htc-hospitality-table [data-slot="table-header"] tr,
+.dark .htc-staff .htc-catalog-major,
+.dark .htc-staff .htc-catalog-category,
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-header"] tr,
+html.dark:has(.htc-staff) .htc-catalog-major,
+html.dark:has(.htc-staff) .htc-catalog-category {
+  background: var(--muted);
+  border-color: var(--border);
+}
+.dark .htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"],
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"] {
+  background: color-mix(in oklch, var(--destructive) 22%, var(--card));
+}
+.dark .htc-staff .htc-catalog-item,
+.dark .htc-staff .htc-catalog-item-nested,
+html.dark:has(.htc-staff) .htc-catalog-item,
+html.dark:has(.htc-staff) .htc-catalog-item-nested {
+  background: var(--card);
 }
 
 /* CRM dark remap under staff scope (html.dark from next-themes) */

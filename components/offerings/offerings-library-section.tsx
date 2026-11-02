@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Layers } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -39,8 +39,44 @@ import {
   orderCatalogListWithChoiceGroups,
   planConvertItemToCategory,
   sanitizeChoiceGroupName,
+  type CatalogListRow,
   type OfferingChoiceGroup,
 } from "@/lib/offerings/choice-groups";
+
+/** Group flat catalog rows into major-offering section containers for visual hierarchy. */
+function groupCatalogSections<T extends OfferingWithCategory>(
+  rows: CatalogListRow<T>[],
+): { key: string; major: Extract<CatalogListRow<T>, { kind: "offering" }> | null; children: CatalogListRow<T>[] }[] {
+  const sections: {
+    key: string;
+    major: Extract<CatalogListRow<T>, { kind: "offering" }> | null;
+    children: CatalogListRow<T>[];
+  }[] = [];
+  let current: (typeof sections)[number] | null = null;
+
+  for (const row of rows) {
+    const isTopMajor =
+      row.kind === "offering" &&
+      row.nestUnderParentId == null &&
+      row.nestUnderGroupId == null;
+    if (isTopMajor) {
+      if (current) sections.push(current);
+      current = { key: `section::${row.offering.id}`, major: row, children: [] };
+      continue;
+    }
+    if (!current) {
+      current = {
+        key: `section::orphan::${row.kind === "choice-group" ? row.group.id : row.offering.id}`,
+        major: null,
+        children: [row],
+      };
+    } else {
+      current.children.push(row);
+    }
+  }
+  if (current) sections.push(current);
+  return sections;
+}
 import {
   formatParentOfferingNames,
   hasParents,
@@ -87,6 +123,7 @@ export const OfferingsLibrarySection = React.forwardRef<
 
   const visible = offerings.filter((o) => showArchived || !o.isArchived);
   const listRows = orderCatalogListWithChoiceGroups(visible, choiceGroups);
+  const catalogSections = groupCatalogSections(listRows);
   const majors = majorOfferingIds(offerings);
   const nameById = new Map(offerings.map((o) => [o.id, o.name]));
   const groupNameById = new Map(choiceGroups.map((g) => [g.id, g.name]));
@@ -110,216 +147,239 @@ export const OfferingsLibrarySection = React.forwardRef<
       </div>
 
       {listRows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+        <div className="htc-hospitality-elevated border-dashed py-12 text-center text-sm text-muted-foreground">
           No offerings yet. Add a service category, then major choices and the items that belong under them.
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-card" data-testid="offerings-list">
-          {listRows.map((row) => {
-            if (row.kind === "choice-group") {
-              const parentName = nameById.get(row.nestUnderParentId) ?? "this major";
-              const parentOffering = offerings.find((x) => x.id === row.nestUnderParentId) ?? null;
-              const memberCount = row.group.memberOfferingIds.length;
+        <div className="htc-hospitality-catalog" data-testid="offerings-list">
+          {catalogSections.map((section) => {
+            const renderOfferingRow = (
+              row: Extract<CatalogListRow<OfferingWithCategory>, { kind: "offering" }>,
+              surface: "major" | "item" | "nested",
+            ) => {
+              const o = row.offering;
+              const nestUnderParentId = row.nestUnderParentId;
+              const nestUnderGroupId = row.nestUnderGroupId;
+              const role = offeringRole(o, majors);
+              const isChild = hasParents(o);
+              const nestLabel = nestUnderParentId
+                ? nameById.get(nestUnderParentId) ?? null
+                : null;
+              const groupLabel = nestUnderGroupId
+                ? groupNameById.get(nestUnderGroupId) ?? null
+                : null;
+              const underLabel = nestLabel
+                ? nestLabel
+                : o.parentOfferingName ?? null;
+              const surfaceClass =
+                surface === "major"
+                  ? "htc-catalog-major"
+                  : surface === "nested"
+                    ? "htc-catalog-item-nested pl-10 sm:pl-14"
+                    : "htc-catalog-item pl-6 sm:pl-8";
               return (
                 <li
-                  key={`group::${row.group.id}`}
-                  className="flex flex-wrap items-center justify-between gap-3 bg-muted/30 px-4 py-2.5 pl-8"
-                  data-testid={`offering-choice-group-row-${row.group.id}`}
-                  data-nest-under={row.nestUnderParentId}
-                  data-choice-group-id={row.group.id}
+                  key={`${o.id}::${nestUnderParentId ?? "top"}::${nestUnderGroupId ?? "none"}`}
+                  className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 ${surfaceClass}`}
+                  data-testid={`offering-row-${o.id}`}
+                  data-nest-under={nestUnderParentId ?? ""}
+                  data-nest-under-group={nestUnderGroupId ?? ""}
+                  data-offering-role={role}
+                  data-parent-ids={parentIdsOf(o).join(",")}
+                  data-standalone={surface === "major" && section.children.length === 0 ? "true" : undefined}
+                  data-has-children={surface === "major" && section.children.length > 0 ? "true" : undefined}
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-heading">{row.group.name}</p>
-                      <Badge variant="outline">Category</Badge>
+                  <div className="flex min-w-0 items-start gap-3">
+                    {(() => {
+                      const thumb = effectiveOfferingImageUrl({
+                        imageUrl: o.imageUrl,
+                        inventoryImageUrl: o.inventoryImageUrl,
+                      });
+                      if (!thumb) return null;
+                      return (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumb}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-md border border-border/60 bg-muted/30 object-contain"
+                          data-testid={`offering-thumb-${o.id}`}
+                        />
+                      );
+                    })()}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className={surface === "major" ? "font-semibold text-heading" : "font-medium text-foreground"}>
+                          {o.name}
+                        </p>
+                        {o.categoryName && <Badge variant="muted">{o.categoryName}</Badge>}
+                        <Badge variant="outline">{offeringRoleLabel(role)}</Badge>
+                        {o.isArchived && <Badge variant="outline">Archived</Badge>}
+                        {isUnpriced(o) && (
+                          <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-unpriced-${o.id}`}>
+                            Unpriced
+                          </Badge>
+                        )}
+                        {needsInventoryLink(o) && (
+                          <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-no-inventory-${o.id}`}>
+                            No inventory link
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {isChild && underLabel
+                          ? groupLabel
+                            ? `Under ${underLabel} · ${groupLabel} · `
+                            : `Under ${underLabel} · `
+                          : ""}
+                        {formatOptionalMoney(o.defaultUnitPrice)}
+                        {o.unit ? ` / ${o.unit}` : ""}
+                        {o.description ? ` · ${o.description}` : ""}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Category under {parentName} · {memberCount} item{memberCount === 1 ? "" : "s"} the couple can pick from
-                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-testid={`offering-category-add-item-${row.group.id}`}
-                      onClick={() => {
-                        setEditing(null);
-                        setCreateParentId(row.nestUnderParentId);
-                        setCreateGroupId(row.group.id);
-                        setCreating(true);
-                      }}
-                    >
-                      + Item in this category
-                    </Button>
-                    {parentOffering ? (
+                    {role !== "item" && !o.isArchived ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-testid={`offering-manage-groups-${o.id}`}
+                          onClick={() => {
+                            setCreating(false);
+                            setEditing(null);
+                            setCreateParentId(null);
+                            setCreateGroupId(null);
+                            setManagingGroupsFor(o);
+                          }}
+                        >
+                          + Category under this
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-testid={`offering-add-item-${o.id}`}
+                          onClick={() => {
+                            setEditing(null);
+                            setCreateParentId(o.id);
+                            setCreateGroupId(null);
+                            setCreating(true);
+                          }}
+                        >
+                          + Item under this
+                        </Button>
+                      </>
+                    ) : null}
+                    {role === "item" && !o.isArchived && nestUnderGroupId == null && looksLikeCategoryLabel(o.name) ? (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        data-testid={`offering-category-manage-${row.group.id}`}
+                        data-testid={`offering-convert-category-${o.id}`}
                         onClick={() => {
                           setCreating(false);
                           setEditing(null);
-                          setManagingGroupsFor(parentOffering);
+                          setConvertingItem(o);
                         }}
                       >
-                        Edit category
+                        Make this a category
                       </Button>
                     ) : null}
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setCreateParentId(null); setCreateGroupId(null); setEditing(o); }}>
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        const result = await setOfferingArchivedAction(o.id, !o.isArchived);
+                        if (!result.ok) toast.error(result.message ?? "Could not update.");
+                        else {
+                          setOfferings((prev) => prev.map((x) => x.id === o.id ? { ...x, isArchived: !o.isArchived } : x));
+                          toast.success(o.isArchived ? "Restored." : "Archived.");
+                        }
+                      }}
+                    >
+                      {o.isArchived ? "Restore" : "Archive"}
+                    </Button>
                   </div>
                 </li>
               );
-            }
+            };
 
-            const o = row.offering;
-            const nestUnderParentId = row.nestUnderParentId;
-            const nestUnderGroupId = row.nestUnderGroupId;
-            const role = offeringRole(o, majors);
-            const isChild = hasParents(o);
-            const nestLabel = nestUnderParentId
-              ? nameById.get(nestUnderParentId) ?? null
-              : null;
-            const groupLabel = nestUnderGroupId
-              ? groupNameById.get(nestUnderGroupId) ?? null
-              : null;
-            const underLabel = nestLabel
-              ? nestLabel
-              : o.parentOfferingName ?? null;
-            const nestPad =
-              nestUnderGroupId != null
-                ? "bg-muted/10 pl-14"
-                : isChild && nestUnderParentId
-                  ? "bg-muted/20 pl-8"
-                  : "";
             return (
-              <li
-                key={`${o.id}::${nestUnderParentId ?? "top"}::${nestUnderGroupId ?? "none"}`}
-                className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${nestPad}`}
-                data-testid={`offering-row-${o.id}`}
-                data-nest-under={nestUnderParentId ?? ""}
-                data-nest-under-group={nestUnderGroupId ?? ""}
-                data-offering-role={role}
-                data-parent-ids={parentIdsOf(o).join(",")}
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  {(() => {
-                    const thumb = effectiveOfferingImageUrl({
-                      imageUrl: o.imageUrl,
-                      inventoryImageUrl: o.inventoryImageUrl,
-                    });
-                    if (!thumb) return null;
-                    return (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumb}
-                        alt=""
-                        className="h-12 w-12 shrink-0 rounded-md border border-border/60 bg-muted/30 object-contain"
-                        data-testid={`offering-thumb-${o.id}`}
-                      />
+              <section key={section.key} className="htc-catalog-section">
+                <ul>
+                  {section.major ? renderOfferingRow(section.major, "major") : null}
+                  {section.children.map((row) => {
+                    if (row.kind === "choice-group") {
+                      const parentName = nameById.get(row.nestUnderParentId) ?? "this major";
+                      const parentOffering = offerings.find((x) => x.id === row.nestUnderParentId) ?? null;
+                      const memberCount = row.group.memberOfferingIds.length;
+                      return (
+                        <li
+                          key={`group::${row.group.id}`}
+                          className="htc-catalog-category flex flex-wrap items-center justify-between gap-3 px-4 py-3 pl-6 sm:pl-8"
+                          data-testid={`offering-choice-group-row-${row.group.id}`}
+                          data-nest-under={row.nestUnderParentId}
+                          data-choice-group-id={row.group.id}
+                        >
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Layers className="h-3.5 w-3.5 shrink-0 text-heading" aria-hidden />
+                              <p className="text-sm font-semibold text-heading">{row.group.name}</p>
+                              <Badge variant="outline">Category</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Category under {parentName} · {memberCount} item{memberCount === 1 ? "" : "s"} the couple can pick from
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              data-testid={`offering-category-add-item-${row.group.id}`}
+                              onClick={() => {
+                                setEditing(null);
+                                setCreateParentId(row.nestUnderParentId);
+                                setCreateGroupId(row.group.id);
+                                setCreating(true);
+                              }}
+                            >
+                              + Item in this category
+                            </Button>
+                            {parentOffering ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                data-testid={`offering-category-manage-${row.group.id}`}
+                                onClick={() => {
+                                  setCreating(false);
+                                  setEditing(null);
+                                  setManagingGroupsFor(parentOffering);
+                                }}
+                              >
+                                Edit category
+                              </Button>
+                            ) : null}
+                          </div>
+                        </li>
+                      );
+                    }
+                    return renderOfferingRow(
+                      row,
+                      row.nestUnderGroupId != null ? "nested" : "item",
                     );
-                  })()}
-                  <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-foreground">{o.name}</p>
-                    {o.categoryName && <Badge variant="muted">{o.categoryName}</Badge>}
-                    <Badge variant="outline">{offeringRoleLabel(role)}</Badge>
-                    {o.isArchived && <Badge variant="outline">Archived</Badge>}
-                    {isUnpriced(o) && (
-                      <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-unpriced-${o.id}`}>
-                        Unpriced
-                      </Badge>
-                    )}
-                    {needsInventoryLink(o) && (
-                      <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-no-inventory-${o.id}`}>
-                        No inventory link
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {isChild && underLabel
-                      ? groupLabel
-                        ? `Under ${underLabel} · ${groupLabel} · `
-                        : `Under ${underLabel} · `
-                      : ""}
-                    {formatOptionalMoney(o.defaultUnitPrice)}
-                    {o.unit ? ` / ${o.unit}` : ""}
-                    {o.description ? ` · ${o.description}` : ""}
-                  </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {role !== "item" && !o.isArchived ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        data-testid={`offering-manage-groups-${o.id}`}
-                        onClick={() => {
-                          setCreating(false);
-                          setEditing(null);
-                          setCreateParentId(null);
-                          setCreateGroupId(null);
-                          setManagingGroupsFor(o);
-                        }}
-                      >
-                        + Category under this
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        data-testid={`offering-add-item-${o.id}`}
-                        onClick={() => {
-                          setEditing(null);
-                          setCreateParentId(o.id);
-                          setCreateGroupId(null);
-                          setCreating(true);
-                        }}
-                      >
-                        + Item under this
-                      </Button>
-                    </>
-                  ) : null}
-                  {role === "item" && !o.isArchived && nestUnderGroupId == null && looksLikeCategoryLabel(o.name) ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-testid={`offering-convert-category-${o.id}`}
-                      onClick={() => {
-                        setCreating(false);
-                        setEditing(null);
-                        setConvertingItem(o);
-                      }}
-                    >
-                      Make this a category
-                    </Button>
-                  ) : null}
-                  <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setCreateParentId(null); setCreateGroupId(null); setEditing(o); }}>
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      const result = await setOfferingArchivedAction(o.id, !o.isArchived);
-                      if (!result.ok) toast.error(result.message ?? "Could not update.");
-                      else {
-                        setOfferings((prev) => prev.map((x) => x.id === o.id ? { ...x, isArchived: !o.isArchived } : x));
-                        toast.success(o.isArchived ? "Restored." : "Archived.");
-                      }
-                    }}
-                  >
-                    {o.isArchived ? "Restore" : "Archive"}
-                  </Button>
-                </div>
-              </li>
+                  })}
+                </ul>
+              </section>
             );
           })}
-        </ul>
+        </div>
       )}
 
       <OfferingFormSheet

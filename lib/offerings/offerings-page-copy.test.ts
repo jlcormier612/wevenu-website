@@ -23,15 +23,18 @@ describe("Offerings page copy", () => {
     );
   });
 
-  it("explains Offerings once in LibraryHowItWorks", () => {
+  it("explains Offerings once in LibraryHowItWorks with separated title + body", () => {
     assert.match(page, /LibraryHowItWorks/);
-    assert.match(page, /How Offerings work/);
-    assert.match(page, /Maintain your\s+catalog here/s);
+    assert.match(page, /title="How Offerings work"/);
+    assert.match(page, /Maintain your catalog here/);
     assert.match(
       page,
-      /Event Order Templates use these offerings to define what&apos;s included and\s+which choices or additional items clients can select/s,
+      /Event Order Templates use these offerings to define\s+what&apos;s included and which choices or additional items clients can select/s,
     );
-    assert.equal((page.match(/<LibraryHowItWorks>/g) ?? []).length, 1);
+    assert.equal((page.match(/<LibraryHowItWorks\b/g) ?? []).length, 1);
+    assert.match(page, /LibraryHowItWorks tone="blush"/);
+    assert.match(page, /LibraryDependencyNote[\s\S]*tone="eucalyptus"/);
+    assert.doesNotMatch(page, /How Offerings work\.<\/strong>\s*Maintain/);
   });
 
   it("keeps EO Templates and Available Inventory links with unique inventory guidance", () => {

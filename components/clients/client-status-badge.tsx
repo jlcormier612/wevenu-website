@@ -5,5 +5,6 @@ export function ClientStatusBadge({ status }: { status: ClientStatus }) {
   if (status === "cancelled") {
     return <Badge variant="destructive">Cancelled</Badge>;
   }
-  return <Badge variant="default">Booked</Badge>;
+  /* Eucalyptus chip — dark text on soft botanical wash (not green text). */
+  return <Badge variant="accent">Booked</Badge>;
 }

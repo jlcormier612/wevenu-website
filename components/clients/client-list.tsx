@@ -38,8 +38,6 @@ import {
 } from "@/lib/clients/list-filters";
 import type { Client } from "@/lib/clients/types";
 import {
-  IDLE_CHIP,
-  IDLE_CHIP_COUNT,
   SELECTED_CHIP,
   SELECTED_CHIP_COUNT,
 } from "@/lib/ui/selected-state";
@@ -192,36 +190,54 @@ export function ClientList({
           🎉 {`${weddingDayToday} wedding${weddingDayToday === 1 ? "" : "s"} today`}
         </p>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by client or event type…" className="pl-9" />
+      <div className="htc-hospitality-toolbar space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by client or event type…" className="border-[color:var(--htc-border-warm)] bg-card pl-9" />
+          </div>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
+            <SelectTrigger className="h-9 w-full border-[color:var(--htc-border-warm)] bg-card sm:w-52 text-sm text-muted-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>{SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-          <SelectTrigger className="h-9 w-full sm:w-52 text-sm text-muted-foreground">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>{SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      {/* Operational view pills — what to look at, not what stage a record is in */}
-      <div className="flex flex-wrap gap-1.5">
-        {CLIENT_LIST_FILTERS.map(({ key, label }) => {
-          const count = counts[key];
-          const active = filter === key;
-          return (
-            <button key={key} type="button" onClick={() => setFilter(key)}
-              aria-pressed={active}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                active ? SELECTED_CHIP : IDLE_CHIP,
-              )}>
-              {label}
-              <span className={cn("rounded-full px-1.5 py-px text-[10px] font-semibold", active ? SELECTED_CHIP_COUNT : IDLE_CHIP_COUNT)}>{count}</span>
-            </button>
-          );
-        })}
+        {/* Operational view pills — what to look at, not what stage a record is in */}
+        <div className="flex flex-wrap gap-1.5">
+          {CLIENT_LIST_FILTERS.map(({ key, label }) => {
+            const count = counts[key];
+            const active = filter === key;
+            const attention = key === "needs_attention";
+            return (
+              <button key={key} type="button" onClick={() => setFilter(key)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? SELECTED_CHIP
+                    : attention
+                      ? "border-[#e8c4c8] bg-[var(--htc-soft-blush)] text-foreground hover:border-[color-mix(in_oklch,var(--htc-blush)_55%,transparent)]"
+                      : "border-[color:var(--htc-border-warm)] bg-card text-foreground hover:border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))]",
+                )}>
+                {label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-px text-[10px] font-semibold",
+                    active
+                      ? SELECTED_CHIP_COUNT
+                      : attention
+                        ? "bg-[color-mix(in_oklch,var(--htc-blush)_28%,white)] text-foreground"
+                        : "bg-[color:var(--htc-canvas)] text-muted-foreground",
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {clients.length === 0 && (
@@ -248,7 +264,7 @@ export function ClientList({
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-sm border border-border bg-card">
+        <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
               <TableRow>
@@ -264,10 +280,16 @@ export function ClientList({
               {filtered.map((client) => {
                 const portal = portalActivationByClientId[client.id];
                 const portalState = portal?.state ?? "not_invited";
+                const needsAttention = attentionClientIds.has(client.id);
                 return (
-                  <TableRow key={client.id} className="group" data-portal-state={portalMode ? portalState : undefined}>
+                  <TableRow
+                    key={client.id}
+                    className="group"
+                    data-portal-state={portalMode ? portalState : undefined}
+                    data-attention={!portalMode && needsAttention ? "true" : undefined}
+                  >
                     <TableCell className="font-medium text-foreground">
-                      <Link href={`/clients/${client.id}`} className="hover:text-primary">
+                      <Link href={`/clients/${client.id}`} className="hover:underline">
                         {clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
                       </Link>
                       {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}

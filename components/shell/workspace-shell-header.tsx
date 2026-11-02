@@ -46,7 +46,7 @@ export function WorkspaceShellHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 sm:h-16 shrink-0 items-center gap-1.5 sm:gap-2 border-b border-border/40 bg-background/95 px-3 sm:px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-30 flex h-14 sm:h-16 shrink-0 items-center gap-1.5 sm:gap-2 border-b border-border/50 bg-card/95 px-3 sm:px-4 backdrop-blur supports-[backdrop-filter]:bg-card/90">
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger
             render={
