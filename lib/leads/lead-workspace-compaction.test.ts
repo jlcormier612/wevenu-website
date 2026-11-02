@@ -75,7 +75,8 @@ describe("lead workspace polish", () => {
     assert.match(detail, /TourAppointmentList/);
     assert.doesNotMatch(detail, /<TourPanel/);
     assert.match(tours, /Schedule Tour/);
-    assert.match(tours, /Copy scheduling link/);
+    assert.match(tours, /Copy link/);
+    assert.match(tours, /Personalized scheduling link/);
   });
 
   it("orders tour content above follow-up fields in the card", () => {
@@ -87,19 +88,18 @@ describe("lead workspace polish", () => {
     assert.match(followUp, /Actually occurred/);
   });
 
-  it("keeps scheduling link out of the card header and Edit off the scheduling cluster", () => {
+  it("keeps scheduling link out of the card header and Reschedule on the appointment actions row", () => {
     const headerEnd = followUp.indexOf("</CardHeader>");
     const header = followUp.slice(0, headerEnd);
     assert.doesNotMatch(header, /\{tourActions\}/);
     assert.match(followUp, /data-testid="tour-followup-scheduling-block"/);
     assert.match(followUp, /data-testid="tour-followup-edit"/);
-    assert.match(tours, /data-testid=\{`tour-appointment-edit-\$\{appt\.id\}`\}/);
+    // 2D-B2: duplicate Edit control removed; Reschedule remains the sole active-slot action
+    assert.doesNotMatch(tours, /tour-appointment-edit-/);
     assert.match(tours, /data-testid=\{`tour-appointment-actions-\$\{appt\.id\}`\}/);
+    assert.match(tours, /data-testid=\{`tour-appointment-reschedule-\$\{appt\.id\}`\}/);
     const rowStart = tours.indexOf("function AppointmentRow");
     const row = tours.slice(rowStart, tours.indexOf("type TourScheduleContextValue"));
-    const editIdx = row.indexOf("tour-appointment-edit-");
-    const actionsIdx = row.indexOf("tour-appointment-actions-");
-    assert.ok(editIdx > 0 && actionsIdx > editIdx);
     assert.match(row, />\s*Reschedule\s*</);
     assert.match(row, /Send Confirmation Request/);
     assert.match(row, /Mark as Confirmed/);

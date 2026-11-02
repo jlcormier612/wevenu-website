@@ -243,8 +243,13 @@ html:has(.htc-staff) {
   --htc-eucalyptus: #a7c2af;
   --htc-blush: #d99a9e;
   --htc-soft-blush: #f7e9eb;
-  --htc-workspace: #fafcfa;
-  /* Warm neutral page canvas — hospitality pages; not global staff chrome. */
+  /*
+   * Application-wide staff canvas (Stage 1 light-mode foundations).
+   * Warm hospitality canvas is the default venue-staff workspace background.
+   * Scoped to `.htc-staff` only — portal / vendor-app / admin / marketing
+   * do not mount this class and keep their own surfaces.
+   */
+  --htc-workspace: #f8f7f3;
   --htc-canvas: #f8f7f3;
   --htc-eucalyptus-surface: #dce8e0;
   --htc-border-warm: #e6e3dc;
@@ -268,14 +273,19 @@ html:has(.htc-staff) {
   --htc-oatmeal: #ede9e1;
   --htc-ivory: #faf9f5;
   --htc-warm-pale: #f5f3ee;
+  /* Calm blue — supporting informational family (HTC visual system §1.2) */
+  --htc-calm-blue: #eaf1f7;
+  --htc-calm-blue-deep: #dfe9f1;
+  --htc-border-calm: #d5e1eb;
+  --htc-calm-accent: #63819a;
 
-  --warm-gray: #fafcfa;
-  --natural-cream: #fafcfa;
+  --warm-gray: #f8f7f3;
+  --natural-cream: #f8f7f3;
   --header-linen: #ffffff;
   --panel-blush: #f7e9eb;
   --panel-sage: color-mix(in oklch, #a7c2af 22%, white);
 
-  --background: #fafcfa;
+  --background: #f8f7f3;
   --foreground: #24332b;
   --heading: #24332b;
   --card: #ffffff;
@@ -287,8 +297,8 @@ html:has(.htc-staff) {
   --secondary: #ffffff;
   /* Dark ink on light surfaces — never botanical-green as default text. */
   --secondary-foreground: #24332b;
-  --border: #e3e7e4;
-  --input: #e3e7e4;
+  --border: #e6e3dc;
+  --input: #e6e3dc;
   --primary: #446b56;
   --primary-foreground: #ffffff;
   --accent: #a7c2af;
@@ -309,7 +319,7 @@ html:has(.htc-staff) {
   --sidebar-accent: color-mix(in oklch, #a7c2af 28%, white);
   /* Active nav labels stay dark; botanical is reserved for the left bar. */
   --sidebar-accent-foreground: #24332b;
-  --sidebar-border: #e3e7e4;
+  --sidebar-border: #e6e3dc;
   --sidebar-ring: #446b56;
 
   --selected: color-mix(in oklch, #a7c2af 32%, white);
@@ -317,10 +327,10 @@ html:has(.htc-staff) {
   --selected-border: #a7c2af;
 }
 
-/* Soft depth on staff cards — defined against workspace white */
+/* Soft depth on staff cards — white working surfaces on warm canvas */
 .htc-staff [data-slot="card"],
 html:has(.htc-staff) [data-slot="card"] {
-  border: 1px solid #e3e7e4;
+  border: 1px solid var(--htc-border-warm);
   box-shadow:
     0 1px 2px color-mix(in oklch, #24332b 6%, transparent),
     0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
@@ -408,8 +418,14 @@ html:has(.htc-staff) [data-slot="card"] {
   background: var(--card);
 }
 
+/*
+ * Attention rows: white working surface + restrained soft-rose left indicator
+ * (matches Focus critical pattern). Avoid full-row blush washes that pink-tint
+ * large portions of the Clients table.
+ */
 .htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"] {
-  background: var(--htc-soft-blush);
+  background: var(--card);
+  box-shadow: inset 3px 0 0 0 var(--htc-soft-rose);
 }
 
 .htc-staff .htc-hospitality-table [data-slot="table-body"] tr:hover {
@@ -417,7 +433,7 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 .htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"]:hover {
-  background: color-mix(in oklch, var(--htc-soft-blush) 82%, white);
+  background: color-mix(in oklch, var(--htc-warm-pale) 70%, white);
 }
 
 .htc-staff .htc-hospitality-catalog {
@@ -465,11 +481,11 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 /*
- * Categories: white under the eucalyptus parent — eucalyptus left guide + indent
- * keep nesting readable without adjacent green-on-green merge.
+ * Categories: linen supporting surface under eucalyptus parents — warm nesting
+ * without competing with parent majors (eucalyptus) or item rows (white).
  */
 .htc-staff .htc-catalog-category {
-  background: var(--card);
+  background: var(--htc-linen);
   border-left: 3px solid var(--htc-eucalyptus);
 }
 
@@ -494,6 +510,1638 @@ html:has(.htc-staff) [data-slot="card"] {
   border-top: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
 }
 
+/*
+ * Calendar Month refinement (Workstream 2A) — scoped chrome only.
+ * Does NOT remap --cal-* taxonomy colors. Does NOT style print/public routes.
+ * Week/Day/Agenda layouts stay structural; shared switcher/filters may opt in.
+ */
+.htc-staff .htc-calendar-view-switcher {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.2rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view] {
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="false"] {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="false"]:hover {
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--htc-warm-pale) 70%, white);
+}
+
+.htc-staff .htc-calendar-view-switcher [data-cal-view]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+.htc-staff .htc-calendar-month-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.htc-staff .htc-calendar-month-nav-group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.25rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Keep prev/next arrows with month+year on one coherent row (esp. 390px). */
+.htc-staff .htc-calendar-month-nav-group > button {
+  flex: 0 0 auto;
+}
+
+.htc-staff .htc-calendar-month-nav-group [data-testid="month-year-picker"] {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.htc-staff .htc-calendar-month-nav-group [data-testid="calendar-month-select"] {
+  width: 8.25rem;
+  min-width: 0;
+}
+
+.htc-staff .htc-calendar-month-nav-group [data-testid="calendar-year-select"] {
+  width: 5.25rem;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .htc-staff .htc-calendar-month-nav-group [data-testid="calendar-month-select"] {
+    width: 9.5rem;
+  }
+  .htc-staff .htc-calendar-month-nav-group [data-testid="calendar-year-select"] {
+    width: 6rem;
+  }
+}
+
+.htc-staff .htc-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1.15rem;
+  /* Informational only — white + warm-neutral border; never blush/soft-rose. */
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: var(--card);
+  padding: 0.5rem 0.85rem;
+}
+
+.htc-staff .htc-calendar-legend [data-cal-legend-item] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  user-select: none;
+}
+
+.htc-staff .htc-calendar-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  /* Desktop: tighter vertical padding; mobile keeps roomier touch layout. */
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+@media (max-width: 639px) {
+  .htc-staff .htc-calendar-filters {
+    gap: 0.65rem;
+    padding: 0.75rem 0.9rem;
+  }
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--htc-border-warm);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="true"] {
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 55%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="false"] {
+  background: var(--card);
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="false"]:hover {
+  color: var(--foreground);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-calendar-filters [data-taxonomy-chip]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+.htc-staff .htc-calendar-filters select {
+  height: 1.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--htc-border-warm);
+  background: var(--card);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-weekday-row] {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--htc-border-warm);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-weekday] {
+  padding: 0.45rem 0.25rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-grid] {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-border-warm);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell],
+.htc-staff .htc-calendar-month-grid [data-cal-day-outside] {
+  min-height: 4.5rem;
+  background: var(--card);
+}
+
+/* Exact linen — avoid OKLCH mixes that can drift toward pink. */
+.htc-staff .htc-calendar-month-grid [data-cal-day-outside] {
+  background: var(--htc-linen);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell] {
+  padding: 0.4rem;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell]:hover {
+  background: var(--htc-warm-pale);
+}
+
+/*
+ * Selected date: exact eucalyptus surface (#DCE8E0) for every selected day —
+ * including non-Today — with no OKLCH mixes that can read as blush.
+ */
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"],
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"]:hover,
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"]:focus,
+.htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"]:focus-visible {
+  background: var(--htc-eucalyptus-surface);
+  box-shadow: inset 0 0 0 1px var(--htc-eucalyptus);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-num] {
+  display: flex;
+  height: 1.5rem;
+  width: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-month-grid [data-cal-day-num][data-today="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.htc-staff .htc-calendar-schedule {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-header] {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+  padding: 0.85rem 1rem 0.65rem;
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-title] {
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-body] {
+  padding: 0.85rem 1rem 1rem;
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-empty] {
+  border: 1px dashed color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+  border-radius: 0.65rem;
+  background: color-mix(in oklch, var(--card) 72%, transparent);
+  padding: 1.15rem 0.9rem;
+  text-align: center;
+}
+
+.htc-staff .htc-calendar-schedule [data-cal-schedule-empty] p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+/*
+ * Calendar Week / Day / Agenda (Workstream 2B) — align with approved Month chrome.
+ * Shared FilterBar + view switcher already use Month styles. Do not remap --cal-*.
+ */
+.htc-staff .htc-calendar-week,
+.htc-staff .htc-calendar-day,
+.htc-staff .htc-calendar-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-grid] {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (min-width: 480px) and (max-width: 767px) {
+  .htc-staff .htc-calendar-week [data-cal-week-grid] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .htc-staff .htc-calendar-week [data-cal-week-grid] {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day] {
+  min-height: 9rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.55rem 0.5rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 3%, transparent);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day][data-today="true"] {
+  background: var(--htc-eucalyptus-surface);
+  box-shadow: inset 0 0 0 1px var(--htc-eucalyptus);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day-name] {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day-num] {
+  display: flex;
+  margin: 0.15rem auto 0.45rem;
+  height: 1.55rem;
+  width: 1.55rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day-num][data-today="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-event] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.5rem;
+  background: var(--card);
+  padding: 0.35rem 0.4rem;
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-day][data-today="true"] [data-cal-week-event] {
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-event]:hover {
+  background: var(--htc-warm-pale);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-empty] {
+  padding: 0.5rem 0.15rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-full] {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  padding: 0.85rem 1rem;
+}
+
+.htc-staff .htc-calendar-week [data-cal-week-full-title] {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-board] {
+  width: 100%;
+  max-width: none;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  padding: 0.85rem 1rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Day nav: keep Today visually with the date controls (esp. mobile). */
+.htc-staff .htc-calendar-day [data-cal-day-nav] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-nav] .htc-calendar-month-nav-group {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-nav] .htc-calendar-month-nav-group h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-today] {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  min-width: 2.75rem;
+}
+
+@media (max-width: 639px) {
+  .htc-staff .htc-calendar-day [data-cal-day-nav] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+    border: 1px solid var(--htc-border-warm);
+    border-radius: 0.75rem;
+    background: var(--card);
+    padding: 0.35rem;
+    box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+  }
+
+  .htc-staff .htc-calendar-day [data-cal-day-nav] .htc-calendar-month-nav-group {
+    width: 100%;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    padding: 0.15rem 0.1rem;
+  }
+
+  .htc-staff .htc-calendar-day [data-cal-day-today] {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-empty],
+.htc-staff .htc-calendar-agenda [data-cal-agenda-empty] {
+  border: 1px dashed var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.htc-staff .htc-calendar-day [data-cal-day-empty] p,
+.htc-staff .htc-calendar-agenda [data-cal-agenda-empty] p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-groups] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-group] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-date] {
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-date][data-today="true"] {
+  color: var(--primary);
+}
+
+.htc-staff .htc-calendar-agenda [data-cal-agenda-items] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/*
+ * Calendar Availability & Sharing cards (Workstream 2C).
+ * Distinct Public Event Availability vs Tour Scheduling — presentation only.
+ */
+.htc-staff .htc-calendar-share-grid {
+  gap: 0.85rem;
+}
+
+.htc-staff .htc-calendar-share-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-header] {
+  padding: 0.75rem 1rem 0.65rem;
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-title] {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--heading);
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-body] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 0.15rem 1rem 1rem;
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-lead] {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.htc-staff .htc-calendar-share-card [data-cal-share-helper] {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+/* Public Event Availability — calm eucalyptus header strip */
+.htc-staff .htc-calendar-share-event [data-cal-share-header] {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+}
+
+/* Tour Scheduling — action-oriented + linen guidance + selective blush accent */
+.htc-staff .htc-calendar-share-tour {
+  box-shadow:
+    inset 3px 0 0 0 var(--htc-soft-rose),
+    0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-share-tour [data-cal-share-header] {
+  border-bottom: 1px solid var(--htc-border-warm);
+  background: color-mix(in oklch, var(--htc-warm-pale) 55%, white);
+}
+
+.htc-staff .htc-calendar-share-tour [data-cal-share-guidance] {
+  margin-top: 0.85rem;
+  border: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+  border-radius: 0.55rem;
+  background: var(--htc-linen);
+  padding: 0.65rem 0.75rem;
+}
+
+.htc-staff .htc-calendar-share-tour [data-cal-share-guidance] p {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-calendar-share-card[data-ready="false"] [data-cal-share-actions] {
+  display: none;
+}
+
+/*
+ * Tours main workspace (Workstream 2D-A) — hospitality presentation only.
+ * Lifecycle badges use hospitality tokens; Calendar --cal-tour blue stays untouched.
+ */
+.htc-staff .htc-tours-workspace [data-tours-section],
+.htc-staff .htc-tours-workspace [data-tours-followup] {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-header] {
+  padding: 0.85rem 1rem 0.7rem;
+  border-bottom: 1px solid var(--htc-border-warm);
+  background: var(--htc-eucalyptus-surface);
+}
+
+/* Upcoming — eucalyptus */
+.htc-staff .htc-tours-workspace [data-tours-section="upcoming"] [data-tours-section-header] {
+  background: var(--htc-eucalyptus-surface);
+  border-bottom-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+/* Past — muted botanical / soft sage */
+.htc-staff .htc-tours-workspace [data-tours-section="past"] [data-tours-section-header] {
+  background: var(--htc-botanical-pale);
+  border-bottom-color: color-mix(in oklch, var(--htc-eucalyptus) 35%, var(--htc-border-warm));
+}
+
+/* Cancelled — pale blush */
+.htc-staff .htc-tours-workspace [data-tours-section="cancelled"] [data-tours-section-header] {
+  background: var(--htc-soft-blush);
+  border-bottom-color: color-mix(in oklch, var(--htc-soft-rose) 40%, var(--htc-border-warm));
+}
+
+/* Archived (empty section + populated LibraryArchivedSection) — linen */
+.htc-staff .htc-tours-workspace [data-tours-section="archived-empty"] [data-tours-section-header],
+.htc-staff .htc-tours-workspace .htc-tours-archived {
+  background: var(--htc-linen);
+  border-bottom-color: var(--htc-border-warm);
+}
+
+.htc-staff .htc-tours-workspace .htc-tours-archived {
+  margin-top: 0.25rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  border-top: 1px solid var(--htc-border-warm);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-followup] [data-tours-section-header] {
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+  border-bottom-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-title] {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-desc] {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-section-body] {
+  padding: 0.15rem 0.35rem 0.35rem;
+  background: var(--card);
+}
+
+.htc-staff .htc-tours-workspace .htc-tours-empty-page,
+.htc-staff .htc-tours-workspace .htc-tours-section-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.5rem;
+  padding: 1.1rem 1rem;
+  border: 1px dashed color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+  border-radius: 0.65rem;
+  background: var(--htc-linen);
+}
+
+.htc-staff .htc-tours-workspace .htc-tours-empty-page {
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1.25rem;
+}
+
+.htc-staff .htc-tours-workspace [data-tours-empty-title] {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-workspace [data-tours-empty-copy] {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.htc-staff .htc-tours-row {
+  padding: 0.95rem 0.75rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+}
+
+.htc-staff .htc-tours-row:last-child {
+  border-bottom: none;
+}
+
+.htc-staff .htc-tours-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.htc-staff .htc-tours-row-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.htc-staff .htc-tours-date {
+  flex-shrink: 0;
+  width: 2.75rem;
+  text-align: center;
+  padding: 0.35rem 0.2rem;
+  border-radius: 0.5rem;
+  background: var(--htc-linen);
+  border: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+}
+
+.htc-staff .htc-tours-date [data-tours-day] {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-date [data-tours-month] {
+  margin: 0.2rem 0 0;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-row-content {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.htc-staff .htc-tours-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.htc-staff .htc-tours-row-title [data-tours-name] {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.htc-staff .htc-tours-status-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+/* Scheduled — warm linen / neutral pending */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="scheduled"] {
+  background: var(--htc-linen);
+  border-color: var(--htc-border-warm);
+  color: color-mix(in oklch, var(--heading) 82%, #8a6a3a);
+}
+
+/* Confirmed — eucalyptus / botanical */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="confirmed"] {
+  background: var(--htc-eucalyptus-surface);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 55%, var(--htc-border-warm));
+  color: var(--htc-botanical);
+}
+
+/* Completed — muted sage */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="completed"] {
+  background: color-mix(in oklch, var(--htc-botanical-pale) 70%, white);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  color: color-mix(in oklch, var(--htc-botanical) 75%, #5a6b60);
+}
+
+/* Cancelled — neutral muted */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="cancelled"] {
+  background: color-mix(in oklch, var(--htc-warm-pale) 80%, white);
+  border-color: var(--htc-border-warm);
+  color: var(--muted-foreground);
+}
+
+/* No Show — restrained soft rose */
+.htc-staff .htc-tours-status-badge[data-tours-status-badge="no_show"] {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-soft-rose) 55%, var(--htc-border-warm));
+  color: color-mix(in oklch, #6b3f44 70%, var(--heading));
+}
+
+.htc-staff .htc-tours-meta-badge {
+  font-size: 0.625rem !important;
+}
+
+.htc-staff .htc-tours-row-content [data-tours-meta],
+.htc-staff .htc-tours-row-content [data-tours-aside],
+.htc-staff .htc-tours-row-content [data-tours-email] {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-row-content [data-tours-email] {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.htc-staff .htc-tours-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.45rem;
+  padding-left: 3.6rem;
+}
+
+.htc-staff .htc-tours-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.htc-staff .htc-tours-confirm-btn {
+  min-height: 2.25rem;
+  font-size: 0.75rem;
+}
+
+.htc-staff .htc-tours-confirm-primary {
+  flex: 1 1 9rem;
+  background: var(--htc-botanical);
+  border-color: var(--htc-botanical);
+  color: white;
+}
+
+.htc-staff .htc-tours-confirm-actions .htc-tours-confirm-btn:not(.htc-tours-confirm-primary) {
+  flex: 1 1 9rem;
+}
+
+.htc-staff .htc-tours-row-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.htc-staff .htc-tours-confirm-primary:hover {
+  background: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  border-color: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  color: white;
+}
+
+.htc-staff .htc-tours-status-select {
+  height: 2.25rem;
+  min-width: 7.5rem;
+  max-width: 10.5rem;
+  width: auto;
+  flex: 0 1 9rem;
+  font-size: 0.75rem;
+}
+
+.htc-staff .htc-tours-lead-link {
+  height: 2.25rem;
+  width: 2.25rem;
+  padding: 0;
+}
+
+.htc-staff .htc-tours-outcome {
+  margin: 0.65rem 0 0 3.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.htc-staff .htc-tours-outcome [data-tours-outcome-summary] {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-tours-outcome [data-tours-outcome-summary] span:first-child {
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-tours-outcome [data-tours-followup-sent] {
+  color: var(--htc-botanical);
+}
+
+.htc-staff .htc-tours-outcome-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.htc-staff .htc-tours-outcome-links button {
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.htc-staff .htc-tours-outcome-links button:hover {
+  color: var(--foreground);
+}
+
+.htc-staff .htc-tours-outcome-form {
+  margin-top: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: var(--htc-linen);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Mobile: denser action band — confirm pair side-by-side, status+tools on one row */
+@media (max-width: 639px) {
+  .htc-staff .htc-tours-row-actions {
+    padding-left: 0;
+    gap: 0.35rem;
+  }
+
+  .htc-staff .htc-tours-confirm-actions {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 0.4rem;
+    align-items: stretch;
+  }
+
+  /*
+   * Touch-target correction (2D-A): ≥44px, target 48px; allow secondary label wrap;
+   * no ellipsis. Overrides Button size=sm fixed h-8 only inside Tours confirm actions.
+   */
+  .htc-staff .htc-tours-workspace .htc-tours-confirm-actions > .htc-tours-confirm-btn {
+    flex: unset;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 3rem; /* 48px target; grows with wrapped label */
+    padding-block: 0.65rem;
+    padding-inline: 0.55rem;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
+    text-align: center;
+    align-self: stretch;
+  }
+
+  .htc-staff .htc-tours-status-select {
+    flex: 1 1 7rem;
+    max-width: none;
+    min-width: 6.5rem;
+  }
+
+  .htc-staff .htc-tours-row-tools {
+    margin-left: 0;
+  }
+
+  .htc-staff .htc-tours-outcome {
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .htc-staff .htc-tours-row-main {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .htc-staff .htc-tours-row-actions {
+    padding-left: 0;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    max-width: 26rem;
+  }
+
+  .htc-staff .htc-tours-confirm-actions {
+    flex: 0 1 auto;
+    justify-content: flex-end;
+  }
+
+  .htc-staff .htc-tours-confirm-primary,
+  .htc-staff .htc-tours-confirm-actions .htc-tours-confirm-btn:not(.htc-tours-confirm-primary) {
+    flex: 0 1 auto;
+  }
+
+  .htc-staff .htc-tours-status-select {
+    width: 8.5rem;
+    flex: 0 0 8.5rem;
+  }
+
+  .htc-staff .htc-tours-row-tools {
+    margin-left: 0;
+  }
+
+  .htc-staff .htc-tours-outcome {
+    margin-left: 3.6rem;
+  }
+}
+
+/* ─── 2D-B1: Lead Tour & follow-up (contextual; reuses 2D-A status badges) ─── */
+.htc-staff .htc-lead-tour-followup {
+  border-color: var(--htc-border-warm);
+  background: var(--card);
+  box-shadow: none;
+}
+
+.htc-staff .htc-lead-tour-followup-title {
+  color: var(--heading);
+  line-height: 1.25;
+}
+
+.htc-staff .htc-lead-tour-followup-sub {
+  max-width: 36rem;
+  line-height: 1.45;
+}
+
+.htc-staff .htc-lead-tour-section-label {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-lead-tour-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.htc-staff .htc-lead-tour-appt {
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.htc-staff .htc-lead-tour-appt-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+}
+
+.htc-staff .htc-lead-tour-appt-date {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--heading);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.htc-staff .htc-lead-tour-appt-time {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+.htc-staff .htc-lead-tour-appt-when-kind {
+  font-weight: 500;
+  color: color-mix(in oklch, var(--heading) 55%, var(--muted-foreground));
+}
+
+.htc-staff .htc-lead-tour-appt-aside {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+.htc-staff .htc-lead-tour-appt-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Overdue is orthogonal to lifecycle status — distinct from badges */
+.htc-staff .htc-lead-tour-overdue {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border-radius: 0.35rem;
+  border: 1px solid color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+  color: color-mix(in oklch, #6b3f44 65%, var(--heading));
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.htc-staff .htc-lead-tour-appt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.htc-staff .htc-lead-tour-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+}
+
+.htc-staff .htc-lead-tour-confirm-primary {
+  background: var(--htc-botanical);
+  color: #fff;
+  border-color: var(--htc-botanical);
+}
+
+.htc-staff .htc-lead-tour-confirm-primary:hover {
+  background: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  color: #fff;
+}
+
+.htc-staff .htc-lead-tour-confirm-secondary,
+.htc-staff .htc-lead-tour-action-secondary {
+  border-color: var(--htc-border-warm);
+  background: #fff;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-action-destructive {
+  color: color-mix(in oklch, #6b3f44 75%, var(--heading));
+}
+
+.htc-staff .htc-lead-tour-action-destructive:hover {
+  background: var(--htc-soft-blush);
+  color: color-mix(in oklch, #6b3f44 85%, var(--heading));
+}
+
+.htc-staff .htc-lead-tour-confirm-primary,
+.htc-staff .htc-lead-tour-confirm-secondary,
+.htc-staff .htc-lead-tour-action-secondary,
+.htc-staff .htc-lead-tour-action-destructive,
+.htc-staff .htc-lead-tour-personal-link-btn,
+.htc-staff .htc-lead-tour-schedule-btn {
+  height: auto;
+  min-height: 2.75rem; /* 44px floor */
+  padding-block: 0.55rem;
+  padding-inline: 0.75rem;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/*
+ * EXPERIMENT (Lead detail only) — pale informational blue for personalized
+ * scheduling-link surface. Not a permanent design token. Do not reuse globally.
+ * Primary: #EAF1F7 · deeper: #DFE9F1 · border: #D5E1EB · accent: #63819A
+ */
+.htc-staff .htc-lead-tour-personal-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #d5e1eb;
+  border-left: 3px solid #dfe9f1;
+  border-radius: 0.65rem;
+  background: #eaf1f7;
+}
+
+.htc-staff .htc-lead-tour-personal-link-label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--heading);
+  line-height: 1.3;
+}
+
+.htc-staff .htc-lead-tour-personal-link-guidance {
+  margin: 0.25rem 0 0;
+  max-width: 28rem;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-lead-tour-personal-link-btn {
+  flex-shrink: 0;
+  border-color: #d5e1eb;
+  background: #fff;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-empty {
+  padding: 0.85rem 0.9rem;
+  border: 1px dashed var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: color-mix(in oklch, var(--htc-linen) 45%, white);
+}
+
+.htc-staff .htc-lead-tour-empty-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-lead-tour-empty-copy {
+  margin: 0.3rem 0 0;
+  max-width: 28rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-lead-tour-empty-followup {
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 639px) {
+  .htc-staff .htc-lead-tour-confirm-actions {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .htc-staff .htc-lead-tour-confirm-actions > .htc-lead-tour-confirm-primary,
+  .htc-staff .htc-lead-tour-confirm-actions > .htc-lead-tour-confirm-secondary {
+    width: 100%;
+    min-width: 0;
+    min-height: 3rem; /* 48px mobile target — matches 2D-A confirm correction */
+    padding-block: 0.65rem;
+    text-align: center;
+  }
+
+  .htc-staff .htc-lead-tour-appt-actions > .htc-lead-tour-action-secondary,
+  .htc-staff .htc-lead-tour-appt-actions > .htc-lead-tour-action-destructive {
+    min-height: 2.75rem;
+  }
+
+  .htc-staff .htc-lead-tour-personal-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .htc-staff .htc-lead-tour-personal-link-btn {
+    width: 100%;
+    min-height: 3rem;
+    justify-content: center;
+  }
+}
+
+/* ─── 2D-B2: Schedule / Reschedule slot sheet ─────────────────────────────── */
+html:has(.htc-staff) .htc-tour-slot-sheet-content {
+  background: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet {
+  min-height: 0;
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet-header {
+  background: color-mix(in oklch, var(--htc-warm-pale) 55%, white);
+  border-bottom-color: var(--htc-border-warm);
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet-body {
+  overscroll-behavior: contain;
+}
+
+html:has(.htc-staff) .htc-tour-slot-sheet-footer {
+  background: #fff;
+  border-top-color: var(--htc-border-warm);
+  gap: 0.5rem;
+}
+
+html:has(.htc-staff) .htc-tour-slot-guidance {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+}
+
+html:has(.htc-staff) .htc-tour-slot-guidance-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--heading);
+  line-height: 1.3;
+}
+
+html:has(.htc-staff) .htc-tour-slot-guidance-copy {
+  margin: 0.25rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--htc-calm-accent);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day {
+  min-height: 2.5rem;
+  border-radius: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  color: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day:disabled {
+  cursor: not-allowed;
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-available="true"] {
+  color: var(--heading);
+  background: color-mix(in oklch, var(--htc-botanical-pale) 70%, white);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-available="true"]:hover {
+  background: var(--htc-eucalyptus-surface);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-today="true"][data-tour-cal-available="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--htc-eucalyptus);
+}
+
+html:has(.htc-staff) .htc-tour-slot-cal-day[data-tour-cal-selected="true"] {
+  background: var(--htc-eucalyptus-surface);
+  color: var(--htc-botanical);
+  box-shadow: inset 0 0 0 2px var(--htc-botanical);
+}
+
+html:has(.htc-staff) .htc-tour-slot-calendar-nav-btn {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+}
+
+html:has(.htc-staff) .htc-tour-slot-duration {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+html:has(.htc-staff) .htc-tour-slot-empty {
+  margin: 0;
+  padding: 1.25rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  border: 1px dashed var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: color-mix(in oklch, var(--htc-linen) 40%, white);
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.4rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--htc-border-warm);
+  background: #fff;
+  color: var(--heading);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-chip:hover {
+  border-color: color-mix(in oklch, var(--htc-botanical) 40%, var(--htc-border-warm));
+  background: var(--htc-botanical-pale);
+}
+
+html:has(.htc-staff) .htc-tour-slot-time-chip[data-tour-slot-selected="true"] {
+  border-color: var(--htc-botanical);
+  background: var(--htc-botanical);
+  color: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-footer-primary {
+  min-height: 2.75rem;
+  background: var(--htc-botanical);
+  border-color: var(--htc-botanical);
+  color: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-footer-primary:hover {
+  background: color-mix(in oklch, var(--htc-botanical) 88%, black);
+  color: #fff;
+}
+
+html:has(.htc-staff) .htc-tour-slot-footer-secondary {
+  min-height: 2.75rem;
+  border-color: var(--htc-border-warm);
+  background: #fff;
+  color: var(--heading);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.7rem;
+  background: color-mix(in oklch, var(--htc-linen) 35%, white);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 0.75rem;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-value {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  line-height: 1.35;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-message {
+  padding-top: 0.15rem;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-subject {
+  margin: 0.2rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--heading);
+  line-height: 1.35;
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-body {
+  margin: 0.55rem 0 0;
+  padding: 0.7rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--htc-border-warm);
+  background: #fff;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+html:has(.htc-staff) .htc-tour-send-preview-warn {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--destructive);
+}
+
+@media (max-width: 639px) {
+  html:has(.htc-staff) .htc-tour-slot-sheet-content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-cal-day {
+    min-height: 2.75rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-time-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-time-chip {
+    min-height: 3rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-slot-footer-primary,
+  html:has(.htc-staff) .htc-tour-slot-footer-secondary {
+    min-height: 3rem;
+  }
+
+  html:has(.htc-staff) .htc-tour-send-preview-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dark .htc-staff .htc-calendar-share-card,
+.dark .htc-staff .htc-calendar-share-event [data-cal-share-header],
+.dark .htc-staff .htc-calendar-share-tour [data-cal-share-header],
+.dark .htc-staff .htc-calendar-share-tour [data-cal-share-guidance],
+html.dark:has(.htc-staff) .htc-calendar-share-card,
+html.dark:has(.htc-staff) .htc-calendar-share-event [data-cal-share-header],
+html.dark:has(.htc-staff) .htc-calendar-share-tour [data-cal-share-header],
+html.dark:has(.htc-staff) .htc-calendar-share-tour [data-cal-share-guidance] {
+  border-color: var(--border);
+  background: var(--card);
+  box-shadow: none;
+}
+
+.dark .htc-staff .htc-calendar-week [data-cal-week-day],
+.dark .htc-staff .htc-calendar-week [data-cal-week-full],
+.dark .htc-staff .htc-calendar-day [data-cal-day-board],
+.dark .htc-staff .htc-calendar-day [data-cal-day-empty],
+.dark .htc-staff .htc-calendar-agenda [data-cal-agenda-empty],
+html.dark:has(.htc-staff) .htc-calendar-week [data-cal-week-day],
+html.dark:has(.htc-staff) .htc-calendar-week [data-cal-week-full],
+html.dark:has(.htc-staff) .htc-calendar-day [data-cal-day-board],
+html.dark:has(.htc-staff) .htc-calendar-day [data-cal-day-empty],
+html.dark:has(.htc-staff) .htc-calendar-agenda [data-cal-agenda-empty] {
+  border-color: var(--border);
+  background: var(--card);
+  box-shadow: none;
+}
+.dark .htc-staff .htc-calendar-week [data-cal-week-day][data-today="true"],
+html.dark:has(.htc-staff) .htc-calendar-week [data-cal-week-day][data-today="true"] {
+  background: var(--muted);
+  box-shadow: none;
+}
+
 /* Dark Mode — hospitality utilities follow staff dark surfaces (no warm canvas). */
 .dark .htc-staff .htc-hospitality-page,
 html.dark:has(.htc-staff) .htc-hospitality-page {
@@ -504,14 +2152,63 @@ html.dark:has(.htc-staff) .htc-hospitality-page {
 .dark .htc-staff .htc-hospitality-elevated,
 .dark .htc-staff .htc-hospitality-table,
 .dark .htc-staff .htc-catalog-section,
+.dark .htc-staff .htc-calendar-view-switcher,
+.dark .htc-staff .htc-calendar-month-nav-group,
+.dark .htc-staff .htc-calendar-filters,
+.dark .htc-staff .htc-calendar-schedule,
+.dark .htc-staff .htc-tours-workspace [data-tours-section],
+.dark .htc-staff .htc-tours-workspace [data-tours-followup],
 html.dark:has(.htc-staff) .htc-hospitality-heading,
 html.dark:has(.htc-staff) .htc-hospitality-toolbar,
 html.dark:has(.htc-staff) .htc-hospitality-elevated,
 html.dark:has(.htc-staff) .htc-hospitality-table,
-html.dark:has(.htc-staff) .htc-catalog-section {
+html.dark:has(.htc-staff) .htc-catalog-section,
+html.dark:has(.htc-staff) .htc-calendar-view-switcher,
+html.dark:has(.htc-staff) .htc-calendar-month-nav-group,
+html.dark:has(.htc-staff) .htc-calendar-filters,
+html.dark:has(.htc-staff) .htc-calendar-schedule,
+html.dark:has(.htc-staff) .htc-tours-workspace [data-tours-section],
+html.dark:has(.htc-staff) .htc-tours-workspace [data-tours-followup] {
   border-color: var(--border);
   background: var(--card);
   box-shadow: none;
+}
+.dark .htc-staff .htc-tours-workspace [data-tours-section-header],
+.dark .htc-staff .htc-tours-workspace .htc-tours-archived,
+.dark .htc-staff .htc-tours-workspace .htc-tours-date,
+.dark .htc-staff .htc-tours-workspace .htc-tours-section-empty,
+.dark .htc-staff .htc-tours-workspace .htc-tours-empty-page,
+.dark .htc-staff .htc-tours-workspace .htc-tours-outcome-form,
+html.dark:has(.htc-staff) .htc-tours-workspace [data-tours-section-header],
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-archived,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-date,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-section-empty,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-empty-page,
+html.dark:has(.htc-staff) .htc-tours-workspace .htc-tours-outcome-form {
+  border-color: var(--border);
+  background: var(--muted);
+}
+.dark .htc-staff .htc-calendar-legend,
+html.dark:has(.htc-staff) .htc-calendar-legend {
+  border-color: var(--border);
+  background: var(--muted);
+}
+.dark .htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="true"],
+.dark .htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"],
+html.dark:has(.htc-staff) .htc-calendar-filters [data-taxonomy-chip][data-active="true"],
+html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"] {
+  background: var(--muted);
+  border-color: var(--border);
+  box-shadow: none;
+}
+.dark .htc-staff .htc-calendar-month-grid [data-cal-day-outside],
+html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-outside] {
+  background: color-mix(in oklch, var(--muted) 70%, var(--card));
+}
+.dark .htc-staff .htc-calendar-schedule [data-cal-schedule-empty],
+html.dark:has(.htc-staff) .htc-calendar-schedule [data-cal-schedule-empty] {
+  border-color: var(--border);
+  background: var(--muted);
 }
 .dark .htc-staff .htc-hospitality-table [data-slot="table-header"] tr,
 .dark .htc-staff .htc-catalog-major,
@@ -524,7 +2221,8 @@ html.dark:has(.htc-staff) .htc-catalog-category {
 }
 .dark .htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"],
 html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"] {
-  background: color-mix(in oklch, var(--destructive) 22%, var(--card));
+  background: var(--card);
+  box-shadow: inset 3px 0 0 0 color-mix(in oklch, var(--destructive) 55%, transparent);
 }
 .dark .htc-staff .htc-catalog-item,
 .dark .htc-staff .htc-catalog-item-nested,

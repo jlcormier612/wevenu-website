@@ -846,7 +846,9 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
   // Archived tours are excluded here — list hygiene, not status change.
   const nowIso = new Date().toISOString();
   const select = TOUR_LIST_SELECT;
-  const [{ data: upcomingRows }, { data: completedRows }, { data: overdueRows }] = await Promise.all([
+  // Cancelled (non-archived) are loaded for the Tours Cancelled section —
+  // presentation discoverability only; status semantics unchanged.
+  const [{ data: upcomingRows }, { data: completedRows }, { data: overdueRows }, { data: cancelledRows }] = await Promise.all([
     supabase
       .from("tour_appointments")
       .select(select)
@@ -873,6 +875,14 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
       .lt("scheduled_at", nowIso)
       .order("scheduled_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("tour_appointments")
+      .select(select)
+      .eq("venue_id", venue.id)
+      .eq("is_archived", false)
+      .eq("status", "cancelled")
+      .order("scheduled_at", { ascending: false })
+      .limit(50),
   ]);
   // Completed/walk-in history: sort by actual occurrence when scheduled_at is null.
   const completedSorted = (completedRows ?? []).slice().sort((a: any, b: any) => {
@@ -884,6 +894,7 @@ export async function getTourAppointments(): Promise<import("@/lib/tours/types")
     ...(upcomingRows ?? []),
     ...completedSorted,
     ...(overdueRows ?? []),
+    ...(cancelledRows ?? []),
   ];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (merged as any[]).map(enrichAppointmentContact);
@@ -1023,10 +1034,39 @@ function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
 // the public widget's book_tour() uses (via a shared internal SQL
 // function) — never a second implementation of "is this slot free."
 
-export async function getCoordinatorTourSlots(startDate: string, endDate: string): Promise<TourSlot[]> {
+export async function getCoordinatorTourSlots(
+  startDate: string,
+  endDate: string,
+  excludeAppointmentId?: string | null,
+): Promise<TourSlot[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_coordinator_tour_slots", { p_start_date: startDate, p_end_date: endDate });
+  // Omit exclude when null/undefined so two-arg PostgREST callers (Schedule,
+  // Settings preview) keep using the default null path after the migration
+  // drops the old (date, date) overload in favor of a defaulted third arg.
+  const baseArgs = { p_start_date: startDate, p_end_date: endDate };
+  if (!excludeAppointmentId) {
+    const { data } = await supabase.rpc("get_coordinator_tour_slots", baseArgs);
+    if (!data || (data as Record<string, unknown>).error) return [];
+    return ((data as Record<string, unknown>).slots ?? []) as TourSlot[];
+  }
+
+  const { data, error } = await supabase.rpc("get_coordinator_tour_slots", {
+    ...baseArgs,
+    p_exclude_appointment_id: excludeAppointmentId,
+  });
+  // Pre-migration Sandbox still exposes only (date, date). Fall back so the
+  // Reschedule sheet remains usable until 20261427200000 is applied; self-
+  // exclusion then becomes authoritative.
+  if (error) {
+    const msg = error.message ?? "";
+    if (msg.includes("Could not find the function") || error.code === "PGRST202") {
+      const fallback = await supabase.rpc("get_coordinator_tour_slots", baseArgs);
+      if (!fallback.data || (fallback.data as Record<string, unknown>).error) return [];
+      return ((fallback.data as Record<string, unknown>).slots ?? []) as TourSlot[];
+    }
+    return [];
+  }
   if (!data || (data as Record<string, unknown>).error) return [];
   return ((data as Record<string, unknown>).slots ?? []) as TourSlot[];
 }

@@ -31,16 +31,16 @@ describe("tour-follow-up card layout", () => {
     assert.match(followSlice, /label="Last contacted"/);
   });
 
-  it("keeps per-tour Edit above that tour's action controls", () => {
+  it("keeps a single Reschedule action on active tour rows", () => {
     const row = panel.slice(
       panel.indexOf("function AppointmentRow"),
       panel.indexOf("type TourScheduleContextValue"),
     );
-    assert.match(row, /data-testid=\{`tour-appointment-edit-\$\{appt\.id\}`\}/);
+    assert.doesNotMatch(row, /tour-appointment-edit-/);
     assert.match(row, /data-testid=\{`tour-appointment-actions-\$\{appt\.id\}`\}/);
-    assert.ok(row.indexOf("tour-appointment-edit-") < row.indexOf("tour-appointment-actions-"));
-    assert.match(row, />\s*Edit\s*</);
+    assert.match(row, /data-testid=\{`tour-appointment-reschedule-\$\{appt\.id\}`\}/);
     assert.match(row, />\s*Reschedule\s*</);
+    assert.doesNotMatch(row, />\s*Edit\s*</);
     assert.match(row, /Send Confirmation Request/);
     assert.match(row, /Mark as Confirmed/);
     assert.match(row, />\s*Completed\s*</);

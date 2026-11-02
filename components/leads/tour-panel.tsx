@@ -31,16 +31,18 @@ import { clampMonthYear } from "@/lib/calendar/month-year-range";
 import type { TourAppointment, TourCustomerSendPreview, TourSlot } from "@/lib/tours/types";
 import { tourDisplayClockIso } from "@/lib/tours/list-order";
 import { prefillActualFromScheduled, tourActualDiffersFromScheduled } from "@/lib/tours/occurrence-clock";
+import { isTourSlotConflictError } from "@/lib/tours/slot-conflict";
 import { formatVenueLocalTourDisplay, utcToVenueLocalParts } from "@/lib/venue/timezone";
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-const STATUS_META: Record<TourAppointment["status"], { label: string; className: string }> = {
-  scheduled: { label: "Scheduled", className: "bg-warning/15 text-warning-foreground" },
-  confirmed: { label: "Confirmed", className: "bg-primary/15 text-primary" },
-  completed: { label: "Completed", className: "bg-success/15 text-success" },
-  cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground" },
-  no_show:   { label: "No-show",   className: "bg-destructive/15 text-destructive" },
+/** Labels only — visual chrome uses shared `.htc-tours-status-badge` (2D-A). */
+const STATUS_LABEL: Record<TourAppointment["status"], string> = {
+  scheduled: "Scheduled",
+  confirmed: "Confirmed",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  no_show: "No Show",
 };
 
 function isoDate(y: number, m: number, d: number): string {
@@ -54,6 +56,7 @@ function CalendarGrid({ availableDates, selectedDate, onSelect, month, year, onM
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayIso = isoDate(today.getFullYear(), today.getMonth(), today.getDate());
   const minYear = today.getFullYear();
   const maxYear = CALENDAR_MAX_YEAR;
   const atPastFloor = year < minYear || (year === minYear && month <= today.getMonth());
@@ -72,14 +75,14 @@ function CalendarGrid({ availableDates, selectedDate, onSelect, month, year, onM
   }
 
   return (
-    <div className="space-y-3" data-testid="tour-availability-calendar">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="htc-tour-slot-calendar space-y-3" data-testid="tour-availability-calendar">
+      <div className="htc-tour-slot-calendar-nav flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           disabled={atPastFloor}
           onClick={() => jumpTo(month - 1, year)}
           aria-label="Previous month"
-          className="p-2 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="htc-tour-slot-calendar-nav-btn p-2 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -95,12 +98,12 @@ function CalendarGrid({ availableDates, selectedDate, onSelect, month, year, onM
           disabled={atFutureCeiling}
           onClick={() => jumpTo(month + 1, year)}
           aria-label="Next month"
-          className="p-2 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="htc-tour-slot-calendar-nav-btn p-2 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="htc-tour-slot-calendar-grid grid grid-cols-7 gap-1">
         {DAYS.map((d) => <p key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</p>)}
         {cells.map((day, i) => {
           if (!day) return <div key={`empty-${i}`} />;
@@ -108,11 +111,19 @@ function CalendarGrid({ availableDates, selectedDate, onSelect, month, year, onM
           const isAvail = availableDates.has(iso);
           const isPast = new Date(year, month, day) < today;
           const isSel = iso === selectedDate;
+          const isToday = iso === todayIso;
           return (
-            <button key={iso} type="button" disabled={!isAvail || isPast} onClick={() => onSelect(iso)}
-              className={`rounded-lg py-2 text-sm font-medium transition-colors text-center ${
-                isSel ? "bg-primary text-primary-foreground" : isAvail && !isPast ? "bg-primary/10 text-heading hover:bg-primary/20" : "text-muted-foreground/40"
-              }`}>
+            <button
+              key={iso}
+              type="button"
+              disabled={!isAvail || isPast}
+              onClick={() => onSelect(iso)}
+              data-tour-cal-day={iso}
+              data-tour-cal-available={isAvail && !isPast ? "true" : "false"}
+              data-tour-cal-selected={isSel ? "true" : "false"}
+              data-tour-cal-today={isToday ? "true" : "false"}
+              className="htc-tour-slot-cal-day"
+            >
               {day}
             </button>
           );
@@ -122,16 +133,36 @@ function CalendarGrid({ availableDates, selectedDate, onSelect, month, year, onM
   );
 }
 
+function tourSlotDurationMinutes(slot: TourSlot): number | null {
+  const start = Date.parse(slot.start);
+  const end = Date.parse(slot.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return Math.round((end - start) / 60000);
+}
+
 function TimeSlotGrid({ slots, selectedSlot, onSelect }: { slots: TourSlot[]; selectedSlot: TourSlot | null; onSelect: (s: TourSlot) => void }) {
-  if (!slots.length) return <p className="text-sm text-muted-foreground text-center py-6">No available times on this date.</p>;
+  if (!slots.length) {
+    return (
+      <p className="htc-tour-slot-empty" data-testid="tour-slot-empty">
+        No available times on this date.
+      </p>
+    );
+  }
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="htc-tour-slot-time-grid" data-testid="tour-slot-time-grid">
       {slots.map((slot) => {
         const isSel = selectedSlot?.start === slot.start;
         return (
-          <button key={slot.start} type="button" onClick={() => onSelect(slot)}
-            className={`rounded-lg border py-2.5 text-sm font-medium transition-colors ${isSel ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:border-primary/40"}`}>
-            <Clock className="h-3.5 w-3.5 inline mr-1 opacity-60" />{slot.time}
+          <button
+            key={slot.start}
+            type="button"
+            onClick={() => onSelect(slot)}
+            data-tour-slot-start={slot.start}
+            data-tour-slot-selected={isSel ? "true" : "false"}
+            className="htc-tour-slot-time-chip"
+          >
+            <Clock className="h-3.5 w-3.5 opacity-60" aria-hidden />
+            <span>{slot.time}</span>
           </button>
         );
       })}
@@ -164,15 +195,18 @@ function SlotPickerBody({
     setLoading(true);
     const start = isoDate(y, m, 1);
     const end = isoDate(y, m, new Date(y, m + 1, 0).getDate());
-    const result = await getCoordinatorTourSlotsAction(start, end);
+    const result = await getCoordinatorTourSlotsAction(start, end, rescheduleAppointmentId);
     setSlots(result);
     setLoading(false);
-  }, []);
+  }, [rescheduleAppointmentId]);
 
   React.useEffect(() => { void load(month, year); }, [month, year, load]);
 
   const availableDates = new Set(slots.map((s) => s.date));
   const slotsForDate = selectedDate ? slots.filter((s) => s.date === selectedDate) : [];
+  const durationMinutes = selectedSlot
+    ? tourSlotDurationMinutes(selectedSlot)
+    : (slotsForDate[0] ? tourSlotDurationMinutes(slotsForDate[0]) : null);
 
   async function review() {
     if (!selectedSlot) return;
@@ -198,50 +232,86 @@ function SlotPickerBody({
       else toast.error(result.confirmationEmail.message);
       onClose();
       onDone();
-    } else {
-      toast.error(result.error);
+      return;
+    }
+    toast.error(result.error);
+    if (isTourSlotConflictError(result.error)) {
+      // Decision H: refresh authority, keep sheet + date, clear invalid time/preview.
+      setSelectedSlot(null);
+      setPreview(null);
+      await load(month, year);
     }
   }
 
   return (
-    <>
-      <SheetHeader className="px-5 pt-5 pb-4 border-b">
+    <div className="htc-tour-slot-sheet flex h-full min-h-0 flex-col" data-testid="tour-slot-picker-body">
+      <SheetHeader className="htc-tour-slot-sheet-header px-5 pt-5 pb-4 border-b shrink-0">
         <SheetTitle>{rescheduleAppointmentId ? "Reschedule Tour" : "Schedule Tour"}</SheetTitle>
       </SheetHeader>
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+      <div className="htc-tour-slot-sheet-body flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="htc-tour-slot-guidance" data-testid="tour-slot-availability-guidance">
+          <p className="htc-tour-slot-guidance-title">Available tour times</p>
+          <p className="htc-tour-slot-guidance-copy">
+            Only times that are available for this venue are shown.
+          </p>
+        </div>
         {loading ? (
           <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : (
           <CalendarGrid availableDates={availableDates} selectedDate={selectedDate}
-            onSelect={(d) => { setSelectedDate(d); setSelectedSlot(null); }}
+            onSelect={(d) => { setSelectedDate(d); setSelectedSlot(null); setPreview(null); }}
             month={month} year={year}
             onMonthChange={(m, y) => { setMonth(m); setYear(y); }} />
         )}
         {selectedDate && !loading && !preview && (
-          <div className="space-y-2 border-t border-border/60 pt-4">
-            <p className="text-xs font-medium text-muted-foreground">
-              {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-            </p>
+          <div className="htc-tour-slot-times space-y-2 border-t border-border/60 pt-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              </p>
+              {durationMinutes != null ? (
+                <p className="htc-tour-slot-duration" data-testid="tour-slot-duration-info">
+                  {durationMinutes}-minute tour
+                </p>
+              ) : null}
+            </div>
             <TimeSlotGrid slots={slotsForDate} selectedSlot={selectedSlot} onSelect={(slot) => { setSelectedSlot(slot); setPreview(null); }} />
           </div>
         )}
         {preview && <TourSendPreview preview={preview} />}
       </div>
-      <SheetFooter className="px-5 pb-5 pt-3 border-t">
+      <SheetFooter className="htc-tour-slot-sheet-footer px-5 pb-5 pt-3 border-t shrink-0">
         {preview ? (
-          <div className="flex w-full gap-2">
-            <Button variant="outline" className="flex-1" disabled={saving} onClick={() => setPreview(null)}>Back</Button>
-            <Button className="flex-1" disabled={saving} onClick={() => void confirm()}>
+          <div className="htc-tour-slot-sheet-footer-row flex w-full gap-2">
+            <Button
+              variant="outline"
+              className="htc-tour-slot-footer-secondary flex-1"
+              disabled={saving}
+              onClick={() => setPreview(null)}
+            >
+              Back
+            </Button>
+            <Button
+              className="htc-tour-slot-footer-primary flex-1"
+              disabled={saving}
+              onClick={() => void confirm()}
+              data-testid="tour-slot-confirm"
+            >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : rescheduleAppointmentId ? "Reschedule tour" : "Schedule tour"}
             </Button>
           </div>
         ) : (
-          <Button className="w-full" disabled={!selectedSlot || previewing} onClick={() => void review()}>
+          <Button
+            className="htc-tour-slot-footer-primary w-full"
+            disabled={!selectedSlot || previewing}
+            onClick={() => void review()}
+            data-testid="tour-slot-review-email"
+          >
             {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Review email"}
           </Button>
         )}
       </SheetFooter>
-    </>
+    </div>
   );
 }
 
@@ -253,7 +323,11 @@ function SlotPickerSheet({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex flex-col w-full sm:max-w-md p-0">
+      <SheetContent
+        side="right"
+        className="htc-tour-slot-sheet-content flex flex-col w-full sm:max-w-md p-0"
+        data-testid="tour-slot-picker-sheet"
+      >
         {open && (
           <SlotPickerBody
             key={instanceKey}
@@ -293,7 +367,7 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
     : { date: "", time: "" };
   const [actualDate, setActualDate] = React.useState(scheduledParts.date);
   const [actualTime, setActualTime] = React.useState(scheduledParts.time);
-  const meta = STATUS_META[appt.status];
+  const statusLabel = STATUS_LABEL[appt.status];
   const clockIso = tourDisplayClockIso(appt);
   const d = clockIso ? new Date(clockIso) : new Date(0);
   const { dateLabel, timeLabel } = formatVenueLocalTourDisplay(clockIso ?? new Date(0).toISOString(), venueTimezone);
@@ -302,8 +376,11 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
     : null;
   const isActive = appt.status === "scheduled" || appt.status === "confirmed";
   const isPast = d.getTime() < new Date(now).getTime();
+  const showOverdue = appt.status === "scheduled" && isPast;
   const showScheduledAside =
     appt.status === "completed" && tourActualDiffersFromScheduled(appt) && Boolean(appt.scheduledAt);
+  const whenKind =
+    appt.status === "completed" && appt.actualOccurredAt ? "Actually occurred" : "Scheduled";
 
   async function setStatus(
     status: "confirmed" | "completed" | "no_show" | "cancelled",
@@ -374,22 +451,31 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
   }
 
   return (
-    <div className="py-3 space-y-2" data-testid={`tour-appointment-row-${appt.id}`}>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-heading">
-            {appt.status === "completed" && appt.actualOccurredAt ? "Actually occurred" : "Scheduled"} · {dateLabel}
+    <div
+      className="htc-lead-tour-appt"
+      data-testid={`tour-appointment-row-${appt.id}`}
+      data-tour-status={appt.status}
+      data-tour-overdue={showOverdue ? "true" : undefined}
+    >
+      <div className="htc-lead-tour-appt-summary">
+        <div className="htc-lead-tour-appt-when min-w-0">
+          <p className="htc-lead-tour-appt-date" data-tour-date="">
+            {dateLabel}
           </p>
-          <p className="text-xs text-muted-foreground">
-            {timeLabel} · {appt.durationMinutes} min
+          <p className="htc-lead-tour-appt-time" data-tour-time="">
+            <span className="htc-lead-tour-appt-when-kind">{whenKind}</span>
+            {" · "}
+            {timeLabel}
+            {" · "}
+            {appt.durationMinutes} min
           </p>
           {showScheduledAside && scheduledDisplay ? (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}
+            <p className="htc-lead-tour-appt-aside">
+              Originally scheduled {scheduledDisplay.dateLabel} · {scheduledDisplay.timeLabel}
             </p>
           ) : null}
           {appt.status === "completed" && appt.completedAt ? (
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="htc-lead-tour-appt-aside">
               Marked completed{" "}
               {new Date(appt.completedAt).toLocaleString("en-US", {
                 month: "short",
@@ -400,49 +486,104 @@ function AppointmentRow({ appt, leadId, now, venueTimezone, onReschedule, onChan
               })}
             </p>
           ) : null}
-          {appt.status === "cancelled" && appt.cancellationReason && (
-            <p className="text-xs text-muted-foreground mt-0.5">Reason: {appt.cancellationReason}</p>
-          )}
-          {appt.status === "scheduled" && appt.confirmationRequestedAt && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Confirmation requested {new Date(appt.confirmationRequestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — awaiting reply
+          {appt.status === "cancelled" && appt.cancellationReason ? (
+            <p className="htc-lead-tour-appt-aside">Reason: {appt.cancellationReason}</p>
+          ) : null}
+          {appt.status === "scheduled" && appt.confirmationRequestedAt ? (
+            <p className="htc-lead-tour-appt-aside">
+              Confirmation requested{" "}
+              {new Date(appt.confirmationRequestedAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}{" "}
+              — awaiting reply
             </p>
-          )}
+          ) : null}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${meta.className}`}>{meta.label}</span>
-          {isActive ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              disabled={pending}
-              onClick={() => onReschedule(appt.id)}
-              data-testid={`tour-appointment-edit-${appt.id}`}
-            >
-              Edit
-            </Button>
+        <div className="htc-lead-tour-appt-badges shrink-0">
+          <span
+            className="htc-tours-status-badge"
+            data-tours-status-badge={appt.status}
+            data-testid={`tour-appointment-status-${appt.id}`}
+          >
+            {statusLabel}
+          </span>
+          {showOverdue ? (
+            <span className="htc-lead-tour-overdue" data-tour-overdue-badge="">
+              Overdue
+            </span>
           ) : null}
         </div>
       </div>
       {isActive ? (
-        <div className="flex flex-wrap items-center gap-1.5" data-testid={`tour-appointment-actions-${appt.id}`}>
-          <Button variant="ghost" size="sm" disabled={pending} onClick={() => onReschedule(appt.id)} data-testid={`tour-appointment-reschedule-${appt.id}`}>Reschedule</Button>
-          {appt.status === "scheduled" && (
-            <>
-              <Button variant="ghost" size="sm" disabled={pending} onClick={() => void reviewConfirmationRequest()}>Send Confirmation Request</Button>
-              <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("confirmed")}>Mark as Confirmed</Button>
-            </>
-          )}
+        <div
+          className="htc-lead-tour-appt-actions"
+          data-testid={`tour-appointment-actions-${appt.id}`}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            className="htc-lead-tour-action-secondary"
+            disabled={pending}
+            onClick={() => onReschedule(appt.id)}
+            data-testid={`tour-appointment-reschedule-${appt.id}`}
+          >
+            Reschedule
+          </Button>
+          {appt.status === "scheduled" ? (
+            <div className="htc-lead-tour-confirm-actions" data-tour-confirm-actions="">
+              <Button
+                size="sm"
+                className="htc-lead-tour-confirm-primary"
+                disabled={pending}
+                onClick={() => void setStatus("confirmed")}
+              >
+                Mark as Confirmed
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="htc-lead-tour-confirm-secondary"
+                disabled={pending}
+                onClick={() => void reviewConfirmationRequest()}
+              >
+                Send Confirmation Request
+              </Button>
+            </div>
+          ) : null}
           {(isPast || Boolean(appt.scheduledAt)) && (
             <>
-              <Button variant="ghost" size="sm" disabled={pending} onClick={openComplete}>Completed</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="htc-lead-tour-action-secondary"
+                disabled={pending}
+                onClick={openComplete}
+              >
+                Completed
+              </Button>
               {isPast ? (
-                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("no_show")}>No-show</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="htc-lead-tour-action-secondary"
+                  disabled={pending}
+                  onClick={() => void setStatus("no_show")}
+                >
+                  No Show
+                </Button>
               ) : null}
             </>
           )}
-          <Button variant="ghost" size="sm" disabled={pending} className="text-destructive" onClick={() => setCancelOpen(true)}>Cancel</Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="htc-lead-tour-action-destructive"
+            disabled={pending}
+            onClick={() => setCancelOpen(true)}
+          >
+            Cancel
+          </Button>
         </div>
       ) : null}
       <CancelDialog open={cancelOpen} onOpenChange={setCancelOpen} onConfirm={(reason) => void setStatus("cancelled", reason)} />
@@ -545,7 +686,7 @@ export function TourScheduleRoot({
       const url = `${window.location.origin}${path}`;
       await navigator.clipboard.writeText(url);
       toast.success(
-        "Personal scheduling link copied. Send this when they already inquired — it keeps their preferred date and hold. The Calendar “Copy Inquiry/Tour Link” is for general promotion only.",
+        "Personal scheduling link copied. Send this when they already inquired — it keeps their preferred date and hold. The Calendar “Copy tour scheduling link” is for general promotion only.",
       );
     } finally {
       setCopyingLink(false);
@@ -582,32 +723,51 @@ export function TourScheduleActions({
   const { copyingLink, copyLink, openSchedule } = useTourSchedule();
   if (!includeCopyLink && !includeSchedule) return null;
   return (
-    <div className="space-y-1.5" data-testid="tour-schedule-actions">
-      <div className="flex flex-wrap items-center gap-2">
-        {includeCopyLink ? (
+    <div className="htc-lead-tour-schedule-actions space-y-2" data-testid="tour-schedule-actions">
+      {includeCopyLink ? (
+        <div
+          className="htc-lead-tour-personal-link"
+          data-testid="lead-personalized-scheduling-link"
+        >
+          <div className="htc-lead-tour-personal-link-body min-w-0">
+            <p className="htc-lead-tour-personal-link-label">Personalized scheduling link</p>
+            <p
+              className="htc-lead-tour-personal-link-guidance"
+              data-testid="lead-scheduling-link-guidance"
+            >
+              For this lead only — keeps preferred date and hold context. The Calendar page&apos;s{" "}
+              <span className="font-medium text-foreground">Copy tour scheduling link</span> is the
+              general link for websites, QR codes, and new prospects.
+            </p>
+          </div>
           <Button
             size="sm"
             variant="outline"
-            className="h-8"
+            className="htc-lead-tour-personal-link-btn"
             disabled={copyingLink}
             onClick={() => void copyLink()}
             data-testid="lead-copy-scheduling-link"
           >
-            <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy scheduling link
+            {copyingLink ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Link2 className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Copy link
           </Button>
-        ) : null}
-        {includeSchedule ? (
-          <Button size="sm" className="h-8" onClick={openSchedule} data-testid="schedule-tour-action">
+        </div>
+      ) : null}
+      {includeSchedule ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            className="htc-lead-tour-schedule-btn"
+            onClick={openSchedule}
+            data-testid="schedule-tour-action"
+          >
             <CalendarClock className="mr-1.5 h-3.5 w-3.5" /> Schedule Tour
           </Button>
-        ) : null}
-      </div>
-      {includeCopyLink ? (
-        <p className="text-[11px] text-muted-foreground max-w-md" data-testid="lead-scheduling-link-guidance">
-          Use this personalized scheduling link for this lead. The Calendar page&apos;s{" "}
-          <span className="font-medium text-foreground">Copy Inquiry/Tour Link</span> is a general link for new
-          prospects only.
-        </p>
+        </div>
       ) : null}
     </div>
   );
@@ -616,11 +776,33 @@ export function TourScheduleActions({
 export function TourAppointmentList() {
   const { sorted, leadId, now, venueTimezone, openReschedule } = useTourSchedule();
   const router = useRouter();
-  if (sorted.length === 0) return null;
+  if (sorted.length === 0) {
+    return (
+      <div
+        className="htc-lead-tour-empty"
+        data-testid="tour-appointment-list-empty"
+        data-tour-empty="none"
+      >
+        <p className="htc-lead-tour-empty-title">No tour appointment scheduled</p>
+        <p className="htc-lead-tour-empty-copy">
+          Use Schedule Tour to book a slot for this lead, or share their personalized scheduling
+          link.
+        </p>
+      </div>
+    );
+  }
   return (
-    <div className="divide-y divide-border/50">
+    <div className="htc-lead-tour-list" data-testid="tour-appointment-list">
       {sorted.map((appt) => (
-        <AppointmentRow key={appt.id} appt={appt} leadId={leadId} now={now} venueTimezone={venueTimezone} onReschedule={openReschedule} onChanged={router.refresh} />
+        <AppointmentRow
+          key={appt.id}
+          appt={appt}
+          leadId={leadId}
+          now={now}
+          venueTimezone={venueTimezone}
+          onReschedule={openReschedule}
+          onChanged={router.refresh}
+        />
       ))}
     </div>
   );
