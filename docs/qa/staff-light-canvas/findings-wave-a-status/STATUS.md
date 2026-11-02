@@ -1,8 +1,11 @@
 # Findings remediation — Wave A+ (email CTA, ceremony clarity, add-ons, Next Steps, floor setups)
 
-**Mode:** Code complete for findings #1–#11 (thin slices). Not Sandbox-GREEN until migrations `…273…` and `…274…` are applied and workflows are exercised there.  
+**Mode:** Commit + Sandbox migration/deploy **in flight** — browser exercise pending SHA match.  
 **Branch:** `feat/spaces-booking-e1-smart-fields`  
-**No Production deploy from this work.** Dirty tree preserved.
+**Commit:** `41ed64641baf838e2e65ac715f129b3c9dfa2c8d`  
+**Migration run:** https://github.com/jlcormier612/wevenu-website/actions/runs/41530570343  
+**Deploy run:** https://github.com/jlcormier612/wevenu-website/actions/runs/41530574175  
+**No Production deploy from this work.** Unrelated dirty tree preserved.
 
 ## Decisions locked (product)
 
