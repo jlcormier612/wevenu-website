@@ -5,6 +5,7 @@ import {
   compactNextStepsActionLabel,
   formatNextStepsDueLabel,
   groupNextStepsForDisplay,
+  isSubmittedAwaitingVenue,
   selectNextStepsForHome,
   sortNextStepsWithinGroup,
   type NextStepsItem,
@@ -181,5 +182,61 @@ describe("Next Steps Home presentation", () => {
     );
     assert.equal(total, 1);
     assert.equal(visible[0]?.id, "task_open");
+  });
+
+  it("demotes submitted/waiting vendor tasks from Home without marking them complete", () => {
+    assert.equal(
+      isSubmittedAwaitingVenue({
+        status: "pending",
+        progressState: "in_progress",
+        autoCompleteTrigger: "vendor_selected",
+      }),
+      true,
+    );
+    assert.equal(
+      isSubmittedAwaitingVenue({
+        status: "complete",
+        progressState: "complete",
+        autoCompleteTrigger: "vendor_selected",
+      }),
+      false,
+    );
+    assert.equal(
+      isSubmittedAwaitingVenue({
+        status: "pending",
+        progressState: "not_started",
+        autoCompleteTrigger: "vendor_selected",
+      }),
+      false,
+    );
+
+    const list = buildUnifiedTaskList({
+      venueTasks: [
+        task({
+          id: "vendors",
+          title: "Choose your vendors",
+          status: "pending",
+          dueDate: "2026-08-12",
+          autoCompleteTrigger: "vendor_selected",
+          progressState: "in_progress",
+          canComplete: false,
+        }),
+        task({ id: "open", title: "Open need", status: "pending", dueDate: "2026-08-13" }),
+      ],
+      requests: [],
+      paymentSchedules: [],
+      questionnaire: null,
+      documents: [],
+      timelineHasUnpublishedChanges: false,
+    });
+
+    const waiting = list.find((t) => t.id === "task_vendors");
+    assert.equal(waiting?.completed, false);
+    assert.equal(waiting?.awaitingVenueReview, true);
+    assert.equal(waiting?.actionLabel, "Waiting on venue");
+
+    const forHome = list.filter((t) => !t.completed && !t.awaitingVenueReview);
+    assert.equal(forHome.length, 1);
+    assert.equal(forHome[0]?.id, "task_open");
   });
 });

@@ -41,18 +41,30 @@ export function selectionDefinitionFromEventOrderTemplate(
       sortOrder: g.sortOrder,
       dependsOnOptionIds: g.dependsOnOptionIds ?? [],
     })),
-    options: template.options.map((o) => ({
-      id: o.id,
-      groupId: o.groupId,
-      offeringId: o.offeringId,
-      label: o.label,
-      description: o.description,
-      isIncluded: o.isIncluded,
-      unitPrice: o.isIncluded ? 0 : o.unitPrice,
-      imageUrl: o.imageUrl?.trim() ? o.imageUrl.trim() : null,
-      sortOrder: o.sortOrder,
-    })),
+    options: template.options.map((o) => {
+      const description = o.description;
+      const pricingModel = inferChoiceOptionPricingModel(description);
+      return {
+        id: o.id,
+        groupId: o.groupId,
+        offeringId: o.offeringId,
+        label: o.label,
+        description,
+        isIncluded: o.isIncluded,
+        unitPrice: o.isIncluded ? 0 : o.unitPrice,
+        pricingModel,
+        imageUrl: o.imageUrl?.trim() ? o.imageUrl.trim() : null,
+        sortOrder: o.sortOrder,
+      };
+    }),
   };
+}
+
+/** Freeze-time snapshot so apply does not rely only on free-text description. */
+function inferChoiceOptionPricingModel(description: string | null): string | null {
+  const d = (description ?? "").trim().toLowerCase();
+  if (/\bper\s*person\b/.test(d) || /\bper\s*guest\b/.test(d)) return "per_person";
+  return null;
 }
 
 /**

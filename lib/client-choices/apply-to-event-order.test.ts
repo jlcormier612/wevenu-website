@@ -4,13 +4,14 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import {
+  choiceOptionIsPerPerson,
   conflictingSingleSelectLineIds,
   duplicateMultiSelectLineIds,
   financialDeltaFromLines,
   isPriceNeutralChange,
   resolveSelectedOptions,
 } from "@/lib/client-choices/apply-to-event-order";
-import type { ChoicesAnswers, ChoicesDefinition } from "@/lib/client-choices/types";
+import type { ChoicesAnswers, ChoicesDefinition, ChoicesDefinitionOption } from "@/lib/client-choices/types";
 
 const definition: ChoicesDefinition = {
   sections: [{ id: "s1", name: "Dinner", guidance: null, sortOrder: 0 }],
@@ -78,6 +79,165 @@ describe("resolveSelectedOptions / financial delta", () => {
       g2: { optionIds: ["o-snack", "o-linen"] },
     });
     assert.equal(financialDeltaFromLines(lines), 1150);
+  });
+});
+
+describe("per-person choice qty → guest count", () => {
+  const dinnerDef: ChoicesDefinition = {
+    sections: [{ id: "s1", name: "Dinner", guidance: null, sortOrder: 0 }],
+    groups: [{
+      id: "g-dinner",
+      sectionId: "s1",
+      name: "Dinner service",
+      instructions: null,
+      selectionMode: "single",
+      minSelect: 1,
+      maxSelect: 1,
+      allowQuantity: false,
+      sortOrder: 0,
+    }, {
+      id: "g-qty",
+      sectionId: "s1",
+      name: "Extras with qty",
+      instructions: null,
+      selectionMode: "multi",
+      minSelect: 0,
+      maxSelect: null,
+      allowQuantity: true,
+      sortOrder: 1,
+    }],
+    options: [
+      {
+        id: "o-plated",
+        groupId: "g-dinner",
+        offeringId: null,
+        label: "Plated Dinner",
+        description: "Per person",
+        isIncluded: false,
+        unitPrice: 85,
+        sortOrder: 0,
+      },
+      {
+        id: "o-model",
+        groupId: "g-dinner",
+        offeringId: null,
+        label: "Buffet Dinner",
+        description: null,
+        pricingModel: "per_person",
+        isIncluded: false,
+        unitPrice: 72,
+        sortOrder: 1,
+      },
+      {
+        id: "o-flat",
+        groupId: "g-dinner",
+        offeringId: null,
+        label: "Family Style",
+        description: "Flat fee",
+        isIncluded: false,
+        unitPrice: 2500,
+        sortOrder: 2,
+      },
+      {
+        id: "o-chairs",
+        groupId: "g-qty",
+        offeringId: null,
+        label: "Extra chairs",
+        description: "Per person",
+        pricingModel: "per_person",
+        isIncluded: false,
+        unitPrice: 5,
+        sortOrder: 0,
+      },
+    ],
+  };
+
+  it("detects per-person from description or pricingModel", () => {
+    assert.equal(choiceOptionIsPerPerson({ description: "Per person", pricingModel: null }), true);
+    assert.equal(choiceOptionIsPerPerson({ description: null, pricingModel: "per_person" }), true);
+    assert.equal(choiceOptionIsPerPerson({ description: "Flat fee", pricingModel: null }), false);
+  });
+
+  it("scales quantity to guest count and stamps boundToHeadcount", () => {
+    const lines = resolveSelectedOptions(
+      dinnerDef,
+      { "g-dinner": { optionIds: ["o-plated"] } },
+      { guestCount: 120 },
+    );
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0]!.quantity, 120);
+    assert.equal(lines[0]!.boundToHeadcount, true);
+    assert.equal(lines[0]!.amount, 10200);
+  });
+
+  it("pricingModel snapshot also scales without Per person text", () => {
+    const lines = resolveSelectedOptions(
+      dinnerDef,
+      { "g-dinner": { optionIds: ["o-model"] } },
+      { guestCount: 80 },
+    );
+    assert.equal(lines[0]!.quantity, 80);
+    assert.equal(lines[0]!.boundToHeadcount, true);
+    assert.equal(lines[0]!.amount, 5760);
+  });
+
+  it("without guest count stays at 1 but still marks boundToHeadcount", () => {
+    const lines = resolveSelectedOptions(dinnerDef, {
+      "g-dinner": { optionIds: ["o-plated"] },
+    });
+    assert.equal(lines[0]!.quantity, 1);
+    assert.equal(lines[0]!.boundToHeadcount, true);
+    assert.equal(lines[0]!.amount, 85);
+  });
+
+  it("flat / non-per-person options stay quantity 1 and unbound", () => {
+    const lines = resolveSelectedOptions(
+      dinnerDef,
+      { "g-dinner": { optionIds: ["o-flat"] } },
+      { guestCount: 120 },
+    );
+    assert.equal(lines[0]!.quantity, 1);
+    assert.equal(lines[0]!.boundToHeadcount, false);
+    assert.equal(lines[0]!.amount, 2500);
+  });
+
+  it("allowQuantity couple answers win and do not bind to headcount", () => {
+    const lines = resolveSelectedOptions(
+      dinnerDef,
+      { "g-qty": { optionIds: ["o-chairs"], quantities: { "o-chairs": 12 } } },
+      { guestCount: 120 },
+    );
+    assert.equal(lines[0]!.quantity, 12);
+    assert.equal(lines[0]!.boundToHeadcount, false);
+    assert.equal(lines[0]!.amount, 60);
+  });
+
+  it("apply-core loads bound headcount, stamps EO lines, never writes invoices", () => {
+    const core = readFileSync(join(process.cwd(), "lib/client-choices/apply-core.ts"), "utf8");
+    assert.match(core, /boundHeadcountForApply/);
+    assert.match(core, /boundToHeadcount: line\.boundToHeadcount/);
+    assert.match(core, /Never writes invoice/);
+    assert.doesNotMatch(core, /createInvoice|insertFrozenLines|updateInvoice/);
+  });
+
+  it("freeze snapshots pricingModel for Per person option descriptions", () => {
+    const src = readFileSync(
+      join(process.cwd(), "lib/event-order-templates/selection-definition.ts"),
+      "utf8",
+    );
+    assert.match(src, /inferChoiceOptionPricingModel/);
+    assert.match(src, /per_person/);
+  });
+
+  it("sent-invoice freeze / B4 still block headcount rewrite of issued invoices", () => {
+    const recalc = readFileSync(join(process.cwd(), "lib/events/headcount-recalc.ts"), "utf8");
+    assert.match(recalc, /eo_invoice_issued/);
+    assert.match(recalc, /never reprice a sent or paid invoice/i);
+    const opt: ChoicesDefinitionOption = {
+      id: "x", groupId: "g", offeringId: null, label: "Dinner",
+      description: "Per person", isIncluded: false, unitPrice: 85, sortOrder: 0,
+    };
+    assert.equal(choiceOptionIsPerPerson(opt), true);
   });
 });
 

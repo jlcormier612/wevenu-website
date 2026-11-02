@@ -163,6 +163,32 @@ describe("selectionDefinitionFromEventOrderTemplate", () => {
     assert.equal(def.options[0]!.label, "Premium Bar");
     assert.equal(def.options[0]!.unitPrice, 45);
     assert.equal(def.options[0]!.offeringId, "off-1");
+    assert.equal(def.options[0]!.pricingModel, null);
+  });
+
+  it("freezes per_person pricingModel from Per person option descriptions", () => {
+    const t = template({
+      options: [
+        {
+          id: "opt-plated",
+          templateId: "eo-tmpl-1",
+          venueId: "venue-a",
+          groupId: "grp-bar",
+          offeringId: null,
+          label: "Plated Dinner",
+          description: "Per person",
+          isIncluded: false,
+          unitPrice: 85,
+          isDefault: true,
+          imageUrl: null,
+          sortOrder: 0,
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+    });
+    const def = selectionDefinitionFromEventOrderTemplate(t);
+    assert.equal(def.options[0]!.pricingModel, "per_person");
   });
 
   it("zeros unitPrice for included options", () => {

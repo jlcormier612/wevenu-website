@@ -85,6 +85,12 @@ export type PortalTask = {
   milestoneName: string;
   milestoneKind: "event_day" | "final_stretch" | null;
   status: "pending" | "blocked" | "complete" | "overdue";
+  /**
+   * Couple submit / venue-review intermediate state from event_tasks.progress_state.
+   * in_progress = submitted, waiting on venue — does not mean status=complete.
+   * Optional for older fixtures; treat missing as null.
+   */
+  progressState?: "not_started" | "in_progress" | "complete" | null;
   isRequired: boolean;
   completedAt: string | null;
   /** Domain auto-complete trigger from event_tasks; null = acknowledgment / manual. */
@@ -336,6 +342,8 @@ export type BudgetCategory = {
   actualAmount: number;
   notes: string | null;
   displayOrder: number;
+  /** Soft-removed starter/custom rows — budgeted returned to unallocated. */
+  isRemoved?: boolean;
 };
 
 export type CoupleBudget = {

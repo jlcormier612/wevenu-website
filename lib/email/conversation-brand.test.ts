@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  EVENT_ORDER_CTA_LABEL,
   QUESTIONNAIRE_CTA_LABEL,
+  isEventOrderDocumentUrl,
   isProposalOfferUrl,
   isQuestionnaireFormUrl,
   plainTextToEmailHtml,
@@ -12,6 +14,9 @@ import { emailBrandFromVenue } from "@/lib/email/venue-brand";
 
 const PROPOSAL_URL =
   "https://app.sandbox.hellotocheers.com/offer/592b46e0af7a3dadf21c98643c3f012ba3bee6fd5774af11";
+
+const EVENT_ORDER_URL =
+  "https://app.sandbox.hellotocheers.com/order/d45242e468a14f85beba3f5aad45c1623da8ba83c4fb411";
 
 describe("conversation email HTML linkifies proposal URLs", () => {
   it("detects /offer/{token} proposal URLs", () => {
@@ -63,6 +68,45 @@ describe("conversation email HTML linkifies proposal URLs", () => {
     assert.match(html, /<a href="https:\/\/example\.com\/guide"/);
     assert.doesNotMatch(html, /View your proposal/);
     assert.doesNotMatch(html, new RegExp(QUESTIONNAIRE_CTA_LABEL));
+    assert.doesNotMatch(html, new RegExp(EVENT_ORDER_CTA_LABEL));
+  });
+});
+
+describe("event order share email CTA", () => {
+  it("detects /order/{reviewToken} and leaves other paths alone", () => {
+    assert.equal(isEventOrderDocumentUrl(EVENT_ORDER_URL), true);
+    assert.equal(isEventOrderDocumentUrl(PROPOSAL_URL), false);
+    assert.equal(isEventOrderDocumentUrl("https://example.com/orders/abc"), false);
+  });
+
+  it("HTML uses a Review your Event Order button and keeps the raw URL underneath", () => {
+    const text = [
+      "Hi Gertrude,",
+      "",
+      "We've shared your Event Order for July 7, 2027. Please make your choices and approve it when you have a chance.",
+      "",
+      EVENT_ORDER_URL,
+      "",
+      "Meadowbrook Valley Venue",
+    ].join("\n");
+    const html = wrapConversationMessageHtml(
+      emailBrandFromVenue({ name: "Meadowbrook Valley Venue", primaryColor: "#446B56" }),
+      text,
+    );
+    const buttons = [
+      ...html.matchAll(
+        new RegExp(`<a href="([^"]+)"[^>]*>${EVENT_ORDER_CTA_LABEL}</a>`, "g"),
+      ),
+    ];
+    assert.equal(buttons.length, 1);
+    assert.equal(buttons[0]![1], EVENT_ORDER_URL);
+    assert.match(
+      html,
+      /Review your Event Order<\/a>\s*<br><span[^>]*>https?:\/\//i,
+    );
+    assert.equal(EVENT_ORDER_CTA_LABEL, "Review your Event Order");
+    assert.match(text, new RegExp(EVENT_ORDER_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.doesNotMatch(html, /href="javascript:/i);
   });
 });
 

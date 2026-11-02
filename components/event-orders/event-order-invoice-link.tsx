@@ -76,13 +76,33 @@ export function EventOrderInvoiceLink({
               variant="outline"
               size="sm"
               render={<Link href={`/payments/${linkedScheduleId}`} />}
+              data-testid="eo-open-payment-plan"
             >
               Open payment plan
             </Button>
           ) : null}
+          {linked.status === "sent" || linked.status === "partially_paid" ? (
+            <Button
+              type="button"
+              size="sm"
+              render={
+                <Link
+                  href={
+                    linkedScheduleId
+                      ? `/payments/${linkedScheduleId}`
+                      : `/invoices/${linked.id}`
+                  }
+                />
+              }
+              data-testid="eo-mark-as-paid"
+            >
+              Mark as Paid
+            </Button>
+          ) : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          Event Order is not an invoice. The payment plan total always follows this invoice.
+          Event Order is not an invoice. Mark as Paid opens the invoice or payment plan — same ledger as
+          package/contract, not a second payment state on the Event Order.
         </p>
       </div>
     );

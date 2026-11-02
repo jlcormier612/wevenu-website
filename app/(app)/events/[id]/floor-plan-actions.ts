@@ -421,6 +421,16 @@ export async function createRequiredSetupAction(eventId: string, name: string) {
   return result;
 }
 
+export async function ensureDefaultWeddingSetupsAction(eventId: string) {
+  const { ensureDefaultWeddingSetups } = await import("@/lib/floor-plans/setup-service");
+  const result = await ensureDefaultWeddingSetups(eventId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    revalidateWorkspace(eventId);
+  }
+  return result;
+}
+
 export async function renameRequiredSetupAction(eventId: string, setupId: string, name: string) {
   const { renameRequiredSetup } = await import("@/lib/floor-plans/setup-service");
   const result = await renameRequiredSetup(eventId, setupId, name);

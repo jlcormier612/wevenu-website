@@ -86,6 +86,41 @@ export async function createRequiredSetup(
   return result as FloorPlanActionResult & { setupId?: string };
 }
 
+/** Default multi-part wedding packaging: Ceremony + Reception when none exist yet. */
+export const DEFAULT_WEDDING_SETUP_NAMES = ["Ceremony", "Reception"] as const;
+
+/**
+ * Opt-in default for multi-part weddings. Never backfills events that already
+ * have setups (including a single custom setup).
+ */
+export async function ensureDefaultWeddingSetups(
+  eventId: string,
+): Promise<FloorPlanActionResult & { created?: string[] }> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const existing = await repo.listEventFloorPlanSetups(supabase, venueId, eventId);
+    if (existing.length > 0) {
+      return {
+        ok: true as const,
+        created: [] as string[],
+        message: "This event already has wedding setups.",
+      };
+    }
+    const created: string[] = [];
+    for (let i = 0; i < DEFAULT_WEDDING_SETUP_NAMES.length; i += 1) {
+      const name = DEFAULT_WEDDING_SETUP_NAMES[i]!;
+      await repo.insertEventFloorPlanSetup(supabase, {
+        venueId,
+        eventId,
+        name,
+        sortOrder: i,
+      });
+      created.push(name);
+    }
+    return { ok: true as const, created };
+  });
+  return result as FloorPlanActionResult & { created?: string[] };
+}
+
 export async function renameRequiredSetup(
   eventId: string,
   setupId: string,

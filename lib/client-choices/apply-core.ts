@@ -13,12 +13,28 @@ import {
 import * as repo from "@/lib/client-choices/repository";
 import type { ClientChoices, FinalizeClientChoicesResult } from "@/lib/client-choices/types";
 import { validateChoicesAnswers } from "@/lib/client-choices/validate-answers";
+import { boundHeadcountForApply } from "@/lib/events/headcount";
 import { matchChoiceGroupsToSections } from "@/lib/event-orders/document-view";
 import * as eoRepo from "@/lib/event-orders/repository";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
 
 type DbClient = Parameters<typeof repo.getById>[0];
+
+async function loadBoundGuestCountForEvent(
+  supabase: DbClient,
+  venueId: string,
+  eventId: string,
+): Promise<number | null> {
+  const { data } = await supabase
+    .from("events")
+    .select("guest_count, guaranteed_guest_count")
+    .eq("id", eventId)
+    .eq("venue_id", venueId)
+    .maybeSingle<{ guest_count: number | null; guaranteed_guest_count: number | null }>();
+  const bound = boundHeadcountForApply(data?.guest_count, data?.guaranteed_guest_count);
+  return bound != null && bound > 0 ? bound : null;
+}
 
 /** EO section id for each choice group, matched by section name. */
 function sectionIdByGroup(row: ClientChoices, eo: EventOrderWithDetails): Map<string, string> {
@@ -47,7 +63,10 @@ export async function applyChoicesToEventOrder(
     return { ok: false, message: validated.message ?? "Selections are incomplete." };
   }
 
-  const lines = resolveSelectedOptions(row.definition, row.answers);
+  // Never writes invoice rows. Draft EO invoices project live EO quantities;
+  // sent/paid invoices stay frozen (freeze-on-send + headcount-recalc B4).
+  const guestCount = await loadBoundGuestCountForEvent(supabase, venueId, row.eventId);
+  const lines = resolveSelectedOptions(row.definition, row.answers, { guestCount });
   const delta = financialDeltaFromLines(lines);
 
   let eo = await eoRepo.getEventOrderByEvent(supabase, venueId, row.eventId);
@@ -98,7 +117,9 @@ export async function applyChoicesToEventOrder(
   const sectionFor = sectionIdByGroup(row, eo);
 
   const appliedIds: string[] = [];
+  let perPersonWithoutHeadcount = 0;
   for (const line of lines) {
+    if (line.boundToHeadcount && !(guestCount && guestCount > 0)) perPersonWithoutHeadcount += 1;
     const sortOrder = await eoRepo.nextSortOrder(supabase, "event_order_lines", eventOrderId);
     const common = {
       description: line.description,
@@ -107,6 +128,8 @@ export async function applyChoicesToEventOrder(
       sectionId: sectionFor.get(line.groupId) ?? null,
       isIncluded: line.isIncluded,
       notes: choicesLineNotes(row.id, line.optionId),
+      boundToHeadcount: line.boundToHeadcount,
+      unit: line.boundToHeadcount ? "guest" : undefined,
     };
     if (line.offeringId) {
       const added = await eoRepo.insertLineFromOffering(
@@ -119,6 +142,17 @@ export async function applyChoicesToEventOrder(
       await eoRepo.insertActivity(supabase, venueId, eventOrderId, "line_added", `Custom line added: ${line.description.trim()}`);
       appliedIds.push(added.id);
     }
+  }
+
+  if (perPersonWithoutHeadcount > 0) {
+    await eoRepo.insertActivity(
+      supabase,
+      venueId,
+      eventOrderId,
+      "headcount_qty_pending",
+      "Per-person choices applied at quantity 1",
+      "Set Estimated or Guaranteed guest count on the event so bound lines can scale. Sent invoices are never rewritten from headcount.",
+    );
   }
 
   const submissionNumber = await repo.nextSubmissionNumber(supabase, row.id);

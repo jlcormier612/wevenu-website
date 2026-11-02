@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { CoupleDocumentViewerDialog } from "@/components/portal/couple-document-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-celebrations";
 import { coupleDocumentStatusBadge } from "@/lib/portal/couple-document-status";
+import type { CoupleDocumentViewTarget } from "@/lib/portal/couple-document-viewer";
 import { portalFocusElementId } from "@/lib/portal/workspace-routing";
 import {
   DOCS_QUESTIONNAIRE_HANDOFF_KEY,
@@ -103,7 +105,13 @@ function fmtBytes(b: number) {
 
 // ── Contract card — real content, read inline, sign if pending ────────────────
 
-function ContractCard({ doc }: { doc: CoupleDocument }) {
+function ContractCard({
+  doc,
+  onOpenFile,
+}: {
+  doc: CoupleDocument;
+  onOpenFile: (doc: CoupleDocumentViewTarget) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const needsSignature = doc.status === "sent" && !!doc.signToken;
 
@@ -122,10 +130,19 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {doc.fileUrl && (
-            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-              className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity">
-              Open ↗
-            </a>
+            <button
+              type="button"
+              onClick={() => onOpenFile({
+                id: doc.id,
+                name: doc.name,
+                fileUrl: doc.fileUrl!,
+                mimeType: doc.mimeType,
+              })}
+              data-testid="portal-document-open"
+              className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
+            >
+              Open
+            </button>
           )}
           <button type="button" onClick={() => setExpanded((v) => !v)}
             className="text-xs text-[var(--venue-primary)] hover:underline">
@@ -288,7 +305,13 @@ function InventoryAgreementCard({
 
 // ── Generic document / receipt row ──────────────────────────────────────────
 
-function DocRow({ doc }: { doc: CoupleDocument }) {
+function DocRow({
+  doc,
+  onOpenFile,
+}: {
+  doc: CoupleDocument;
+  onOpenFile: (doc: CoupleDocumentViewTarget) => void;
+}) {
   const meta = DOC_META[doc.docType] ?? DOC_META.other;
   const fromVendor =
     doc.uploadedBy === "vendor"
@@ -316,10 +339,19 @@ function DocRow({ doc }: { doc: CoupleDocument }) {
         </div>
       </div>
       {doc.fileUrl && (
-        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-          className="shrink-0 text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity">
-          Open ↗
-        </a>
+        <button
+          type="button"
+          onClick={() => onOpenFile({
+            id: doc.id,
+            name: doc.name,
+            fileUrl: doc.fileUrl!,
+            mimeType: doc.mimeType,
+          })}
+          data-testid="portal-document-open"
+          className="shrink-0 text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
+        >
+          Open
+        </button>
       )}
     </div>
   );
@@ -548,6 +580,7 @@ export default function CoupleDocumentsSection({
   const [schedules, setSchedules] = useState<PortalSchedule[]>([]);
   const [questionnaires, setQuestionnaires] = useState<QuestionnaireDocSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewerDoc, setViewerDoc] = useState<CoupleDocumentViewTarget | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -626,6 +659,13 @@ export default function CoupleDocumentsSection({
 
   return (
     <div id="portal-focus-documents-sign" className="w-full space-y-8">
+      <CoupleDocumentViewerDialog
+        doc={viewerDoc}
+        open={viewerDoc != null}
+        onOpenChange={(open) => {
+          if (!open) setViewerDoc(null);
+        }}
+      />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-heading">Documents</h2>
@@ -655,7 +695,9 @@ export default function CoupleDocumentsSection({
       {contracts.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Contracts</h3>
-          <div className="space-y-2">{contracts.map((doc) => <ContractCard key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{contracts.map((doc) => (
+            <ContractCard key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
 
@@ -719,21 +761,27 @@ export default function CoupleDocumentsSection({
       {venueShared.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">From your venue</h3>
-          <div className="space-y-2">{venueShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{venueShared.map((doc) => (
+            <DocRow key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
 
       {vendorShared.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">From your vendors</h3>
-          <div className="space-y-2">{vendorShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{vendorShared.map((doc) => (
+            <DocRow key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
 
       {coupleUploaded.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Your uploads</h3>
-          <div className="space-y-2">{coupleUploaded.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+          <div className="space-y-2">{coupleUploaded.map((doc) => (
+            <DocRow key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+          ))}</div>
         </section>
       )}
     </div>

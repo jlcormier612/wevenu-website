@@ -21,15 +21,37 @@ export type AppliedChoiceLine = {
   unitPrice: number | null;
   isIncluded: boolean;
   amount: number;
+  /** True when quantity should track Guaranteed ?? Estimated headcount. */
+  boundToHeadcount: boolean;
 };
+
+/**
+ * Per-person choice options (Plated Dinner, etc.) scale with guest count.
+ * Explicit allowQuantity answers win. Legacy packets without pricingModel
+ * still match starter "Per person" descriptions.
+ */
+export function choiceOptionIsPerPerson(
+  opt: Pick<ChoicesDefinitionOption, "pricingModel" | "description">,
+): boolean {
+  const model = (opt.pricingModel ?? "").trim().toLowerCase().replace(/-/g, "_");
+  if (model === "per_person" || model === "per_guest") return true;
+  const d = (opt.description ?? "").trim().toLowerCase();
+  if (/\bper\s*person\b/.test(d) || /\bper\s*guest\b/.test(d)) return true;
+  return false;
+}
 
 export function resolveSelectedOptions(
   definition: ChoicesDefinition,
   answers: ChoicesAnswers,
+  opts?: { guestCount?: number | null },
 ): AppliedChoiceLine[] {
   const byId = new Map(definition.options.map((o) => [o.id, o]));
   const lines: AppliedChoiceLine[] = [];
   const activeAnswers = reconcileAnswersForDependencies(definition, answers);
+  const guestCount =
+    opts?.guestCount != null && Number.isFinite(opts.guestCount) && opts.guestCount > 0
+      ? Math.trunc(opts.guestCount)
+      : null;
 
   for (const group of definition.groups) {
     if (!isChoiceGroupActive(group, activeAnswers)) continue;
@@ -38,9 +60,17 @@ export function resolveSelectedOptions(
     for (const optionId of answer.optionIds) {
       const opt = byId.get(optionId);
       if (!opt) continue;
-      const qty = group.allowQuantity
-        ? Math.max(1, Number(answer.quantities?.[optionId] ?? 1) || 1)
-        : 1;
+      const perPerson = choiceOptionIsPerPerson(opt);
+      let qty = 1;
+      let boundToHeadcount = false;
+      if (group.allowQuantity) {
+        qty = Math.max(1, Number(answer.quantities?.[optionId] ?? 1) || 1);
+        // Explicit couple quantity — do not bind to headcount.
+        boundToHeadcount = false;
+      } else if (perPerson) {
+        boundToHeadcount = true;
+        qty = guestCount && guestCount > 0 ? guestCount : 1;
+      }
       const unitPrice = effectiveUnitPrice(opt);
       const amount = unitPrice == null ? 0 : Number((qty * unitPrice).toFixed(2));
       lines.push({
@@ -52,6 +82,7 @@ export function resolveSelectedOptions(
         unitPrice,
         isIncluded: opt.isIncluded,
         amount,
+        boundToHeadcount,
       });
     }
   }

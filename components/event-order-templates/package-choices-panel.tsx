@@ -27,6 +27,7 @@ import {
   catalogOptionsEligibleForParentGroup,
   choiceSetsForSection,
   itemsEligibleForCategory,
+  newOptionalAddOnsGroupInput,
   newRootChoiceSetInput,
   offeringsAvailableForCoupleChoices,
   optionInputFromOffering,
@@ -141,6 +142,22 @@ export function PackageChoicesPanel({
       );
       if (!groupResult.ok) {
         onPersist("error", groupResult.message ?? "Could not create choice set.");
+        return;
+      }
+      onPersist("saved");
+      refresh();
+    });
+  }
+
+  function createOptionalAddOnsGroup() {
+    startTransition(async () => {
+      onPersist("saving");
+      const groupResult = await addEventOrderTemplateGroupAction(
+        template.id,
+        newOptionalAddOnsGroupInput(sectionId, sectionName),
+      );
+      if (!groupResult.ok) {
+        onPersist("error", groupResult.message ?? "Could not create add-ons group.");
         return;
       }
       onPersist("saved");
@@ -350,7 +367,12 @@ export function PackageChoicesPanel({
   return (
     <div className="space-y-6" data-testid="eo-package-choices-panel">
       <p className="text-xs text-muted-foreground">
-        Offerings the couple picks between, and how many they must choose.
+        Offerings the couple picks between, and how many they must choose. Set the count
+        (for example <span className="font-medium text-heading">2</span> for arch / runner /
+        petals) and use Required for exactly that many, or leave Required unchecked for up
+        to that many or skip. Keep primary packages in one choice set; put Champagne toast–
+        style extras in a separate <span className="font-medium text-heading">optional add-ons</span>{" "}
+        set so they can be selected together with a package.
       </p>
 
       {choiceSets.length === 0 ? (
@@ -419,9 +441,34 @@ export function PackageChoicesPanel({
             <Plus className="mr-1 h-4 w-4" />
             Add another choice set
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            data-testid="eo-add-optional-addons-group"
+            onClick={createOptionalAddOnsGroup}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add optional add-ons group
+          </Button>
           {pending ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
         </div>
-      ) : null}
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            data-testid="eo-add-optional-addons-group"
+            onClick={createOptionalAddOnsGroup}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add optional add-ons group
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -546,7 +593,7 @@ function ChoiceSetCard({
       <div className="flex flex-wrap items-end gap-3" data-testid={`eo-choice-set-rules-${setIndex}`}>
         <div className="space-y-1">
           <Label htmlFor={`eo-count-${set.group.id}`} className="text-xs text-muted-foreground">
-            How many must the couple choose?
+            How many options may they choose?
           </Label>
           <Input
             id={`eo-count-${set.group.id}`}
@@ -573,8 +620,17 @@ function ChoiceSetCard({
               commitCount(selectCount, e.target.checked);
             }}
           />
-          Required
+          Required (exactly this many)
         </label>
+        <p
+          className="w-full text-xs text-muted-foreground"
+          data-testid={`eo-choice-set-rule-hint-${setIndex}`}
+        >
+          {required
+            ? `Required — couple must choose exactly ${selectCount || "N"} (e.g. 2 of Arch, Runner, Petals).`
+            : `Optional — choose up to ${selectCount || "N"}, or skip.`}{" "}
+          Live rule: {plainSelectionRuleLabel(set.group)}.
+        </p>
         {countError ? (
           <p className="w-full text-xs text-destructive" role="alert">
             {countError}
@@ -1034,7 +1090,7 @@ function ChildGroupEditor({
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">
-            How many must the couple choose?
+            How many options may they choose?
           </Label>
           <Input
             className="w-20"
@@ -1060,9 +1116,17 @@ function ChildGroupEditor({
               commitCount(count, e.target.checked);
             }}
           />
-          Required
+          Required (exactly this many)
         </label>
-        <p className="text-xs text-muted-foreground">{plainSelectionRuleLabel(group)}</p>
+        <p
+          className="w-full text-xs text-muted-foreground"
+          data-testid={`eo-child-rule-hint-${group.id}`}
+        >
+          {required
+            ? `Required — exactly ${count || "N"}.`
+            : `Optional — up to ${count || "N"}, or skip.`}{" "}
+          Live rule: {plainSelectionRuleLabel(group)}.
+        </p>
       </div>
       {countError ? (
         <p className="text-xs text-destructive" role="alert">

@@ -14,6 +14,7 @@ import {
   createRequiredSetupAction,
   decideSetupFloorPlanPreferenceAction,
   detachLayoutFromSetupAction,
+  ensureDefaultWeddingSetupsAction,
   listSetupsWithMembersAction,
   removeRequiredSetupAction,
   setSetupWorkingLayoutAction,
@@ -78,10 +79,12 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-heading">Wedding setups (optional)</h3>
+          <h3 className="text-sm font-semibold text-heading">Wedding setups</h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-2xl">
-            For multi-part weddings, organize layouts into required setups such as Ceremony and Reception.
-            Alternatives belong under one setup only. A single-layout wedding does not need this.
+            For multi-part weddings, start with Ceremony + Reception so the couple can save one preference
+            per part of the day. Add Cocktail hour when needed. Do not offer ceremony and reception as
+            competing full-celebration choices in a single list — put each under its setup. Alternatives
+            belong under one setup only. A single-layout wedding can skip this.
           </p>
         </div>
         <Button
@@ -292,6 +295,24 @@ export function FloorPlanSetupPackagePanel({ eventId, floorPlans, canEdit }: Pro
               </div>
             );
           })}
+
+          {canEdit && setups.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-background/60 p-3 space-y-2" data-testid="floor-plan-setup-defaults">
+              <p className="text-xs text-muted-foreground">
+                Recommended for multi-part weddings: create Ceremony and Reception setups in one step.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending}
+                data-testid="floor-plan-setup-defaults-create"
+                onClick={() => run(() => ensureDefaultWeddingSetupsAction(eventId))}
+              >
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Start with Ceremony + Reception
+              </Button>
+            </div>
+          ) : null}
 
           {canEdit ? (
             <div className="flex flex-wrap gap-2 items-end" data-testid="floor-plan-setup-add">

@@ -109,6 +109,10 @@ export async function applyTimelineTemplateToEvent(
     }
   }
 
+  // Couple portal Add requires a clientCanAdd section — venue rows stay locked.
+  const { ensureCoupleAdditionsSection } = await import("@/lib/timeline/couple-additions");
+  await ensureCoupleAdditionsSection(supabase, venue.id, eventId);
+
   return { ok: true };
 }
 
@@ -178,6 +182,10 @@ export async function replaceEventTimelineFromTemplate(
       errors: row.error ? { replace: String(row.error) } : undefined,
     };
   }
+
+  const { ensureCoupleAdditionsSection } = await import("@/lib/timeline/couple-additions");
+  await ensureCoupleAdditionsSection(supabase, venue.id, eventId);
+
   return { ok: true };
 }
 

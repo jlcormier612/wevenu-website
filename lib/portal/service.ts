@@ -98,6 +98,12 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
       milestoneName: (r.milestoneName as string) ?? "",
       milestoneKind: (r.milestoneKind as PortalTask["milestoneKind"]) ?? null,
       status: (r.status as PortalTask["status"]) ?? "pending",
+      progressState:
+        r.progressState === "not_started"
+        || r.progressState === "in_progress"
+        || r.progressState === "complete"
+          ? r.progressState
+          : null,
       isRequired: Boolean(r.isRequired),
       completedAt: (r.completedAt as string | null) ?? null,
       autoCompleteTrigger: trigger,

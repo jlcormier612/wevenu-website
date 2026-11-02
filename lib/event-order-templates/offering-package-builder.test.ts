@@ -8,6 +8,7 @@ import {
   defaultChildGroupName,
   defaultChoiceSetName,
   newChildGroupUnderParentInput,
+  newOptionalAddOnsGroupInput,
   newRootChoiceSetInput,
   offeringsAvailableForCoupleChoices,
   optionInputFromOffering,
@@ -72,6 +73,12 @@ describe("offering-package-builder", () => {
     assert.equal(child.selectionMode, "multi");
     assert.equal(child.minSelect, 2);
     assert.equal(child.maxSelect, 2);
+
+    const addOns = newOptionalAddOnsGroupInput("sec-1", "Bar Service");
+    assert.equal(addOns.selectionMode, "multi");
+    assert.equal(addOns.minSelect, 0);
+    assert.equal(addOns.maxSelect, null);
+    assert.deepEqual(addOns.dependsOnOptionIds, []);
   });
 
   it("drafts write-in options without creating catalog offerings", () => {

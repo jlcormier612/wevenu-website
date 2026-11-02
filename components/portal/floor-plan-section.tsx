@@ -509,9 +509,9 @@ function WeddingSetupsSection({
       <div>
         <h2 className="text-lg font-semibold text-heading">Your wedding setups</h2>
         <p className="text-xs text-muted-foreground mt-0.5" data-testid="floor-plan-wedding-setups-copy">
-          Each setup is a part of your wedding plan. Alternatives appear only under the setup they belong to.
-          Saving a preference asks your venue to review it — it does not approve the layout or change what the
-          venue will use by itself.
+          Choose one preferred layout for each part of your day (for example ceremony, cocktail, and
+          reception). Alternatives appear only under the setup they belong to. Saving a preference asks your
+          venue to review it — it does not approve the layout or change what the venue will use by itself.
         </p>
       </div>
       {setups.map((setup) => {
@@ -674,9 +674,10 @@ function ChooseLayoutSection({
       <div>
         <h2 className="text-lg font-semibold text-heading">Choose your preferred layout</h2>
         <p className="text-xs text-muted-foreground mt-0.5" data-testid="floor-plan-choose-preference-copy">
-          Save a preference for your venue to review. This does not approve the layout or change what the venue
-          uses, and it does not share seating by itself. This is not a multi-setup package — each option is a
-          full layout for the celebration.
+          Save one preference for your venue to review. This does not approve the layout or change what the
+          venue uses, and it does not share seating by itself. For separate ceremony, cocktail, and reception
+          preferences, your venue needs to organize wedding setups — then you will pick one layout per part of
+          the day here instead of choosing a single full-celebration option.
         </p>
       </div>
 

@@ -20,7 +20,8 @@ export function workspacePdfPath(docType: "contract" | "event_order", id: string
   return `/api/document-workspace/${docType}/${id}/pdf`;
 }
 
-function isInlineMime(mime: string | null): boolean {
+/** Browser can show these inline in an iframe (PDF / image / plain text). */
+export function isInlineMime(mime: string | null): boolean {
   if (!mime) return false;
   return mime === "application/pdf" || mime.startsWith("image/") || mime.startsWith("text/plain");
 }

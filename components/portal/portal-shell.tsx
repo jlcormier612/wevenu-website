@@ -66,7 +66,7 @@ import {
 import { shouldOfferPreferredVendorsNavigation } from "@/lib/portal/preferred-vendors-surfaces";
 import {
   buildUnifiedTaskList,
-  unifiedTaskCompletionCounts,
+  unifiedActiveAttentionCount,
   type UnifiedTask,
 } from "@/lib/portal/unified-tasks";
 import {
@@ -4976,7 +4976,7 @@ export function PortalShell({
         documents: documentsRes.documents ?? [],
         timelineHasUnpublishedChanges: !!timelineRes.hasUnpublishedChanges,
       });
-      const { open } = unifiedTaskCompletionCounts(unified);
+      const open = unifiedActiveAttentionCount(unified);
       const vendorShare = vendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length;
       setTasksAttentionCount(open + vendorShare);
     });
@@ -5062,7 +5062,8 @@ export function PortalShell({
   const actionCount = tasksAttentionCount ?? (
     // SSR / pre-fetch fallback — venue open checklist + timeline only
     // (payments/requests need client fetch for full fidelity).
-    unifiedTaskCompletionCounts(
+    // Submitted/waiting rows are excluded from attention (still on Tasks).
+    unifiedActiveAttentionCount(
       buildUnifiedTaskList({
         venueTasks: initialTasks,
         requests: [],
@@ -5071,7 +5072,7 @@ export function PortalShell({
         documents: [],
         timelineHasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
       }),
-    ).open
+    )
     + initialVendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length
   );
   const isOverview = activeSection === "overview";
@@ -5539,7 +5540,8 @@ function NextStepsCard({
           documents,
           timelineHasUnpublishedChanges: timelineUnpublished,
         })
-          .filter((t: UnifiedTask) => !t.completed)
+          // Submitted/waiting stays on Tasks but leaves Home Next Steps.
+          .filter((t: UnifiedTask) => !t.completed && !t.awaitingVenueReview)
           .map(fromUnifiedTask),
         ...vendorTasks
           .filter((t) => isShareTimelineVendorAttention(t))

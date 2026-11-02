@@ -184,14 +184,23 @@ describe("EO starter commercial semantics", () => {
     });
     assert.deepEqual(scenarioB.map((l) => l.description), ["Plated Dinner"]);
     assert.ok(!scenarioB.some((l) => l.description === "Arbor"));
+    assert.equal(scenarioB[0]?.boundToHeadcount, true);
+    assert.equal(scenarioB[0]?.quantity, 1);
 
-    const scenarioA = resolveSelectedOptions(definition, {
-      "g-dinner": { optionIds: ["o-plated"] },
-      "g-arbor": { optionIds: ["o-arbor"] },
-    });
+    const scenarioA = resolveSelectedOptions(
+      definition,
+      {
+        "g-dinner": { optionIds: ["o-plated"] },
+        "g-arbor": { optionIds: ["o-arbor"] },
+      },
+      { guestCount: 100 },
+    );
     assert.equal(scenarioA.length, 2);
     assert.equal(scenarioA.find((l) => l.description === "Arbor")?.amount, 350);
+    assert.equal(scenarioA.find((l) => l.description === "Arbor")?.boundToHeadcount, false);
     assert.equal(scenarioA.find((l) => l.description === "Plated Dinner")?.unitPrice, 85);
+    assert.equal(scenarioA.find((l) => l.description === "Plated Dinner")?.quantity, 100);
+    assert.equal(scenarioA.find((l) => l.description === "Plated Dinner")?.amount, 8500);
   });
 
   it("7. required pick-one cannot select two dinners in a single-mode answer set", () => {

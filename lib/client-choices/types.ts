@@ -35,6 +35,11 @@ export type ChoicesDefinitionOption = {
   isIncluded: boolean;
   /** Snapshotted at create/send. Null = unpriced / included. */
   unitPrice: number | null;
+  /**
+   * Optional pricing model snapshot (e.g. per_person). Omitted on legacy
+   * packets — apply infers from description when needed.
+   */
+  pricingModel?: string | null;
   /** Snapshotted catalog photo at freeze time. Omitted/null = text-only. */
   imageUrl?: string | null;
   sortOrder: number;

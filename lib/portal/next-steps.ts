@@ -9,6 +9,8 @@ import { formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
 import type { UnifiedTask, UnifiedTaskOwnership, UnifiedTaskTargetSection } from "@/lib/portal/unified-tasks";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 
+export { isSubmittedAwaitingVenue } from "@/lib/portal/submitted-awaiting-venue";
+
 export const NEXT_STEPS_HOME_CAP = 5;
 
 export type NextStepsItem = {

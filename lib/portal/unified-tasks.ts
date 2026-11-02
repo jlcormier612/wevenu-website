@@ -22,6 +22,7 @@
  */
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
+import { isSubmittedAwaitingVenue } from "@/lib/portal/submitted-awaiting-venue";
 import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 import { FINAL_PAYMENT_OBLIGATION_TRIGGER } from "@/lib/payments/obligation-constants";
@@ -102,6 +103,11 @@ export type UnifiedTask = {
   missingLinkHint: string | null;
   /** Snapshotted Planning milestone name (venue_task only). */
   milestoneName: string | null;
+  /**
+   * Couple submitted; waiting on venue review. Still incomplete for Tasks,
+   * but demoted from Home Next Steps.
+   */
+  awaitingVenueReview: boolean;
 };
 
 type PaymentSchedule = {
@@ -380,6 +386,11 @@ export function unifiedTaskCompletionCounts(items: readonly UnifiedTask[]): {
   return { done, total, open: total - done };
 }
 
+/** Nav / Home attention — excludes submitted/waiting (still incomplete on Tasks). */
+export function unifiedActiveAttentionCount(items: readonly UnifiedTask[]): number {
+  return items.filter((t) => !t.completed && !t.awaitingVenueReview).length;
+}
+
 /**
  * Financial checklist mirrors that compete with ledger Pay now attention.
  * payment_received (any payment) and final_payment_obligation_paid (typed final).
@@ -445,7 +456,8 @@ export function buildUnifiedTaskList(input: {
       continue;
     }
     const done = t.status === "complete";
-    const overdue = !done && (t.status === "overdue" || isPastDue(t.dueDate, today));
+    const awaitingVenueReview = isSubmittedAwaitingVenue(t);
+    const overdue = !done && !awaitingVenueReview && (t.status === "overdue" || isPastDue(t.dueDate, today));
     const presentation = venueTaskPresentation(t);
     out.push({
       id: `task_${t.id}`, kind: "venue_task", title: t.title, description: t.description,
@@ -453,7 +465,7 @@ export function buildUnifiedTaskList(input: {
       isOverdue: overdue, isRequired: t.isRequired, ownership: "venue",
       targetSection: presentation.targetSection,
       targetFocus: presentation.targetFocus,
-      actionLabel: presentation.actionLabel,
+      actionLabel: awaitingVenueReview ? "Waiting on venue" : presentation.actionLabel,
       completableHere: presentation.completableHere,
       externalUrl: presentation.externalUrl,
       externalUrlLabel: presentation.externalUrlLabel,
@@ -461,6 +473,7 @@ export function buildUnifiedTaskList(input: {
       confirmLabel: presentation.confirmLabel,
       missingLinkHint: presentation.missingLinkHint,
       milestoneName: t.milestoneName?.trim() || null,
+      awaitingVenueReview,
     });
   }
 
@@ -477,6 +490,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -489,6 +503,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -501,6 +516,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -522,6 +538,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 
@@ -534,6 +551,7 @@ export function buildUnifiedTaskList(input: {
       completableHere: false,
       externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
       milestoneName: null,
+      awaitingVenueReview: false,
     });
   }
 

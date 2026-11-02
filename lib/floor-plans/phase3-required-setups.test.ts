@@ -92,11 +92,13 @@ describe("Phase 3 UI seams", () => {
 
   it("venue organizer is progressive and detach preserves layouts", () => {
     assert.match(packagePanel, /Organize wedding setups/);
-    assert.match(packagePanel, /optional/i);
+    assert.match(packagePanel, /Start with Ceremony \+ Reception/);
     assert.match(packagePanel, /Detach/);
     assert.match(packagePanel, /Layouts stay on the event/);
     assert.match(setupService, /deleteSetupMember/);
     assert.match(setupService, /preserves layout/i);
+    assert.match(setupService, /ensureDefaultWeddingSetups/);
+    assert.match(setupService, /DEFAULT_WEDDING_SETUP_NAMES/);
   });
 });
 

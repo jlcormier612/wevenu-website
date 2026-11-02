@@ -34,6 +34,7 @@ import {
   deleteEntryAction,
   deleteSectionAction,
   duplicateSectionAction,
+  ensureCoupleAdditionsSectionAction,
   renameSectionAction,
   reorderEntriesAction,
   reorderSectionsAction,
@@ -1115,6 +1116,32 @@ export function TimelineView({
             onApplied={() => router.refresh()}
             existingEntryCount={totalCount}
           />
+          {eventId && !sections.some((s) => s.clientCanAdd) ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="timeline-enable-couple-additions"
+              disabled={sectionPending}
+              onClick={() => {
+                startSectionAdd(async () => {
+                  const result = await ensureCoupleAdditionsSectionAction(eventId);
+                  if (result.ok && result.section) {
+                    setSections((p) => (
+                      p.some((s) => s.id === result.section!.id)
+                        ? p.map((s) => (s.id === result.section!.id ? result.section! : s))
+                        : [...p, result.section!]
+                    ));
+                    toast.success("Couples can add items under “Your additions”.");
+                  } else {
+                    toast.error(result.message ?? "Could not enable couple additions.");
+                  }
+                });
+              }}
+            >
+              Allow couple additions
+            </Button>
+          ) : null}
           {addingSection ? (
             <div className="flex items-center gap-1">
               <Input

@@ -13,6 +13,7 @@ import {
 } from "@/lib/event-order-templates/guided-setup";
 import {
   newChildGroupUnderParentInput,
+  newOptionalAddOnsGroupInput,
   newRootChoiceSetInput,
   optionInputFromOffering,
   optionInputWriteIn,
@@ -27,6 +28,16 @@ describe("EO choice logic — parent / group / option model", () => {
     assert.equal(rootSet.selectionMode, "single");
     assert.equal(rootSet.minSelect, 1);
     assert.equal(rootSet.maxSelect, 1);
+  });
+
+  it("optional add-ons groups are always-available multi select (not nested under a parent)", () => {
+    const addOns = newOptionalAddOnsGroupInput("sec-bar", "Bar Service");
+    assert.equal(addOns.name, "Bar Service add-ons");
+    assert.equal(addOns.selectionMode, "multi");
+    assert.equal(addOns.minSelect, 0);
+    assert.equal(addOns.maxSelect, null);
+    assert.deepEqual(addOns.dependsOnOptionIds, []);
+    assert.match(addOns.instructions ?? "", /Optional extras/i);
   });
 
   it("named child groups persist exact counts and required/optional distinctly", () => {
@@ -107,7 +118,9 @@ describe("EO choice logic — parent / group / option model", () => {
     assert.doesNotMatch(panel, /New selection group name/);
     assert.doesNotMatch(panel, /How many from this group\?/);
     assert.doesNotMatch(panel, /Add another selection group under/);
-    assert.match(panel, /How many must the couple choose\?/);
+    assert.match(panel, /How many options may they choose\?/);
+    assert.match(panel, /Required \(exactly this many\)/);
+    assert.match(panel, /2 of Arch, Runner, Petals/);
     assert.match(panel, /eo-parent-dependent-groups-/);
   });
 

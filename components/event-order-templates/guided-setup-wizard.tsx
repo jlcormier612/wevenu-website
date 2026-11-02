@@ -145,8 +145,32 @@ export function GuidedSetupWizard({
     }
   }
 
+  const incompleteFlat = review.flatMap((r) =>
+    r.incompleteMessages.map((message) => ({ sectionId: r.sectionId, sectionName: r.name, message })),
+  );
+
   return (
     <div className="space-y-6" data-testid="eo-guided-setup-wizard">
+      {incompleteFlat.length > 0 ? (
+        <div
+          className="sticky top-14 z-10 rounded-xl border border-amber-200 bg-amber-50/95 px-4 py-3 shadow-sm backdrop-blur"
+          data-testid="eo-guided-incomplete-checklist"
+        >
+          <p className="text-sm font-semibold text-amber-900">Finish before Use / Send</p>
+          <ul className="mt-2 space-y-1 text-xs text-amber-900/90">
+            {incompleteFlat.map((item) => (
+              <li key={`${item.sectionId}-${item.message}`}>
+                <a
+                  href={`#eo-guided-configure-${item.sectionId}`}
+                  className="underline-offset-2 hover:underline"
+                >
+                  {item.sectionName}: {item.message}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="space-y-6" data-testid="eo-guided-step-workspace">
         {sectionsOrdered.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
@@ -161,7 +185,8 @@ export function GuidedSetupWizard({
           return (
             <section
               key={section.id}
-              className="rounded-lg border border-border p-4 space-y-5"
+              id={`eo-guided-configure-${section.id}`}
+              className="rounded-lg border border-border p-4 space-y-5 scroll-mt-28"
               data-testid={`eo-guided-configure-${section.id}`}
             >
               <div className="flex items-center justify-between gap-2">
@@ -210,7 +235,7 @@ export function GuidedSetupWizard({
 
               <TemplateLinesBlock
                 title="Add-ons"
-                hint="Extras billed on top of the package price. Pick which ones to include when you apply the template."
+                hint="Staff-only extras billed on top of the package — toggled when you apply the template. For couple-facing extras (Champagne toast, signature cocktail), use Couple chooses → Add optional add-ons group instead."
                 testId={`eo-guided-step-addons-${section.id}`}
                 addTestId={`eo-add-addon-${section.id}`}
                 addLabel="Add add-on"

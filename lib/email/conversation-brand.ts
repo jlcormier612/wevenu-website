@@ -32,12 +32,23 @@ export function isProposalOfferUrl(href: string): boolean {
 }
 
 export const QUESTIONNAIRE_CTA_LABEL = "Complete Your Questionnaire";
+export const EVENT_ORDER_CTA_LABEL = "Review your Event Order";
 
 /** Public questionnaire form URLs — same access key, CTA label instead of the raw token. */
 export function isQuestionnaireFormUrl(href: string): boolean {
   try {
     const path = new URL(href).pathname;
     return /^\/questionnaire\/[A-Za-z0-9_-]+\/?$/.test(path);
+  } catch {
+    return false;
+  }
+}
+
+/** Couple Event Order document URLs (/order/{reviewToken}) — CTA instead of a raw link. */
+export function isEventOrderDocumentUrl(href: string): boolean {
+  try {
+    const path = new URL(href).pathname;
+    return /^\/order\/[A-Za-z0-9_-]+\/?$/.test(path);
   } catch {
     return false;
   }
@@ -63,8 +74,9 @@ function emailCtaHtml(
 
 /**
  * Escape plain text and wrap http(s) URLs in safe <a href> anchors.
- * Proposal offer URLs use a "View your proposal" CTA; the exact URL stays
- * visible underneath for clients that prefer the raw link.
+ * Proposal offer and Event Order document URLs use a branded CTA; the exact
+ * URL stays visible underneath for clients that prefer the raw link.
+ * Questionnaire URLs use a button only (plain-text body still carries the URL).
  */
 export function linkifyPlainTextForEmailHtml(
   text: string,
@@ -87,6 +99,8 @@ export function linkifyPlainTextForEmailHtml(
       const btnColor = escapeHtml(primaryColor);
       if (isProposalOfferUrl(href)) {
         out += emailCtaHtml(safeHref, "View your proposal", btnColor);
+      } else if (isEventOrderDocumentUrl(href)) {
+        out += emailCtaHtml(safeHref, EVENT_ORDER_CTA_LABEL, btnColor);
       } else if (isQuestionnaireFormUrl(href)) {
         // Button is the only visible questionnaire CTA in HTML; plain-text
         // email bodies still carry the raw URL for clients without HTML.

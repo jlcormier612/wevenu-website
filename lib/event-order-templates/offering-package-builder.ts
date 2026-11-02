@@ -194,6 +194,29 @@ export function newRootChoiceSetInput(
 }
 
 /**
+ * Always-available optional add-ons for a section (any category).
+ * Root group — not nested under a parent pick — so couples can select extras
+ * alongside a primary choice. Does not rewrite existing templates.
+ */
+export function newOptionalAddOnsGroupInput(
+  sectionId: string,
+  sectionName: string,
+): AddTemplateGroupInput {
+  const label = sectionName.trim() || "Section";
+  return {
+    sectionId,
+    name: `${label} add-ons`,
+    instructions:
+      "Optional extras — choose any you want. These are available with your other choices in this section.",
+    selectionMode: "multi",
+    minSelect: 0,
+    maxSelect: null,
+    allowQuantity: false,
+    dependsOnOptionIds: [],
+  };
+}
+
+/**
  * Create-input for a named dependent option group under a parent offering.
  * Requires an explicit group name so venues do not get duplicate
  * unexplained “{Parent} options” groups.

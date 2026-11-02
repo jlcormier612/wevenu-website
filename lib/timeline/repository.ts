@@ -810,9 +810,22 @@ export async function getClientSections(client: DbClient, venueId: string, clien
   return (data as SectionRow[]).map(mapSection);
 }
 
-export async function insertSection(client: DbClient, venueId: string, eventId: string, name: string, sortOrder: number): Promise<TimelineSection> {
+export async function insertSection(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  name: string,
+  sortOrder: number,
+  opts?: { clientCanAdd?: boolean },
+): Promise<TimelineSection> {
   const { data, error } = await client.from("timeline_sections")
-    .insert({ venue_id: venueId, event_id: eventId, name: name.trim(), sort_order: sortOrder })
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      name: name.trim(),
+      sort_order: sortOrder,
+      client_can_add: opts?.clientCanAdd === true,
+    })
     .select().single<SectionRow>();
   if (error) throw error;
   return mapSection(data);

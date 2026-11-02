@@ -331,6 +331,18 @@ export async function setSectionClientCanAdd(sectionId: string, clientCanAdd: bo
   return result as TimelineActionResult;
 }
 
+/** Ensure the event has a couple-editable “Your additions” section. */
+export async function ensureCoupleAdditionsSectionForEvent(
+  eventId: string,
+): Promise<AddSectionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { ensureCoupleAdditionsSection } = await import("@/lib/timeline/couple-additions");
+    const section = await ensureCoupleAdditionsSection(supabase, venueId, eventId);
+    return { ok: true, section } as AddSectionResult;
+  });
+  return result as AddSectionResult;
+}
+
 export async function deleteSection(sectionId: string): Promise<TimelineActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.deleteSection(supabase, venueId, sectionId);

@@ -302,8 +302,15 @@ function AddItemAction({
 
   if (!adding) {
     return (
-      <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)} className="h-7 px-2 text-xs">
-        <Plus className="mr-1 h-3 w-3" /> Add Timeline Item
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setAdding(true)}
+        className="h-9 w-full justify-center px-3 text-sm font-medium sm:w-auto"
+        data-testid="portal-timeline-add-item"
+      >
+        <Plus className="mr-1.5 h-4 w-4" /> Add your item
       </Button>
     );
   }
@@ -618,6 +625,29 @@ export function TimelineSection({
 
     return (
       <>
+        {addTargetSectionId ? (
+          <div className="rounded-xl border border-dashed border-[color-mix(in_srgb,var(--venue-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_6%,transparent)] p-3 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Add private items for your day. Venue rows stay locked — submit when you want your venue to see updates.
+            </p>
+            <AddItemAction
+              token={token}
+              sectionId={addTargetSectionId}
+              defaultDayOffset={day ?? 0}
+              eventDate={eventDate}
+              eventEndDate={eventEndDate}
+              onAdded={handleAdded}
+            />
+          </div>
+        ) : (
+          <p
+            className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-muted-foreground"
+            data-testid="portal-timeline-add-unavailable"
+          >
+            Your venue hasn&apos;t opened a section for couple additions yet. Venue items stay read-only here.
+          </p>
+        )}
+
         {list.length > 0 && (
           <div className="space-y-2">
             {list.map((entry, index) => {
@@ -645,17 +675,6 @@ export function TimelineSection({
               );
             })}
           </div>
-        )}
-
-        {addTargetSectionId && (
-          <AddItemAction
-            token={token}
-            sectionId={addTargetSectionId}
-            defaultDayOffset={day ?? 0}
-            eventDate={eventDate}
-            eventEndDate={eventEndDate}
-            onAdded={handleAdded}
-          />
         )}
       </>
     );

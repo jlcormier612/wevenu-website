@@ -13,6 +13,7 @@ import {
   deleteEntry,
   deleteSection,
   duplicateSection,
+  ensureCoupleAdditionsSectionForEvent,
   removeEntryAttachment,
   removeEntryLink,
   removePlanningLink,
@@ -283,6 +284,12 @@ export async function duplicateSectionAction(eventId: string, sourceSectionId: s
 export async function setSectionClientCanAddAction(sectionId: string, eventId: string, clientCanAdd: boolean): Promise<TimelineActionResult> {
   const result = await setSectionClientCanAdd(sectionId, clientCanAdd);
   if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function ensureCoupleAdditionsSectionAction(eventId: string): Promise<AddSectionResult> {
+  const result = await ensureCoupleAdditionsSectionForEvent(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
   return result;
 }
 

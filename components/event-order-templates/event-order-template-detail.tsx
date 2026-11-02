@@ -13,6 +13,7 @@ import {
   updateEventOrderTemplateAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { GuidedSetupWizard } from "@/components/event-order-templates/guided-setup-wizard";
+import { TemplateWorkflowChrome } from "@/components/event-order-templates/template-workflow-chrome";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
@@ -142,6 +143,7 @@ export function EventOrderTemplateDetail({
 
   return (
     <div className="space-y-6 overflow-x-hidden">
+      <TemplateWorkflowChrome templateId={template.id} current="edit" />
       <BusinessAssetHeader
         backHref="/library/event-order-templates"
         backLabel="Event Order Templates"
@@ -188,8 +190,9 @@ export function EventOrderTemplateDetail({
       <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground" data-testid="eo-template-detail-intro">
         Each section has three parts: <span className="font-medium text-heading">Included</span>{" "}
         (always on the package, covered by its price), <span className="font-medium text-heading">Couple chooses</span>{" "}
-        (options from your Offerings catalog), and <span className="font-medium text-heading">Add-ons</span>{" "}
-        (extras billed on top of the package price).{" "}
+        (primary picks plus optional add-on groups the couple can select together), and{" "}
+        <span className="font-medium text-heading">Add-ons</span>{" "}
+        (staff-only extras toggled when you apply the template — not the couple path).{" "}
         <Link href="/library/offerings" className="font-medium text-heading hover:underline">
           Manage Offerings →
         </Link>
