@@ -34,11 +34,20 @@ function escapeHtml(value: string): string {
  * Presentation for staff notification detail bodies before HTML/text emit.
  * - New-lead summaries historically stored raw keys (`wedding · May 09, 2027`);
  *   capitalize the leading canonical event type for display.
+ * - Message previews may include a truncated mail-client quote header
+ *   (`…\n    On Monday,`) from left(body, 100) — drop that tail.
  * - Does not rewrite multiline field layouts from public intake.
  */
 export function presentVenueNotificationDetailBody(body: string): string {
-  const trimmed = body.trim();
+  let trimmed = body.trim();
   if (!trimmed) return trimmed;
+
+  // Truncated Apple Mail / Gmail reply header leftover after left(body, 100).
+  trimmed = trimmed.replace(
+    /\n[ \t]*On\s+(?:Mon(?:day)?|Tue(?:sday)?|Wed(?:nesday)?|Thu(?:rsday)?|Fri(?:day)?|Sat(?:urday)?|Sun(?:day)?)?,?\s*$/i,
+    "",
+  ).trim();
+
   const leading = trimmed.match(/^([a-z][a-z0-9_]*)( · .+)$/i);
   if (leading) {
     const label = eventTypeLabel(leading[1]!);
@@ -70,13 +79,16 @@ function personFirstName(title: string): string | null {
 export function venueNotificationCta(title: string, link: string | null): { label: string; hrefPath: string } | null {
   const path = link?.trim() ?? "";
   if (!path.startsWith("/")) return null;
+  const first = personFirstName(title);
+  // message_received deep links use #messages on Lead or Booking Workspace.
+  if ((path.startsWith("/leads/") || path.startsWith("/clients/")) && path.includes("#messages")) {
+    return { label: first ? `View ${first}'s messages` : "View messages", hrefPath: path };
+  }
   if (path.startsWith("/leads/")) {
-    const first = personFirstName(title);
-    // message_received deep links use #messages — label the conversation, not a generic lead page.
-    if (path.includes("#messages")) {
-      return { label: first ? `View ${first}'s messages` : "View messages", hrefPath: path };
-    }
     return { label: first ? `View ${first}'s lead` : "View this lead", hrefPath: path };
+  }
+  if (path.startsWith("/clients/")) {
+    return { label: first ? `View ${first}'s booking` : "View this booking", hrefPath: path };
   }
   if (path === "/tours" || path.startsWith("/tours/") || path.startsWith("/tours?")) {
     return { label: "View tours", hrefPath: path };

@@ -10,17 +10,24 @@ export type VenueMessageNotificationTarget = {
   conversationId: string;
   clientId: string | null;
   leadId: string | null;
+  /**
+   * True when the client has a linked event (Booked Booking Workspace with a
+   * Conversation tab). Preparing workspaces do not — those deep-link to Lead.
+   */
+  clientBooked?: boolean;
 };
 
 /**
  * Where "Reply to message" should land for a venue↔couple Conversation.
- * Booking/Lead records that own a Conversation tab open that tab.
+ * Booked Booking Workspace / Lead Conversation tabs open that tab.
+ * Unbooked clients still preparing have no Conversation tab — prefer Lead.
  * Otherwise Inbox opens with the exact conversation selected.
  */
 export function venueMessageNotificationHref(target: VenueMessageNotificationTarget): string {
-  const { conversationId, clientId, leadId } = target;
-  if (clientId) return `/clients/${clientId}#messages`;
+  const { conversationId, clientId, leadId, clientBooked = Boolean(clientId) } = target;
+  if (clientId && clientBooked) return `/clients/${clientId}#messages`;
   if (leadId) return `/leads/${leadId}#messages`;
+  if (clientId) return `/clients/${clientId}#messages`;
   return `/messaging?conversation=${encodeURIComponent(conversationId)}`;
 }
 

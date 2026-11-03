@@ -7,6 +7,7 @@ import {
   providerIdFromInReplyTo,
   recordInboundConversationEmail,
   resolveInboundEmailConversation,
+  stripEmailReplyQuotes,
   type InboundEmailRecorder,
   type InboundEmailStore,
 } from "@/lib/conversations/inbound-email";
@@ -164,5 +165,62 @@ describe("inbound email records into conversation_messages", () => {
     }]);
     assert.deepEqual(replied, ["msg-out"]);
     assert.deepEqual(events, ["msg-out"]);
+  });
+
+  it("strips Apple Mail reply quotes before storing so notification previews stay clean", async () => {
+    const inserted: Array<{ body: string }> = [];
+    const recorder: InboundEmailRecorder = {
+      insertConversationMessage: async (row) => {
+        inserted.push(row);
+        return { ok: true };
+      },
+      findLatestOutboundEmail: async () => null,
+      markMessageReplied: async () => {},
+      logRepliedEvent: async () => {},
+    };
+
+    const raw =
+      "Thank you! We had tons of fun. Received the invoice and made our first payment - yay!\n" +
+      "    On Monday, November 2, 2026 at 11:36:03 PM EST, Hello to Cheers <jennifer@hellotocheers.com> wrote:  \n" +
+      " \n   \n|   \nMeadowbrook Valley Venue\n";
+
+    await recordInboundConversationEmail(
+      recorder,
+      {
+        conversationId: CONVERSATION_ID,
+        venueId: "venue-1",
+        relationshipId: "rel-1",
+        entityType: "client",
+        entityId: "client-1",
+      },
+      raw,
+    );
+
+    assert.equal(
+      inserted[0]?.body,
+      "Thank you! We had tons of fun. Received the invoice and made our first payment - yay!",
+    );
+  });
+});
+
+describe("stripEmailReplyQuotes", () => {
+  it("keeps only the new reply above an On … wrote: header", () => {
+    assert.equal(
+      stripEmailReplyQuotes(
+        "Looks great!\n\nOn Mon, Nov 2, 2026 at 3:00 PM Jen <jen@example.com> wrote:\n> prior note",
+      ),
+      "Looks great!",
+    );
+  });
+
+  it("strips Outlook Original Message separators", () => {
+    assert.equal(
+      stripEmailReplyQuotes("Confirmed.\n\n-----Original Message-----\nFrom: Jen"),
+      "Confirmed.",
+    );
+  });
+
+  it("leaves plain replies without quotes unchanged", () => {
+    assert.equal(stripEmailReplyQuotes("  We can do Saturday.  "), "We can do Saturday.");
   });
 });

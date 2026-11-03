@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { DeleteClientRecordButton } from "@/components/clients/delete-client-record-button";
+import { PreparingMessagesDeepLink } from "@/components/clients/preparing-messages-deep-link";
 import { BookingJourneyPanel } from "@/components/booking-journey/booking-journey-panel";
 import { EventTaskList } from "@/components/playbooks/event-task-list";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
@@ -163,6 +164,7 @@ export default async function BookingWorkspacePage({ params, searchParams }: Pro
     const activePlaybookTemplates = templates.filter((t) => !t.isArchived);
     return (
       <div className="space-y-8">
+        <PreparingMessagesDeepLink leadId={client.leadId} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <RelationshipPhotoAvatar photoUrl={photo?.displayedPhotoUrl ?? null} name={displayName} size="lg" />

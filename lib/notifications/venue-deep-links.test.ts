@@ -9,14 +9,27 @@ import {
 } from "@/lib/notifications/venue-deep-links";
 
 describe("venue message notification deep links", () => {
-  it("opens Booking Conversation when a client record exists", () => {
+  it("opens Booking Conversation when the client is Booked", () => {
     assert.equal(
       venueMessageNotificationHref({
         conversationId: "c1",
         clientId: "client-1",
         leadId: "lead-1",
+        clientBooked: true,
       }),
       "/clients/client-1#messages",
+    );
+  });
+
+  it("opens Lead Conversation while the client is still preparing (unbooked)", () => {
+    assert.equal(
+      venueMessageNotificationHref({
+        conversationId: "c1",
+        clientId: "client-1",
+        leadId: "lead-1",
+        clientBooked: false,
+      }),
+      "/leads/lead-1#messages",
     );
   });
 
@@ -184,5 +197,16 @@ describe("notification / conversation UX seams", () => {
     assert.match(msgFn, /\/clients\/' \|\| v_client_id::text \|\| '#messages'/);
     assert.match(msgFn, /\/leads\/' \|\| v_lead_id::text \|\| '#messages'/);
     assert.match(msgFn, /\/messaging\?conversation=' \|\| new\.conversation_id::text/);
+  });
+
+  it("unbooked preparing clients deep-link message_received to Lead Conversation", () => {
+    const sql = readFileSync(
+      resolve("supabase/migrations/20261427500000_message_received_unbooked_lead_deep_link.sql"),
+      "utf8",
+    );
+    assert.match(sql, /v_client_event_id/);
+    assert.match(sql, /when v_client_id is not null and v_client_event_id is not null/);
+    assert.match(sql, /when v_lead_id is not null/);
+    assert.match(sql, /\/leads\/' \|\| v_lead_id::text \|\| '#messages'/);
   });
 });

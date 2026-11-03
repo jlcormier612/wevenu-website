@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { resolve } from "node:path";
 
 import { buildVenueNotificationEmail } from "@/lib/notifications/venue-notification-email";
+import { buildTourReminderCoordinatorEmail } from "@/lib/notifications/tour-reminder-email";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { emailBrandFromVenue } from "@/lib/email/venue-brand";
@@ -47,10 +48,25 @@ describe("venue staff notification emails", () => {
     assert.equal(email.ctaLabel, "View Nicole's lead");
     assert.match(email.html, /Wedding · May 09, 2027/);
     assert.doesNotMatch(email.html, /\bwedding ·/);
+    // Single-line summaries must stay one paragraph (no invented <br>).
+    assert.doesNotMatch(email.html, /Wedding · May 09, 2027<br>/);
     assert.doesNotMatch(visible(email.html), /https?:\/\//);
     assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
     assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
     assert.doesNotMatch(email.html, /background:#1a1a1a/);
+  });
+
+  it("escapes HTML in detail bodies while converting newlines to br", () => {
+    const email = buildVenueNotificationEmail({
+      title: "Possible duplicate inquiry",
+      body: "Possible match: <script>alert(1)</script>\nEmail: a@b.c",
+      link: "/leads/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Possible match: &lt;script&gt;alert\(1\)&lt;\/script&gt;<br>/);
+    assert.match(email.html, /Email: a@b\.c/);
+    assert.doesNotMatch(email.html, /<script>alert/);
+    assert.match(email.text, /Possible match: <script>alert\(1\)<\/script>\nEmail: a@b\.c/);
   });
 
   it("multiline inquiry fields become separate HTML lines (not one collapsed paragraph)", () => {
@@ -100,6 +116,23 @@ describe("venue staff notification emails", () => {
     assert.match(email.html, /Status: New Inquiry<br>/);
     assert.match(email.html, /Matched by: email/);
     assert.doesNotMatch(email.html, /Possible match: Alice Gate ·/);
+    assert.match(email.text, /Possible match: Alice Gate\nEmail: alice@example\.com\nStatus:/);
+  });
+
+  it("representative multiline shared-shell caller (tour reminder) preserves field rows", () => {
+    const email = buildTourReminderCoordinatorEmail({
+      contactName: "Ivy Quinn",
+      dateLabel: "Oct 20, 2026",
+      timeLabel: "2:00 PM",
+      durationMinutes: 60,
+      venueName: "Jen's Fancy Venue",
+      leadId: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.html, /Duration: 60 minutes\.<br>/);
+    assert.match(email.html, /Jen&#39;s Fancy Venue|Jen's Fancy Venue/);
+    assert.match(email.text, /Duration: 60 minutes\.\nJen's Fancy Venue/);
+    assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
   });
 
   it("date-based new-tour-booked subjects do not invent a weekday CTA name", () => {
@@ -131,6 +164,31 @@ describe("venue staff notification emails", () => {
     assert.match(email.html, new RegExp(`background:${HTC_EMAIL_CTA_BACKGROUND}`));
     assert.match(email.html, /hello-to-cheers-logo-primary-transparent/);
     assert.match(email.html, /#messages/);
+  });
+
+  it("message_received drops a truncated mail-client quote header from the preview", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New message from Bugs Bunny",
+      body:
+        "Thank you! We had tons of fun. Received the invoice and made our first payment - yay!\n    On Monday,",
+      link: "/clients/72892602-a1b1-4982-8353-0193b6d450cf#messages",
+      appOrigin: ORIGIN,
+    });
+    assert.match(email.text, /made our first payment - yay!/);
+    assert.doesNotMatch(email.text, /On Monday/);
+    assert.doesNotMatch(email.html, /On Monday/);
+    assert.equal(email.ctaLabel, "View Bugs's messages");
+  });
+
+  it("message_received client deep links use the messages CTA label", () => {
+    const email = buildVenueNotificationEmail({
+      title: "New message from Bugs Bunny",
+      body: "Thanks!",
+      link: "/clients/72892602-a1b1-4982-8353-0193b6d450cf#messages",
+      appOrigin: ORIGIN,
+    });
+    assert.equal(email.ctaLabel, "View Bugs's messages");
+    assert.match(email.href ?? "", /\/clients\/.*#messages/);
   });
 
   it("the dispatcher sends that HTML instead of a bare URL body", () => {

@@ -46,6 +46,16 @@ describe("preparing client workspace Documents", () => {
     assert.match(unbooked, /<DocumentWorkspace/);
     assert.match(unbooked, /entityType: "client", entityId: client\.id, venueId: client\.venueId/);
   });
+
+  it("redirects legacy #messages deep links to the Lead Conversation tab", () => {
+    assert.match(unbooked, /<PreparingMessagesDeepLink leadId=\{client\.leadId\}/);
+    const deepLink = readFileSync(
+      resolve("components/clients/preparing-messages-deep-link.tsx"),
+      "utf8",
+    );
+    assert.match(deepLink, /\/leads\/\$\{leadId\}#messages/);
+    assert.match(deepLink, /hash\.replace\([^)]*\) !== "messages"/);
+  });
 });
 
 describe("documentsWorkspaceHref destinations", () => {
