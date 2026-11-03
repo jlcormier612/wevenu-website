@@ -747,18 +747,25 @@ html:has(.htc-staff) [data-slot="card"] {
     0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
 }
 
-.htc-staff .htc-hospitality-table [data-slot="table-header"] tr {
+.htc-staff .htc-hospitality-table [data-slot="table-header"] tr,
+.htc-staff .htc-hospitality-table thead tr {
   border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
   background: var(--htc-eucalyptus-surface);
 }
 
-.htc-staff .htc-hospitality-table [data-slot="table-header"] th {
+.htc-staff .htc-hospitality-table [data-slot="table-header"] th,
+.htc-staff .htc-hospitality-table thead th {
   color: var(--heading);
 }
 
-.htc-staff .htc-hospitality-table [data-slot="table-body"] tr {
-  border-bottom-color: color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+.htc-staff .htc-hospitality-table [data-slot="table-body"] tr,
+.htc-staff .htc-hospitality-table tbody tr {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
   background: var(--card);
+}
+
+.htc-staff .htc-hospitality-table tbody tr:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
 }
 
 /*
@@ -909,6 +916,24 @@ html:has(.htc-staff) [data-slot="card"] {
   box-shadow: none;
 }
 
+/* Rule J — Task Center couple/staff group header eucalyptus; clear row division. */
+.htc-staff .htc-task-event-group-header {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+}
+
+.htc-staff .htc-task-event-group-body .htc-task-row {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 88%, transparent);
+}
+
+.htc-staff .htc-task-event-group-body .htc-task-row:last-child {
+  border-bottom: none;
+}
+
+.htc-staff .htc-task-event-group-body .htc-task-row:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 40%, white);
+}
+
 /*
  * Phase 5 refinement — Availability guidance hierarchy.
  * Outer shell: calm border + left accent. Intro header: calm blue.
@@ -1051,7 +1076,7 @@ html:has(.htc-staff) [data-slot="card"] {
   gap: 0.65rem;
   border: 1px solid var(--htc-border-warm);
   border-radius: 0.75rem;
-  background: var(--htc-linen);
+  background: #ffffff;
   padding: 0.65rem 0.75rem;
   box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
 }
@@ -1239,8 +1264,8 @@ html:has(.htc-staff) [data-slot="card"] {
   gap: 0.45rem;
   border: 1px solid var(--htc-border-warm);
   border-radius: 0.75rem;
-  /* Phase 11C — linen supporting surface; taxonomy dots stay --cal-*. */
-  background: var(--htc-linen);
+  /* Rule J — white working shell; taxonomy chips keep eucalyptus when active. */
+  background: #ffffff;
   /* Desktop: tighter vertical padding; mobile keeps roomier touch layout. */
   padding: 0.5rem 0.75rem;
   box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
@@ -1400,9 +1425,10 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 .htc-staff .htc-calendar-schedule [data-cal-schedule-empty] {
-  border: 1px dashed color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
   border-radius: 0.65rem;
-  background: color-mix(in oklch, var(--card) 72%, transparent);
+  background: var(--htc-calm-blue);
   padding: 1.15rem 0.9rem;
   text-align: center;
 }
@@ -1813,9 +1839,10 @@ html:has(.htc-staff) [data-slot="card"] {
   gap: 0.45rem;
   margin: 0.5rem;
   padding: 1.1rem 1rem;
-  border: 1px dashed color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
   border-radius: 0.65rem;
-  background: var(--htc-linen);
+  background: var(--htc-calm-blue);
 }
 
 .htc-staff .htc-tours-workspace .htc-tours-empty-page {

@@ -101,7 +101,10 @@ export function SetupReadiness({
 
         <div className="border-t border-border pt-4">
           {readyToInviteCouples ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-primary/20 bg-primary/5 p-3.5">
+            <div
+              className="htc-surface-guidance flex flex-wrap items-center justify-between gap-3 p-3.5"
+              data-testid="setup-ready-declared"
+            >
               <p className="text-sm text-foreground">
                 You&apos;ve decided you&apos;re ready. We&apos;ll stop showing setup guidance, but you can continue configuring your venue anytime.
                 {readyToInviteCouplesAt ? ` Declared on ${new Date(readyToInviteCouplesAt).toLocaleDateString()}.` : ""}

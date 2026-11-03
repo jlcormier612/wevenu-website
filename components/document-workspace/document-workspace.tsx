@@ -183,7 +183,12 @@ export function DocumentWorkspace({
 
           {/* Search / Filter / Sort — white operational toolbar (Option B) */}
           <section className="htc-hospitality-toolbar flex flex-wrap items-center gap-2">
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search documents…" className="max-w-xs" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search documents…"
+              className="max-w-xs border-[color:var(--htc-border-warm)] bg-card"
+            />
             <Select value={status} onValueChange={(v) => setStatus(v as WorkspaceStatus | "all")}>
               <SelectTrigger className="w-auto"><SelectValue /></SelectTrigger>
               <SelectContent>

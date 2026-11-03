@@ -135,4 +135,32 @@ describe("List-page recipe — priority pages", () => {
     assert.match(tours, /className="htc-record-link"/);
     assert.match(tours, /data-tours-name=""/);
   });
+
+  it("Wave A — calm-blue info shells and eucalyptus task group headers", () => {
+    const css = read("app/globals.css");
+    const vendors = read("components/vendors/required-vendor-categories-panel.tsx");
+    const setupOverview = read("components/setup-hub/setup-hub-overview.tsx");
+    const setupReady = read("components/setup-hub/setup-readiness.tsx");
+    const tasks = read("components/tasks/task-center.tsx");
+    const requests = read("components/requests/request-manager.tsx");
+    const inbox = read("app/(app)/messaging/conversation-inbox.tsx");
+    const docs = read("components/library/library-documents-manager.tsx");
+
+    assert.match(vendors, /htc-surface-guidance/);
+    assert.match(setupOverview, /htc-surface-guidance/);
+    assert.match(setupOverview, /setup-hub-orientation/);
+    assert.match(setupReady, /htc-surface-guidance/);
+    assert.match(css, /\.htc-tours-section-empty \{[\s\S]*?background:\s*var\(--htc-calm-blue\)/);
+    assert.match(css, /\[data-cal-schedule-empty\] \{[\s\S]*?background:\s*var\(--htc-calm-blue\)/);
+    assert.match(css, /\.htc-task-event-group-header \{[\s\S]*?background:\s*var\(--htc-eucalyptus-surface\)/);
+    assert.match(tasks, /htc-task-event-group-header/);
+    assert.match(tasks, /bg-card pl-8/);
+    assert.match(docs, /htc-hospitality-toolbar/);
+    assert.match(docs, /bg-card pl-9/);
+    assert.match(requests, /htc-surface-working/);
+    assert.match(requests, /htc-hospitality-table/);
+    assert.match(inbox, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.match(inbox, /htc-record-link/);
+    assert.match(inbox, /bg-card pl-8/);
+  });
 });

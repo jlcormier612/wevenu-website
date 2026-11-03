@@ -54,8 +54,8 @@ export function CalendarPageClient({
 
   return (
     <div className="htc-calendar-workspace space-y-6">
-      {/* Phase 11C — eucalyptus intro with botanical accent (Reports parity). */}
-      <div className="htc-hospitality-intro htc-hospitality-intro-accent" data-cal-intro="">
+      {/* Rule J — white title card + botanical strip (layout stays calendar-specific). */}
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent" data-cal-intro="">
         <PageHeader
           title="Calendar"
           description="Your venue’s schedule — events, appointments, holds, and blocked time."

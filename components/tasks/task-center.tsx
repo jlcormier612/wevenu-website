@@ -125,7 +125,7 @@ function DoTaskItem({
       : null;
 
   return (
-    <div className="group flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
+    <div className="htc-task-row group flex items-start gap-3 py-3">
       <div className="mt-0.5 shrink-0">{STATUS_ICON[task.computedStatus]}</div>
       <div className="flex-1 min-w-0 space-y-0.5">
         <p className="text-sm font-medium text-heading truncate">{task.title}</p>
@@ -196,7 +196,7 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
     : "Coming up soon for this couple";
 
   return (
-    <div className="flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
+    <div className="htc-task-row flex items-start gap-3 py-3">
       <div className="mt-0.5 shrink-0" aria-hidden>
         {task.computedStatus === "overdue"
           ? <AlertTriangle className="htc-task-overdue-ink h-3.5 w-3.5" />
@@ -240,10 +240,10 @@ function EventGroup({
   const openHref = href ?? (eventId ? `/events/${eventId}` : null);
   return (
     <div className={cn(
-      "rounded-sm border bg-card",
+      "htc-task-event-group overflow-hidden rounded-sm border bg-card",
       mode === "watch" ? "border-border/80 border-l-[3px] border-l-sky-600/70" : "border-border",
     )}>
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/50">
+      <div className="htc-task-event-group-header flex items-center justify-between gap-2 px-4 py-2.5">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-heading truncate">{couple || eventName}</p>
           <p className="text-[10px] text-muted-foreground">
@@ -257,7 +257,7 @@ function EventGroup({
           </Button>
         )}
       </div>
-      <div className="px-4">
+      <div className="htc-task-event-group-body px-4">
         {mode === "watch"
           ? tasks.map((t) => <WatchTaskItem key={t.id} task={t} />)
           : tasks.map((t) => (
@@ -283,12 +283,12 @@ function StaffGroup({
   waiving: string | null;
 }) {
   return (
-    <div className="rounded-sm border border-border bg-card">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50">
+    <div className="htc-task-event-group overflow-hidden rounded-sm border border-border bg-card">
+      <div className="htc-task-event-group-header flex items-center gap-2 px-4 py-2.5">
         <p className="text-xs font-semibold text-heading truncate">{staffName}</p>
         <p className="text-[10px] text-muted-foreground">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</p>
       </div>
-      <div className="px-4">
+      <div className="htc-task-event-group-body px-4">
         {tasks.map((t) => (
           <DoTaskItem key={t.id} task={t} onComplete={onComplete} onWaive={onWaive}
             completing={completing} waiving={waiving} />
@@ -568,7 +568,7 @@ export function TaskCenter({
               window.setTimeout(() => setFindMenuOpen(false), 150);
             }}
             placeholder="Search by couple or event name…"
-            className="pl-8 h-9"
+            className="h-9 border-[color:var(--htc-border-warm)] bg-card pl-8"
             autoComplete="off"
             aria-expanded={findMenuOpen}
             aria-controls="task-center-find-results"

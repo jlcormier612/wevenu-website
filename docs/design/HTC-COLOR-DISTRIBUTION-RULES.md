@@ -137,13 +137,15 @@ These treatments apply across **most staff pages**, not only classic list screen
 | Primary small actions | Botanical fill + white text | Default `Button` / `--primary` |
 | Quiet status chips | Eucalyptus wash + dark text | `.htc-badge-active` (e.g. Active, Completed-like) |
 | Attention / required chips | Soft blush + rose border | `.htc-badge-attention` / attention filter chips (Needs Attention, Required, populated New Inquiry) |
-| Informational explainers | Calm blue | `.htc-surface-guidance`, Automations-help, migration guidance, Setup Hub Bring-Your-Business how-to |
+| Informational explainers / empty readiness notices | Calm blue | `.htc-surface-guidance`, empty “nothing upcoming/scheduled”, Setup orientation & ready-declared, Vendors Required categories |
+| Quiet group / section chrome | Eucalyptus | Table headers, Task couple/staff group headers, active Tour taxonomy chips, Tours section headers |
+| True attention / overdue | Soft blush | `.htc-badge-attention`, Task overdue banner — not calm blue |
 
-**Do not** fill ordinary primary title cards with eucalyptus. Eucalyptus belongs on table header bars, quiet Active chips, and selective summaries — not the whole page title card.
+**Do not** fill ordinary primary title cards with eucalyptus. Eucalyptus belongs on table header bars, quiet Active chips, group headers, and selective summaries — not the whole page title card.
 
-**Guidance must read as calm blue**, including Setup Hub migration/how-to panels (HoneyBook / bring-your-business explainers), Automations help, and Task Center informational callouts. Do not leave sky-blue Tailwind leftovers or botanical-tint washes on how-to copy.
+**Guidance must read as calm blue**, including Setup Hub orientation (“Jennifer, here’s what helps…”), ready-declared notices, Bring-Your-Business / HoneyBook how-to panels, migration guidance, Automations help, empty informational panels, and Task Center informational callouts. When informational copy is orphaned on the canvas, wrap it in a calm-blue shell — do not invent blue boxes for every paragraph.
 
-**Exceptions:** Calendar, Reports, Messaging inbox, and dense open workspaces keep specialized body layouts. They still inherit beige canvas where wrapped, botanical primary actions, blush for true attention/Luv, and calm blue only for real guidance.
+**Exceptions:** Calendar, Reports, Messaging inbox, and dense open workspaces keep specialized body layouts. They still use white title cards + botanical strip, white search/toolbars, record-link names, botanical primary actions, blush for true attention, eucalyptus for quiet grouping chips, and calm blue for real guidance/empty info.
 
 ---
 

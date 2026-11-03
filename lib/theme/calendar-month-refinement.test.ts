@@ -21,9 +21,9 @@ const dayView = readFileSync(resolve("components/calendar/day-view.tsx"), "utf8"
 const agendaView = readFileSync(resolve("components/calendar/agenda-view.tsx"), "utf8");
 
 describe("Calendar Month refinement — hospitality chrome", () => {
-  it("opts Calendar page into scoped workspace + hospitality intro", () => {
+  it("opts Calendar page into scoped workspace + white hospitality heading", () => {
     assert.match(pageClient, /htc-calendar-workspace/);
-    assert.match(pageClient, /htc-hospitality-intro/);
+    assert.match(pageClient, /htc-hospitality-heading/);
     assert.match(pageClient, /htc-hospitality-intro-accent/);
     assert.match(pageClient, /Add Schedule Item/);
     assert.match(pageClient, /Print \/ Export/);

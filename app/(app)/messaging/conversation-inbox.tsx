@@ -123,7 +123,12 @@ function ConversationRow({
       </div>
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex items-center justify-between gap-2">
-          <p className={`truncate text-sm font-medium ${conversation.venueUnread > 0 ? "text-heading" : "text-foreground"}`}>
+          <p
+            className={cn(
+              "htc-record-link truncate text-sm font-medium",
+              conversation.venueUnread > 0 ? "text-heading" : "text-foreground",
+            )}
+          >
             {conversation.displayName ?? "Unnamed relationship"}
           </p>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeLabel}</span>
@@ -469,8 +474,8 @@ export function ConversationInbox({
   }
 
   return (
-    <div className="flex min-w-0 w-full flex-col gap-3">
-      <div className="flex shrink-0 items-start justify-between gap-3">
+    <div className="htc-hospitality-page flex min-w-0 w-full flex-col gap-3">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent flex shrink-0 items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-medium text-heading">Inbox</h1>
           <p className="text-[0.95rem] text-muted-foreground">
@@ -489,11 +494,11 @@ export function ConversationInbox({
         </Link>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2">
+      <div className="htc-hospitality-toolbar flex shrink-0 flex-col gap-2">
         <div
           role="tablist"
           aria-label="Inbox category"
-          className="flex min-w-0 gap-1 rounded-lg border border-border bg-muted/30 p-1"
+          className="flex min-w-0 gap-1 rounded-lg border border-[color:var(--htc-border-warm)] bg-card p-1"
         >
           {INBOX_CATEGORY_OPTIONS.map((opt) => {
             const selected = category === opt.value;
@@ -522,7 +527,7 @@ export function ConversationInbox({
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, email, phone, or event…"
               aria-label="Search inbox conversations"
-              className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm"
+              className="h-9 w-full rounded-lg border border-[color:var(--htc-border-warm)] bg-card pl-8 pr-3 text-sm"
             />
           </div>
           <button
@@ -912,11 +917,20 @@ export function ConversationInbox({
               onNeedsResponseCleared={() => void markNoResponseNeeded(activeId)}
             />
           ) : (
-            <div className="max-w-xs space-y-1 px-6 text-center">
-              <p className="text-sm font-medium text-heading">Select a conversation</p>
-              <p className="text-xs text-muted-foreground">
-                Choose someone from the list to read and reply by email or text.
-              </p>
+            /*
+             * Color Distribution Phase 2 — no-selection workspace.
+             * Calm-blue informational surface centered in the white pane.
+             * Hidden below md (list-first mobile). List empty states are separate.
+             */
+            <div className="flex w-full flex-1 items-center justify-center px-6 py-10 md:px-10 md:py-14">
+              <div className="htc-inbox-no-selection w-full max-w-md rounded-xl border px-6 py-8 text-center sm:px-8 sm:py-10">
+                <p className="text-base font-semibold leading-snug text-heading sm:text-lg">
+                  Select a conversation
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Choose someone from the list to read and reply by email or text.
+                </p>
+              </div>
             </div>
           )}
         </div>

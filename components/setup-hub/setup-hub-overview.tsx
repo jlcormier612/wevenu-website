@@ -251,8 +251,8 @@ export function SetupHubOverview({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
+      <div className="htc-surface-guidance space-y-2 px-4 py-3" data-testid="setup-hub-orientation">
+        <p className="text-sm text-foreground">
           {ownerFirstName ? `${ownerFirstName}, here` : "Here"}&apos;s what helps {venueName} feel ready for real clients. Work in any order that makes sense — leave and come back anytime.
         </p>
         {!bringYourBusinessDone ? (

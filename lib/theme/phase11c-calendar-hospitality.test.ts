@@ -19,13 +19,13 @@ const agendaView = read("components/calendar/agenda-view.tsx");
 const printPage = read("app/(app)/calendar/print/page.tsx");
 
 describe("Phase 11C — Calendar intro and guidance", () => {
-  it("uses eucalyptus botanical-accent intro with existing actions", () => {
-    assert.match(pageClient, /htc-hospitality-intro htc-hospitality-intro-accent/);
+  it("uses white title card + botanical strip with existing actions", () => {
+    assert.match(pageClient, /htc-hospitality-heading htc-hospitality-intro-accent/);
     assert.match(pageClient, /data-cal-intro=/);
     assert.match(pageClient, /title="Calendar"/);
     assert.match(pageClient, /Add Schedule Item/);
     assert.match(pageClient, /Print \/ Export/);
-    assert.doesNotMatch(pageClient, /htc-hospitality-heading/);
+    assert.doesNotMatch(pageClient, /htc-hospitality-intro htc-hospitality-intro-accent/);
   });
 
   it("wraps availability help in calm-blue guidance — not taxonomy", () => {
@@ -38,15 +38,15 @@ describe("Phase 11C — Calendar intro and guidance", () => {
   });
 });
 
-describe("Phase 11C — linen toolbars across views", () => {
-  it("defines linen calendar toolbar shell", () => {
-    assert.match(css, /\.htc-staff \.htc-calendar-toolbar[\s\S]*?background:\s*var\(--htc-linen\)/);
+describe("Phase 11C — white toolbars across views (Rule J)", () => {
+  it("defines white calendar toolbar shell", () => {
+    assert.match(css, /\.htc-staff \.htc-calendar-toolbar[\s\S]*?background:\s*#ffffff/);
     assert.match(calendarView, /htc-calendar-toolbar/);
     assert.match(calendarView, /data-cal-toolbar-row="views"/);
     assert.match(calendarView, /data-cal-toolbar-row="date"/);
   });
 
-  it("keeps a single shared linen toolbar with date nav for all four views", () => {
+  it("keeps a single shared white toolbar with date nav for all four views", () => {
     assert.match(calendarView, /data-cal-toolbar-row="views"/);
     assert.match(calendarView, /data-cal-toolbar-row="date"/);
     assert.match(calendarView, /navigateWeek|Previous week/);
@@ -57,7 +57,7 @@ describe("Phase 11C — linen toolbars across views", () => {
     assert.doesNotMatch(agendaView, /htc-calendar-toolbar|Previous month/);
   });
 
-  it("desktop toolbar places views left and date right in one linen shell", () => {
+  it("desktop toolbar places views left and date right in one white shell", () => {
     assert.match(
       css,
       /@media \(min-width: 768px\)[\s\S]*?\.htc-calendar-toolbar[\s\S]*?flex-direction:\s*row/,
@@ -71,8 +71,12 @@ describe("Phase 11C — linen toolbars across views", () => {
     assert.match(css, /\[data-cal-intro-actions\][\s\S]*?flex-wrap:\s*nowrap/);
   });
 
-  it("keeps linen filters without remapping --cal-*", () => {
-    assert.match(css, /\.htc-staff \.htc-calendar-filters[\s\S]*?background:\s*var\(--htc-linen\)/);
+  it("keeps white filters + eucalyptus active chips without remapping --cal-*", () => {
+    assert.match(css, /\.htc-staff \.htc-calendar-filters[\s\S]*?background:\s*#ffffff/);
+    assert.match(
+      css,
+      /\.htc-calendar-filters \[data-taxonomy-chip\]\[data-active="true"\][\s\S]*?background:\s*var\(--htc-eucalyptus-surface\)/,
+    );
     assert.match(css, /--cal-event:\s*#7B5EA0/i);
     assert.match(css, /--cal-tour:\s*#4A7EA8/i);
     assert.match(css, /--cal-meeting:\s*#D68A3E/i);

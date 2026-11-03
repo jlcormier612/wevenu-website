@@ -39,10 +39,10 @@ export function RequiredVendorCategoriesPanel({
 
   return (
     <div
-      className="overflow-hidden rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-card shadow-[0_1px_2px_color-mix(in_oklch,#24332b_4%,transparent)]"
+      className="htc-surface-guidance overflow-hidden rounded-[0.75rem]"
       data-vendor-required-categories
     >
-      <div className="border-b border-[color:color-mix(in_oklch,var(--htc-eucalyptus)_40%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)]">
+      <div className="border-b border-[color:var(--htc-border-calm)]">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -58,7 +58,7 @@ export function RequiredVendorCategoriesPanel({
         </button>
       </div>
       {open && (
-        <div className="space-y-3 bg-[var(--htc-linen)] px-4 py-3">
+        <div className="space-y-3 bg-card px-4 py-3">
           <div className="flex flex-wrap gap-1.5">
             {VENDOR_CATEGORIES.filter((c) => c.value !== "other").map((c) => {
               const active = selected.has(c.value);
