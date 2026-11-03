@@ -39,10 +39,10 @@ export default async function QuestionnaireTemplatesLibraryPage() {
                 missingKeys={missingStarterKeys}
                 presentKeys={[...presentKeys].filter((k): k is string => Boolean(k))}
               />
+            </div>
+          }
+        />
       </div>
-          </div>
-        }
-      />
       <QuestionnaireTemplateList
         templates={templates}
         missingStarterKeys={missingStarterKeys}
