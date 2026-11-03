@@ -5,9 +5,10 @@
 | Worktree | `/Users/jensmac/Developer/htc-visual-p1-9-release` |
 | Branch | `sandbox-deploy/visual-phases-1-9` |
 | Baseline SHA | `cf84a4ee98eedc3d630737478e97ffecad9c519d` |
-| Candidate SHA | `3ca9aa0c8d09831f65c296a2cf1589cb6ef0b4a0` |
+| App + evidence payload SHA | `ae7e650aa8342e1ff4d76933d6c33fd735b6a286` |
+| Branch tip at Step 2 close | run `git -C /Users/jensmac/Developer/htc-visual-p1-9-release rev-parse HEAD` (docs-only commits may sit atop payload) |
 | Original tree | `/Users/jensmac/Developer/wevenu-website` @ `69cacab8508c40f4d4716b552f2b88e831816ca3` — dirty preserved |
-| Changed source files | 30 modified + 11 new (helper + tests) + surgical CSS |
+| Changed source files | 30 modified + 11 new (helper + tests) + surgical CSS (+211 `globals.css` lines) |
 | Evidence docs | this directory |
 
 ## Verdict
@@ -19,8 +20,8 @@ Local verification complete. **Do not push or deploy until product approves Step
 ## What Step 3 would do (not executed)
 
 1. `git push -u origin sandbox-deploy/visual-phases-1-9` (does **not** auto-deploy).
-2. GitHub Actions → **Deploy Sandbox** → `workflow_dispatch` on that branch.
-3. Confirm Actions success and serving image tag / `github.sha` == candidate SHA.
+2. GitHub Actions → **Deploy Sandbox** → `workflow_dispatch` on that branch tip.
+3. Confirm Actions success and serving image tag / `github.sha` == pushed tip.
 4. Browser smoke on `https://app.sandbox.hellotocheers.com` for Phase 1–9 routes; confirm Phase 10 absent.
 5. Rollback if needed: re-dispatch prior SHA `cf84a4ee…`.
 
