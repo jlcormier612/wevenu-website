@@ -8,18 +8,25 @@ import { cn } from "@/lib/utils";
  * catalog the template selects from. Do not link back to the Template Library hub.
  */
 
-export type LibraryGuidanceTone = "default" | "blush" | "eucalyptus";
+export type LibraryGuidanceTone = "default" | "blush" | "eucalyptus" | "calm";
 
+/**
+ * Tone surfaces — blush / eucalyptus keep approved catalog identity.
+ * Calm uses locked HTC calm-blue tokens (staff `.htc-staff` scope) for
+ * informational reassurance — not warning, action, or Luv identity.
+ */
 const TONE_PANEL: Record<LibraryGuidanceTone, string> = {
   default: "border-border/70 bg-muted/30 text-muted-foreground",
   blush: "border-[#e8c4c8] bg-[#F7E9EB] text-foreground",
   eucalyptus: "border-[#b7d0c0] bg-[#DCE8E0] text-foreground",
+  calm: "htc-library-guidance-calm border-[color:var(--htc-border-calm)] bg-[var(--htc-calm-blue)] text-foreground",
 };
 
 const TONE_ACCENT: Record<LibraryGuidanceTone, string> = {
   default: "bg-border",
   blush: "bg-[color-mix(in_oklch,var(--htc-blush)_70%,white)]",
   eucalyptus: "bg-[var(--htc-eucalyptus)]",
+  calm: "bg-[var(--htc-calm-blue-deep)]",
 };
 
 /**
