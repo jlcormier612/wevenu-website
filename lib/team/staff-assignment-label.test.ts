@@ -33,6 +33,15 @@ describe("staff assignment action label", () => {
     assert.doesNotMatch(onChange, /setPersistedId/);
   });
 
+  it("ignores stale prop refresh after save until the server value catches up", () => {
+    // Regression: first Edit/Save looked successful, then snapped back to the
+    // previous owner until a second save (stale router.refresh / RSC props).
+    assert.match(field, /pendingSavedRef/);
+    assert.match(field, /pendingSavedRef\.current = next/);
+    assert.match(field, /Stale RSC\/props after save/);
+    assert.match(field, /incoming === pendingSavedRef\.current/);
+  });
+
   it("lead Sales owner and event Event owner both use StaffAssignmentField", () => {
     assert.match(leadDetail, /label="Sales owner"/);
     assert.match(leadDetail, /testId="lead-staff-assignment"/);

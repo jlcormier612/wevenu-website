@@ -33,6 +33,12 @@ export function StaffAssignmentField({
   const [selected, setSelected] = React.useState(value ?? "");
   const selectedRef = React.useRef(value ?? "");
   const dirtyRef = React.useRef(false);
+  /**
+   * After a successful save, ignore stale prop refreshes until the server
+   * value catches up. Without this, the first save can flash success and then
+   * snap back to the previous owner (forcing a second save).
+   */
+  const pendingSavedRef = React.useRef<string | null>(null);
   /** Last successfully persisted id (prop sync + successful save). */
   const [persistedId, setPersistedId] = React.useState(value ?? "");
   const [pending, start] = React.useTransition();
@@ -43,9 +49,18 @@ export function StaffAssignmentField({
     // A late router.refresh() must not overwrite a choice the user has
     // already made and not yet saved.
     if (dirtyRef.current) return;
-    selectedRef.current = value ?? "";
-    setSelected(value ?? "");
-    setPersistedId(value ?? "");
+    const incoming = value ?? "";
+    if (pendingSavedRef.current !== null) {
+      if (incoming === pendingSavedRef.current) {
+        pendingSavedRef.current = null;
+      } else {
+        // Stale RSC/props after save — keep the just-saved selection visible.
+        return;
+      }
+    }
+    selectedRef.current = incoming;
+    setSelected(incoming);
+    setPersistedId(incoming);
   }, [value]);
 
   React.useEffect(() => {
@@ -70,6 +85,7 @@ export function StaffAssignmentField({
       const result = await onSave(next.trim() || null);
       if (result.ok) {
         dirtyRef.current = false;
+        pendingSavedRef.current = next;
         selectedRef.current = next;
         setSelected(next);
         setPersistedId(next);
