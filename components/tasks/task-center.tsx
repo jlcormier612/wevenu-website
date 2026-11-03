@@ -693,7 +693,10 @@ export function TaskCenter({
         )}
 
         {hasAnyDoTasks && doImmediate === 0 && doUpcomingCount > 0 && !myWorkEmpty && (
-          <div className="rounded-sm border border-border bg-muted/30 px-4 py-3">
+          <div
+            className="htc-task-center-plate-clear rounded-sm border px-4 py-3"
+            data-testid="task-center-plate-clear"
+          >
             <p className="text-sm font-medium text-heading">Nothing on your plate today</p>
             <p className="text-xs text-muted-foreground">Here&apos;s what&apos;s coming up across your events.</p>
           </div>

@@ -32,7 +32,7 @@ export default async function TimelineTemplatesPage() {
           <TimelineTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} />
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Schedule blocks (times and labels) are authored in the timeline editor. You can optionally assign a template to a space.
       </LibraryHowItWorks>
       <LibraryDependencyNote

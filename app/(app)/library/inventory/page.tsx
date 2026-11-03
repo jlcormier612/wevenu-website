@@ -33,7 +33,7 @@ export default async function InventoryLibraryPage() {
           </div>
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Maintain the reusable stock catalog here. Floor Plan Templates can place items marked for floor plans. Inventory Templates and the event Inventory tab pull from this catalog when building an event list — those are separate from this catalog page.
         Set when two events can share the same stock in the card just below — it is not buried under the item list.
       </LibraryHowItWorks>

@@ -39,7 +39,7 @@ export function QrCampaignsPageClient({
           </Button>
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Create the form first, then point a QR campaign at it. Download the PNG to print or share.
       </LibraryHowItWorks>
       <LibraryDependencyNote

@@ -48,25 +48,37 @@ export function ContractList({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search contracts…" className="pl-9" />
+      <div className="htc-hospitality-toolbar space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search contracts…"
+              className="border-[color:var(--htc-border-warm)] bg-card pl-9"
+            />
+          </div>
         </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {CONTRACT_LIST_FILTERS.map(({ value, label }) => {
-          const count = contracts.filter((c) => contractMatchesListFilter(c, value)).length;
-          const active = filter === value;
-          return (
-            <button key={value} type="button" onClick={() => setFilter(value)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
-              {label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
-            </button>
-          );
-        })}
+        <div className="flex flex-wrap gap-1.5">
+          {CONTRACT_LIST_FILTERS.map(({ value, label }) => {
+            const count = contracts.filter((c) => contractMatchesListFilter(c, value)).length;
+            const active = filter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-[color:var(--htc-border-warm)] bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+              >
+                {label}
+                <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-[color:var(--htc-canvas)] text-muted-foreground"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {contracts.length === 0 && (
@@ -90,7 +102,7 @@ export function ContractList({
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="htc-hospitality-table overflow-hidden">
           {/* Mobile cards — full event date visible without horizontal clipping */}
           <ul className="divide-y divide-border sm:hidden">
             {filtered.map((contract) => {

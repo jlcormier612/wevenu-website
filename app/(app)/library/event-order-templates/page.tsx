@@ -33,7 +33,7 @@ export default async function EventOrderTemplatesPage() {
         description="Reusable packages for a wedding’s Event Order — always-on items and couple choices selected from your Offerings."
         actions={<NewEventOrderTemplateButton />}
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         An Event Order template is the reusable package you apply to a booked event. You decide items
         always on the package (with clear package-price vs additional-charge treatment) and Couple&apos;s
         choices selected from your Offerings — for example Buffet or Plated dinner, with which child

@@ -36,7 +36,7 @@ export function PublicFormsPageClient({
           ) : undefined
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Build questions and fields on each form. Submissions create leads. Optionally create a QR campaign that opens this form.
       </LibraryHowItWorks>
       <LibraryDependencyNote

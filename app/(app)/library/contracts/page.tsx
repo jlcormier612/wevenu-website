@@ -26,7 +26,7 @@ export default async function ContractTemplatesLibraryPage() {
           <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Agreement text and fields are authored in the contract template editor. When you apply a template to an event, event details fill in automatically — there is no separate catalog to manage for contract content.
       </LibraryHowItWorks>
 

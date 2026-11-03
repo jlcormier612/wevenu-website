@@ -1,0 +1,1098 @@
+[
+  {
+    "label": "library",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/library-desktop.png",
+    "h1": "Templates",
+    "url": "/library",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-library-guidance-calm",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(213, 225, 235)",
+        "text": "Templates are reusable starting points. Create one here, then use it when setting up an event. Apply"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-library-guidance-calm",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(213, 225, 235)",
+        "text": "Templates are reusable starting points. Create one here, then use it when setting up an event. Apply",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "library",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/library-mobile.png",
+    "h1": "Templates",
+    "url": "/library",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-library-guidance-calm",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(213, 225, 235)",
+        "text": "Templates are reusable starting points. Create one here, then use it when setting up an event. Apply"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-library-guidance-calm",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(213, 225, 235)",
+        "text": "Templates are reusable starting points. Create one here, then use it when setting up an event. Apply",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "messaging-inbox",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/messaging-inbox-desktop.png",
+    "h1": "Inbox",
+    "url": "/messaging",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-inbox-no-selection",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Select a conversationChoose someone from the list to read and reply by email or text."
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-inbox-no-selection",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Select a conversationChoose someone from the list to read and reply by email or text.",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "messaging-inbox",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/messaging-inbox-mobile.png",
+    "h1": "Inbox",
+    "url": "/messaging",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-inbox-no-selection",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Select a conversationChoose someone from the list to read and reply by email or text."
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-inbox-no-selection",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Select a conversationChoose someone from the list to read and reply by email or text.",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "messaging-health",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/messaging-health-desktop.png",
+    "h1": "Communication Health",
+    "url": "/messaging/health",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-communication-health-guidance",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to read this pageUse the checklist below to complete setup. To enable texting for your venue, go"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-communication-health-guidance",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to read this pageUse the checklist below to complete setup. To enable texting for your venue, go",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "messaging-health",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/messaging-health-mobile.png",
+    "h1": "Communication Health",
+    "url": "/messaging/health",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-communication-health-guidance",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to read this pageUse the checklist below to complete setup. To enable texting for your venue, go"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-communication-health-guidance",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to read this pageUse the checklist below to complete setup. To enable texting for your venue, go",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "setup-hub",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/setup-hub-desktop.png",
+    "h1": "Setup",
+    "url": "/setup-hub",
+    "overflowX": false,
+    "present": [
+      null,
+      {
+        "sel": ".htc-setup-stage-section-label",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.865045 0.0218075 154.691)",
+        "text": "All set"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      null,
+      {
+        "sel": ".htc-setup-stage-section-label",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.865045 0.0218075 154.691)",
+        "text": "All set",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "setup-hub",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/setup-hub-mobile.png",
+    "h1": "Setup",
+    "url": "/setup-hub",
+    "overflowX": false,
+    "present": [
+      null,
+      {
+        "sel": ".htc-setup-stage-section-label",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.865045 0.0218075 154.691)",
+        "text": "All set"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      null,
+      {
+        "sel": ".htc-setup-stage-section-label",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.865045 0.0218075 154.691)",
+        "text": "All set",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "settings",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-desktop.png",
+    "h1": "Settings",
+    "url": "/settings",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-settings-directory-icon",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(68, 107, 86)",
+        "borderLeft": "rgb(227, 231, 228)",
+        "text": ""
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-settings-directory-icon",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(68, 107, 86)",
+        "borderLeft": "rgb(227, 231, 228)",
+        "text": "",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#446B56"
+      }
+    ]
+  },
+  {
+    "label": "settings",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-mobile.png",
+    "h1": "Settings",
+    "url": "/settings",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-settings-directory-icon",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(68, 107, 86)",
+        "borderLeft": "rgb(227, 231, 228)",
+        "text": ""
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-settings-directory-icon",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(68, 107, 86)",
+        "borderLeft": "rgb(227, 231, 228)",
+        "text": "",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#446B56"
+      }
+    ]
+  },
+  {
+    "label": "settings-availability",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-availability-desktop.png",
+    "h1": "Availability & Capacity",
+    "url": "/settings/availability",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-availability-settings-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How date availability worksYou control when a date is protected.A preferred date from an inquiry doe"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-availability-settings-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How date availability worksYou control when a date is protected.A preferred date from an inquiry doe",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "settings-availability",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-availability-mobile.png",
+    "h1": "Availability & Capacity",
+    "url": "/settings/availability",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-availability-settings-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How date availability worksYou control when a date is protected.A preferred date from an inquiry doe"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-availability-settings-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How date availability worksYou control when a date is protected.A preferred date from an inquiry doe",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "settings-migration",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-migration-desktop.png",
+    "h1": "Migration Center",
+    "url": "/settings/migration",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-migration-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to bring your existing business overImport Data is for small, clean lists of clients, leads, ven"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-migration-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to bring your existing business overImport Data is for small, clean lists of clients, leads, ven",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "settings-migration",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-migration-mobile.png",
+    "h1": "Migration Center",
+    "url": "/settings/migration",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-migration-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to bring your existing business overImport Data is for small, clean lists of clients, leads, ven"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-migration-guidance",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "How to bring your existing business overImport Data is for small, clean lists of clients, leads, ven",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "settings-import",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-import-desktop.png",
+    "h1": "Import Data",
+    "url": "/settings/import",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-import-cutover-pointer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Bringing over existing bookings or financial records?Use Migration Center for events, tours, date ho"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-import-cutover-pointer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Bringing over existing bookings or financial records?Use Migration Center for events, tours, date ho",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "settings-import",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/settings-import-mobile.png",
+    "h1": "Import Data",
+    "url": "/settings/import",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-import-cutover-pointer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Bringing over existing bookings or financial records?Use Migration Center for events, tours, date ho"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-import-cutover-pointer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "Bringing over existing bookings or financial records?Use Migration Center for events, tours, date ho",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "guide",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/guide-desktop.png",
+    "h1": "Venue Guide",
+    "url": "/guide",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-venue-guide-orientation",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "What clients see hereEverything in this guide (parking, policies, FAQs, day-of contacts, and the res"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-venue-guide-orientation",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "What clients see hereEverything in this guide (parking, policies, FAQs, day-of contacts, and the res",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "guide",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/guide-mobile.png",
+    "h1": "Venue Guide",
+    "url": "/guide",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-venue-guide-orientation",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "What clients see hereEverything in this guide (parking, policies, FAQs, day-of contacts, and the res"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-venue-guide-orientation",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "What clients see hereEverything in this guide (parking, policies, FAQs, day-of contacts, and the res",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "contracts-templates",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/contracts-templates-desktop.png",
+    "h1": "New Template",
+    "url": "/contracts/templates/new",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-contract-template-disclaimer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "This is your template. Your agreement should use language approved for your venue. Hello to Cheers p"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-contract-template-disclaimer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "This is your template. Your agreement should use language approved for your venue. Hello to Cheers p",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "contracts-templates",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/contracts-templates-mobile.png",
+    "h1": "New Template",
+    "url": "/contracts/templates/new",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-contract-template-disclaimer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "This is your template. Your agreement should use language approved for your venue. Hello to Cheers p"
+      }
+    ],
+    "absent": [],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-contract-template-disclaimer",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(223, 233, 241)",
+        "text": "This is your template. Your agreement should use language approved for your venue. Hello to Cheers p",
+        "bgHex": "#EAF1F7",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "contracts",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/contracts-desktop.png",
+    "h1": "Contracts",
+    "url": "/contracts",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "ContractsWhich contracts need something from me?Templates+ New Contract"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All58Action Required18Draft13Sent to Client16Awaiting Venue Signature5Fully Executed24Cancelled0Expi"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "Morgan RFXccd8Wedding Venue AgreementView →Event March 14, 2060Created October 31, 2026Sent to Clien"
+      }
+    ],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-filter",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "ContractsWhich contracts need something from me?Templates+ New Contract",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All58Action Required18Draft13Sent to Client16Awaiting Venue Signature5Fully Executed24Cancelled0Expi",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "Morgan RFXccd8Wedding Venue AgreementView →Event March 14, 2060Created October 31, 2026Sent to Clien",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "contracts",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/contracts-mobile.png",
+    "h1": "Contracts",
+    "url": "/contracts",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "ContractsWhich contracts need something from me?Templates+ New Contract"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All58Action Required18Draft13Sent to Client16Awaiting Venue Signature5Fully Executed24Cancelled0Expi"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "Morgan RFXccd8Wedding Venue AgreementView →Event March 14, 2060Created October 31, 2026Sent to Clien"
+      }
+    ],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-filter",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "ContractsWhich contracts need something from me?Templates+ New Contract",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All58Action Required18Draft13Sent to Client16Awaiting Venue Signature5Fully Executed24Cancelled0Expi",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "Morgan RFXccd8Wedding Venue AgreementView →Event March 14, 2060Created October 31, 2026Sent to Clien",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "payments",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/payments-desktop.png",
+    "h1": "Payments",
+    "url": "/payments",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes ever"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All45Action Required25On Track4Partially Paid8Paid in Full5No Payments0"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "ScheduleTotalPaidBalanceStatusMorgan RFXccd8Essential Wedding · 1 overdue payment$15,000$0$15,000Nee"
+      }
+    ],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-filter",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes ever",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All45Action Required25On Track4Partially Paid8Paid in Full5No Payments0",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "ScheduleTotalPaidBalanceStatusMorgan RFXccd8Essential Wedding · 1 overdue payment$15,000$0$15,000Nee",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "payments",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/payments-mobile.png",
+    "h1": "Payments",
+    "url": "/payments",
+    "overflowX": false,
+    "present": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes ever"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All45Action Required25On Track4Partially Paid8Paid in Full5No Payments0"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "ScheduleTotalPaidBalanceStatusMorgan RFXccd8Essential Wedding · 1 overdue payment$15,000$0$15,000Nee"
+      }
+    ],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-filter",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": [
+      {
+        "sel": ".htc-hospitality-intro",
+        "bg": "rgb(220, 232, 224)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "oklch(0.871432 0.0203277 154.691)",
+        "text": "PaymentsTrack deposits, installments, and outstanding balances. Filter by status — All includes ever",
+        "bgHex": "#DCE8E0",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-toolbar",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "All45Action Required25On Track4Partially Paid8Paid in Full5No Payments0",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      },
+      {
+        "sel": ".htc-hospitality-table",
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 51, 43)",
+        "borderLeft": "rgb(230, 227, 220)",
+        "text": "ScheduleTotalPaidBalanceStatusMorgan RFXccd8Essential Wedding · 1 overdue payment$15,000$0$15,000Nee",
+        "bgHex": "#FFFFFF",
+        "colorHex": "#24332B"
+      }
+    ]
+  },
+  {
+    "label": "reporting-absence",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/reporting-absence-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting",
+    "overflowX": false,
+    "present": [],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-filter",
+        "count": 0
+      },
+      {
+        "sel": "[data-htc-phase10]",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": []
+  },
+  {
+    "label": "reporting-absence",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/reporting-absence-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting",
+    "overflowX": false,
+    "present": [],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-filter",
+        "count": 0
+      },
+      {
+        "sel": "[data-htc-phase10]",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": []
+  },
+  {
+    "label": "documents-absence",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/documents-absence-desktop.png",
+    "h1": "Documents",
+    "url": "/documents",
+    "overflowX": false,
+    "present": [],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-section-label",
+        "count": 0
+      },
+      {
+        "sel": "[data-htc-phase10]",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": []
+  },
+  {
+    "label": "documents-absence",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/documents-absence-mobile.png",
+    "h1": "Documents",
+    "url": "/documents",
+    "overflowX": false,
+    "present": [],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": ".htc-hospitality-section-label",
+        "count": 0
+      },
+      {
+        "sel": "[data-htc-phase10]",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": []
+  },
+  {
+    "label": "library-documents-absence",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/library-documents-absence-desktop.png",
+    "h1": "Documents",
+    "url": "/library/documents",
+    "overflowX": false,
+    "present": [],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": "[data-htc-phase10]",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": []
+  },
+  {
+    "label": "library-documents-absence",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/library-documents-absence-mobile.png",
+    "h1": "Documents",
+    "url": "/library/documents",
+    "overflowX": false,
+    "present": [],
+    "absent": [
+      {
+        "sel": ".htc-hospitality-intro-accent",
+        "count": 0
+      },
+      {
+        "sel": "[data-htc-phase10]",
+        "count": 0
+      }
+    ],
+    "phase10Markers": 0,
+    "presentHex": []
+  },
+  {
+    "label": "automations",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/automations-desktop.png",
+    "h1": "Automations",
+    "url": "/communication/series",
+    "present": [
+      {
+        "sel": "section.htc-automations-help",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "text": "How automations workAutomations are automatic relationship messages — when something happens, Hello "
+      }
+    ],
+    "phase10Markers": 0,
+    "overflowX": false
+  },
+  {
+    "label": "automations",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/htc-visual-p1-9-release/docs/qa/staff-light-canvas/sandbox-release-phases1-9/step2-candidate/evidence/automations-mobile.png",
+    "h1": "Automations",
+    "url": "/communication/series",
+    "present": [
+      {
+        "sel": "section.htc-automations-help",
+        "bg": "rgb(234, 241, 247)",
+        "color": "rgb(36, 51, 43)",
+        "text": "How automations workAutomations are automatic relationship messages — when something happens, Hello "
+      }
+    ],
+    "phase10Markers": 0,
+    "overflowX": false
+  }
+]

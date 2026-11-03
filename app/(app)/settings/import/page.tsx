@@ -48,7 +48,10 @@ export default async function ImportPage({
       <Suspense fallback={null}>
         <ImportHealthWidget />
       </Suspense>
-      <div className="rounded-sm border border-border bg-card p-4 space-y-2">
+      <div
+        className="htc-import-cutover-pointer rounded-sm border px-4 py-3 space-y-2"
+        data-testid="import-cutover-pointer"
+      >
         <h2 className="text-sm font-semibold text-foreground">
           Bringing over existing bookings or financial records?
         </h2>

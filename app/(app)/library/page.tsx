@@ -73,7 +73,7 @@ function Group({
     <section className="space-y-3">
       <div className="space-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-        <LibraryHowItWorks>{guidance}</LibraryHowItWorks>
+        <LibraryHowItWorks tone="calm">{guidance}</LibraryHowItWorks>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">{children}</div>
     </section>

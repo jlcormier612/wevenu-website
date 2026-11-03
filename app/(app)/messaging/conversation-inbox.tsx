@@ -912,11 +912,20 @@ export function ConversationInbox({
               onNeedsResponseCleared={() => void markNoResponseNeeded(activeId)}
             />
           ) : (
-            <div className="max-w-xs space-y-1 px-6 text-center">
-              <p className="text-sm font-medium text-heading">Select a conversation</p>
-              <p className="text-xs text-muted-foreground">
-                Choose someone from the list to read and reply by email or text.
-              </p>
+            /*
+             * Color Distribution Phase 2 — no-selection workspace.
+             * Calm-blue informational surface centered in the white pane.
+             * Hidden below md (list-first mobile). List empty states are separate.
+             */
+            <div className="flex w-full flex-1 items-center justify-center px-6 py-10 md:px-10 md:py-14">
+              <div className="htc-inbox-no-selection w-full max-w-md rounded-xl border px-6 py-8 text-center sm:px-8 sm:py-10">
+                <p className="text-base font-semibold leading-snug text-heading sm:text-lg">
+                  Select a conversation
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Choose someone from the list to read and reply by email or text.
+                </p>
+              </div>
             </div>
           )}
         </div>

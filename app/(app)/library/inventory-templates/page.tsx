@@ -33,7 +33,7 @@ export default async function InventoryTemplatesLibraryPage() {
         description="Reusable starting lists for the inventory you typically provide at an event. Apply one to an event, then customize that event’s inventory as needed."
         actions={<NewInventoryTemplateButton />}
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         <strong className="font-medium text-heading">Use</strong> applies the list to an event without
         sharing it.{" "}
         <strong className="font-medium text-heading">Send to client</strong> applies it if needed and

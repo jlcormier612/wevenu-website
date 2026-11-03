@@ -30,7 +30,7 @@ export default async function PlaybooksLibraryPage() {
           </div>
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Client Planning is what your clients see; Venue Planning is your internal team checklist. Checklist items are authored in the template editor — there is no separate catalog to manage. Both use Preview, Edit, and Use the same way. Turn planning tools on or off for your whole venue in Settings → Leads &amp; Booking.
       </LibraryHowItWorks>
       <PlanningStarterExamples templates={templates} />

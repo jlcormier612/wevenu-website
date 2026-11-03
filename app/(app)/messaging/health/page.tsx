@@ -26,7 +26,7 @@ export default async function CommunicationHealthPage() {
         <p className="text-sm text-muted-foreground">
           Check that email and texting are ready before you message leads and clients.
         </p>
-        <div className="mt-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground space-y-1.5">
+        <div className="htc-communication-health-guidance mt-3 rounded-lg border px-3 py-2.5 text-xs text-muted-foreground space-y-1.5">
           <p className="font-medium text-heading">How to read this page</p>
           <p>
             Use the checklist below to complete setup. To enable texting for your venue, go to{" "}

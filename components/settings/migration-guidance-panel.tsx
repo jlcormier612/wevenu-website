@@ -72,8 +72,11 @@ export function MigrationGuidancePanel({
   ];
 
   return (
-    <div className="rounded-sm border border-border bg-card p-4 space-y-3">
-      <div className="space-y-1">
+    <div
+      className="htc-migration-guidance overflow-hidden rounded-sm border"
+      data-testid="migration-guidance-panel"
+    >
+      <div className="htc-migration-guidance-intro space-y-1 px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">
           {variant === "compact" ? "Suggested order" : "How to bring your existing business over"}
         </h2>
@@ -99,31 +102,33 @@ export function MigrationGuidancePanel({
         </p>
       </div>
 
-      <ol className="space-y-2.5">
-        {steps.map((step) => (
-          <li key={step.n} className="flex gap-2.5">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">
-              {step.n}
-            </span>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-xs font-medium text-foreground">{step.title}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{step.body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <div className="htc-migration-guidance-body space-y-3 border-t px-4 py-3">
+        <ol className="space-y-2.5">
+          {steps.map((step) => (
+            <li key={step.n} className="flex gap-2.5">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">
+                {step.n}
+              </span>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs font-medium text-foreground">{step.title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
 
-      <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border pt-2">
-        Package templates keep included-item descriptions, not automatic links to inventory stock.
-        There is no one-click undo of a finished import — keep your source files and remove individual
-        records if something looks wrong.{" "}
-        <Link
-          href="/help/what-should-i-set-up-before-i-start"
-          className="font-medium text-primary hover:underline"
-        >
-          Full migration checklist
-        </Link>
-      </p>
+        <p className="border-t border-border pt-2 text-[11px] leading-relaxed text-muted-foreground">
+          Package templates keep included-item descriptions, not automatic links to inventory stock.
+          There is no one-click undo of a finished import — keep your source files and remove individual
+          records if something looks wrong.{" "}
+          <Link
+            href="/help/what-should-i-set-up-before-i-start"
+            className="font-medium text-primary hover:underline"
+          >
+            Full migration checklist
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

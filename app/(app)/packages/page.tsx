@@ -35,7 +35,7 @@ export default async function PackagesPage() {
           </Button>
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Package names, pricing, and inclusion lines are authored here for what you sell. Inclusions are written on the package itself — they are not selected from the Offerings catalog. For event delivery lists and client choice groups, use Event Order Templates.
       </LibraryHowItWorks>
       <PackageList initialPackages={packages} missingStarterKeys={missingStarterKeys} />

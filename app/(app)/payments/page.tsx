@@ -19,12 +19,14 @@ export default async function PaymentsPage({ searchParams }: Props) {
   const schedules = await getPaymentSchedules();
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Payments"
-        description="Track deposits, installments, and outstanding balances. Filter by status — All includes every payment plan."
-        actions={<Button render={<Link href="/payments/new" />}>+ New Schedule</Button>}
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase8="payments">
+      <div className="htc-hospitality-intro">
+        <PageHeader
+          title="Payments"
+          description="Track deposits, installments, and outstanding balances. Filter by status — All includes every payment plan."
+          actions={<Button render={<Link href="/payments/new" />}>+ New Schedule</Button>}
+        />
+      </div>
       <SpotPatternRecommendationsPanel types={PAYMENTS_SPOT_PATTERN_TYPES} />
       <PaymentScheduleList schedules={schedules} initialFilter={filter} />
     </div>

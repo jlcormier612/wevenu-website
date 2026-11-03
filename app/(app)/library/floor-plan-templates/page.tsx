@@ -49,7 +49,7 @@ export default async function FloorPlanTemplatesPage() {
           ) : undefined
         }
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         Layout, background image, and placed objects are edited in the floor plan editor. Assign a space and place inventory items marked for floor plans.
       </LibraryHowItWorks>
       <LibraryDependencyNote

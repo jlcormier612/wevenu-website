@@ -100,7 +100,10 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+      <div
+        className="htc-contract-template-disclaimer rounded-lg border px-4 py-3 text-sm text-muted-foreground"
+        data-testid="contract-template-disclaimer"
+      >
         This is your <span className="font-medium text-heading">template</span>
         {isEdit ? " — edits here do not change agreements already created for clients." : "."}
         {" "}Your agreement should use language approved for your venue. Hello to Cheers provides this template as a starting structure and does not provide legal advice.

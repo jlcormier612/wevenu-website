@@ -1066,7 +1066,10 @@ export function VenueGuideEditor({
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <div className="rounded-sm border border-border bg-muted/30 px-4 py-3 text-sm space-y-1.5">
+      <div
+        className="htc-venue-guide-orientation rounded-sm border px-4 py-3 text-sm space-y-1.5"
+        data-testid="venue-guide-orientation"
+      >
         <p className="font-medium text-heading">What clients see here</p>
         <p className="text-muted-foreground text-xs leading-relaxed">
           Everything in this guide (parking, policies, FAQs, day-of contacts, and the rest) is edited

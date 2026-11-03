@@ -570,7 +570,7 @@ export function ContractBuilder({
       </div>
 
       <div
-        className="rounded-lg border border-border/70 bg-muted/30 px-3 py-3 space-y-1.5"
+        className="htc-contract-agreement-guidance rounded-lg border px-3 py-3 space-y-1.5"
         data-testid="contract-builder-agreement-guidance"
       >
         <p className="text-sm font-semibold text-heading">Your agreement, your venue&apos;s terms</p>

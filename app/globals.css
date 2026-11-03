@@ -268,6 +268,11 @@ html:has(.htc-staff) {
   --htc-oatmeal: #ede9e1;
   --htc-ivory: #faf9f5;
   --htc-warm-pale: #f5f3ee;
+  /* Calm blue — supporting informational family (HTC visual system §1.2) */
+  --htc-calm-blue: #eaf1f7;
+  --htc-calm-blue-deep: #dfe9f1;
+  --htc-border-calm: #d5e1eb;
+  --htc-calm-accent: #63819a;
 
   --warm-gray: #fafcfa;
   --natural-cream: #fafcfa;
@@ -376,6 +381,26 @@ html:has(.htc-staff) [data-slot="card"] {
   }
 }
 
+/*
+ * Eucalyptus page introduction — Contracts / Payments Balanced Hospitality (Phase 8).
+ * Keeps title, subtitle, and primary actions in one coherent region (no linen strip
+ * separating actions). Scoped utility; does not change white `.htc-hospitality-heading`.
+ */
+.htc-staff .htc-hospitality-intro {
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 35%, var(--htc-border-warm));
+  border-radius: 0.75rem;
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.9rem 1rem;
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 4%, transparent),
+    0 3px 10px color-mix(in oklch, #24332b 3%, transparent);
+}
+@media (min-width: 640px) {
+  .htc-staff .htc-hospitality-intro {
+    padding: 1.15rem 1.35rem;
+  }
+}
+
 .htc-staff .htc-hospitality-toolbar {
   border: 1px solid var(--htc-border-warm);
   border-radius: 0.75rem;
@@ -432,6 +457,190 @@ html:has(.htc-staff) [data-slot="card"] {
   .htc-staff .htc-hospitality-catalog {
     gap: 0.75rem;
   }
+}
+
+/*
+ * Library guidance — calm tone (Color Distribution Phase 1).
+ * Informational reassurance only. Tokens locked in §1.2 visual system.
+ * Scoped to `.htc-staff` so portal / vendor-app / marketing are unaffected.
+ */
+.htc-staff .htc-library-guidance-calm {
+  border-color: var(--htc-border-calm);
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Inbox — no-selection conversation pane (Color Distribution Phase 2).
+ * Calm informational surface only. Does not recolor the list, thread, or
+ * message bubbles. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-inbox-no-selection {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Color Distribution Phase 3 — Communication Health guidance (full calm fill).
+ * Keep this rule separate from AutomationsHelp so CSS merge does not repaint
+ * the expanded Automations accordion as one blue block.
+ */
+.htc-staff .htc-communication-health-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Color Distribution Phase 3 refinement — AutomationsHelp surface hierarchy.
+ * Collapsed: shell fills calm blue (approved collapsed look).
+ * Expanded: calm blue on heading row only; accordion body is white.
+ * Selectors intentionally distinct from Inbox / Health calm rules.
+ */
+.htc-staff section.htc-automations-help {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff section.htc-automations-help[data-expanded="true"] {
+  background-color: #ffffff;
+}
+
+.htc-staff section.htc-automations-help > button.htc-automations-help-header {
+  background-color: var(--htc-calm-blue);
+}
+
+.htc-staff section.htc-automations-help > .htc-automations-help-body {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-calm);
+}
+
+/*
+ * Color Distribution Phase 4 — informational calm guidance panels.
+ * Setup Hub white-glove welcome + Contract agreement guidance.
+ * Payment Schedule review banner remains excluded (actionable reconciliation).
+ * Full calm fill + left accent. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-setup-hub-welcome,
+.htc-staff .htc-contract-agreement-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Color Distribution Phase 9 — Setup Hub Option A (eucalyptus stage section labels)
+ * + Settings directory Option B (eucalyptus icon wells). Scoped to `.htc-staff`.
+ * Does not replace Phase 4 calm welcome or Phase 8 hospitality intro.
+ */
+.htc-staff .htc-setup-stage-section-label {
+  margin: 0;
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  border-radius: 0.5rem;
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-settings-directory-icon {
+  background: var(--htc-eucalyptus-surface);
+  color: var(--primary);
+}
+
+/*
+ * Color Distribution Phase 5 — Task Center plate-clear reassurance
+ * (full calm fill). Same locked tokens as Phase 4. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-task-center-plate-clear {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Phase 5 refinement — Availability guidance hierarchy.
+ * Outer shell: calm border + left accent. Intro header: calm blue.
+ * Detailed paragraphs: white reference body (not a second blue wall).
+ */
+.htc-staff .htc-availability-settings-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: #ffffff;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-availability-settings-guidance > .htc-availability-settings-guidance-intro {
+  background-color: var(--htc-calm-blue);
+}
+
+.htc-staff .htc-availability-settings-guidance > .htc-availability-settings-guidance-body {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-calm);
+}
+
+/*
+ * Color Distribution Phase 6 — Migration guidance hierarchy + Import cutover tip.
+ * Migration: white shell, calm intro, white instructional body (Availability pattern).
+ * Import cutover: compact full calm tip. Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-migration-guidance {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: #ffffff;
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff .htc-migration-guidance > .htc-migration-guidance-intro {
+  background-color: var(--htc-calm-blue);
+}
+
+.htc-staff .htc-migration-guidance > .htc-migration-guidance-body {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-calm);
+}
+
+.htc-staff .htc-import-cutover-pointer {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/* Phase 6 calm surfaces end. */
+
+/*
+ * Color Distribution Phase 7 — Venue Guide orientation + Contract template disclaimer.
+ * Compact full calm fill + left accent (Phase 4 agreement-guidance pattern).
+ * Scoped to `.htc-staff`.
+ */
+.htc-staff .htc-venue-guide-orientation,
+.htc-staff .htc-contract-template-disclaimer {
+  border-color: var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  background-color: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
 }
 
 .htc-staff .htc-catalog-section {
@@ -500,11 +709,13 @@ html.dark:has(.htc-staff) .htc-hospitality-page {
   background: var(--background);
 }
 .dark .htc-staff .htc-hospitality-heading,
+.dark .htc-staff .htc-hospitality-intro,
 .dark .htc-staff .htc-hospitality-toolbar,
 .dark .htc-staff .htc-hospitality-elevated,
 .dark .htc-staff .htc-hospitality-table,
 .dark .htc-staff .htc-catalog-section,
 html.dark:has(.htc-staff) .htc-hospitality-heading,
+html.dark:has(.htc-staff) .htc-hospitality-intro,
 html.dark:has(.htc-staff) .htc-hospitality-toolbar,
 html.dark:has(.htc-staff) .htc-hospitality-elevated,
 html.dark:has(.htc-staff) .htc-hospitality-table,

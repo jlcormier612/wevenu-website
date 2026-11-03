@@ -50,12 +50,17 @@ export default async function AvailabilityCapacitySettingsPage() {
       />
       <SettingsTabs />
 
-      <section className="rounded-lg border border-border bg-card px-4 py-4 sm:px-5" data-testid="availability-settings-guidance">
-        <h2 className="text-base font-semibold text-heading">How date availability works</h2>
-        <div className="mt-2 space-y-3 text-sm leading-relaxed text-muted-foreground">
-          <p>
+      <section
+        className="htc-availability-settings-guidance overflow-hidden rounded-lg border"
+        data-testid="availability-settings-guidance"
+      >
+        <div className="htc-availability-settings-guidance-intro px-4 py-3 sm:px-5">
+          <h2 className="text-base font-semibold text-heading">How date availability works</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             You control when a date is protected.
           </p>
+        </div>
+        <div className="htc-availability-settings-guidance-body space-y-3 border-t px-4 py-4 text-sm leading-relaxed text-muted-foreground sm:px-5">
           <p>
             A preferred date from an inquiry does not reserve the date. A date is protected only when you place a Hold or move a relationship to Booked. HTC does not decide that a contract, payment, or other milestone means a booking — your venue&apos;s workflow determines when a relationship is Booked.
           </p>
