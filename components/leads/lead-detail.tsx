@@ -852,6 +852,21 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
                 Continue setup
               </Button>
             ) : null}
+            {/* Booked leads keep View original lead from the client workspace; this returns there. */}
+            {isBookingStarted && lead.linkedClientId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                render={
+                  <Link
+                    href={`/clients/${lead.linkedClientId}${lead.linkedEventId ? `?eventId=${lead.linkedEventId}` : ""}`}
+                  />
+                }
+                data-testid="view-booking-workspace-action"
+              >
+                View booking
+              </Button>
+            ) : null}
             {!previouslyConverted && currentStage !== "lost" ? (
               <Button
                 size="sm"

@@ -54,6 +54,7 @@ export const PUBLIC_PATHS = [
   "/api/legal",      // public legal metadata (active document ids / versions)
   "/api/internal/legal", // CRM -> legal acceptances - Bearer PRODUCT_SYNC_API_KEY
   "/p",              // client portal workspace - /p/{access_token}
+  "/portal/invoices", // couple Docs invoice print — token query auth, no staff session
   "/v",              // vendor portal workspace - /v/{access_token}
   "/vendor/accept",  // vendor invitation claim - accessible before auth
   "/join",           // staff team-invite acceptance - accessible before auth, same shape as /vendor/accept

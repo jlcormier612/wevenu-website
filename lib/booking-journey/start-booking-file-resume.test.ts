@@ -33,6 +33,12 @@ describe("Continue setup resume CTA", () => {
     assert.match(bookingLifecycle, /Open booking file →/);
   });
 
+  it("surfaces View booking when the lead is Booked so staff can return from View original lead", () => {
+    assert.match(detail, /data-testid="view-booking-workspace-action"/);
+    assert.match(detail, /View booking/);
+    assert.match(detail, /isBookingStarted && lead\.linkedClientId/);
+  });
+
   it("Start booking file still does not mark Booked or reserve the date", () => {
     const start = bookingActions.slice(bookingActions.indexOf("export async function startBookingFileAction"));
     assert.match(start, /convertLeadToClient/);

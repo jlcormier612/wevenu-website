@@ -13,7 +13,7 @@ import {
   type CoupleDocumentViewTarget,
 } from "@/lib/portal/couple-document-viewer";
 
-/** Inline open + Print + Download for couple portal file-backed documents. */
+/** Inline open + Print + Download for couple portal documents (files, contracts, invoices). */
 export function CoupleDocumentViewerDialog({
   doc,
   open,
@@ -23,23 +23,72 @@ export function CoupleDocumentViewerDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const frameRef = React.useRef<HTMLIFrameElement>(null);
+  const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
   const [downloading, setDownloading] = React.useState(false);
 
   if (!doc) return null;
-  const previewable = coupleDocumentIsPreviewable(doc.mimeType, doc.fileUrl);
+
+  const frameSrc = doc.kind === "file" ? doc.fileUrl : doc.src;
+  const previewable =
+    doc.kind === "page"
+    || doc.kind === "pdf"
+    || (doc.kind === "file" && coupleDocumentIsPreviewable(doc.mimeType, doc.fileUrl));
+  const waitsForLoad = doc.kind === "page";
+  const loaded = loadedSrc === frameSrc;
+  const downloadLabel =
+    doc.kind === "page" ? "Save as PDF"
+    : doc.kind === "pdf" ? "Download PDF"
+    : "Download";
+
+  function handleFrameLoad() {
+    if (!doc) return;
+    setLoadedSrc(frameSrc);
+    if (doc.kind !== "page") return;
+    try {
+      const frameDoc = frameRef.current?.contentDocument;
+      if (!frameDoc?.head) return;
+      const style = frameDoc.createElement("style");
+      style.textContent = ".no-print, .print\\:hidden { display: none !important; }";
+      frameDoc.head.appendChild(style);
+    } catch { /* print page keeps its own toolbar */ }
+  }
 
   function printDocument() {
     if (!doc) return;
-    // Cross-origin storage / redirect URLs usually block iframe.print();
-    // open a tab the browser can print (same approach as venue file viewer).
-    window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
+    if (doc.kind === "page") {
+      try {
+        const win = frameRef.current?.contentWindow;
+        if (win) {
+          win.focus();
+          win.print();
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    window.open(frameSrc, "_blank", "noopener,noreferrer");
   }
 
   async function download() {
     if (!doc) return;
+    if (doc.kind === "page") {
+      printDocument();
+      return;
+    }
     setDownloading(true);
     try {
-      await downloadFile(doc.fileUrl, coupleDocumentDownloadName(doc));
+      if (doc.kind === "pdf") {
+        await downloadFile(doc.downloadSrc, coupleDocumentDownloadName({
+          name: doc.name,
+          mimeType: "application/pdf",
+        }));
+      } else {
+        await downloadFile(doc.fileUrl, coupleDocumentDownloadName({
+          name: doc.name,
+          mimeType: doc.mimeType,
+          fileUrl: doc.fileUrl,
+        }));
+      }
     } catch {
       toast.error("Could not download this document.");
     } finally {
@@ -63,6 +112,7 @@ export function CoupleDocumentViewerDialog({
               size="sm"
               variant="outline"
               onClick={printDocument}
+              disabled={waitsForLoad && !loaded}
               data-testid="portal-document-viewer-print"
             >
               <Printer className="mr-1 h-3.5 w-3.5" />
@@ -72,18 +122,18 @@ export function CoupleDocumentViewerDialog({
               size="sm"
               variant="outline"
               onClick={download}
-              disabled={downloading}
+              disabled={downloading || (waitsForLoad && !loaded)}
               data-testid="portal-document-viewer-download"
             >
               {downloading
                 ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 : <Download className="mr-1 h-3.5 w-3.5" />}
-              Download
+              {downloadLabel}
             </Button>
             <Button
               size="sm"
               variant="ghost"
-              render={<a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" />}
+              render={<a href={frameSrc} target="_blank" rel="noopener noreferrer" />}
               data-testid="portal-document-viewer-new-tab"
             >
               <ExternalLink className="mr-1 h-3.5 w-3.5" />
@@ -94,13 +144,22 @@ export function CoupleDocumentViewerDialog({
 
         <div className="relative min-h-0 flex-1 bg-muted/40">
           {previewable ? (
-            <iframe
-              key={doc.fileUrl}
-              src={doc.fileUrl}
-              title={doc.name}
-              className="h-full w-full border-0 bg-white"
-              data-testid="portal-document-viewer-frame"
-            />
+            <>
+              {waitsForLoad && !loaded && (
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading document…
+                </div>
+              )}
+              <iframe
+                ref={frameRef}
+                key={frameSrc}
+                src={frameSrc}
+                title={doc.name}
+                onLoad={handleFrameLoad}
+                className="h-full w-full border-0 bg-white"
+                data-testid="portal-document-viewer-frame"
+              />
+            </>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
               <p className="text-sm text-muted-foreground">

@@ -36,4 +36,10 @@ describe("White Glove public token paths", () => {
     assert.equal(isPublicPath("/availability/embed-key"), true);
     assert.equal(isPublicPath("/calendar"), false);
   });
+
+  it("serves couple invoice print pages without a staff session", () => {
+    assert.equal(isPublicPath("/portal/invoices/inv-1/print"), true);
+    assert.equal(isPublicPath("/portal"), false);
+    assert.equal(isPublicPath("/invoices/inv-1/print"), false);
+  });
 });

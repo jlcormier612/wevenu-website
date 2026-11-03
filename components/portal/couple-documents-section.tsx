@@ -9,7 +9,10 @@ import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-celebrations";
 import { coupleDocumentStatusBadge } from "@/lib/portal/couple-document-status";
-import type { CoupleDocumentViewTarget } from "@/lib/portal/couple-document-viewer";
+import {
+  coupleDocumentViewTarget,
+  type CoupleDocumentViewTarget,
+} from "@/lib/portal/couple-document-viewer";
 import { portalFocusElementId } from "@/lib/portal/workspace-routing";
 import {
   DOCS_QUESTIONNAIRE_HANDOFF_KEY,
@@ -107,13 +110,16 @@ function fmtBytes(b: number) {
 
 function ContractCard({
   doc,
+  token,
   onOpenFile,
 }: {
   doc: CoupleDocument;
+  token: string;
   onOpenFile: (doc: CoupleDocumentViewTarget) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const needsSignature = doc.status === "sent" && !!doc.signToken;
+  const viewTarget = coupleDocumentViewTarget(doc, token);
 
   return (
     <div className={`w-full rounded-xl border overflow-hidden ${needsSignature ? "border-amber-300 bg-amber-50/30" : "border-border/60 bg-card"}`}>
@@ -129,25 +135,22 @@ function ContractCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {doc.fileUrl && (
+          {viewTarget && (
             <button
               type="button"
-              onClick={() => onOpenFile({
-                id: doc.id,
-                name: doc.name,
-                fileUrl: doc.fileUrl!,
-                mimeType: doc.mimeType,
-              })}
+              onClick={() => onOpenFile(viewTarget)}
               data-testid="portal-document-open"
               className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
             >
               Open
             </button>
           )}
-          <button type="button" onClick={() => setExpanded((v) => !v)}
-            className="text-xs text-[var(--venue-primary)] hover:underline">
-            {expanded ? "Hide" : "Review"}
-          </button>
+          {doc.content ? (
+            <button type="button" onClick={() => setExpanded((v) => !v)}
+              className="text-xs text-[var(--venue-primary)] hover:underline">
+              {expanded ? "Hide" : "Review"}
+            </button>
+          ) : null}
         </div>
       </div>
       {expanded && doc.content && (
@@ -168,9 +171,20 @@ function ContractCard({
 
 // ── Invoice card — real line items + balance due ───────────────────────────────
 
-function InvoiceCard({ doc, schedule }: { doc: CoupleDocument; schedule?: PortalSchedule | null }) {
+function InvoiceCard({
+  doc,
+  token,
+  schedule,
+  onOpenFile,
+}: {
+  doc: CoupleDocument;
+  token: string;
+  schedule?: PortalSchedule | null;
+  onOpenFile: (doc: CoupleDocumentViewTarget) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const hasBalance = (doc.balanceDue ?? 0) > 0;
+  const viewTarget = coupleDocumentViewTarget(doc, token);
 
   return (
     <div className={`w-full rounded-xl border overflow-hidden ${hasBalance ? "border-amber-300 bg-amber-50/30" : "border-border/60 bg-card"}`}>
@@ -189,9 +203,21 @@ function InvoiceCard({ doc, schedule }: { doc: CoupleDocument; schedule?: Portal
             {hasBalance && <span className="text-amber-700 font-medium">· Balance: {fmtCurrency(doc.balanceDue!)}</span>}
           </div>
         </div>
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-[var(--venue-primary)] hover:underline shrink-0">
-          {expanded ? "Hide" : "Details"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {viewTarget && (
+            <button
+              type="button"
+              onClick={() => onOpenFile(viewTarget)}
+              data-testid="portal-document-open"
+              className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
+            >
+              Open
+            </button>
+          )}
+          <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-[var(--venue-primary)] hover:underline">
+            {expanded ? "Hide" : "Details"}
+          </button>
+        </div>
       </div>
       {expanded && (
         <div className="px-3 pb-3 border-t border-border/40 pt-3 space-y-3">
@@ -307,9 +333,11 @@ function InventoryAgreementCard({
 
 function DocRow({
   doc,
+  token,
   onOpenFile,
 }: {
   doc: CoupleDocument;
+  token: string;
   onOpenFile: (doc: CoupleDocumentViewTarget) => void;
 }) {
   const meta = DOC_META[doc.docType] ?? DOC_META.other;
@@ -317,6 +345,7 @@ function DocRow({
     doc.uploadedBy === "vendor"
       ? (doc.vendorName?.trim() ? `From ${doc.vendorName.trim()}` : "From your vendors")
       : null;
+  const viewTarget = coupleDocumentViewTarget(doc, token);
 
   return (
     <div className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 group">
@@ -338,15 +367,10 @@ function DocRow({
           <span>· {fmtDate(doc.createdAt)}</span>
         </div>
       </div>
-      {doc.fileUrl && (
+      {viewTarget && (
         <button
           type="button"
-          onClick={() => onOpenFile({
-            id: doc.id,
-            name: doc.name,
-            fileUrl: doc.fileUrl!,
-            mimeType: doc.mimeType,
-          })}
+          onClick={() => onOpenFile(viewTarget)}
           data-testid="portal-document-open"
           className="shrink-0 text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity"
         >
@@ -696,7 +720,7 @@ export default function CoupleDocumentsSection({
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Contracts</h3>
           <div className="space-y-2">{contracts.map((doc) => (
-            <ContractCard key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+            <ContractCard key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
           ))}</div>
         </section>
       )}
@@ -745,7 +769,9 @@ export default function CoupleDocumentsSection({
             <InvoiceCard
               key={doc.id}
               doc={doc}
+              token={token}
               schedule={schedules.find((s) => s.invoiceId === doc.id) ?? null}
+              onOpenFile={setViewerDoc}
             />
           ))}</div>
         </section>
@@ -762,7 +788,7 @@ export default function CoupleDocumentsSection({
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">From your venue</h3>
           <div className="space-y-2">{venueShared.map((doc) => (
-            <DocRow key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+            <DocRow key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
           ))}</div>
         </section>
       )}
@@ -771,7 +797,7 @@ export default function CoupleDocumentsSection({
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">From your vendors</h3>
           <div className="space-y-2">{vendorShared.map((doc) => (
-            <DocRow key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+            <DocRow key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
           ))}</div>
         </section>
       )}
@@ -780,7 +806,7 @@ export default function CoupleDocumentsSection({
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-heading">Your uploads</h3>
           <div className="space-y-2">{coupleUploaded.map((doc) => (
-            <DocRow key={doc.id} doc={doc} onOpenFile={setViewerDoc} />
+            <DocRow key={doc.id} doc={doc} token={token} onOpenFile={setViewerDoc} />
           ))}</div>
         </section>
       )}
