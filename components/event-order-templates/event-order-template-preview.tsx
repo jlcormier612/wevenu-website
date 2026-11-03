@@ -46,7 +46,7 @@ export function EventOrderTemplatePreviewView({
                   <p className="text-sm text-muted-foreground">{section.guidance}</p>
                 ) : null}
                 {offerings.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No offerings in this section yet.</p>
+                  <p className="text-sm text-muted-foreground">No included offerings</p>
                 ) : (
                   <ul className="space-y-3">
                     {offerings.map((line) => (

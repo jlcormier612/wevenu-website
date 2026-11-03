@@ -1,0 +1,650 @@
+[
+  {
+    "label": "overview",
+    "path": "/reporting",
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 8,
+    "comparisonSample": [
+      {
+        "text": "How the business movedWhat happened during Nov 1 – Nov 30, 2026, then what happe",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Leads0100% lower vs. last month.New leads received in this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Tours367% lower vs. last month.Tours scheduled during this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Bookings0100% lower vs. last month.Marked booked during this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Leads who booked0%100% lower vs. last month.0 of 0 leads from this period later ",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Contracted$0100% lower vs. last month.Signed agreement value with a first paymen",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Collected$0100% lower vs. last month.Money actually received during this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Outstanding$0100% lower vs. last month.Contracted value minus collections — thos",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/overview-desktop.png"
+  },
+  {
+    "label": "overview",
+    "path": "/reporting",
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 8,
+    "comparisonSample": [
+      {
+        "text": "How the business movedWhat happened during Nov 1 – Nov 30, 2026, then what happe",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Leads0100% lower vs. last month.New leads received in this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Tours367% lower vs. last month.Tours scheduled during this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Bookings0100% lower vs. last month.Marked booked during this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Leads who booked0%100% lower vs. last month.0 of 0 leads from this period later ",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Contracted$0100% lower vs. last month.Signed agreement value with a first paymen",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Collected$0100% lower vs. last month.Money actually received during this period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Outstanding$0100% lower vs. last month.Contracted value minus collections — thos",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/overview-mobile.png"
+  },
+  {
+    "label": "sales",
+    "path": "/reporting/sales",
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/sales",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 3,
+    "comparisonSample": [
+      {
+        "text": "Leads from this periodThese are leads created during the selected period. A lead",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "During this periodWhat happened during Nov 1 – Nov 30, 2026. Bookings here are d",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Leads receivedNew opportunities over time (lead created date).No leads in this p",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/sales-desktop.png"
+  },
+  {
+    "label": "sales",
+    "path": "/reporting/sales",
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/sales",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 3,
+    "comparisonSample": [
+      {
+        "text": "Leads from this periodThese are leads created during the selected period. A lead",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "During this periodWhat happened during Nov 1 – Nov 30, 2026. Bookings here are d",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Leads receivedNew opportunities over time (lead created date).No leads in this p",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/sales-mobile.png"
+  },
+  {
+    "label": "bookings",
+    "path": "/reporting/bookings",
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/bookings",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 6,
+    "comparisonSample": [
+      {
+        "text": "Bookings0100% lower vs. last month.First time you marked them booked in this per",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Contracted$0100% lower vs. last month.Signed contract value with a first payment",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Avg. contracted value$0100% lower vs. last month.Among clients with signed value",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Bookings by sourceFrozen source recorded when they booked. Website includes tour",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Bookings over timeBased on when you first marked them booked — not contract or p",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "BookingsClick through when a client workspace exists.No bookings in this date ra",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/bookings-desktop.png"
+  },
+  {
+    "label": "bookings",
+    "path": "/reporting/bookings",
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/bookings",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 6,
+    "comparisonSample": [
+      {
+        "text": "Bookings0100% lower vs. last month.First time you marked them booked in this per",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Contracted$0100% lower vs. last month.Signed contract value with a first payment",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Avg. contracted value$0100% lower vs. last month.Among clients with signed value",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Bookings by sourceFrozen source recorded when they booked. Website includes tour",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Bookings over timeBased on when you first marked them booked — not contract or p",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "BookingsClick through when a client workspace exists.No bookings in this date ra",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/bookings-mobile.png"
+  },
+  {
+    "label": "revenue",
+    "path": "/reporting/revenue",
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/revenue",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 6,
+    "comparisonSample": [
+      {
+        "text": "Contracted$0100% lower vs. last month.Signed agreement value with a first paymen",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Payments Collected$0100% lower vs. last month.Money actually received during thi",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Outstanding Balance$0100% lower vs. last month.Contracted value (commitment date",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Avg. contracted value$0100% lower vs. last month.Average signed value among clie",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Revenue TrendContracted value by month, dated when the signed contract and first",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Revenue by sourceContracted value (when the agreement and first payment were bot",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/revenue-desktop.png"
+  },
+  {
+    "label": "revenue",
+    "path": "/reporting/revenue",
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/revenue",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 6,
+    "comparisonSample": [
+      {
+        "text": "Contracted$0100% lower vs. last month.Signed agreement value with a first paymen",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Payments Collected$0100% lower vs. last month.Money actually received during thi",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Outstanding Balance$0100% lower vs. last month.Contracted value (commitment date",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Avg. contracted value$0100% lower vs. last month.Average signed value among clie",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Revenue TrendContracted value by month, dated when the signed contract and first",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Revenue by sourceContracted value (when the agreement and first payment were bot",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/revenue-mobile.png"
+  },
+  {
+    "label": "events",
+    "path": "/reporting/events",
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/events",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 5,
+    "comparisonSample": [
+      {
+        "text": "Events0100% lower vs. last month.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Average Guest Count0No data for the prior period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Events Over TimeBased on each event's date.No events in this date range.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Event TypesNo events in this date range.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "EventsClick an event to open its workspace.No events in this date range.",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/events-desktop.png"
+  },
+  {
+    "label": "events",
+    "path": "/reporting/events",
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/events",
+    "introAccent": true,
+    "linenFilter": true,
+    "cardCount": 5,
+    "comparisonSample": [
+      {
+        "text": "Events0100% lower vs. last month.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Average Guest Count0No data for the prior period.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Events Over TimeBased on each event's date.No events in this date range.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Event TypesNo events in this date range.",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "EventsClick an event to open its workspace.No events in this date range.",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/events-mobile.png"
+  },
+  {
+    "label": "saved",
+    "path": "/reporting/saved",
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/saved",
+    "introAccent": true,
+    "linenFilter": false,
+    "cardCount": 4,
+    "comparisonSample": [
+      {
+        "text": "EventsStarterEventsThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "RevenueStarterRevenueThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "BookingsStarterBookingsThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "SalesStarterSalesThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/saved-desktop.png"
+  },
+  {
+    "label": "saved",
+    "path": "/reporting/saved",
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Reports",
+    "url": "/reporting/saved",
+    "introAccent": true,
+    "linenFilter": false,
+    "cardCount": 4,
+    "comparisonSample": [
+      {
+        "text": "EventsStarterEventsThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "RevenueStarterRevenueThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "BookingsStarterBookingsThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "SalesStarterSalesThis Month · Updated Aug 17, 2026Open reportManage",
+        "bg": "rgb(255, 255, 255)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/saved-mobile.png"
+  },
+  {
+    "label": "dashboard",
+    "path": "/dashboard",
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Good evening, Jen.",
+    "url": "/dashboard",
+    "introAccent": false,
+    "linenFilter": false,
+    "cardCount": 7,
+    "comparisonSample": [
+      {
+        "text": "Today's Focus10 of 24What requires attention today.QA-IR-1792982881679-call-flor",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "💗 LuvAmong your overdue tasks, “QA-IR-1792982881679-call-florist” for IntelOld ",
+        "bg": "rgb(250, 249, 245)"
+      },
+      {
+        "text": "Coming upEvents in the next 30 days.SelUse Proof5492EventNovember 29, 2026",
+        "bg": "rgb(243, 240, 233)"
+      },
+      {
+        "text": "Lead Flow267 open leads$540,200 estimated valueNo new leads this monthView open ",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Booked Business70 booked events$311,101 contractedRelationships you have marked ",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "text": "Cash Collected$75,150All-time collectedPayments you've receivedView payments",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "text": "Outstanding$235,95117 client accountsStill owed on booked businessView balances",
+        "bg": "rgb(250, 249, 245)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/dashboard-desktop.png"
+  },
+  {
+    "label": "dashboard",
+    "path": "/dashboard",
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Good evening, Jen.",
+    "url": "/dashboard",
+    "introAccent": false,
+    "linenFilter": false,
+    "cardCount": 7,
+    "comparisonSample": [
+      {
+        "text": "Today's Focus10 of 24What requires attention today.QA-IR-1792982881679-call-flor",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "💗 LuvAmong your overdue tasks, “QA-IR-1792982881679-call-florist” for IntelOld ",
+        "bg": "rgb(250, 249, 245)"
+      },
+      {
+        "text": "Coming upEvents in the next 30 days.SelUse Proof5492EventNovember 29, 2026",
+        "bg": "rgb(243, 240, 233)"
+      },
+      {
+        "text": "Lead Flow267 open leads$540,200 estimated valueNo new leads this monthView open ",
+        "bg": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Booked Business70 booked events$311,101 contractedRelationships you have marked ",
+        "bg": "rgb(241, 245, 242)"
+      },
+      {
+        "text": "Cash Collected$75,150All-time collectedPayments you've receivedView payments",
+        "bg": "rgb(232, 240, 234)"
+      },
+      {
+        "text": "Outstanding$235,95117 client accountsStill owed on booked businessView balances",
+        "bg": "rgb(250, 249, 245)"
+      }
+    ],
+    "tabs": [
+      "Dashboard",
+      "Leads",
+      "99+",
+      "Clients",
+      "Vendors",
+      "Calendar",
+      "Tours",
+      "Inbox"
+    ],
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-design/evidence/current/dashboard-mobile.png"
+  }
+]

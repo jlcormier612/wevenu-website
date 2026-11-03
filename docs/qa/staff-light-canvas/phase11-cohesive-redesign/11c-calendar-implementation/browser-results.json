@@ -1,0 +1,604 @@
+[
+  {
+    "label": "month",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "month-desktop.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=month",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "month",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 353,
+        "left": 320,
+        "right": 385
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 353,
+        "left": 392,
+        "right": 504
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": true,
+    "hasMonthGrid": true,
+    "hasWeek": false,
+    "hasDay": false,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "month",
+    "viewport": "desktop-print-affordance",
+    "printHref": null
+  },
+  {
+    "label": "month",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "month-mobile-390.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=month",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "month",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 438,
+        "left": 33,
+        "right": 99
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 438,
+        "left": 105,
+        "right": 218
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": true,
+    "hasMonthGrid": true,
+    "hasWeek": false,
+    "hasDay": false,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "month",
+    "viewport": "mobile-390-interactions",
+    "h1": "Calendar",
+    "url": "/calendar?year=2026&month=11",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "month",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 438,
+        "left": 33,
+        "right": 99
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 438,
+        "left": 105,
+        "right": 218
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": true,
+    "hasMonthGrid": true,
+    "hasWeek": false,
+    "hasDay": false,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "month",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "month-mobile-375.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=month",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "month",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 480,
+        "left": 33,
+        "right": 99
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 480,
+        "left": 105,
+        "right": 218
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": true,
+    "hasMonthGrid": true,
+    "hasWeek": false,
+    "hasDay": false,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "week",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "week-desktop.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=week",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "week",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 432,
+        "left": 320,
+        "right": 385
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 432,
+        "left": 392,
+        "right": 504
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": false,
+    "hasMonthGrid": false,
+    "hasWeek": true,
+    "hasDay": false,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "week",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "week-mobile-390.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=week",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "week",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 467,
+        "left": 33,
+        "right": 99
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 467,
+        "left": 105,
+        "right": 218
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": false,
+    "hasMonthGrid": false,
+    "hasWeek": true,
+    "hasDay": false,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "day",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "day-desktop.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=day",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "day",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 432,
+        "left": 320,
+        "right": 385
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 432,
+        "left": 392,
+        "right": 504
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": false,
+    "hasMonthGrid": false,
+    "hasWeek": false,
+    "hasDay": true,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "day",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "day-mobile-390.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=day",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "day",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 448,
+        "left": 33,
+        "right": 99
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 448,
+        "left": 105,
+        "right": 218
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": false,
+    "hasMonthGrid": false,
+    "hasWeek": false,
+    "hasDay": true,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "agenda",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "agenda-desktop.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=agenda",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "agenda",
+    "chipCount": 3,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 437,
+        "left": 320,
+        "right": 385
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 437,
+        "left": 392,
+        "right": 504
+      },
+      {
+        "key": "blocked_time",
+        "label": "Blocked Time",
+        "active": "true",
+        "top": 437,
+        "left": 511,
+        "right": 625
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment",
+      "blocked_time"
+    ],
+    "hasSchedulePanel": false,
+    "hasMonthGrid": false,
+    "hasWeek": false,
+    "hasDay": false,
+    "hasAgenda": true,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "agenda",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "agenda-mobile-390.png",
+    "h1": "Calendar",
+    "url": "/calendar?view=agenda",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "agenda",
+    "chipCount": 3,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 471,
+        "left": 33,
+        "right": 99
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 471,
+        "left": 105,
+        "right": 218
+      },
+      {
+        "key": "blocked_time",
+        "label": "Blocked Time",
+        "active": "true",
+        "top": 471,
+        "left": 224,
+        "right": 339
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment",
+      "blocked_time"
+    ],
+    "hasSchedulePanel": false,
+    "hasMonthGrid": false,
+    "hasWeek": false,
+    "hasDay": false,
+    "hasAgenda": true,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  },
+  {
+    "label": "month",
+    "viewport": "mobile-375-filters",
+    "h1": "Calendar",
+    "url": "/calendar?view=month",
+    "overflowX": false,
+    "hasIntro": true,
+    "introBg": "rgb(220, 232, 224)",
+    "hasToolbar": true,
+    "toolbarBg": "rgb(243, 240, 233)",
+    "hasFilters": true,
+    "filtersBg": "rgb(243, 240, 233)",
+    "hasLegend": false,
+    "hasGuidance": true,
+    "guidanceBg": "rgb(234, 241, 247)",
+    "activeView": "month",
+    "chipCount": 2,
+    "chips": [
+      {
+        "key": "tour",
+        "label": "Tour",
+        "active": "true",
+        "top": 480,
+        "left": 33,
+        "right": 99
+      },
+      {
+        "key": "appointment",
+        "label": "Appointment",
+        "active": "true",
+        "top": 480,
+        "left": 105,
+        "right": 218
+      }
+    ],
+    "chipKeys": [
+      "tour",
+      "appointment"
+    ],
+    "hasSchedulePanel": true,
+    "hasMonthGrid": true,
+    "hasWeek": false,
+    "hasDay": false,
+    "hasAgenda": false,
+    "calTokens": {
+      "event": "#7b5ea0",
+      "tour": "#4a7ea8",
+      "meeting": "#d68a3e",
+      "hold": "#e8c200"
+    }
+  }
+]

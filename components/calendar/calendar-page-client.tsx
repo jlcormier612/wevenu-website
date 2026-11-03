@@ -53,25 +53,29 @@ export function CalendarPageClient({
   const calendarRef = React.useRef<CalendarViewHandle>(null);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Calendar"
-        description="Your venue’s schedule — events, appointments, holds, and blocked time."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={() => calendarRef.current?.toggleScheduleForm()}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              render={<Link href={printHref} target="_blank" />}
-            >
-              <Printer className="mr-1 h-3.5 w-3.5" /> Print / Export
-            </Button>
-          </div>
-        }
-      />
+    <div className="htc-calendar-workspace space-y-6">
+      {/* Phase 11C — eucalyptus intro with botanical accent (Reports parity). */}
+      <div className="htc-hospitality-intro htc-hospitality-intro-accent" data-cal-intro="">
+        <PageHeader
+          title="Calendar"
+          description="Your venue’s schedule — events, appointments, holds, and blocked time."
+          actions={
+            <div data-cal-intro-actions="" className="flex flex-nowrap items-center gap-1.5">
+              <Button type="button" size="sm" onClick={() => calendarRef.current?.toggleScheduleForm()}>
+                <Plus className="mr-0.5 h-3.5 w-3.5" /> Add Schedule Item
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                render={<Link href={printHref} target="_blank" />}
+              >
+                <Printer className="mr-0.5 h-3.5 w-3.5" /> Print / Export
+              </Button>
+            </div>
+          }
+        />
+      </div>
       <CalendarView
         ref={calendarRef}
         view={view}
@@ -87,14 +91,16 @@ export function CalendarPageClient({
         venueSpaces={venueSpaces}
         hideToolbarCreate
       />
-      <p className="text-sm text-muted-foreground">
-        Availability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date.{" "}
-        <Link href="/help/how-does-date-availability-work" className="font-medium text-foreground underline underline-offset-4">
-          Learn how availability works
-        </Link>
-      </p>
-      <div className="grid items-stretch gap-3 md:grid-cols-2">
-        {availabilityUrl ? <ShareAvailability url={availabilityUrl} /> : null}
+      <div className="htc-calendar-guidance" data-cal-guidance="">
+        <p className="text-sm">
+          Availability is venue-controlled. Only Holds, Booked Events and Blocked Time protect dates. Inquiry dates and preferred dates do not reserve a date.{" "}
+          <Link href="/help/how-does-date-availability-work" className="font-medium text-foreground underline underline-offset-4">
+            Learn how availability works
+          </Link>
+        </p>
+      </div>
+      <div className="htc-calendar-share-grid grid items-stretch gap-3 md:grid-cols-2">
+        <ShareAvailability url={availabilityUrl} />
         <ShareTourAvailability url={tourUrl} />
       </div>
     </div>

@@ -36,7 +36,6 @@ import { toast } from "sonner";
 import { describeRecurrence } from "@/lib/calendar/recurrence";
 import { formScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import type { CalendarItem, ScheduleRelationOption } from "@/lib/calendar/types";
-import { cn } from "@/lib/utils";
 import {
   FilterBar,
   formatTime,
@@ -44,7 +43,6 @@ import {
   MANUAL_TYPE_META,
   MonthYearPicker,
   resolveItemMeta,
-  venueCalendarLegendEntries,
 } from "@/components/calendar/calendar-shared";
 import { ScheduleItemDetailDialog } from "@/components/calendar/schedule-item-detail-dialog";
 import { ScheduleRelationPicker } from "@/components/calendar/schedule-relation-picker";
@@ -84,18 +82,17 @@ function ViewSwitcher({ current, onChange }: { current: "month" | "week" | "day"
     { value: "agenda", label: "Month list", title: "Upcoming list for this month" },
   ];
   return (
-    <div className="inline-flex rounded-lg border border-border p-0.5" role="group" aria-label="Calendar view">
+    <div className="htc-calendar-view-switcher" role="group" aria-label="Calendar view">
       {views.map((v) => (
         <button
           key={v.value}
           type="button"
           title={v.title}
           aria-label={v.title}
+          aria-pressed={current === v.value}
+          data-cal-view={v.value}
+          data-active={current === v.value ? "true" : "false"}
           onClick={() => onChange(v.value)}
-          className={cn(
-            "rounded-md px-3 py-1 text-sm font-medium transition-colors",
-            current === v.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
         >
           {v.label}
         </button>
@@ -162,37 +159,35 @@ function CalendarGrid({
   });
 
   return (
-    <div className="select-none">
+    <div className="htc-calendar-month-grid select-none" data-cal-month-grid="">
       {/* Day-name header */}
-      <div className="grid grid-cols-7 mb-1">
+      <div data-cal-weekday-row="">
         {DAY_NAMES.map((d) => (
-          <div key={d} className="py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div key={d} data-cal-weekday="">
             {d}
           </div>
         ))}
       </div>
-      {/* Day cells */}
-      <div className="grid grid-cols-7 gap-px bg-border rounded-sm overflow-hidden border border-border">
+      {/* Day cells — white working surfaces; --cal-* dots unchanged */}
+      <div data-cal-day-grid="">
         {cells.map((cell, i) =>
           cell === null ? (
-            <div key={i} className="bg-muted/20 min-h-[72px]" />
+            <div key={i} data-cal-day-outside="" aria-hidden />
           ) : (
             <button
               key={cell.dateStr}
               type="button"
+              data-cal-day-cell=""
+              data-selected={cell.dateStr === selectedDate ? "true" : "false"}
+              data-today={cell.dateStr === today ? "true" : "false"}
               onClick={() => onSelectDate(cell.dateStr === selectedDate ? "" : cell.dateStr)}
-              className={cn(
-                "bg-background min-h-[72px] p-1.5 text-left transition-colors hover:bg-muted/40 focus:outline-none focus:bg-muted/40",
-                cell.dateStr === selectedDate && "bg-primary/5 ring-1 ring-inset ring-primary/30",
-              )}
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             >
-              {/* Day number */}
-              <span className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                cell.dateStr === today
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground",
-              )}>
+              {/* Day number — botanical Today marker preserved when also selected */}
+              <span
+                data-cal-day-num=""
+                data-today={cell.dateStr === today ? "true" : "false"}
+              >
                 {cell.dayNum}
               </span>
               {/* Item dots */}
@@ -218,7 +213,7 @@ function CalendarGrid({
                     );
                   })}
                   {cell.items.length > 4 && (
-                    <span className="text-[9px] text-muted-foreground leading-none mt-0.5" title={`${cell.items.length} scheduled items`}>
+                    <span className="mt-0.5 text-[9px] leading-none text-muted-foreground" title={`${cell.items.length} scheduled items`}>
                       +{cell.items.length - 4}
                     </span>
                   )}
@@ -247,9 +242,9 @@ function DayDetail({
 }) {
   if (!date) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <CalendarDays className="h-8 w-8 text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">Select a day to see what&apos;s scheduled.</p>
+      <div data-cal-schedule-empty="" className="flex flex-col items-center justify-center gap-2 py-8">
+        <CalendarDays className="h-7 w-7 text-muted-foreground" />
+        <p>Select a day to see what&apos;s scheduled.</p>
       </div>
     );
   }
@@ -264,9 +259,11 @@ function DayDetail({
     <div className="space-y-3">
       <p className="font-heading text-base font-medium text-heading">{label}</p>
       {dateItems.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">
-          Nothing scheduled for this day. Add a schedule item, or book a tour from Tours.
-        </p>
+        <div data-cal-schedule-empty="">
+          <p>
+            Nothing scheduled for this day. Add a schedule item, or book a tour from Tours.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2">
           {dateItems.map((item) => (
@@ -282,21 +279,8 @@ function DayDetail({
   );
 }
 
-// ---- Legend -----------------------------------------------------------------
-// Venue Calendar only — never Object.entries(TYPE_META). Excluded dated-work
-// TYPE_META entries must not appear in this legend.
-function Legend({ tastingEnabled }: { tastingEnabled: boolean }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-      {venueCalendarLegendEntries({ tastingEnabled }).map((entry) => (
-        <div key={entry.key} className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.dotColor }} />
-          <span className="text-xs text-muted-foreground">{entry.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+// Phase 11C — duplicate taxonomy legend removed; FilterBar chips are the
+// interactive source of Event/Tour/Appointment/Hold/Blocked Time colors.
 
 // ---- Main CalendarView ------------------------------------------------------
 
@@ -677,18 +661,60 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
     });
   }
 
+  function toIsoLocal(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
   function navigate(delta: number) {
     let newMonth = month + delta;
     let newYear = year;
     if (newMonth > 12) { newMonth = 1; newYear++; }
     if (newMonth < 1)  { newMonth = 12; newYear--; }
+    if (view === "agenda") {
+      router.push(`/calendar?view=agenda&year=${newYear}&month=${newMonth}`);
+      return;
+    }
     router.push(`/calendar?year=${newYear}&month=${newMonth}`);
+  }
+
+  function navigateWeek(deltaWeeks: number) {
+    const startIso = weekStart || today;
+    const [wy, wm, wd] = startIso.split("-").map(Number);
+    const d = new Date(wy, wm - 1, wd);
+    d.setDate(d.getDate() + deltaWeeks * 7);
+    router.push(`/calendar?view=week&weekStart=${toIsoLocal(d)}`);
+  }
+
+  function navigateDay(deltaDays: number) {
+    const startIso = dayDate || today;
+    const [dy, dm, dd] = startIso.split("-").map(Number);
+    const d = new Date(dy, dm - 1, dd);
+    d.setDate(d.getDate() + deltaDays);
+    router.push(`/calendar?view=day&date=${toIsoLocal(d)}`);
   }
 
   // `today` is the venue's own calendar day (resolved server-side), so this
   // stays correct for a venue whose date differs from the browser's.
   const [todayYear, todayMonth] = today.split("-").map(Number);
   const isCurrentMonth = year === todayYear && month === todayMonth;
+
+  const weekStartIso = weekStart || today;
+  const [weekY, weekM, weekD] = weekStartIso.split("-").map(Number);
+  const weekStartDate = new Date(weekY, weekM - 1, weekD);
+  const weekEndDate = new Date(weekY, weekM - 1, weekD + 6);
+  const weekRangeLabel = `${weekStartDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${weekEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  const isCurrentWeek = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekY, weekM - 1, weekD + i);
+    return toIsoLocal(d) === today;
+  }).some(Boolean);
+
+  const dayIso = dayDate || today;
+  const [dayY, dayM, dayD] = dayIso.split("-").map(Number);
+  const dayLabel = new Date(dayY, dayM - 1, dayD).toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+  const isCurrentDay = dayIso === today;
+  const isCurrentAgendaWindow = year === todayYear && month === todayMonth;
 
   const recurrenceSummary = describeRecurrence({
     rule: blockRecurrence,
@@ -765,20 +791,118 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ViewSwitcher current={view} onChange={switchView} />
-        {!hideToolbarCreate && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              if (showBlockForm) { setShowBlockForm(false); resetBlockForm(); }
-              else { resetBlockForm(); setShowBlockForm(true); }
-            }}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
-          </Button>
-        )}
+      {/* Phase 11C — linen toolbar: view switcher (+ Month date nav on same shell). */}
+      <div className="htc-calendar-toolbar" data-cal-toolbar="">
+        <div className="htc-calendar-toolbar-row" data-cal-toolbar-row="views">
+          <ViewSwitcher current={view} onChange={switchView} />
+          {!hideToolbarCreate && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                if (showBlockForm) { setShowBlockForm(false); resetBlockForm(); }
+                else { resetBlockForm(); setShowBlockForm(true); }
+              }}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
+            </Button>
+          )}
+        </div>
+        {/* Shared date navigation for all views — one linen toolbar with view switcher. */}
+        <div
+          className="htc-calendar-toolbar-row htc-calendar-month-nav"
+          data-cal-toolbar-row="date"
+          data-cal-day-nav={view === "day" ? "" : undefined}
+        >
+          {view === "week" ? (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateWeek(-1)} aria-label="Previous week">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h2 className="min-w-0 px-1 text-center font-heading text-base font-medium text-heading sm:min-w-[220px] sm:text-lg">
+                  {weekRangeLabel}
+                </h2>
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateWeek(1)} aria-label="Next week">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentWeek && (
+                <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/calendar?view=week&weekStart=${today}`)}>
+                  Today
+                </Button>
+              )}
+            </>
+          ) : view === "day" ? (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateDay(-1)} aria-label="Previous day">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h2 className="min-w-0 px-1 text-center font-heading text-base font-medium text-heading sm:min-w-[260px] sm:text-lg">
+                  {dayLabel}
+                </h2>
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigateDay(1)} aria-label="Next day">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentDay && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-cal-day-today=""
+                  onClick={() => router.push(`/calendar?view=day&date=${today}`)}
+                >
+                  Today
+                </Button>
+              )}
+            </>
+          ) : view === "agenda" ? (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <MonthYearPicker
+                  year={year}
+                  month={month}
+                  onChange={(y, m) => router.push(`/calendar?view=agenda&year=${y}&month=${m}`)}
+                />
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(1)} aria-label="Next month">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentAgendaWindow && (
+                <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/calendar?view=agenda&year=${todayYear}&month=${todayMonth}`)}>
+                  Today
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="htc-calendar-month-nav-group">
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <MonthYearPicker
+                  year={year}
+                  month={month}
+                  onChange={(y, m) => router.push(`/calendar?year=${y}&month=${m}`)}
+                />
+                <Button type="button" variant="ghost" size="icon" onClick={() => navigate(1)} aria-label="Next month">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {!isCurrentMonth && (
+                <Button type="button" variant="outline" size="sm"
+                  onClick={() => router.push(`/calendar?year=${todayYear}&month=${todayMonth}`)}>
+                  Today
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Add/Edit Schedule Item — lives above every view so Edit from Week/
@@ -1153,49 +1277,22 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
 
       {view === "month" && (
       <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <MonthYearPicker
-            year={year}
-            month={month}
-            onChange={(y, m) => router.push(`/calendar?year=${y}&month=${m}`)}
-          />
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next month">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {!isCurrentMonth && (
-          <Button type="button" variant="ghost" size="sm"
-            onClick={() => router.push(`/calendar?year=${todayYear}&month=${todayMonth}`)}>
-            Today
-          </Button>
-        )}
-      </div>
-
-      {/* Legend */}
-      <Legend tastingEnabled={tastingEnabled} />
-
-      {/* Filters — locked taxonomy + staff/space */}
+      {/* Phase 11C — interactive FilterBar carries taxonomy (legend removed as duplicate). */}
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} items={items} />
 
-      {/* Main grid + detail */}
+      {/* Main grid + Schedule companion (Month only) */}
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
-        {/* Calendar grid */}
         <CalendarGrid
           year={year} month={month} items={displayItems}
           selectedDate={selectedDate} today={today}
           onSelectDate={setSelectedDate}
         />
 
-        {/* Day detail */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Schedule</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <aside className="htc-calendar-schedule" data-cal-schedule-panel="" aria-label="Schedule">
+          <div data-cal-schedule-header="">
+            <p data-cal-schedule-title="">Schedule</p>
+          </div>
+          <div data-cal-schedule-body="">
             <DayDetail
               date={selectedDate || null}
               items={displayItems}
@@ -1205,8 +1302,8 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
               deletingId={deletingId}
               deletePending={deletePending}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </aside>
       </div>
 
       {/* This month summary */}

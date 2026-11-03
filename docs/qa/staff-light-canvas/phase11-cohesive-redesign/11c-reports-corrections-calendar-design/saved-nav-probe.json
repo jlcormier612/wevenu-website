@@ -1,0 +1,14 @@
+{
+  "beforeIntro": "Reports How your business is doing — boo",
+  "phaseStartsWithArrowTemplates": false,
+  "phaseHasArrowTemplates": false,
+  "inPhaseLinks": [],
+  "sidebarTemplates": [
+    {
+      "text": "Templates",
+      "href": "/library"
+    }
+  ],
+  "firstChildTag": "DIV",
+  "firstChildClass": "htc-hospitality-intro htc-hospitality-intro-accent"
+}

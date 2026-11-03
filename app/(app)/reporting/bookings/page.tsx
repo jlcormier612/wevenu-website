@@ -94,6 +94,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           previousValue={prevBookings.length}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
+          tone="bookings"
           sub="First time you marked them booked in this period. Later Lost does not remove them."
         />
         <ComparisonCard
@@ -102,6 +103,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
+          tone="contracted"
           format={formatMoney}
           sub="Signed contract value with a first payment collected — money, not this Booking count."
           href={reportingHref("/reporting/revenue", range)}
@@ -112,6 +114,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           previousValue={prevAvgValue}
           comparisonLabel={range.comparisonLabel}
           polarity="up-good"
+          tone="contracted"
           format={formatMoney}
           sub="Among clients with signed value and a first payment — not Booking count."
         />

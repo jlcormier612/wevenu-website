@@ -1,0 +1,114 @@
+[
+  {
+    "viewport": "desktop",
+    "status": 200,
+    "h1": "Documents",
+    "url": "/documents",
+    "titleCount": 290,
+    "recordLinkCount": 290,
+    "mobileActions": 290,
+    "desktopActions": 290,
+    "sampleTitles": [
+      "Barn-master-floorplan",
+      "Barn-master-floorplan",
+      "Barn-master-floorplan",
+      "Barn-master-floorplan",
+      "Viewer check RFX80e4"
+    ],
+    "overflowX": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/documents-desktop.png",
+    "defaultStyle": {
+      "text": "Barn-master-floorplan",
+      "tag": "BUTTON",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "none",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px",
+      "testId": "workspace-doc-title"
+    },
+    "hoverStyle": {
+      "text": "Barn-master-floorplan",
+      "tag": "BUTTON",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px",
+      "testId": "workspace-doc-title"
+    },
+    "hoverScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/documents-desktop-hover.png",
+    "focusStyle": {
+      "text": "Barn-master-floorplan",
+      "tag": "BUTTON",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "oklch(0.492091 0.0558523 159.885 / 0.6) solid 2px",
+      "outlineOffset": "-2px",
+      "testId": "workspace-doc-title"
+    },
+    "focusScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/documents-desktop-focus.png",
+    "charcoalOk": true,
+    "hoverUnderline": true,
+    "hoverStaysCharcoal": true,
+    "focusHasOutline": true
+  },
+  {
+    "viewport": "mobile",
+    "status": 200,
+    "h1": "Documents",
+    "url": "/documents",
+    "titleCount": 290,
+    "recordLinkCount": 290,
+    "mobileActions": 290,
+    "desktopActions": 290,
+    "sampleTitles": [
+      "Barn-master-floorplan",
+      "Barn-master-floorplan",
+      "Barn-master-floorplan",
+      "Barn-master-floorplan",
+      "Viewer check RFX80e4"
+    ],
+    "overflowX": false,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/documents-mobile.png",
+    "defaultStyle": {
+      "text": "Barn-master-floorplan",
+      "tag": "BUTTON",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "none",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px",
+      "testId": "workspace-doc-title"
+    },
+    "hoverStyle": {
+      "text": "Barn-master-floorplan",
+      "tag": "BUTTON",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "rgb(36, 51, 43) none 3px",
+      "outlineOffset": "0px",
+      "testId": "workspace-doc-title"
+    },
+    "hoverScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/documents-mobile-hover.png",
+    "focusStyle": {
+      "text": "Barn-master-floorplan",
+      "tag": "BUTTON",
+      "color": "rgb(36, 51, 43)",
+      "decoration": "underline",
+      "outline": "oklch(0.492091 0.0558523 159.885 / 0.6) solid 2px",
+      "outlineOffset": "-2px",
+      "testId": "workspace-doc-title"
+    },
+    "focusScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/documents-mobile-focus.png",
+    "overflowMenuScreenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/documents-mobile-overflow-open.png",
+    "overflowMenuVisible": true,
+    "charcoalOk": true,
+    "hoverUnderline": true,
+    "hoverStaysCharcoal": true,
+    "focusHasOutline": true
+  },
+  {
+    "label": "events-route",
+    "finalUrl": "http://127.0.0.1:3000/clients",
+    "h1": "Clients",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11a-record-interactions/final-verification/evidence/events-route-redirect-clients.png"
+  }
+]

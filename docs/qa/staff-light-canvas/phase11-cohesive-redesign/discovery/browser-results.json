@@ -1,0 +1,520 @@
+[
+  {
+    "label": "calendar",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/calendar-desktop.png",
+    "h1": "Calendar",
+    "url": "/calendar",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": true,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 1,
+    "badges": [],
+    "overflowX": false
+  },
+  {
+    "label": "calendar",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/calendar-mobile.png",
+    "h1": "Calendar",
+    "url": "/calendar",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": true,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 1,
+    "badges": [],
+    "overflowX": false
+  },
+  {
+    "label": "reporting",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/reporting-desktop.png",
+    "h1": "Reports",
+    "url": "/reporting",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": true,
+    "introAccent": true,
+    "filterToolbar": true,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 18,
+    "badges": [],
+    "overflowX": false
+  },
+  {
+    "label": "reporting",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/reporting-mobile.png",
+    "h1": "Reports",
+    "url": "/reporting",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": true,
+    "introAccent": true,
+    "filterToolbar": true,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 18,
+    "badges": [],
+    "overflowX": false
+  },
+  {
+    "label": "tours",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/tours-desktop.png",
+    "h1": "Tours",
+    "url": "/tours",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": true,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 0,
+    "badges": [
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      }
+    ],
+    "overflowX": false
+  },
+  {
+    "label": "tours",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/tours-mobile.png",
+    "h1": "Tours",
+    "url": "/tours",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": true,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 0,
+    "badges": [
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      },
+      {
+        "text": "Scheduled",
+        "bg": "rgb(243, 240, 233)",
+        "color": "oklch(0.34815 0.034031 145.865)"
+      }
+    ],
+    "overflowX": false
+  },
+  {
+    "label": "requests",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/requests-desktop.png",
+    "h1": "Requests",
+    "url": "/requests",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 2,
+    "badges": [],
+    "overflowX": false
+  },
+  {
+    "label": "requests",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/requests-mobile.png",
+    "h1": "Requests",
+    "url": "/requests",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 2,
+    "badges": [],
+    "overflowX": false
+  },
+  {
+    "label": "automations",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/automations-desktop.png",
+    "h1": "Automations",
+    "url": "/communication/series",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": true,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 5,
+    "badges": [
+      {
+        "text": "Active",
+        "bg": "oklab(0.521358 -0.0288675 0.0202034 / 0.15)",
+        "color": "rgb(36, 51, 43)"
+      },
+      {
+        "text": "Paused",
+        "bg": "lab(95.6792 -2.19592 1.13835)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Active",
+        "bg": "oklab(0.521358 -0.0288675 0.0202034 / 0.15)",
+        "color": "rgb(36, 51, 43)"
+      },
+      {
+        "text": "Paused",
+        "bg": "lab(95.6792 -2.19592 1.13835)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Active",
+        "bg": "oklab(0.521358 -0.0288675 0.0202034 / 0.15)",
+        "color": "rgb(36, 51, 43)"
+      }
+    ],
+    "overflowX": false
+  },
+  {
+    "label": "automations",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/automations-mobile.png",
+    "h1": "Automations",
+    "url": "/communication/series",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": true,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 5,
+    "badges": [
+      {
+        "text": "Active",
+        "bg": "oklab(0.521358 -0.0288675 0.0202034 / 0.15)",
+        "color": "rgb(36, 51, 43)"
+      },
+      {
+        "text": "Paused",
+        "bg": "lab(95.6792 -2.19592 1.13835)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Active",
+        "bg": "oklab(0.521358 -0.0288675 0.0202034 / 0.15)",
+        "color": "rgb(36, 51, 43)"
+      },
+      {
+        "text": "Paused",
+        "bg": "lab(95.6792 -2.19592 1.13835)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Active",
+        "bg": "oklab(0.521358 -0.0288675 0.0202034 / 0.15)",
+        "color": "rgb(36, 51, 43)"
+      }
+    ],
+    "overflowX": false
+  },
+  {
+    "label": "setup-hub",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/setup-hub-desktop.png",
+    "h1": "Setup",
+    "url": "/setup-hub",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": true,
+    "bybSelectedPanel": {
+      "bg": "oklab(0.492091 -0.0524457 0.0192076 / 0.05)",
+      "border": "oklab(0.492091 -0.0524457 0.0192076 / 0.2)",
+      "text": "You've decided you're ready. We'll stop showing setup guidance, but you can continue configuring your venue anytime. Dec"
+    },
+    "cardCount": 9,
+    "badges": [
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Optional",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      }
+    ],
+    "overflowX": false
+  },
+  {
+    "label": "setup-hub",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/setup-hub-mobile.png",
+    "h1": "Setup",
+    "url": "/setup-hub",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": false,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": true,
+    "bybSelectedPanel": {
+      "bg": "oklab(0.492091 -0.0524457 0.0192076 / 0.05)",
+      "border": "oklab(0.492091 -0.0524457 0.0192076 / 0.2)",
+      "text": "You've decided you're ready. We'll stop showing setup guidance, but you can continue configuring your venue anytime. Dec"
+    },
+    "cardCount": 9,
+    "badges": [
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Set up",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      },
+      {
+        "text": "Optional",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(95, 111, 104)"
+      }
+    ],
+    "overflowX": false
+  },
+  {
+    "label": "dashboard",
+    "viewport": "desktop",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/dashboard-desktop.png",
+    "h1": "Good evening, Jen.",
+    "url": "/dashboard",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": true,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 7,
+    "badges": [],
+    "overflowX": false
+  },
+  {
+    "label": "dashboard",
+    "viewport": "mobile",
+    "status": 200,
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/discovery/evidence/dashboard-mobile.png",
+    "h1": "Good evening, Jen.",
+    "url": "/dashboard",
+    "bodyBg": "rgb(248, 247, 243)",
+    "mainBg": "rgb(248, 247, 243)",
+    "hospitalityPage": true,
+    "hospitalityIntro": false,
+    "introAccent": false,
+    "filterToolbar": false,
+    "calendarGrid": false,
+    "automationsHelp": false,
+    "setupStageLabel": false,
+    "bybSelectedPanel": null,
+    "cardCount": 7,
+    "badges": [],
+    "overflowX": false
+  }
+]

@@ -1,0 +1,377 @@
+[
+  {
+    "label": "month",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "month-desktop.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": true,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 170,
+        "left": 1094,
+        "right": 1246
+      },
+      {
+        "text": "Print / Export",
+        "top": 170,
+        "left": 1253,
+        "right": 1374
+      }
+    ],
+    "activeView": "month",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "month",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "month-mobile-390.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "month",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "month",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "month-mobile-375.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "month",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "month",
+    "viewport": "mobile-375-smoke",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "month",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "week",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "week-desktop.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": true,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 170,
+        "left": 1094,
+        "right": 1246
+      },
+      {
+        "text": "Print / Export",
+        "top": 170,
+        "left": 1253,
+        "right": 1374
+      }
+    ],
+    "activeView": "week",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "week",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "week-mobile-390.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "week",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "week",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "week-mobile-375.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "week",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "day",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "day-desktop.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": true,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 170,
+        "left": 1094,
+        "right": 1246
+      },
+      {
+        "text": "Print / Export",
+        "top": 170,
+        "left": 1253,
+        "right": 1374
+      }
+    ],
+    "activeView": "day",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "day",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "day-mobile-390.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "day",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "day",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "day-mobile-375.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "day",
+    "filterCount": 2,
+    "hasLegend": false
+  },
+  {
+    "label": "agenda",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "agenda-desktop.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": true,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 170,
+        "left": 1094,
+        "right": 1246
+      },
+      {
+        "text": "Print / Export",
+        "top": 170,
+        "left": 1253,
+        "right": 1374
+      }
+    ],
+    "activeView": "agenda",
+    "filterCount": 3,
+    "hasLegend": false
+  },
+  {
+    "label": "agenda",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "agenda-mobile-390.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "agenda",
+    "filterCount": 3,
+    "hasLegend": false
+  },
+  {
+    "label": "agenda",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "agenda-mobile-375.png",
+    "overflowX": false,
+    "toolbarCount": 1,
+    "hasViewsRow": true,
+    "hasDateRow": true,
+    "desktopSingleRow": null,
+    "actionsSameRow": true,
+    "actionRects": [
+      {
+        "text": "Add Schedule Item",
+        "top": 201,
+        "left": 39,
+        "right": 191
+      },
+      {
+        "text": "Print / Export",
+        "top": 201,
+        "left": 198,
+        "right": 319
+      }
+    ],
+    "activeView": "agenda",
+    "filterCount": 3,
+    "hasLegend": false
+  }
+]

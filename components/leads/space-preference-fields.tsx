@@ -132,8 +132,11 @@ export function LeadSpacePreferenceFields({
     const assigned = assignments.filter((a) => a.useKey !== "event_space" && a.spaceName.trim());
     if (assigned.length === 0) return null;
     return (
-      <div className="w-full min-w-0">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div
+        className="htc-surface-operational w-full min-w-0 px-3 py-2.5 sm:px-3.5 sm:py-3"
+        data-testid="lead-space-preferences"
+      >
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Space preferences
         </p>
         <div
@@ -179,7 +182,10 @@ export function LeadSpacePreferenceFields({
   const applicableCount = prefs.filter((p) => isApplicableLeadSpacePreferenceKind(p.preferenceKind)).length;
 
   return (
-    <div className="w-full min-w-0" data-testid="lead-space-preferences">
+    <div
+      className="htc-surface-operational w-full min-w-0 px-3 py-2.5 sm:px-3.5 sm:py-3"
+      data-testid="lead-space-preferences"
+    >
       <div className="mb-2 space-y-0.5">
         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Space preferences

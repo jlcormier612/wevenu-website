@@ -1,27 +1,10 @@
 # Saved Reports back navigation — STATUS
 
-**Verdict:** OPEN — awaiting Sandbox deploy + browser verify  
+**Verdict:** GREEN  
+**Product commit:** `2bee773f1dcda7f0f5d8bee3795f8eabc08f4f81`  
+**Verified on serving tip:** `0edc09b087b649a2062d7c2fa3d01d847db471a5` (descendant; ancestry proven)  
+**Also verified earlier on exact tip:** `2bee773f…`  
+**Deploy:** https://github.com/jlcormier612/wevenu-website/actions/runs/40747352569 — success  
 **Production:** untouched  
 
-## Change
-
-Saved Reports (`/reporting/saved`) is a Library collection (same shelf as Brochures). The Reports shell now shows `CollectionBackLink` → `/library` labeled **Templates** above the Reports heading **only** on that route. Other report tabs unchanged.
-
-## Files
-
-- `components/reporting/reports-layout-shell.tsx` (new)
-- `app/(app)/reporting/layout.tsx`
-- `lib/reporting/saved-reports-back-nav.test.ts` (new)
-- `lib/brand/customer-facing-brand.test.ts` (Reports heading assertion follows shell)
-
-## Tests (local)
-
-```bash
-npx tsx --test lib/reporting/saved-reports-back-nav.test.ts
-```
-
-## Browser verify (after serving tip)
-
-```bash
-EXPECTED_SHA=<sha> npx tsx docs/qa/saved-reports-back-nav/verify-browser.mts
-```
+See `docs/qa/three-workstream-sandbox-closure/ACCEPTANCE.md`.

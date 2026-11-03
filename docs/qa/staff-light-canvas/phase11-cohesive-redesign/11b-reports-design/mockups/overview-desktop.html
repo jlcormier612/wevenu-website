@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PROPOSAL — Reports Overview Desktop</title>
+  <link rel="stylesheet" href="_shared.css" />
+</head>
+<body>
+  <div class="banner"><strong>DESIGN PROPOSAL ONLY</strong> — Phase 11B · Not a live application screenshot · Not implemented</div>
+  <div class="shell">
+    <div class="intro">
+      <h1>Reports</h1>
+      <p>How your business is doing — bookings, revenue, sales, and events.</p>
+    </div>
+    <div class="tabs">
+      <span class="tab active">Overview</span>
+      <span class="tab">Sales</span>
+      <span class="tab">Bookings</span>
+      <span class="tab">Revenue</span>
+      <span class="tab">Events</span>
+      <span class="tab">Saved</span>
+    </div>
+    <div class="filter">
+      <span class="chip on">This month</span>
+      <span class="chip">Last month</span>
+      <span class="chip">This quarter</span>
+      <span class="chip">Custom</span>
+      <span style="margin-left:auto;font-size:0.75rem;color:var(--muted)">Mar 1 – Mar 31, 2026</span>
+    </div>
+
+    <div class="funnel">
+      <h2>How the business moved</h2>
+      <p class="hint">Period activity uses category surfaces — not conversion math between tiles.</p>
+      <div class="stage-grid">
+        <div class="stage sales"><div class="l">Leads</div><div class="v">42</div><div class="c">Received this period</div></div>
+        <div class="stage sales"><div class="l">Tours</div><div class="v">18</div><div class="c">Scheduled this period</div></div>
+        <div class="stage bookings"><div class="l">Bookings</div><div class="v">9</div><div class="c">Marked booked</div></div>
+        <div class="stage money"><div class="l">Contracted</div><div class="v">$86k</div><div class="c">Signed value</div></div>
+        <div class="stage money"><div class="l">Collected</div><div class="v">$41k</div><div class="c">Money received</div></div>
+        <div class="stage owed"><div class="l">Outstanding</div><div class="v">$45k</div><div class="c">Mixed clocks</div></div>
+      </div>
+      <p class="section-label">Of the leads that came in this period</p>
+      <div class="grid grid-3" style="margin-top:0.4rem">
+        <div class="kpi tone-sales"><div class="head">Took a tour</div><div class="body"><p class="value">48%</p><p class="sub">20 of 42 later toured</p></div></div>
+        <div class="kpi tone-bookings"><div class="head">Leads who booked</div><div class="body"><p class="value">21%</p><p class="sub">9 of 42 later booked</p></div></div>
+        <div class="kpi tone-bookings"><div class="head">Toured, then booked</div><div class="body"><p class="value">45%</p><p class="sub">Of those who toured</p></div></div>
+      </div>
+    </div>
+
+    <p class="section-label">Key metrics · same families as Dashboard Snapshot</p>
+    <div class="grid">
+      <div class="kpi tone-sales"><div class="head">Leads</div><div class="body"><p class="value">42</p><p class="delta good">↑ 12% vs prior</p><p class="sub">New leads received in this period.</p></div></div>
+      <div class="kpi tone-sales"><div class="head">Tours</div><div class="body"><p class="value">18</p><p class="delta good">↑ 5% vs prior</p><p class="sub">Tours scheduled during this period.</p></div></div>
+      <div class="kpi tone-bookings"><div class="head">Bookings</div><div class="body"><p class="value">9</p><p class="delta good">↑ 1 vs prior</p><p class="sub">Marked booked during this period.</p></div></div>
+      <div class="kpi tone-bookings"><div class="head">Leads who booked</div><div class="body"><p class="value">21%</p><p class="delta good">↑ 3 pts</p><p class="sub">Cohort conversion — booking may be after period.</p></div></div>
+      <div class="kpi tone-money"><div class="head">Contracted</div><div class="body"><p class="value">$86,400</p><p class="delta good">↑ 8% vs prior</p><p class="sub">Signed value with first payment collected.</p></div></div>
+      <div class="kpi tone-money"><div class="head">Collected</div><div class="body"><p class="value">$41,200</p><p class="delta good">↑ 14% vs prior</p><p class="sub">Money actually received during this period.</p></div></div>
+      <div class="kpi tone-owed"><div class="head">Outstanding</div><div class="body"><p class="value">$45,200</p><p class="delta bad">↑ 6% vs prior</p><p class="sub">Contracted minus collections — different clocks.</p></div></div>
+      <div class="kpi tone-white"><div class="head">Rest card</div><div class="body"><p class="value">—</p><p class="sub">White reserved for secondary / empty / zero-owed states.</p></div></div>
+    </div>
+
+    <div class="legend">
+      <span class="swatch"><i style="background:var(--eucalyptus)"></i>Sales / demand</span>
+      <span class="swatch"><i style="background:var(--green-mist)"></i>Bookings</span>
+      <span class="swatch"><i style="background:var(--botanical-pale)"></i>Money in</span>
+      <span class="swatch"><i style="background:var(--blush)"></i>Owed header (when &gt; 0)</span>
+      <span class="swatch"><i style="background:var(--white)"></i>Analytical white</span>
+    </div>
+  </div>
+</body>
+</html>

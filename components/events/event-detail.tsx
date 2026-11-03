@@ -215,15 +215,15 @@ function EventHeroCard({
   return (
     <Card
       size="sm"
-      className="h-full border-primary/20 bg-primary/5 gap-3 lg:h-full"
+      className="htc-surface-summary gap-3 ring-0 shadow-none self-start"
       data-testid="event-booking-summary"
     >
-      <CardContent className="flex h-full flex-col text-left">
+      <CardContent className="flex flex-col text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-0">
             {eventTypeLabel(event.eventType) ? (
               <p
-                className="text-xs font-semibold uppercase tracking-wide text-primary"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 data-testid="event-booking-summary-type"
               >
                 {eventTypeLabel(event.eventType)}
@@ -851,7 +851,7 @@ export function EventDetail({
       {/* ── Booking + staffing (compact upper region) ─────────────────── */}
       <div
         data-testid="client-booking-staff-region"
-        className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
+        className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
       >
         <EventHeroCard
           event={event}
@@ -866,7 +866,7 @@ export function EventDetail({
           className="flex min-w-0 flex-col gap-3"
         >
           <div
-            className="rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5 sm:px-3.5 sm:py-3"
+            className="htc-surface-operational px-3 py-2.5 sm:px-3.5 sm:py-3"
             data-testid="event-staff-assignment"
             id="event-team-roster"
           >
@@ -890,11 +890,14 @@ export function EventDetail({
           <Card size="sm" className="gap-2" id="questionnaires-card" data-testid="event-questionnaires-card">
             <CardHeader className="gap-0.5">
               <CardTitle className="text-base">Questionnaires</CardTitle>
-              <CardDescription className="text-xs leading-snug">
-                Choose and send your prepared information/feedback-gathering questionnaires when ready — separate from the client portal release process. Schedule them or send now — your choice!
-              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <p
+                className="htc-surface-guidance-compact text-xs leading-snug text-muted-foreground"
+                data-testid="event-questionnaires-guidance"
+              >
+                Choose and send your prepared information/feedback-gathering questionnaires when ready — separate from the client portal release process. Schedule them or send now — your choice!
+              </p>
               <Button
                 type="button"
                 size="sm"

@@ -147,24 +147,121 @@ export function WorkspaceDocumentCard({
 
   const relationship = relationshipLabel(doc);
 
+  const editItem = perms.edit ? (
+    <DropdownMenuItem disabled>Edit (from its own list)</DropdownMenuItem>
+  ) : null;
+
   return (
-    <div className="group flex items-start gap-3 rounded-sm border border-border bg-card px-4 py-3 hover:bg-muted/20 transition-colors">
+    <div
+      className="group flex items-start gap-3 rounded-sm border border-border bg-card px-4 py-3 hover:bg-muted/20 transition-colors"
+      data-htc-doc-row="workspace"
+    >
       <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <DocIcon doc={doc} />
       </div>
 
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <button type="button" onClick={handleView} className="text-sm font-medium text-heading truncate hover:underline text-left" data-testid="workspace-doc-title">
+      <div className="min-w-0 flex-1 space-y-1.5 sm:space-y-1">
+        {/*
+          Identity row: single title (preserves workspace-doc-title).
+          Mobile — title wraps ~2 lines; open + overflow beside it; badges below.
+          Desktop — title truncates with badges inline (prior layout).
+        */}
+        <div className="flex flex-wrap items-start gap-x-2 gap-y-1 sm:items-center" data-htc-doc-identity>
+          <button
+            type="button"
+            onClick={handleView}
+            className="htc-record-link min-w-0 max-w-full flex-1 basis-[min(100%,12rem)] sm:flex-none sm:basis-auto text-sm font-medium line-clamp-2 sm:line-clamp-none sm:truncate text-left"
+            data-testid="workspace-doc-title"
+          >
             {doc.name}
           </button>
+          <div className="hidden sm:contents">
+            <WorkspaceCategoryBadge category={doc.category} />
+            <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} docType={doc.docType} />
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:hidden" data-htc-doc-actions="mobile">
+            {pinningEnabled && (
+              <button
+                type="button"
+                onClick={togglePin}
+                disabled={pinBusy}
+                aria-label={isPinned ? "Unpin" : "Pin"}
+                title={isPinned ? "Pinned — click to unpin" : "Pin to keep this always visible"}
+                className={`rounded p-1.5 hover:bg-muted ${isPinned ? "text-warning-foreground" : "text-muted-foreground"}`}
+              >
+                {pinBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleOpen}
+              className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Open"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="More"
+                    data-testid="workspace-doc-more-mobile"
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  </button>
+                }
+              />
+              <DropdownMenuContent align="end" className="min-w-44">
+                <DropdownMenuItem onClick={handleView}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePreview}>
+                  <Info className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownMenuItem>
+                {perms.share && (
+                  <DropdownMenuItem onClick={handlePreview}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share
+                  </DropdownMenuItem>
+                )}
+                {perms.download && (
+                  <DropdownMenuItem onClick={() => void handleDownload()} disabled={downloading}>
+                    {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Download
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => onOpenVersionHistory(doc)}>
+                  <History className="mr-2 h-4 w-4" />
+                  Version History
+                </DropdownMenuItem>
+                {editItem}
+                {perms.delete && (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:hidden">
           <WorkspaceCategoryBadge category={doc.category} />
           <WorkspaceStatusBadge status={doc.status} experienceStatus={doc.experienceStatus} docType={doc.docType} />
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          {relationship && <span className="truncate max-w-[14rem]">{relationship}</span>}
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {relationship && <span className="min-w-0 break-words sm:truncate sm:max-w-[14rem]">{relationship}</span>}
           {doc.eventName && doc.eventName !== relationship && (
-            <span className="truncate max-w-[14rem]">{doc.eventName}</span>
+            <span className="min-w-0 break-words sm:truncate sm:max-w-[14rem]">{doc.eventName}</span>
           )}
           {doc.docType === "invoice" && doc.invoiceNumber && (
             <span className="tabular-nums">{doc.invoiceNumber}</span>
@@ -176,7 +273,8 @@ export function WorkspaceDocumentCard({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5">
+      {/* Desktop: compact horizontal strip — same actions as before */}
+      <div className="hidden sm:flex shrink-0 items-center gap-0.5" data-htc-doc-actions="desktop">
         {pinningEnabled && (
           <button
             type="button"
@@ -189,7 +287,6 @@ export function WorkspaceDocumentCard({
             {pinBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-current" : ""}`} />}
           </button>
         )}
-
         <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button type="button" onClick={handleOpen} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open">
             <ExternalLink className="h-3.5 w-3.5" />
@@ -221,7 +318,7 @@ export function WorkspaceDocumentCard({
             } />
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handlePreview}>View details</DropdownMenuItem>
-              {perms.edit && <DropdownMenuItem disabled>Edit (from its own list)</DropdownMenuItem>}
+              {editItem}
               {perms.delete && (
                 <DropdownMenuItem
                   variant="destructive"

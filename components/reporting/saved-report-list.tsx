@@ -49,7 +49,7 @@ export function SavedReportList({ reports }: { reports: SavedReport[] }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="htc-report-saved-shell space-y-2" data-report-saved-shell="">
       {reports.map((r) => {
         const qs = new URLSearchParams({ range: r.datePreset, ...(r.customFrom ? { from: r.customFrom } : {}), ...(r.customTo ? { to: r.customTo } : {}) }).toString();
         return (

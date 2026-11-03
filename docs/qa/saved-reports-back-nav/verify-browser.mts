@@ -1,6 +1,8 @@
 /**
  * Verify Saved Reports CollectionBackLink → /library (Templates).
- * EXPECTED_SHA=<serving> npx tsx docs/qa/saved-reports-back-nav/verify-browser.mts
+ * EXPECTED_SHA=<serving-or-ancestor> npx tsx docs/qa/saved-reports-back-nav/verify-browser.mts
+ *
+ * Accepts the exact expected SHA or a git descendant currently serving (ancestry check).
  */
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -43,6 +45,24 @@ async function servingImage() {
     `aws ecs describe-tasks --cluster htc-sandbox --tasks ${taskArn} --query 'tasks[0].containers[0].image' --output text`,
     { encoding: "utf8" },
   ).trim();
+}
+
+function servingShaFromImage(image: string): string {
+  return (image.split(":").pop() ?? "").trim();
+}
+
+/** Exact tip match, or serving tip is a git descendant of EXPECTED. */
+function acceptsServing(image: string): { ok: boolean; detail: string } {
+  const tip = servingShaFromImage(image);
+  if (tip.startsWith(EXPECTED.slice(0, 12)) || image.includes(EXPECTED.slice(0, 12))) {
+    return { ok: true, detail: `exact tip=${tip}` };
+  }
+  try {
+    execSync(`git merge-base --is-ancestor ${EXPECTED} ${tip}`, { stdio: "ignore" });
+    return { ok: true, detail: `descendant tip=${tip} contains ancestor=${EXPECTED}` };
+  } catch {
+    return { ok: false, detail: `tip=${tip} does not contain ${EXPECTED}` };
+  }
 }
 
 async function staffCookies() {
@@ -92,12 +112,21 @@ async function staffCookies() {
   throw lastErr ?? new Error("staff session failed");
 }
 
+/** CollectionBackLink lives in <main>; sidebar Templates also href=/library. */
+function mainBackLink(page: import("playwright").Page) {
+  return page.locator("main a[href='/library']").filter({ has: page.locator("svg") }).filter({ hasText: /Templates/i });
+}
+
 async function assertSavedPage(page: import("playwright").Page, label: string) {
   const positions = await page.evaluate(() => {
-    const link = document.querySelector('a[href="/library"]');
-    const headings = Array.from(document.querySelectorAll("h1, h2"));
-    const reports = headings.find((h) => /Reports/i.test(h.textContent ?? ""));
-    if (!link || !reports) return null;
+    const main = document.querySelector("main");
+    if (!main) return null;
+    const link = Array.from(main.querySelectorAll('a[href="/library"]')).find(
+      (a) => a.querySelector("svg") && /Templates/i.test(a.textContent ?? ""),
+    );
+    const headings = Array.from(main.querySelectorAll("h1"));
+    const reports = headings.find((h) => (h.textContent ?? "").trim() === "Reports");
+    if (!link || !reports) return { linkFound: !!link, reportsFound: !!reports };
     const lr = link.getBoundingClientRect();
     const hr = reports.getBoundingClientRect();
     return {
@@ -109,11 +138,11 @@ async function assertSavedPage(page: import("playwright").Page, label: string) {
   });
   record(
     `${label}_back_above_reports`,
-    !!positions && positions.linkTop < positions.reportsTop && /Templates/i.test(positions.linkText),
+    !!positions && "linkTop" in positions && positions.linkTop! < positions.reportsTop! && /Templates/i.test(positions.linkText ?? ""),
     JSON.stringify(positions),
   );
 
-  const body = await page.locator("body").innerText();
+  const body = await page.locator("main").innerText();
   record(`${label}_reports_heading`, /\bReports\b/.test(body), body.slice(0, 180).replace(/\s+/g, " "));
   record(`${label}_tabs_present`, /Overview/.test(body) && /Saved/.test(body) && /Sales/.test(body), "tabs");
   record(`${label}_saved_heading`, /Saved Reports/.test(body), "saved heading");
@@ -121,8 +150,9 @@ async function assertSavedPage(page: import("playwright").Page, label: string) {
 
 async function main() {
   const image = await servingImage();
-  record("serving_sha", image.includes(EXPECTED.slice(0, 12)), `expected=${EXPECTED} ecs=${image}`);
-  if (!image.includes(EXPECTED.slice(0, 12))) {
+  const accept = acceptsServing(image);
+  record("serving_sha", accept.ok, `expected=${EXPECTED} ecs=${image} ${accept.detail}`);
+  if (!accept.ok) {
     writeFileSync(`${OUT}/browser-results.json`, JSON.stringify({ at: new Date().toISOString(), checks, image }, null, 2));
     process.exit(1);
   }
@@ -137,7 +167,7 @@ async function main() {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: `${OUT}/shots/saved-desktop.png`, fullPage: true });
 
-    const back = page.locator('a[href="/library"]').filter({ hasText: /Templates/i }).first();
+    const back = mainBackLink(page).first();
     const backCount = await back.count();
     record("back_link_present", backCount > 0, `count=${backCount}`);
     const href = backCount ? await back.getAttribute("href") : null;
@@ -145,40 +175,37 @@ async function main() {
 
     await assertSavedPage(page, "desktop");
 
-    // Other report tabs must NOT show Templates back
+    // Other report tabs must NOT show CollectionBackLink in main
     await page.goto(`${APP}/reporting`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2000);
-    const overviewBack = await page.locator('a[href="/library"]').filter({ hasText: /Templates/i }).count();
+    const overviewBack = await mainBackLink(page).count();
     record("overview_no_templates_back", overviewBack === 0, `count=${overviewBack}`);
 
     await page.goto(`${APP}/reporting/sales`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2000);
-    const salesBack = await page.locator('a[href="/library"]').filter({ hasText: /Templates/i }).count();
+    const salesBack = await mainBackLink(page).count();
     record("sales_no_templates_back", salesBack === 0, `count=${salesBack}`);
 
-    // Click back from Saved → Library/Templates
     await page.goto(`${APP}/reporting/saved`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2500);
-    await page.locator('a[href="/library"]').filter({ hasText: /Templates/i }).first().click();
+    await mainBackLink(page).first().click();
     await page.waitForTimeout(3000);
     const onLibrary = page.url().includes("/library") && !page.url().includes("/reporting");
     record("click_returns_to_library", onLibrary, page.url());
     await page.screenshot({ path: `${OUT}/shots/after-back.png`, fullPage: true });
-    const libraryBody = await page.locator("body").innerText();
-    record("library_page_content", /Templates|Library|Saved Reports|Brochures/i.test(libraryBody), libraryBody.slice(0, 220).replace(/\s+/g, " "));
+    const libraryBody = await page.locator("main").innerText();
+    record("library_page_content", /Saved Reports|Brochures|Inventory Templates/i.test(libraryBody), libraryBody.slice(0, 220).replace(/\s+/g, " "));
 
-    // Narrow viewport
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${APP}/reporting/saved`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForTimeout(2500);
     await page.screenshot({ path: `${OUT}/shots/saved-390.png`, fullPage: true });
-    const narrowBack = await page.locator('a[href="/library"]').filter({ hasText: /Templates/i }).count();
+    const narrowBack = await mainBackLink(page).count();
     record("narrow_back_present", narrowBack > 0, "390px");
     await assertSavedPage(page, "narrow");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
     record("no_horizontal_overflow", !overflow, `overflow=${overflow}`);
 
-    // Tabs still switch
     await page.getByRole("link", { name: /^Overview$/i }).first().click();
     await page.waitForTimeout(2000);
     record("tab_overview_works", page.url().includes("/reporting") && !page.url().includes("/saved"), page.url());
@@ -189,7 +216,7 @@ async function main() {
   const ok = checks.every((c) => c.pass);
   writeFileSync(
     `${OUT}/browser-results.json`,
-    JSON.stringify({ at: new Date().toISOString(), expectedSha: EXPECTED, image, checks, ok }, null, 2),
+    JSON.stringify({ at: new Date().toISOString(), expectedSha: EXPECTED, servingImage: image, servingSha: servingShaFromImage(image), checks, ok }, null, 2),
   );
   console.log(ok ? "VERDICT=GREEN" : "VERDICT=OPEN");
   process.exit(ok ? 0 : 1);

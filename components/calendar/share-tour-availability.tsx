@@ -5,71 +5,82 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
+/**
+ * Tour Scheduling — Calendar share card (general public link only).
+ * Personalized lead links stay on the lead Tour & follow-up workflow (origin token).
+ */
 export function ShareTourAvailability({ url }: { url: string | null }) {
   async function copy() {
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success(
-        "General tour link copied. For a lead who already inquired (or has a hold), open their lead and use Copy scheduling link instead.",
-      );
+      toast.success("General tour scheduling link copied.");
     } catch {
       toast.error("Could not copy the link. Select it and copy it manually.");
     }
   }
 
   return (
-    <div className="h-full rounded-lg border border-border bg-card px-4 py-3" data-testid="calendar-share-tour-link">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Inquiry/Tour Availability
-      </p>
-      {url ? (
-        <>
-          <p className="mt-1 text-sm text-foreground">
-            Let new prospects choose an available time to schedule a tour.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button type="button" size="lg" onClick={copy} data-testid="calendar-copy-tour-link">
-              Copy Inquiry/Tour Link
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              variant="outline"
-              aria-label="Preview tour scheduling"
-              render={<a href={url} target="_blank" rel="noopener noreferrer" />}
-            >
-              Preview
-            </Button>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            This is a general tour link for websites, QR codes, and new prospects. Your current tour
-            availability always applies.
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground" data-testid="calendar-tour-link-lead-guidance">
-            Already working with someone? Use the personalized scheduling link that resides in their
-            lead record, under &apos;Tour &amp; follow-up&apos;. That will preserve any preferred date holds and
-            other previously gathered information.
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="mt-1 text-sm text-foreground">
-            Online tour booking is not offered.
-          </p>
-          <p className="mt-3 text-sm">
-            <Link
-              href="/settings/availability#tour-availability"
-              className="font-medium text-foreground underline underline-offset-4"
-            >
-              Turn on online tour booking
-            </Link>
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Couples can schedule a tour from your public link once online tour booking is offered.
-          </p>
-        </>
-      )}
+    <div
+      className="htc-calendar-share-card htc-calendar-share-tour h-full"
+      data-cal-share="tour-scheduling"
+      data-ready={url ? "true" : "false"}
+      data-testid="calendar-share-tour-link"
+    >
+      <div data-cal-share-header="">
+        <h3 data-cal-share-title="">Tour Scheduling</h3>
+      </div>
+      <div data-cal-share-body="">
+        {url ? (
+          <>
+            <p data-cal-share-lead="">
+              Let prospective couples choose an available time to visit your venue.
+            </p>
+            <div data-cal-share-actions="">
+              <Button type="button" size="lg" onClick={copy} data-testid="calendar-copy-tour-link">
+                Copy tour scheduling link
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                aria-label="Preview tour scheduling"
+                render={<a href={url} target="_blank" rel="noopener noreferrer" />}
+              >
+                Preview
+              </Button>
+            </div>
+            <p data-cal-share-helper="">
+              Opens the couple-facing tour scheduling page in a new tab.
+            </p>
+            <div data-cal-share-guidance="" data-testid="calendar-tour-link-lead-guidance">
+              <p>
+                Already working with someone? Use the personalized scheduling link on their lead record,
+                under &apos;Tour &amp; follow-up&apos;. That preserves preferred date holds and other information
+                you already gathered. This Calendar link is the general link for websites, QR codes, and new
+                prospects only.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <p data-cal-share-lead="">
+              Online tour booking is not offered yet.
+            </p>
+            <p data-cal-share-helper="">
+              Turn it on when you want couples to pick an available visit time themselves.
+            </p>
+            <p className="mt-3 text-sm">
+              <Link
+                href="/settings/availability#tour-availability"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
+                Set up tour scheduling
+              </Link>
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }

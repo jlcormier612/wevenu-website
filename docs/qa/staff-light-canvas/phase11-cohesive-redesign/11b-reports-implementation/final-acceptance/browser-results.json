@@ -1,0 +1,1004 @@
+[
+  {
+    "label": "overview",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/overview-desktop.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 1092,
+    "clientWidth": 1092,
+    "canScrollLeft": false,
+    "canScrollRight": false,
+    "leftFade": false,
+    "rightFade": false,
+    "activeTab": "overview",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": false,
+    "kpiHeights": [
+      {
+        "h": 210,
+        "tone": "sales",
+        "valueFs": "31.875px",
+        "valueText": "0"
+      },
+      {
+        "h": 210,
+        "tone": "sales",
+        "valueFs": "31.875px",
+        "valueText": "3"
+      },
+      {
+        "h": 210,
+        "tone": "bookings",
+        "valueFs": "31.875px",
+        "valueText": "0"
+      },
+      {
+        "h": 210,
+        "tone": "bookings",
+        "valueFs": "31.875px",
+        "valueText": "0%"
+      },
+      {
+        "h": 210,
+        "tone": "contracted",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      },
+      {
+        "h": 210,
+        "tone": "collected",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      },
+      {
+        "h": 210,
+        "tone": "outstanding",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "overview",
+    "viewport": "desktop-below",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/overview-desktop-below.png"
+  },
+  {
+    "label": "overview",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/overview-mobile-390.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 460,
+    "clientWidth": 280,
+    "canScrollLeft": false,
+    "canScrollRight": true,
+    "leftFade": false,
+    "rightFade": true,
+    "activeTab": "overview",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": true,
+    "kpiHeights": [
+      {
+        "h": 174,
+        "tone": "sales",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 174,
+        "tone": "sales",
+        "valueFs": "29.75px",
+        "valueText": "3"
+      },
+      {
+        "h": 162,
+        "tone": "bookings",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 197,
+        "tone": "bookings",
+        "valueFs": "29.75px",
+        "valueText": "0%"
+      },
+      {
+        "h": 162,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 162,
+        "tone": "collected",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "outstanding",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "overview",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/overview-mobile-375.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 460,
+    "clientWidth": 265,
+    "canScrollLeft": false,
+    "canScrollRight": true,
+    "leftFade": false,
+    "rightFade": true,
+    "activeTab": "overview",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": true,
+    "kpiHeights": [
+      {
+        "h": 174,
+        "tone": "sales",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 174,
+        "tone": "sales",
+        "valueFs": "29.75px",
+        "valueText": "3"
+      },
+      {
+        "h": 162,
+        "tone": "bookings",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 197,
+        "tone": "bookings",
+        "valueFs": "29.75px",
+        "valueText": "0%"
+      },
+      {
+        "h": 162,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 162,
+        "tone": "collected",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "outstanding",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "sales",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/sales-desktop.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 1092,
+    "clientWidth": 1092,
+    "canScrollLeft": false,
+    "canScrollRight": false,
+    "leftFade": false,
+    "rightFade": false,
+    "activeTab": "sales",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": false,
+    "kpiHeights": [],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "sales",
+    "viewport": "desktop-below",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/sales-desktop-below.png"
+  },
+  {
+    "label": "sales",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/sales-mobile-390.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 460,
+    "clientWidth": 280,
+    "canScrollLeft": false,
+    "canScrollRight": true,
+    "leftFade": false,
+    "rightFade": true,
+    "activeTab": "sales",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": true,
+    "kpiHeights": [],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "sales",
+    "viewport": "mobile-390-tab-nav",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/sales-mobile-390-tabs-after-arrows.png",
+    "before": {
+      "overflowX": false,
+      "scrollLeft": 0,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": false,
+      "canScrollRight": true,
+      "leftFade": false,
+      "rightFade": true,
+      "activeTab": "sales",
+      "activeFullyVisible": true,
+      "leftChevron": false,
+      "rightChevron": true,
+      "kpiHeights": [],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    },
+    "afterRight": {
+      "overflowX": false,
+      "scrollLeft": 154,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftFade": true,
+      "rightFade": true,
+      "activeTab": "sales",
+      "activeFullyVisible": false,
+      "leftChevron": true,
+      "rightChevron": true,
+      "kpiHeights": [],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    },
+    "afterLeft": {
+      "overflowX": false,
+      "scrollLeft": 0,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": false,
+      "canScrollRight": true,
+      "leftFade": false,
+      "rightFade": true,
+      "activeTab": "sales",
+      "activeFullyVisible": true,
+      "leftChevron": false,
+      "rightChevron": true,
+      "kpiHeights": [],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    }
+  },
+  {
+    "label": "sales",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/sales-mobile-375.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 460,
+    "clientWidth": 265,
+    "canScrollLeft": false,
+    "canScrollRight": true,
+    "leftFade": false,
+    "rightFade": true,
+    "activeTab": "sales",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": true,
+    "kpiHeights": [],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "bookings",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/bookings-desktop.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 1092,
+    "clientWidth": 1092,
+    "canScrollLeft": false,
+    "canScrollRight": false,
+    "leftFade": false,
+    "rightFade": false,
+    "activeTab": "bookings",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": false,
+    "kpiHeights": [
+      {
+        "h": 210,
+        "tone": "bookings",
+        "valueFs": "31.875px",
+        "valueText": "0"
+      },
+      {
+        "h": 210,
+        "tone": "contracted",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      },
+      {
+        "h": 210,
+        "tone": "contracted",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "bookings",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/bookings-mobile-390.png",
+    "overflowX": false,
+    "scrollLeft": 54,
+    "scrollWidth": 460,
+    "clientWidth": 280,
+    "canScrollLeft": true,
+    "canScrollRight": true,
+    "leftFade": true,
+    "rightFade": true,
+    "activeTab": "bookings",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": true,
+    "kpiHeights": [
+      {
+        "h": 179,
+        "tone": "bookings",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 179,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "bookings",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/bookings-mobile-375.png",
+    "overflowX": false,
+    "scrollLeft": 62,
+    "scrollWidth": 460,
+    "clientWidth": 265,
+    "canScrollLeft": true,
+    "canScrollRight": true,
+    "leftFade": true,
+    "rightFade": true,
+    "activeTab": "bookings",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": true,
+    "kpiHeights": [
+      {
+        "h": 179,
+        "tone": "bookings",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 179,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "revenue",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/revenue-desktop.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 1092,
+    "clientWidth": 1092,
+    "canScrollLeft": false,
+    "canScrollRight": false,
+    "leftFade": false,
+    "rightFade": false,
+    "activeTab": "revenue",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": false,
+    "kpiHeights": [
+      {
+        "h": 210,
+        "tone": "contracted",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      },
+      {
+        "h": 210,
+        "tone": "collected",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      },
+      {
+        "h": 210,
+        "tone": "outstanding",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      },
+      {
+        "h": 210,
+        "tone": "contracted",
+        "valueFs": "31.875px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "revenue",
+    "viewport": "desktop-below",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/revenue-desktop-below.png"
+  },
+  {
+    "label": "revenue",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/revenue-mobile-390.png",
+    "overflowX": false,
+    "scrollLeft": 141,
+    "scrollWidth": 460,
+    "clientWidth": 280,
+    "canScrollLeft": true,
+    "canScrollRight": true,
+    "leftFade": true,
+    "rightFade": true,
+    "activeTab": "revenue",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": true,
+    "kpiHeights": [
+      {
+        "h": 162,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "collected",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "outstanding",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "revenue",
+    "viewport": "mobile-390-tab-nav",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/revenue-mobile-390-tabs-after-arrows.png",
+    "before": {
+      "overflowX": false,
+      "scrollLeft": 141,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftFade": true,
+      "rightFade": true,
+      "activeTab": "revenue",
+      "activeFullyVisible": true,
+      "leftChevron": true,
+      "rightChevron": true,
+      "kpiHeights": [
+        {
+          "h": 162,
+          "tone": "contracted",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "collected",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "outstanding",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "contracted",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        }
+      ],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    },
+    "afterRight": {
+      "overflowX": false,
+      "scrollLeft": 180,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": true,
+      "canScrollRight": false,
+      "leftFade": true,
+      "rightFade": false,
+      "activeTab": "revenue",
+      "activeFullyVisible": true,
+      "leftChevron": true,
+      "rightChevron": false,
+      "kpiHeights": [
+        {
+          "h": 162,
+          "tone": "contracted",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "collected",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "outstanding",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "contracted",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        }
+      ],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    },
+    "afterLeft": {
+      "overflowX": false,
+      "scrollLeft": 26,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftFade": true,
+      "rightFade": true,
+      "activeTab": "revenue",
+      "activeFullyVisible": false,
+      "leftChevron": true,
+      "rightChevron": true,
+      "kpiHeights": [
+        {
+          "h": 162,
+          "tone": "contracted",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "collected",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "outstanding",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        },
+        {
+          "h": 179,
+          "tone": "contracted",
+          "valueFs": "29.75px",
+          "valueText": "$0"
+        }
+      ],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    }
+  },
+  {
+    "label": "revenue",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/revenue-mobile-375.png",
+    "overflowX": false,
+    "scrollLeft": 149,
+    "scrollWidth": 460,
+    "clientWidth": 265,
+    "canScrollLeft": true,
+    "canScrollRight": true,
+    "leftFade": true,
+    "rightFade": true,
+    "activeTab": "revenue",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": true,
+    "kpiHeights": [
+      {
+        "h": 162,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "collected",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "outstanding",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      },
+      {
+        "h": 179,
+        "tone": "contracted",
+        "valueFs": "29.75px",
+        "valueText": "$0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "events",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/events-desktop.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 1092,
+    "clientWidth": 1092,
+    "canScrollLeft": false,
+    "canScrollRight": false,
+    "leftFade": false,
+    "rightFade": false,
+    "activeTab": "events",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": false,
+    "kpiHeights": [
+      {
+        "h": 210,
+        "tone": "ops",
+        "valueFs": "31.875px",
+        "valueText": "0"
+      },
+      {
+        "h": 210,
+        "tone": "ops",
+        "valueFs": "31.875px",
+        "valueText": "0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "events",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/events-mobile-390.png",
+    "overflowX": false,
+    "scrollLeft": 180,
+    "scrollWidth": 460,
+    "clientWidth": 280,
+    "canScrollLeft": true,
+    "canScrollRight": false,
+    "leftFade": true,
+    "rightFade": false,
+    "activeTab": "events",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": false,
+    "kpiHeights": [
+      {
+        "h": 150,
+        "tone": "ops",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 150,
+        "tone": "ops",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "events",
+    "viewport": "mobile-390-tab-nav",
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/events-mobile-390-tabs-after-arrows.png",
+    "before": {
+      "overflowX": false,
+      "scrollLeft": 180,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": true,
+      "canScrollRight": false,
+      "leftFade": true,
+      "rightFade": false,
+      "activeTab": "events",
+      "activeFullyVisible": true,
+      "leftChevron": true,
+      "rightChevron": false,
+      "kpiHeights": [
+        {
+          "h": 150,
+          "tone": "ops",
+          "valueFs": "29.75px",
+          "valueText": "0"
+        },
+        {
+          "h": 150,
+          "tone": "ops",
+          "valueFs": "29.75px",
+          "valueText": "0"
+        }
+      ],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    },
+    "afterRight": {
+      "overflowX": false,
+      "scrollLeft": 180,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": true,
+      "canScrollRight": false,
+      "leftFade": true,
+      "rightFade": false,
+      "activeTab": "events",
+      "activeFullyVisible": true,
+      "leftChevron": true,
+      "rightChevron": false,
+      "kpiHeights": [
+        {
+          "h": 150,
+          "tone": "ops",
+          "valueFs": "29.75px",
+          "valueText": "0"
+        },
+        {
+          "h": 150,
+          "tone": "ops",
+          "valueFs": "29.75px",
+          "valueText": "0"
+        }
+      ],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    },
+    "afterLeft": {
+      "overflowX": false,
+      "scrollLeft": 26,
+      "scrollWidth": 460,
+      "clientWidth": 280,
+      "canScrollLeft": true,
+      "canScrollRight": true,
+      "leftFade": true,
+      "rightFade": true,
+      "activeTab": "events",
+      "activeFullyVisible": false,
+      "leftChevron": true,
+      "rightChevron": true,
+      "kpiHeights": [
+        {
+          "h": 150,
+          "tone": "ops",
+          "valueFs": "29.75px",
+          "valueText": "0"
+        },
+        {
+          "h": 150,
+          "tone": "ops",
+          "valueFs": "29.75px",
+          "valueText": "0"
+        }
+      ],
+      "savedShell": false,
+      "introAccent": true,
+      "linenFilter": true
+    }
+  },
+  {
+    "label": "events",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/events-mobile-375.png",
+    "overflowX": false,
+    "scrollLeft": 195,
+    "scrollWidth": 460,
+    "clientWidth": 265,
+    "canScrollLeft": true,
+    "canScrollRight": false,
+    "leftFade": true,
+    "rightFade": false,
+    "activeTab": "events",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": false,
+    "kpiHeights": [
+      {
+        "h": 150,
+        "tone": "ops",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      },
+      {
+        "h": 150,
+        "tone": "ops",
+        "valueFs": "29.75px",
+        "valueText": "0"
+      }
+    ],
+    "savedShell": false,
+    "introAccent": true,
+    "linenFilter": true
+  },
+  {
+    "label": "saved",
+    "viewport": "desktop",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/saved-desktop.png",
+    "overflowX": false,
+    "scrollLeft": 0,
+    "scrollWidth": 1092,
+    "clientWidth": 1092,
+    "canScrollLeft": false,
+    "canScrollRight": false,
+    "leftFade": false,
+    "rightFade": false,
+    "activeTab": "saved",
+    "activeFullyVisible": true,
+    "leftChevron": false,
+    "rightChevron": false,
+    "kpiHeights": [],
+    "savedShell": true,
+    "introAccent": true,
+    "linenFilter": false
+  },
+  {
+    "label": "saved",
+    "viewport": "mobile-390",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/saved-mobile-390.png",
+    "overflowX": false,
+    "scrollLeft": 180,
+    "scrollWidth": 460,
+    "clientWidth": 280,
+    "canScrollLeft": true,
+    "canScrollRight": false,
+    "leftFade": true,
+    "rightFade": false,
+    "activeTab": "saved",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": false,
+    "kpiHeights": [],
+    "savedShell": true,
+    "introAccent": true,
+    "linenFilter": false
+  },
+  {
+    "label": "saved",
+    "viewport": "mobile-375",
+    "status": 200,
+    "screenshot": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase11-cohesive-redesign/11b-reports-implementation/final-acceptance/evidence/saved-mobile-375.png",
+    "overflowX": false,
+    "scrollLeft": 195,
+    "scrollWidth": 460,
+    "clientWidth": 265,
+    "canScrollLeft": true,
+    "canScrollRight": false,
+    "leftFade": true,
+    "rightFade": false,
+    "activeTab": "saved",
+    "activeFullyVisible": true,
+    "leftChevron": true,
+    "rightChevron": false,
+    "kpiHeights": [],
+    "savedShell": true,
+    "introAccent": true,
+    "linenFilter": false
+  }
+]

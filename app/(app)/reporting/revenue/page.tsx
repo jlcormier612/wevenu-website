@@ -75,24 +75,24 @@ export default async function RevenueReportPage({ searchParams }: Props) {
       <ComparisonCardGrid>
         <ComparisonCard
           label="Contracted" value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
-          comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="contracted" format={formatMoney}
           sub="Signed agreement value with a first payment collected."
         />
         <ComparisonCard
           label="Payments Collected" value={paymentsCollected ?? 0} previousValue={prevPaymentsCollected}
-          comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="collected" format={formatMoney}
           sub="Money actually received during this period. Click to see the payments."
           href={hrefWith(params, { detail: "payments" })}
         />
         <ComparisonCard
           label="Outstanding Balance" value={outstanding ?? 0} previousValue={prevOutstanding}
-          comparisonLabel={range.comparisonLabel} polarity="up-bad" format={formatMoney}
+          comparisonLabel={range.comparisonLabel} polarity="up-bad" tone="outstanding" format={formatMoney}
           sub="Contracted value (commitment date) minus payments collected (payment date) — not the same clock."
           href={hrefWith(params, { detail: "outstanding" })}
         />
         <ComparisonCard
           label="Avg. contracted value" value={avgValue ?? 0} previousValue={prevAvgValue}
-          comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
+          comparisonLabel={range.comparisonLabel} polarity="up-good" tone="contracted" format={formatMoney}
           sub="Average signed value among clients with a first collected payment — not Booking count."
         />
       </ComparisonCardGrid>

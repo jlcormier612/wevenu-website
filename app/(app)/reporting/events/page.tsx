@@ -33,8 +33,8 @@ export default async function EventsReportPage({ searchParams }: Props) {
       <DateRangeControl current={range.preset} label={range.label} />
 
       <ComparisonCardGrid className="sm:grid-cols-2 lg:grid-cols-2 max-w-xl">
-        <ComparisonCard label="Events" value={events.length} previousValue={prevEvents.length} comparisonLabel={range.comparisonLabel} polarity="neutral" />
-        <ComparisonCard label="Average Guest Count" value={avgGuests} previousValue={avgGuests > 0 ? prevAvgGuests : null} comparisonLabel={range.comparisonLabel} polarity="neutral" />
+        <ComparisonCard label="Events" value={events.length} previousValue={prevEvents.length} comparisonLabel={range.comparisonLabel} polarity="neutral" tone="ops" />
+        <ComparisonCard label="Average Guest Count" value={avgGuests} previousValue={avgGuests > 0 ? prevAvgGuests : null} comparisonLabel={range.comparisonLabel} polarity="neutral" tone="ops" />
       </ComparisonCardGrid>
 
       <Card>

@@ -1,0 +1,629 @@
+[
+  {
+    "label": "reporting-overview",
+    "route": "/reporting",
+    "viewport": "desktop",
+    "file": "evidence/reporting-overview-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-overview",
+    "route": "/reporting",
+    "viewport": "mobile",
+    "file": "evidence/reporting-overview-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-sales",
+    "route": "/reporting/sales",
+    "viewport": "desktop",
+    "file": "evidence/reporting-sales-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/sales",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-sales",
+    "route": "/reporting/sales",
+    "viewport": "mobile",
+    "file": "evidence/reporting-sales-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/sales",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-bookings",
+    "route": "/reporting/bookings",
+    "viewport": "desktop",
+    "file": "evidence/reporting-bookings-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/bookings",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-bookings",
+    "route": "/reporting/bookings",
+    "viewport": "mobile",
+    "file": "evidence/reporting-bookings-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/bookings",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-revenue",
+    "route": "/reporting/revenue",
+    "viewport": "desktop",
+    "file": "evidence/reporting-revenue-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/revenue",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-revenue",
+    "route": "/reporting/revenue",
+    "viewport": "mobile",
+    "file": "evidence/reporting-revenue-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/revenue",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-events",
+    "route": "/reporting/events",
+    "viewport": "desktop",
+    "file": "evidence/reporting-events-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/events",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-events",
+    "route": "/reporting/events",
+    "viewport": "mobile",
+    "file": "evidence/reporting-events-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/events",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": {
+        "bg": "rgb(243, 240, 233)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "This MonthShowing Nov 1 – Nov 30, 2026Save Report"
+      },
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": true,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": "#F3F0E9",
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-saved",
+    "route": "/reporting/saved",
+    "viewport": "desktop",
+    "file": "evidence/reporting-saved-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/saved",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": null,
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": false,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": null,
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "reporting-saved",
+    "route": "/reporting/saved",
+    "viewport": "mobile",
+    "file": "evidence/reporting-saved-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Reports",
+      "path": "/reporting/saved",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "ReportsHow your business is doing — bookings, revenue, sales, and events."
+      },
+      "filter": null,
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": "rgb(255, 255, 255)",
+      "hasDateToolbar": false,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": null,
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": "#FFFFFF"
+    }
+  },
+  {
+    "label": "documents-workspace",
+    "route": "/documents",
+    "viewport": "desktop",
+    "file": "evidence/documents-workspace-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Documents",
+      "path": "/documents",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "DocumentsContracts, questionnaires, event orders, invoices, and files — one place to find anything."
+      },
+      "filter": null,
+      "toolbar": {
+        "bg": "rgb(255, 255, 255)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "allrecent"
+      },
+      "sectionLabels": [
+        {
+          "text": "Categories",
+          "bg": "rgb(220, 232, 224)"
+        },
+        {
+          "text": "All Documents (290)",
+          "bg": "rgb(220, 232, 224)"
+        }
+      ],
+      "cardBg": null,
+      "hasDateToolbar": false,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": null,
+      "toolbarBgHex": "#FFFFFF",
+      "sectionLabelHex": [
+        {
+          "text": "Categories",
+          "bg": "#DCE8E0"
+        },
+        {
+          "text": "All Documents (290)",
+          "bg": "#DCE8E0"
+        }
+      ],
+      "cardBgHex": null
+    }
+  },
+  {
+    "label": "documents-workspace",
+    "route": "/documents",
+    "viewport": "mobile",
+    "file": "evidence/documents-workspace-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Documents",
+      "path": "/documents",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "DocumentsContracts, questionnaires, event orders, invoices, and files — one place to find anything."
+      },
+      "filter": null,
+      "toolbar": {
+        "bg": "rgb(255, 255, 255)",
+        "borderLeft": "1px rgb(230, 227, 220)",
+        "borderTop": "rgb(230, 227, 220)",
+        "color": "rgb(36, 51, 43)",
+        "text": "allrecent"
+      },
+      "sectionLabels": [
+        {
+          "text": "Categories",
+          "bg": "rgb(220, 232, 224)"
+        },
+        {
+          "text": "All Documents (290)",
+          "bg": "rgb(220, 232, 224)"
+        }
+      ],
+      "cardBg": null,
+      "hasDateToolbar": false,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": null,
+      "toolbarBgHex": "#FFFFFF",
+      "sectionLabelHex": [
+        {
+          "text": "Categories",
+          "bg": "#DCE8E0"
+        },
+        {
+          "text": "All Documents (290)",
+          "bg": "#DCE8E0"
+        }
+      ],
+      "cardBgHex": null
+    }
+  },
+  {
+    "label": "library-documents",
+    "route": "/library/documents",
+    "viewport": "desktop",
+    "file": "evidence/library-documents-desktop.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Documents",
+      "path": "/library/documents",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or ev"
+      },
+      "filter": null,
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": null,
+      "hasDateToolbar": false,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": null,
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": null
+    }
+  },
+  {
+    "label": "library-documents",
+    "route": "/library/documents",
+    "viewport": "mobile",
+    "file": "evidence/library-documents-mobile.png",
+    "evidenceKind": "live-local",
+    "probe": {
+      "h1": "Documents",
+      "path": "/library/documents",
+      "intro": {
+        "bg": "rgb(220, 232, 224)",
+        "borderLeft": "5px rgb(68, 107, 86)",
+        "borderTop": "oklch(0.871488 0.0203351 154.69)",
+        "color": "rgb(36, 51, 43)",
+        "text": "DocumentsFiles you reuse across bookings — available to your whole venue, not tied to one lead or ev"
+      },
+      "filter": null,
+      "toolbar": null,
+      "sectionLabels": [],
+      "cardBg": null,
+      "hasDateToolbar": false,
+      "overflowX": false,
+      "bodyBg": "rgb(248, 247, 243)",
+      "bodyBgHex": "#F8F7F3",
+      "introBgHex": "#DCE8E0",
+      "introBorderLeft": "5px rgb(68, 107, 86)",
+      "filterBgHex": null,
+      "toolbarBgHex": null,
+      "sectionLabelHex": [],
+      "cardBgHex": null
+    }
+  },
+  {
+    "label": "interactions",
+    "evidenceKind": "live-interaction",
+    "bookingsUrl": "http://127.0.0.1:3000/reporting/bookings",
+    "contractsFilterClicked": true,
+    "documentsUrl": "http://127.0.0.1:3000/documents"
+  }
+]

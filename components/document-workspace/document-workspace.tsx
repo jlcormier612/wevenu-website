@@ -132,20 +132,22 @@ export function DocumentWorkspace({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="font-heading text-2xl font-medium text-heading">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
+    <div className="space-y-6" data-htc-phase10="documents-workspace">
+      <div className="htc-hospitality-intro htc-hospitality-intro-accent">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="font-heading text-2xl font-medium text-heading">{title}</h1>
+            {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
+          </div>
+          {uploadTarget && (
+            <WorkspaceUploadButton
+              entityType={uploadTarget.entityType}
+              entityId={uploadTarget.entityId}
+              venueId={uploadTarget.venueId}
+              onUploaded={(doc) => setDocuments((prev) => [doc, ...prev])}
+            />
+          )}
         </div>
-        {uploadTarget && (
-          <WorkspaceUploadButton
-            entityType={uploadTarget.entityType}
-            entityId={uploadTarget.entityId}
-            venueId={uploadTarget.venueId}
-            onUploaded={(doc) => setDocuments((prev) => [doc, ...prev])}
-          />
-        )}
       </div>
 
       {documents.length === 0 ? (
@@ -155,7 +157,7 @@ export function DocumentWorkspace({
           {/* Pinned Documents */}
           {pinningEnabled && pinned.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pinned</h2>
+              <h2 className="htc-hospitality-section-label">Pinned</h2>
               <div className="space-y-2">
                 {pinned.map((d) => (
                   <WorkspaceDocumentCard key={workspaceDocKey(d.docType, d.id)} doc={d} pinned onOpenPreview={openPreview} onOpenView={openView} onOpenVersionHistory={openHistory} onPinChange={(next) => handlePinChange(workspaceDocKey(d.docType, d.id), next)} pinningEnabled={pinningEnabled} />
@@ -166,7 +168,7 @@ export function DocumentWorkspace({
 
           {/* Document Categories — user-facing roll-up; hide empty groups */}
           <section className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h2>
+            <h2 className="htc-hospitality-section-label">Categories</h2>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" onClick={() => setCategory("all")}>
                 <Badge variant={category === "all" ? "default" : "outline"}>All ({documents.length})</Badge>
@@ -179,8 +181,8 @@ export function DocumentWorkspace({
             </div>
           </section>
 
-          {/* Search / Filter / Sort */}
-          <section className="flex flex-wrap items-center gap-2">
+          {/* Search / Filter / Sort — white operational toolbar (Option B) */}
+          <section className="htc-hospitality-toolbar flex flex-wrap items-center gap-2">
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search documents…" className="max-w-xs" />
             <Select value={status} onValueChange={(v) => setStatus(v as WorkspaceStatus | "all")}>
               <SelectTrigger className="w-auto"><SelectValue /></SelectTrigger>
@@ -197,9 +199,9 @@ export function DocumentWorkspace({
             </Select>
           </section>
 
-          {/* All Documents — single authoritative list */}
+          {/* All Documents — single authoritative list; rows stay white (no linen wrapper) */}
           <section className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="htc-hospitality-section-label">
               {category === "all" ? "All Documents" : category} ({filtered.length})
             </h2>
             {filtered.length === 0 ? (

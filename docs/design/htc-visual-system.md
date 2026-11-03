@@ -4,6 +4,7 @@
 **Dashboard Light-Mode Palette Refinement:** **GREEN / VISUALLY APPROVED / CLOSED**  
 **Authority:** Sadie Arch palette + Nexora interface craft (composition / hierarchy inspiration only).  
 **Token home:** `.htc-staff` in `app/globals.css` — do not invent a parallel theme.  
+**Color distribution rules (Phase 11D):** `docs/design/HTC-COLOR-DISTRIBUTION-RULES.md` — when to use white / linen / eucalyptus / calm blue / botanical / blush.  
 **Dashboard approval evidence:** `docs/qa/staff-light-canvas/stage2b/dashboard-palette-refine/` (desktop + mobile `01-top` … `05-reports` reviewed and approved).
 
 Hospitality pages prove the system first. Other screens expand only after visual approval. Dark-mode visual QA remains a **separate outstanding** workstream.
@@ -22,9 +23,11 @@ Hospitality pages prove the system first. Other screens expand only after visual
 | Blush | `#F7E9EB` (`--htc-soft-blush` / `--panel-blush`) | Dark charcoal |
 | Blush accent / dusty rose | `#D99A9E` (`--htc-blush` / `--htc-dusty-rose`) | Dark charcoal |
 | Warm neutral page canvas | `#F8F7F3` (`--htc-canvas`) | Dark charcoal |
+| Calm blue surface | `#EAF1F7` (`--htc-calm-blue`) | Dark charcoal |
 | White | `#FFFFFF` (`--card`) | Dark charcoal |
 | Body / secondary text | `#5F6F68` (`--muted-foreground`) | — |
 | Warm border | `#E6E3DC` (`--htc-border-warm`) | — |
+| Soft blue border | `#D5E1EB` (`--htc-border-calm`) | — |
 
 ### 1.2 Expanded shade families (coordinated — not a second theme)
 
@@ -47,8 +50,21 @@ Hospitality pages prove the system first. Other screens expand only after visual
 | Dusty rose | `--htc-dusty-rose` / `--htc-blush` | `#D99A9E` | Severity accents, chips (restrained) |
 | Soft rose | `--htc-soft-rose` | `#E8C5C8` | Narrow critical indicators (not full panels) |
 | Petal | `--htc-petal` | `#F0D8DB` | Soft rose mid-tone if needed |
-| Soft blush | `--htc-soft-blush` | `#F7E9EB` | Meaningful guidance / accent bands — **not** default task backgrounds |
+| Soft blush | `--htc-soft-blush` | `#F7E9EB` | Luv identity and intentional attention accents — **not** default task backgrounds; **not** every warning |
 | Pale blush | `--htc-blush-pale` | `#FBF6F7` | Rare whisper tint |
+
+**Calm blue (supporting — informational / scheduling)**
+
+Calm is a central HTC value. This family adds a quiet informational surface that complements botanical green, eucalyptus, warm canvas, and blush without replacing them. It must never feel like corporate SaaS blue, a hyperlink wash, a disabled state, or a status badge.
+
+| Shade | Token | Hex | Typical use |
+|-------|-------|-----|-------------|
+| Calm blue surface | `--htc-calm-blue` | `#EAF1F7` | Dominant pale informational panels (scheduling guidance, neutral calm support) |
+| Calm blue deep | `--htc-calm-blue-deep` | `#DFE9F1` | Subtle hierarchy within a calm-blue block (e.g. restrained side edge) |
+| Soft blue border | `--htc-border-calm` | `#D5E1EB` | Borders on calm-blue surfaces |
+| Calm accent | `--htc-calm-accent` | `#63819A` | Rare muted accent inside calm-blue contexts — **not** a primary action color |
+
+**Initial approved reference implementation:** Lead detail → Tour & follow-up → personalized scheduling-link block (`.htc-lead-tour-personal-link`). Evidence: `docs/qa/staff-light-canvas/lead-personal-link-blue-experiment/`. That block currently uses matching hex values scoped to the Lead surface; wiring these names into `.htc-staff` CSS variables is a **separate authorized token-governance step** — do not invent parallel blues elsewhere until authorized.
 
 **Warm neutrals**
 
@@ -63,16 +79,17 @@ Hospitality pages prove the system first. Other screens expand only after visual
 
 ### 1.3 Explicitly rejected accents
 
-Do **not** introduce: blue-gray, mist blue, champagne, pale sand, muted olive, rainbow pastels, or unrelated accent families. They were reviewed and rejected for HTC.
+Do **not** introduce: champagne, pale sand, muted olive, rainbow pastels, saturated “link” blues, icy cyan, or **any blue outside the approved calm-blue family** above. Earlier reviews rejected unspecified blue-gray / mist-blue *as a free accent family*; that rejection still applies to ad-hoc blues. The **documented calm-blue tokens** (§1.1–1.2) are the sole approved blue supporting direction.
 
 ### 1.4 Core rules
 
 - Do not replace locked base hex values.
-- Ordinary navigation, labels, and body text stay charcoal — never botanical green or blush “for brand.”
+- Ordinary navigation, labels, and body text stay charcoal — never botanical green, blush, or calm blue “for brand.”
 - Brand color belongs in meaningful surfaces, primary buttons, selected states, badges, and accents.
 - White text only on sufficiently dark botanical surfaces (e.g. primary buttons, selected filter chips).
 - No terracotta, burgundy, muddy olive, or generic gray-SaaS chrome.
-- **White is an important working surface, but not the only one.** Botanical greens, blush/rose, and warm neutrals provide coordinated variation and hierarchy.
+- **White is an important working surface, but not the only one.** Botanical greens, blush/rose, warm neutrals, and **calm blue (supporting)** provide coordinated variation and hierarchy.
+- **Calm blue does not replace** botanical primary, eucalyptus operational surfaces, blush/Luv identity, warm canvas, or semantic success / warning / overdue / destructive / error treatments.
 
 ---
 
@@ -87,13 +104,14 @@ Do **not** introduce: blue-gray, mist blue, champagne, pale sand, muted olive, r
 | Primary actions | Botanical `#446B56` + white text |
 | Selected states | Botanical fill + white text, or eucalyptus wash + dark label |
 | Accents / indicators | Soft rose, dusty rose, eucalyptus accent — narrow, not full-bleed |
-| Guidance / partner identity accents | Soft blush bands or chips — not every attention row |
+| Guidance / partner identity accents | Soft blush bands or chips — Luv identity and intentional attention; not every attention row; semantic meaning still takes precedence over pink |
+| Calm informational / scheduling support | Calm blue surface `#EAF1F7` (+ deep / border / accent as needed) — restrained supporting panels only |
 | Text | Charcoal `#24332B` / muted `#5F6F68` on all light surfaces |
 | Icons | Charcoal or muted; botanical tint allowed on **icons only** sparingly |
 
 ### Contrast
 
-- Dark charcoal on white, ivory, linen, eucalyptus, soft blush, green mist, botanical pale — required.
+- Dark charcoal on white, ivory, linen, eucalyptus, soft blush, green mist, botanical pale, **calm blue** — required.
 - White on botanical primary — required.
 - Do not place muted gray text on soft rose or dusty rose fills.
 - Preserve WCAG AA for body text on every hospitality surface used.
@@ -103,10 +121,11 @@ Do **not** introduce: blue-gray, mist blue, champagne, pale sand, muted olive, r
 | Color | Means | Does **not** mean |
 |-------|-------|-------------------|
 | Eucalyptus / soft greens | Structure, grouping, quiet positive atmosphere | “Paid,” “complete,” or success unless product already defines that chip |
-| Soft blush / soft rose | Brand accent, guidance, **restrained** critical indicator | Default overdue panel; destructive error banner |
+| Soft blush / soft rose | Luv identity, intentional attention accents, **restrained** critical indicator when product already defines it | Default overdue panel; automatic “every warning is pink”; destructive error banner |
 | Outstanding blush accent | Still-owed balance > 0 (money to collect) | Overdue / past-due status |
 | Botanical button | Primary action | Body brand coloring |
 | Warm neutrals | Depth between canvas and white | Semantic status |
+| Calm blue | Informational panels, scheduling guidance, neutral calm support | Warning, overdue, destructive, error, success, or primary action |
 
 ### Combining colored surfaces on one screen
 
@@ -114,7 +133,9 @@ Do **not** introduce: blue-gray, mist blue, champagne, pale sand, muted olive, r
 2. Prefer **accents** (left bar, thin top band, header strip) over full-card pastel fills for repeated rows.  
 3. Snapshot may use a **coordinated family** of soft greens / ivory — not four unrelated pastels.  
 4. Limit large blush surfaces to at most one intentional brand moment (e.g. Luv accent band), not a stack of pink cards.  
-5. Avoid painting every card a different pastel “just because.”
+5. Use calm blue **sparingly** for informational / scheduling support — not on every info card, and never as a second primary beside botanical.  
+6. Appropriate calm-blue neighbors: white primary cards, warm canvas page ground, eucalyptus section structure, botanical primary actions.  
+7. Avoid painting every card a different pastel “just because.”
 
 ---
 
@@ -129,7 +150,8 @@ Do **not** introduce: blue-gray, mist blue, champagne, pale sand, muted olive, r
 | Operational content | White surfaces | Tables, toolbars, catalog, forms |
 | Soft secondary | Ivory / linen / green mist | Quiet modules when white-on-white is too flat |
 | Secondary / grouping | Eucalyptus `#DCE8E0` | Table headers, parent majors, section header bands |
-| Attention / guidance | Soft blush accents or panels — **sparingly** | Meaningful guidance; not every list row |
+| Attention / Luv identity | Soft blush accents or panels — **sparingly** | Luv and intentional attention; not every list row |
+| Calm informational support | Calm blue `#EAF1F7` — **sparingly** | Scheduling / neutral guidance panels (see Lead personalized scheduling link) |
 | Primary action | Botanical `#446B56` + white text | Primary buttons, selected filter chips |
 
 Shell: white sidebar; dark nav labels/icons; active nav = eucalyptus wash + botanical left bar + **dark** label.
@@ -166,7 +188,7 @@ May use a richer coordinated set of soft greens, ivory/linen, and restrained blu
 | Snapshot Outstanding = 0 | Neutral white |
 | Reports | Quiet white |
 
-**Approved palette principles (Dashboard + system):** botanical greens, blush/rose, and warm neutrals only; locked base hex values unchanged; white remains important but not the only working surface; no blue-gray, mist blue, champagne, pale sand, or muted olive accent family.
+**Approved palette principles (Dashboard + system):** botanical greens, blush/rose, warm neutrals, and (where separately authorized) calm-blue supporting surfaces; locked base hex values unchanged; white remains important but not the only working surface; no champagne, pale sand, muted olive, or **ad-hoc** blue accent families outside §1.2 calm blue. Dashboard modules above remain as approved — calm blue was **not** applied to Dashboard in its closed refinement.
 
 ---
 
@@ -255,4 +277,5 @@ Guidance: `LibraryHowItWorks` / `LibraryDependencyNote` with `tone="blush" | "eu
 2. ~~Prove on **Clients** and **Offerings** (visually approved — locked)~~  
 3. ~~Dashboard light-mode palette refinement — **GREEN / VISUALLY APPROVED / CLOSED**~~  
 4. Later: Leads, Calendar, Templates, Contracts, Payments — same palette; page-appropriate density (separate authorization)  
-5. Dark-mode visual QA — **outstanding** (separate workstream; not implied by Dashboard light approval)  
+5. Calm blue supporting family — **documented / Lead personalized scheduling-link reference approved**; further page applications and CSS variable wiring require separate authorization  
+6. Dark-mode visual QA — **outstanding** (separate workstream; not implied by Dashboard light approval)  

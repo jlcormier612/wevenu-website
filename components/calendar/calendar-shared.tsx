@@ -318,7 +318,7 @@ export function FilterBar({
     filters.spaceId !== null;
 
   return (
-    <div className="space-y-2">
+    <div className="htc-calendar-filters" data-cal-filters="">
       <div className="flex flex-wrap items-center gap-1.5">
         {presentTaxonomy.map((key) => {
           const entry = legend.find((e) => e.key === key)!;
@@ -328,12 +328,12 @@ export function FilterBar({
               key={key}
               type="button"
               onClick={() => toggleTaxonomy(key)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                active ? "border-transparent bg-muted text-foreground" : "border-border text-muted-foreground opacity-50",
-              )}
+              data-taxonomy-chip=""
+              data-taxonomy-key={key}
+              data-active={active ? "true" : "false"}
+              aria-pressed={active}
             >
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: entry.dotColor }} />
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: entry.dotColor }} />
               {entry.label}
             </button>
           );
@@ -346,7 +346,6 @@ export function FilterBar({
             <select
               value={filters.staffId ?? ""}
               onChange={(e) => onChange({ ...filters, staffId: e.target.value || null })}
-              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
             >
               <option value="">Everyone</option>
               <option value={UNASSIGNED}>Unassigned</option>
@@ -358,7 +357,6 @@ export function FilterBar({
               aria-label="Space"
               value={filters.spaceId ?? ""}
               onChange={(e) => onChange({ ...filters, spaceId: e.target.value || null })}
-              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
             >
               <option value="">All spaces</option>
               {spaceOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
@@ -368,7 +366,7 @@ export function FilterBar({
             <button
               type="button"
               onClick={() => onChange({ types: null, staffId: null, spaceId: null, manualTypes: null })}
-              className="text-xs text-muted-foreground hover:text-foreground underline"
+              className="text-xs font-medium text-heading underline underline-offset-2 hover:text-foreground"
             >
               Clear filters
             </button>

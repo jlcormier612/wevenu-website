@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DESIGN PROPOSAL ONLY — Calendar mobile 375</title>
+  <link rel="stylesheet" href="./_proposal.css" />
+  <style>.mobile { max-width: 375px; }</style>
+</head>
+<body>
+  <div class="banner">DESIGN PROPOSAL ONLY — NOT LIVE APPLICATION</div>
+  <div class="page mobile">
+    <p class="caption">375px proposal. Eucalyptus intro + linen chrome; white month grid; protected taxonomy dots.</p>
+    <section class="intro">
+      <h1>Calendar</h1>
+      <p>Your venue’s schedule — events, appointments, holds, and blocked time.</p>
+      <div class="intro-actions">
+        <button class="btn btn-primary" type="button">+ Add Schedule Item</button>
+        <button class="btn btn-outline" type="button">Print / Export</button>
+      </div>
+    </section>
+    <div class="toolbar">
+      <div class="nav-group" style="width:100%;justify-content:space-between">
+        <button class="chip" type="button">‹</button>
+        <button class="chip active" type="button">Nov 2026</button>
+        <button class="chip" type="button">›</button>
+        <button class="chip" type="button">Today</button>
+      </div>
+      <div class="switcher" style="width:100%;justify-content:space-between">
+        <button class="chip active" type="button">Month</button>
+        <button class="chip" type="button">Week</button>
+        <button class="chip" type="button">Day</button>
+        <button class="chip" type="button">List</button>
+      </div>
+    </div>
+    <div class="filters">
+      <span class="filter on"><span class="dot" style="background:var(--cal-event)"></span> Event</span>
+      <span class="filter on"><span class="dot" style="background:var(--cal-tour)"></span> Tour</span>
+      <span class="filter on"><span class="dot" style="background:var(--cal-appointment)"></span> Appt</span>
+      <span class="filter on"><span class="dot" style="background:var(--cal-hold)"></span> Hold</span>
+    </div>
+    <div class="month">
+      <div class="weekdays"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+      <div class="days">
+        <div class="day out"></div><div class="day out"></div><div class="day out"></div><div class="day out"></div><div class="day out"></div><div class="day out"></div>
+        <div class="day"><div class="num">1</div></div>
+        <div class="day selected"><div class="num today">2</div><div class="dots"><span class="dot" style="background:var(--cal-tour)"></span></div></div>
+        <div class="day"><div class="num">3</div></div>
+        <div class="day"><div class="num">4</div></div>
+        <div class="day"><div class="num">5</div><div class="dots"><span class="dot" style="background:var(--cal-hold)"></span></div></div>
+        <div class="day"><div class="num">6</div></div>
+        <div class="day"><div class="num">7</div></div>
+      </div>
+    </div>
+    <aside class="schedule" style="margin-top:12px">
+      <h2>Monday, Nov 2</h2>
+      <div class="schedule-body">
+        <div class="item"><span class="dot" style="background:var(--cal-tour);margin-top:5px"></span><div><strong>Tour</strong><div>10:00 AM</div></div></div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>
