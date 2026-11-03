@@ -12,6 +12,7 @@ function read(rel: string) {
 }
 
 describe("Dashboard hospitality light mode", () => {
+  const css = read("app/globals.css");
   const page = read("app/(app)/dashboard/page.tsx");
   const shell = read("components/dashboard-system/dashboard-card-shell.tsx");
   const attention = read("components/dashboard-system/attention-list.tsx");
@@ -25,7 +26,7 @@ describe("Dashboard hospitality light mode", () => {
     assert.match(page, /space-y-4 sm:space-y-6/);
   });
 
-  it("gives Today's Focus an eucalyptus header band and Coming up linen surface", () => {
+  it("gives Today's Focus an eucalyptus header band and Coming up calm-blue guidance", () => {
     assert.match(attention, /headerBand/);
     assert.match(shell, /htc-eucalyptus-surface/);
     const focusIdx = page.indexOf('title="Today\'s Focus"');
@@ -33,28 +34,30 @@ describe("Dashboard hospitality light mode", () => {
     const comingIdx = page.indexOf('title="Coming up"');
     assert.ok(focusIdx >= 0 && focusBand > focusIdx && focusBand < comingIdx);
     assert.match(page.slice(comingIdx, comingIdx + 500), /headerBand="none"/);
-    assert.match(page.slice(comingIdx, comingIdx + 500), /htc-linen/);
+    assert.match(page.slice(comingIdx, comingIdx + 500), /htc-surface-guidance/);
   });
 
-  it("marks critical Focus with restrained soft-rose indicator — not full blush wash", () => {
+  it("marks critical Focus with soft-rose left strip; rows blush on hover with record-link titles", () => {
     assert.match(focusRow, /isCritical/);
     assert.match(focusRow, /htc-soft-rose/);
     assert.match(focusRow, /border-l-\[3px\]/);
     assert.match(focusRow, /htc-ivory/);
-    assert.doesNotMatch(focusRow, /bg-\[var\(--htc-soft-blush\)\]/);
+    assert.match(focusRow, /htc-focus-attention-row/);
+    assert.match(focusRow, /htc-record-link/);
+    assert.match(css, /\.htc-focus-attention-row:hover[\s\S]*--htc-soft-blush/);
     assert.match(focusRow, /severity === "critical"/);
     assert.match(focusRow, /text-warning-foreground/);
     assert.match(focusRow, /data-severity/);
   });
 
-  it("styles Luv with ivory body and blush accent — not full blush card or destructive mix", () => {
-    assert.match(luv, /bg-\[var\(--htc-ivory\)\]/);
+  it("styles Luv with white body and blush accent strip — not full blush card or destructive mix", () => {
+    assert.match(luv, /bg-card/);
     assert.match(luv, /data-luv-accent/);
     assert.match(luv, /data-luv-accent[\s\S]*?htc-soft-blush|htc-soft-blush[\s\S]*?data-luv-accent/);
     assert.doesNotMatch(luv, /border-rose/);
     assert.doesNotMatch(luv, /var\(--destructive\)/);
-    // Full-card blush fill removed — only the thin accent band may use soft blush.
     assert.doesNotMatch(luv, /Card className="[^"]*bg-\[var\(--htc-soft-blush\)\]/);
+    assert.doesNotMatch(luv, /bg-\[var\(--htc-ivory\)\]/);
     assert.doesNotMatch(luv, /text-primary/);
   });
 

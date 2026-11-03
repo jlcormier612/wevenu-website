@@ -2,27 +2,22 @@
 
 ## Tip currently queued
 
-**Commit:** `e29953dc2c9227f942ea4b59234217062e5f78bc` (Wave D)  
-**Deploy branch:** `sandbox-deploy/htc-rule-j-wave-d-a6855b6d`  
+**Commit:** `b67c220f98f933f0c7805e99ccd07e0d3257a391` (Wave E — Dashboard F/U)  
+**Deploy branch:** `sandbox-deploy/htc-rule-j-wave-e-58f01c2a`  
 **Actions:** (queued with this tip)
 
-### Wave D scope
+### Wave E scope
 
-- Library Documents empty → calm blue
-- Task titles + Templates catalog titles → record-link underline on hover/open
-- Task perspective pills: white → botanical when selected
-- Calendar: Tour chip eucalyptus; taxonomy dots 2×; Public Event Availability + Tour Scheduling eucalyptus header + eucalyptus left strip (linen guidance nest kept)
-- Setup BYB Add/Fresh → calm blue; quiet CTAs eucalyptus
-- Settings directory + Help article list + Feedback channel cards → soft blush with record-link titles
-- Feedback footer tip → calm blue
-- Reports Outstanding KPI → soft blush
+- Today's Focus rows: soft blush on hover; titles use `.htc-record-link` underline on hover/open
+- Luv card: white working body; keep soft-blush top accent strip
+- Coming up: calm-blue `.htc-surface-guidance` shell
 
-## Prior tip (Wave C — serving until Wave D succeeds)
+## Prior tip (Wave D — serving until Wave E succeeds)
 
-**Commit:** `8107d09be828db8a57baf21e54ab04532b06d02f`  
-**Deploy branch:** `sandbox-deploy/htc-rule-j-wave-c-8107d09b`  
-**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41719910037 — **success**  
-**Serving:** `data-dpl-id=8107d09b…` verified
+**Commit:** `0159ee8cc7335f6e98ecdc099babbd52f5196e58`  
+**Deploy branch:** `sandbox-deploy/htc-rule-j-wave-d-0159ee8c`  
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41724674497 — **success**  
+**Serving:** `data-dpl-id=0159ee8c…` verified
 
 ## Safety
 

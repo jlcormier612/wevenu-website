@@ -10,7 +10,7 @@ import type { LuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
 
 /**
  * Restrained Dashboard Luv card — interpretation only, not a second task list.
- * Ivory working surface + blush accent (not a full blush alert panel).
+ * White working surface + blush top accent strip (not a full blush alert panel).
  * Dismiss is only offered when luv_recommendations can persist it:
  * a Guide-gap / recommendation id, or a computed observation's stable id.
  */
@@ -49,7 +49,7 @@ export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
 
   return (
     <section>
-      <Card className="overflow-hidden rounded-[0.75rem] border-[color:var(--htc-border-warm)] bg-[var(--htc-ivory)] ring-0">
+      <Card className="overflow-hidden rounded-[0.75rem] border-[color:var(--htc-border-warm)] bg-card ring-0">
         <div
           className="h-1.5 w-full bg-[var(--htc-soft-blush)]"
           data-luv-accent=""
@@ -79,7 +79,7 @@ export function DashboardLuvEntryCard({ entry }: { entry: LuvDashboardEntry }) {
           )}
           <Link
             href={entry.actionHref}
-            className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:underline"
+            className="htc-record-link inline-flex items-center gap-1 text-xs font-medium"
           >
             {entry.actionLabel}
             <ChevronRight className="h-3 w-3" />

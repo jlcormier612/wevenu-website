@@ -156,7 +156,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           title="Coming up"
           description="Events in the next 30 days."
           headerBand="none"
-          className="htc-surface-working"
+          className="htc-surface-guidance"
           items={upcomingItems}
           getKey={(i) => i.id}
           emptyState={

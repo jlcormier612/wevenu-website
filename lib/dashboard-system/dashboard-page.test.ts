@@ -54,8 +54,8 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /Events in the next 30 days/);
   });
 
-  it("Coming up uses a white working shell (Phase 12 beige balance)", () => {
-    assert.match(page, /title="Coming up"[\s\S]*?className="htc-surface-working"/);
+  it("Coming up uses a calm-blue guidance shell", () => {
+    assert.match(page, /title="Coming up"[\s\S]*?className="htc-surface-guidance"/);
     assert.doesNotMatch(page, /title="Coming up"[\s\S]*?htc-linen/);
   });
 

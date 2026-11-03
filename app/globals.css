@@ -950,6 +950,12 @@ html:has(.htc-staff) [data-slot="card"] {
   text-decoration: underline;
 }
 
+/* Dashboard Today's Focus rows — soft blush on hover; titles underline via record-link */
+.htc-staff .htc-focus-attention-row:hover,
+.htc-staff .htc-focus-attention-row:focus-within {
+  background: var(--htc-soft-blush);
+}
+
 /*
  * Color Distribution Phase 5 — Task Center plate-clear reassurance
  * (full calm fill). Same locked tokens as Phase 4. Scoped to `.htc-staff`.

@@ -47,19 +47,19 @@ export function FocusAttentionRow({ item }: { item: ClassifiedItem }): ReactNode
     <div
       data-severity={severity ?? "default"}
       className={cn(
-        "relative flex items-start gap-2 py-3 -mx-2 pr-9 rounded-lg transition-colors",
+        "htc-focus-attention-row group relative flex items-start gap-2 py-3 -mx-2 pr-9 rounded-lg transition-colors",
         isCritical
-          ? "border-l-[3px] border-l-[var(--htc-soft-rose)] bg-[var(--htc-ivory)] pl-[calc(0.5rem-1px)] hover:bg-[var(--htc-warm-pale)]"
-          : "px-2 hover:bg-muted/40",
+          ? "border-l-[3px] border-l-[var(--htc-soft-rose)] bg-[var(--htc-ivory)] pl-[calc(0.5rem-1px)]"
+          : "px-2",
       )}
     >
       <Link
         href={item.href}
         data-testid="todays-focus-item-link"
-        className="min-w-0 flex-1 flex items-start justify-between gap-4"
+        className="htc-record-card-link min-w-0 flex-1 flex items-start justify-between gap-4"
       >
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="truncate text-sm font-medium text-foreground">{item.label}</p>
+          <p className="htc-record-link truncate text-sm font-medium">{item.label}</p>
           {item.detail && <p className="text-xs text-muted-foreground truncate">{item.detail}</p>}
         </div>
         {item.rightLabel && (

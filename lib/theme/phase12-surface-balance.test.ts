@@ -89,8 +89,8 @@ describe("Phase 12 — Automations", () => {
 describe("Phase 12 — Dashboard Coming up balance", () => {
   const page = read("app/(app)/dashboard/page.tsx");
 
-  it("Coming up is white working surface, not linen slab", () => {
-    assert.match(page, /title="Coming up"[\s\S]*?className="htc-surface-working"/);
+  it("Coming up is calm-blue guidance surface, not linen slab", () => {
+    assert.match(page, /title="Coming up"[\s\S]*?className="htc-surface-guidance"/);
     assert.doesNotMatch(page, /title="Coming up"[\s\S]*?--htc-linen/);
   });
 
