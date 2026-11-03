@@ -219,6 +219,7 @@ function KindPanel({
       : "default";
     return (
       <div className="space-y-4" data-testid={`questionnaire-kind-panel-${kind}`}>
+        <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-3 p-4">
         <BusinessAssetHeader
           compact
           whatIsThis="Planning form"
@@ -283,6 +284,7 @@ function KindPanel({
             </div>
           }
         />
+        </div>
         {sentLabel && <p className="text-xs text-muted-foreground">Last sent {sentLabel}</p>}
         {isChangesRequested && (
           <div className="rounded-sm border border-warning/40 bg-warning/10 p-3 text-sm">
@@ -326,51 +328,53 @@ function KindPanel({
 
   return (
     <div className="space-y-5" data-testid={`questionnaire-kind-panel-${kind}`}>
-      <BusinessAssetHeader
-        compact
-        whatIsThis="Planning form"
-        title={kindLabel(kind)}
-        status={<Badge variant={status === "sent" || status === "in_progress" ? "default" : "muted"}>{STATUS_LABEL[status] ?? "Draft"}</Badge>}
-        waitingOn={waitingOn}
-        lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-        relationship={eventName ? { name: eventName } : null}
-        primaryAction={
-          <div className="flex flex-wrap items-center gap-2">
-            {coupleEmail && (
-              <ShareDialog
-                trigger={(
-                  <Button type="button" size="sm" data-testid="questionnaire-send-entry">
-                    <Send className="mr-1 h-3.5 w-3.5" />
-                    {initial?.sentAt ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
-                  </Button>
-                )}
-                title={initial?.sentAt ? `Resend ${kindLabel(kind)}` : LIBRARY_LABELS.sendQuestionnaire}
-                recipient={shareRecipient}
-                whatHappensNext={sendConsequence}
-                defaultMessage={shareDefaultMessage}
-                sendLabel={initial?.sentAt ? "Send now" : "Send now"}
-                onSend={handleShareSend}
-                allowSchedule
-                onSchedule={handleSchedule}
-                scheduleLabel="Schedule send"
-                onSent={() => onApplied?.()}
-              />
-            )}
-            {canWithdrawAccess && (
-              <Button type="button" size="sm" variant="outline" onClick={handleWithdraw} disabled={withdrawing}>
-                {withdrawing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}
-                {LIBRARY_LABELS.stopClientAccess}
-              </Button>
-            )}
-          </div>
-        }
-      />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-3 p-4">
+        <BusinessAssetHeader
+          compact
+          whatIsThis="Planning form"
+          title={kindLabel(kind)}
+          status={<Badge variant={status === "sent" || status === "in_progress" ? "default" : "muted"}>{STATUS_LABEL[status] ?? "Draft"}</Badge>}
+          waitingOn={waitingOn}
+          lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+          relationship={eventName ? { name: eventName } : null}
+          primaryAction={
+            <div className="flex flex-wrap items-center gap-2">
+              {coupleEmail && (
+                <ShareDialog
+                  trigger={(
+                    <Button type="button" size="sm" data-testid="questionnaire-send-entry">
+                      <Send className="mr-1 h-3.5 w-3.5" />
+                      {initial?.sentAt ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
+                    </Button>
+                  )}
+                  title={initial?.sentAt ? `Resend ${kindLabel(kind)}` : LIBRARY_LABELS.sendQuestionnaire}
+                  recipient={shareRecipient}
+                  whatHappensNext={sendConsequence}
+                  defaultMessage={shareDefaultMessage}
+                  sendLabel={initial?.sentAt ? "Send now" : "Send now"}
+                  onSend={handleShareSend}
+                  allowSchedule
+                  onSchedule={handleSchedule}
+                  scheduleLabel="Schedule send"
+                  onSent={() => onApplied?.()}
+                />
+              )}
+              {canWithdrawAccess && (
+                <Button type="button" size="sm" variant="outline" onClick={handleWithdraw} disabled={withdrawing}>
+                  {withdrawing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}
+                  {LIBRARY_LABELS.stopClientAccess}
+                </Button>
+              )}
+            </div>
+          }
+        />
+      </div>
 
       <p className="text-sm text-muted-foreground">{master.description}</p>
 
       {pendingSchedule ? (
         <div
-          className="rounded-sm border border-border bg-muted/30 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2"
+          className="htc-surface-guidance-compact flex flex-wrap items-center justify-between gap-2 px-3 py-2.5"
           data-testid="questionnaire-scheduled-banner"
         >
           <p className="text-sm text-foreground">
@@ -404,9 +408,9 @@ function KindPanel({
         </div>
       ) : null}
 
-      <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
+      <div className="htc-surface-working space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">
+          <p className="htc-surface-guidance-compact px-2.5 py-1.5 text-xs text-muted-foreground">
             {status === "draft" || !initial
               ? "Draft — not visible to the client until you send."
               : status === "in_progress"
@@ -566,7 +570,7 @@ export function QuestionnaireFamilyPanel({
   return (
     <div className="space-y-4">
       <div
-        className="rounded-md border border-border/70 bg-muted/15 px-3 py-2 text-sm text-muted-foreground leading-relaxed"
+        className="htc-surface-guidance px-3 py-2 text-sm leading-relaxed text-muted-foreground"
         data-testid="questionnaire-delivery-guidance"
       >
         {"Manage questionnaire delivery by sending immediately or schedule sending them below. If they have already been attached to tasks or requested elsewhere, this step can be skipped or used to resend them if desired."}
@@ -607,7 +611,7 @@ export function QuestionnaireFamilyPanel({
       </div>
       <p className="text-xs text-muted-foreground" data-testid="questionnaire-create-in-templates-guidance">
         Want to create another questionnaire? Go to{" "}
-        <Link href="/library/questionnaire-templates" className="underline underline-offset-2 text-heading">
+        <Link href="/library/questionnaire-templates" className="htc-record-link font-medium">
           Questionnaires &amp; Feedback
         </Link>{" "}
         in your Templates tab. New questionnaires you create there will appear here as additional sending options.

@@ -334,26 +334,13 @@ export function EventSetupPanel({
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card px-4 py-4" data-testid="event-setup-panel" id="event-setup">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section className="space-y-3" data-testid="event-setup-panel" id="event-setup">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent flex flex-wrap items-start justify-between gap-3 p-4">
         <div>
           <h2 className="text-base font-medium text-heading">Event setup</h2>
           {usingProfile ? (
-            <>
-              <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Review planning, timeline, vendors, and floor plans for this event, then release
-                the prepared experience to the client portal. Invite the client separately when
-                you&apos;re ready. Questionnaires use authorized send when staff choose — scheduled or immediate. Inventory selection and Event Orders are separate workflows found on the Inventory &amp; Event Order card — not part of Setup.
-              </p>
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {decisionsComplete
-                ? "Review included areas below. Edit if needed, then release to the client portal. Invite the client separately."
-                : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
-            </p>
-          )}
+            <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
+          ) : null}
           <p className="mt-1 text-xs text-muted-foreground">
             {counts.needsDecision} need a decision
             {" · "}
@@ -369,6 +356,22 @@ export function EventSetupPanel({
           </Button>
         ) : null}
       </div>
+      <div className="htc-surface-guidance space-y-1 px-4 py-3" data-testid="event-setup-orientation">
+        {usingProfile ? (
+          <p className="text-sm text-muted-foreground">
+            Review planning, timeline, vendors, and floor plans for this event, then release
+            the prepared experience to the client portal. Invite the client separately when
+            you&apos;re ready. Questionnaires use authorized send when staff choose — scheduled or immediate. Inventory selection and Event Orders are separate workflows found on the Inventory &amp; Event Order card — not part of Setup.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {decisionsComplete
+              ? "Review included areas below. Edit if needed, then release to the client portal. Invite the client separately."
+              : "Decide Set up or Skip for each area. A capability being available does not mean this event must use it."}
+          </p>
+        )}
+      </div>
+      <div className="space-y-3 rounded-lg border border-border bg-card px-4 py-4">
       {clientId ? (
         <div
           className="rounded-lg border border-border bg-muted/30 px-3 py-3 space-y-3"
@@ -561,6 +564,7 @@ export function EventSetupPanel({
           clientEmail={clientEmail}
         />
       ) : null}
+      </div>
       <EventPlanningSetupEditor
         open={planningEditorOpen}
         onOpenChange={setPlanningEditorOpen}

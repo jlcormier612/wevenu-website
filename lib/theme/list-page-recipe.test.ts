@@ -163,4 +163,31 @@ describe("List-page recipe — priority pages", () => {
     assert.match(inbox, /htc-record-link/);
     assert.match(inbox, /bg-card pl-8/);
   });
+
+  it("Wave B — internal workspace guidance shells and title cards", () => {
+    const questionnaires = read("components/events/questionnaire-family-panel.tsx");
+    const eventSetup = read("components/events/event-setup-panel.tsx");
+    const inventory = read("components/event-inventory/event-inventory-panel.tsx");
+    const support = read("components/portal/portal-link-widget.tsx");
+    const eo = read("components/event-orders/event-order-panel.tsx");
+    const guide = read("components/guide/venue-guide-editor.tsx");
+    const assetHeader = read("components/business-assets/asset-header.tsx");
+
+    assert.match(questionnaires, /htc-surface-guidance/);
+    assert.match(questionnaires, /questionnaire-delivery-guidance/);
+    assert.match(questionnaires, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.match(eventSetup, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.match(eventSetup, /event-setup-orientation/);
+    assert.match(eventSetup, /htc-surface-guidance/);
+    assert.match(inventory, /inventory-share-instructions[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*inventory-share-instructions/);
+    assert.match(inventory, /inventory-visibility-disclosure/);
+    assert.match(inventory, /htc-surface-guidance/);
+    assert.match(support, /htc-surface-guidance/);
+    assert.match(support, /portal-support-access/);
+    assert.match(eo, /eo-couple-choice-group/);
+    assert.match(eo, /htc-surface-guidance/);
+    assert.match(guide, /htc-venue-guide-orientation/);
+    assert.match(guide, /htc-badge-active/);
+    assert.match(assetHeader, /htc-record-link/);
+  });
 });

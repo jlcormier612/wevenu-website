@@ -264,7 +264,7 @@ export function PortalLinkWidget({
       )}
 
       {/* Temporary support access — only usable while the client has an active grant */}
-      <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2">
+      <div className="htc-surface-guidance space-y-2 p-4" data-testid="portal-support-access">
         <div className="flex items-center gap-1.5">
           <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
           <p className="text-xs font-semibold text-heading">Support Access</p>

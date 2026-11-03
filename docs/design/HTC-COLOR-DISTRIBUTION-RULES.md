@@ -1,6 +1,7 @@
 # HTC Color Distribution Rules
 
-**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering  
+**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering + Rule J Waves A/B  
+
 **Authority:** Approved HTC palette + hospitality redesign Phases 1–11D  
 **Token home:** `.htc-staff` in `app/globals.css`  
 **Companion:** `docs/design/htc-visual-system.md` (locked hex values and Dashboard/Clients/Offerings approvals)
@@ -146,6 +147,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 **Guidance must read as calm blue**, including Setup Hub orientation (“Jennifer, here’s what helps…”), ready-declared notices, Bring-Your-Business / HoneyBook how-to panels, migration guidance, Automations help, empty informational panels, and Task Center informational callouts. When informational copy is orphaned on the canvas, wrap it in a calm-blue shell — do not invent blue boxes for every paragraph.
 
 **Exceptions:** Calendar, Reports, Messaging inbox, and dense open workspaces keep specialized body layouts. They still use white title cards + botanical strip, white search/toolbars, record-link names, botanical primary actions, blush for true attention, eucalyptus for quiet grouping chips, and calm blue for real guidance/empty info.
+
+**Wave B (internal / detail workspaces):** Questionnaires delivery guidance + kind title cards; Event setup title + orientation guidance + white working body; Event Inventory share how-to + Venue-only visibility disclosure; Support Access; Event Order couple-choice constraint cards; Venue Guide Complete chips via `.htc-badge-active`; BusinessAssetHeader relationship links via `.htc-record-link`. Venue Guide orientation already uses calm blue via `.htc-venue-guide-orientation`.
 
 ---
 

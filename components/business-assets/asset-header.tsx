@@ -84,7 +84,13 @@ export function BusinessAssetHeader({
             {relationship && (
               <>
                 <span className="text-border">·</span>
-                {relationship.href ? <Link href={relationship.href} className="hover:text-primary">{relationship.name}</Link> : <span>{relationship.name}</span>}
+                {relationship.href ? (
+                  <Link href={relationship.href} className="htc-record-link">
+                    {relationship.name}
+                  </Link>
+                ) : (
+                  <span>{relationship.name}</span>
+                )}
               </>
             )}
           </div>

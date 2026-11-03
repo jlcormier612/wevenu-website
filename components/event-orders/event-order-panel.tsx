@@ -204,7 +204,7 @@ function useCoupleChoicePreview(eventOrder: EventOrderWithDetails | null, choice
 
 function CoupleChoiceGroupCard({ group, showSelected }: { group: CoupleGroup; showSelected: boolean }) {
   return (
-    <li className="rounded-sm border border-dashed border-border p-3 space-y-1.5" data-testid="eo-couple-choice-group" data-group-id={group.id}>
+    <li className="htc-surface-guidance space-y-1.5 p-3" data-testid="eo-couple-choice-group" data-group-id={group.id}>
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Couple chooses</span>
         <span className="text-sm font-medium text-heading">{group.name}</span>

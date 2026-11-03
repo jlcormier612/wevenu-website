@@ -395,7 +395,10 @@ export function EventInventoryPanel({
             </div>
           )}
         />
-        <div className="space-y-1 text-xs text-muted-foreground -mt-1" data-testid="inventory-share-instructions">
+        <div
+          className="htc-surface-guidance -mt-1 space-y-1 px-3 py-2.5 text-xs text-muted-foreground"
+          data-testid="inventory-share-instructions"
+        >
           <p>
             <span className="font-medium text-foreground">Share inventory</span> emails the couple a
             focused Inventory link. If any Additional item is marked{" "}
@@ -422,7 +425,7 @@ export function EventInventoryPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         <p
-          className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
+          className="htc-surface-guidance px-3 py-2 text-xs text-muted-foreground"
           data-testid="inventory-visibility-disclosure"
         >
           {INVENTORY_VISIBILITY_DISCLOSURE}

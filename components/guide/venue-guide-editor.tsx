@@ -277,7 +277,7 @@ function SectionHeader({
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-semibold text-heading">{section.title}</p>
           {isFilled
-            ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-emerald-700 border-emerald-200 bg-emerald-50">✓ Complete</Badge>
+            ? <Badge variant="outline" className="htc-badge-active text-[10px] py-0 px-1.5 font-medium">✓ Complete</Badge>
             : <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-muted-foreground">Empty</Badge>
           }
         </div>
@@ -865,7 +865,7 @@ function StorySection({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-heading">Our Story</p>
             {isFilled
-              ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-emerald-700 border-emerald-200 bg-emerald-50">✓ Complete</Badge>
+              ? <Badge variant="outline" className="htc-badge-active text-[10px] py-0 px-1.5 font-medium">✓ Complete</Badge>
               : <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-medium text-muted-foreground">Empty</Badge>
             }
           </div>
