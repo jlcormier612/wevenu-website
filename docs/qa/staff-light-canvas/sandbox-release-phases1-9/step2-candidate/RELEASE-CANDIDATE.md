@@ -5,7 +5,7 @@
 | Worktree | `/Users/jensmac/Developer/htc-visual-p1-9-release` |
 | Branch | `sandbox-deploy/visual-phases-1-9` |
 | Baseline SHA | `cf84a4ee98eedc3d630737478e97ffecad9c519d` |
-| Candidate SHA | _(filled after local commit)_ |
+| Candidate SHA | ae7e650aa8342e1ff4d76933d6c33fd735b6a286 |
 | Original tree | `/Users/jensmac/Developer/wevenu-website` @ `69cacab8508c40f4d4716b552f2b88e831816ca3` — dirty preserved |
 | Changed source files | 30 modified + 11 new (helper + tests) + surgical CSS |
 | Evidence docs | this directory |
