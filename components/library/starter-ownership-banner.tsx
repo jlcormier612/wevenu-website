@@ -46,7 +46,7 @@ export function StarterOwnershipBanner({
 
   return (
     <div
-      className="rounded-md border border-border bg-muted/30 px-3 py-3 space-y-2"
+      className="htc-surface-guidance space-y-2 px-3 py-3"
       data-testid="starter-ownership-banner"
     >
       <p className="text-sm font-medium text-heading">Hello to Cheers starter</p>

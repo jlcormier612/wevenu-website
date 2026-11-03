@@ -10,11 +10,13 @@ export const metadata: Metadata = { title: "Change password" };
  */
 export default function ChangePasswordPage() {
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Change password"
-        description="Choose a new password for your Hello to Cheers sign-in. You’ll stay signed in after it updates."
-      />
+    <div className="htc-hospitality-page space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Change password"
+          description="Choose a new password for your Hello to Cheers sign-in. You’ll stay signed in after it updates."
+        />
+      </div>
       <ChangePasswordForm />
     </div>
   );

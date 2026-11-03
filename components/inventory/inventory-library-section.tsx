@@ -101,7 +101,7 @@ export function InventoryLibrarySection({ initialItems }: { initialItems: Invent
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-10 text-center space-y-3">
+      <div className="htc-surface-guidance rounded-xl border-dashed py-10 text-center space-y-3">
         <Package className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No inventory yet</p>
         <p className="text-xs text-muted-foreground">Tables, chairs, decor, and anything else you reuse across bookings.</p>
@@ -111,7 +111,7 @@ export function InventoryLibrarySection({ initialItems }: { initialItems: Invent
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
+      <p className="htc-surface-guidance-compact px-3 py-2 text-xs text-muted-foreground">
         Catalog items are venue inventory — editing never sends anything to a client.
       </p>
       {active.length === 0 ? (

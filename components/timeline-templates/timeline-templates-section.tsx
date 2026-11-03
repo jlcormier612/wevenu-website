@@ -137,7 +137,7 @@ function UseTimelineSheet({
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
               <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
             </div>
-            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+            <ul className="htc-surface-guidance-compact list-disc space-y-1.5 px-3 py-2.5 pl-8 text-sm text-muted-foreground">
               <li>Adds this template&apos;s activities to the event&apos;s Timeline.</li>
               <li>If the Timeline already has items, these are added alongside them.</li>
               <li>Does not send email, SMS, or portal notifications.</li>

@@ -195,9 +195,9 @@ export function ReminderCadenceSection({
         are resolved. These options control how often reminders fire relative to each obligation
         due date — not relative to booking.
       </p>
-      <p className="text-xs text-muted-foreground rounded-sm border border-border bg-muted/30 px-3 py-2">
+      <p className="htc-surface-guidance-compact px-3 py-2 text-xs text-muted-foreground">
         Payment due dates themselves (At booking, days before the event, etc.) are set in the{" "}
-        <Link href="/payments/new" className="underline underline-offset-2 text-heading">
+        <Link href="/payments/new" className="htc-record-link font-medium">
           Payment Plan Builder
         </Link>
         . Reminder cadence never invents a booking date.

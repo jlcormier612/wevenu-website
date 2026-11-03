@@ -61,7 +61,7 @@ const TONE_CLASS: Record<TextingPanelTone, string> = {
 function TextingOrientation() {
   return (
     <div
-      className="rounded-lg border border-border bg-muted/20 px-4 py-3.5 space-y-3"
+      className="htc-surface-guidance space-y-3 px-4 py-3.5"
       data-testid="texting-setup-orientation"
     >
       <div className="space-y-1">
@@ -360,7 +360,7 @@ export function TextMessagingSetupSection({
         <TextingOrientation />
 
         {!canConfigure && (
-          <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          <p className="htc-surface-guidance-compact px-3 py-2 text-xs text-muted-foreground">
             Only a venue owner or manager can enable or change text messaging setup.
             You can still view the current status below.
           </p>

@@ -1,6 +1,6 @@
 # HTC Color Distribution Rules
 
-**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering + Rule J Waves A/B  
+**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering + Rule J Waves A/B/C  
 
 **Authority:** Approved HTC palette + hospitality redesign Phases 1–11D  
 **Token home:** `.htc-staff` in `app/globals.css`  
@@ -149,6 +149,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 **Exceptions:** Calendar, Reports, Messaging inbox, and dense open workspaces keep specialized body layouts. They still use white title cards + botanical strip, white search/toolbars, record-link names, botanical primary actions, blush for true attention, eucalyptus for quiet grouping chips, and calm blue for real guidance/empty info.
 
 **Wave B (internal / detail workspaces):** Questionnaires delivery guidance + kind title cards; Event setup title + orientation guidance + white working body; Event Inventory share how-to + Venue-only visibility disclosure; Support Access; Event Order couple-choice constraint cards; Venue Guide Complete chips via `.htc-badge-active`; BusinessAssetHeader relationship links via `.htc-record-link`. Venue Guide orientation already uses calm blue via `.htc-venue-guide-orientation`.
+
+**Wave C (mechanical remaining-staff sweep):** Reports white title (drop eucalyptus intro fill); Settings how-to / before-you-start / email intake / texting orientation / reminder cadence / website share+embed / migration guidance / starter ownership → calm blue; inquiry-form field editor → white working; Contracts/Payments/Packages/Inventory/Offerings/Documents/Saved Reports informational empties → calm blue; EO overview white working + record-links; Lead Capture + Change password white title cards; Library apply-template consequence notes → compact guidance. Payment Plan Builder totals and invoice drift banners stay muted/semantic (not guidance).
 
 ---
 

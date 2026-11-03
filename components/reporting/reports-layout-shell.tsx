@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 export function ReportsLayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="space-y-6" data-htc-phase10="reporting">
-      <div className="htc-hospitality-intro htc-hospitality-intro-accent">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Reports"
           description="How your business is doing — bookings, revenue, sales, and events."

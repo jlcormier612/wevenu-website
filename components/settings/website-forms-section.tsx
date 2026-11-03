@@ -80,7 +80,7 @@ export function WebsiteFormsSection({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+      <div className="htc-surface-guidance space-y-3 p-4">
         <div className="space-y-1">
           <p className="text-sm font-medium text-heading">Direct link</p>
           <p className="text-xs text-muted-foreground">Share this URL directly — email signatures, QR codes, social media.</p>
@@ -111,7 +111,7 @@ export function WebsiteFormsSection({
       </div>
 
       {inquiryFormSettings && (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <div className="htc-surface-working space-y-3 p-4">
           <div className="space-y-1">
             <p className="text-sm font-medium text-heading">Inquiry form fields</p>
             <p className="text-xs text-muted-foreground">Control which fields appear on your public inquiry form and how preferred event dates work.</p>
@@ -130,7 +130,7 @@ export function WebsiteFormsSection({
         </div>
       )}
 
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+      <div className="htc-surface-guidance space-y-3 p-4">
         <div className="space-y-1">
           <p className="text-sm font-medium text-heading">Website embed</p>
           <p className="text-xs text-muted-foreground">Paste this snippet into your website HTML to embed the form inline.</p>

@@ -190,4 +190,32 @@ describe("List-page recipe — priority pages", () => {
     assert.match(guide, /htc-badge-active/);
     assert.match(assetHeader, /htc-record-link/);
   });
+
+  it("Wave C — remaining staff guidance shells, empties, and Reports white title", () => {
+    const reports = read("components/reporting/reports-layout-shell.tsx");
+    const texting = read("components/settings/text-messaging-setup-section.tsx");
+    const email = read("components/settings/email-intake-section.tsx");
+    const stripe = read("components/settings/stripe-connect-section.tsx");
+    const starter = read("components/library/starter-ownership-banner.tsx");
+    const contracts = read("components/contracts/contract-list.tsx");
+    const payments = read("components/payments/payment-schedule-list.tsx");
+    const eo = read("components/event-orders/event-order-panel.tsx");
+    const website = read("components/settings/website-forms-section.tsx");
+    const leadCapture = read("app/(app)/setup-hub/lead-capture/page.tsx");
+
+    assert.match(reports, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.doesNotMatch(reports, /htc-hospitality-intro htc-hospitality-intro-accent/);
+    assert.match(texting, /texting-setup-orientation[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*texting-setup-orientation/);
+    assert.match(email, /htc-surface-guidance/);
+    assert.match(stripe, /htc-surface-guidance/);
+    assert.match(starter, /htc-surface-guidance/);
+    assert.match(contracts, /htc-surface-guidance/);
+    assert.match(payments, /htc-surface-guidance/);
+    assert.match(eo, /eo-overview/);
+    assert.match(eo, /htc-record-link/);
+    assert.match(eo, /bg-card px-4 py-3/);
+    assert.match(website, /htc-surface-guidance/);
+    assert.match(website, /htc-surface-working/);
+    assert.match(leadCapture, /htc-hospitality-heading htc-hospitality-intro-accent/);
+  });
 });

@@ -189,7 +189,7 @@ export function NotificationsSection({
         </p>
       ) : null}
 
-      <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+      <div className="htc-surface-guidance space-y-3 p-4">
         <div>
           <p className="text-sm font-medium text-heading">Send reminders now</p>
           <p className="text-xs text-muted-foreground mt-0.5">

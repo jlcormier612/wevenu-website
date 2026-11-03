@@ -39,8 +39,9 @@ describe("Color Distribution Phase 10 — Reporting + Documents hospitality", ()
     assert.match(css, /--htc-botanical:\s*#446b56/i);
   });
 
-  it("Reports shell shares accented eucalyptus intro without changing copy", () => {
-    assert.match(shell, /htc-hospitality-intro htc-hospitality-intro-accent/);
+  it("Reports shell uses white title + botanical strip without changing copy", () => {
+    assert.match(shell, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.doesNotMatch(shell, /htc-hospitality-intro htc-hospitality-intro-accent/);
     assert.match(shell, /data-htc-phase10="reporting"/);
     assert.match(shell, /How your business is doing — bookings, revenue, sales, and events\./);
     assert.match(shell, /<ReportTabs/);

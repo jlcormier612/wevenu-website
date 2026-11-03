@@ -41,7 +41,7 @@ export function SavedReportList({ reports }: { reports: SavedReport[] }) {
 
   if (reports.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+      <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-sm border-dashed py-16 text-center">
         <p className="font-heading text-lg font-medium text-heading">No saved reports yet</p>
         <p className="mt-1 text-sm text-muted-foreground">Open any report in Reporting and click &quot;Save Report&quot; to keep a view you come back to often.</p>
       </div>

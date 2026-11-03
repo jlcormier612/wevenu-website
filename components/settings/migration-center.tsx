@@ -920,7 +920,7 @@ export function MigrationCenter({
             </RadioGroup>
           </div>
 
-          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <div className="htc-surface-guidance space-y-1 px-3 py-2.5">
             <p className="text-sm font-medium text-heading">{guidance.headline}</p>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{guidance.body}</p>
           </div>
@@ -936,7 +936,7 @@ export function MigrationCenter({
           </div>
 
           {entityType === "active_commitment" ? (
-            <div className="space-y-3 rounded-lg border border-border bg-muted/20 px-3 py-3">
+            <div className="htc-surface-guidance space-y-3 px-3 py-3">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-heading">
                   Booked-event finances — invoice, payments, signed agreement

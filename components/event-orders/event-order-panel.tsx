@@ -51,6 +51,7 @@ import type { Invoice } from "@/lib/invoices/types";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import type { Offering } from "@/lib/offerings/types";
 import type { Package, PackageWithItems } from "@/lib/packages/types";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const STATUS_VARIANT: Record<EventOrderDisplayStatus, "outline" | "accent" | "muted"> = {
@@ -835,12 +836,26 @@ export function EventOrderPanel({
       </CardHeader>
       <CardContent className="space-y-6">
         {(overview || clientName || venueName) && (
-          <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm" data-testid="eo-overview">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-border bg-card px-4 py-3 text-sm" data-testid="eo-overview">
             {(overview?.eventName || clientName) && (
-              <div><span className="text-muted-foreground">Event </span><span className="font-medium text-foreground">{overview?.eventName || clientName}</span></div>
+              <div>
+                <span className="text-muted-foreground">Event </span>
+                {eventId ? (
+                  <Link href={`/events/${eventId}`} className="htc-record-link font-medium">{overview?.eventName || clientName}</Link>
+                ) : (
+                  <span className="font-medium text-foreground">{overview?.eventName || clientName}</span>
+                )}
+              </div>
             )}
             {clientName && (
-              <div><span className="text-muted-foreground">Client </span><span className="font-medium text-foreground">{clientName}</span></div>
+              <div>
+                <span className="text-muted-foreground">Client </span>
+                {(clientId || planningClientId) ? (
+                  <Link href={`/clients/${clientId || planningClientId}`} className="htc-record-link font-medium">{clientName}</Link>
+                ) : (
+                  <span className="font-medium text-foreground">{clientName}</span>
+                )}
+              </div>
             )}
             {overview?.eventDate && (
               <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>

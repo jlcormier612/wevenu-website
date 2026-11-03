@@ -87,7 +87,7 @@ export function EmailIntakeSection({
   if (!leadEmailAddress) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+    <div className="htc-surface-guidance space-y-4 p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-heading">Email intake</p>

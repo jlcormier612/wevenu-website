@@ -42,11 +42,13 @@ export default async function LeadCaptureSetupPage() {
   const canEditInquiryForm = role === "owner" || role === "manager";
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Lead Capture"
-        description="Bring inquiries from the places couples already find you."
-      />
+    <div className="htc-hospitality-page space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Lead Capture"
+          description="Bring inquiries from the places couples already find you."
+        />
+      </div>
       <LeadCaptureStage
         embedKey={venue.embedKey}
         appUrl={appUrl}

@@ -261,7 +261,7 @@ export function QuickBooksConnectSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+        <div className="htc-surface-guidance px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">Before you start: </span>
             Make sure you&apos;re a QuickBooks Primary Admin or Company Admin and know which QuickBooks company you want to connect.

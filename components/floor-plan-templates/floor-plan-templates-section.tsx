@@ -152,7 +152,7 @@ function UseFloorPlanSheet({
               <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
               <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
             </div>
-            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+            <ul className="htc-surface-guidance-compact list-disc space-y-1.5 px-3 py-2.5 pl-8 text-sm text-muted-foreground">
               <li>Creates a new floor plan on the event, starting from this layout.</li>
               <li>Your reusable template is never changed by editing the new copy.</li>
               <li>Does not send email, SMS, or portal notifications.</li>

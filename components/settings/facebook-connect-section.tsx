@@ -512,7 +512,7 @@ export function FacebookConnectSection({
           {connectUrlLoading ? (
             <p className="text-sm text-muted-foreground">Preparing Facebook Connect…</p>
           ) : !isConfigured ? (
-            <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="htc-surface-guidance p-4">
               <p className="text-sm text-muted-foreground">
                 Facebook / Instagram Lead Ads isn&apos;t available for your account yet. Contact support to get this
                 connected.
@@ -660,7 +660,7 @@ export function FacebookConnectSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+        <div className="htc-surface-guidance px-3 py-2.5">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">Before you start: </span>
             Make sure you have access to the correct Facebook Page and know which Lead Ads forms should send leads into Hello to Cheers.

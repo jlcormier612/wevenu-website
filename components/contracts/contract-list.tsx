@@ -82,7 +82,7 @@ export function ContractList({
       </div>
 
       {contracts.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-xl border-dashed py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <FileText className="h-5 w-5" />
           </span>

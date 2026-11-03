@@ -147,7 +147,7 @@ export const OfferingsLibrarySection = React.forwardRef<
       </div>
 
       {listRows.length === 0 ? (
-        <div className="htc-hospitality-elevated border-dashed py-12 text-center text-sm text-muted-foreground">
+        <div className="htc-surface-guidance border-dashed py-12 text-center text-sm text-muted-foreground">
           No offerings yet. Add a service category, then major choices and the items that belong under them.
         </div>
       ) : (

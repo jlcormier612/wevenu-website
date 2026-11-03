@@ -117,7 +117,7 @@ export function PackageList({
         <div className="flex justify-end">
           <StarterMenu missingKeys={missingStarterKeys} />
         </div>
-        <div className="rounded-sm border border-dashed border-border py-16 text-center">
+        <div className="htc-surface-guidance rounded-sm border-dashed py-16 text-center">
           <p className="text-sm font-medium text-heading">No packages yet</p>
           <p className="text-xs text-muted-foreground mt-1">
             Add your venue offerings, or restore Hello to Cheers starters to customize.

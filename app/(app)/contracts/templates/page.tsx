@@ -13,17 +13,19 @@ export default async function TemplatesPage() {
   await ensureContractStartersForCurrentVenue();
   const templates = await getTemplates(true);
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Contract Templates"
-        description="Reusable agreements with event details filled in from Hello to Cheers — Customize a starter to create your venue’s editable copy."
-        actions={
-          <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
-        }
-      />
+    <div className="htc-hospitality-page space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Contract Templates"
+          description="Reusable agreements with event details filled in from Hello to Cheers — Customize a starter to create your venue’s editable copy."
+          actions={
+            <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
+          }
+        />
+      </div>
 
       {templates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-sm border-dashed py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No templates yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
             Create a template, or refresh to load the Wedding Venue Agreement starter.
