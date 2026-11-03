@@ -51,11 +51,13 @@ export default async function BusinessBrandSettingsPage() {
     : null;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Business & Brand"
-        description="Your venue information, appearance, owners, and public-facing details."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Business & Brand"
+          description="Your venue information, appearance, owners, and public-facing details."
+        />
+      </div>
       <SettingsTabs />
       {settings ? (
         <VenueSettings

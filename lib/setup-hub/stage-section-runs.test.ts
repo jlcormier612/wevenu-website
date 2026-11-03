@@ -101,7 +101,9 @@ describe("Phase 9 Setup Hub + Settings structural seams", () => {
     assert.match(settings, /data-htc-phase9="settings-directory"/);
     assert.match(settings, /htc-settings-directory-icon/);
     assert.match(settings, /bg-card p-5/);
-    assert.doesNotMatch(settings, /htc-hospitality-intro|htc-settings-linen|p9b-settings-linen/);
+    assert.match(settings, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.doesNotMatch(settings, /className="htc-hospitality-intro"/);
+    assert.doesNotMatch(settings, /htc-settings-linen|p9b-settings-linen/);
     const hrefs = [
       "/settings/business",
       "/settings/leads",

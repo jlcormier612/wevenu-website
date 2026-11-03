@@ -40,10 +40,19 @@ export async function SpotPatternRecommendationsPanel({
 
   return (
     <section
-      className="rounded-xl border border-border/70 bg-card px-4 py-1"
+      className="overflow-hidden rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-[var(--htc-linen)]"
       aria-label="Luv patterns"
+      data-luv-spot-panel
     >
-      <RecommendationsPanel recommendations={recommendations} />
+      {/* Restrained Luv identity — blush accent, not a full-panel pink wash. */}
+      <div
+        className="h-1.5 w-full bg-[var(--htc-soft-blush)]"
+        data-luv-accent=""
+        aria-hidden
+      />
+      <div className="px-4 py-1">
+        <RecommendationsPanel recommendations={recommendations} />
+      </div>
     </section>
   );
 }

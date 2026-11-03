@@ -33,23 +33,25 @@ export default async function FloorPlanTemplatesPage() {
   const activeTemplates = templates.filter((t) => !t.isArchived);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Floor Plan Templates"
-        description="Reusable room layouts a venue builds once and applies to any booking."
-        actions={
-          canEdit ? (
-            <FloorPlanTemplateStarterPicker
-              existingTemplates={activeTemplates}
-              spaces={spaces}
-              venueId={venue?.id ?? ""}
-              acceptedEventTypes={acceptedEventTypes}
-            />
-          ) : undefined
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Floor Plan Templates"
+          description="Reusable room layouts a venue builds once and applies to any booking."
+          actions={
+            canEdit ? (
+              <FloorPlanTemplateStarterPicker
+                existingTemplates={activeTemplates}
+                spaces={spaces}
+                venueId={venue?.id ?? ""}
+                acceptedEventTypes={acceptedEventTypes}
+              />
+            ) : undefined
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Layout, background image, and placed objects are edited in the floor plan editor. Assign a space and place inventory items marked for floor plans.
       </LibraryHowItWorks>
       <LibraryDependencyNote

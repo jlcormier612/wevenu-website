@@ -88,11 +88,13 @@ export default async function SettingsPage() {
     : null;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Settings"
-        description="Make Hello to Cheers work the way your venue works."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Settings"
+          description="Make Hello to Cheers work the way your venue works."
+        />
+      </div>
       <div
         className="htc-settings-directory grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         data-htc-phase9="settings-directory"

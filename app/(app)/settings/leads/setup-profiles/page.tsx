@@ -43,11 +43,13 @@ export default async function SetupProfilesPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Setup Profiles"
-        description="This is where you tell Hello to Cheers how this venue normally operates."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Setup Profiles"
+          description="This is where you tell Hello to Cheers how this venue normally operates."
+        />
+      </div>
       <SettingsTabs />
       {venue ? (
         <SetupProfilesSection

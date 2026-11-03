@@ -28,18 +28,20 @@ export function QrCampaignsPageClient({
   const listRef = React.useRef<{ openCreate: () => void } | null>(null);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="QR Campaigns"
-        description="Printable QR codes for bridal shows, open houses, brochures, and signs — with scan tracking."
-        actions={
-          <Button type="button" onClick={() => listRef.current?.openCreate()}>
-            <Plus className="mr-1 h-4 w-4" /> New QR Campaign
-          </Button>
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="QR Campaigns"
+          description="Printable QR codes for bridal shows, open houses, brochures, and signs — with scan tracking."
+          actions={
+            <Button type="button" onClick={() => listRef.current?.openCreate()}>
+              <Plus className="mr-1 h-4 w-4" /> New QR Campaign
+            </Button>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Create the form first, then point a QR campaign at it. Download the PNG to print or share.
       </LibraryHowItWorks>
       <LibraryDependencyNote

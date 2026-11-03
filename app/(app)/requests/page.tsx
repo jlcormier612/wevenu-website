@@ -27,7 +27,7 @@ export default async function RequestsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="requests">
-      <div className="htc-hospitality-intro">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <div>
           <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">Requests</h1>
           <p className="mt-1 max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">

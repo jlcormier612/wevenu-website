@@ -24,18 +24,20 @@ export default async function PackagesPage() {
     .filter((k) => !presentKeys.has(k)) as PackageStarterMasterKey[];
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Packages"
-        description="Priced sales packages with inclusions for booking and Selected Package snapshots. Distinct from Event Order Templates (delivery build sheets) — this is not where you author or send an Event Order."
-        actions={
-          <Button type="button" render={<Link href="/packages/new" />}>
-            + New Package
-          </Button>
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Packages"
+          description="Priced sales packages with inclusions for booking and Selected Package snapshots. Distinct from Event Order Templates (delivery build sheets) — this is not where you author or send an Event Order."
+          actions={
+            <Button type="button" render={<Link href="/packages/new" />}>
+              + New Package
+            </Button>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Package names, pricing, and inclusion lines are authored here for what you sell. Inclusions are written on the package itself — they are not selected from the Offerings catalog. For event delivery lists and client choice groups, use Event Order Templates.
       </LibraryHowItWorks>
       <PackageList initialPackages={packages} missingStarterKeys={missingStarterKeys} />

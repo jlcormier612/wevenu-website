@@ -193,7 +193,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                         </Badge>
                       )}
                       {vendor.isRequired && (
-                        <Badge className="gap-1 bg-foreground text-background hover:bg-foreground">
+                        <Badge className="htc-badge-attention gap-1">
                           Required
                         </Badge>
                       )}
@@ -216,10 +216,12 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm"
-                      render={<Link href={`/vendors/${vendor.id}`} />}>
+                    <Link
+                      href={`/vendors/${vendor.id}`}
+                      className="htc-record-link text-sm font-medium"
+                    >
                       View →
-                    </Button>
+                    </Link>
                   </TableCell>
                 </TableRow>
                 );

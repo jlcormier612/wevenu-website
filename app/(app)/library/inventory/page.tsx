@@ -17,23 +17,25 @@ export default async function InventoryLibraryPage() {
   await ensureInventoryStartersForCurrentVenue();
   const [items, stockSharing] = await Promise.all([getItemsForLibrary(), getStockSharingForCurrentVenue()]);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Available Inventory"
-        description="Physical stock catalog your venue owns — create and edit items here. Editing the catalog does not share with clients, create event inventory, or create an Event Order."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button render={<Link href="/library/inventory/new" />}>
-              + New Inventory Item
-            </Button>
-            <Button variant="outline" render={<Link href="/settings/import?type=inventory" />}>
-              Import Inventory
-            </Button>
-          </div>
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Available Inventory"
+          description="Physical stock catalog your venue owns — create and edit items here. Editing the catalog does not share with clients, create event inventory, or create an Event Order."
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Button render={<Link href="/library/inventory/new" />}>
+                + New Inventory Item
+              </Button>
+              <Button variant="outline" render={<Link href="/settings/import?type=inventory" />}>
+                Import Inventory
+              </Button>
+            </div>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Maintain the reusable stock catalog here. Floor Plan Templates can place items marked for floor plans. Inventory Templates and the event Inventory tab pull from this catalog when building an event list — those are separate from this catalog page.
         Set when two events can share the same stock in the card just below — it is not buried under the item list.
       </LibraryHowItWorks>

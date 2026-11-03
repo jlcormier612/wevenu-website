@@ -3,7 +3,8 @@
  *
  * Upcoming scheduled activities: soonest first (scheduled_at ascending).
  * Past: most recently past first (display clock descending).
- * Archived tours are excluded from Upcoming/Past (list hygiene).
+ * Cancelled (non-archived): discoverable history, separate from Archived.
+ * Archived tours are excluded from Upcoming/Past/Cancelled (list hygiene).
  * Walk-ins (null scheduled_at) are never upcoming — they render via actual_occurred_at in Past.
  *
  * Do not reuse for Inbox (most-recent activity) or conversation messages
@@ -45,15 +46,29 @@ export function isPastTourAppointment(a: TourAppointment, now: Date): boolean {
   return new Date(a.scheduledAt) < now;
 }
 
+/** Non-archived cancelled appointments — distinct from Archived housekeeping. */
+export function isCancelledTourAppointment(a: TourAppointment): boolean {
+  return !a.isArchived && a.status === "cancelled";
+}
+
+export function listCancelledTourAppointments(
+  appointments: TourAppointment[],
+): TourAppointment[] {
+  return appointments
+    .filter(isCancelledTourAppointment)
+    .sort((a, b) => -compareTourScheduledAtAsc(a, b));
+}
+
 export function partitionTourAppointmentsForVenueList(
   appointments: TourAppointment[],
   now: Date = new Date(),
-): { upcoming: TourAppointment[]; past: TourAppointment[] } {
+): { upcoming: TourAppointment[]; past: TourAppointment[]; cancelled: TourAppointment[] } {
   const upcoming = appointments
     .filter((a) => isUpcomingTourAppointment(a, now))
     .sort(compareTourScheduledAtAsc);
   const past = appointments
     .filter((a) => isPastTourAppointment(a, now))
     .sort((a, b) => -compareTourScheduledAtAsc(a, b));
-  return { upcoming, past };
+  const cancelled = listCancelledTourAppointments(appointments);
+  return { upcoming, past, cancelled };
 }

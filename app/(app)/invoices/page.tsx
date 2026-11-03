@@ -37,12 +37,17 @@ export default async function InvoicesPage({ searchParams }: Props) {
     }
   });
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader title="Invoices" description="Track amounts owed across all clients and events." />
-        <Button type="button" render={<Link href="/invoices/new" />} className="shrink-0">
-          <Plus className="mr-1 h-4 w-4" /> New Invoice
-        </Button>
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Invoices"
+          description="Track amounts owed across all clients and events."
+          actions={
+            <Button type="button" render={<Link href="/invoices/new" />} className="shrink-0">
+              <Plus className="mr-1 h-4 w-4" /> New Invoice
+            </Button>
+          }
+        />
       </div>
       <FilterBar placeholder="Search by invoice number…" statusOptions={INVOICE_SORT_OPTIONS} statusParam="sort" />
 
@@ -58,7 +63,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
         <div className="space-y-3">
           {sorted.map((inv) => (
             <Link key={inv.id} href={`/invoices/${inv.id}?returnTo=${encodeURIComponent("/invoices")}`}
-              className="block rounded-sm border border-border bg-card p-5 hover:bg-muted/30 transition-colors">
+              className="htc-record-card-link block rounded-sm border border-border bg-card p-5 hover:bg-muted/30 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

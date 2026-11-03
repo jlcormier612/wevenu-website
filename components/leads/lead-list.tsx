@@ -49,6 +49,8 @@ import { LeadMessageAttentionIndicator } from "@/components/leads/lead-message-a
 import type { LeadMessageAttention } from "@/lib/leads/message-attention";
 import { isUnseenLeadAttention } from "@/lib/navigation/attention";
 import {
+  ATTENTION_CHIP,
+  ATTENTION_CHIP_COUNT,
   IDLE_CHIP,
   IDLE_CHIP_COUNT,
   SELECTED_CHIP,
@@ -261,7 +263,7 @@ export function LeadList({
     <div className="space-y-4">
     <div className="space-y-3">
       {attentionFilter === "stale_contact" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/50 bg-rose-50/40 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[0.75rem] border border-[color:color-mix(in_oklch,var(--htc-soft-rose)_45%,var(--htc-border-warm))] bg-[var(--htc-soft-blush)] px-3 py-2 text-sm">
           <p className="text-foreground">
             Showing active leads with no contact in 7+ days.
           </p>
@@ -316,6 +318,7 @@ export function LeadList({
           </button>
         </div>
       )}
+      <div className="htc-hospitality-toolbar space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -323,13 +326,13 @@ export function LeadList({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, email, event type…"
-            className="pl-9"
+            className="border-[color:var(--htc-border-warm)] bg-card pl-9"
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-            <SelectTrigger className="h-9 w-44 text-sm border-border">
+            <SelectTrigger className="h-9 w-44 border-[color:var(--htc-border-warm)] bg-card text-sm text-muted-foreground">
               <SelectValue placeholder="Most Recent" />
             </SelectTrigger>
             <SelectContent>
@@ -343,15 +346,17 @@ export function LeadList({
         <span className="text-xs text-muted-foreground font-medium mr-0.5">Stage:</span>
         {stageChips.map((chip) => {
           const count = statusCounts.get(chip.key) ?? 0;
+          /* New Inquiry with population uses blush attention (Clients Needs Attention pattern). */
+          const attentionIdle = chip.key === "new_inquiry" && count > 0;
           const chipClass = (active: boolean) =>
             cn(
               "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              active ? SELECTED_CHIP : IDLE_CHIP,
+              active ? SELECTED_CHIP : attentionIdle ? ATTENTION_CHIP : IDLE_CHIP,
             );
           const countClass = (active: boolean) =>
             cn(
               "rounded-full px-1.5 py-px text-[10px] font-semibold",
-              active ? SELECTED_CHIP_COUNT : IDLE_CHIP_COUNT,
+              active ? SELECTED_CHIP_COUNT : attentionIdle ? ATTENTION_CHIP_COUNT : IDLE_CHIP_COUNT,
             );
           if (chip.kind === "booked") {
             return (
@@ -395,18 +400,28 @@ export function LeadList({
             <SlidersHorizontal className="inline h-3 w-3 mr-1" />Type:
           </span>
           <button type="button" onClick={() => setEventTypeFilter("all")}
-            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${eventTypeFilter === "all" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+            className={cn(
+              "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              eventTypeFilter === "all" ? SELECTED_CHIP : IDLE_CHIP,
+            )}>
             All
           </button>
           {activeEventTypes.map(([type, count]) => (
             <button key={type} type="button" onClick={() => setEventTypeFilter(type)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${eventTypeFilter === type ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                eventTypeFilter === type ? SELECTED_CHIP : IDLE_CHIP,
+              )}>
               {eventTypeLabel(type)}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${eventTypeFilter === type ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
+              <span className={cn(
+                "rounded-full px-1.5 py-px text-[10px] font-semibold",
+                eventTypeFilter === type ? SELECTED_CHIP_COUNT : IDLE_CHIP_COUNT,
+              )}>{count}</span>
             </button>
           ))}
         </div>
       )}
+      </div>
 
       {hasActiveFilters && (
         <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); showAllActiveLeads(); }}
@@ -461,7 +476,7 @@ export function LeadList({
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-sm border border-border bg-card">
+        <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
               <TableRow>
@@ -490,7 +505,7 @@ export function LeadList({
                       <LeadMessageAttentionIndicator
                         attention={messageAttentionByLeadId[lead.id] ?? null}
                       />
-                      <Link href={`/leads/${lead.id}`} className="hover:text-primary truncate">
+                      <Link href={`/leads/${lead.id}`} className="htc-record-link truncate">
                         {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
                       </Link>
                     </div>

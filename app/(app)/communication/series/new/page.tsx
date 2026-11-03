@@ -12,7 +12,7 @@ export default async function NewSeriesPage() {
   const templates = await getTemplates();
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="automations-new">
-      <div className="htc-hospitality-intro">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="New Automation"
           description="Choose who it starts for, what messages go out, and when. You’ll see a plain-language preview before you save."

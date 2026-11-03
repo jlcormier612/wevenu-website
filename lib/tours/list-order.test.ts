@@ -10,7 +10,8 @@ import {
 import type { TourAppointment } from "@/lib/tours/types";
 
 function appt(
-  partial: Pick<TourAppointment, "id" | "scheduledAt" | "status">,
+  partial: Pick<TourAppointment, "id" | "scheduledAt" | "status"> &
+    Partial<Pick<TourAppointment, "isArchived">>,
 ): TourAppointment {
   return {
     venueId: "v",
@@ -101,5 +102,30 @@ describe("Upcoming Tours scheduled_at ascending", () => {
   it("Tours page uses partition helper (not raw filter order alone)", () => {
     const page = readFileSync(join(process.cwd(), "app/(app)/tours/page.tsx"), "utf8");
     assert.match(page, /partitionTourAppointmentsForVenueList/);
+  });
+
+  it("Cancelled is partitioned separately and excluded from Upcoming/Past", () => {
+    const now = new Date("2026-09-22T15:00:00.000Z");
+    const { upcoming, past, cancelled } = partitionTourAppointmentsForVenueList(
+      [
+        appt({ id: "up", scheduledAt: "2026-09-25T18:00:00.000Z", status: "scheduled" }),
+        appt({ id: "done", scheduledAt: "2026-09-01T18:00:00.000Z", status: "completed" }),
+        appt({ id: "cx-new", scheduledAt: "2026-09-20T18:00:00.000Z", status: "cancelled" }),
+        appt({ id: "cx-old", scheduledAt: "2026-09-01T18:00:00.000Z", status: "cancelled" }),
+        appt({ id: "cx-arch", scheduledAt: "2026-09-15T18:00:00.000Z", status: "cancelled", isArchived: true }),
+      ],
+      now,
+    );
+    assert.deepEqual(upcoming.map((a) => a.id), ["up"]);
+    assert.deepEqual(past.map((a) => a.id), ["done"]);
+    assert.deepEqual(cancelled.map((a) => a.id), ["cx-new", "cx-old"]);
+  });
+
+  it("getTourAppointments loads non-archived cancelled for Cancelled section", () => {
+    const src = readFileSync(join(process.cwd(), "lib/tours/service.ts"), "utf8");
+    const fn = src.slice(src.indexOf("export async function getTourAppointments"));
+    const body = fn.slice(0, fn.indexOf("export async function getTourAppointmentsForLead"));
+    assert.match(body, /\.eq\(\s*[\"']status[\"']\s*,\s*[\"']cancelled[\"']\s*\)/);
+    assert.match(body, /cancelledRows/);
   });
 });

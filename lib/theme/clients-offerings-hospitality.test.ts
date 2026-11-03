@@ -35,8 +35,28 @@ describe("Clients & Offerings hospitality refinement", () => {
     assert.match(clientList, /htc-hospitality-toolbar/);
     assert.match(clientList, /htc-hospitality-table/);
     assert.match(clientList, /data-attention/);
-    assert.match(clientList, /htc-soft-blush/);
+    // Needs Attention filter chip retains blush via shared ATTENTION_CHIP token.
+    assert.match(clientList, /ATTENTION_CHIP/);
+    assert.match(read("lib/ui/selected-state.ts"), /htc-soft-blush/);
     assert.match(statusBadge, /variant="accent"/);
+  });
+
+  it("attention table rows use restrained soft-rose indicator — not full blush wash", () => {
+    const rule = css.slice(
+      css.indexOf('tr[data-attention="true"] {'),
+      css.indexOf(".htc-staff .htc-hospitality-table [data-slot=\"table-body\"] tr:hover"),
+    );
+    assert.match(rule, /box-shadow:\s*inset 3px 0 0 0 var\(--htc-soft-rose\)/);
+    assert.match(rule, /background:\s*var\(--card\)/);
+    assert.doesNotMatch(rule, /background:\s*var\(--htc-soft-blush\)/);
+  });
+
+  it("Offerings categories use linen as a supporting nest under eucalyptus parents", () => {
+    const categoryRule = css.slice(
+      css.indexOf(".htc-staff .htc-catalog-category {"),
+      css.indexOf(".htc-staff .htc-catalog-item {"),
+    );
+    assert.match(categoryRule, /background:\s*var\(--htc-linen\)/);
   });
 
   it("Offerings keeps blush/eucalyptus guidance and sectioned catalog", () => {

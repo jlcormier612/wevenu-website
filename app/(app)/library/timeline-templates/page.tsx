@@ -23,16 +23,18 @@ export default async function TimelineTemplatesPage() {
   const activeTemplates = templates.filter((t) => !t.isArchived);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Timeline Templates"
-        description="Reusable day-of schedules a venue builds once and applies to any booking."
-        actions={
-          <TimelineTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} />
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Timeline Templates"
+          description="Reusable day-of schedules a venue builds once and applies to any booking."
+          actions={
+            <TimelineTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} />
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Schedule blocks (times and labels) are authored in the timeline editor. You can optionally assign a template to a space.
       </LibraryHowItWorks>
       <LibraryDependencyNote

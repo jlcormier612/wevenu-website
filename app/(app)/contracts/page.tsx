@@ -15,7 +15,7 @@ export default async function ContractsPage({ searchParams }: Props) {
   const contracts = await getContractsForWorkflowList();
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase8="contracts">
-      <div className="htc-hospitality-intro">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Contracts"
           description="Which contracts need something from me?"

@@ -20,7 +20,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase8="payments">
-      <div className="htc-hospitality-intro">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Payments"
           description="Track deposits, installments, and outstanding balances. Filter by status — All includes every payment plan."

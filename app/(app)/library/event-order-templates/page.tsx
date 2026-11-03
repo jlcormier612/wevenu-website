@@ -26,13 +26,15 @@ export default async function EventOrderTemplatesPage() {
     .map((m) => m.key);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Event Order Templates"
-        description="Reusable packages for a wedding’s Event Order — always-on items and couple choices selected from your Offerings."
-        actions={<NewEventOrderTemplateButton />}
-      />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Event Order Templates"
+          description="Reusable packages for a wedding’s Event Order — always-on items and couple choices selected from your Offerings."
+          actions={<NewEventOrderTemplateButton />}
+        />
+      </div>
       <LibraryHowItWorks tone="calm">
         An Event Order template is the reusable package you apply to a booked event. You decide items
         always on the package (with clear package-price vs additional-charge treatment) and Couple&apos;s

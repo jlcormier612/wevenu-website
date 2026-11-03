@@ -22,11 +22,13 @@ export default async function FinancialsIntegrationsSettingsPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Financials & Integrations"
-        description="Payments, accounting, and connected services."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Financials & Integrations"
+          description="Payments, accounting, and connected services."
+        />
+      </div>
       <SettingsTabs />
 
       {venue && (

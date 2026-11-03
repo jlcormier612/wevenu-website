@@ -14,19 +14,21 @@ export default async function PipelinePage() {
   const inventory = await getLeads();
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Pipeline"
-        description="Live stages follow the seven sales lifecycle labels. Booked and Lost are outcomes. Open Booked in Clients."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
-              <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
-            </Button>
-            <Button variant="outline" size="sm" render={<Link href="/leads" />}>List View</Button>
-          </div>
-        }
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Pipeline"
+          description="Live stages follow the seven sales lifecycle labels. Booked and Lost are outcomes. Open Booked in Clients."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
+                <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
+              </Button>
+              <Button variant="outline" size="sm" render={<Link href="/leads" />}>List View</Button>
+            </div>
+          }
+        />
+      </div>
 
       <PipelineBoard leads={inventory} />
     </div>

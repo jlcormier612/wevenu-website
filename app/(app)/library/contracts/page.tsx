@@ -17,16 +17,18 @@ export default async function ContractTemplatesLibraryPage() {
   await ensureContractStartersForCurrentVenue();
   const templates = await getTemplates(true);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Contract Templates"
-        description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."
-        actions={
-          <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Contract Templates"
+          description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."
+          actions={
+            <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Agreement text and fields are authored in the contract template editor. When you apply a template to an event, event details fill in automatically — there is no separate catalog to manage for contract content.
       </LibraryHowItWorks>
 

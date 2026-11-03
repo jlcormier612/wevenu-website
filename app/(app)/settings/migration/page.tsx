@@ -34,11 +34,13 @@ export default async function MigrationCenterPage({
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Migration Center"
-        description="Bring over events, tours, date holds, calendar blocks, packages, documents, and booked-event invoices, payment schedules, and signed agreements — with review before anything is created. For a small contact or template list (CSV, Excel, Word, or PDF), use Import Data."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Migration Center"
+          description="Bring over events, tours, date holds, calendar blocks, packages, documents, and booked-event invoices, payment schedules, and signed agreements — with review before anything is created. For a small contact or template list (CSV, Excel, Word, or PDF), use Import Data."
+        />
+      </div>
       <SetupGuideLink
         href="/help/what-should-i-set-up-before-i-start"
         label="How to bring your business over"

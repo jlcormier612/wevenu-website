@@ -18,19 +18,21 @@ export default async function PlaybooksLibraryPage() {
   ]);
   const activeTemplates = templates.filter((t) => !t.isArchived);
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Planning Templates"
-        description="Create reusable planning checklists once, then apply them to events. Templates can include the planning capabilities your venue has enabled in Settings."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <PlaybookStarterPicker existingTemplates={activeTemplates} />
-            <PlaybookStarterPicker existingTemplates={activeTemplates} variant="import" />
-          </div>
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Planning Templates"
+          description="Create reusable planning checklists once, then apply them to events. Templates can include the planning capabilities your venue has enabled in Settings."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <PlaybookStarterPicker existingTemplates={activeTemplates} />
+              <PlaybookStarterPicker existingTemplates={activeTemplates} variant="import" />
+            </div>
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Client Planning is what your clients see; Venue Planning is your internal team checklist. Checklist items are authored in the template editor — there is no separate catalog to manage. Both use Preview, Edit, and Use the same way. Turn planning tools on or off for your whole venue in Settings → Leads &amp; Booking.
       </LibraryHowItWorks>
       <PlanningStarterExamples templates={templates} />

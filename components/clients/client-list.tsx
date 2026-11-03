@@ -38,6 +38,8 @@ import {
 } from "@/lib/clients/list-filters";
 import type { Client } from "@/lib/clients/types";
 import {
+  ATTENTION_CHIP,
+  ATTENTION_CHIP_COUNT,
   SELECTED_CHIP,
   SELECTED_CHIP_COUNT,
 } from "@/lib/ui/selected-state";
@@ -218,7 +220,7 @@ export function ClientList({
                   active
                     ? SELECTED_CHIP
                     : attention
-                      ? "border-[#e8c4c8] bg-[var(--htc-soft-blush)] text-foreground hover:border-[color-mix(in_oklch,var(--htc-blush)_55%,transparent)]"
+                      ? ATTENTION_CHIP
                       : "border-[color:var(--htc-border-warm)] bg-card text-foreground hover:border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))]",
                 )}>
                 {label}
@@ -228,7 +230,7 @@ export function ClientList({
                     active
                       ? SELECTED_CHIP_COUNT
                       : attention
-                        ? "bg-[color-mix(in_oklch,var(--htc-blush)_28%,white)] text-foreground"
+                        ? ATTENTION_CHIP_COUNT
                         : "bg-[color:var(--htc-canvas)] text-muted-foreground",
                   )}
                 >
@@ -289,7 +291,7 @@ export function ClientList({
                     data-attention={!portalMode && needsAttention ? "true" : undefined}
                   >
                     <TableCell className="font-medium text-foreground">
-                      <Link href={`/clients/${client.id}`} className="hover:underline">
+                      <Link href={`/clients/${client.id}`} className="htc-record-link">
                         {clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
                       </Link>
                       {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}

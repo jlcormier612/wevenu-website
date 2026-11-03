@@ -33,7 +33,7 @@ export default async function EditSeriesPage({ params }: Props) {
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="automations-edit">
       <CollectionBackLink href="/communication/series" label="Automations" />
-      <div className="htc-hospitality-intro">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title={series.name}
           description="Review who this is for, what will happen, and who is currently receiving messages."

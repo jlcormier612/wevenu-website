@@ -12,11 +12,13 @@ export default async function LibraryDocumentsPage() {
   if (!venue) return null;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Documents"
-        description="Files you reuse across bookings — available to your whole venue, not tied to one lead or event."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6" data-htc-phase10="library-documents">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Documents"
+          description="Files you reuse across bookings — available to your whole venue, not tied to one lead or event."
+        />
+      </div>
       <LibraryDocumentsManager documents={documents} venueId={venue.id} />
     </div>
   );

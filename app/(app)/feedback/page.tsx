@@ -56,11 +56,13 @@ const CHANNELS: {
 
 export default function FeedbackPage() {
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Get Help or Provide Feedback"
-        description="Talk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Get Help or Provide Feedback"
+          description="Talk to the team who created Hello to Cheers — ask for help, report a problem, or tell us what to build next."
+        />
+      </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
         {CHANNELS.map(({ type, icon: Icon, title, description }) => (

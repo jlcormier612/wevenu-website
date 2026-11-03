@@ -173,7 +173,7 @@ export function RequestManager({
               {filtered.map((r) => (
                 <tr key={r.id} className="border-b align-top">
                   <td className="py-1.5 pr-3">
-                    <a href={`/requests/${r.id}`} className="font-medium underline">{r.title}</a>
+                    <a href={`/requests/${r.id}`} className="htc-record-link font-medium">{r.title}</a>
                     {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
                   </td>
                   <td className="py-1.5 pr-3">{clientName(r.clientId)}</td>

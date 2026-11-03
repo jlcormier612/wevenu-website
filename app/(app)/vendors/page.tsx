@@ -17,7 +17,7 @@ export default async function VendorsPage() {
   ]);
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <div className="htc-hospitality-heading">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Vendors"
           description="Vendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile."

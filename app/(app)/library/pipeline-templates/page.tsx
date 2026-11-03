@@ -13,15 +13,17 @@ export default async function PipelineTemplatesPage() {
   const templates = await getTemplates();
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/leads" label="Leads" />
-      <PageHeader
-        title="Pipeline Templates"
-        description="Define the steps your team follows to move a lead from first contact to booking. Your stage names appear on the Leads board; reporting categories keep analytics consistent."
-        actions={
-          <Button render={<Link href="/library/pipeline-templates/new" />}>+ New Pipeline Template</Button>
-        }
-      />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Pipeline Templates"
+          description="Define the steps your team follows to move a lead from first contact to booking. Your stage names appear on the Leads board; reporting categories keep analytics consistent."
+          actions={
+            <Button render={<Link href="/library/pipeline-templates/new" />}>+ New Pipeline Template</Button>
+          }
+        />
+      </div>
 
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">

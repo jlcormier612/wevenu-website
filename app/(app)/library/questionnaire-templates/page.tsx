@@ -26,18 +26,20 @@ export default async function QuestionnaireTemplatesLibraryPage() {
     .map((m) => m.key);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Questionnaires & Feedback"
-        description="Client Planning Questionnaire, Final Details, and Post-Event Feedback — Hello to Cheers starters you can customize for your venue."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <NewQuestionnaireSheet />
-            <QuestionnaireStarterMenu
-              missingKeys={missingStarterKeys}
-              presentKeys={[...presentKeys].filter((k): k is string => Boolean(k))}
-            />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Questionnaires & Feedback"
+          description="Client Planning Questionnaire, Final Details, and Post-Event Feedback — Hello to Cheers starters you can customize for your venue."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <NewQuestionnaireSheet />
+              <QuestionnaireStarterMenu
+                missingKeys={missingStarterKeys}
+                presentKeys={[...presentKeys].filter((k): k is string => Boolean(k))}
+              />
+      </div>
           </div>
         }
       />

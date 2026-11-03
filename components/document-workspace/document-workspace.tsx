@@ -133,7 +133,7 @@ export function DocumentWorkspace({
 
   return (
     <div className="space-y-6" data-htc-phase10="documents-workspace">
-      <div className="htc-hospitality-intro htc-hospitality-intro-accent">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <h1 className="font-heading text-2xl font-medium text-heading">{title}</h1>

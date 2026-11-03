@@ -54,7 +54,7 @@ export default async function ClientsPage() {
 
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
-      <div className="htc-hospitality-heading">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Clients"
           description="All Bookings is the active book. Coming up is event dates from today through the next 30 days. Needs Attention is an active booking with a past-due payment, a past-due required task, or a message that needs a response. Cancelled and Past are history."

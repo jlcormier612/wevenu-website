@@ -21,9 +21,10 @@ describe("Color Distribution Phase 10 — Reporting + Documents hospitality", ()
 
   it("defines accented intro, linen filter, and section-label utilities", () => {
     assert.match(css, /\.htc-staff \.htc-hospitality-intro\.htc-hospitality-intro-accent/);
+    assert.match(css, /\.htc-staff \.htc-hospitality-heading\.htc-hospitality-intro-accent/);
     assert.match(
       css,
-      /\.htc-hospitality-intro-accent \{[\s\S]*?border-left:\s*5px solid var\(--htc-botanical\)/,
+      /\.htc-hospitality-intro-accent[\s\S]*?border-left:\s*5px solid var\(--htc-botanical\)/,
     );
     assert.match(
       css,
@@ -56,7 +57,7 @@ describe("Color Distribution Phase 10 — Reporting + Documents hospitality", ()
 
   it("Documents workspace uses Option C intro, eucalyptus section bands, white toolbar, no linen list wrapper", () => {
     assert.match(docs, /data-htc-phase10="documents-workspace"/);
-    assert.match(docs, /htc-hospitality-intro htc-hospitality-intro-accent/);
+    assert.match(docs, /htc-hospitality-heading htc-hospitality-intro-accent/);
     assert.match(docs, /htc-hospitality-section-label/);
     assert.match(docs, /htc-hospitality-toolbar flex flex-wrap/);
     assert.doesNotMatch(docs, /htc-hospitality-filter/);
@@ -68,7 +69,7 @@ describe("Color Distribution Phase 10 — Reporting + Documents hospitality", ()
 
   it("Library Documents gets accented intro only — no category bands or linen toolbar", () => {
     assert.match(libraryDocs, /data-htc-phase10="library-documents"/);
-    assert.match(libraryDocs, /htc-hospitality-intro htc-hospitality-intro-accent/);
+    assert.match(libraryDocs, /htc-hospitality-heading htc-hospitality-intro-accent/);
     assert.match(libraryDocs, /LibraryDocumentsManager/);
     assert.doesNotMatch(libraryDocs, /htc-hospitality-section-label|htc-hospitality-filter|htc-hospitality-toolbar/);
     assert.match(
@@ -78,9 +79,7 @@ describe("Color Distribution Phase 10 — Reporting + Documents hospitality", ()
   });
 
   it("Phase 8 Contracts/Payments keep plain hospitality intro (no accent modifier)", () => {
-    assert.match(contracts, /htc-hospitality-intro/);
-    assert.doesNotMatch(contracts, /htc-hospitality-intro-accent/);
-    assert.match(payments, /htc-hospitality-intro/);
-    assert.doesNotMatch(payments, /htc-hospitality-intro-accent/);
+    assert.match(contracts, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.match(payments, /htc-hospitality-heading htc-hospitality-intro-accent/);
   });
 });

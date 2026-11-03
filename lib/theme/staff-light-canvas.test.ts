@@ -17,10 +17,12 @@ describe("staff light canvas — Contemporary Botanical Stage 2B", () => {
     assert.match(staff, /--destructive:\s*#d99a9e/i);
     assert.match(staff, /--panel-blush:\s*#f7e9eb/i);
     assert.match(staff, /--card:\s*#ffffff/i);
-    assert.match(staff, /--background:\s*#fafcfa/i);
+    assert.match(staff, /--background:\s*#f8f7f3/i);
+    assert.match(staff, /--htc-workspace:\s*#f8f7f3/i);
+    assert.match(staff, /--htc-canvas:\s*#f8f7f3/i);
     assert.match(staff, /--foreground:\s*#24332b/i);
     assert.match(staff, /--muted-foreground:\s*#5f6f68/i);
-    assert.match(staff, /--border:\s*#e3e7e4/i);
+    assert.match(staff, /--border:\s*#e6e3dc/i);
   });
 
   it("uses a pure white sidebar — never blush or pale-green chrome", () => {

@@ -136,7 +136,7 @@ export function EventList({ events }: { events: VenueEvent[] }) {
                 return (
                   <TableRow key={ev.id} className="group">
                     <TableCell className="font-medium text-foreground">
-                      <Link href={`/events/${ev.id}`} className="hover:text-primary">{ev.name}</Link>
+                      <Link href={`/events/${ev.id}`} className="htc-record-link">{ev.name}</Link>
                       {ev.eventType && <p className="text-xs text-muted-foreground">{eventTypeLabel(ev.eventType)}</p>}
                     </TableCell>
                     <TableCell className="text-sm">{ev.eventDate ? formatEventDateRange(ev.eventDate, ev.eventEndDate) : <span className="text-muted-foreground">TBD</span>}</TableCell>

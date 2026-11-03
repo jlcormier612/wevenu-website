@@ -16,7 +16,7 @@ export default async function SeriesPage() {
 
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="automations">
-      <div className="htc-hospitality-intro htc-hospitality-intro-accent">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Automations"
           description="When something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients."

@@ -207,7 +207,7 @@ export default async function TaskCenterPage() {
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="tasks">
       <div
-        className="htc-hospitality-intro htc-task-center-intro flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+        className="htc-hospitality-heading htc-hospitality-intro-accent htc-task-center-intro flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
         data-testid="task-center-intro"
       >
         <PageHeader

@@ -124,11 +124,11 @@ describe("Phase 11A — record lists adopt shared link class", () => {
     assert.match(invoices, /returnTo=\$\{encodeURIComponent\("\/invoices"\)\}/);
   });
 
-  it("Tours keep action-dense non-clickable rows (name is not a record link)", () => {
-    assert.match(tours, /data-tours-name="/);
+  it("Tours lead-linked names use htc-record-link; rows stay non-whole-row-click", () => {
+    assert.match(tours, /className="htc-record-link"/);
+    assert.match(tours, /data-tours-name=""/);
     assert.match(tours, /htc-tours-lead-link/);
     assert.match(tours, /href=\{`\/leads\/\$\{appt\.leadId\}`\}/);
-    assert.doesNotMatch(tours, /data-tours-name="[^"]*"[^>]*>[\s\S]{0,40}htc-record-link/);
     assert.doesNotMatch(tours, /htc-tours-row"[^>]*onClick=/);
   });
 });

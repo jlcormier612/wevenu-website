@@ -767,7 +767,7 @@ export function TaskCenter({
         ) : (
           <>
             {doImmediate === 0 && doUpcomingCount === 0 && (
-              <div className="rounded-sm border border-sky-700/20 bg-sky-50/50 dark:bg-sky-950/20 px-4 py-3">
+              <div className="htc-surface-guidance px-4 py-3">
                 <p className="text-sm font-medium text-heading">Your team&apos;s clear — a few clients need watching</p>
               </div>
             )}

@@ -19,10 +19,22 @@ export const SELECTED_CHIP =
 export const SELECTED_CHIP_COUNT =
   "bg-primary-foreground/20 text-primary-foreground";
 
+/** Idle chips stay white against the warm staff canvas (never canvas-colored). */
 export const IDLE_CHIP =
-  "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground";
+  "border-[color:var(--htc-border-warm)] bg-card text-muted-foreground hover:border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))] hover:text-foreground";
 
-export const IDLE_CHIP_COUNT = "bg-muted text-muted-foreground";
+export const IDLE_CHIP_COUNT =
+  "bg-[color:var(--htc-canvas)] text-muted-foreground";
+
+/**
+ * Attention / needs-response filter chips (Clients Needs Attention, populated New Inquiry).
+ * Soft blush at rest; selected state still uses SELECTED_CHIP (botanical).
+ */
+export const ATTENTION_CHIP =
+  "border-[#e8c4c8] bg-[var(--htc-soft-blush)] text-foreground hover:border-[color-mix(in_oklch,var(--htc-blush)_55%,transparent)]";
+
+export const ATTENTION_CHIP_COUNT =
+  "bg-[color-mix(in_oklch,var(--htc-blush)_28%,white)] text-foreground";
 
 /** Idle segmented tab inside a muted track. */
 export const IDLE_SEGMENTED =

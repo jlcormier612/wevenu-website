@@ -55,15 +55,17 @@ export default async function SetupHubPage() {
   const isWhiteGlove = hubState?.onboardingType === "white_glove";
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Setup"
-        description={
-          isWhiteGlove
-            ? "We've already done a lot of the setup for you. There are just a few things we'd like you to review before you're ready to invite couples."
-            : "Set up your venue at your own pace. Every area here can be revisited and edited any time — nothing here is final until you say so."
-        }
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Setup"
+          description={
+            isWhiteGlove
+              ? "We've already done a lot of the setup for you. There are just a few things we'd like you to review before you're ready to invite couples."
+              : "Set up your venue at your own pace. Every area here can be revisited and edited any time — nothing here is final until you say so."
+          }
+        />
+      </div>
       {isWhiteGlove ? (
         <div className="htc-setup-hub-welcome rounded-md border p-4">
           <h2 className="text-lg font-medium">Welcome to Hello to Cheers</h2>

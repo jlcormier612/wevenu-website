@@ -72,7 +72,7 @@ export function MessageHistoryList({
             >
               <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               {href ? (
-                <Link href={href} className="flex min-w-0 flex-1 hover:text-primary">
+                <Link href={href} className="htc-record-link flex min-w-0 flex-1">
                   {nameBlock}
                 </Link>
               ) : (

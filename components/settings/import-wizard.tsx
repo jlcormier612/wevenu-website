@@ -723,8 +723,8 @@ function StepResults({
       {result.imported > 0 && !venueId && !embedded && (() => {
         const next = NEXT_STEP[entity];
         return (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Recommended Next Step</p>
+          <div className="htc-surface-guidance space-y-2 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-heading">Recommended Next Step</p>
             <p className="text-sm font-medium text-foreground">{next.cta}</p>
             <p className="text-xs text-muted-foreground">{next.detail}</p>
             <Link

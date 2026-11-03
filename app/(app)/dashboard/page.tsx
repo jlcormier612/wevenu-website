@@ -116,7 +116,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <MilestoneToast milestone={data.nextPendingMilestone} />
 
-      <div className="htc-hospitality-heading">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
           <Button render={<Link href="/leads/new" />} className="w-full sm:w-auto sm:shrink-0">

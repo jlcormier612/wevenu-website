@@ -668,10 +668,10 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole, acce
 
       {/* Invoice context banner */}
       {invoice && (
-        <div className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-3">
+        <div className="htc-surface-guidance px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-0.5">
-              <p className="text-xs font-semibold text-primary uppercase tracking-wide">Linked Invoice</p>
+              <p className="text-xs font-semibold text-heading uppercase tracking-wide">Linked Invoice</p>
               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
                 <span className="font-medium text-heading">{invoice.invoiceNumber}</span>
                 <span className="text-muted-foreground">Invoice total: <span className="font-medium text-foreground">{formatCurrency(invoice.total)}</span></span>

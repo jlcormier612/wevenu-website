@@ -122,9 +122,32 @@ Judge balance at **page level**: dominant color, consecutive tinted sections, pa
 
 When a staff surface needs a restrained “Active” indicator that is not a dark botanical fill, use the eucalyptus Active treatment (`.htc-badge-active`): eucalyptus surface wash + dark charcoal text. Preserve distinct Paused / Draft / Failed / Overdue meanings — do not make every status green.
 
+### Rule J — Platform consistency recipe (Clients as canonical)
+
+These treatments apply across **most staff pages**, not only classic list screens. Tasks, Setup, Settings (including Availability / Team / Import), Library collections, Guide, Help, Feedback, Communication Health, Contracts, Payments, Documents, Automations forms, and similar modules should reuse the same top-card, guidance, action, and attention language even when the body layout differs. When a page lacks a search/table shell, still give it the white title card + botanical left strip and put how-to copy on calm blue.
+
+| Slot | Treatment | Classes / tokens |
+|------|-----------|------------------|
+| Page canvas | Warm beige | `.htc-hospitality-page` / `--htc-canvas` |
+| Primary label / title card | **White** + **dark green left strip** | `.htc-hospitality-heading` + `.htc-hospitality-intro-accent` |
+| Search / filter card (when present) | White card; search field white | `.htc-hospitality-toolbar` |
+| Table / record list card (when present) | White shell; **eucalyptus header bar** | `.htc-hospitality-table` |
+| Directional open links | Charcoal text; **black underline on hover/focus** | `.htc-record-link` |
+| Row / selectable-item hover | Soft blush wash | Shared table / list hover |
+| Primary small actions | Botanical fill + white text | Default `Button` / `--primary` |
+| Quiet status chips | Eucalyptus wash + dark text | `.htc-badge-active` (e.g. Active, Completed-like) |
+| Attention / required chips | Soft blush + rose border | `.htc-badge-attention` / attention filter chips (Needs Attention, Required, populated New Inquiry) |
+| Informational explainers | Calm blue | `.htc-surface-guidance`, Automations-help, migration guidance, Setup Hub Bring-Your-Business how-to |
+
+**Do not** fill ordinary primary title cards with eucalyptus. Eucalyptus belongs on table header bars, quiet Active chips, and selective summaries — not the whole page title card.
+
+**Guidance must read as calm blue**, including Setup Hub migration/how-to panels (HoneyBook / bring-your-business explainers), Automations help, and Task Center informational callouts. Do not leave sky-blue Tailwind leftovers or botanical-tint washes on how-to copy.
+
+**Exceptions:** Calendar, Reports, Messaging inbox, and dense open workspaces keep specialized body layouts. They still inherit beige canvas where wrapped, botanical primary actions, blush for true attention/Luv, and calm blue only for real guidance.
+
 ---
 
-## 3. Shared utilities (Phase 11D + Phase 12)
+## 3. Shared utilities (Phase 11D + Phase 12 + list recipe)
 
 | Class | Role |
 |-------|------|
@@ -135,6 +158,7 @@ When a staff surface needs a restrained “Active” indicator that is not a dar
 | `.htc-surface-guidance-compact` | Calm-blue subsection inside a white card |
 | `.htc-group-shell` | Linen parent grouping that forces nested cards white |
 | `.htc-badge-active` | Restrained eucalyptus Active indicator |
+| `.htc-badge-attention` | Soft-blush attention / Required indicator |
 
 All are scoped under `.htc-staff`. Do not apply to portal, vendor-app, marketing, or print/PDF.
 
@@ -142,8 +166,8 @@ Existing hospitality utilities remain valid:
 
 - `.htc-hospitality-page` / `.htc-hospitality-heading` / `.htc-hospitality-toolbar`
 - `.htc-hospitality-filter` (linen toolbars)
-- `.htc-hospitality-intro` (+ optional `.htc-hospitality-intro-accent`)
-- `.htc-hospitality-section-label` / `.htc-hospitality-table`
+- `.htc-hospitality-intro` (+ optional `.htc-hospitality-intro-accent`) — eucalyptus intro for approved non-list summaries; list primary cards prefer **heading + accent strip**
+- `.htc-hospitality-section-label` / `.htc-hospitality-table` / `.htc-record-link`
 
 Prefer semantic variants over one-off `bg-muted/20` or `bg-primary/5` washes on relationship workspaces.
 

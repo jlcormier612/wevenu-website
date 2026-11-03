@@ -56,9 +56,9 @@ describe("Phase 12 — Automations", () => {
   const form = read("components/communication/series-form.tsx");
   const view = read("components/communication/series-view.tsx");
 
-  it("list page uses eucalyptus hospitality intro", () => {
-    assert.match(page, /htc-hospitality-intro/);
-    assert.match(page, /htc-hospitality-intro-accent/);
+  it("list page uses white primary heading with botanical side strip", () => {
+    assert.match(page, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.doesNotMatch(page, /htc-hospitality-intro htc-hospitality-intro-accent/);
     assert.match(page, /data-htc-phase12="automations"/);
   });
 
@@ -101,11 +101,11 @@ describe("Phase 12 — Dashboard Coming up balance", () => {
 });
 
 describe("Phase 12 — broader staff framing", () => {
-  it("Requests and Task Center use hospitality intro", () => {
+  it("Requests and Task Center use white primary heading with botanical strip", () => {
     const requests = read("app/(app)/requests/page.tsx");
     const tasks = read("app/(app)/tasks/page.tsx");
-    assert.match(requests, /htc-hospitality-intro/);
-    assert.match(tasks, /htc-hospitality-intro/);
+    assert.match(requests, /htc-hospitality-heading htc-hospitality-intro-accent/);
+    assert.match(tasks, /htc-hospitality-heading htc-hospitality-intro-accent/);
   });
 
   it("Vendor empty states stay white working, not linen slabs", () => {

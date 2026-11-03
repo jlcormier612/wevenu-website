@@ -34,7 +34,7 @@ export function OfferingsPageClient({
   return (
     <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <div className="htc-hospitality-heading">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Offerings"
           description="Organize the services, packages, and options your venue offers. Group related items under choices, such as dinner styles or bar packages, so you can reuse them across Event Order Templates."

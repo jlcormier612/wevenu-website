@@ -35,11 +35,13 @@ export default async function LeadsBookingSettingsPage() {
   const planningCapabilities = capabilitiesFromVenue(venue);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Leads & Booking"
-        description="Inquiry forms, lead sources, tour booking, and how you book couples."
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Leads & Booking"
+          description="Inquiry forms, lead sources, tour booking, and how you book couples."
+        />
+      </div>
       <SettingsTabs />
 
       {venue && (

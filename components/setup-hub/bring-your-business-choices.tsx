@@ -96,7 +96,7 @@ export function BringYourBusinessChoices({
       ) : null}
 
       {intakeHeading && intakeBringBusinessChoice !== "starting_fresh" ? (
-        <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm space-y-2">
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">{intakeHeading}</p>
           <p className="text-xs text-muted-foreground">
             You already chose this during setup. You can still pick a different path below.
@@ -120,7 +120,7 @@ export function BringYourBusinessChoices({
       ) : null}
 
       <div className="space-y-2">
-        <div className="rounded-md border p-3 text-sm space-y-2">
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">Import my business</p>
           <p className="text-xs text-muted-foreground">
             Bring clients and calendar commitments over through Migration Center. HoneyBook, Tripleseat, or another system — all fine.

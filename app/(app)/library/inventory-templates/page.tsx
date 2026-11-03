@@ -26,14 +26,16 @@ export default async function InventoryTemplatesLibraryPage() {
     .map((m) => m.key);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Inventory Templates"
-        description="Reusable starting lists for the inventory you typically provide at an event. Apply one to an event, then customize that event’s inventory as needed."
-        actions={<NewInventoryTemplateButton />}
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Inventory Templates"
+          description="Reusable starting lists for the inventory you typically provide at an event. Apply one to an event, then customize that event’s inventory as needed."
+          actions={<NewInventoryTemplateButton />}
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         <strong className="font-medium text-heading">Use</strong> applies the list to an event without
         sharing it.{" "}
         <strong className="font-medium text-heading">Send to client</strong> applies it if needed and

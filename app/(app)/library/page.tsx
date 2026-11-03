@@ -73,7 +73,7 @@ function Group({
     <section className="space-y-3">
       <div className="space-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-        <LibraryHowItWorks>{guidance}</LibraryHowItWorks>
+        <LibraryHowItWorks tone="calm">{guidance}</LibraryHowItWorks>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">{children}</div>
     </section>
@@ -117,11 +117,13 @@ export default async function LibraryPage() {
   const offerings = offeringsAll.filter((o) => !o.isArchived);
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Templates"
-        description="Reusable things you create once and use again — templates you apply to events, plus catalogs and assets those templates pull from."
-      />
+    <div className="htc-hospitality-page space-y-6 sm:space-y-8">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Templates"
+          description="Reusable things you create once and use again — templates you apply to events, plus catalogs and assets those templates pull from."
+        />
+      </div>
 
       <Group
         title="Applyable templates"

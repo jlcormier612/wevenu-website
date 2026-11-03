@@ -82,7 +82,7 @@ describe("HTC visual system foundation", () => {
       css.indexOf(".htc-staff .htc-catalog-category {"),
       css.indexOf(".htc-staff .htc-catalog-item {"),
     );
-    assert.match(categoryRule, /background:\s*var\(--card\)/);
+    assert.match(categoryRule, /background:\s*var\(--htc-linen\)/);
     assert.match(categoryRule, /border-left:\s*3px solid var\(--htc-eucalyptus\)/);
   });
 

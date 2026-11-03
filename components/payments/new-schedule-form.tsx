@@ -194,8 +194,8 @@ export function NewScheduleForm({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-1">
-        <p className="text-xs font-semibold text-primary uppercase tracking-wide">
+      <div className="htc-surface-guidance space-y-1 px-4 py-3">
+        <p className="text-xs font-semibold text-heading uppercase tracking-wide">
           Payment Plan Builder
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-sm">

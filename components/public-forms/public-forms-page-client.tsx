@@ -23,20 +23,22 @@ export function PublicFormsPageClient({
   const listRef = React.useRef<{ openCreate: () => void } | null>(null);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Public Forms"
-        description="Purpose-specific lead capture forms — separate from your main inquiry form."
-        actions={
-          canEdit ? (
-            <Button type="button" onClick={() => listRef.current?.openCreate()}>
-              <Plus className="mr-1 h-4 w-4" /> Create form
-            </Button>
-          ) : undefined
-        }
-      />
-      <LibraryHowItWorks>
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Public Forms"
+          description="Purpose-specific lead capture forms — separate from your main inquiry form."
+          actions={
+            canEdit ? (
+              <Button type="button" onClick={() => listRef.current?.openCreate()}>
+                <Plus className="mr-1 h-4 w-4" /> Create form
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
+      <LibraryHowItWorks tone="calm">
         Build questions and fields on each form. Submissions create leads. Optionally create a QR campaign that opens this form.
       </LibraryHowItWorks>
       <LibraryDependencyNote

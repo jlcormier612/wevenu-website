@@ -33,10 +33,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const OUTCOME_LABELS: Record<TourOutcome, string> = {
-  interested: "💚 Interested",
-  considering: "🤔 Considering",
-  not_a_fit: "❌ Not a fit",
-  booked: "🎉 Booked!",
+  interested: "Interested",
+  considering: "Considering",
+  not_a_fit: "Not a fit",
+  booked: "Booked",
   unknown: "Unknown",
 };
 
@@ -48,13 +48,23 @@ const STATUS_LABELS: Record<TourAppointment["status"], string> = {
   no_show:   "No Show",
 };
 
-const STATUS_COLORS: Record<TourAppointment["status"], string> = {
-  scheduled: "amber",
-  confirmed: "green",
-  completed: "sage",
-  cancelled: "muted",
-  no_show:   "red",
-};
+export function TourSectionEmpty({
+  title,
+  copy,
+  action,
+}: {
+  title: string;
+  copy: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="htc-tours-section-empty" data-tours-empty="section">
+      <p data-tours-empty-title="">{title}</p>
+      <p data-tours-empty-copy="">{copy}</p>
+      {action}
+    </div>
+  );
+}
 
 function TourRow({
   appt,
@@ -102,6 +112,31 @@ function TourRow({
   const scheduledAside = appt.scheduledAt
     ? formatVenueLocalTourDisplay(appt.scheduledAt, venueTimezone)
     : null;
+  /*
+   * Status Select visibility (presentation only — backend updateTourStatus has no FSM gate):
+   * - scheduled / confirmed: open work — Select offers completed / cancelled / no_show
+   *   (and scheduled). Confirmed is never a free-pick option.
+   * - completed / cancelled: terminal for this workspace — badge only; no Select.
+   *   Archive/restore remain via overflow. Outcome links remain for completed.
+   * - no_show: keep Select for staff corrections among post-tour outcomes only
+   *   (completed / cancelled / no_show). Do not offer scheduled reopen here.
+   */
+  const showStatusSelect =
+    !archivedView &&
+    (appt.status === "scheduled" || appt.status === "confirmed" || appt.status === "no_show");
+  const statusSelectItems =
+    appt.status === "no_show"
+      ? ({
+          completed: STATUS_LABELS.completed,
+          cancelled: STATUS_LABELS.cancelled,
+          no_show: STATUS_LABELS.no_show,
+        } as const)
+      : ({
+          scheduled: STATUS_LABELS.scheduled,
+          completed: STATUS_LABELS.completed,
+          cancelled: STATUS_LABELS.cancelled,
+          no_show: STATUS_LABELS.no_show,
+        } as const);
 
   async function handleSaveOutcome() {
     setSavingOutcome(true);
@@ -266,40 +301,58 @@ function TourRow({
 
   return (
     <>
-    <div className="py-4 border-b border-border/50 last:border-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="flex items-start gap-3 min-w-0 flex-1">
-          {/* Date block */}
-          <div className="shrink-0 w-12 text-center">
-            <p className="text-lg font-bold text-heading leading-none">{dayNum}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{monthShort}</p>
+    <div
+      className="htc-tours-row"
+      data-tours-row=""
+      data-tours-status={appt.status}
+      data-tours-archived={archivedView ? "true" : "false"}
+    >
+      <div className="htc-tours-row-main">
+        <div className="htc-tours-row-identity">
+          <div className="htc-tours-date" aria-hidden={dayNum === 0}>
+            <p data-tours-day="">{dayNum || "—"}</p>
+            <p data-tours-month="">{monthShort || "—"}</p>
           </div>
 
-          {/* Content — status badge only here; Select below owns the control to change status */}
-          <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-heading break-words">{displayName}</p>
-              <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[appt.status] === "amber" ? "border-amber-300 text-amber-700 bg-amber-50" : STATUS_COLORS[appt.status] === "green" ? "border-green-300 text-green-700 bg-green-50" : "border-border text-muted-foreground"}`}>
+          <div className="htc-tours-row-content">
+            <div className="htc-tours-row-title">
+              {appt.leadId ? (
+                <Link
+                  href={`/leads/${appt.leadId}`}
+                  className="htc-record-link"
+                  data-tours-name=""
+                >
+                  {displayName}
+                </Link>
+              ) : (
+                <p data-tours-name="">{displayName}</p>
+              )}
+              <span
+                className="htc-tours-status-badge"
+                data-tours-status-badge={appt.status}
+              >
                 {STATUS_LABELS[appt.status]}
-              </Badge>
+              </span>
               {appt.origin === "walk_in" && (
-                <Badge variant="outline" className="text-[10px] shrink-0 border-border text-muted-foreground">Walk-in</Badge>
+                <Badge variant="outline" className="htc-tours-meta-badge" data-tours-walk-in="">
+                  Walk-in
+                </Badge>
               )}
               {archivedView && (
-                <Badge variant="muted" className="text-[10px] shrink-0">{LIBRARY_LABELS.archived}</Badge>
+                <Badge variant="muted" className="htc-tours-meta-badge">{LIBRARY_LABELS.archived}</Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p data-tours-meta="">
               {timeLabel} · {appt.durationMinutes} min
               {appt.eventType && ` · ${appt.eventType}`}
             </p>
             {showScheduledAside && scheduledAside ? (
-              <p className="text-[11px] text-muted-foreground">
+              <p data-tours-aside="">
                 Scheduled {scheduledAside.dateLabel} · {scheduledAside.timeLabel}
               </p>
             ) : null}
             {appt.status === "completed" && appt.completedAt ? (
-              <p className="text-[11px] text-muted-foreground">
+              <p data-tours-aside="">
                 Marked completed{" "}
                 {new Date(appt.completedAt).toLocaleString("en-US", {
                   month: "short",
@@ -311,80 +364,99 @@ function TourRow({
               </p>
             ) : null}
             {appt.contactEmail && (
-              <p className="text-xs text-muted-foreground break-all">{appt.contactEmail}</p>
+              <p data-tours-email="">{appt.contactEmail}</p>
+            )}
+            {!appt.leadId && appt.origin === "walk_in" && (
+              <p data-tours-aside="">
+                Walk-in — use {showStatusSelect ? "status and " : ""}archive actions on this row.
+              </p>
             )}
           </div>
         </div>
 
-        {/* Actions — full-width wrap on mobile so status control never overlays details */}
-        <div className="flex flex-wrap items-center gap-2 pl-12 sm:pl-0 sm:shrink-0 sm:justify-end">
-          {!archivedView && (
-            updating ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                {appt.status === "scheduled" && (
-                  <>
-                    <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => void handleRequestConfirmation()}>
-                      Send Confirmation Request
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 text-xs px-2" onClick={() => void handleMarkConfirmed()}>
-                      Mark as Confirmed
-                    </Button>
-                  </>
-                )}
-                {/* Confirmed is never a free-pick option here — see handleMarkConfirmed above. */}
-                <Select value={appt.status} onValueChange={handleStatus} items={STATUS_LABELS}>
-                  <SelectTrigger className="h-8 w-full min-w-[8rem] max-w-[10rem] text-xs sm:w-32"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="no_show">No Show</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            )
-          )}
-          {appt.leadId && (
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" render={<Link href={`/leads/${appt.leadId}`} />}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          )}
-          <LibraryOverflowMenu items={overflowItems} pending={overflowPending} />
+        <div className="htc-tours-row-actions" data-tours-actions="">
+          {!archivedView && updating ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : null}
+          {!archivedView && !updating && appt.status === "scheduled" ? (
+            <div className="htc-tours-confirm-actions" data-tours-confirm-actions="">
+              <Button
+                size="sm"
+                className="htc-tours-confirm-btn htc-tours-confirm-primary"
+                onClick={() => void handleMarkConfirmed()}
+              >
+                Mark as Confirmed
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="htc-tours-confirm-btn"
+                onClick={() => void handleRequestConfirmation()}
+              >
+                Send Confirmation Request
+              </Button>
+            </div>
+          ) : null}
+          {/* Confirmed is never a free-pick option here — see handleMarkConfirmed above. */}
+          {!archivedView && !updating && showStatusSelect ? (
+            <Select value={appt.status} onValueChange={handleStatus} items={statusSelectItems}>
+              <SelectTrigger className="htc-tours-status-select" data-tours-status-select="">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {"scheduled" in statusSelectItems ? (
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                ) : null}
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="no_show">No Show</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : null}
+          <div className="htc-tours-row-tools" data-tours-row-tools="">
+            {appt.leadId ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="htc-tours-lead-link"
+                render={<Link href={`/leads/${appt.leadId}`} />}
+                aria-label={`Open lead for ${displayName}`}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : null}
+            <LibraryOverflowMenu items={overflowItems} pending={overflowPending} />
+          </div>
         </div>
       </div>
 
-      {/* Completed tour: outcome + notes + follow-up */}
       {!archivedView && appt.status === "completed" && (
-        <div className="mt-2 ml-12 space-y-2">
+        <div className="htc-tours-outcome">
           {appt.outcome && (
-            <p className="text-xs text-muted-foreground">
-              Outcome: <span className="font-medium text-heading">{OUTCOME_LABELS[appt.outcome as TourOutcome]}</span>
-              {appt.followUpSentAt && <span className="ml-2 text-green-600">· Follow-up sent</span>}
+            <p data-tours-outcome-summary="">
+              Outcome: <span>{OUTCOME_LABELS[appt.outcome as TourOutcome]}</span>
+              {appt.followUpSentAt && <span data-tours-followup-sent=""> · Follow-up sent</span>}
             </p>
           )}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => setShowOutcomeForm(!showOutcomeForm)}
-              className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+          <div className="htc-tours-outcome-links">
+            <button type="button" onClick={() => setShowOutcomeForm(!showOutcomeForm)}>
               {appt.outcome ? "Edit outcome" : "Record outcome"}
             </button>
             {!appt.followUpSentAt && (
-              <button type="button" onClick={handleMarkFollowUp}
-                className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+              <button type="button" onClick={handleMarkFollowUp}>
                 Mark follow-up sent
               </button>
             )}
           </div>
           {showOutcomeForm && (
-            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+            <div className="htc-tours-outcome-form">
               <Select value={outcome} onValueChange={setOutcome} items={OUTCOME_LABELS}>
-                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tour outcome…" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Tour outcome…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="interested">💚 Interested</SelectItem>
-                  <SelectItem value="considering">🤔 Considering</SelectItem>
-                  <SelectItem value="not_a_fit">❌ Not a fit</SelectItem>
-                  <SelectItem value="booked">🎉 Booked!</SelectItem>
+                  <SelectItem value="interested">Interested</SelectItem>
+                  <SelectItem value="considering">Considering</SelectItem>
+                  <SelectItem value="not_a_fit">Not a fit</SelectItem>
+                  <SelectItem value="booked">Booked</SelectItem>
                   <SelectItem value="unknown">Unknown</SelectItem>
                 </SelectContent>
               </Select>
@@ -394,8 +466,8 @@ function TourRow({
                 <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes from the tour…" className="text-xs" />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowOutcomeForm(false)}>Cancel</Button>
-                <Button type="button" size="sm" className="h-6 text-xs" disabled={savingOutcome} onClick={handleSaveOutcome}>Save</Button>
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowOutcomeForm(false)}>Cancel</Button>
+                <Button type="button" size="sm" className="h-7 text-xs" disabled={savingOutcome} onClick={handleSaveOutcome}>Save</Button>
               </div>
             </div>
           )}
@@ -474,7 +546,7 @@ export function TourList({
   }
 
   return (
-    <div className="divide-y divide-border/50">
+    <div className="htc-tours-list" data-tours-list="">
       {appts.map((appt) => (
         <TourRow
           key={appt.id}
@@ -497,8 +569,9 @@ export function TourArchivedSection({
 }) {
   return (
     <LibraryArchivedSection
+      className="htc-tours-archived"
       count={appointments.length}
-      hint="Archived tours stay in reporting and history. Restore one to return it to Upcoming or Past."
+      hint="Archived tours stay in reporting and history. Restore one to return it to Upcoming, Past, or Cancelled. Archived is not the same as Cancelled."
     >
       <TourList appointments={appointments} venueTimezone={venueTimezone} archivedView />
     </LibraryArchivedSection>

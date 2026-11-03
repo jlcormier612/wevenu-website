@@ -52,21 +52,23 @@ export default async function LeadsPage({ searchParams }: Props) {
     }
   }
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Leads"
-        description="Active sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
-              <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
-            </Button>
-            <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board View</Button>
-            <Button variant="outline" render={<Link href="/settings/import?type=leads" />}>Import Leads</Button>
-            <Button render={<Link href="/leads/new" />}>+ New Lead</Button>
-          </div>
-        }
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Leads"
+          description="Active sales opportunities. All is that population. Booked and Lost stay visible as outcomes and are not included in All."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
+                <GitBranch className="mr-1.5 h-3.5 w-3.5" />Customize Pipeline
+              </Button>
+              <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board View</Button>
+              <Button variant="outline" render={<Link href="/settings/import?type=leads" />}>Import Leads</Button>
+              <Button render={<Link href="/leads/new" />}>+ New Lead</Button>
+            </div>
+          }
+        />
+      </div>
       <SpotPatternRecommendationsPanel types={LEADS_SPOT_PATTERN_TYPES} />
       <LeadList
         leads={leads}

@@ -32,8 +32,8 @@ export default async function ImportPage({
   });
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="space-y-1.5">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6 max-w-3xl">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-1.5">
         <h1 className="text-xl font-bold text-foreground">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Bring a small, clean list of clients, leads, vendors, inventory templates, or package
@@ -48,7 +48,10 @@ export default async function ImportPage({
       <Suspense fallback={null}>
         <ImportHealthWidget />
       </Suspense>
-      <div className="rounded-sm border border-border bg-card p-4 space-y-2">
+      <div
+        className="htc-import-cutover-pointer rounded-sm border px-4 py-3 space-y-2"
+        data-testid="import-cutover-pointer"
+      >
         <h2 className="text-sm font-semibold text-foreground">
           Bringing over existing bookings or financial records?
         </h2>

@@ -13,8 +13,8 @@ export default async function HelpGuidesHomePage() {
   const visible = categories.filter((cat) => cat.articles.length > 0);
 
   return (
-    <div className="space-y-8 max-w-3xl">
-      <div>
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6 max-w-3xl">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-muted-foreground" aria-hidden />
           {HELP_GUIDES_TITLE}

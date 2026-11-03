@@ -20,22 +20,24 @@ export default async function MessageTemplatesPage() {
   const active = templates.filter((t) => !t.isArchived);
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
       <CollectionBackLink href="/library" label="Templates" />
-      <PageHeader
-        title="Message Templates"
-        description="Reusable email and text messages for couples — including Hello to Cheers starters you can Customize into your venue’s own editable copies."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <MessageTemplateStarterPicker existingTemplates={active} />
-            <MessageTemplateStarterPicker existingTemplates={active} variant="import" />
-            <AddHelloToCheersStarters
-              missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))}
-              presentKeys={[...presentKeys].filter((k): k is string => Boolean(k))}
-            />
-          </div>
-        }
-      />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title="Message Templates"
+          description="Reusable email and text messages for couples — including Hello to Cheers starters you can Customize into your venue’s own editable copies."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <MessageTemplateStarterPicker existingTemplates={active} />
+              <MessageTemplateStarterPicker existingTemplates={active} variant="import" />
+              <AddHelloToCheersStarters
+                missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))}
+                presentKeys={[...presentKeys].filter((k): k is string => Boolean(k))}
+              />
+            </div>
+          }
+        />
+      </div>
       <LibraryHowItWorks>
         Message subject and body are authored in the template editor. There is no separate catalog these templates select from — pick a template when composing a message.
       </LibraryHowItWorks>
