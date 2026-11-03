@@ -338,25 +338,26 @@ export function DateHoldsSection({
       ) : null}
       {compact ? (
         <div
-          className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-x-2 gap-y-1 sm:basis-0 sm:flex-nowrap"
+          className="flex min-w-0 flex-1 basis-full flex-col gap-2 sm:basis-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1"
           data-testid="date-hold-compact-band"
         >
+          <div className="flex min-w-0 w-full flex-wrap items-start gap-x-2 gap-y-1.5 sm:w-auto sm:flex-1 sm:items-center">
           <span className="shrink-0 text-xs font-medium text-muted-foreground">Date hold</span>
           {!showForm && activeHolds.length === 0 ? (
             <div
-              className="flex min-w-0 flex-1 items-center gap-x-2 gap-y-0.5"
+              className="flex min-w-0 flex-1 basis-[min(100%,16rem)] flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-x-2"
               data-testid="date-hold-protection-banner"
               data-protected="false"
               title={protection.detail ?? undefined}
             >
               <span
-                className="shrink-0 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs font-semibold text-muted-foreground"
+                className="w-fit shrink-0 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs font-semibold text-muted-foreground"
                 data-testid="date-hold-protection-headline"
               >
                 Not protected
               </span>
               <span
-                className="min-w-0 truncate text-xs text-muted-foreground"
+                className="min-w-0 text-xs text-muted-foreground sm:truncate"
                 data-testid="date-hold-protection-detail"
               >
                 No active hold is protecting this event date.
@@ -365,18 +366,18 @@ export function DateHoldsSection({
           ) : null}
           {activeHolds.length > 0 ? (
             <div
-              className="flex w-fit min-w-0 flex-nowrap items-center gap-x-2 gap-y-2"
+              className="flex min-w-0 w-full flex-col gap-2 sm:w-auto sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-2"
               data-testid="date-hold-active-list"
             >
               {activeHolds.map((hold) => (
                 <div
                   key={hold.id}
-                  className="flex h-8 w-fit min-w-0 max-w-full flex-nowrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5"
+                  className="flex min-h-8 w-full min-w-0 max-w-full flex-wrap items-center gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-1.5 py-1 sm:w-fit sm:flex-nowrap sm:py-0"
                   data-testid="date-hold-active"
                   data-protected="true"
                 >
                   <Calendar className="h-3.5 w-3.5 shrink-0 text-warning-foreground dark:text-foreground" />
-                  <div className="flex min-w-0 flex-nowrap items-center gap-x-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                     <p
                       className="text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground"
                       data-testid="date-hold-protection-headline"
@@ -402,7 +403,7 @@ export function DateHoldsSection({
                       Details
                     </button>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
                     <Button
                       type="button"
                       variant="outline"
@@ -456,11 +457,12 @@ export function DateHoldsSection({
               ))}
             </div>
           ) : null}
+          </div>
           {!showForm && showPlaceHold ? (
             <Button
               type="button"
               size="sm"
-              className="h-8 shrink-0 whitespace-nowrap"
+              className="h-8 w-full shrink-0 whitespace-nowrap sm:w-auto"
               onClick={openForm}
               data-testid="date-hold-place"
             >

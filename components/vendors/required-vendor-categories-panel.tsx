@@ -38,22 +38,27 @@ export function RequiredVendorCategoriesPanel({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card/40">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-      >
-        <div>
-          <p className="text-sm font-medium text-foreground">Required categories</p>
-          <p className="text-xs text-muted-foreground">
-            Optional — when your process requires a type of vendor (not one named business).
-          </p>
-        </div>
-        <span className="text-xs text-muted-foreground">{open ? "Hide" : "Show"}</span>
-      </button>
+    <div
+      className="overflow-hidden rounded-[0.75rem] border border-[color:var(--htc-border-warm)] bg-card shadow-[0_1px_2px_color-mix(in_oklch,#24332b_4%,transparent)]"
+      data-vendor-required-categories
+    >
+      <div className="border-b border-[color:color-mix(in_oklch,var(--htc-eucalyptus)_40%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)]">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <div>
+            <p className="text-sm font-medium text-heading">Required categories</p>
+            <p className="text-xs text-muted-foreground">
+              Optional — when your process requires a type of vendor (not one named business).
+            </p>
+          </div>
+          <span className="text-xs text-muted-foreground">{open ? "Hide" : "Show"}</span>
+        </button>
+      </div>
       {open && (
-        <div className="space-y-3 border-t border-border px-4 py-3">
+        <div className="space-y-3 bg-[var(--htc-linen)] px-4 py-3">
           <div className="flex flex-wrap gap-1.5">
             {VENDOR_CATEGORIES.filter((c) => c.value !== "other").map((c) => {
               const active = selected.has(c.value);
@@ -65,7 +70,7 @@ export function RequiredVendorCategoriesPanel({
                   className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                     active
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground"
+                      : "border-[color:var(--htc-border-warm)] bg-card text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {vendorCategoryLabel(c.value)}

@@ -1,12 +1,12 @@
 # HTC Color Distribution Rules
 
-**Status:** Formalized for Phase 11D relationship-workspace pilot  
-**Authority:** Approved HTC palette + hospitality redesign Phases 1–11C  
+**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering  
+**Authority:** Approved HTC palette + hospitality redesign Phases 1–11D  
 **Token home:** `.htc-staff` in `app/globals.css`  
 **Companion:** `docs/design/htc-visual-system.md` (locked hex values and Dashboard/Clients/Offerings approvals)
 
 Color communicates purpose, hierarchy, and meaning — not decoration.  
-Hello to Cheers should feel warm and polished, not green-everywhere, and not generic white-and-gray SaaS.
+Hello to Cheers should feel warm and polished, not green-everywhere, beige-everywhere, or generic white-and-gray SaaS.
 
 ---
 
@@ -79,9 +79,52 @@ Preserve approved Luv / intentional-attention treatments. Do not use blush as a 
 
 Never recolor Calendar taxonomy, booking lifecycle, pipeline stages, warnings/errors, payment/contract states, floor-plan/seating states, availability protection, or permission indicators for decorative reasons.
 
+### Rule H — Surface layering and visual contrast (Phase 12)
+
+The correct hospitality design is not a collection of colored cards. Color must work across the hierarchy of the page.
+
+**Preferred structure**
+
+Warm canvas → purposeful section treatment → white content surfaces → selective accents
+
+Examples:
+
+- Warm canvas + eucalyptus introduction + white working cards
+- Warm canvas + linen control toolbar + white data table
+- Linen section shell + white nested records
+- White card + calm-blue instructional subsection
+- Eucalyptus primary summary + white neighboring cards
+- White content area + selective linen supporting section
+
+**Avoid**
+
+- Linen outer shell containing indistinguishable linen cards
+- Large beige areas with additional beige surfaces on top
+- Green outer panels filled with more green cards
+- Multiple consecutive pale-green sections with no white separation
+- Entire pages where every major panel has a tinted background
+- Returning to almost entirely white pages with no hospitality hierarchy
+
+**When a parent surface is tinted, nested content should usually be white.**  
+Exceptions need a specific purpose (approved selected state, compact informational subsection, semantic status).
+
+**White is not the enemy.** Use it generously for working content, record cards, controls, and readable detail. The old problem was missing hierarchy — not white itself.
+
+**Linen is supporting, not dominant.** It creates warmth around operational controls and groupings. It must not become the default fill for every large content panel. If a section already sits on warm canvas and holds many records, prefer a white shell (optionally with linen controls) over a large beige slab.
+
+**Eucalyptus is the signature, not the wallpaper.** Keep meaningful introductions and primary summaries. Do not fill every supporting card with eucalyptus.
+
+**Calm blue should be present where useful** — restrained instructional treatments — so the product uses its full palette. Blue remains informational, never decorative wallpaper.
+
+Judge balance at **page level**: dominant color, consecutive tinted sections, parent/child contrast, primary action visibility, white working content vs colored framing, guidance visibility, typography, and mobile readability. Avoid artificial color quotas.
+
+### Rule I — Active indicators (hospitality)
+
+When a staff surface needs a restrained “Active” indicator that is not a dark botanical fill, use the eucalyptus Active treatment (`.htc-badge-active`): eucalyptus surface wash + dark charcoal text. Preserve distinct Paused / Draft / Failed / Overdue meanings — do not make every status green.
+
 ---
 
-## 3. Shared utilities (Phase 11D)
+## 3. Shared utilities (Phase 11D + Phase 12)
 
 | Class | Role |
 |-------|------|
@@ -90,6 +133,8 @@ Never recolor Calendar taxonomy, booking lifecycle, pipeline stages, warnings/er
 | `.htc-surface-summary` | Selective eucalyptus primary summary |
 | `.htc-surface-guidance` | Calm-blue informational panel |
 | `.htc-surface-guidance-compact` | Calm-blue subsection inside a white card |
+| `.htc-group-shell` | Linen parent grouping that forces nested cards white |
+| `.htc-badge-active` | Restrained eucalyptus Active indicator |
 
 All are scoped under `.htc-staff`. Do not apply to portal, vendor-app, marketing, or print/PDF.
 
@@ -124,16 +169,19 @@ Prefer semantic variants over one-off `bg-muted/20` or `bg-primary/5` washes on 
 
 1. Classify the surface before coloring: working / operational / summary / guidance / semantic / Luv.
 2. Reuse a shared class when the role matches; do not invent a new wash.
-3. Judge the whole viewport — avoid green domination and pastel quilts.
-4. Keep dark-mode and print/PDF out of scope unless separately authorized.
-5. Stop for product visual approval before deploying decorative color sweeps.
+3. Judge the whole viewport — avoid green domination, beige domination, and pastel quilts.
+4. Prefer white nested content inside tinted parents.
+5. Keep dark-mode and print/PDF out of scope unless separately authorized.
+6. Stop for product visual approval before deploying decorative color sweeps.
 
 ---
 
 ## 6. Protected exceptions
 
-- Dashboard, Clients list, and Offerings catalog closed approvals in `htc-visual-system.md`
+- Dashboard Snapshot KPI families and closed Focus / Luv behaviors in `htc-visual-system.md` (Phase 12 may refine Coming Up shell for page-level beige balance without reopening Snapshot families)
+- Clients list and Offerings catalog closed approvals in `htc-visual-system.md`
 - Calendar `--cal-*` taxonomy
 - Floor Plan / Seating object colors
 - Luv blush identity
 - Semantic success / warning / destructive / overdue treatments
+- Phase 11D relationship-workspace structure (Lead Sales / Space Prefs / Contact; Booking summary / Team / Questionnaires / Inventory) — refine only for clear layering defects; do not reopen functional UX

@@ -205,13 +205,19 @@ export default async function TaskCenterPage() {
   const watchCount = watchTasks.length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="tasks">
+      <div
+        className="htc-hospitality-intro htc-task-center-intro flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+        data-testid="task-center-intro"
+      >
         <PageHeader
           title="Task Center"
           description="Tasks your venue needs to complete across leads and events."
         />
-        <div className="shrink-0 flex flex-col items-end gap-0.5 text-xs text-muted-foreground pt-1">
+        <div
+          className="htc-task-center-intro-counts flex flex-col gap-0.5 text-xs text-muted-foreground sm:shrink-0 sm:items-end sm:pt-1"
+          data-testid="task-center-intro-counts"
+        >
           <span>
             <span className="font-medium text-heading">{doAttention}</span> team items need attention
           </span>

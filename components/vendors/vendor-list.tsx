@@ -22,6 +22,13 @@ import {
   vendorPreferenceSortRank,
 } from "@/lib/vendors/list-presentation";
 import type { Vendor } from "@/lib/vendors/types";
+import {
+  IDLE_CHIP,
+  IDLE_CHIP_COUNT,
+  SELECTED_CHIP,
+  SELECTED_CHIP_COUNT,
+} from "@/lib/ui/selected-state";
+import { cn } from "@/lib/utils";
 
 type FilterKey = "all" | string;
 type SortKey = "az" | "za" | "newest" | "preferred";
@@ -66,16 +73,17 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
 
   return (
     <div className="space-y-4">
+      <div className="htc-hospitality-toolbar space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search vendors…" className="pl-9" />
+            placeholder="Search vendors…" className="border-[color:var(--htc-border-warm)] bg-card pl-9" />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-            <SelectTrigger className="h-9 w-40 text-sm border-border">
+            <SelectTrigger className="h-9 w-40 border-[color:var(--htc-border-warm)] bg-card text-sm text-muted-foreground">
               <SelectValue placeholder="A → Z" />
             </SelectTrigger>
             <SelectContent>
@@ -94,18 +102,25 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
             const active = filter === key;
             return (
               <button key={key} type="button" onClick={() => setFilter(key)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  active ? SELECTED_CHIP : IDLE_CHIP,
+                )}>
                 {label}
-                <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
+                <span className={cn(
+                  "rounded-full px-1.5 py-px text-[10px] font-semibold",
+                  active ? SELECTED_CHIP_COUNT : IDLE_CHIP_COUNT,
+                )}>{count}</span>
               </button>
             );
           })}
         </div>
       )}
+      </div>
 
       {/* Empty state */}
       {vendors.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-[0.75rem] border border-dashed border-[color:var(--htc-border-warm)] bg-card py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No approved vendors yet</p>
           <p className="mt-1 mb-4 max-w-md text-sm text-muted-foreground">
             Add the vendors you make available to couples. You can recommend or prefer them, mark required or in-house vendors, and invite them to claim their profile.
@@ -115,7 +130,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
       )}
 
       {vendors.length > 0 && filtered.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="rounded-[0.75rem] border border-dashed border-[color:var(--htc-border-warm)] bg-card py-10 text-center">
           <p className="text-sm text-muted-foreground">No vendors match your search.</p>
           <Button variant="link" size="sm" className="mt-1"
             onClick={() => { setQuery(""); setFilter("all"); }}>
@@ -125,7 +140,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
               <TableRow>
@@ -145,7 +160,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                 return (
                 <TableRow key={vendor.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/vendors/${vendor.id}`} className="hover:text-primary">
+                    <Link href={`/vendors/${vendor.id}`} className="htc-record-link">
                       {vendor.businessName}
                     </Link>
                   </TableCell>

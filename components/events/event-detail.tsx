@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   FileDown,
+  MoreHorizontal,
   Pencil,
   Printer,
 } from "lucide-react";
@@ -73,6 +74,12 @@ import { ActivityTimelineView } from "@/components/conversations/activity-timeli
 import type { ConversationMessage } from "@/lib/conversations/types";
 import type { ClientStatus } from "@/lib/clients/types";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -769,54 +776,149 @@ export function EventDetail({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
-          {event.status !== "cancelled" && (
+        <div
+          className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row sm:items-center sm:gap-2"
+          data-testid="event-header-actions"
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <EventStatusBadge status={event.status} bookedAt={event.bookedAt} />
             <Button
               variant="outline"
               size="sm"
-              disabled={statusPending}
-              onClick={() => {
-                if (!confirm("Cancel this event? It leaves the active client list. History, contracts, and payments stay.")) return;
-                handleStatusChange("cancelled");
-              }}
+              className="h-11 min-h-11 sm:h-8 sm:min-h-0"
+              render={<Link href={`/events/${event.id}/edit`} />}
+              data-testid="event-action-edit"
             >
-              Cancel event
+              <Pencil className="mr-1 h-3.5 w-3.5" /> Edit event
             </Button>
-          )}
-          {event.status === "cancelled" && event.bookedAt && event.clientId && (
             <Button
+              variant="outline"
               size="sm"
-              disabled={statusPending}
-              onClick={() => {
-                const clientId = event.clientId;
-                if (!clientId) return;
-                setReturnDraft(null);
-                setReturnDraftError(null);
-                setReturnBookedOpen(true);
-                void getBookingConfirmationDraftForClientAction(clientId).then((loaded) => {
-                  if (!loaded.ok) {
-                    setReturnDraftError(loaded.message);
-                    return;
-                  }
-                  setReturnDraft(loaded.draft);
-                });
-              }}
+              className="h-11 min-h-11 sm:h-8 sm:min-h-0"
+              render={<Link href={`/events/${event.id}/day-sheet`} />}
+              data-testid="event-action-day-sheet"
             >
-              Return to Booked
+              <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
             </Button>
-          )}
-          <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/edit`} />}>
-            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit event
-          </Button>
-          <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/day-sheet`} />}>
-            <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
-          </Button>
-          {daysUntil(event.eventDate) === 0 && (
-            <Button size="sm" render={<Link href={`/events/${event.id}/today`} />}
-              style={{ background: "#5D6F5D", color: "white" }}>
-              ✦ Today&apos;s Dashboard
-            </Button>
+            {/* Desktop: keep Cancel / Return / Today inline */}
+            {event.status !== "cancelled" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden h-8 sm:inline-flex"
+                disabled={statusPending}
+                data-testid="event-action-cancel"
+                onClick={() => {
+                  if (!confirm("Cancel this event? It leaves the active client list. History, contracts, and payments stay.")) return;
+                  handleStatusChange("cancelled");
+                }}
+              >
+                Cancel event
+              </Button>
+            )}
+            {event.status === "cancelled" && event.bookedAt && event.clientId && (
+              <Button
+                size="sm"
+                className="hidden h-8 sm:inline-flex"
+                disabled={statusPending}
+                data-testid="event-action-return-booked"
+                onClick={() => {
+                  const clientId = event.clientId;
+                  if (!clientId) return;
+                  setReturnDraft(null);
+                  setReturnDraftError(null);
+                  setReturnBookedOpen(true);
+                  void getBookingConfirmationDraftForClientAction(clientId).then((loaded) => {
+                    if (!loaded.ok) {
+                      setReturnDraftError(loaded.message);
+                      return;
+                    }
+                    setReturnDraft(loaded.draft);
+                  });
+                }}
+              >
+                Return to Booked
+              </Button>
+            )}
+            {daysUntil(event.eventDate) === 0 && (
+              <Button
+                size="sm"
+                className="hidden h-8 sm:inline-flex"
+                render={<Link href={`/events/${event.id}/today`} />}
+                style={{ background: "#5D6F5D", color: "white" }}
+                data-testid="event-action-today-dashboard"
+              >
+                ✦ Today&apos;s Dashboard
+              </Button>
+            )}
+          </div>
+          {/* Mobile: less-frequent actions in an accessible overflow menu */}
+          {(event.status !== "cancelled" ||
+            (event.status === "cancelled" && !!event.bookedAt && !!event.clientId) ||
+            daysUntil(event.eventDate) === 0) && (
+            <div className="sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 min-h-11 w-full justify-center"
+                      data-testid="event-action-more"
+                    />
+                  }
+                >
+                  <MoreHorizontal className="mr-1 h-4 w-4" aria-hidden />
+                  More actions
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  {event.status !== "cancelled" ? (
+                    <DropdownMenuItem
+                      disabled={statusPending}
+                      data-testid="event-action-cancel-menu"
+                      onClick={() => {
+                        if (!confirm("Cancel this event? It leaves the active client list. History, contracts, and payments stay.")) return;
+                        handleStatusChange("cancelled");
+                      }}
+                    >
+                      Cancel event
+                    </DropdownMenuItem>
+                  ) : null}
+                  {event.status === "cancelled" && event.bookedAt && event.clientId ? (
+                    <DropdownMenuItem
+                      disabled={statusPending}
+                      data-testid="event-action-return-booked-menu"
+                      onClick={() => {
+                        const clientId = event.clientId;
+                        if (!clientId) return;
+                        setReturnDraft(null);
+                        setReturnDraftError(null);
+                        setReturnBookedOpen(true);
+                        void getBookingConfirmationDraftForClientAction(clientId).then((loaded) => {
+                          if (!loaded.ok) {
+                            setReturnDraftError(loaded.message);
+                            return;
+                          }
+                          setReturnDraft(loaded.draft);
+                        });
+                      }}
+                    >
+                      Return to Booked
+                    </DropdownMenuItem>
+                  ) : null}
+                  {daysUntil(event.eventDate) === 0 ? (
+                    <DropdownMenuItem
+                      data-testid="event-action-today-dashboard-menu"
+                      onClick={() => {
+                        router.push(`/events/${event.id}/today`);
+                      }}
+                    >
+                      Today&apos;s Dashboard
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
       </div>

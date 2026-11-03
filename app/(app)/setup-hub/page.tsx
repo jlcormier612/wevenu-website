@@ -65,7 +65,7 @@ export default async function SetupHubPage() {
         }
       />
       {isWhiteGlove ? (
-        <div className="rounded-md border bg-muted/30 p-4">
+        <div className="htc-setup-hub-welcome rounded-md border p-4">
           <h2 className="text-lg font-medium">Welcome to Hello to Cheers</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             We&apos;ve already done a lot of the setup for you.

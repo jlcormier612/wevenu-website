@@ -171,7 +171,7 @@ export function SeriesForm({
   return (
     <div className="space-y-8">
       {isEdit && (
-        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <p className="htc-surface-guidance-compact text-xs text-muted-foreground">
           Saving changes applies to people who enter this automation after you save. People already in this automation keep the steps they started with.
         </p>
       )}
@@ -366,7 +366,7 @@ export function SeriesForm({
         </p>
       </section>
 
-      <section className="space-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3">
+      <section className="htc-surface-guidance space-y-2 px-4 py-3">
         <p className="text-sm font-semibold text-heading">What will happen?</p>
         <p className="text-sm text-muted-foreground leading-relaxed">{preview.paragraph}</p>
         {preview.lines.steps.length > 0 && (

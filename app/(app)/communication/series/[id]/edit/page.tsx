@@ -31,18 +31,20 @@ export default async function EditSeriesPage({ params }: Props) {
   const activeCount = enrollments.filter((e) => e.status === "active").length;
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="automations-edit">
       <CollectionBackLink href="/communication/series" label="Automations" />
-      <PageHeader
-        title={series.name}
-        description="Review who this is for, what will happen, and who is currently receiving messages."
-        actions={
-          <div className="flex items-center gap-2">
-            <SeriesStatusToggle seriesId={series.id} status={series.status} />
-            <DeleteSeriesButton seriesId={series.id} seriesName={series.name} />
-          </div>
-        }
-      />
+      <div className="htc-hospitality-intro">
+        <PageHeader
+          title={series.name}
+          description="Review who this is for, what will happen, and who is currently receiving messages."
+          actions={
+            <div className="flex items-center gap-2">
+              <SeriesStatusToggle seriesId={series.id} status={series.status} />
+              <DeleteSeriesButton seriesId={series.id} seriesName={series.name} />
+            </div>
+          }
+        />
+      </div>
       <AutomationsHelp />
       <Card>
         <CardHeader>

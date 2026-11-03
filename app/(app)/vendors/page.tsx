@@ -16,21 +16,23 @@ export default async function VendorsPage() {
     getVenueRequiredVendorCategories(),
   ]);
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Vendors"
-        description="Vendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" render={<Link href="/settings/import?type=vendors" />}>
-              Import Vendors
-            </Button>
-            <Button render={<Link href="/vendors/new" />}>
-              + Add Vendor
-            </Button>
-          </div>
-        }
-      />
+    <div className="htc-hospitality-page space-y-4 sm:space-y-6">
+      <div className="htc-hospitality-heading">
+        <PageHeader
+          title="Vendors"
+          description="Vendors you make available to couples. Recommend or prefer them, mark required or in-house, and invite them to claim their profile."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" render={<Link href="/settings/import?type=vendors" />}>
+                Import Vendors
+              </Button>
+              <Button render={<Link href="/vendors/new" />}>
+                + Add Vendor
+              </Button>
+            </div>
+          }
+        />
+      </div>
       <RequiredVendorCategoriesPanel initialCategories={requiredCategories} />
       <VendorList vendors={vendors} />
     </div>

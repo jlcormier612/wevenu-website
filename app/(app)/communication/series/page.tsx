@@ -15,19 +15,21 @@ export default async function SeriesPage() {
   const series = await getSequences();
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Automations"
-        description="When something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients."
-        actions={
-          <Button render={<Link href="/communication/series/new" />}>+ New Automation</Button>
-        }
-      />
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="automations">
+      <div className="htc-hospitality-intro htc-hospitality-intro-accent">
+        <PageHeader
+          title="Automations"
+          description="When something happens, Hello to Cheers can send the right follow-up for you — for sales leads and for booked clients."
+          actions={
+            <Button render={<Link href="/communication/series/new" />}>+ New Automation</Button>
+          }
+        />
+      </div>
 
       <AutomationsHelp />
 
       {series.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No automations yet</p>
           <p className="mt-1 mb-4 max-w-md text-sm text-muted-foreground">
             Start with a new-inquiry welcome, a tour thank-you, or a sales follow-up. You can preview what will happen before you turn it on.

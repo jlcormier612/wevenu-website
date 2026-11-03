@@ -73,7 +73,7 @@ const PERSPECTIVES: { id: Perspective; label: string }[] = [
 ];
 
 const STATUS_ICON = {
-  overdue:  <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" aria-hidden />,
+  overdue:  <AlertTriangle className="htc-task-overdue-ink h-3.5 w-3.5 shrink-0" aria-hidden />,
   pending:  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden />,
   complete: <Check className="h-3.5 w-3.5 text-success shrink-0" aria-hidden />,
 };
@@ -142,7 +142,7 @@ function DoTaskItem({
             {isLeadTask ? "Lead" : categoryLabel(task.category as import("@/lib/playbooks/types").TaskCategory)}
           </span>
           <span aria-hidden>·</span>
-          <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
+          <span className={task.computedStatus === "overdue" ? "htc-task-overdue-ink font-medium" : ""}>
             {formatDue(task)}
           </span>
           {task.owner_type === "vendor" && (
@@ -199,7 +199,7 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
     <div className="flex items-start gap-3 py-3 last:border-0 border-b border-border/40">
       <div className="mt-0.5 shrink-0" aria-hidden>
         {task.computedStatus === "overdue"
-          ? <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+          ? <AlertTriangle className="htc-task-overdue-ink h-3.5 w-3.5" />
           : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
@@ -207,7 +207,7 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
         <p className="text-xs text-muted-foreground truncate">
           {[couple, eventDate].filter(Boolean).join(" · ")}
           <span aria-hidden> · </span>
-          <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
+          <span className={task.computedStatus === "overdue" ? "htc-task-overdue-ink font-medium" : ""}>
             {formatDue(task)}
           </span>
         </p>
@@ -363,9 +363,9 @@ function DoSection({
         className="flex items-center gap-2 mb-3 w-full text-left group"
         aria-expanded={open}>
         {icon}
-        <span className={`text-sm font-semibold ${priority === "high" ? "text-destructive" : "text-heading"}`}>{title}</span>
+        <span className={`text-sm font-semibold ${priority === "high" ? "htc-task-overdue-ink" : "text-heading"}`}>{title}</span>
         <span className={`text-xs rounded-full px-2 py-0.5 font-semibold ${
-          priority === "high" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+          priority === "high" ? "htc-task-overdue-count" : "bg-muted text-muted-foreground"
         }`}>{tasks.length}</span>
         <span className="text-xs text-muted-foreground ml-auto group-hover:text-foreground">{open ? "Hide" : "Show"}</span>
       </button>
@@ -693,16 +693,22 @@ export function TaskCenter({
         )}
 
         {hasAnyDoTasks && doImmediate === 0 && doUpcomingCount > 0 && !myWorkEmpty && (
-          <div className="rounded-sm border border-border bg-muted/30 px-4 py-3">
+          <div
+            className="htc-task-center-plate-clear rounded-sm border px-4 py-3"
+            data-testid="task-center-plate-clear"
+          >
             <p className="text-sm font-medium text-heading">Nothing on your plate today</p>
             <p className="text-xs text-muted-foreground">Here&apos;s what&apos;s coming up across your events.</p>
           </div>
         )}
 
         {doImmediate > 0 && (
-          <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />
-            <p className="text-sm font-medium text-destructive">
+          <div
+            className="htc-task-overdue-banner rounded-sm border px-4 py-3 flex items-center gap-2"
+            data-testid="task-center-overdue-banner"
+          >
+            <AlertTriangle className="htc-task-overdue-ink h-4 w-4 shrink-0" aria-hidden />
+            <p className="htc-task-overdue-ink text-sm font-medium">
               {`${doImmediate} item${doImmediate !== 1 ? "s" : ""} need attention on your team's list`}
             </p>
           </div>
@@ -711,7 +717,7 @@ export function TaskCenter({
         {(hasAnyDoTasks || eventFilterId) && !myWorkEmpty && (
           <>
             <DoSection
-              title="Overdue" icon={<AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden />}
+              title="Overdue" icon={<AlertTriangle className="htc-task-overdue-ink h-4 w-4 shrink-0" aria-hidden />}
               tasks={scopedDo.overdue}
               priority="high" onComplete={handleComplete} onWaive={handleWaive}
               completing={completing} waiving={waiving} groupBy={groupBy}

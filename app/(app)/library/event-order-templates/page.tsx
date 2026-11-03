@@ -33,7 +33,7 @@ export default async function EventOrderTemplatesPage() {
         description="Reusable packages for a wedding’s Event Order — always-on items and couple choices selected from your Offerings."
         actions={<NewEventOrderTemplateButton />}
       />
-      <LibraryHowItWorks>
+      <LibraryHowItWorks tone="calm">
         An Event Order template is the reusable package you apply to a booked event. You decide items
         always on the package (with clear package-price vs additional-charge treatment) and Couple&apos;s
         choices selected from your Offerings — for example Buffet or Plated dinner, with which child
@@ -42,7 +42,7 @@ export default async function EventOrderTemplatesPage() {
         couple choices.
       </LibraryHowItWorks>
       <div
-        className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground space-y-1.5"
+        className="htc-surface-guidance space-y-1.5 px-3 py-2 text-xs text-muted-foreground"
         data-testid="eo-templates-landing-example"
       >
         <p className="font-medium text-heading">Example</p>

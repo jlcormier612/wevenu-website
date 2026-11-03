@@ -49,32 +49,38 @@ export function PaymentScheduleList({
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        <Input value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search schedules…" className="pl-9" />
-      </div>
+      <div className="htc-hospitality-toolbar space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search schedules…"
+            className="border-[color:var(--htc-border-warm)] bg-card pl-9"
+          />
+        </div>
 
-      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Payment plan filters">
-        {PAYMENT_LIST_FILTERS.map(({ value, label }) => {
-          const count = schedules.filter((s) => paymentMatchesListFilter(s, value)).length;
-          const active = filter === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setFilter(value)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
-            >
-              {label}
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Payment plan filters">
+          {PAYMENT_LIST_FILTERS.map(({ value, label }) => {
+            const count = schedules.filter((s) => paymentMatchesListFilter(s, value)).length;
+            const active = filter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFilter(value)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-[color:var(--htc-border-warm)] bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+              >
+                {label}
+                <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-[color:var(--htc-canvas)] text-muted-foreground"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {schedules.length === 0 && (
@@ -111,7 +117,7 @@ export function PaymentScheduleList({
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="htc-hospitality-table">
           <Table>
             <TableHeader>
               <TableRow>
@@ -127,7 +133,7 @@ export function PaymentScheduleList({
               {filtered.map((s) => (
                 <TableRow key={s.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link href={`/payments/${s.id}`} className="hover:text-primary">
+                    <Link href={`/payments/${s.id}`} className="htc-record-link">
                       {paymentScheduleListPrimaryTitle(s)}
                     </Link>
                     <p className="text-xs text-muted-foreground">

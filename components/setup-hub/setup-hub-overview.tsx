@@ -26,6 +26,7 @@ import {
   isYourVenueComplete,
   type YourVenueFacts,
 } from "@/lib/setup-hub/stage-completion";
+import { contiguousSetupStageRuns } from "@/lib/setup-hub/stage-section-runs";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
@@ -261,61 +262,71 @@ export function SetupHubOverview({
         ) : null}
       </div>
       <SetupConciergeCard entry={setupConcierge ?? null} />
-      <div className="space-y-3">
-        {stages.map((s) => {
-          const copy = STAGE_COPY[s.key];
-          return (
-            <Card key={s.key}>
-              <CardContent className="space-y-3 py-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border">
-                    {s.status === "complete" && <Check className="h-4 w-4 text-primary" />}
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-heading">{s.title}</p>
-                      {s.status === "complete" && <Badge variant="outline">Set up</Badge>}
-                      {!s.required && <Badge variant="outline">Optional</Badge>}
-                    </div>
-                    {copy && (
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <p>{copy.what}</p>
-                        <p>{copy.why}</p>
-                        <p>{copy.whatToDo}</p>
+      {/*
+        Phase 9 Option A — eucalyptus section labels over contiguous completion runs.
+        Stage order is preserved; headings reuse readiness copy and only describe
+        the cards beneath each band (never ready_to_invite_couples).
+      */}
+      <div className="htc-setup-stage-list space-y-4" data-htc-phase9="setup-stages">
+        {contiguousSetupStageRuns(stages).map((run) => (
+          <section key={`${run.bucket}-${run.stages[0]?.key}`} className="space-y-3">
+            <h2 className="htc-setup-stage-section-label">{run.heading}</h2>
+            {run.stages.map((s) => {
+              const copy = STAGE_COPY[s.key];
+              return (
+                <Card key={s.key}>
+                  <CardContent className="space-y-3 py-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border">
+                        {s.status === "complete" && <Check className="h-4 w-4 text-primary" />}
                       </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">{s.detail}</p>
-                    {s.customActions ? (
-                      s.customActions
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-3 pt-1">
-                        {s.href && s.hrefLabel ? (
-                          <Link
-                            href={s.href}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                          >
-                            {s.hrefLabel}
-                            <ChevronRight className="h-3 w-3" />
-                          </Link>
-                        ) : null}
-                        {s.action}
-                        {copy?.helpHref && copy.helpTitle && (
-                          <Link
-                            href={copy.helpHref}
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-                          >
-                            <HelpCircle className="h-3 w-3" />
-                            {copy.helpTitle}
-                          </Link>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-heading">{s.title}</p>
+                          {s.status === "complete" && <Badge variant="outline">Set up</Badge>}
+                          {!s.required && <Badge variant="outline">Optional</Badge>}
+                        </div>
+                        {copy && (
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            <p>{copy.what}</p>
+                            <p>{copy.why}</p>
+                            <p>{copy.whatToDo}</p>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">{s.detail}</p>
+                        {s.customActions ? (
+                          s.customActions
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-3 pt-1">
+                            {s.href && s.hrefLabel ? (
+                              <Link
+                                href={s.href}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                              >
+                                {s.hrefLabel}
+                                <ChevronRight className="h-3 w-3" />
+                              </Link>
+                            ) : null}
+                            {s.action}
+                            {copy?.helpHref && copy.helpTitle && (
+                              <Link
+                                href={copy.helpHref}
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                              >
+                                <HelpCircle className="h-3 w-3" />
+                                {copy.helpTitle}
+                              </Link>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </section>
+        ))}
       </div>
       <SetupReadiness
         stages={stages.map(({ title, status, detail, required }) => ({ title, status, detail, required }))}

@@ -79,7 +79,10 @@ export function SeriesView({
             <CardTitle>{series.name}</CardTitle>
             <CardDescription>{summary.paragraph}</CardDescription>
           </div>
-          <Badge variant={series.status === "active" ? "success" : "muted"}>
+          <Badge
+            variant={series.status === "active" ? "outline" : "muted"}
+            className={series.status === "active" ? "htc-badge-active" : undefined}
+          >
             {series.status === "active" ? "Active" : "Paused"}
           </Badge>
         </CardHeader>

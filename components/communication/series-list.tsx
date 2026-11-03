@@ -63,7 +63,10 @@ function AutomationRow({
         s.status === "paused" ? " · Turn on when you’re ready" : ""
       }`}
       badges={
-        <Badge variant={s.status === "active" ? "success" : "muted"} className="text-[10px]">
+        <Badge
+          variant={s.status === "active" ? "outline" : "muted"}
+          className={s.status === "active" ? "htc-badge-active text-[10px]" : "text-[10px]"}
+        >
           {s.status === "active" ? "Active" : "Paused"}
         </Badge>
       }
@@ -142,16 +145,21 @@ export function SeriesList({ initialSeries }: { initialSeries: MessageSequenceLi
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       {groups.map((group) => (
-        <section key={group.key} className="space-y-2" aria-labelledby={`automation-group-${group.key}`}>
-          <div>
-            <h2 id={`automation-group-${group.key}`} className="text-sm font-semibold text-heading">
+        <section
+          key={group.key}
+          className="htc-group-shell"
+          aria-labelledby={`automation-group-${group.key}`}
+          data-automation-group={group.key}
+        >
+          <div className="htc-group-shell-header">
+            <h2 id={`automation-group-${group.key}`} data-group-title="">
               {group.title}
             </h2>
-            <p className="text-xs text-muted-foreground">{group.blurb}</p>
+            <p data-group-blurb="">{group.blurb}</p>
           </div>
-          <div className="space-y-2">
+          <div className="htc-group-shell-body">
             {group.items.map((s) => (
               <AutomationRow
                 key={s.id}

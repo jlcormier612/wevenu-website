@@ -54,6 +54,11 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /Events in the next 30 days/);
   });
 
+  it("Coming up uses a white working shell (Phase 12 beige balance)", () => {
+    assert.match(page, /title="Coming up"[\s\S]*?className="htc-surface-working"/);
+    assert.doesNotMatch(page, /title="Coming up"[\s\S]*?htc-linen/);
+  });
+
   it("removes the Quick Actions section and does not add Bookings nav", () => {
     assert.doesNotMatch(page, /Quick Actions/);
     assert.doesNotMatch(page, /function QuickAction/);

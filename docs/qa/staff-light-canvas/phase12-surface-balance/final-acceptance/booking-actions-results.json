@@ -1,0 +1,728 @@
+[
+  {
+    "id": "booking-booked",
+    "viewport": "mobile-375",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-booked-mobile-375.png",
+    "overflowX": false,
+    "actions": {
+      "top": 242,
+      "left": 17,
+      "right": 358,
+      "bottom": 344,
+      "width": 341,
+      "height": 102,
+      "text": "Booked Edit event Day-of SheetCancel eventMore actions"
+    },
+    "edit": {
+      "top": 242,
+      "left": 84,
+      "right": 189,
+      "bottom": 289,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 242,
+      "left": 198,
+      "right": 318,
+      "bottom": 289,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 298,
+      "left": 17,
+      "right": 358,
+      "bottom": 344,
+      "width": 341,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "Cancel event"
+    },
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  },
+  {
+    "id": "booking-booked",
+    "viewport": "mobile-375-more-open",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-booked-mobile-375-more-open.png",
+    "overflowX": false,
+    "actions": {
+      "top": 242,
+      "left": 17,
+      "right": 358,
+      "bottom": 344,
+      "width": 341,
+      "height": 102,
+      "text": "Booked Edit event Day-of SheetCancel eventMore actions"
+    },
+    "edit": {
+      "top": 242,
+      "left": 84,
+      "right": 189,
+      "bottom": 289,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 242,
+      "left": 198,
+      "right": 318,
+      "bottom": 289,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 298,
+      "left": 17,
+      "right": 358,
+      "bottom": 344,
+      "width": 341,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "Cancel event"
+    },
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": [
+      "Cancel event"
+    ]
+  },
+  {
+    "id": "booking-booked",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-booked-mobile-390.png",
+    "overflowX": false,
+    "actions": {
+      "top": 242,
+      "left": 17,
+      "right": 373,
+      "bottom": 344,
+      "width": 356,
+      "height": 102,
+      "text": "Booked Edit event Day-of SheetCancel eventMore actions"
+    },
+    "edit": {
+      "top": 242,
+      "left": 84,
+      "right": 189,
+      "bottom": 289,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 242,
+      "left": 198,
+      "right": 318,
+      "bottom": 289,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 298,
+      "left": 17,
+      "right": 373,
+      "bottom": 344,
+      "width": 356,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "Cancel event"
+    },
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  },
+  {
+    "id": "booking-booked",
+    "viewport": "mobile-390-more-open",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-booked-mobile-390-more-open.png",
+    "overflowX": false,
+    "actions": {
+      "top": 242,
+      "left": 17,
+      "right": 373,
+      "bottom": 344,
+      "width": 356,
+      "height": 102,
+      "text": "Booked Edit event Day-of SheetCancel eventMore actions"
+    },
+    "edit": {
+      "top": 242,
+      "left": 84,
+      "right": 189,
+      "bottom": 289,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 242,
+      "left": 198,
+      "right": 318,
+      "bottom": 289,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 298,
+      "left": 17,
+      "right": 373,
+      "bottom": 344,
+      "width": 356,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "Cancel event"
+    },
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": [
+      "Cancel event"
+    ]
+  },
+  {
+    "id": "booking-booked",
+    "viewport": "mobile-430",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-booked-mobile-430.png",
+    "overflowX": false,
+    "actions": {
+      "top": 242,
+      "left": 17,
+      "right": 413,
+      "bottom": 344,
+      "width": 396,
+      "height": 102,
+      "text": "Booked Edit event Day-of SheetCancel eventMore actions"
+    },
+    "edit": {
+      "top": 242,
+      "left": 84,
+      "right": 189,
+      "bottom": 289,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 242,
+      "left": 198,
+      "right": 318,
+      "bottom": 289,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 298,
+      "left": 17,
+      "right": 413,
+      "bottom": 344,
+      "width": 396,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "Cancel event"
+    },
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  },
+  {
+    "id": "booking-booked",
+    "viewport": "mobile-430-more-open",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-booked-mobile-430-more-open.png",
+    "overflowX": false,
+    "actions": {
+      "top": 242,
+      "left": 17,
+      "right": 413,
+      "bottom": 344,
+      "width": 396,
+      "height": 102,
+      "text": "Booked Edit event Day-of SheetCancel eventMore actions"
+    },
+    "edit": {
+      "top": 242,
+      "left": 84,
+      "right": 189,
+      "bottom": 289,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 242,
+      "left": 198,
+      "right": 318,
+      "bottom": 289,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 298,
+      "left": 17,
+      "right": 413,
+      "bottom": 344,
+      "width": 396,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "Cancel event"
+    },
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": [
+      "Cancel event"
+    ]
+  },
+  {
+    "id": "booking-booked",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-booked-desktop.png",
+    "overflowX": false,
+    "actions": {
+      "top": 153,
+      "left": 991,
+      "right": 1398,
+      "bottom": 187,
+      "width": 406,
+      "height": 34,
+      "text": "Booked Edit event Day-of SheetCancel eventMore actions"
+    },
+    "edit": {
+      "top": 153,
+      "left": 1059,
+      "right": 1163,
+      "bottom": 187,
+      "width": 105,
+      "height": 34,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 153,
+      "left": 1172,
+      "right": 1292,
+      "bottom": 187,
+      "width": 120,
+      "height": 34,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "More actions"
+    },
+    "cancelDesktop": {
+      "top": 153,
+      "left": 1301,
+      "right": 1398,
+      "bottom": 187,
+      "width": 97,
+      "height": 34,
+      "text": "Cancel event"
+    },
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  },
+  {
+    "id": "booking-cancelled",
+    "viewport": "mobile-375",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-cancelled-mobile-375.png",
+    "overflowX": false,
+    "actions": {
+      "top": 240,
+      "left": 17,
+      "right": 358,
+      "bottom": 342,
+      "width": 341,
+      "height": 102,
+      "text": "Cancelled Edit event Day-of SheetReturn to BookedMore actions"
+    },
+    "edit": {
+      "top": 240,
+      "left": 97,
+      "right": 201,
+      "bottom": 287,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 240,
+      "left": 210,
+      "right": 330,
+      "bottom": 287,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 295,
+      "left": 17,
+      "right": 358,
+      "bottom": 342,
+      "width": 341,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": null,
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  },
+  {
+    "id": "booking-cancelled",
+    "viewport": "mobile-375-more-open",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-cancelled-mobile-375-more-open.png",
+    "overflowX": false,
+    "actions": {
+      "top": 240,
+      "left": 17,
+      "right": 358,
+      "bottom": 342,
+      "width": 341,
+      "height": 102,
+      "text": "Cancelled Edit event Day-of SheetReturn to BookedMore actions"
+    },
+    "edit": {
+      "top": 240,
+      "left": 97,
+      "right": 201,
+      "bottom": 287,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 240,
+      "left": 210,
+      "right": 330,
+      "bottom": 287,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 295,
+      "left": 17,
+      "right": 358,
+      "bottom": 342,
+      "width": 341,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": null,
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": [
+      "Return to Booked"
+    ]
+  },
+  {
+    "id": "booking-cancelled",
+    "viewport": "mobile-390",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-cancelled-mobile-390.png",
+    "overflowX": false,
+    "actions": {
+      "top": 240,
+      "left": 17,
+      "right": 373,
+      "bottom": 342,
+      "width": 356,
+      "height": 102,
+      "text": "Cancelled Edit event Day-of SheetReturn to BookedMore actions"
+    },
+    "edit": {
+      "top": 240,
+      "left": 97,
+      "right": 201,
+      "bottom": 287,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 240,
+      "left": 210,
+      "right": 330,
+      "bottom": 287,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 295,
+      "left": 17,
+      "right": 373,
+      "bottom": 342,
+      "width": 356,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": null,
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  },
+  {
+    "id": "booking-cancelled",
+    "viewport": "mobile-390-more-open",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-cancelled-mobile-390-more-open.png",
+    "overflowX": false,
+    "actions": {
+      "top": 240,
+      "left": 17,
+      "right": 373,
+      "bottom": 342,
+      "width": 356,
+      "height": 102,
+      "text": "Cancelled Edit event Day-of SheetReturn to BookedMore actions"
+    },
+    "edit": {
+      "top": 240,
+      "left": 97,
+      "right": 201,
+      "bottom": 287,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 240,
+      "left": 210,
+      "right": 330,
+      "bottom": 287,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 295,
+      "left": 17,
+      "right": 373,
+      "bottom": 342,
+      "width": 356,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": null,
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": [
+      "Return to Booked"
+    ]
+  },
+  {
+    "id": "booking-cancelled",
+    "viewport": "mobile-430",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-cancelled-mobile-430.png",
+    "overflowX": false,
+    "actions": {
+      "top": 240,
+      "left": 17,
+      "right": 413,
+      "bottom": 342,
+      "width": 396,
+      "height": 102,
+      "text": "Cancelled Edit event Day-of SheetReturn to BookedMore actions"
+    },
+    "edit": {
+      "top": 240,
+      "left": 97,
+      "right": 201,
+      "bottom": 287,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 240,
+      "left": 210,
+      "right": 330,
+      "bottom": 287,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 295,
+      "left": 17,
+      "right": 413,
+      "bottom": 342,
+      "width": 396,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": null,
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  },
+  {
+    "id": "booking-cancelled",
+    "viewport": "mobile-430-more-open",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-cancelled-mobile-430-more-open.png",
+    "overflowX": false,
+    "actions": {
+      "top": 240,
+      "left": 17,
+      "right": 413,
+      "bottom": 342,
+      "width": 396,
+      "height": 102,
+      "text": "Cancelled Edit event Day-of SheetReturn to BookedMore actions"
+    },
+    "edit": {
+      "top": 240,
+      "left": 97,
+      "right": 201,
+      "bottom": 287,
+      "width": 105,
+      "height": 47,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 240,
+      "left": 210,
+      "right": 330,
+      "bottom": 287,
+      "width": 120,
+      "height": 47,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 295,
+      "left": 17,
+      "right": 413,
+      "bottom": 342,
+      "width": 396,
+      "height": 47,
+      "text": "More actions"
+    },
+    "cancelDesktop": null,
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": [
+      "Return to Booked"
+    ]
+  },
+  {
+    "id": "booking-cancelled",
+    "viewport": "desktop",
+    "file": "/Users/jensmac/Developer/wevenu-website/docs/qa/staff-light-canvas/phase12-surface-balance/final-acceptance/booking-actions/booking-cancelled-desktop.png",
+    "overflowX": false,
+    "actions": {
+      "top": 153,
+      "left": 952,
+      "right": 1398,
+      "bottom": 187,
+      "width": 445,
+      "height": 34,
+      "text": "Cancelled Edit event Day-of SheetReturn to BookedMore actions"
+    },
+    "edit": {
+      "top": 153,
+      "left": 1032,
+      "right": 1137,
+      "bottom": 187,
+      "width": 105,
+      "height": 34,
+      "text": "Edit event"
+    },
+    "daySheet": {
+      "top": 153,
+      "left": 1145,
+      "right": 1265,
+      "bottom": 187,
+      "width": 120,
+      "height": 34,
+      "text": "Day-of Sheet"
+    },
+    "more": {
+      "top": 0,
+      "left": 0,
+      "right": 0,
+      "bottom": 0,
+      "width": 0,
+      "height": 0,
+      "text": "More actions"
+    },
+    "cancelDesktop": null,
+    "dayClipped": false,
+    "editClipped": false,
+    "dayFullyVisible": true,
+    "menuItems": null
+  }
+]

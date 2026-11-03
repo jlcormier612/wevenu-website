@@ -180,7 +180,7 @@ May use a richer coordinated set of soft greens, ivory/linen, and restrained blu
 | Greeting | White heading card; botanical CTA |
 | Today's Focus | Eucalyptus header retained; critical overdue rows = **ivory** working surface + soft-rose **left indicator** + restrained Overdue label; **no** repeated full-blush task backgrounds |
 | Luv | Ivory working surface; thin blush top accent; blush heart brand identifier; **no** full-blush card |
-| Coming up | Quiet linen; distinct from Focus without competing |
+| Coming up | White working shell (Phase 12); distinct from Focus eucalyptus without stacking beige on warm canvas |
 | Snapshot Lead Flow | Eucalyptus header retained |
 | Snapshot Booked | Pale botanical / green mist |
 | Snapshot Cash | Coordinated pale botanical |

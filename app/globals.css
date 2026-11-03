@@ -505,6 +505,84 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 /*
+ * Phase 12 — linen group shell with white nested working cards.
+ * Parent provides operational warmth; children stay readable white.
+ */
+.htc-staff .htc-group-shell {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.75rem;
+  background: var(--htc-linen);
+  color: var(--foreground);
+  padding: 0.85rem 0.85rem 0.75rem;
+  box-shadow: none;
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-header {
+  margin: 0 0 0.65rem;
+  padding: 0 0.15rem;
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-header h2,
+.htc-staff .htc-group-shell > .htc-group-shell-header [data-group-title] {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-header p,
+.htc-staff .htc-group-shell > .htc-group-shell-header [data-group-blurb] {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-group-shell > .htc-group-shell-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.htc-staff .htc-group-shell [data-slot="card"],
+.htc-staff .htc-group-shell .htc-surface-working {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/*
+ * Phase 12 — restrained eucalyptus Active indicator (dark readable text).
+ * Do not use for Paused / Failed / Overdue / Draft.
+ */
+.htc-staff .htc-badge-active,
+.htc-staff [data-slot="badge"].htc-badge-active {
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+/*
+ * Phase 12 final — Task Center overdue readability.
+ * Keeps blush/dusty-rose semantic family but darkens ink for AA contrast on warm canvas.
+ * Does not remappe global --destructive (Calendar taxonomy / other surfaces stay).
+ */
+.htc-staff .htc-task-overdue-ink {
+  color: color-mix(in oklch, var(--htc-dusty-rose) 42%, var(--heading));
+}
+
+.htc-staff .htc-task-overdue-count {
+  background: color-mix(in oklch, var(--htc-soft-blush) 75%, white);
+  color: color-mix(in oklch, var(--htc-dusty-rose) 42%, var(--heading));
+  border: 1px solid color-mix(in oklch, var(--htc-dusty-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-task-overdue-banner {
+  border-color: color-mix(in oklch, var(--htc-dusty-rose) 50%, var(--htc-border-warm));
+  background: color-mix(in oklch, var(--htc-soft-blush) 65%, white);
+}
+
+/*
  * Phase 11A — Pattern 13: shared record-name navigation.
  * Charcoal at rest; underline on hover / focus-visible; botanical is not a link cue.
  * Inset focus outline so rings remain visible inside overflow-clipped table shells.
