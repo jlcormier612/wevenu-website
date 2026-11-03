@@ -218,4 +218,33 @@ describe("List-page recipe — priority pages", () => {
     assert.match(website, /htc-surface-working/);
     assert.match(leadCapture, /htc-hospitality-heading htc-hospitality-intro-accent/);
   });
+
+  it("Wave D — screenshot polish shells, record-links, calendar share, Outstanding blush", () => {
+    const css = read("app/globals.css");
+    const docs = read("components/library/library-documents-manager.tsx");
+    const tasks = read("components/tasks/task-center.tsx");
+    const library = read("app/(app)/library/page.tsx");
+    const byb = read("components/setup-hub/bring-your-business-choices.tsx");
+    const settings = read("app/(app)/settings/page.tsx");
+    const help = read("app/(app)/help/page.tsx");
+    const feedback = read("app/(app)/feedback/page.tsx");
+    const calShared = read("components/calendar/calendar-shared.tsx");
+
+    assert.match(docs, /htc-surface-guidance[\s\S]*No documents yet|EmptyState[\s\S]*htc-surface-guidance/);
+    assert.match(tasks, /htc-record-link text-sm font-medium/);
+    assert.match(tasks, /border-border bg-card text-heading/);
+    assert.match(library, /htc-record-link text-sm font-medium/);
+    assert.match(byb, /Add things individually[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*Add things individually/);
+    assert.match(byb, /starting fresh[\s\S]*htc-surface-guidance|htc-surface-guidance[\s\S]*starting fresh/);
+    assert.match(settings, /htc-settings-directory-card/);
+    assert.match(settings, /htc-record-link text-sm font-medium/);
+    assert.match(help, /htc-help-article-list/);
+    assert.match(feedback, /htc-feedback-channel-card/);
+    assert.match(feedback, /htc-surface-guidance[\s\S]*Looking for your venue|Looking for your venue[\s\S]*htc-surface-guidance/);
+    assert.match(css, /\.htc-calendar-share-event[\s\S]*inset 3px 0 0 0 var\(--htc-eucalyptus\)/);
+    assert.match(css, /\.htc-calendar-share-tour[\s\S]*--htc-eucalyptus-surface|htc-calendar-share-tour \[data-cal-share-header\][\s\S]*--htc-eucalyptus-surface/);
+    assert.match(css, /\.htc-report-kpi\[data-tone="outstanding"\][\s\S]*--htc-soft-blush/);
+    assert.match(css, /\.htc-settings-directory-card[\s\S]*--htc-soft-blush/);
+    assert.match(calShared, /h-4 w-4 shrink-0 rounded-full/);
+  });
 });

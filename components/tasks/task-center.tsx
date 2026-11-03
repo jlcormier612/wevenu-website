@@ -128,7 +128,13 @@ function DoTaskItem({
     <div className="htc-task-row group flex items-start gap-3 py-3">
       <div className="mt-0.5 shrink-0">{STATUS_ICON[task.computedStatus]}</div>
       <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        {openHref ? (
+          <Link href={openHref} className="htc-record-link text-sm font-medium truncate block max-w-full">
+            {task.title}
+          </Link>
+        ) : (
+          <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        )}
         <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
           {(couple || eventDate) && (
             <span className="truncate max-w-[14rem] text-heading/80">
@@ -203,7 +209,13 @@ function WatchTaskItem({ task }: { task: TaskRow }) {
           : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
       <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        {eventId ? (
+          <Link href={`/events/${eventId}`} className="htc-record-link text-sm font-medium truncate block max-w-full">
+            {task.title}
+          </Link>
+        ) : (
+          <p className="text-sm font-medium text-heading truncate">{task.title}</p>
+        )}
         <p className="text-xs text-muted-foreground truncate">
           {[couple, eventDate].filter(Boolean).join(" · ")}
           <span aria-hidden> · </span>
@@ -646,8 +658,8 @@ export function TaskCenter({
             className={cn(
               "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
               perspective === p.id
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground hover:text-foreground hover:border-ring",
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-heading hover:border-ring",
             )}
           >
             {p.label}

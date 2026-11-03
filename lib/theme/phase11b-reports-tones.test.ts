@@ -13,17 +13,13 @@ function read(rel: string) {
 describe("Phase 11B — report tone CSS", () => {
   const css = read("app/globals.css");
 
-  it("defines KPI and metric-tile family tones without blush outstanding", () => {
+  it("defines KPI and metric-tile family tones with blush Outstanding", () => {
     assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="sales"\]/);
     assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="bookings"\][\s\S]*--htc-green-mist/);
     assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="contracted"\][\s\S]*--htc-botanical-pale/);
     assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="collected"\][\s\S]*--htc-eucalyptus-surface/);
-    assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="outstanding"\][\s\S]*--htc-linen/);
+    assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="outstanding"\][\s\S]*--htc-soft-blush/);
     assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="ops"\]/);
-    assert.doesNotMatch(
-      css.slice(css.indexOf("Phase 11B — Reports KPI"), css.indexOf("/* Compact metric tiles")),
-      /--htc-soft-blush|--htc-soft-rose/,
-    );
   });
 
   it("Collected uses eucalyptus-surface — stronger botanical than Contracted pale", () => {

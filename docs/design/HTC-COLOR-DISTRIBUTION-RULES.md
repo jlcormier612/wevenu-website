@@ -1,6 +1,6 @@
 # HTC Color Distribution Rules
 
-**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering + Rule J Waves A/B/C  
+**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering + Rule J Waves A/B/C/D  
 
 **Authority:** Approved HTC palette + hospitality redesign Phases 1–11D  
 **Token home:** `.htc-staff` in `app/globals.css`  
@@ -151,6 +151,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 **Wave B (internal / detail workspaces):** Questionnaires delivery guidance + kind title cards; Event setup title + orientation guidance + white working body; Event Inventory share how-to + Venue-only visibility disclosure; Support Access; Event Order couple-choice constraint cards; Venue Guide Complete chips via `.htc-badge-active`; BusinessAssetHeader relationship links via `.htc-record-link`. Venue Guide orientation already uses calm blue via `.htc-venue-guide-orientation`.
 
 **Wave C (mechanical remaining-staff sweep):** Reports white title (drop eucalyptus intro fill); Settings how-to / before-you-start / email intake / texting orientation / reminder cadence / website share+embed / migration guidance / starter ownership → calm blue; inquiry-form field editor → white working; Contracts/Payments/Packages/Inventory/Offerings/Documents/Saved Reports informational empties → calm blue; EO overview white working + record-links; Lead Capture + Change password white title cards; Library apply-template consequence notes → compact guidance. Payment Plan Builder totals and invoice drift banners stay muted/semantic (not guidance).
+
+**Wave D (screenshot polish):** Library Documents empty → calm blue; Task titles + Templates catalog titles → record-link underline on hover; Task perspective pills white → botanical when selected; Calendar Tour chip eucalyptus; taxonomy dots 2×; Public Event Availability + Tour Scheduling both eucalyptus header + eucalyptus left strip (linen guidance nest kept); Setup BYB Add/Fresh → calm blue; Setup quiet CTAs eucalyptus; Settings directory + Help article list + Feedback channel cards → soft blush with record-link titles; Feedback footer tip → calm blue; Reports Outstanding KPI → soft blush.
 
 ---
 

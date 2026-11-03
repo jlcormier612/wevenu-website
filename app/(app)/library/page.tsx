@@ -48,7 +48,7 @@ function ToolboxCard({ title, description, href, count, icon: Icon, kind }: Libr
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-heading">{title}</p>
+          <p className="htc-record-link text-sm font-medium">{title}</p>
           {kind === "template" && <Badge variant="accent" className="text-[10px]">Template</Badge>}
           {kind === "catalog" && <Badge variant="outline" className="text-[10px]">Catalog</Badge>}
           {count !== undefined && <Badge variant="muted">{count}</Badge>}
@@ -57,7 +57,7 @@ function ToolboxCard({ title, description, href, count, icon: Icon, kind }: Libr
       </div>
     </div>
   );
-  return href ? <Link href={href}>{body}</Link> : body;
+  return href ? <Link href={href} className="htc-record-card-link group">{body}</Link> : body;
 }
 
 function Group({

@@ -72,20 +72,20 @@ export default function FeedbackPage() {
             presentation="dialog"
             initialType={type}
             triggerAsButton
-            triggerClassName="flex h-full w-full items-start gap-3 rounded-sm border border-border bg-card p-4 text-left outline-none transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            triggerClassName="htc-feedback-channel-card flex h-full w-full items-start gap-3 rounded-sm border border-border p-4 text-left outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-sm font-medium text-heading">{title}</p>
+              <p className="htc-record-link text-sm font-medium">{title}</p>
               <p className="text-xs text-muted-foreground">{description}</p>
             </div>
           </FeedbackSheet>
         ))}
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="htc-surface-guidance px-3 py-2.5 text-xs text-muted-foreground">
         Looking for your venue&rsquo;s own reference material instead? That lives under{" "}
         Your Venue &rarr; Venue Guide. For how to use Hello to Cheers, see Your Venue &rarr; Guidance.
       </p>

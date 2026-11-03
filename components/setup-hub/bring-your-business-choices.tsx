@@ -150,7 +150,7 @@ export function BringYourBusinessChoices({
           </div>
         </div>
 
-        <div className="rounded-md border p-3 text-sm">
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">Add things individually</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Enter clients and commitments yourself as you go. Not inferior to importing — just a different pace.
@@ -162,7 +162,7 @@ export function BringYourBusinessChoices({
             />
             <Link
               href={BRING_YOUR_BUSINESS_ROUTES.spreadsheetImport}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+              className="htc-record-link inline-flex items-center gap-1 text-xs"
             >
               Open Import
               <ChevronRight className="h-3 w-3" />
@@ -170,7 +170,7 @@ export function BringYourBusinessChoices({
           </div>
         </div>
 
-        <div className="rounded-md border p-3 text-sm">
+        <div className="htc-surface-guidance space-y-2 p-3 text-sm">
           <p className="font-medium">I&apos;m starting fresh / skip for now</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Nothing to bring over yet. You can always import later.

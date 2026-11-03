@@ -636,10 +636,15 @@ html:has(.htc-staff) [data-slot="card"] {
   outline-offset: 2px;
 }
 
+.htc-staff .htc-record-card-link:hover .htc-record-link,
+.htc-staff .htc-record-card-link:focus-visible .htc-record-link {
+  text-decoration: underline;
+}
+
 /*
  * Phase 11B — Reports KPI / metric family tones.
  * Category surfaces only — never encode comparison polarity in the fill.
- * Outstanding stays warm ivory/linen (not blush). Collected is slightly stronger
+ * Outstanding uses soft blush (attention / money-owed family). Collected is slightly stronger
  * botanical than Contracted.
  */
 .htc-staff .htc-report-kpi {
@@ -673,7 +678,7 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 .htc-staff .htc-report-kpi[data-tone="outstanding"] {
-  background: var(--htc-linen);
+  background: var(--htc-soft-blush);
 }
 
 .htc-staff .htc-report-kpi[data-tone="ops"] {
@@ -718,7 +723,7 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 .htc-staff .htc-report-metric-tile[data-tone="outstanding"] {
-  background: var(--htc-linen);
+  background: var(--htc-soft-blush);
 }
 
 .htc-staff .htc-report-metric-tile[data-tone="ops"] {
@@ -902,6 +907,47 @@ html:has(.htc-staff) [data-slot="card"] {
 .htc-staff .htc-settings-directory-icon {
   background: var(--htc-eucalyptus-surface);
   color: var(--primary);
+}
+
+/* Settings directory tiles — soft blush working cards; titles underline via record-link */
+.htc-staff .htc-settings-directory-card {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-settings-directory-card:hover {
+  background: color-mix(in oklch, var(--htc-soft-blush) 82%, white);
+}
+
+/* Help article rows + Feedback channel cards — blush shells, record-link titles */
+.htc-staff .htc-help-article-list {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-help-article-row:hover,
+.htc-staff .htc-help-article-row:focus-visible {
+  background: color-mix(in oklch, var(--htc-soft-blush) 78%, white);
+}
+
+.htc-staff .htc-help-article-row:hover .htc-record-link,
+.htc-staff .htc-help-article-row:focus-visible .htc-record-link {
+  text-decoration: underline;
+}
+
+.htc-staff .htc-feedback-channel-card {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-feedback-channel-card:hover,
+.htc-staff .htc-feedback-channel-card:focus-visible {
+  background: color-mix(in oklch, var(--htc-soft-blush) 78%, white);
+}
+
+.htc-staff .htc-feedback-channel-card:hover .htc-record-link,
+.htc-staff .htc-feedback-channel-card:focus-visible .htc-record-link {
+  text-decoration: underline;
 }
 
 /*
@@ -1292,6 +1338,13 @@ html:has(.htc-staff) [data-slot="card"] {
 
 .htc-staff .htc-calendar-filters [data-taxonomy-chip][data-active="true"] {
   border-color: color-mix(in oklch, var(--htc-eucalyptus) 55%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+}
+
+/* Tour chip stays eucalyptus (quiet grouping) — never calm-blue fill */
+.htc-staff .htc-calendar-filters [data-taxonomy-chip][data-taxonomy-key="tour"][data-active="true"] {
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 60%, var(--htc-border-warm));
   background: var(--htc-eucalyptus-surface);
   color: var(--heading);
 }
@@ -1711,24 +1764,21 @@ html:has(.htc-staff) [data-slot="card"] {
   color: var(--muted-foreground);
 }
 
-/* Public Event Availability — calm eucalyptus header strip */
-.htc-staff .htc-calendar-share-event [data-cal-share-header] {
+/* Public Event Availability + Tour Scheduling — eucalyptus header, eucalyptus left strip */
+.htc-staff .htc-calendar-share-event,
+.htc-staff .htc-calendar-share-tour {
+  box-shadow:
+    inset 3px 0 0 0 var(--htc-eucalyptus),
+    0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-calendar-share-event [data-cal-share-header],
+.htc-staff .htc-calendar-share-tour [data-cal-share-header] {
   border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
   background: var(--htc-eucalyptus-surface);
 }
 
-/* Tour Scheduling — action-oriented + linen guidance + selective blush accent */
-.htc-staff .htc-calendar-share-tour {
-  box-shadow:
-    inset 3px 0 0 0 var(--htc-soft-rose),
-    0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
-}
-
-.htc-staff .htc-calendar-share-tour [data-cal-share-header] {
-  border-bottom: 1px solid var(--htc-border-warm);
-  background: color-mix(in oklch, var(--htc-warm-pale) 55%, white);
-}
-
+/* Tour Scheduling — keep linen personalized-link guidance nest */
 .htc-staff .htc-calendar-share-tour [data-cal-share-guidance] {
   margin-top: 0.85rem;
   border: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);

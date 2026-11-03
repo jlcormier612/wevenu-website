@@ -283,7 +283,7 @@ export function SetupHubOverview({
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-medium text-heading">{s.title}</p>
-                          {s.status === "complete" && <Badge variant="outline">Set up</Badge>}
+                          {s.status === "complete" && <Badge variant="outline" className="htc-badge-active">Set up</Badge>}
                           {!s.required && <Badge variant="outline">Optional</Badge>}
                         </div>
                         {copy && (
@@ -301,7 +301,7 @@ export function SetupHubOverview({
                             {s.href && s.hrefLabel ? (
                               <Link
                                 href={s.href}
-                                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                className="htc-setup-quiet-action inline-flex items-center gap-1 rounded-md border border-[color:var(--htc-eucalyptus)] bg-[var(--htc-eucalyptus-surface)] px-2.5 py-1.5 text-xs font-medium text-heading"
                               >
                                 {s.hrefLabel}
                                 <ChevronRight className="h-3 w-3" />

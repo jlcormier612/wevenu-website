@@ -32,9 +32,10 @@ describe("Color Distribution Phase 9 — Setup Hub + Settings directory", () => 
     assert.doesNotMatch(setupPage, /className="htc-hospitality-intro"/);
   });
 
-  it("Settings directory Option B keeps white tiles and six destinations; details untouched by Phase 9 classes", () => {
+  it("Settings directory uses blush tiles with record-link titles; details untouched by Phase 9 classes", () => {
     assert.match(settings, /htc-settings-directory-icon/);
-    assert.match(settings, /bg-card p-5/);
+    assert.match(settings, /htc-settings-directory-card/);
+    assert.match(settings, /htc-record-link text-sm font-medium/);
     assert.equal((settings.match(/href:\s*"\/settings\//g) ?? []).length, 6);
     assert.match(settings, /htc-hospitality-heading htc-hospitality-intro-accent/);
     assert.doesNotMatch(settings, /className="htc-hospitality-intro"/);
@@ -43,5 +44,6 @@ describe("Color Distribution Phase 9 — Setup Hub + Settings directory", () => 
     assert.doesNotMatch(business, /htc-settings-directory-icon|htc-setup-stage-section-label/);
     assert.match(availability, /htc-availability-settings-guidance/);
     assert.doesNotMatch(availability, /htc-settings-directory-icon/);
+    assert.match(css, /\.htc-settings-directory-card[\s\S]*--htc-soft-blush/);
   });
 });

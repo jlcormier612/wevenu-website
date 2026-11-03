@@ -351,7 +351,7 @@ export function LibraryDocumentsManager({
 
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
+    <div className="htc-surface-guidance rounded-lg border-dashed p-8 text-center">
       <FileText className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
       <p className="mt-3 font-medium text-heading">{title}</p>
       <p className="mx-auto mt-1 max-w-prose text-sm text-muted-foreground">{body}</p>

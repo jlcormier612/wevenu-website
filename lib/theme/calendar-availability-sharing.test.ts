@@ -29,11 +29,11 @@ describe("Calendar availability sharing — approved card chrome", () => {
     assert.match(shareEvent, /Public Event Availability/);
     assert.match(
       css,
-      /\.htc-staff \.htc-calendar-share-event \[data-cal-share-header\][\s\S]*?background:\s*var\(--htc-eucalyptus-surface\)/,
+      /\.htc-staff \.htc-calendar-share-event \[data-cal-share-header\],\s*\.htc-staff \.htc-calendar-share-tour \[data-cal-share-header\][\s\S]*?background:\s*var\(--htc-eucalyptus-surface\)/,
     );
   });
 
-  it("styles Tour Scheduling with linen guidance band and selective soft-rose accent", () => {
+  it("styles Tour Scheduling with eucalyptus header/strip matching Public Event Availability and linen guidance nest", () => {
     assert.match(shareTour, /htc-calendar-share-tour/);
     assert.match(shareTour, /Tour Scheduling/);
     assert.match(
@@ -42,7 +42,7 @@ describe("Calendar availability sharing — approved card chrome", () => {
     );
     assert.match(
       css,
-      /\.htc-staff \.htc-calendar-share-tour \{[\s\S]*?inset 3px 0 0 0 var\(--htc-soft-rose\)/,
+      /\.htc-staff \.htc-calendar-share-event,\s*\.htc-staff \.htc-calendar-share-tour \{[\s\S]*?inset 3px 0 0 0 var\(--htc-eucalyptus\)/,
     );
   });
 

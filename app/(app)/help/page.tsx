@@ -34,14 +34,14 @@ export default async function HelpGuidesHomePage() {
               ) : null}
             </div>
 
-            <div className="rounded-sm border border-border bg-card divide-y divide-border">
+            <div className="htc-help-article-list rounded-sm border border-border divide-y divide-border">
               {cat.articles.map((a) => (
                 <Link
                   key={a.slug}
                   href={`/help/${a.slug}`}
-                  className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+                  className="htc-help-article-row block px-4 py-3 text-sm font-medium transition-colors"
                 >
-                  {a.title}
+                  <span className="htc-record-link">{a.title}</span>
                 </Link>
               ))}
             </div>

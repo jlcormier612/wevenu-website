@@ -941,7 +941,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
                 <SelectTrigger>
                   <span className="flex items-center gap-1.5">
                     {blockPickerValue !== OPTIONAL_TYPE_NONE && (
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
+                      <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
                     )}
                     <SelectValue placeholder="No classification" />
                   </span>
@@ -956,7 +956,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
                       {group.options.map((t: ScheduleItemPickerOption) => (
                         <SelectItem key={t.value} value={t.value}>
                           <span className="flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[t.metaType].dotColor }} />
+                            <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[t.metaType].dotColor }} />
                             {t.label}
                           </span>
                         </SelectItem>
@@ -970,7 +970,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
                       </div>
                       <SelectItem value={blockPickerValue}>
                         <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
+                          <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
                           {currentTypeDisplayLabel()}
                         </span>
                       </SelectItem>
