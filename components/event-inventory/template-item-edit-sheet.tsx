@@ -75,7 +75,7 @@ export function TemplateItemEditSheet({
 
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <SheetTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100" aria-label="Edit item" />}>
+      <SheetTrigger render={<Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Edit item" data-testid="inventory-template-item-edit" />}>
         <Pencil className="h-3.5 w-3.5" />
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">

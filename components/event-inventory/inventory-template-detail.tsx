@@ -343,8 +343,14 @@ export function InventoryTemplateDetail({
                         <span className="text-right w-24 font-medium text-foreground">{item.unitPrice != null ? formatMoney(item.unitPrice) : "—"}</span>
                         <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">{item.isIncluded ? "Included" : "Additional"}</Badge>
                         <TemplateItemEditSheet templateId={template.id} item={item} onPersist={onPersist} />
-                        <button type="button" onClick={() => handleRemove(item.id, item.name)} disabled={removingId === item.id}
-                          className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity justify-self-end">
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(item.id, item.name)}
+                          disabled={removingId === item.id}
+                          aria-label={`Remove ${item.name}`}
+                          data-testid="inventory-template-item-remove"
+                          className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 justify-self-end"
+                        >
                           {removingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                         </button>
                       </div>

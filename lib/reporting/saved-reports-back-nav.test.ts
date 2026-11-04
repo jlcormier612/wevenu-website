@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs";
 describe("Saved Reports navigation", () => {
   it("shows a Templates back link on the Reports shell", () => {
     const shell = readFileSync("components/reporting/reports-layout-shell.tsx", "utf8");
-    assert.match(shell, /PageHeader[\s\S]*title="Reports"/);
+    assert.match(shell, /PageHeader/);
+    assert.match(shell, /title=\{onSaved \? "Saved Reports" : "Reports"\}/);
     assert.match(shell, /ReportTabs/);
     assert.match(shell, /CollectionBackLink/);
     assert.match(shell, /label="Templates"/);
@@ -20,10 +21,10 @@ describe("Saved Reports navigation", () => {
     );
   });
 
-  it("keeps Saved Reports list page content under the shell", () => {
+  it("keeps Saved Reports list content under the shell without a second Saved Reports header", () => {
     const page = readFileSync("app/(app)/reporting/saved/page.tsx", "utf8");
     const list = readFileSync("components/reporting/saved-report-list.tsx", "utf8");
-    assert.match(page, /PageHeader[\s\S]*title="Saved Reports"/);
+    assert.doesNotMatch(page, /PageHeader/);
     assert.match(page, /SavedReportList/);
     assert.match(page, /htc-surface-guidance/);
     assert.match(page, /About Saved Reports/);

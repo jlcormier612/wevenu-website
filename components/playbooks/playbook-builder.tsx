@@ -492,7 +492,7 @@ function TaskRow({
           {attachmentCount > 0 && <><span>·</span><span>{attachmentCount} attachment{attachmentCount === 1 ? "" : "s"}</span></>}
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-1 shrink-0" data-testid="playbook-task-row-actions">
         <button type="button" onClick={onEdit} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
           <Pencil className="h-3.5 w-3.5" />
         </button>
@@ -649,7 +649,7 @@ function MilestoneChapter({
         ) : (
           <button type="button" onClick={() => setRenaming(true)} className="flex items-center gap-1.5 flex-1 text-left group/name">
             <h3 className="font-heading text-sm font-semibold text-heading">{milestone.name}</h3>
-            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
+            <Pencil className="h-3 w-3 text-muted-foreground" />
           </button>
         )}
         <span className="text-xs text-muted-foreground shrink-0">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>

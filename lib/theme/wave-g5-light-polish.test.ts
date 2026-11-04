@@ -184,4 +184,21 @@ describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => 
       /bg-primary\/10/,
     );
   });
+
+  it("planning + inventory template row edit/delete stay visible (not hover-only)", () => {
+    const playbook = read("components/playbooks/playbook-builder.tsx");
+    const invDetail = read("components/event-inventory/inventory-template-detail.tsx");
+    const invEdit = read("components/event-inventory/template-item-edit-sheet.tsx");
+    assert.match(playbook, /playbook-task-row-actions/);
+    assert.doesNotMatch(playbook, /opacity-0 group-hover:opacity-100[\s\S]{0,120}aria-label="Edit"/);
+    assert.doesNotMatch(invDetail, /opacity-0 group-hover:opacity-100/);
+    assert.doesNotMatch(invEdit, /opacity-0 group-hover:opacity-100/);
+  });
+
+  it("Saved Reports uses the primary shell title — no second Saved Reports header", () => {
+    const shell = read("components/reporting/reports-layout-shell.tsx");
+    const page = read("app/(app)/reporting/saved/page.tsx");
+    assert.match(shell, /onSaved \? "Saved Reports" : "Reports"/);
+    assert.doesNotMatch(page, /PageHeader/);
+  });
 });
