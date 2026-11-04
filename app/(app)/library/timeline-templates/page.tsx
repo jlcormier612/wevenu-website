@@ -38,10 +38,9 @@ export default async function TimelineTemplatesPage() {
         tone="calm"
         detail={
           <>
-            Schedule blocks (times and labels) are authored in the timeline editor; optionally assign
-            a template to a space. Customize a starter to create your venue&apos;s own copy — editing
-            yours never changes the starter. Apply from the event Timeline or Setup; Library templates
-            are never emailed to clients.
+            Build day-of times and labels once, optionally tie a template to a space, then apply it on
+            an event&apos;s Timeline or Setup. Customize a starter to make your own copy — editing yours
+            never changes the starter. These templates are never emailed to clients.
           </>
         }
         action={{ href: "/settings/availability", label: "Manage Spaces (Availability)" }}

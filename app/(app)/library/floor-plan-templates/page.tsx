@@ -55,11 +55,9 @@ export default async function FloorPlanTemplatesPage() {
         tone="calm"
         detail={
           <>
-            Layout, background image, and placed objects are edited in the floor plan editor. Assign a
-            space and place inventory items marked for floor plans. Event type is the booking kind
-            (Wedding, Reception Only, and so on); layout purpose is the room arrangement (Ceremony,
-            Cocktail Hour, Reception Only layout, and so on). Applying a floor plan happens on the
-            event — not as a client send from the Library.
+            Design the room once — background, furniture, and inventory marked for floor plans. Event
+            type is the booking kind; layout purpose is the room setup (ceremony, cocktail, reception).
+            Apply on the event — the Library doesn&apos;t send floor plans to clients.
           </>
         }
         action={{ href: "/library/inventory", label: "Manage Available Inventory" }}

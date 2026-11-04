@@ -96,7 +96,8 @@ describe("Library dependency guidance — source + direct links + how used", () 
   it("Timeline Templates optionally link Availability spaces", () => {
     const src = readFileSync(resolve("app/(app)/library/timeline-templates/page.tsx"), "utf8");
     assert.match(src, /href: "\/settings\/availability"/);
-    assert.match(src, /authored in the timeline editor/);
+    assert.match(src, /Build day-of times and labels once/);
+    assert.doesNotMatch(src, /authored in the timeline editor/);
     assert.match(src, /LibraryDependencyNote/);
     assert.match(src, /tone="calm"/);
     assert.doesNotMatch(src, /LibraryHowItWorks/);
