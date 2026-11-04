@@ -248,7 +248,7 @@ Do **not** paint every card blue or green. Do **not** force list-page search/tab
 2. Reuse a shared class when the role matches; do not invent a new wash.
 3. Judge the whole viewport — avoid green domination, beige domination, and pastel quilts.
 4. Prefer white nested content inside tinted parents.
-5. Keep dark-mode and print/PDF out of scope unless separately authorized.
+5. Print/PDF stay out of scope unless separately authorized. Staff dark remaps HTC surface tokens + hardcoded white utility companions under `.dark .htc-staff` / `html.dark:has(.htc-staff)` only — never edit light-mode class definitions to “fix” dark.
 6. Stop for product visual approval before deploying decorative color sweeps.
 
 ---

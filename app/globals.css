@@ -3101,6 +3101,152 @@ html.dark:has(.htc-staff) {
   --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
   --selected-foreground: var(--primary);
   --selected-border: color-mix(in oklch, var(--primary) 55%, transparent);
+
+  /*
+   * HTC hospitality tokens were light-mode only (Waves A–G out of dark scope).
+   * Without this remap, calm-blue / eucalyptus / blush / ivory fills stay pastel
+   * while --foreground/--heading flip to white → illegible white-on-light.
+   * Accent hues (--htc-eucalyptus, --htc-blush, --htc-botanical) stay as brand.
+   */
+  --htc-workspace: var(--background);
+  --htc-canvas: var(--background);
+  --htc-eucalyptus-surface: color-mix(in oklch, var(--soft-sage) 22%, var(--card));
+  --htc-eucalyptus-surface-pale: color-mix(in oklch, var(--soft-sage) 14%, var(--card));
+  --htc-border-warm: var(--border);
+  --htc-soft-blush: color-mix(in oklch, var(--htc-blush) 22%, var(--card));
+  --htc-leaf-muted: color-mix(in oklch, var(--soft-sage) 55%, var(--true-white));
+  --htc-soft-sage: color-mix(in oklch, var(--soft-sage) 35%, var(--card));
+  --htc-botanical-pale: color-mix(in oklch, var(--soft-sage) 16%, var(--card));
+  --htc-green-mist: color-mix(in oklch, var(--soft-sage) 12%, var(--card));
+  --htc-soft-rose: color-mix(in oklch, var(--htc-blush) 40%, var(--card));
+  --htc-petal: color-mix(in oklch, var(--htc-blush) 28%, var(--card));
+  --htc-blush-pale: color-mix(in oklch, var(--htc-blush) 14%, var(--card));
+  --htc-linen: color-mix(in oklch, var(--taupe-dark) 18%, var(--card));
+  --htc-oatmeal: color-mix(in oklch, var(--taupe-dark) 14%, var(--card));
+  --htc-ivory: var(--card);
+  --htc-warm-pale: color-mix(in oklch, var(--taupe-dark) 12%, var(--card));
+  --htc-calm-blue: color-mix(in oklch, #7a96ad 18%, var(--card));
+  --htc-calm-blue-deep: color-mix(in oklch, #7a96ad 34%, var(--card));
+  --htc-border-calm: color-mix(in oklch, #7a96ad 28%, var(--border));
+  --htc-calm-accent: color-mix(in oklch, #9bb4c7 72%, var(--true-white));
+  --panel-blush: var(--htc-soft-blush);
+  --panel-sage: color-mix(in oklch, var(--soft-sage) 22%, var(--card));
+}
+
+/*
+ * DARK STAFF — HTC hardcoded light-surface companions.
+ * Wave F/G utilities paint `#ffffff` / mix-to-white. Token remap above heals
+ * `var(--htc-*)` consumers; these companions heal hardcoded whites only.
+ * Light-mode selectors above are intentionally untouched.
+ */
+.dark .htc-staff .htc-working-card,
+.dark .htc-staff .htc-surface-working,
+.dark .htc-staff .htc-group-shell [data-slot="card"],
+.dark .htc-staff .htc-group-shell .htc-surface-working,
+.dark .htc-staff .htc-report-saved-shell [data-slot="card"],
+.dark .htc-staff .htc-merge-field-chip,
+.dark .htc-staff .htc-settings-directory-card,
+.dark .htc-staff .htc-feedback-channel-card,
+.dark .htc-staff .htc-toolbox-card,
+.dark .htc-staff .htc-help-article-list,
+.dark .htc-staff .htc-lead-tour-appt,
+.dark .htc-staff .htc-lead-tour-confirm-secondary,
+.dark .htc-staff .htc-lead-tour-action-secondary,
+.dark .htc-staff .htc-lead-tour-personal-link-btn,
+html.dark:has(.htc-staff) .htc-working-card,
+html.dark:has(.htc-staff) .htc-surface-working,
+html.dark:has(.htc-staff) .htc-group-shell [data-slot="card"],
+html.dark:has(.htc-staff) .htc-group-shell .htc-surface-working,
+html.dark:has(.htc-staff) .htc-report-saved-shell [data-slot="card"],
+html.dark:has(.htc-staff) .htc-merge-field-chip,
+html.dark:has(.htc-staff) .htc-settings-directory-card,
+html.dark:has(.htc-staff) .htc-feedback-channel-card,
+html.dark:has(.htc-staff) .htc-toolbox-card,
+html.dark:has(.htc-staff) .htc-help-article-list,
+html.dark:has(.htc-staff) .htc-lead-tour-appt,
+html.dark:has(.htc-staff) .htc-lead-tour-confirm-secondary,
+html.dark:has(.htc-staff) .htc-lead-tour-action-secondary,
+html.dark:has(.htc-staff) .htc-lead-tour-personal-link-btn {
+  background: var(--card);
+  background-color: var(--card);
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.dark .htc-staff .htc-working-card > [data-slot="card-footer"],
+html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-footer"] {
+  background-color: var(--card);
+  border-top-color: var(--border);
+}
+
+.dark .htc-staff .htc-working-card > [data-slot="card-header"],
+html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-header"] {
+  background-color: var(--htc-eucalyptus-surface);
+  border-bottom-color: var(--border);
+}
+
+/* Hovers that mix soft-blush toward white bleach in dark — use card-local tint. */
+.dark .htc-staff .htc-working-row:hover,
+.dark .htc-staff .htc-hospitality-table tbody tr:hover,
+.dark .htc-staff .htc-merge-field-chip:hover,
+.dark .htc-staff .htc-merge-field-chip:focus-visible,
+.dark .htc-staff .htc-notification-row:hover,
+.dark .htc-staff .htc-notification-row:focus-visible,
+.dark .htc-staff .htc-settings-directory-card:hover,
+.dark .htc-staff .htc-settings-directory-card:focus-visible,
+.dark .htc-staff .htc-feedback-channel-card:hover,
+.dark .htc-staff .htc-feedback-channel-card:focus-visible,
+.dark .htc-staff .htc-toolbox-card:hover,
+.dark .htc-staff .htc-toolbox-card:focus-visible,
+.dark .htc-staff .htc-help-article-row:hover,
+.dark .htc-staff .htc-help-article-row:focus-visible,
+.dark .htc-staff .htc-focus-attention-row:hover,
+.dark .htc-staff .htc-focus-attention-row:focus-within,
+html.dark:has(.htc-staff) .htc-working-row:hover,
+html.dark:has(.htc-staff) .htc-hospitality-table tbody tr:hover,
+html.dark:has(.htc-staff) .htc-merge-field-chip:hover,
+html.dark:has(.htc-staff) .htc-merge-field-chip:focus-visible,
+html.dark:has(.htc-staff) .htc-notification-row:hover,
+html.dark:has(.htc-staff) .htc-notification-row:focus-visible,
+html.dark:has(.htc-staff) .htc-settings-directory-card:hover,
+html.dark:has(.htc-staff) .htc-settings-directory-card:focus-visible,
+html.dark:has(.htc-staff) .htc-feedback-channel-card:hover,
+html.dark:has(.htc-staff) .htc-feedback-channel-card:focus-visible,
+html.dark:has(.htc-staff) .htc-toolbox-card:hover,
+html.dark:has(.htc-staff) .htc-toolbox-card:focus-visible,
+html.dark:has(.htc-staff) .htc-help-article-row:hover,
+html.dark:has(.htc-staff) .htc-help-article-row:focus-visible,
+html.dark:has(.htc-staff) .htc-focus-attention-row:hover,
+html.dark:has(.htc-staff) .htc-focus-attention-row:focus-within {
+  background: var(--htc-soft-blush);
+  background-color: var(--htc-soft-blush);
+  border-color: var(--border);
+}
+
+.dark .htc-staff .htc-badge-active,
+.dark .htc-staff [data-slot="badge"].htc-badge-active,
+.dark .htc-staff .htc-badge-attention,
+.dark .htc-staff [data-slot="badge"].htc-badge-attention,
+html.dark:has(.htc-staff) .htc-badge-active,
+html.dark:has(.htc-staff) [data-slot="badge"].htc-badge-active,
+html.dark:has(.htc-staff) .htc-badge-attention,
+html.dark:has(.htc-staff) [data-slot="badge"].htc-badge-attention {
+  color: var(--heading);
+  border-color: var(--border);
+}
+
+.dark .htc-staff .htc-task-overdue-count,
+.dark .htc-staff .htc-task-overdue-banner,
+html.dark:has(.htc-staff) .htc-task-overdue-count,
+html.dark:has(.htc-staff) .htc-task-overdue-banner {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-blush) 45%, var(--border));
+  color: color-mix(in oklch, var(--htc-blush) 35%, var(--true-white));
+}
+
+html.dark:has(.htc-staff) [data-slot="tabs-list"] {
+  background: var(--card);
+  border-color: var(--border);
 }
 
 /*
