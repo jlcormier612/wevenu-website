@@ -2,10 +2,10 @@
 
 ## Tip queued
 
-**Tip:** (after docs note) includes copy `1068e53bae13613a24ab8bf1fafb2faf4094438b`  
+**Tip:** `97472294c85c4fa2a25abc44f80516c80741d9cb`  
 **Copy:** `1068e53b` — shorter venue-facing Timeline + Floor Plan guidance  
-**Serving until this lands:** `3be58e1b09b5ffe9c0f16b3148eaa51055bb8519` (Rule K + Wave F + polish — verified)  
-**Deploy branch:** set after tip commit
+**Prior serving tip:** `3be58e1b09b5ffe9c0f16b3148eaa51055bb8519` (Rule K + Wave F + polish — verified)  
+**Deploy branch:** `sandbox-deploy/htc-rule-k-wave-f-97472294`
 
 ### Already verified on Sandbox (`3be58e1b`)
 
