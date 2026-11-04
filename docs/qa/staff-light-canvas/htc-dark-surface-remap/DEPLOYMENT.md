@@ -4,7 +4,7 @@
 
 **Code:** `5fb40f8db42a3d008ef4f7f999b22d68e60de025` — Remap HTC light surfaces for staff dark mode
 **Prior tip:** `7f15ad7b` (Wave G4)
-**Deploy branch:** `sandbox-deploy/htc-dark-remap-5fb40f8d`
+**Deploy branch:** `sandbox-deploy/htc-dark-remap-259c4e61`
 
 ### This tip adds
 
