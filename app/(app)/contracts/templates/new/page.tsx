@@ -19,7 +19,7 @@ export default function NewTemplatePage() {
 
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="contract-template-new">
-      <CollectionBackLink href="/contracts/templates" label="Contract Templates" />
+      <CollectionBackLink href="/library/contracts" label="Contract Templates" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader title="New Template" description="Create a reusable contract template with merge fields." />
       </div>

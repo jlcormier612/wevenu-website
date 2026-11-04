@@ -21,7 +21,7 @@ export default async function ContractsPage({ searchParams }: Props) {
           description="Which contracts need something from me?"
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" render={<Link href="/contracts/templates" />}>
+              <Button variant="outline" render={<Link href="/library/contracts" />}>
                 Templates
               </Button>
               <Button render={<Link href="/contracts/new" />}>+ New Contract</Button>

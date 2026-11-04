@@ -90,7 +90,7 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
         : await createTemplateAction(input);
       if (result.ok) {
         toast.success(isEdit ? librarySavedToastMessage() : "Template created.");
-        router.push("/contracts/templates");
+        router.push("/library/contracts");
         return;
       }
       if (result.errors) setErrors(result.errors);

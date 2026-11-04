@@ -1,40 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { ContractTemplateList } from "@/components/contracts/contract-template-list";
-import { PageHeader } from "@/components/shell/module-placeholder";
-import { Button } from "@/components/ui/button";
-import { ensureContractStartersForCurrentVenue } from "@/lib/contracts/provision";
-import { getTemplates } from "@/lib/contracts/service";
-
+/**
+ * Legacy URL — canonical Contract Templates list lives under Templates hub.
+ * Edit/new stay on /contracts/templates/*; list traffic goes to /library/contracts.
+ */
 export const metadata: Metadata = { title: "Contract Templates" };
 
-export default async function TemplatesPage() {
-  await ensureContractStartersForCurrentVenue();
-  const templates = await getTemplates(true);
-  return (
-    <div className="htc-hospitality-page space-y-6">
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <PageHeader
-          title="Contract Templates"
-          description="Reusable agreements with event details filled in from Hello to Cheers — Customize a starter to create your venue’s editable copy."
-          actions={
-            <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
-          }
-        />
-      </div>
-
-      {templates.length === 0 ? (
-        <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-sm border-dashed py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No templates yet</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            Create a template, or refresh to load the Wedding Venue Agreement starter.
-          </p>
-          <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
-        </div>
-      ) : (
-        <ContractTemplateList initialTemplates={templates} />
-      )}
-    </div>
-  );
+export default function TemplatesPage() {
+  redirect("/library/contracts");
 }

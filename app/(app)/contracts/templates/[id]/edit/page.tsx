@@ -24,7 +24,7 @@ export default async function EditTemplatePage({ params }: Props) {
   if (template.sourceMasterKey) {
     return (
       <div className="space-y-6">
-        <CollectionBackLink href="/contracts/templates" label="Contract Templates" />
+        <CollectionBackLink href="/library/contracts" label="Contract Templates" />
         <PageHeader
           title={template.name}
           description="Hello to Cheers starter — customize to create your venue’s editable copy."
@@ -36,7 +36,7 @@ export default async function EditTemplatePage({ params }: Props) {
 
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="contract-template-edit">
-      <CollectionBackLink href="/contracts/templates" label="Contract Templates" />
+      <CollectionBackLink href="/library/contracts" label="Contract Templates" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader title={`Edit · ${template.name}`} description="Update the template content and merge fields." />
       </div>

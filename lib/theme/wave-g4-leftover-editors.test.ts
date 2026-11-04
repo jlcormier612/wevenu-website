@@ -56,7 +56,7 @@ describe("Wave G4 — leftover new/edit CollectionBackLink + working-card", () =
 
     assert.match(
       contractNew,
-      /CollectionBackLink[\s\S]*href="\/contracts\/templates"[\s\S]*label="Contract Templates"/,
+      /CollectionBackLink[\s\S]*href="\/library\/contracts"[\s\S]*label="Contract Templates"/,
     );
     assert.match(
       messageNew,
