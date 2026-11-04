@@ -2,9 +2,9 @@
 
 ## Tip queued
 
-**Code:** _(pending commit)_ — Reports Templates back link, EO white fields, timeline/planning contrast
+**Code:**  — Reports Templates back link, EO white fields, timeline/planning contrast
 **Prior serving tip:** `495387f7` (Wave G5 light polish)
-**Deploy branch:** _(pending)_
+**Deploy branch:** 
 
 ### This tip adds
 
