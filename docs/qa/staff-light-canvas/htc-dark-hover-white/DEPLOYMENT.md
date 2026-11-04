@@ -4,7 +4,8 @@
 
 **Code:** `46ba7d690f49fea722236a8a7e01f5fc210de7b3` — White dark nav accent and remaining hover lifts
 **Prior tip:** `63f3836f` (dark hover split)
-**Deploy branch:** `sandbox-deploy/htc-dark-white-01ab6c52`
+**Deploy branch:** `sandbox-deploy/htc-dark-white-01ab6c52`  
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41768881148
 
 ### This tip adds
 
