@@ -5,7 +5,7 @@
 **Code:** `4fdd6fce5ee09376502122ae605fbc8bcb8015e4` — Saved tab primary title "Reports"; wordmark lettering botanical #446B56 (pink kept).  
 **Prior serving tip:** `10fdaccc` (Overview report header)  
 **Deploy branch:** `sandbox-deploy/htc-reports-logo-4fdd6fce`  
-**Actions:** (see run URL from push)
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41792499149
 
 ### This tip adds
 
