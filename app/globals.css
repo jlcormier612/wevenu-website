@@ -717,9 +717,10 @@ html:has(.htc-staff) [data-slot="card"] {
   background: var(--card);
 }
 
+/* Events / ops family — eucalyptus label strip (same light-green pattern as sales). */
 .htc-staff .htc-report-kpi[data-tone="ops"] .htc-report-kpi-label {
-  border-bottom: 1px solid color-mix(in oklch, var(--htc-calm-blue-deep) 55%, var(--htc-border-warm));
-  background: var(--htc-calm-blue);
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 45%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
   margin: -1rem -1rem 0.5rem;
   padding: 0.65rem 1rem 0.5rem;
 }
@@ -759,8 +760,8 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 .htc-staff .htc-report-metric-tile[data-tone="ops"] {
-  background: var(--htc-calm-blue);
-  border-color: color-mix(in oklch, var(--htc-calm-blue-deep) 45%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  border-color: color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
 }
 
 .htc-staff .htc-report-metric-tile[data-tone="neutral"] {

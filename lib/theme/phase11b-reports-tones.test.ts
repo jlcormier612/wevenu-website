@@ -22,6 +22,21 @@ describe("Phase 11B — report tone CSS", () => {
     assert.match(css, /\.htc-staff \.htc-report-kpi\[data-tone="ops"\]/);
   });
 
+  it("ops Events KPI label strip is eucalyptus (light green), not calm blue", () => {
+    const opsLabel = css.slice(
+      css.indexOf('.htc-staff .htc-report-kpi[data-tone="ops"] .htc-report-kpi-label'),
+      css.indexOf('.htc-staff .htc-report-kpi[data-tone="neutral"]'),
+    );
+    assert.match(opsLabel, /background:\s*var\(--htc-eucalyptus-surface\)/);
+    assert.doesNotMatch(opsLabel, /--htc-calm-blue/);
+    const opsTile = css.slice(
+      css.indexOf('.htc-staff .htc-report-metric-tile[data-tone="ops"]'),
+      css.indexOf('.htc-staff .htc-report-metric-tile[data-tone="neutral"]'),
+    );
+    assert.match(opsTile, /background:\s*var\(--htc-eucalyptus-surface\)/);
+    assert.doesNotMatch(opsTile, /--htc-calm-blue/);
+  });
+
   it("Collected uses eucalyptus-surface — stronger botanical than Contracted pale", () => {
     const collected = css.slice(
       css.indexOf('.htc-staff .htc-report-kpi[data-tone="collected"]'),
