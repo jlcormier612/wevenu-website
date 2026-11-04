@@ -4,7 +4,8 @@
 
 **Code:**  — Reports Templates back link, EO white fields, timeline/planning contrast
 **Prior serving tip:** `495387f7` (Wave G5 light polish)
-**Deploy branch:** 
+**Deploy branch:**   
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41779805062
 
 ### This tip adds
 
