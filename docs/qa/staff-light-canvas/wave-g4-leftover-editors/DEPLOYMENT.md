@@ -4,7 +4,8 @@
 
 **Code:** `ff080824b777f10a12a60e6a3bc66c5ccdac86ad` — Wave G4 leftover editors CollectionBackLink + working cards
 **Prior serving tip:** `481874de` (Wave G3)
-**Deploy branch:** `sandbox-deploy/htc-wave-g4-7f15ad7b`
+**Deploy branch:** `sandbox-deploy/htc-wave-g4-7f15ad7b`  
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41760966323
 
 ### This tip adds
 
