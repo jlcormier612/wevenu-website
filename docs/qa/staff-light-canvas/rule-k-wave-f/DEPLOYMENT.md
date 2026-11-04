@@ -1,29 +1,26 @@
 # Rule K + Wave F — Sandbox deployment
 
-## Serving (verified)
+## Tip queued
 
-**Tip:** `3be58e1b09b5ffe9c0f16b3148eaa51055bb8519`  
-**Deploy branch:** `sandbox-deploy/htc-rule-k-wave-f-3be58e1b`  
-**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41747328511 — **success**  
-**Serving:** `data-dpl-id=3be58e1b…` verified via SSR `/login`  
-**Smoke:** `verify-sandbox.mts` — Saved Reports, Public Forms, Timeline Templates, Automations edit — **all PASS**  
-**Evidence:** `docs/qa/staff-light-canvas/rule-k-wave-f/evidence/` + Desktop `htc-rule-k-review/`
+**Tip:** (after docs note) includes copy `1068e53bae13613a24ab8bf1fafb2faf4094438b`  
+**Copy:** `1068e53b` — shorter venue-facing Timeline + Floor Plan guidance  
+**Serving until this lands:** `3be58e1b09b5ffe9c0f16b3148eaa51055bb8519` (Rule K + Wave F + polish — verified)  
+**Deploy branch:** set after tip commit
 
-### Included
+### Already verified on Sandbox (`3be58e1b`)
 
-- **A** `cf4a82b3` — Rule K + library + Saved Reports  
-- **B** `548b08b4` — Wave F working-card chrome  
-- **Polish** `6d966121` — Public Forms white cards; Saved Reports guidance above white-on-beige cards; Timeline/Floor Plan venue-facing copy  
+- Rule K relationship polish + library consolidations + Saved Reports structure  
+- Wave F deeper editors  
+- Public Forms white cards; Saved Reports guidance above white-on-beige cards  
+- Timeline/Floor Plan header copy (“you build once…”)
 
-### Prior tip
+### This tip adds
 
-**`27e9ae41`** — https://github.com/jlcormier612/wevenu-website/actions/runs/41746567259 — success (superseded by polish tip)
+- Shorter Timeline + Floor Plan blue how-to notes
 
-### Excluded from this tip
+### Excluded
 
-- Tour slot-conflict / coordinator excludeAppointmentId behavior  
-- Event Inventory RLS zero-row status guards  
-- Unrelated `docs/qa/**` evidence trees  
+- Tour slot-conflict / Event Inventory RLS / unrelated `docs/qa` trees  
 
 ## Safety
 
