@@ -200,5 +200,17 @@ describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => 
     const page = read("app/(app)/reporting/saved/page.tsx");
     assert.match(shell, /onSaved \? "Saved Reports" : "Reports"/);
     assert.doesNotMatch(page, /PageHeader/);
+    assert.match(page, /title="Saved"/);
+  });
+
+  it("report tab headers use calm-blue guidance boxes", () => {
+    const header = read("components/reporting/report-header.tsx");
+    const overview = read("app/(app)/reporting/page.tsx");
+    const funnel = read("components/reporting/business-funnel.tsx");
+    assert.match(header, /htc-surface-guidance/);
+    assert.match(header, /data-testid="report-header"/);
+    assert.match(overview, /How the business moved/);
+    assert.match(overview, /ReportHeader/);
+    assert.doesNotMatch(funnel, /How the business moved/);
   });
 });

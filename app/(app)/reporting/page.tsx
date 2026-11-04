@@ -3,6 +3,7 @@ import { CalendarDays, DollarSign, TrendingUp, Users, Wallet, Receipt, MapPin } 
 
 import { BusinessFunnel } from "@/components/reporting/business-funnel";
 import { DateRangeControl } from "@/components/reporting/date-range-control";
+import { ReportHeader } from "@/components/reporting/report-header";
 import { ComparisonCard, ComparisonCardGrid } from "@/components/dashboard-system/comparison-card";
 import { Button } from "@/components/ui/button";
 import { getBusinessFunnel } from "@/lib/metrics/business-funnel";
@@ -53,6 +54,10 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
+      <ReportHeader
+        title="How the business moved"
+        description={`What happened during ${range.label}, then what happened to the leads that came in during those dates.`}
+      />
       <DateRangeControl current={range.preset} label={range.label} />
 
       <BusinessFunnel funnel={businessFunnel} rangeLabel={range.label} />

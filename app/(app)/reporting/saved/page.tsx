@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ReportHeader } from "@/components/reporting/report-header";
 import { SavedReportList } from "@/components/reporting/saved-report-list";
 import { getSavedReports } from "@/lib/saved-reports/service";
 
@@ -11,13 +12,10 @@ export default async function SavedReportsPage() {
   const reports = await getSavedReports();
   return (
     <div className="space-y-5 sm:space-y-6">
-      <section className="htc-surface-guidance space-y-1 px-4 py-3" aria-label="About Saved Reports">
-        <p className="text-sm font-semibold text-heading">About Saved Reports</p>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Reports you&apos;ve saved so you can reopen them quickly or have them delivered. Starters for
-          Sales, Bookings, Revenue, and Events are ready to open.
-        </p>
-      </section>
+      <ReportHeader
+        title="Saved"
+        description="Reports you've saved so you can reopen them quickly or have them delivered. Starters for Sales, Bookings, Revenue, and Events are ready to open."
+      />
       <SavedReportList reports={reports} />
     </div>
   );

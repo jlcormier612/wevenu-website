@@ -25,9 +25,10 @@ describe("Saved Reports navigation", () => {
     const page = readFileSync("app/(app)/reporting/saved/page.tsx", "utf8");
     const list = readFileSync("components/reporting/saved-report-list.tsx", "utf8");
     assert.doesNotMatch(page, /PageHeader/);
+    assert.match(page, /ReportHeader/);
+    assert.match(page, /title="Saved"/);
+    assert.doesNotMatch(page, /About Saved Reports/);
     assert.match(page, /SavedReportList/);
-    assert.match(page, /htc-surface-guidance/);
-    assert.match(page, /About Saved Reports/);
     assert.doesNotMatch(page, /starters point at/);
     assert.doesNotMatch(list, /htc-report-saved-shell/);
     assert.match(list, /data-report-saved-list/);

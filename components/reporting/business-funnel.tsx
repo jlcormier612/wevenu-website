@@ -9,7 +9,7 @@
  */
 import Link from "next/link";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import type { ComparisonTone } from "@/components/dashboard-system/comparison-card";
 import type { BusinessFunnelModel } from "@/lib/metrics/business-funnel";
 import { formatMoney } from "@/lib/event-orders/constants";
@@ -76,14 +76,8 @@ export function BusinessFunnel({ funnel, rangeLabel }: Props) {
   ];
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">How the business moved</CardTitle>
-        <CardDescription>
-          What happened during {rangeLabel}, then what happened to the leads that came in during those dates.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <Card data-testid="business-funnel">
+      <CardContent className="space-y-6 pt-6">
         <div>
           <p className="mb-1 text-sm font-medium text-heading">During this period</p>
           <p className="mb-3 text-xs text-muted-foreground">
