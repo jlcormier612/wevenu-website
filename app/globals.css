@@ -3113,22 +3113,28 @@ html.dark:has(.htc-staff) {
   --htc-eucalyptus-surface: color-mix(in oklch, var(--soft-sage) 22%, var(--card));
   --htc-eucalyptus-surface-pale: color-mix(in oklch, var(--soft-sage) 14%, var(--card));
   --htc-border-warm: var(--border);
-  --htc-soft-blush: color-mix(in oklch, var(--htc-blush) 22%, var(--card));
+  /*
+   * Blush/calm must NOT mix into green --card (pink+olive → muddy ochre).
+   * Mix into neutral dark bases so attention washes stay mauve / cool slate.
+   * Generic row/tile hovers use --htc-hover-lift (white lift) instead of blush.
+   */
+  --htc-soft-blush: color-mix(in oklch, var(--htc-blush) 38%, #2c2829);
   --htc-leaf-muted: color-mix(in oklch, var(--soft-sage) 55%, var(--true-white));
   --htc-soft-sage: color-mix(in oklch, var(--soft-sage) 35%, var(--card));
   --htc-botanical-pale: color-mix(in oklch, var(--soft-sage) 16%, var(--card));
   --htc-green-mist: color-mix(in oklch, var(--soft-sage) 12%, var(--card));
-  --htc-soft-rose: color-mix(in oklch, var(--htc-blush) 40%, var(--card));
-  --htc-petal: color-mix(in oklch, var(--htc-blush) 28%, var(--card));
-  --htc-blush-pale: color-mix(in oklch, var(--htc-blush) 14%, var(--card));
+  --htc-soft-rose: color-mix(in oklch, var(--htc-blush) 48%, #2c2829);
+  --htc-petal: color-mix(in oklch, var(--htc-blush) 32%, #2c2829);
+  --htc-blush-pale: color-mix(in oklch, var(--htc-blush) 22%, #2c2829);
   --htc-linen: color-mix(in oklch, var(--taupe-dark) 18%, var(--card));
   --htc-oatmeal: color-mix(in oklch, var(--taupe-dark) 14%, var(--card));
   --htc-ivory: var(--card);
   --htc-warm-pale: color-mix(in oklch, var(--taupe-dark) 12%, var(--card));
-  --htc-calm-blue: color-mix(in oklch, #7a96ad 18%, var(--card));
-  --htc-calm-blue-deep: color-mix(in oklch, #7a96ad 34%, var(--card));
+  --htc-calm-blue: color-mix(in oklch, #7a96ad 28%, #252a2e);
+  --htc-calm-blue-deep: color-mix(in oklch, #7a96ad 42%, #252a2e);
   --htc-border-calm: color-mix(in oklch, #7a96ad 28%, var(--border));
   --htc-calm-accent: color-mix(in oklch, #9bb4c7 72%, var(--true-white));
+  --htc-hover-lift: color-mix(in oklch, var(--true-white) 10%, var(--card));
   --panel-blush: var(--htc-soft-blush);
   --panel-sage: color-mix(in oklch, var(--soft-sage) 22%, var(--card));
 }
@@ -3185,9 +3191,13 @@ html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-header"] {
   border-bottom-color: var(--border);
 }
 
-/* Hovers that mix soft-blush toward white bleach in dark — use card-local tint. */
+/*
+ * Generic row/tile hovers — soft white lift only (not blush).
+ * Blush stays reserved for true attention surfaces below.
+ */
 .dark .htc-staff .htc-working-row:hover,
 .dark .htc-staff .htc-hospitality-table tbody tr:hover,
+.dark .htc-staff .htc-hospitality-table [data-slot="table-body"] tr:hover,
 .dark .htc-staff .htc-merge-field-chip:hover,
 .dark .htc-staff .htc-merge-field-chip:focus-visible,
 .dark .htc-staff .htc-notification-row:hover,
@@ -3202,8 +3212,10 @@ html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-header"] {
 .dark .htc-staff .htc-help-article-row:focus-visible,
 .dark .htc-staff .htc-focus-attention-row:hover,
 .dark .htc-staff .htc-focus-attention-row:focus-within,
+.dark .htc-staff .htc-tours-row:hover,
 html.dark:has(.htc-staff) .htc-working-row:hover,
 html.dark:has(.htc-staff) .htc-hospitality-table tbody tr:hover,
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr:hover,
 html.dark:has(.htc-staff) .htc-merge-field-chip:hover,
 html.dark:has(.htc-staff) .htc-merge-field-chip:focus-visible,
 html.dark:has(.htc-staff) .htc-notification-row:hover,
@@ -3217,10 +3229,18 @@ html.dark:has(.htc-staff) .htc-toolbox-card:focus-visible,
 html.dark:has(.htc-staff) .htc-help-article-row:hover,
 html.dark:has(.htc-staff) .htc-help-article-row:focus-visible,
 html.dark:has(.htc-staff) .htc-focus-attention-row:hover,
-html.dark:has(.htc-staff) .htc-focus-attention-row:focus-within {
+html.dark:has(.htc-staff) .htc-focus-attention-row:focus-within,
+html.dark:has(.htc-staff) .htc-tours-row:hover {
+  background: var(--htc-hover-lift);
+  background-color: var(--htc-hover-lift);
+  border-color: var(--border);
+}
+
+/* True attention — keep mauve soft-blush (remapped above), not hover-lift. */
+.dark .htc-staff .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"]:hover,
+html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr[data-attention="true"]:hover {
   background: var(--htc-soft-blush);
   background-color: var(--htc-soft-blush);
-  border-color: var(--border);
 }
 
 .dark .htc-staff .htc-badge-active,
@@ -3235,12 +3255,27 @@ html.dark:has(.htc-staff) [data-slot="badge"].htc-badge-attention {
   border-color: var(--border);
 }
 
+.dark .htc-staff .htc-badge-attention,
+.dark .htc-staff [data-slot="badge"].htc-badge-attention,
+.dark .htc-staff .htc-report-kpi[data-tone="outstanding"],
+.dark .htc-staff .htc-report-metric-tile[data-tone="outstanding"],
+.dark .htc-staff .htc-task-overdue-count,
+.dark .htc-staff .htc-task-overdue-banner,
+html.dark:has(.htc-staff) .htc-badge-attention,
+html.dark:has(.htc-staff) [data-slot="badge"].htc-badge-attention,
+html.dark:has(.htc-staff) .htc-report-kpi[data-tone="outstanding"],
+html.dark:has(.htc-staff) .htc-report-metric-tile[data-tone="outstanding"],
+html.dark:has(.htc-staff) .htc-task-overdue-count,
+html.dark:has(.htc-staff) .htc-task-overdue-banner {
+  background: var(--htc-soft-blush);
+  background-color: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-blush) 45%, var(--border));
+}
+
 .dark .htc-staff .htc-task-overdue-count,
 .dark .htc-staff .htc-task-overdue-banner,
 html.dark:has(.htc-staff) .htc-task-overdue-count,
 html.dark:has(.htc-staff) .htc-task-overdue-banner {
-  background: var(--htc-soft-blush);
-  border-color: color-mix(in oklch, var(--htc-blush) 45%, var(--border));
   color: color-mix(in oklch, var(--htc-blush) 35%, var(--true-white));
 }
 

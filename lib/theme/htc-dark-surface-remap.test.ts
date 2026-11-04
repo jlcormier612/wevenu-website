@@ -66,6 +66,14 @@ describe("HTC dark surface remap — dark tokens + companions", () => {
     assert.doesNotMatch(darkRemap, /--htc-eucalyptus-surface:\s*#dce8e0/);
   });
 
+  it("dark blush/calm mix into neutral dark — not green card (avoids muddy ochre)", () => {
+    assert.match(darkRemap, /--htc-soft-blush:\s*color-mix\(in oklch, var\(--htc-blush\) 38%, #2c2829\)/);
+    assert.match(darkRemap, /--htc-soft-rose:\s*color-mix\(in oklch, var\(--htc-blush\) 48%, #2c2829\)/);
+    assert.match(darkRemap, /--htc-calm-blue:\s*color-mix\(in oklch, #7a96ad 28%, #252a2e\)/);
+    assert.doesNotMatch(darkRemap, /--htc-soft-blush:\s*color-mix\([^)]*var\(--card\)\)/);
+    assert.match(darkRemap, /--htc-hover-lift:\s*color-mix\(in oklch, var\(--true-white\) 10%, var\(--card\)\)/);
+  });
+
   it("dark companions retarget hardcoded white utilities to var(--card)", () => {
     assert.match(darkCompanions, /\.htc-working-card/);
     assert.match(darkCompanions, /\.htc-surface-working/);
@@ -74,7 +82,26 @@ describe("HTC dark surface remap — dark tokens + companions", () => {
     assert.match(darkCompanions, /background(?:-color)?:\s*var\(--card\)/);
     assert.match(darkCompanions, /\[data-slot="tabs-list"\]/);
     assert.match(darkCompanions, /\.htc-badge-active/);
-    assert.match(darkCompanions, /\.htc-focus-attention-row:hover/);
+  });
+
+  it("generic dark hovers use white lift; attention keeps soft-blush", () => {
+    assert.match(darkCompanions, /\.htc-focus-attention-row:hover[\s\S]*?--htc-hover-lift/);
+    assert.match(darkCompanions, /\.htc-tours-row:hover[\s\S]*?--htc-hover-lift|htc-tours-row:hover/);
+    assert.match(darkCompanions, /var\(--htc-hover-lift\)/);
+    assert.match(
+      darkCompanions,
+      /tr\[data-attention="true"\]:hover[\s\S]*?var\(--htc-soft-blush\)/,
+    );
+    assert.match(darkCompanions, /\[data-tone="outstanding"\][\s\S]*?var\(--htc-soft-blush\)/);
+    assert.match(darkCompanions, /\.htc-badge-attention[\s\S]*?var\(--htc-soft-blush\)/);
+    // Generic hover block must not paint soft-blush (attention block may).
+    const genericHoverStart = darkCompanions.indexOf("Generic row/tile hovers");
+    const attentionStart = darkCompanions.indexOf("True attention");
+    assert.ok(genericHoverStart >= 0 && attentionStart > genericHoverStart);
+    assert.doesNotMatch(
+      darkCompanions.slice(genericHoverStart, attentionStart),
+      /--htc-soft-blush/,
+    );
   });
 
   it("dark companions stay scoped to dark staff only", () => {
