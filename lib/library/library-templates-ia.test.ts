@@ -57,8 +57,8 @@ describe("Library dependency guidance — source + direct links + how used", () 
     assert.match(src, /LibraryDependencyNote/);
     assert.match(src, /href: "\/library\/offerings"/);
     assert.match(src, /Manage Offerings/);
-    assert.match(src, /select offerings from your catalog first/i);
-    assert.match(src, /selectable choice groups|fixed offerings and selectable/i);
+    assert.match(src, /Prefer reusable Offerings/i);
+    assert.match(src, /couple choices/i);
     assert.doesNotMatch(src, /All templates/);
   });
 
@@ -97,6 +97,9 @@ describe("Library dependency guidance — source + direct links + how used", () 
     const src = readFileSync(resolve("app/(app)/library/timeline-templates/page.tsx"), "utf8");
     assert.match(src, /href: "\/settings\/availability"/);
     assert.match(src, /authored in the timeline editor/);
+    assert.match(src, /LibraryDependencyNote/);
+    assert.match(src, /tone="calm"/);
+    assert.doesNotMatch(src, /LibraryHowItWorks/);
   });
 
   it("Offerings and Inventory catalogs reverse-link consumers without Use Template", () => {

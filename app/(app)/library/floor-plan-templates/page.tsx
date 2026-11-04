@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { FloorPlanTemplateStarterPicker } from "@/components/floor-plan-templates/floor-plan-template-starter-picker";
 import { FloorPlanTemplatesSection } from "@/components/floor-plan-templates/floor-plan-templates-section";
@@ -51,17 +51,23 @@ export default async function FloorPlanTemplatesPage() {
           }
         />
       </div>
-      <LibraryHowItWorks tone="calm">
-        Layout, background image, and placed objects are edited in the floor plan editor. Assign a space and place inventory items marked for floor plans.
-      </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Need to add tables, chairs, or other placeable items? Create them in Available Inventory and mark them for floor plans. Spaces are managed under Availability."
+        tone="calm"
+        detail={
+          <>
+            Layout, background image, and placed objects are edited in the floor plan editor. Assign a
+            space and place inventory items marked for floor plans. Event type is the booking kind
+            (Wedding, Reception Only, and so on); layout purpose is the room arrangement (Ceremony,
+            Cocktail Hour, Reception Only layout, and so on). Applying a floor plan happens on the
+            event — not as a client send from the Library.
+          </>
+        }
         action={{ href: "/library/inventory", label: "Manage Available Inventory" }}
         secondaryActions={[
           { href: "/settings/availability", label: "Manage Spaces (Availability)" },
         ]}
       >
-        Uses spaces from Availability and inventory items marked for floor plans.
+        How Floor Plan Templates work
       </LibraryDependencyNote>
       <FloorPlanTemplatesSection
         initialTemplates={templates}

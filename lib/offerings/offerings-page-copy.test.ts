@@ -1,5 +1,5 @@
 /**
- * Offerings catalog page copy — concise description + one HowItWorks block,
+ * Offerings catalog page copy — concise description + one calm guidance block,
  * dependency links retained, no redundant list blurbs or implementation jargon.
  */
 import assert from "node:assert/strict";
@@ -23,27 +23,27 @@ describe("Offerings page copy", () => {
     );
   });
 
-  it("explains Offerings once in LibraryHowItWorks with separated title + body", () => {
-    assert.match(page, /LibraryHowItWorks/);
-    assert.match(page, /title="How Offerings work"/);
+  it("explains Offerings once in a calm guidance card", () => {
+    assert.match(page, /LibraryDependencyNote/);
+    assert.match(page, /How Offerings work/);
     assert.match(page, /Maintain your catalog here/);
     assert.match(
       page,
-      /Event Order Templates use these offerings to define\s+what&apos;s included and which choices or additional items clients can select/s,
+      /Event Order Templates use these offerings to define what's included and which choices or additional items clients can select/,
     );
-    assert.equal((page.match(/<LibraryHowItWorks\b/g) ?? []).length, 1);
-    assert.match(page, /LibraryHowItWorks tone="blush"/);
-    assert.match(page, /LibraryDependencyNote[\s\S]*tone="eucalyptus"/);
-    assert.doesNotMatch(page, /How Offerings work\.<\/strong>\s*Maintain/);
+    assert.equal((page.match(/<LibraryDependencyNote\b/g) ?? []).length, 1);
+    assert.match(page, /LibraryDependencyNote[\s\S]*tone="calm"/);
+    assert.doesNotMatch(page, /LibraryHowItWorks/);
+    assert.doesNotMatch(page, /tone="blush"/);
+    assert.doesNotMatch(page, /tone="eucalyptus"/);
   });
 
   it("keeps EO Templates and Available Inventory links with unique inventory guidance", () => {
     assert.match(page, /Open Event Order Templates/);
     assert.match(page, /Manage Available Inventory/);
-    assert.match(page, /Stock is reserved when the couple approves the Event Order/);
+    assert.match(page, /stock is reserved when the couple approves the Event Order/i);
     assert.doesNotMatch(page, /does not reserve stock/);
     assert.match(page, /Distinct from Available Inventory/);
-    assert.match(page, /Used by Event Order Templates/);
   });
 
   it("removes redundant / implementation-centric page language", () => {

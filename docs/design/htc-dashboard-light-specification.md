@@ -45,7 +45,7 @@ Product/design reviewed desktop and mobile captures in `docs/qa/staff-light-canv
 - Existing locked base colors remain unchanged.
 - White remains an important working surface but is not the only working surface.
 - Color variation creates hierarchy and warmth without unrelated accent families.
-- **Rejected:** blue-gray, mist blue, champagne, pale sand, muted olive.
+- **Rejected (Dashboard refinement):** champagne, pale sand, muted olive, and ad-hoc blue-gray / mist-blue accents outside the later-approved calm-blue family. **Authoritative palette (including calm blue):** `docs/design/htc-visual-system.md`. Dashboard closed treatments above do not use calm blue.
 
 ### What this approval does **not** cover
 - Dark-mode visual QA (separate outstanding workstream).

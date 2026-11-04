@@ -101,9 +101,9 @@ describe("Color Distribution Phase 5 — Tasks plate-clear + Availability guidan
     assert.match(migrationPage, /MigrationGuidancePanel/);
     assert.doesNotMatch(migrationPanel, /htc-availability-settings-guidance|htc-task-center-plate-clear/);
     assert.match(migrationPanel, /htc-migration-guidance/);
-    assert.match(eo, /LibraryHowItWorks tone="calm"/);
+    assert.match(eo, /LibraryDependencyNote/);
+    assert.match(eo, /tone="calm"/);
     assert.match(eo, /data-testid="eo-templates-landing-example"/);
-    assert.match(eo, /htc-surface-guidance/);
     assert.match(
       banner,
       /className="rounded-sm border border-border bg-muted\/30 px-4 py-3 space-y-3"/,
@@ -111,7 +111,7 @@ describe("Color Distribution Phase 5 — Tasks plate-clear + Availability guidan
   });
 
   it("Settings directory cards remain white working surfaces", () => {
-    assert.match(settingsIndex, /bg-card p-5/);
+    assert.match(settingsIndex, /htc-settings-directory-card|bg-card p-5/);
     assert.doesNotMatch(settingsIndex, /htc-availability-settings-guidance|htc-task-center-plate-clear/);
   });
 

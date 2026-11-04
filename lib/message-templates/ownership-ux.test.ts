@@ -86,7 +86,7 @@ describe("Message template ownership UX", () => {
   it("product copy no longer tells users to edit HTC starters in place", () => {
     assert.match(page, /Customize into your venue/);
     assert.doesNotMatch(page, /starters you can edit to sound like your venue/);
-    assert.match(list, /Customize a Hello to Cheers starter/);
+    assert.match(page, /Customize a Hello to Cheers starter/);
   });
 
   it("venue ownership checks remain on mutate paths", () => {

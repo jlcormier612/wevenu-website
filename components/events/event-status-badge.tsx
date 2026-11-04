@@ -16,7 +16,11 @@ export function EventStatusBadge({
     return <Badge variant={"destructive" satisfies BadgeVariant}>Cancelled</Badge>;
   }
   if (bookedAt) {
-    return <Badge variant={"default" satisfies BadgeVariant}>Booked</Badge>;
+    return (
+      <Badge variant={"outline" satisfies BadgeVariant} className="htc-badge-active">
+        Booked
+      </Badge>
+    );
   }
   return null;
 }

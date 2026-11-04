@@ -478,14 +478,14 @@ export function FloorPlanTemplatesSection({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search templates by name…"
-            className="h-9 w-56 text-sm"
+            className="h-9 w-56 bg-white text-sm"
           />
           <Select
             value={eventTypeFilter}
             onValueChange={setEventTypeFilter}
             items={filterEventTypeOptions}
           >
-            <SelectTrigger className="h-9 w-44 text-sm" aria-label="Filter by event type">
+            <SelectTrigger className="h-9 w-44 bg-white text-sm" aria-label="Filter by event type">
               <SelectValue placeholder="Event type" />
             </SelectTrigger>
             <SelectContent>
@@ -500,7 +500,7 @@ export function FloorPlanTemplatesSection({
             items={FLOOR_PLAN_LAYOUT_PURPOSE_FILTER_OPTIONS}
           >
             <SelectTrigger
-              className="h-9 w-48 text-sm"
+              className="h-9 w-48 bg-white text-sm"
               aria-label="Filter by layout purpose"
               data-testid="floor-plan-layout-purpose-filter"
             >
@@ -530,9 +530,6 @@ export function FloorPlanTemplatesSection({
           )}
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Event type is the booking kind (Wedding, Reception Only as a booking, and so on). Layout purpose is the room arrangement (Ceremony, Cocktail Hour, Reception Only layout, and so on). Applying a floor plan to a booking happens on the event — not as a client send from the Library.
-      </p>
       {filteredActive.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-10 text-center space-y-2 px-4">
           <p className="text-sm text-muted-foreground">

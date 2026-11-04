@@ -28,7 +28,7 @@ describe("Color Distribution Phase 10 — Reporting + Documents hospitality", ()
     );
     assert.match(
       css,
-      /\.htc-staff \.htc-hospitality-filter \{[\s\S]*?background:\s*var\(--htc-linen\)/,
+      /\.htc-staff \.htc-hospitality-filter \{[\s\S]*?background:\s*#ffffff/,
     );
     assert.match(
       css,

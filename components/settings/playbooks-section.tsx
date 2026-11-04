@@ -331,7 +331,7 @@ export function PlaybooksSection({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={eventTypeFilter} onValueChange={(v) => setEventTypeFilter(v as EventTypeFilter)} items={[{ value: "all", label: "All Event Types" }, ...EVENT_TYPES, OTHER_EVENT_TYPE]}>
-            <SelectTrigger className="h-9 w-44 text-sm border-border">
+            <SelectTrigger className="h-9 w-44 bg-white text-sm border-border">
               <SelectValue placeholder="All Event Types" />
             </SelectTrigger>
             <SelectContent>
@@ -341,7 +341,7 @@ export function PlaybooksSection({
             </SelectContent>
           </Select>
           <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as KindFilter)} items={[{ value: "all", label: "All Template Types" }, ...PLAYBOOK_KINDS]}>
-            <SelectTrigger className="h-9 w-48 text-sm border-border">
+            <SelectTrigger className="h-9 w-48 bg-white text-sm border-border">
               <SelectValue placeholder="All Template Types" />
             </SelectTrigger>
             <SelectContent>
@@ -351,7 +351,7 @@ export function PlaybooksSection({
           </Select>
         </div>
         <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
-          <SelectTrigger className="h-9 w-44 text-sm border-border">
+          <SelectTrigger className="h-9 w-44 bg-white text-sm border-border">
             <SelectValue placeholder="Last Updated" />
           </SelectTrigger>
           <SelectContent>

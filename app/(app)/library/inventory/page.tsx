@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { InventoryLibrarySection } from "@/components/inventory/inventory-library-section";
@@ -35,22 +35,19 @@ export default async function InventoryLibraryPage() {
           }
         />
       </div>
-      <LibraryHowItWorks tone="calm">
-        Maintain the reusable stock catalog here. Floor Plan Templates can place items marked for floor plans. Inventory Templates and the event Inventory tab pull from this catalog when building an event list — those are separate from this catalog page.
-        Set when two events can share the same stock in the card just below — it is not buried under the item list.
-      </LibraryHowItWorks>
-      <div id="stock-sharing">
-        <StockSharingSetting initial={stockSharing} />
-      </div>
       <LibraryDependencyNote
-        detail="Mark items for floor plans when they should appear in the floor-plan editor. Inventory Templates are reusable packing lists authored separately — Use/Send them from Inventory Templates (or apply on the event), then add catalog items on the event if needed."
+        tone="calm"
+        detail="Maintain the reusable stock catalog here. Floor Plan Templates can place items marked for floor plans. Inventory Templates and the event Inventory tab pull from this catalog when building an event list — those are separate from this catalog page. Set when two events can share the same stock in the card just below."
         action={{ href: "/library/floor-plan-templates", label: "Open Floor Plan Templates" }}
         secondaryActions={[
           { href: "/library/inventory-templates", label: "Open Inventory Templates" },
         ]}
       >
-        Used when placing furniture on floor plans and when adding stock to an event&apos;s inventory.
+        How Available Inventory works
       </LibraryDependencyNote>
+      <div id="stock-sharing">
+        <StockSharingSetting initial={stockSharing} />
+      </div>
       <InventoryLibrarySection initialItems={items} />
     </div>
   );

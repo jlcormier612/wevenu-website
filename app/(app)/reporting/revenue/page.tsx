@@ -57,7 +57,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
   ]);
 
   const categoryTotal = byCategory.reduce((sum, c) => sum + c.amount, 0);
-  const hasAnyRevenue = (grossRevenue ?? 0) > 0 || (paymentsCollected ?? 0) > 0;
+  const hasTrendValues = trend.some((d) => d.value > 0);
 
   // Fetched only when actually needed — the whole point of "small detail
   // panel on demand," not a giant table pre-loaded on every render.
@@ -139,13 +139,13 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         </DetailPanel>
       )}
 
-      <Card>
+      <Card className={!hasTrendValues ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Revenue Trend</CardTitle>
           <CardDescription>Contracted value by month, dated when the signed contract and first payment were both in place — not when you marked them booked.</CardDescription>
         </CardHeader>
         <CardContent>
-          {!hasAnyRevenue ? (
+          {!hasTrendValues ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No contracted revenue in this date range.</p>
           ) : (
             <TrendChart data={trend} formatValue={formatMoney} />

@@ -330,7 +330,9 @@ export function RelationshipCard({
   );
   const showTourBlock = Boolean(tourAppointments || showManualTourSummary);
   /** Manual tour summary uses the relationship Edit on the tour details row. */
-  const manualTourOwnsEdit = showManualTourSummary && !tourAppointments;
+  const manualTourOwnsEdit = showManualTourSummary;
+  /** SoR appointment rows exist (hideManualTourSummary is set from lead-detail length). */
+  const hasAppointmentRecords = hideManualTourSummary;
 
   const editButton = !editing && !completing ? (
     <Button
@@ -353,12 +355,14 @@ export function RelationshipCard({
     ) : null;
 
   return (
-    <Card data-testid="lead-tour-followup-card">
+    <Card data-testid="lead-tour-followup-card" className="htc-lead-tour-followup">
       <CardHeader className="space-y-1">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 space-y-0.5">
-            <CardTitle className="text-base">Tour &amp; follow-up</CardTitle>
-            <p className="text-xs text-muted-foreground">
+            <CardTitle className="htc-lead-tour-followup-title font-heading text-xl font-normal tracking-tight text-heading">
+              Tour &amp; follow-up
+            </CardTitle>
+            <p className="htc-lead-tour-followup-sub text-xs text-muted-foreground">
               Scheduled tours, next steps, and last contact for this lead.
             </p>
           </div>
@@ -375,7 +379,7 @@ export function RelationshipCard({
                 {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
               </Button>
             </div>
-          ) : isEmpty && !tourAppointments ? (
+          ) : isEmpty && !hasAppointmentRecords ? (
             <div className="flex flex-wrap items-center justify-end gap-1.5">
               {editButton}
             </div>
@@ -489,8 +493,8 @@ export function RelationshipCard({
               </div>
             ) : null}
             {showTourBlock ? (
-              <div className="space-y-1" data-testid="tour-followup-tour-block">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <div className="htc-lead-tour-block space-y-2" data-testid="tour-followup-tour-block">
+                <p className="htc-lead-tour-section-label">
                   Tours
                 </p>
                 {hideManualTourSummary ? null : lead.tourCompleted && (lead.tourScheduledDate || lead.tourActualDate || lead.tourDate) ? (
@@ -550,10 +554,10 @@ export function RelationshipCard({
                 {tourAppointments}
               </div>
             ) : null}
-            {!isEmpty || tourAppointments ? (
-              <div className="space-y-0.5" data-testid="tour-followup-followup-block">
+            {!isEmpty || hasAppointmentRecords ? (
+              <div className="htc-lead-tour-followup-fields space-y-0.5" data-testid="tour-followup-followup-block">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground pt-1.5">
+                  <p className="htc-lead-tour-section-label pt-1.5">
                     Follow-up
                   </p>
                   <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -572,8 +576,8 @@ export function RelationshipCard({
                 <DisplayRow icon={Phone} label="Last contacted" value={formatDate(lead.lastContactedAt)} />
               </div>
             ) : (
-              <p className="py-1 text-sm text-muted-foreground" data-testid="tour-followup-empty">
-                No tour or follow-up details yet. Use Add tour/follow-up details for next steps and dates, or Schedule Tour.
+              <p className="htc-lead-tour-empty-followup py-1 text-sm text-muted-foreground" data-testid="tour-followup-empty">
+                No follow-up details yet. Use Add tour/follow-up details for next steps and dates.
               </p>
             )}
           </div>

@@ -351,7 +351,7 @@ export function DateHoldsSection({
               title={protection.detail ?? undefined}
             >
               <span
-                className="w-fit shrink-0 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs font-semibold text-muted-foreground"
+                className="htc-badge-attention w-fit shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold"
                 data-testid="date-hold-protection-headline"
               >
                 Not protected

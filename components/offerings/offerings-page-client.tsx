@@ -8,7 +8,7 @@
 import * as React from "react";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { OfferingsLibrarySection } from "@/components/offerings/offerings-library-section";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -54,22 +54,16 @@ export function OfferingsPageClient({
           }
         />
       </div>
-      <div className="space-y-2.5 sm:space-y-3">
-        <LibraryHowItWorks tone="blush" title="How Offerings work">
-          Maintain your catalog here. Event Order Templates use these offerings to define
-          what&apos;s included and which choices or additional items clients can select.
-        </LibraryHowItWorks>
-        <LibraryDependencyNote
-          tone="eucalyptus"
-          detail="Optionally link an offering to a physical inventory item. Stock is reserved when the couple approves the Event Order. Distinct from Available Inventory."
-          action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
-          secondaryActions={[
-            { href: "/library/inventory", label: "Manage Available Inventory" },
-          ]}
-        >
-          Used by Event Order Templates
-        </LibraryDependencyNote>
-      </div>
+      <LibraryDependencyNote
+        tone="calm"
+        detail="Maintain your catalog here. Event Order Templates use these offerings to define what's included and which choices or additional items clients can select. Optionally link an offering to a physical inventory item — stock is reserved when the couple approves the Event Order. Distinct from Available Inventory."
+        action={{ href: "/library/event-order-templates", label: "Open Event Order Templates" }}
+        secondaryActions={[
+          { href: "/library/inventory", label: "Manage Available Inventory" },
+        ]}
+      >
+        How Offerings work
+      </LibraryDependencyNote>
       <OfferingsLibrarySection
         ref={sectionRef}
         venueId={venueId}

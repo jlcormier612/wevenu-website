@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { ArrowLeft, Layers } from "lucide-react";
 import { toast } from "sonner";
 
@@ -211,8 +210,12 @@ export const OfferingsLibrarySection = React.forwardRef<
                         <p className={surface === "major" ? "font-semibold text-heading" : "font-medium text-foreground"}>
                           {o.name}
                         </p>
-                        {o.categoryName && <Badge variant="muted">{o.categoryName}</Badge>}
-                        <Badge variant="outline">{offeringRoleLabel(role)}</Badge>
+                        {o.categoryName && (
+                          <Badge variant="outline" className="bg-card">{o.categoryName}</Badge>
+                        )}
+                        <Badge variant="outline" className="htc-badge-active">
+                          {offeringRoleLabel(role)}
+                        </Badge>
                         {o.isArchived && <Badge variant="outline">Archived</Badge>}
                         {isUnpriced(o) && (
                           <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-unpriced-${o.id}`}>
@@ -330,7 +333,7 @@ export const OfferingsLibrarySection = React.forwardRef<
                             <div className="flex flex-wrap items-center gap-2">
                               <Layers className="h-3.5 w-3.5 shrink-0 text-heading" aria-hidden />
                               <p className="text-sm font-semibold text-heading">{row.group.name}</p>
-                              <Badge variant="outline">Category</Badge>
+                              <Badge variant="outline" className="bg-card">Category</Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
                               Category under {parentName} · {memberCount} item{memberCount === 1 ? "" : "s"} the couple can pick from
@@ -465,11 +468,6 @@ export const OfferingsLibrarySection = React.forwardRef<
         </SheetContent>
       </Sheet>
 
-      <p className="text-xs text-muted-foreground">
-        Physical stock and floor-plan items live in{" "}
-        <Link href="/library/inventory" className="text-primary underline">Inventory</Link>.
-        Linking an offering to inventory connects it to stock. Stock is reserved when the couple approves the Event Order.
-      </p>
     </div>
   );
 });

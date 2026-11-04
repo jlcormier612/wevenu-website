@@ -713,12 +713,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               />
             </div>
           )}
-          {/* Row 1 — Lead management */}
+          {/* Row 1 — Lead management (left-flow on mobile so chips don’t clump right) */}
           <div
             data-testid="lead-management-actions"
-            className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2"
+            className="flex w-full flex-wrap items-center justify-start gap-1.5 sm:w-auto sm:justify-end sm:gap-2"
           >
-            <div className="mr-0.5 text-right">
+            <div className="text-left sm:mr-0.5 sm:text-right">
               <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Pipeline stage</p>
               <LeadStatusBadge status={currentStage} />
             </div>
@@ -812,10 +812,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               </Button>
             )}
           </div>
-          {/* Row 2 — Next actions */}
+          {/* Row 2 — Next actions (stack full-width on mobile; right cluster on desktop) */}
           <div
             data-testid="lead-booking-tour-actions"
-            className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2"
+            className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto"
           >
             {(previouslyConverted && (relationshipCancelled || (!isBookingStarted && currentStage !== "lost"))) && (
               <Button
@@ -892,7 +892,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
       <div
         data-testid="lead-sales-availability"
-        className="htc-surface-operational px-3 py-2.5 sm:px-3.5 sm:py-3"
+        className="htc-surface-working px-3 py-2.5 sm:px-3.5 sm:py-3"
       >
         <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Sales &amp; availability
@@ -958,7 +958,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
         tourAppointments={<TourAppointmentList />}
       />
       </div>
-      <Card className="h-full" data-testid="lead-contact-card">
+      <Card className="htc-surface-working h-full" data-testid="lead-contact-card">
         <CardHeader>
           <CardTitle className="text-base">Contact information</CardTitle>
         </CardHeader>

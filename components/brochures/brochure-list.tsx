@@ -170,12 +170,11 @@ export function BrochureList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Edit and preview here. Share with a lead from the brochure detail — Share emails a view link.
-        </p>
-        {headerCreate ? <NewBrochureSheet /> : null}
-      </div>
+      {headerCreate ? (
+        <div className="flex items-center justify-end">
+          <NewBrochureSheet />
+        </div>
+      ) : null}
       {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No brochures yet</p>

@@ -133,7 +133,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
           : ""}
       </p>
 
-      <Card>
+      <Card className={bookingsBySource.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Bookings by source</CardTitle>
           <CardDescription>
@@ -156,7 +156,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Bookings over time</CardTitle>
           <CardDescription>Based on when you first marked them booked — not contract or payment dates.</CardDescription>
@@ -170,7 +170,7 @@ export default async function BookingsReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={bookings.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Bookings</CardTitle>
           <CardDescription>Click through when a client workspace exists.</CardDescription>

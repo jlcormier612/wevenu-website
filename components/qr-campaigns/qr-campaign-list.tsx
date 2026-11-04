@@ -72,7 +72,9 @@ function CampaignRow({
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-heading">{campaign.name}</p>
-          {campaign.sourceMasterKey && <Badge variant="muted" className="text-[10px]">Starter</Badge>}
+          {campaign.sourceMasterKey && (
+            <Badge variant="outline" className="bg-card text-[10px]">Starter</Badge>
+          )}
           {campaign.status === "archived" && <Badge variant="muted">Archived</Badge>}
         </div>
         <p className="text-xs text-muted-foreground">{destLabel}</p>

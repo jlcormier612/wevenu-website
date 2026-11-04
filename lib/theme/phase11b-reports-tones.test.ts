@@ -31,8 +31,12 @@ describe("Phase 11B — report tone CSS", () => {
     assert.doesNotMatch(collected, /--htc-soft-blush/);
   });
 
-  it("defines Saved Reports linen shell", () => {
-    assert.match(css, /\.htc-staff \.htc-report-saved-shell[\s\S]*--htc-linen/);
+  it("defines Saved Reports calm-blue informational shell with white nested cards", () => {
+    assert.match(css, /\.htc-staff \.htc-report-saved-shell[\s\S]*--htc-calm-blue/);
+    assert.match(
+      css,
+      /\.htc-staff \.htc-report-saved-shell \[data-slot="card"\][\s\S]*?background:\s*#ffffff/,
+    );
   });
 });
 
@@ -121,7 +125,7 @@ describe("Phase 11B — page wiring", () => {
     assert.match(events, /tone="ops"/);
   });
 
-  it("Saved Reports uses linen shell; Phase 10 chrome files untouched in structure", () => {
+  it("Saved Reports uses calm-blue shell; Phase 10 chrome files untouched in structure", () => {
     assert.match(saved, /htc-report-saved-shell/);
     assert.match(shell, /htc-hospitality-intro-accent/);
     assert.match(dates, /htc-hospitality-filter/);

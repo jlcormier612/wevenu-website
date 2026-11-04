@@ -5,7 +5,7 @@ import * as React from "react";
 import { Plus } from "lucide-react";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
 import { QrStarterExamples } from "@/components/qr-campaigns/qr-starter-examples";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -41,14 +41,12 @@ export function QrCampaignsPageClient({
           }
         />
       </div>
-      <LibraryHowItWorks tone="calm">
-        Create the form first, then point a QR campaign at it. Download the PNG to print or share.
-      </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Need to create or edit the form a QR opens? Manage Public Forms. When you create or edit a campaign, choose that form (or enter another destination URL)."
+        tone="calm"
+        detail="Create the form first, then point a QR campaign at it. Download the PNG to print or share. When you create or edit a campaign, choose that form (or enter another destination URL)."
         action={{ href: "/library/public-forms", label: "Manage Public Forms" }}
       >
-        QR campaigns can open a Public Form from your venue.
+        How QR Campaigns work
       </LibraryDependencyNote>
       <QrStarterExamples existingMasterKeys={existingMasterKeys} />
       <QrCampaignList

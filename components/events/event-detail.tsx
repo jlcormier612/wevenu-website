@@ -222,7 +222,7 @@ function EventHeroCard({
   return (
     <Card
       size="sm"
-      className="htc-surface-summary gap-3 ring-0 shadow-none self-start"
+      className="htc-surface-summary htc-surface-summary-pale gap-3 ring-0 shadow-none self-start"
       data-testid="event-booking-summary"
     >
       <CardContent className="flex flex-col text-left">
@@ -767,7 +767,7 @@ export function EventDetail({
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <Link
                 href={`/leads/${originatingLeadId}`}
-                className="hover:text-foreground hover:underline"
+                className="htc-record-link"
                 data-testid="view-original-lead"
               >
                 View original lead
@@ -968,7 +968,7 @@ export function EventDetail({
           className="flex min-w-0 flex-col gap-3"
         >
           <div
-            className="htc-surface-operational px-3 py-2.5 sm:px-3.5 sm:py-3"
+            className="htc-surface-working px-3 py-2.5 sm:px-3.5 sm:py-3"
             data-testid="event-staff-assignment"
             id="event-team-roster"
           >
@@ -989,7 +989,7 @@ export function EventDetail({
               />
             </div>
           </div>
-          <Card size="sm" className="gap-2" id="questionnaires-card" data-testid="event-questionnaires-card">
+          <Card size="sm" className="htc-surface-working gap-2" id="questionnaires-card" data-testid="event-questionnaires-card">
             <CardHeader className="gap-0.5">
               <CardTitle className="text-base">Questionnaires</CardTitle>
             </CardHeader>
@@ -1014,7 +1014,7 @@ export function EventDetail({
               </Button>
             </CardContent>
           </Card>
-          <Card size="sm" className="gap-2" id="inventory-event-order-card" data-testid="event-inventory-event-order-card">
+          <Card size="sm" className="htc-surface-working gap-2" id="inventory-event-order-card" data-testid="event-inventory-event-order-card">
             <CardHeader className="gap-0.5">
               <CardTitle className="text-base">Inventory &amp; Event Order</CardTitle>
               <CardDescription className="text-xs leading-snug" data-testid="event-order-overview-summary">
@@ -1240,7 +1240,7 @@ export function EventDetail({
           />
           {relationshipContact ? (
             <p className="text-sm text-muted-foreground">
-              <Link href={`/clients/${relationshipContact.clientId}/edit`} className="font-medium text-primary hover:underline">
+              <Link href={`/clients/${relationshipContact.clientId}/edit`} className="htc-record-link font-medium">
                 Edit contact
               </Link>
             </p>

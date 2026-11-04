@@ -368,7 +368,7 @@ export function EventInventorySetupEditor({
                         />
                         <Badge
                           variant={row.isIncluded ? "muted" : "accent"}
-                          className="text-[10px]"
+                          className={row.isIncluded ? "htc-badge-active text-[10px]" : "text-[10px]"}
                           data-testid={row.isIncluded ? "inventory-setup-included" : "inventory-setup-additional"}
                         >
                           {row.isIncluded ? "Included" : "Additional"}

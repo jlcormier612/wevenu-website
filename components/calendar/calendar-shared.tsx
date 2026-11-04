@@ -333,7 +333,7 @@ export function FilterBar({
               data-active={active ? "true" : "false"}
               aria-pressed={active}
             >
-              <span className="h-4 w-4 shrink-0 rounded-full" style={{ backgroundColor: entry.dotColor }} />
+              <span className="htc-calendar-dot" style={{ backgroundColor: entry.dotColor }} />
               {entry.label}
             </button>
           );

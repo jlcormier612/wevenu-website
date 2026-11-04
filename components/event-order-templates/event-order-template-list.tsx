@@ -546,15 +546,9 @@ export function EventOrderTemplateList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-xs text-muted-foreground">
-          Use applies a template to an event&apos;s Event Order. Send is for templates with couple choices.
-          Editing a template never changes an Event Order already on a booking.
-        </p>
-        <div className="flex items-center gap-2">
-          <StarterMenu missingKeys={missingStarterKeys} />
-          {headerCreate ? <NewEventOrderTemplateButton /> : null}
-        </div>
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        <StarterMenu missingKeys={missingStarterKeys} />
+        {headerCreate ? <NewEventOrderTemplateButton /> : null}
       </div>
       {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">

@@ -35,23 +35,23 @@ describe("visual balance refinement", () => {
     );
   });
 
-  it("Vendors required-categories keeps eucalyptus header and linen open body", () => {
-    assert.match(requiredCats, /--htc-eucalyptus-surface/);
-    assert.match(requiredCats, /bg-\[var\(--htc-linen\)\]/);
+  it("Vendors required-categories uses calm guidance shell", () => {
+    assert.match(requiredCats, /htc-surface-guidance/);
   });
 
-  it("Vendors empty / no-match supporting states use linen", () => {
-    assert.match(vendorList, /No approved vendors yet[\s\S]*?htc-linen|htc-linen[\s\S]*?No approved vendors yet/);
-    assert.match(vendorList, /htc-linen/);
+  it("Vendors empty / no-match supporting states use white working card", () => {
+    assert.match(vendorList, /No approved vendors yet/);
+    assert.match(vendorList, /bg-card/);
   });
 
-  it("Offerings retains blush + eucalyptus guidance panels", () => {
-    assert.match(offeringsPage, /tone="blush"/);
-    assert.match(offeringsPage, /tone="eucalyptus"/);
+  it("Offerings uses one calm guidance panel", () => {
+    assert.match(offeringsPage, /LibraryDependencyNote[\s\S]*tone="calm"/);
+    assert.doesNotMatch(offeringsPage, /tone="blush"/);
+    assert.doesNotMatch(offeringsPage, /tone="eucalyptus"/);
   });
 
-  it("Dashboard Luv entry remains ivory + blush accent (no regression redesign)", () => {
-    assert.match(dashboardLuv, /htc-ivory/);
+  it("Dashboard Luv entry is white working body with blush top accent", () => {
+    assert.match(dashboardLuv, /bg-card/);
     assert.match(dashboardLuv, /data-luv-accent/);
     assert.match(dashboardLuv, /htc-soft-blush/);
   });

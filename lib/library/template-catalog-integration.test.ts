@@ -221,9 +221,9 @@ describe("Library guidance — catalog-first copy", () => {
 
   it("Event Order Templates guidance emphasizes catalog-first fixed + selectable", () => {
     const eo = readFileSync(resolve("app/(app)/library/event-order-templates/page.tsx"), "utf8");
-    assert.match(eo, /Templates can use your Offerings catalog or template-only items/);
     assert.match(eo, /Prefer reusable Offerings/i);
-    assert.match(eo, /reserved when the couple approves the Event Order/i);
+    assert.match(eo, /template-only line/i);
+    assert.match(eo, /reserves when the couple approves the Event Order/i);
     assert.doesNotMatch(eo, /does not reserve stock/i);
     const ch = readFileSync(resolve("app/(app)/library/choices-templates/page.tsx"), "utf8");
     assert.match(ch, /redirect\("\/library\/event-order-templates"\)/);

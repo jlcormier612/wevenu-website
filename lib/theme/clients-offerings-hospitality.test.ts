@@ -51,19 +51,21 @@ describe("Clients & Offerings hospitality refinement", () => {
     assert.doesNotMatch(rule, /background:\s*var\(--htc-soft-blush\)/);
   });
 
-  it("Offerings categories use linen as a supporting nest under eucalyptus parents", () => {
+  it("Offerings categories stay white with eucalyptus left border for quiet nesting", () => {
     const categoryRule = css.slice(
       css.indexOf(".htc-staff .htc-catalog-category {"),
       css.indexOf(".htc-staff .htc-catalog-item {"),
     );
-    assert.match(categoryRule, /background:\s*var\(--htc-linen\)/);
+    assert.match(categoryRule, /background:\s*var\(--card\)/);
+    assert.match(categoryRule, /border-left:\s*3px solid var\(--htc-eucalyptus\)/);
   });
 
-  it("Offerings keeps blush/eucalyptus guidance and sectioned catalog", () => {
+  it("Offerings uses calm guidance and sectioned white catalog", () => {
     assert.match(offeringsPage, /htc-hospitality-page/);
-    assert.match(offeringsPage, /tone="blush"/);
-    assert.match(offeringsPage, /tone="eucalyptus"/);
-    assert.match(offeringsPage, /title="How Offerings work"/);
+    assert.match(offeringsPage, /LibraryDependencyNote[\s\S]*tone="calm"/);
+    assert.match(offeringsPage, /How Offerings work/);
+    assert.doesNotMatch(offeringsPage, /tone="blush"/);
+    assert.doesNotMatch(offeringsPage, /tone="eucalyptus"/);
     assert.match(guidance, /bg-\[#F7E9EB\]/);
     assert.match(guidance, /bg-\[#DCE8E0\]/);
     assert.match(guidance, /title \?/);

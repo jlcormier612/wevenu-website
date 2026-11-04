@@ -116,7 +116,7 @@ function ConversationRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 ${isActive ? "border-l-2 border-l-primary bg-selected" : ""}`}
+      className={`flex w-full items-start gap-3 border-b border-border/40 px-4 py-3.5 text-left transition-colors hover:bg-[var(--htc-soft-blush)] ${isActive ? "border-l-2 border-l-primary bg-selected" : ""}`}
     >
       <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <span className="text-xs font-semibold text-primary">{initials(conversation.displayName)}</span>

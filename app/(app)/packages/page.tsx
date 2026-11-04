@@ -38,7 +38,7 @@ export default async function PackagesPage() {
         />
       </div>
       <LibraryHowItWorks tone="calm">
-        Package names, pricing, and inclusion lines are authored here for what you sell. Inclusions are written on the package itself — they are not selected from the Offerings catalog. For event delivery lists and client choice groups, use Event Order Templates.
+        Package names, pricing, and inclusion lines are authored here for what you sell. Inclusions are written on the package itself — they are not selected from the Offerings catalog. Archiving hides a package from the active list without sending anything to a client. For event delivery lists and client choice groups, use Event Order Templates.
       </LibraryHowItWorks>
       <PackageList initialPackages={packages} missingStarterKeys={missingStarterKeys} />
     </div>

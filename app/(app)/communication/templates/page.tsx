@@ -38,8 +38,11 @@ export default async function MessageTemplatesPage() {
           }
         />
       </div>
-      <LibraryHowItWorks>
-        Message subject and body are authored in the template editor. There is no separate catalog these templates select from — pick a template when composing a message.
+      <LibraryHowItWorks tone="calm">
+        Message subject and body are authored in the template editor — there is no separate catalog
+        these templates select from. Customize a Hello to Cheers starter to create your venue’s
+        editable copy; the original starter stays unchanged. Editing a venue-owned template never
+        sends a message — send from Messaging after you review the draft.
       </LibraryHowItWorks>
 
       {templates.length === 0 ? (

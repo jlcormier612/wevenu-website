@@ -1,5 +1,5 @@
 /**
- * Approved Inventory Templates page language — no redundant Use/Send callouts,
+ * Approved Inventory Templates page language — consolidated calm guidance,
  * no “Event Order handoff” / parallel-payment terminology on this surface.
  */
 import assert from "node:assert/strict";
@@ -23,30 +23,24 @@ describe("Inventory Templates page copy", () => {
     );
   });
 
-  it("explains Use and Send to client once in LibraryHowItWorks", () => {
-    assert.match(page, /LibraryHowItWorks/);
+  it("explains Use and Send to client once in calm guidance", () => {
+    assert.match(page, /LibraryDependencyNote/);
+    assert.match(page, /tone="calm"/);
     assert.match(page, /<strong className="font-medium text-heading">Use<\/strong>/);
     assert.match(page, /<strong className="font-medium text-heading">Send to client<\/strong>/);
     assert.match(page, /applies the list to an event without\s+sharing it/s);
     assert.match(page, /applies it if needed and\s+shares the event inventory for the couple to review/s);
-    // Single HowItWorks block — not repeated in PageHeader description.
+    assert.doesNotMatch(page, /LibraryHowItWorks/);
     assert.doesNotMatch(
       page,
       /description="[^"]*Use applies/,
     );
   });
 
-  it("keeps catalog dependency guidance without repeating Use/Send", () => {
-    assert.match(page, /LibraryDependencyNote/);
+  it("keeps catalog dependency guidance in the same calm card", () => {
     assert.match(page, /Built from your Available Inventory catalog/);
     assert.match(page, /Manage Available Inventory/);
-    const noteStart = page.indexOf("<LibraryDependencyNote");
-    const noteEnd = page.indexOf("</LibraryDependencyNote>");
-    assert.ok(noteStart >= 0 && noteEnd > noteStart, "LibraryDependencyNote block required");
-    const note = page.slice(noteStart, noteEnd);
-    assert.doesNotMatch(note, /Send to client/);
-    assert.doesNotMatch(note, /applies the list to an event/);
-    assert.doesNotMatch(note, /without sharing/);
+    assert.equal((page.match(/<LibraryDependencyNote\b/g) ?? []).length, 1);
   });
 
   it("removes obsolete handoff / payment-stack / draft-snapshot wording from this page surface", () => {

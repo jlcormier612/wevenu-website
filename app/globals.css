@@ -252,6 +252,8 @@ html:has(.htc-staff) {
   --htc-workspace: #f8f7f3;
   --htc-canvas: #f8f7f3;
   --htc-eucalyptus-surface: #dce8e0;
+  /* Faded eucalyptus for large booking summary shells — stay green, never pink. */
+  --htc-eucalyptus-surface-pale: #ecf2ee;
   --htc-border-warm: #e6e3dc;
 
   /*
@@ -417,13 +419,13 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 /*
- * Phase 10 — linen date/filter toolbar (Reporting). White operational toolbars
- * continue to use `.htc-hospitality-toolbar`.
+ * Phase 10 / Rule J — Reporting date/filter toolbar is white working chrome
+ * (not linen). White operational toolbars also use `.htc-hospitality-toolbar`.
  */
 .htc-staff .htc-hospitality-filter {
   border: 1px solid var(--htc-border-warm);
   border-radius: 0.75rem;
-  background: var(--htc-linen);
+  background: #ffffff;
   padding: 0.85rem 1rem;
   box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
 }
@@ -487,6 +489,17 @@ html:has(.htc-staff) [data-slot="card"] {
   --tw-ring-color: transparent;
 }
 
+/*
+ * Rule K — pale booking summary shell.
+ * Explicit pale eucalyptus hex (not oklch mix — those can drift pink on warm canvas).
+ * Nested Booked chip (`.htc-badge-active`) stays standard `--htc-eucalyptus-surface`.
+ */
+.htc-staff .htc-surface-summary-pale,
+.htc-staff [data-slot="card"].htc-surface-summary-pale {
+  background: var(--htc-eucalyptus-surface-pale);
+  border-color: color-mix(in srgb, var(--htc-eucalyptus) 28%, var(--htc-border-warm));
+}
+
 .htc-staff .htc-surface-guidance {
   border: 1px solid var(--htc-border-calm);
   border-left: 3px solid var(--htc-calm-blue-deep);
@@ -504,6 +517,19 @@ html:has(.htc-staff) [data-slot="card"] {
   color: var(--foreground);
   box-shadow: none;
   padding: 0.55rem 0.75rem;
+}
+
+/*
+ * Rule K slot G — relationship-workspace attention callout (true blockers only).
+ * Soft blush, not amber/warning chrome.
+ */
+.htc-staff .htc-surface-attention {
+  border: 1px solid color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+  border-left: 3px solid var(--htc-blush);
+  border-radius: 0.65rem;
+  background: var(--htc-soft-blush);
+  color: var(--foreground);
+  box-shadow: none;
 }
 
 /*
@@ -735,11 +761,50 @@ html:has(.htc-staff) [data-slot="card"] {
   background: var(--card);
 }
 
+/*
+ * Saved Reports list — calm-blue informational nest (not linen).
+ * Nested LibraryAssetCards stay white for readable working rows.
+ */
 .htc-staff .htc-report-saved-shell {
-  border: 1px solid var(--htc-border-warm);
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
   border-radius: 0.75rem;
-  background: var(--htc-linen);
+  background: var(--htc-calm-blue);
   padding: 0.65rem;
+  box-shadow: none;
+}
+
+.htc-staff .htc-report-saved-shell [data-slot="card"] {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+}
+
+/* Wave F deeper edit/detail working cards: white body + eucalyptus header banner */
+.htc-staff .htc-working-card {
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px color-mix(in oklch, #24332b 5%, transparent),
+    0 4px 14px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+.htc-staff .htc-working-card > [data-slot="card-header"] {
+  background-color: var(--htc-eucalyptus-surface);
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-working-card > [data-slot="card-footer"] {
+  background-color: #ffffff;
+  border-top-color: var(--htc-border-warm);
+}
+
+.htc-staff .htc-working-row {
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-working-row:hover {
+  background-color: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
 }
 
 .htc-staff .htc-hospitality-table {
@@ -909,45 +974,67 @@ html:has(.htc-staff) [data-slot="card"] {
   color: var(--primary);
 }
 
-/* Settings directory tiles — soft blush working cards; titles underline via record-link */
-.htc-staff .htc-settings-directory-card {
+/*
+ * Interactive directory / list tiles — white at rest, soft blush on hover.
+ * Settings, Help/Guidance articles, Feedback channels, Templates toolbox cards.
+ */
+.htc-staff .htc-settings-directory-card,
+.htc-staff .htc-feedback-channel-card,
+.htc-staff .htc-toolbox-card {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-settings-directory-card:hover,
+.htc-staff .htc-settings-directory-card:focus-visible,
+.htc-staff .htc-feedback-channel-card:hover,
+.htc-staff .htc-feedback-channel-card:focus-visible,
+.htc-staff .htc-toolbox-card:hover,
+.htc-staff .htc-toolbox-card:focus-visible {
   background: var(--htc-soft-blush);
-  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
 }
 
-.htc-staff .htc-settings-directory-card:hover {
-  background: color-mix(in oklch, var(--htc-soft-blush) 82%, white);
-}
-
-/* Help article rows + Feedback channel cards — blush shells, record-link titles */
 .htc-staff .htc-help-article-list {
-  background: var(--htc-soft-blush);
-  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+}
+
+.htc-staff .htc-help-article-row {
+  transition: background-color 120ms ease;
 }
 
 .htc-staff .htc-help-article-row:hover,
 .htc-staff .htc-help-article-row:focus-visible {
-  background: color-mix(in oklch, var(--htc-soft-blush) 78%, white);
+  background: var(--htc-soft-blush);
 }
 
 .htc-staff .htc-help-article-row:hover .htc-record-link,
-.htc-staff .htc-help-article-row:focus-visible .htc-record-link {
-  text-decoration: underline;
-}
-
-.htc-staff .htc-feedback-channel-card {
-  background: var(--htc-soft-blush);
-  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
-}
-
-.htc-staff .htc-feedback-channel-card:hover,
-.htc-staff .htc-feedback-channel-card:focus-visible {
-  background: color-mix(in oklch, var(--htc-soft-blush) 78%, white);
-}
-
+.htc-staff .htc-help-article-row:focus-visible .htc-record-link,
+.htc-staff .htc-settings-directory-card:hover .htc-record-link,
 .htc-staff .htc-feedback-channel-card:hover .htc-record-link,
 .htc-staff .htc-feedback-channel-card:focus-visible .htc-record-link {
   text-decoration: underline;
+}
+
+/* Reporting empty chart/list cards — calm-blue guidance shells */
+.htc-staff .htc-report-empty-card,
+.htc-staff [data-slot="card"].htc-report-empty-card {
+  background: var(--htc-calm-blue);
+  border-color: var(--htc-border-calm);
+  box-shadow: none;
+}
+
+/* Save Report — quiet eucalyptus chip-button on white filter bar */
+.htc-staff .htc-report-save-button {
+  border-color: color-mix(in srgb, var(--htc-eucalyptus) 45%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
+}
+
+.htc-staff .htc-report-save-button:hover {
+  background: color-mix(in srgb, var(--htc-eucalyptus-surface) 82%, white);
+  color: var(--heading);
 }
 
 /* Dashboard Today's Focus rows — soft blush on hover; titles underline via record-link */
@@ -1071,12 +1158,12 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 /*
- * Parent majors with nested content: full eucalyptus surface + botanical indicator.
- * Full token (not a diluted OKLCH mix) so parents read clearly green next to white children.
+ * Parent majors with nested content: white working row + botanical left indicator.
+ * Avoid checkered green/linen/white fills — hierarchy comes from indent + left border.
  */
 .htc-staff .htc-catalog-major[data-has-children="true"] {
-  background: var(--htc-eucalyptus-surface);
-  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 45%, var(--htc-border-warm));
+  background: var(--card);
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-border-warm) 90%, transparent);
   border-left-color: var(--htc-botanical);
 }
 
@@ -1085,11 +1172,10 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 /*
- * Categories: linen supporting surface under eucalyptus parents — warm nesting
- * without competing with parent majors (eucalyptus) or item rows (white).
+ * Categories: white working nest under parents — eucalyptus left border for quiet grouping.
  */
 .htc-staff .htc-catalog-category {
-  background: var(--htc-linen);
+  background: var(--card);
   border-left: 3px solid var(--htc-eucalyptus);
 }
 
@@ -1126,11 +1212,20 @@ html:has(.htc-staff) [data-slot="card"] {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  border: 1px solid var(--htc-border-warm);
+  border: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: var(--htc-eucalyptus-surface);
   padding: 0.65rem 0.75rem;
   box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Canonical taxonomy color-dot size (matches Month-at-a-glance). */
+.htc-staff .htc-calendar-dot {
+  display: block;
+  width: 0.625rem; /* 10px — h-2.5 */
+  height: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
 }
 
 .htc-staff .htc-calendar-toolbar-row {
@@ -1251,9 +1346,16 @@ html:has(.htc-staff) [data-slot="card"] {
   max-width: 100%;
   border: 1px solid var(--htc-border-warm);
   border-radius: 0.75rem;
-  background: var(--card);
+  /* Match Month/Week/Day switcher — white nested control on eucalyptus toolbar. */
+  background: #ffffff;
   padding: 0.25rem;
   box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+}
+
+/* Date selects stay white inside the eucalyptus calendar toolbar. */
+.htc-staff .htc-calendar-toolbar [data-slot="select-trigger"] {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
 }
 
 /* Keep prev/next arrows with month+year on one coherent row (esp. 390px). */
@@ -1427,7 +1529,7 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 .htc-staff .htc-calendar-month-grid [data-cal-day-cell]:hover {
-  background: var(--htc-warm-pale);
+  background: var(--htc-soft-blush);
 }
 
 /*
@@ -3137,11 +3239,22 @@ html:has(.htc-staff) [data-slot="tooltip-content"] {
 
 html:has(.htc-staff) [data-slot="tabs-list"] {
   border-radius: var(--radius-sm);
+  /* Rule K/J — white tab chrome (not muted gray); selected keeps eucalyptus. */
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
 }
 
 html:has(.htc-staff) [data-slot="tabs-trigger"] {
   border-radius: calc(var(--radius-sm) * 0.85);
   box-shadow: none;
+}
+
+/* Rule K/J — staff select + text fields are white working controls, not gray/canvas washes.
+   Override component `bg-transparent` so canvas linen does not show through. */
+html:has(.htc-staff) [data-slot="select-trigger"],
+html:has(.htc-staff) [data-slot="input"],
+html:has(.htc-staff) [data-slot="textarea"] {
+  background-color: #ffffff;
 }
 
 html:has(.htc-staff) [data-slot="table-head"] {

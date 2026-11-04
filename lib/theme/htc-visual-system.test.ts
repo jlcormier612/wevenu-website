@@ -67,23 +67,26 @@ describe("HTC visual system foundation", () => {
     assert.match(offeringsSection, /htc-catalog-category/);
     assert.match(offeringsSection, /data-has-children/);
     assert.match(css, /data-has-children="true"/);
-    assert.match(offeringsPage, /tone="blush"/);
-    assert.match(offeringsPage, /tone="eucalyptus"/);
+    assert.match(offeringsPage, /LibraryDependencyNote[\s\S]*tone="calm"/);
+    assert.doesNotMatch(offeringsPage, /tone="blush"/);
+    assert.doesNotMatch(offeringsPage, /tone="eucalyptus"/);
   });
 
-  it("parent majors use full eucalyptus surface — not a diluted OKLCH mix", () => {
+  it("parent majors and categories stay white working rows with quiet left borders", () => {
     const parentRule = css.slice(
       css.indexOf('.htc-staff .htc-catalog-major[data-has-children="true"]'),
       css.indexOf(".htc-staff .htc-catalog-major[data-standalone"),
     );
-    assert.match(parentRule, /background:\s*var\(--htc-eucalyptus-surface\)/);
-    assert.doesNotMatch(parentRule, /color-mix\(in oklch, var\(--htc-eucalyptus-surface\)/);
+    assert.match(parentRule, /background:\s*var\(--card\)/);
+    assert.match(parentRule, /border-left-color:\s*var\(--htc-botanical\)/);
+    assert.doesNotMatch(parentRule, /background:\s*var\(--htc-eucalyptus-surface\)/);
     const categoryRule = css.slice(
       css.indexOf(".htc-staff .htc-catalog-category {"),
       css.indexOf(".htc-staff .htc-catalog-item {"),
     );
-    assert.match(categoryRule, /background:\s*var\(--htc-linen\)/);
+    assert.match(categoryRule, /background:\s*var\(--card\)/);
     assert.match(categoryRule, /border-left:\s*3px solid var\(--htc-eucalyptus\)/);
+    assert.doesNotMatch(categoryRule, /background:\s*var\(--htc-linen\)/);
   });
 
   it("remaps hospitality utilities under dark staff without warm canvas", () => {

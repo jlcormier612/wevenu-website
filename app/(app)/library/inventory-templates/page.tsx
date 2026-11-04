@@ -5,7 +5,7 @@ import {
   NewInventoryTemplateButton,
 } from "@/components/event-inventory/inventory-template-list";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { ensureInventoryStartersForCurrentVenue } from "@/lib/inventory/provision";
 import { INVENTORY_TEMPLATE_STARTER_MASTERS } from "@/lib/inventory/starters";
@@ -35,17 +35,17 @@ export default async function InventoryTemplatesLibraryPage() {
           actions={<NewInventoryTemplateButton />}
         />
       </div>
-      <LibraryHowItWorks tone="calm">
-        <strong className="font-medium text-heading">Use</strong> applies the list to an event without
-        sharing it.{" "}
-        <strong className="font-medium text-heading">Send to client</strong> applies it if needed and
-        shares the event inventory for the couple to review.
-      </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Add catalog items when you edit a template. Use a custom line only for one-offs that are not already in your catalog."
+        tone="calm"
+          detail={
+            <>
+              <strong className="font-medium text-heading">Use</strong> applies the list to an event without sharing it.{" "}
+              <strong className="font-medium text-heading">Send to client</strong> applies it if needed and shares the event inventory for the couple to review. Built from your Available Inventory catalog — add catalog items when you edit a template; use a custom line only for one-offs.
+            </>
+          }
         action={{ href: "/library/inventory", label: "Manage Available Inventory" }}
       >
-        Built from your Available Inventory catalog.
+        How Inventory Templates work
       </LibraryDependencyNote>
       <InventoryTemplateList
         templates={templates}

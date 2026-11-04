@@ -315,7 +315,7 @@ export function EventSetupPanel({
       <div className="space-y-3" data-testid="event-setup-panel" id="event-setup">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-heading">Event setup</p>
+            <p className="font-heading text-3xl font-medium tracking-tight text-heading">Event Setup</p>
             <p className="text-xs text-muted-foreground">No outstanding setup actions for this event.</p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={reopen} disabled={pending}>
@@ -337,7 +337,7 @@ export function EventSetupPanel({
     <section className="space-y-3" data-testid="event-setup-panel" id="event-setup">
       <div className="htc-hospitality-heading htc-hospitality-intro-accent flex flex-wrap items-start justify-between gap-3 p-4">
         <div>
-          <h2 className="text-base font-medium text-heading">Event setup</h2>
+          <h2 className="font-heading text-3xl font-medium tracking-tight text-heading">Event Setup</h2>
           {usingProfile ? (
             <p className="mt-1 text-sm text-foreground">Using: {state.profileName}</p>
           ) : null}
@@ -425,7 +425,7 @@ export function EventSetupPanel({
         </div>
       ) : null}
       {outstandingCount > 0 ? (
-        <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-3 space-y-2" data-testid="event-setup-outstanding">
+        <div className="htc-surface-attention space-y-2 px-3 py-3" data-testid="event-setup-outstanding">
           <p className="text-sm font-medium text-heading">Outstanding on this event</p>
           <p className="text-xs text-muted-foreground">
             Genuine blockers only. Prepared drafts awaiting release are not listed here —
@@ -479,11 +479,20 @@ export function EventSetupPanel({
                 preferredFloorPlanName,
               });
           return (
-            <li key={step} className="rounded-lg border border-border px-3 py-3" data-testid={`event-setup-card-${step}`}>
+            <li key={step} className="htc-surface-working px-3 py-3" data-testid={`event-setup-card-${step}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-heading">{setupStepLabel(step)}</p>
-                  <Badge variant={decision == null ? "outline" : readinessBadgeVariant(detail.status, badgeLabel)}>
+                  <Badge
+                    variant={decision == null ? "outline" : readinessBadgeVariant(detail.status, badgeLabel)}
+                    className={
+                      badgeLabel === "Included" ||
+                      badgeLabel === "Released" ||
+                      badgeLabel === "Decide"
+                        ? "htc-badge-active"
+                        : undefined
+                    }
+                  >
                     {badgeLabel}
                     {source === "event" && state.usesProfile ? " · This event" : ""}
                   </Badge>
@@ -639,7 +648,7 @@ function ClientWorkspaceInvite({
 }) {
   return (
     <div
-      className="rounded-lg border border-border px-3 py-3 space-y-3"
+      className="htc-surface-guidance space-y-3 px-3 py-3"
       data-testid="client-workspace-invite"
     >
       <div>

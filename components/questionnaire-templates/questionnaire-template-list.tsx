@@ -388,7 +388,7 @@ function TemplateCard({
         badges={
           <>
             {!isStarter && <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>}
-            <Badge variant="muted" className="text-[10px]">{kindLabel(template.kind)}</Badge>
+            <Badge variant="outline" className="htc-badge-active text-[10px]">{kindLabel(template.kind)}</Badge>
           </>
         }
         primaryActions={primaryActions}

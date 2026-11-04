@@ -44,6 +44,6 @@ describe("Color Distribution Phase 9 — Setup Hub + Settings directory", () => 
     assert.doesNotMatch(business, /htc-settings-directory-icon|htc-setup-stage-section-label/);
     assert.match(availability, /htc-availability-settings-guidance/);
     assert.doesNotMatch(availability, /htc-settings-directory-icon/);
-    assert.match(css, /\.htc-settings-directory-card[\s\S]*--htc-soft-blush/);
+    assert.match(css, /\.htc-settings-directory-card:hover[\s\S]*--htc-soft-blush|\.htc-settings-directory-card[\s\S]*:hover[\s\S]*--htc-soft-blush/);
   });
 });

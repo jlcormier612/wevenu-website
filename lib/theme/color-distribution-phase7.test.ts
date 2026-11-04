@@ -62,10 +62,9 @@ describe("Color Distribution Phase 7 — Venue Guide + Contract template disclai
 
   it("does not expand Phase 7 into excluded surfaces", () => {
     assert.match(helpSlug, /border-amber-500\/30 bg-amber-500\/5/);
-    assert.match(messageTemplates, /<LibraryHowItWorks>/);
-    assert.doesNotMatch(messageTemplates, /LibraryHowItWorks tone=/);
+    assert.match(messageTemplates, /LibraryHowItWorks tone="calm"/);
     assert.match(eo, /data-testid="eo-templates-landing-example"/);
-    assert.match(eo, /bg-muted\/20/);
+    assert.match(eo, /LibraryDependencyNote[\s\S]*tone="calm"/);
     assert.doesNotMatch(helpSlug, /htc-venue-guide-orientation|htc-contract-template-disclaimer/);
   });
 

@@ -133,7 +133,7 @@ export function LeadSpacePreferenceFields({
     if (assigned.length === 0) return null;
     return (
       <div
-        className="htc-surface-operational w-full min-w-0 px-3 py-2.5 sm:px-3.5 sm:py-3"
+        className="htc-surface-summary w-full min-w-0 px-3 py-2.5 sm:px-3.5 sm:py-3"
         data-testid="lead-space-preferences"
       >
         <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -183,7 +183,7 @@ export function LeadSpacePreferenceFields({
 
   return (
     <div
-      className="htc-surface-operational w-full min-w-0 px-3 py-2.5 sm:px-3.5 sm:py-3"
+      className="htc-surface-summary w-full min-w-0 px-3 py-2.5 sm:px-3.5 sm:py-3"
       data-testid="lead-space-preferences"
     >
       <div className="mb-2 space-y-0.5">

@@ -115,8 +115,8 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
             {!isStarter && !t.isArchived && (
               <Badge variant="outline" className="text-[10px]">{LIBRARY_LABELS.yourTemplate}</Badge>
             )}
-            {t.emailBody && <Badge variant="muted" className="text-[10px]">Email</Badge>}
-            {t.smsBody && <Badge variant="muted" className="text-[10px]">Text</Badge>}
+            {t.emailBody && <Badge variant="outline" className="htc-badge-active text-[10px]">Email</Badge>}
+            {t.smsBody && <Badge variant="outline" className="htc-badge-active text-[10px]">Text</Badge>}
           </>
         }
         primaryActions={primaryActions}
@@ -159,11 +159,6 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Customize a Hello to Cheers starter to create your venue’s editable copy — the original starter
-        stays unchanged. Editing a venue-owned template never sends a message; send from Messaging after
-        you review the draft.
-      </p>
       <div className="space-y-2">
         {active.map((t) => cardFor(t, false))}
       </div>

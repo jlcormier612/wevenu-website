@@ -59,7 +59,11 @@ export function SavedReportList({ reports }: { reports: SavedReport[] }) {
             title={r.name}
             meta={`${presetLabel(r.datePreset)} · Updated ${formatRelative(r.updatedAt)}`}
             isStarter={Boolean(r.sourceMasterKey)}
-            badges={<Badge variant="outline">{SAVED_REPORT_PATH_LABEL[r.reportPath]}</Badge>}
+            badges={
+              <Badge variant="outline" className="htc-badge-active">
+                {SAVED_REPORT_PATH_LABEL[r.reportPath]}
+              </Badge>
+            }
             primaryActions={[
               { id: "use", label: "Open report", href: `${r.reportPath}?${qs}`, emphasis: "use" },
               { id: "edit", label: "Manage", href: `/reporting/saved/${r.id}`, emphasis: "edit" },

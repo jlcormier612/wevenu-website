@@ -35,4 +35,20 @@ describe("Guide Completion pill contrast", () => {
     assert.match(faqs, /title: "FAQs"/);
     assert.match(editor, /SECTIONS\.map\(s =>/);
   });
+
+  it("applies one filled and one unfilled token pair to every section pill (FAQ not special-cased)", () => {
+    const meter = editor.slice(
+      editor.indexOf("function CompletionMeter"),
+      editor.indexOf("// ── Shared components"),
+    );
+    // Single ternary — same completed vs incomplete styles for FAQs and peers.
+    assert.match(
+      meter,
+      /done\s*\?\s*"border-primary\/35 bg-primary\/15 text-foreground"\s*:\s*"border-border bg-muted text-muted-foreground"/,
+    );
+    assert.equal((meter.match(/bg-primary\/15/g) ?? []).length, 1);
+    assert.equal((meter.match(/bg-muted text-muted-foreground/g) ?? []).length, 1);
+    assert.doesNotMatch(meter, /s\.key\s*===\s*["']faqs["']/);
+    assert.doesNotMatch(meter, /faqs.*bg-primary|bg-primary.*faqs/i);
+  });
 });

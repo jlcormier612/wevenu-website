@@ -74,10 +74,9 @@ describe("Color Distribution Phase 4 — Setup / Contract calm (schedule review 
   it("does not expand calm into excluded Phase 4 surfaces", () => {
     assert.doesNotMatch(tasks, /htc-setup-hub-welcome|htc-contract-agreement-guidance|htc-schedule-review-banner/);
     assert.match(tasks, /htc-surface-guidance/);
-    assert.match(templates, /<LibraryHowItWorks>/);
-    assert.doesNotMatch(templates, /LibraryHowItWorks tone=/);
+    assert.match(templates, /LibraryHowItWorks tone="calm"/);
     assert.match(eo, /data-testid="eo-templates-landing-example"/);
-    assert.match(eo, /htc-surface-guidance/);
+    assert.match(eo, /tone="calm"/);
     assert.doesNotMatch(settings, /htc-setup-hub-welcome|htc-contract-agreement-guidance/);
     assert.match(clients, /data-testid="portal-activation-banner"/);
     assert.match(clients, /bg-muted\/20/);

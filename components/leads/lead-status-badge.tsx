@@ -14,7 +14,10 @@ const STATUS_VARIANT: Record<LeadStatus, BadgeVariant> = {
 
 export function LeadStatusBadge({ status }: { status: LeadStatus }) {
   return (
-    <Badge variant={STATUS_VARIANT[status] ?? "outline"}>
+    <Badge
+      variant={STATUS_VARIANT[status] ?? "outline"}
+      className={status === "booked" ? "htc-badge-active" : undefined}
+    >
       {statusLabel(status)}
     </Badge>
   );

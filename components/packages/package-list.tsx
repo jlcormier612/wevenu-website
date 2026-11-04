@@ -137,7 +137,7 @@ export function PackageList({
         description={pkg.description ? <span className="line-clamp-2">{pkg.description}</span> : undefined}
         isStarter={Boolean(pkg.sourceMasterKey)}
         isArchived={!pkg.isActive}
-        badges={pkg.category ? <Badge variant="muted" className="text-[10px]">{pkg.category}</Badge> : undefined}
+        badges={pkg.category ? <Badge variant="outline" className="htc-badge-active text-[10px]">{pkg.category}</Badge> : undefined}
         primaryActions={archivedView
           ? [
               { id: "preview", label: LIBRARY_LABELS.preview, href: `/packages/${pkg.id}/preview`, emphasis: "preview" },
@@ -181,9 +181,6 @@ export function PackageList({
           <StarterMenu missingKeys={missingStarterKeys} />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
-        Packages are reusable structures for booking. Archiving hides them from the active list — it does not send anything to a client.
-      </p>
       {active.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No active packages. Restore one from Archived, or add a new package.</p>
       ) : (

@@ -395,12 +395,6 @@ export function TimelineTemplatesSection({
           <TimelineTemplateStarterPicker existingTemplates={active} spaces={spaces} />
         ) : null}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Starters are Hello to Cheers starting points — use Customize to create your venue&apos;s own copy
-        (name it and assign a space via Edit details). Edit activities on your templates without
-        changing the starter. Apply from the event Timeline (or Setup); Library templates are never
-        emailed to clients.
-      </p>
       {active.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No active timeline templates.</p>
       ) : (

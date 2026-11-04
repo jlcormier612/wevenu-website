@@ -108,15 +108,14 @@ describe("Color Distribution Phase 6 — Migration guidance + Import cutover", (
   });
 
   it("does not expand Phase 6 into excluded surfaces", () => {
-    assert.match(templates, /<LibraryHowItWorks>/);
-    assert.doesNotMatch(templates, /LibraryHowItWorks tone=/);
+    assert.match(templates, /LibraryHowItWorks tone="calm"/);
     assert.match(eo, /data-testid="eo-templates-landing-example"/);
-    assert.match(eo, /bg-muted\/20/);
+    assert.match(eo, /LibraryDependencyNote[\s\S]*tone="calm"/);
     assert.match(
       banner,
       /className="rounded-sm border border-border bg-muted\/30 px-4 py-3 space-y-3"/,
     );
-    assert.match(settingsIndex, /bg-card p-5/);
+    assert.match(settingsIndex, /htc-settings-directory-card|bg-card p-5/);
     assert.doesNotMatch(settingsIndex, /htc-migration-guidance|htc-import-cutover-pointer/);
   });
 

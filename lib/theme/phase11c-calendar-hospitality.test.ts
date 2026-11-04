@@ -38,12 +38,23 @@ describe("Phase 11C — Calendar intro and guidance", () => {
   });
 });
 
-describe("Phase 11C — white toolbars across views (Rule J)", () => {
-  it("defines white calendar toolbar shell", () => {
-    assert.match(css, /\.htc-staff \.htc-calendar-toolbar[\s\S]*?background:\s*#ffffff/);
+describe("Phase 11C — calendar toolbars across views (Rule J / eucalyptus shell)", () => {
+  it("defines eucalyptus calendar toolbar shell with white date nav nest", () => {
+    assert.match(css, /\.htc-staff \.htc-calendar-toolbar[\s\S]*?background:\s*var\(--htc-eucalyptus-surface\)/);
+    assert.match(css, /\.htc-staff \.htc-calendar-month-nav-group[\s\S]*?background:\s*#ffffff/);
+    assert.match(css, /\.htc-calendar-toolbar \[data-slot="select-trigger"\][\s\S]*?background:\s*#ffffff/);
     assert.match(calendarView, /htc-calendar-toolbar/);
     assert.match(calendarView, /data-cal-toolbar-row="views"/);
     assert.match(calendarView, /data-cal-toolbar-row="date"/);
+  });
+
+  it("uses one taxonomy color-dot size across chips, month cells, and at-a-glance", () => {
+    const shared = read("components/calendar/calendar-shared.tsx");
+    assert.match(css, /\.htc-staff \.htc-calendar-dot[\s\S]*?width:\s*0\.625rem/);
+    assert.match(shared, /htc-calendar-dot/);
+    assert.match(calendarView, /htc-calendar-dot/);
+    assert.doesNotMatch(shared, /h-4 w-4 shrink-0 rounded-full/);
+    assert.doesNotMatch(calendarView, /h-1\.5 w-1\.5 rounded-full/);
   });
 
   it("keeps a single shared white toolbar with date nav for all four views", () => {

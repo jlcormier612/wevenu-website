@@ -1,6 +1,6 @@
 # HTC Color Distribution Rules
 
-**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering + Rule J Waves A/B/C/D/E  
+**Status:** Formalized for Phase 11D; extended for Phase 12 surface layering + Rule J Waves A/B/C/D/E + Rule K (relationship workspaces)  
 
 **Authority:** Approved HTC palette + hospitality redesign Phases 1–11D  
 **Token home:** `.htc-staff` in `app/globals.css`  
@@ -44,7 +44,7 @@ Do not turn ordinary working content green.
 
 **Class:** `.htc-surface-operational` (also `.htc-hospitality-filter` for filter/date toolbars).
 
-Use linen for filters, toolbars, staff/team assignments, space-preference controls, secondary operational groupings, and neutral supporting sections.
+Use linen for filters, toolbars, staff/team assignments, secondary operational groupings, and neutral supporting sections. On Lead workspaces, Space preferences use eucalyptus summary (Rule K) rather than linen.
 
 When several pale-green panels appear in one viewport, prefer linen for operational groups.
 
@@ -146,15 +146,17 @@ These treatments apply across **most staff pages**, not only classic list screen
 
 **Guidance must read as calm blue**, including Setup Hub orientation (“Jennifer, here’s what helps…”), ready-declared notices, Bring-Your-Business / HoneyBook how-to panels, migration guidance, Automations help, empty informational panels, and Task Center informational callouts. When informational copy is orphaned on the canvas, wrap it in a calm-blue shell — do not invent blue boxes for every paragraph.
 
-**Exceptions:** Calendar, Reports, Messaging inbox, and dense open workspaces keep specialized body layouts. They still use white title cards + botanical strip, white search/toolbars, record-link names, botanical primary actions, blush for true attention, eucalyptus for quiet grouping chips, and calm blue for real guidance/empty info.
+**Exceptions:** Calendar, Reports, Messaging inbox, and dense open workspaces keep specialized body layouts. They still use white title cards + botanical strip, record-link names, botanical primary actions, blush for true attention, eucalyptus for quiet grouping chips, and calm blue for real guidance/empty info. **Calendar** view/date toolbar is eucalyptus (`.htc-calendar-toolbar`); taxonomy color dots use one size (`.htc-calendar-dot`, matching Month-at-a-glance) in filter chips, month cells, and at-a-glance.
 
 **Wave B (internal / detail workspaces):** Questionnaires delivery guidance + kind title cards; Event setup title + orientation guidance + white working body; Event Inventory share how-to + Venue-only visibility disclosure; Support Access; Event Order couple-choice constraint cards; Venue Guide Complete chips via `.htc-badge-active`; BusinessAssetHeader relationship links via `.htc-record-link`. Venue Guide orientation already uses calm blue via `.htc-venue-guide-orientation`.
 
 **Wave C (mechanical remaining-staff sweep):** Reports white title (drop eucalyptus intro fill); Settings how-to / before-you-start / email intake / texting orientation / reminder cadence / website share+embed / migration guidance / starter ownership → calm blue; inquiry-form field editor → white working; Contracts/Payments/Packages/Inventory/Offerings/Documents/Saved Reports informational empties → calm blue; EO overview white working + record-links; Lead Capture + Change password white title cards; Library apply-template consequence notes → compact guidance. Payment Plan Builder totals and invoice drift banners stay muted/semantic (not guidance).
 
-**Wave D (screenshot polish):** Library Documents empty → calm blue; Task titles + Templates catalog titles → record-link underline on hover; Task perspective pills white → botanical when selected; Calendar Tour chip eucalyptus; taxonomy dots 2×; Public Event Availability + Tour Scheduling both eucalyptus header + eucalyptus left strip (linen guidance nest kept); Setup BYB Add/Fresh → calm blue; Setup quiet CTAs eucalyptus; Settings directory + Help article list + Feedback channel cards → soft blush with record-link titles; Feedback footer tip → calm blue; Reports Outstanding KPI → soft blush.
+**Wave D (screenshot polish):** Library Documents empty → calm blue; Task titles + Templates catalog titles → record-link underline on hover; Task perspective pills white → botanical when selected; Calendar Tour chip eucalyptus; taxonomy dots shared size; Public Event Availability + Tour Scheduling both eucalyptus header + eucalyptus left strip (linen guidance nest kept); Setup BYB Add/Fresh → calm blue; Setup quiet CTAs white outline; Settings / Help / Guidance / Feedback tiles → **white at rest, soft blush on hover** (same hover as Templates toolbox, calendar day cells, inbox rows); Feedback footer tip → calm blue; Reports Outstanding KPI → soft blush; Reporting date bar white; Save Report eucalyptus; report empty cards calm blue; **Saved Reports list nest** calm blue with white row cards (was linen).
 
 **Wave E (Dashboard F/U):** Today's Focus rows blush on hover + record-link titles; Luv white body with blush top strip; Coming up calm-blue guidance shell.
+
+**Wave F (deeper edit / detail workspaces):** Beige page canvas; **one** calm-blue orientation box (consolidate redundant how-to / save-scope copy); white working cards with **eucalyptus header banners** (`.htc-working-card`); botanical primary / directional actions; quiet eucalyptus chips (`.htc-badge-active`); blush only for Luv / true attention; openable rows / client-style bars use blush hover + `.htc-record-link` underline; staff inputs/selects stay white. Pilot: Automations edit/new; same working-card chrome on Message/Contract/Pipeline template edits, Vendor/Lead/Client/Event edit pages.
 
 ---
 
@@ -165,9 +167,12 @@ These treatments apply across **most staff pages**, not only classic list screen
 | `.htc-surface-working` | Explicit white working panel |
 | `.htc-surface-operational` | Linen operational grouping |
 | `.htc-surface-summary` | Selective eucalyptus primary summary |
+| `.htc-surface-summary-pale` | Paler eucalyptus booking summary (Booked chip stays standard) |
 | `.htc-surface-guidance` | Calm-blue informational panel |
 | `.htc-surface-guidance-compact` | Calm-blue subsection inside a white card |
 | `.htc-group-shell` | Linen parent grouping that forces nested cards white |
+| `.htc-working-card` | White edit/detail card with eucalyptus header banner |
+| `.htc-working-row` | White row with soft-blush hover (openable / enrollment bars) |
 | `.htc-badge-active` | Restrained eucalyptus Active indicator |
 | `.htc-badge-attention` | Soft-blush attention / Required indicator |
 
@@ -184,19 +189,46 @@ Prefer semantic variants over one-off `bg-muted/20` or `bg-primary/5` washes on 
 
 ---
 
-## 4. Pilot examples (Phase 11D)
+## 4. Rule K — Relationship workspace recipe
 
-| Surface | Treatment |
-|---------|-----------|
-| Lead Sales & availability | Linen operational |
-| Lead Space preferences | Linen operational |
-| Lead Contact information | White working card |
-| Lead personalized scheduling-link guidance | Calm-blue guidance |
-| Booking event schedule summary | Eucalyptus summary |
-| Booking Team assignment | Linen operational |
-| Booking Questionnaires card | White card + compact calm-blue guidance subsection |
-| Booking Inventory & Event Order | White working card |
-| Pipeline / hold / Booked badges | Unchanged semantic treatments |
+Rule J covers list/hub pages. **Rule K** covers dense **relationship workspaces** that share one skeleton so Lead, Booking, Event Setup, Questionnaires, Inventory, Event Order, and Client invite/support read as the same family — without cloning Clients-list chrome onto editors.
+
+**In scope:** Lead detail; Booking / booked-client overview; Event setup; Questionnaires / Inventory / Event Order panels; Client invite + Support Access.  
+**Out of scope (keep specialized):** Calendar body taxonomy, Reports KPI families, Inbox threads, Floor/Seating object colors, Luv identity, print/PDF.
+
+### Structural contract (same order on every workspace)
+
+1. **A — Record identity** — couple/event name + pipeline/actions on canvas; botanical primary; outline secondary; `.htc-record-link` for View lead / Edit contact / openable names. Workspace section titles that act as primary page headers (e.g. **Event Setup**) use **PageHeader scale** (`font-heading text-3xl`), not compact card-title size. On mobile Lead workspaces, action chips flow **left / full-width** — do not right-clump management + tour/booking buttons.  
+2. **B — Primary summary** (at most one per band) — eucalyptus `.htc-surface-summary` for Lead **Space preferences**; booking schedule window uses **pale** `.htc-surface-summary-pale` (`--htc-eucalyptus-surface-pale`, explicit faded green — never pink oklch drift) so nested **Booked** (`.htc-badge-active`) stays the stronger standard green.  
+3. **C — Operational rails** — linen `.htc-surface-operational` only when a true linen assignment rail is still warranted. Nested selects stay **white**.  
+4. **D — Working modules** — white `.htc-surface-working` (Lead **Sales & availability**, Booking **Team assignment**, Contact, Tour list, Questionnaires/Inventory cards, Event setup feature rows, workspace tab bars).  
+5. **E — How-to / readiness** — calm blue `.htc-surface-guidance` or compact (orientation, Support Access, “choose and send…”, **Your client's planning workspace**, empty info). Never blue entire editors.  
+6. **F — Quiet chips** — eucalyptus `.htc-badge-active` for positive/quiet lifecycle chips: **Booked**, Included, Released, Decide, Complete, Completed, Active. **No gray/muted fills** for these chips.  
+7. **G — Attention** — soft blush only for true problems/overdue (`.htc-surface-attention` / `.htc-badge-attention`).  
+8. **H — Actions** — botanical fill = primary commit; white outline = secondary open/edit.  
+9. **I — Chrome controls** — staff **tab bars** and **select/dropdown fields** are **white** (not muted gray). Selected tab keeps the eucalyptus highlight (`data-[active]` / `--selected`).
+
+### Pilot examples (Phase 11D + Rule K)
+
+| Surface | Slot | Treatment |
+|---------|------|-----------|
+| Lead Sales & availability | D | White working |
+| Lead Space preferences | B | Eucalyptus summary (standard) |
+| Lead Contact / Tour list | D | White working |
+| Lead personalized scheduling-link guidance | E | Calm-blue guidance |
+| Lead mobile action rows | A/H | Left-flow management chips; full-width tour/booking CTAs |
+| Lead / Booking **Booked** chip | F | `.htc-badge-active` (not muted/gray) |
+| Booking event schedule summary | B | Pale eucalyptus `.htc-surface-summary-pale` |
+| Booking Team assignment | D | White working; white select field |
+| Booking workspace tab bars | D/I | White tabs; eucalyptus selected highlight |
+| Booking Questionnaires card | D + E | White card + compact calm-blue guidance |
+| Booking Inventory & Event Order | D | White working |
+| Event Setup title + orientation | A/E | White title “Event Setup” at PageHeader scale + calm-blue orientation |
+| Event setup Decide / Included chips | F | `.htc-badge-active` |
+| Event setup feature cards | D | White working |
+| Your client's planning workspace | E | Calm-blue guidance |
+
+Do **not** paint every card blue or green. Do **not** force list-page search/table shells onto these editors. Do **not** use gray/muted washes for Booked, Decide, or other quiet positive chips.
 
 ---
 
@@ -219,4 +251,4 @@ Prefer semantic variants over one-off `bg-muted/20` or `bg-primary/5` washes on 
 - Floor Plan / Seating object colors
 - Luv blush identity
 - Semantic success / warning / destructive / overdue treatments
-- Phase 11D relationship-workspace structure (Lead Sales / Space Prefs / Contact; Booking summary / Team / Questionnaires / Inventory) — refine only for clear layering defects; do not reopen functional UX
+- Phase 11D / Rule K relationship-workspace structure (Lead Sales / Space Prefs / Contact; Booking summary / Team / Questionnaires / Inventory; Event setup) — refine only for clear layering defects; do not reopen functional UX

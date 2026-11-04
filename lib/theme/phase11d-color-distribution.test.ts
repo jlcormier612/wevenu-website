@@ -67,9 +67,15 @@ describe("Phase 11D — relationship workspace pilot wiring", () => {
   const spacePrefs = read("components/leads/space-preference-fields.tsx");
   const eventDetail = read("components/events/event-detail.tsx");
 
-  it("Lead Sales & availability and Space preferences use linen operational surfaces", () => {
+  it("Lead Sales & availability is white working; Space preferences are eucalyptus summary (Rule K)", () => {
     assert.match(leadDetail, /data-testid="lead-sales-availability"/);
-    assert.match(leadDetail, /htc-surface-operational/);
+    assert.match(
+      leadDetail.slice(
+        leadDetail.indexOf('data-testid="lead-sales-availability"'),
+        leadDetail.indexOf('data-testid="lead-sales-availability"') + 220,
+      ),
+      /htc-surface-working/,
+    );
     assert.doesNotMatch(
       leadDetail.slice(
         leadDetail.indexOf('data-testid="lead-sales-availability"'),
@@ -77,18 +83,19 @@ describe("Phase 11D — relationship workspace pilot wiring", () => {
       ),
       /bg-muted\/20/,
     );
-    assert.match(spacePrefs, /htc-surface-operational/);
+    assert.match(spacePrefs, /htc-surface-summary/);
     assert.match(spacePrefs, /data-testid="lead-space-preferences"/);
+    assert.doesNotMatch(spacePrefs, /htc-surface-operational/);
   });
 
   it("Lead Contact remains a white Card workspace", () => {
     assert.match(leadDetail, /data-testid="lead-contact-card"/);
-    assert.match(leadDetail, /<Card className="h-full" data-testid="lead-contact-card">/);
+    assert.match(leadDetail, /htc-surface-working[\s\S]*lead-contact-card|lead-contact-card[\s\S]*htc-surface-working/);
   });
 
-  it("Booking summary is eucalyptus; Team assignment is linen; Questionnaires keep white + calm guidance", () => {
+  it("Booking summary is pale eucalyptus; Team assignment is white; Questionnaires keep white + calm guidance", () => {
     assert.match(eventDetail, /data-testid="event-booking-summary"/);
-    assert.match(eventDetail, /htc-surface-summary/);
+    assert.match(eventDetail, /htc-surface-summary-pale/);
     assert.doesNotMatch(
       eventDetail.slice(
         eventDetail.indexOf("function EventHeroCard"),
@@ -102,7 +109,7 @@ describe("Phase 11D — relationship workspace pilot wiring", () => {
         eventDetail.indexOf('data-testid="event-staff-assignment"') - 120,
         eventDetail.indexOf('data-testid="event-staff-assignment"') + 80,
       ),
-      /htc-surface-operational/,
+      /htc-surface-working/,
     );
     assert.match(eventDetail, /data-testid="event-questionnaires-card"/);
     assert.match(eventDetail, /htc-surface-guidance-compact/);
@@ -126,14 +133,14 @@ describe("Phase 11D — relationship workspace pilot wiring", () => {
     assert.doesNotMatch(hero, /lg:h-full/);
   });
 
-  it("Lead Space Preferences uses linen operational surface in editable and read-only paths", () => {
+  it("Lead Space Preferences uses eucalyptus summary in editable and read-only paths", () => {
     assert.match(spacePrefs, /if \(readOnly\)/);
     const readOnlyBlock = spacePrefs.slice(
       spacePrefs.indexOf("if (readOnly)"),
       spacePrefs.indexOf("if (relevant.length === 0)"),
     );
-    assert.match(readOnlyBlock, /htc-surface-operational/);
+    assert.match(readOnlyBlock, /htc-surface-summary/);
     assert.match(readOnlyBlock, /data-testid="lead-space-preferences"/);
-    assert.match(spacePrefs, /htc-surface-operational w-full min-w-0 px-3 py-2\.5/);
+    assert.match(spacePrefs, /htc-surface-summary w-full min-w-0 px-3 py-2\.5/);
   });
 });

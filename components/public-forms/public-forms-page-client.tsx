@@ -5,7 +5,7 @@ import * as React from "react";
 import { Plus } from "lucide-react";
 
 import { CollectionBackLink } from "@/components/library/collection-back-link";
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PublicFormList } from "@/components/public-forms/public-form-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
@@ -38,14 +38,12 @@ export function PublicFormsPageClient({
           }
         />
       </div>
-      <LibraryHowItWorks tone="calm">
-        Build questions and fields on each form. Submissions create leads. Optionally create a QR campaign that opens this form.
-      </LibraryHowItWorks>
       <LibraryDependencyNote
-        detail="Questions and fields are edited on the form itself. Create a QR campaign when you want a printable code that opens this form."
+        tone="calm"
+        detail="Questions and fields are edited on the form itself. Submissions create leads. Create a QR campaign when you want a printable code that opens this form."
         action={{ href: "/library/qr-campaigns", label: "Open QR Campaigns" }}
       >
-        QR Campaigns can use these forms as their destination.
+        How Public Forms work
       </LibraryDependencyNote>
       <PublicFormList
         ref={listRef}

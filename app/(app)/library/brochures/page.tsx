@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { NewBrochureSheet, BrochureList } from "@/components/brochures/brochure-list";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getBrochures } from "@/lib/brochures/service";
 
@@ -21,6 +22,9 @@ export default async function BrochuresPage() {
           actions={<NewBrochureSheet />}
         />
       </div>
+      <LibraryHowItWorks tone="calm">
+        Edit and preview here. Share with a lead from the brochure detail — Share emails a view link.
+      </LibraryHowItWorks>
       <BrochureList brochures={brochures} headerCreate={false} />
     </div>
   );

@@ -5,7 +5,7 @@ import {
   NewEventOrderTemplateButton,
 } from "@/components/event-order-templates/event-order-template-list";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
-import { LibraryDependencyNote, LibraryHowItWorks } from "@/components/library/library-guidance";
+import { LibraryDependencyNote } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { ensureEventOrderStartersForCurrentVenue } from "@/lib/event-order-templates/provision";
 import { getTemplates } from "@/lib/event-order-templates/service";
@@ -35,31 +35,24 @@ export default async function EventOrderTemplatesPage() {
           actions={<NewEventOrderTemplateButton />}
         />
       </div>
-      <LibraryHowItWorks tone="calm">
-        An Event Order template is the reusable package you apply to a booked event. You decide items
-        always on the package (with clear package-price vs additional-charge treatment) and Couple&apos;s
-        choices selected from your Offerings — for example Buffet or Plated dinner, with which child
-        Offerings are available under each. Customize a starter or build your own; Preview shows the couple experience without sending
-        anything. Use applies the template to an event&apos;s Event Order; Send is only for templates with
-        couple choices.
-      </LibraryHowItWorks>
-      <div
-        className="htc-surface-guidance space-y-1.5 px-3 py-2 text-xs text-muted-foreground"
-        data-testid="eo-templates-landing-example"
-      >
-        <p className="font-medium text-heading">Example</p>
-        <p>
-          Ceremony coordination stays always on the package. Couples choose dinner service (Buffet or
-          Plated) from your Offerings. Under Buffet they only see the child Offerings you selected for
-          that package.
-        </p>
+      <div data-testid="eo-templates-landing-example">
+        <LibraryDependencyNote
+          tone="calm"
+          detail={
+            <>
+              Always-on items stay on the package; couple choices (like Buffet vs Plated) come from
+              your Offerings — they only see the options you pick. Prefer reusable Offerings; use a
+              template-only line for one-offs. Preview shows the couple experience without sending.
+              Use applies to an event&apos;s Event Order; Send is only for templates with client choice groups.
+              Apply copies a snapshot — later edits never rewrite a booked Event Order. Linked
+              inventory reserves when the couple approves the Event Order. Distinct from sales Packages — neither creates an invoice.
+            </>
+          }
+          action={{ href: "/library/offerings", label: "Manage Offerings" }}
+        >
+          How Event Order Templates work
+        </LibraryDependencyNote>
       </div>
-      <LibraryDependencyNote
-        detail="Prefer reusable Offerings for items you sell across events; use a template-only line when it belongs only here. Linking an Offering to Inventory connects it to stock — reserved when the couple approves the Event Order. Applying copies a snapshot — later catalog price edits do not rewrite existing event orders."
-        action={{ href: "/library/offerings", label: "Manage Offerings" }}
-      >
-        Templates can use your Offerings catalog or template-only items.
-      </LibraryDependencyNote>
       <EventOrderTemplateList
         templates={templates}
         missingStarterKeys={missingStarterKeys}

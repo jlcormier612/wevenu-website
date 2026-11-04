@@ -40,7 +40,13 @@ export function SaveReportButton({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="htc-report-save-button"
+        onClick={() => setOpen(true)}
+      >
         <Bookmark className="mr-1.5 h-3.5 w-3.5" />Save Report
       </Button>
       <SheetContent side="right" className="w-full sm:max-w-sm">

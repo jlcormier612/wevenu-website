@@ -42,7 +42,7 @@ type LibraryCard = {
 
 function ToolboxCard({ title, description, href, count, icon: Icon, kind }: LibraryCard) {
   const body = (
-    <div className="flex h-full items-start gap-3 rounded-sm border border-border bg-card p-4 transition-colors hover:bg-muted/20">
+    <div className="htc-toolbox-card flex h-full items-start gap-3 rounded-sm border border-border p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <Icon className="h-4 w-4" />
       </div>

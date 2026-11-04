@@ -37,7 +37,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
         <ComparisonCard label="Average Guest Count" value={avgGuests} previousValue={avgGuests > 0 ? prevAvgGuests : null} comparisonLabel={range.comparisonLabel} polarity="neutral" tone="ops" />
       </ComparisonCardGrid>
 
-      <Card>
+      <Card className={events.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Events Over Time</CardTitle>
           <CardDescription>Based on each event's date.</CardDescription>
@@ -51,7 +51,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={types.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Event Types</CardTitle>
         </CardHeader>
@@ -71,7 +71,7 @@ export default async function EventsReportPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={events.length === 0 ? "htc-report-empty-card" : undefined}>
         <CardHeader>
           <CardTitle className="text-base">Events</CardTitle>
           <CardDescription>Click an event to open its workspace.</CardDescription>

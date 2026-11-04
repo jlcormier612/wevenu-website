@@ -48,6 +48,7 @@ describe("C2 Library clarity — collection pages", () => {
   it("Inventory Templates page distinguishes Use (no share) from Send to client (share)", () => {
     const page = read("app/(app)/library/inventory-templates/page.tsx");
     assert.match(page, /Reusable starting lists for the inventory you typically provide at an event/);
+    assert.match(page, /LibraryDependencyNote[\s\S]*tone="calm"/);
     assert.match(page, /Use<\/strong> applies the list to an event without\s+sharing it/s);
     assert.match(page, /Send to client<\/strong> applies it if needed and\s+shares the event inventory for the couple to review/s);
     assert.doesNotMatch(page, /Event Order handoff/);

@@ -206,7 +206,7 @@ function CalendarGrid({
                     return (
                       <span
                         key={item.id}
-                        className="block h-1.5 w-1.5 rounded-full"
+                        className="htc-calendar-dot"
                         style={{ backgroundColor: meta.dotColor }}
                         title={tipParts.join(" · ")}
                       />
@@ -1343,7 +1343,7 @@ export const CalendarView = React.forwardRef<CalendarViewHandle, {
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
                         style={{ backgroundColor: `${dotColor}20`, color: dotColor }}
                       >
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
+                        <span className="htc-calendar-dot" style={{ backgroundColor: dotColor }} />
                       </span>
                       <span className="text-sm text-foreground">
                         {count} {label}{count !== 1 ? "s" : ""}
