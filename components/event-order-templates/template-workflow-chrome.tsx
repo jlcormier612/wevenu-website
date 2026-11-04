@@ -52,7 +52,7 @@ export function TemplateWorkflowChrome({
                   "rounded-full px-2.5 py-1 font-medium transition-colors",
                   active
                     ? "htc-badge-active"
-                    : "border border-border bg-card text-primary hover:bg-[var(--htc-soft-blush)]",
+                    : "border border-border bg-card text-primary hover:bg-[var(--htc-hover-lift)]",
                 )}
                 data-testid={`eo-template-workflow-${step.id}`}
               >

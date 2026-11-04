@@ -327,6 +327,12 @@ html:has(.htc-staff) {
   --selected: color-mix(in oklch, #a7c2af 32%, white);
   --selected-foreground: #24332b;
   --selected-border: #a7c2af;
+
+  /*
+   * Shared interactive hover wash. Light = soft blush (existing brand hover).
+   * Dark remaps to a soft white lift so pink never muddies on forest green.
+   */
+  --htc-hover-lift: var(--htc-soft-blush);
 }
 
 /* Soft depth on staff cards — white working surfaces on warm canvas */
@@ -3027,9 +3033,28 @@ html.dark:has(.htc-staff) .htc-calendar-legend {
 .dark .htc-staff .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"],
 html.dark:has(.htc-staff) .htc-calendar-filters [data-taxonomy-chip][data-active="true"],
 html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-cell][data-selected="true"] {
-  background: var(--muted);
+  background: var(--htc-hover-lift);
   border-color: var(--border);
   box-shadow: none;
+}
+
+/* Calendar month cell hover — white lift (light uses soft-blush). */
+.dark .htc-staff .htc-calendar-month-grid [data-cal-day-cell]:hover,
+html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-cell]:hover {
+  background: var(--htc-hover-lift);
+}
+
+/* Month/Week/Day active chip — white on dark (not soft-sage primary fill). */
+.dark .htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="true"],
+html.dark:has(.htc-staff) .htc-calendar-view-switcher [data-cal-view][data-active="true"] {
+  background: var(--true-white);
+  color: var(--forest-sage);
+}
+
+.dark .htc-staff .htc-calendar-view-switcher [data-cal-view][data-active="false"]:hover,
+html.dark:has(.htc-staff) .htc-calendar-view-switcher [data-cal-view][data-active="false"]:hover {
+  background: var(--htc-hover-lift);
+  color: var(--heading);
 }
 .dark .htc-staff .htc-calendar-month-grid [data-cal-day-outside],
 html.dark:has(.htc-staff) .htc-calendar-month-grid [data-cal-day-outside] {
@@ -3085,22 +3110,15 @@ html.dark:has(.htc-staff) {
   --primary-foreground: color-mix(in oklch, var(--forest-sage) 62%, black);
   --ring: var(--soft-sage);
 
-  --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
-  --selected-foreground: var(--primary);
-  --selected-border: color-mix(in oklch, var(--primary) 55%, transparent);
-
   --sidebar: color-mix(in oklch, var(--taupe-dark) 70%, white);
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--soft-sage) 32%, var(--sidebar));
+  /* Active/hover nav on cream sidebar — pure white, not sage-tinted gray-green. */
+  --sidebar-accent: var(--true-white);
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
   --sidebar-ring: var(--heritage-sage);
-
-  --selected: color-mix(in oklch, var(--primary) 28%, var(--card));
-  --selected-foreground: var(--primary);
-  --selected-border: color-mix(in oklch, var(--primary) 55%, transparent);
 
   /*
    * HTC hospitality tokens were light-mode only (Waves A–G out of dark scope).
@@ -3137,6 +3155,11 @@ html.dark:has(.htc-staff) {
   --htc-hover-lift: color-mix(in oklch, var(--true-white) 10%, var(--card));
   --panel-blush: var(--htc-soft-blush);
   --panel-sage: color-mix(in oklch, var(--soft-sage) 22%, var(--card));
+
+  /* List/segment selected washes — white lift, not sage-on-green. */
+  --selected: var(--htc-hover-lift);
+  --selected-foreground: var(--heading);
+  --selected-border: var(--border);
 }
 
 /*

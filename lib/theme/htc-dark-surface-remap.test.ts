@@ -38,9 +38,24 @@ describe("HTC dark surface remap — light selectors preserved", () => {
     assert.match(lightTokens, /--htc-eucalyptus-surface:\s*#dce8e0/);
     assert.match(lightTokens, /--htc-soft-blush:\s*#f7e9eb/);
     assert.match(lightTokens, /--htc-canvas:\s*#f8f7f3/);
+    assert.match(lightTokens, /--htc-hover-lift:\s*var\(--htc-soft-blush\)/);
     assert.match(css, /\.htc-staff \.htc-working-card \{[\s\S]*?background:\s*#ffffff/);
     assert.match(css, /\.htc-staff \.htc-surface-guidance \{[\s\S]*?background:\s*var\(--htc-calm-blue\)/);
     assert.match(css, /\.htc-staff \.htc-toolbox-card \{[\s\S]*?background:\s*#ffffff/);
+  });
+
+  it("inbox / calendar interactive hovers use shared hover-lift token", () => {
+    const inbox = readFileSync("app/(app)/messaging/conversation-inbox.tsx", "utf8");
+    assert.match(inbox, /hover:bg-\[var\(--htc-hover-lift\)\]/);
+    assert.doesNotMatch(inbox, /hover:bg-\[var\(--htc-soft-blush\)\]/);
+    assert.match(
+      css,
+      /\.dark \.htc-staff \.htc-calendar-month-grid \[data-cal-day-cell\]:hover[\s\S]*?var\(--htc-hover-lift\)/,
+    );
+    assert.match(
+      css,
+      /\.dark \.htc-staff \.htc-calendar-view-switcher \[data-cal-view\]\[data-active="true"\][\s\S]*?var\(--true-white\)/,
+    );
   });
 
   it("light working-card / guidance rules are not wrapped in .dark", () => {
@@ -72,6 +87,12 @@ describe("HTC dark surface remap — dark tokens + companions", () => {
     assert.match(darkRemap, /--htc-calm-blue:\s*color-mix\(in oklch, #7a96ad 28%, #252a2e\)/);
     assert.doesNotMatch(darkRemap, /--htc-soft-blush:\s*color-mix\([^)]*var\(--card\)\)/);
     assert.match(darkRemap, /--htc-hover-lift:\s*color-mix\(in oklch, var\(--true-white\) 10%, var\(--card\)\)/);
+  });
+
+  it("dark nav accent + selected washes are white / hover-lift (not sage gray-green)", () => {
+    assert.match(darkRemap, /--sidebar-accent:\s*var\(--true-white\)/);
+    assert.match(darkRemap, /--selected:\s*var\(--htc-hover-lift\)/);
+    assert.doesNotMatch(darkRemap, /--sidebar-accent:\s*color-mix\([^)]*soft-sage/);
   });
 
   it("dark companions retarget hardcoded white utilities to var(--card)", () => {

@@ -547,7 +547,7 @@ function LineItemRow({
             {!planLocked && (
               <>
                 <button type="button" onClick={() => setEditMode(true)}
-                  className="rounded p-1 text-primary hover:bg-[var(--htc-soft-blush)] hover:text-primary" aria-label="Edit">
+                  className="rounded p-1 text-primary hover:bg-[var(--htc-hover-lift)] hover:text-primary" aria-label="Edit">
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button type="button" onClick={handleCancel} disabled={cancelPending}
