@@ -12,14 +12,13 @@ const holds = readFileSync(resolve("components/availability/date-holds-section.t
 
 describe("lead header compact layout", () => {
   it("keeps Sales owner and Date hold on one compact row with a divider at sm+", () => {
-    const row = detail.slice(
-      detail.indexOf('data-testid="lead-owner-hold-row"'),
-      detail.indexOf('data-testid="lead-owner-hold-row"') + 900,
-    );
+    const rowStart = detail.indexOf('data-testid="lead-owner-hold-row"');
+    const row = detail.slice(rowStart, rowStart + 1400);
     assert.match(row, /StaffAssignmentField/);
     assert.match(row, /density="compact"/);
     assert.match(row, /lead-owner-hold-divider/);
-    assert.match(row, /flex-wrap items-center/);
+    assert.match(row, /flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center/);
+    assert.match(row, /booked=\{Boolean\(lead\.linkedEventId\)\}/);
     assert.doesNotMatch(row, /basis-full sm:basis-auto/);
   });
 
@@ -50,10 +49,13 @@ describe("lead header compact layout", () => {
     const bandIdx = holds.indexOf('data-testid="date-hold-compact-band"');
     // className sits on the opening tag just before the test id
     const compactBand = holds.slice(Math.max(0, bandIdx - 220), holds.indexOf("Regular (non-compact) active holds"));
-    assert.match(compactBand, /Not protected/);
+    assert.match(compactBand, /protection\.chipLabel/);
     assert.match(compactBand, /No active hold is protecting this event date/);
     assert.match(compactBand, /date-hold-protection-banner/);
     assert.match(compactBand, /date-hold-place/);
+    assert.match(compactBand, /htc-badge-attention/);
+    assert.match(compactBand, /htc-badge-active/);
+    assert.match(compactBand, /Protected by booking|protection\.source === "booking"/);
     // Share the Sales owner row at sm+ (flex-1 + basis-0) instead of wrapping as a full-width block.
     assert.match(compactBand, /flex-1/);
     assert.match(compactBand, /sm:basis-0/);

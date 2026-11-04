@@ -194,4 +194,27 @@ describe("Date Hold active-state presentation", () => {
     assert.match(service, /updateHoldStatus[\s\S]*active/);
     assert.match(section, /You're reactivating this Hold/);
   });
+
+  it("J. Booked lead is protected by booking — not 'Not protected'; Place hold hidden", () => {
+    const converted = [
+      hold({ id: "c1", holdDate: "2027-07-07", status: "converted" }),
+    ];
+    assert.equal(shouldShowPlaceHoldCta(converted, { booked: true }), false);
+    assert.equal(shouldShowPlaceHoldCta(converted, { booked: false }), true);
+    const summary = currentProtectionSummary({
+      eventDate: "2027-07-07",
+      holds: converted,
+      booked: true,
+    });
+    assert.equal(summary.protected, true);
+    assert.equal(summary.source, "booking");
+    assert.equal(summary.chipLabel, "Protected by booking");
+    assert.equal(summary.headline, "DATE PROTECTED — BOOKING");
+    assert.match(summary.detail ?? "", /hold isn't needed/);
+    assert.match(section, /shouldShowPlaceHoldCta\(holds, \{ booked \}\)/);
+    assert.match(section, /htc-badge-active/);
+    assert.match(section, /booked = false/);
+    const leadDetail = readFileSync(resolve("components/leads/lead-detail.tsx"), "utf8");
+    assert.match(leadDetail, /booked=\{Boolean\(lead\.linkedEventId\)\}/);
+  });
 });

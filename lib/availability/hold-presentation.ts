@@ -21,8 +21,15 @@ export function historicalHolds(holds: readonly DateHold[]): DateHold[] {
   return holds.filter((h) => !isActiveHold(h));
 }
 
-/** Place-hold CTA stays available when active holds already exist (another hold, not a replacement). */
-export function shouldShowPlaceHoldCta(_holds?: readonly DateHold[]): boolean {
+/**
+ * Place-hold CTA stays available when active holds already exist (another hold, not a replacement).
+ * Once the relationship is Booked, occupancy protects the date — do not push Place hold.
+ */
+export function shouldShowPlaceHoldCta(
+  _holds?: readonly DateHold[],
+  opts?: { booked?: boolean },
+): boolean {
+  if (opts?.booked) return false;
   return true;
 }
 
@@ -87,10 +94,16 @@ export function canReactivateHold(hold: { status: HoldStatus; expiresAt?: string
 export function currentProtectionSummary(opts: {
   eventDate?: string | null;
   holds: readonly DateHold[];
+  /** Booked relationship — date is protected by event occupancy, not a hold. */
+  booked?: boolean;
   nowMs?: number;
 }): {
   protected: boolean;
+  /** What currently protects the date (or none). */
+  source: "hold" | "booking" | "none";
   headline: string;
+  /** Compact chip label on the lead Sales & availability row. */
+  chipLabel: string;
   detail: string | null;
 } {
   const active = activeHolds(opts.holds);
@@ -98,29 +111,42 @@ export function currentProtectionSummary(opts: {
   const covering = date
     ? active.filter((h) => holdCoversDate(h, date))
     : active;
-  if (covering.length === 0) {
+  if (covering.length > 0) {
+    const primary = covering[0]!;
+    const release = primary.expiresAt
+      ? `Auto-release ${formatDate(primary.expiresAt.slice(0, 10))}`
+      : "No auto-release date";
+    const scope = primary.spaceNames?.length
+      ? primary.spaceNames.join(", ")
+      : primary.spaceName
+        ? primary.spaceName
+        : primary.spaceIds.length === 0
+          ? "Whole venue"
+          : "Selected spaces";
     return {
-      protected: false,
-      headline: "DATE NOT CURRENTLY PROTECTED",
-      detail: date
-        ? "No active hold is protecting this event date right now. Past holds below are history only."
-        : "No active hold is protecting a date right now.",
+      protected: true,
+      source: "hold",
+      headline: "DATE PROTECTED — HOLD ACTIVE",
+      chipLabel: "Held",
+      detail: `Event/hold dates: ${holdDateRangeLabel(primary)} · ${scope} · ${release}`,
     };
   }
-  const primary = covering[0]!;
-  const release = primary.expiresAt
-    ? `Auto-release ${formatDate(primary.expiresAt.slice(0, 10))}`
-    : "No auto-release date";
-  const scope = primary.spaceNames?.length
-    ? primary.spaceNames.join(", ")
-    : primary.spaceName
-      ? primary.spaceName
-      : primary.spaceIds.length === 0
-        ? "Whole venue"
-        : "Selected spaces";
+  if (opts.booked) {
+    return {
+      protected: true,
+      source: "booking",
+      headline: "DATE PROTECTED — BOOKING",
+      chipLabel: "Protected by booking",
+      detail: "This date is reserved by the booked event — a hold isn't needed.",
+    };
+  }
   return {
-    protected: true,
-    headline: "DATE PROTECTED — HOLD ACTIVE",
-    detail: `Event/hold dates: ${holdDateRangeLabel(primary)} · ${scope} · ${release}`,
+    protected: false,
+    source: "none",
+    headline: "DATE NOT CURRENTLY PROTECTED",
+    chipLabel: "Not protected",
+    detail: date
+      ? "No active hold is protecting this event date right now. Past holds below are history only."
+      : "No active hold is protecting a date right now.",
   };
 }

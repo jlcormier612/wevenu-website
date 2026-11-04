@@ -926,6 +926,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
             spaces={spaces}
             spacePreferences={spacePreferences}
             venueTimezone={venueTimezone}
+            booked={Boolean(lead.linkedEventId)}
           />
         </div>
       </div>

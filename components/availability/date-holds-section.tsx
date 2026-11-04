@@ -63,6 +63,7 @@ export function DateHoldsSection({
   spacePreferences = [],
   venueTimezone = null,
   density = "regular",
+  booked = false,
 }: {
   leadId: string;
   leadName: string;
@@ -76,6 +77,8 @@ export function DateHoldsSection({
   venueTimezone?: string | null;
   /** Compact row for the lead header. The place/edit form is unchanged. */
   density?: "regular" | "compact";
+  /** Booked relationship — date protected by event occupancy; hide Place hold urgency. */
+  booked?: boolean;
 }) {
   const router = useRouter();
   // See lib/hooks/use-synced-state.ts — TasksSection may refresh siblings
@@ -113,10 +116,13 @@ export function DateHoldsSection({
   const protection = currentProtectionSummary({
     eventDate: desiredEventDate,
     holds,
+    booked,
   });
   const editingHold = editingHoldId ? holds.find((h) => h.id === editingHoldId) : null;
-  const editingIsReactivation = Boolean(editingHold && !isActiveHold(editingHold) && canReactivateHold(editingHold));
-  const showPlaceHold = shouldShowPlaceHoldCta(holds);
+  const editingIsReactivation = Boolean(
+    !booked && editingHold && !isActiveHold(editingHold) && canReactivateHold(editingHold),
+  );
+  const showPlaceHold = shouldShowPlaceHoldCta(holds, { booked });
   const placeCtaLabel = placeHoldCtaLabel(desiredDefault, activeHolds.length > 0);
   const prefDefaults = defaultHoldSpaceIdsFromPreferences(spacePreferences);
   const activeSpaces = spaces.filter((s) => s.isActive);
@@ -312,18 +318,21 @@ export function DateHoldsSection({
       {!compact && !showForm ? (
         <div
           className={
-            protection.protected
+            protection.source === "hold"
               ? "rounded-lg border border-warning/30 bg-warning/5 px-3 py-2"
-              : "rounded-lg border border-border bg-muted/40 px-3 py-2"
+              : protection.source === "booking"
+                ? "rounded-lg border border-border bg-[var(--htc-eucalyptus-surface)] px-3 py-2"
+                : "rounded-lg border border-border bg-muted/40 px-3 py-2"
           }
           data-testid="date-hold-protection-banner"
           data-protected={protection.protected ? "true" : "false"}
+          data-protection-source={protection.source}
         >
           <p
             className={
-              protection.protected
+              protection.source === "hold"
                 ? "text-xs font-semibold uppercase tracking-wide text-warning-foreground dark:text-foreground"
-                : "text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                : "text-xs font-semibold uppercase tracking-wide text-heading"
             }
             data-testid="date-hold-protection-headline"
           >
@@ -347,20 +356,27 @@ export function DateHoldsSection({
             <div
               className="flex min-w-0 flex-1 basis-[min(100%,16rem)] flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-x-2"
               data-testid="date-hold-protection-banner"
-              data-protected="false"
+              data-protected={protection.protected ? "true" : "false"}
+              data-protection-source={protection.source}
               title={protection.detail ?? undefined}
             >
               <span
-                className="htc-badge-attention w-fit shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold"
+                className={
+                  protection.source === "booking"
+                    ? "htc-badge-active w-fit shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold"
+                    : "htc-badge-attention w-fit shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold"
+                }
                 data-testid="date-hold-protection-headline"
               >
-                Not protected
+                {protection.chipLabel}
               </span>
               <span
                 className="min-w-0 text-xs text-muted-foreground sm:truncate"
                 data-testid="date-hold-protection-detail"
               >
-                No active hold is protecting this event date.
+                {protection.source === "booking"
+                  ? protection.detail
+                  : "No active hold is protecting this event date."}
               </span>
             </div>
           ) : null}
@@ -559,7 +575,7 @@ export function DateHoldsSection({
                     data-testid="date-hold-history-row"
                   >
                     <span>{historicalHoldLabel(hold)}</span>
-                    {canReactivateHold(hold) ? (
+                    {!booked && canReactivateHold(hold) ? (
                       <Button
                         type="button"
                         variant="ghost"
@@ -588,7 +604,7 @@ export function DateHoldsSection({
                   data-testid="date-hold-history-row"
                 >
                   <span>{historicalHoldLabel(hold)}</span>
-                  {canReactivateHold(hold) ? (
+                  {!booked && canReactivateHold(hold) ? (
                     <Button
                       type="button"
                       variant="ghost"

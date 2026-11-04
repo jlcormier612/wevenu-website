@@ -215,10 +215,12 @@ describe("Phase 12 final — Task Center overdue readability", () => {
 describe("Phase 12 final — Lead date-hold mobile layout", () => {
   const holds = read("components/availability/date-holds-section.tsx");
 
-  it("Not protected uses attention chip — not muted gray wash", () => {
-    assert.match(holds, /date-hold-protection-headline[\s\S]*?htc-badge-attention|htc-badge-attention[\s\S]*?Not protected/);
+  it("Not protected uses attention chip — not muted gray wash; booking uses Active", () => {
+    assert.match(holds, /htc-badge-attention/);
+    assert.match(holds, /htc-badge-active/);
+    assert.match(holds, /protection\.source === "booking"/);
     assert.doesNotMatch(
-      holds.slice(holds.indexOf("Not protected") - 200, holds.indexOf("Not protected") + 40),
+      holds.slice(holds.indexOf("htc-badge-attention") - 80, holds.indexOf("htc-badge-attention") + 120),
       /bg-muted\/50/,
     );
   });
