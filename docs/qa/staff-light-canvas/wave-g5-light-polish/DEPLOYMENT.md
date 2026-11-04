@@ -2,9 +2,9 @@
 
 ## Tip queued
 
-**Code:** _(pending commit)_ — Wave G5 light polish (templates, chips, relationship tabs)
+**Code:** `495387f75e7656e6a7c137f7a0c5400ba9bd942b` — Wave G5 light polish (templates, chips, relationship tabs)
 **Prior serving tip:** `46ba7d69` (dark white hover/nav)
-**Deploy branch:** _(pending)_
+**Deploy branch:** `sandbox-deploy/htc-wave-g5-495387f7`
 
 ### This tip adds
 
