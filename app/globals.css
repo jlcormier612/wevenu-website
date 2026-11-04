@@ -786,6 +786,83 @@ html:has(.htc-staff) [data-slot="card"] {
   border-color: var(--htc-border-warm);
 }
 
+/*
+ * Lead Pipeline board — eucalyptus stage headers + linen lanes (audit #8).
+ * White lead cards stay working surfaces; blush hover matches list rows.
+ * Do not paint stage semantics into column fills (Rule G).
+ */
+.htc-staff .htc-pipeline-board {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.htc-staff .htc-pipeline-column {
+  display: flex;
+  width: 18rem;
+  flex-shrink: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.5rem;
+  background: var(--htc-linen);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.htc-staff .htc-pipeline-column[data-drag-target="true"] {
+  border-color: var(--htc-botanical);
+  background: color-mix(in oklch, var(--htc-eucalyptus-surface) 55%, var(--htc-linen));
+}
+
+.htc-staff .htc-pipeline-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  padding: 0.65rem 0.75rem 0.55rem;
+}
+
+.htc-staff .htc-pipeline-column-value {
+  padding: 0.5rem 0.75rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.htc-staff .htc-pipeline-column-body {
+  display: flex;
+  min-height: 6rem;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem;
+}
+
+.htc-staff .htc-pipeline-lead-card {
+  cursor: grab;
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.55rem;
+  background: #ffffff;
+  padding: 0.65rem 0.75rem;
+  box-shadow: 0 1px 2px color-mix(in oklch, #24332b 4%, transparent);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.htc-staff .htc-pipeline-lead-card:hover,
+.htc-staff .htc-pipeline-lead-card:focus-visible {
+  border-color: color-mix(in oklch, var(--htc-botanical) 35%, var(--htc-border-warm));
+  background: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
+  outline: none;
+}
+
+.htc-staff .htc-pipeline-lead-card:hover .htc-record-link,
+.htc-staff .htc-pipeline-lead-card:focus-visible .htc-record-link {
+  text-decoration: underline;
+}
+
 /* Wave F deeper edit/detail working cards: white body + eucalyptus header banner */
 .htc-staff .htc-working-card {
   overflow: hidden;
@@ -3197,6 +3274,7 @@ html.dark:has(.htc-staff) {
 .dark .htc-staff .htc-lead-tour-confirm-secondary,
 .dark .htc-staff .htc-lead-tour-action-secondary,
 .dark .htc-staff .htc-lead-tour-personal-link-btn,
+.dark .htc-staff .htc-pipeline-lead-card,
 html.dark:has(.htc-staff) .htc-working-card,
 html.dark:has(.htc-staff) .htc-surface-working,
 html.dark:has(.htc-staff) .htc-group-shell [data-slot="card"],
@@ -3210,7 +3288,8 @@ html.dark:has(.htc-staff) .htc-help-article-list,
 html.dark:has(.htc-staff) .htc-lead-tour-appt,
 html.dark:has(.htc-staff) .htc-lead-tour-confirm-secondary,
 html.dark:has(.htc-staff) .htc-lead-tour-action-secondary,
-html.dark:has(.htc-staff) .htc-lead-tour-personal-link-btn {
+html.dark:has(.htc-staff) .htc-lead-tour-personal-link-btn,
+html.dark:has(.htc-staff) .htc-pipeline-lead-card {
   background: var(--card);
   background-color: var(--card);
   border-color: var(--border);
@@ -3257,6 +3336,8 @@ html.dark:has(.htc-staff) .htc-working-card.htc-working-card-guidance > [data-sl
 .dark .htc-staff .htc-focus-attention-row:hover,
 .dark .htc-staff .htc-focus-attention-row:focus-within,
 .dark .htc-staff .htc-tours-row:hover,
+.dark .htc-staff .htc-pipeline-lead-card:hover,
+.dark .htc-staff .htc-pipeline-lead-card:focus-visible,
 html.dark:has(.htc-staff) .htc-working-row:hover,
 html.dark:has(.htc-staff) .htc-hospitality-table tbody tr:hover,
 html.dark:has(.htc-staff) .htc-hospitality-table [data-slot="table-body"] tr:hover,
@@ -3274,7 +3355,9 @@ html.dark:has(.htc-staff) .htc-help-article-row:hover,
 html.dark:has(.htc-staff) .htc-help-article-row:focus-visible,
 html.dark:has(.htc-staff) .htc-focus-attention-row:hover,
 html.dark:has(.htc-staff) .htc-focus-attention-row:focus-within,
-html.dark:has(.htc-staff) .htc-tours-row:hover {
+html.dark:has(.htc-staff) .htc-tours-row:hover,
+html.dark:has(.htc-staff) .htc-pipeline-lead-card:hover,
+html.dark:has(.htc-staff) .htc-pipeline-lead-card:focus-visible {
   background: var(--htc-hover-lift);
   background-color: var(--htc-hover-lift);
   border-color: var(--border);

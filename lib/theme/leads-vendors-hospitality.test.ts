@@ -74,7 +74,7 @@ describe("Stage 1 — Leads list hospitality", () => {
     );
   });
 
-  it("applies shared foundations to Pipeline without board redesign markers", () => {
+  it("applies shared foundations to Pipeline page shell", () => {
     assert.match(pipelinePage, /htc-hospitality-page/);
     assert.match(pipelinePage, /htc-hospitality-heading/);
     assert.match(pipelinePage, /PipelineBoard/);

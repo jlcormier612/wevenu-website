@@ -201,7 +201,7 @@ export function PipelineBoard({
 
   return (
     <>
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      <div className="htc-pipeline-board" data-htc-pipeline-board="">
         {columnsMeta.map((stage) => {
           const stageLeads = columns.get(stage.key) ?? [];
           const stageValue = stageLeads.reduce((sum, l) => sum + (l.estimatedBudget ?? 0), 0);
@@ -215,29 +215,31 @@ export function PipelineBoard({
               }}
               onDragLeave={() => setDragOverStage((p) => (p === stage.key ? null : p))}
               onDrop={() => handleDrop(stage.key)}
-              className={`flex w-72 shrink-0 flex-col rounded-sm border transition-colors ${isDragTarget ? "border-primary bg-primary/5" : "border-border bg-card/40"}`}
+              className="htc-pipeline-column"
+              data-drag-target={isDragTarget ? "true" : undefined}
+              data-pipeline-stage={stage.key}
             >
-              <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+              <div className="htc-pipeline-column-header">
                 <div className="flex min-w-0 items-center gap-2">
                   {stage.salesStage === "booked" ? (
-                    <a href="/clients?filter=all" className="truncate text-sm font-semibold text-heading hover:underline">
+                    <a href="/clients?filter=all" className="htc-record-link truncate text-sm font-semibold text-heading">
                       {stage.label}
                     </a>
                   ) : stage.salesStage === "lost" ? (
-                    <a href="/leads?view=lost" className="truncate text-sm font-semibold text-heading hover:underline">
+                    <a href="/leads?view=lost" className="htc-record-link truncate text-sm font-semibold text-heading">
                       {stage.label}
                     </a>
                   ) : (
                     <p className="truncate text-sm font-semibold text-heading">{stage.label}</p>
                   )}
                 </div>
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <span className="htc-badge-active shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
                   {stageLeads.length}
                 </span>
               </div>
-              <p className="px-3 pt-2 text-xs font-medium text-muted-foreground">{formatCurrency(stageValue)}</p>
+              <p className="htc-pipeline-column-value">{formatCurrency(stageValue)}</p>
 
-              <div className="min-h-24 flex-1 space-y-2 p-2.5">
+              <div className="htc-pipeline-column-body">
                 {stageLeads.length === 0 && (
                   <p className="px-1 py-6 text-center text-xs leading-relaxed text-muted-foreground">
                     {stage.salesStage === "booked"
@@ -259,9 +261,10 @@ export function PipelineBoard({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") router.push(`/leads/${lead.id}`);
                     }}
-                    className={`cursor-grab rounded-lg border border-border bg-card px-3 py-2.5 shadow-sm transition-colors hover:border-primary/40 ${pendingLeadIds.has(lead.id) ? "opacity-50" : ""}`}
+                    className={`htc-pipeline-lead-card${pendingLeadIds.has(lead.id) ? " opacity-50" : ""}`}
+                    data-pipeline-lead-card=""
                   >
-                    <p className="truncate text-sm font-medium text-foreground">
+                    <p className="htc-record-link truncate text-sm font-medium text-foreground">
                       {leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
                     </p>
                     {lead.eventType && (

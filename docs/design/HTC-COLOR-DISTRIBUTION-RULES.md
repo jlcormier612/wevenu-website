@@ -168,6 +168,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 
 **Wave G5 (template + relationship polish):** Full-width Planning/Timeline template editors (drop `max-w-3xl`); primary hospitality title cards with starter banners **beneath** (not inside); Planning milestone chapter bars → eucalyptus section labels; EO/Inventory/Questionnaire editors — CollectionBackLink above primary card; EO incomplete/attention chrome → soft blush (`.htc-surface-attention`); instructional working-card headers (Template editor / Package details / Item details / Vendors how-to) → `.htc-working-card-guidance` calm blue; Offerings Unpriced → `.htc-badge-attention`; Category chips + Tour Scheduled / Completed / open-task / Partially Paid → `.htc-badge-active`; Activity icons → visible eucalyptus surface wash; Planning + Lead Overview tabs → `RelationshipTabShell`; Timeline summary / booking-window bars → eucalyptus section labels.
 
+**Pipeline board (audit #8):** Stage columns use eucalyptus header bands + linen lane bodies; white lead cards with blush hover + `.htc-record-link` names; count chips `.htc-badge-active`. Do not paint stage semantics into column fills.
+
 ---
 
 ## 3. Shared utilities (Phase 11D + Phase 12 + list recipe)
