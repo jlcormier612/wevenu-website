@@ -2,9 +2,10 @@
 
 ## Tip queued
 
-**Commit B (includes A):** `548b08b42a54f489303740443f6b6022583e0250`  
-**Commit A:** `cf4a82b3019dda233147cb86dcd4685519d3c7ce`  
-**Deploy branch:** `sandbox-deploy/htc-rule-k-wave-f-548b08b4`
+**Tip:** deploy branch tip SHA (includes A + B + this note)  
+**Commit B:** `548b08b42a54f489303740443f6b6022583e0250` — Wave F working-card chrome  
+**Commit A:** `cf4a82b3019dda233147cb86dcd4685519d3c7ce` — Rule K + library + Saved Reports  
+**Deploy branch:** `sandbox-deploy/htc-rule-k-wave-f-c770ab63`
 
 ### Scope
 
