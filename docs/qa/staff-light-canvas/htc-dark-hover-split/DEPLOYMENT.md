@@ -4,7 +4,7 @@
 
 **Code:** `7ea32948111756033d2de7dfd7c2b06ab1dbeebb` — Split dark hover lift from attention blush
 **Prior tip:** `259c4e61` (HTC dark surface remap)
-**Deploy branch:** `sandbox-deploy/htc-dark-hover-7ea32948`
+**Deploy branch:** `sandbox-deploy/htc-dark-hover-63f3836f`
 
 ### This tip adds
 
