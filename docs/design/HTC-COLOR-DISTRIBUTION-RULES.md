@@ -162,6 +162,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 
 **Wave G2 (template workspaces):** EO template edit — white `.htc-working-card` sections + eucalyptus headers (not beige-on-beige); one calm-blue orientation; empty “No couple choices” / no sections → calm blue; workflow chips eucalyptus (not charcoal). Timeline template edit — working-card items list, calm empty, botanical icon buttons (not muted gray). Floor Plan template edit — hospitality shell + working-card around layout editor; editor empty/info panels → calm guidance (not muted wash).
 
+**Wave G3 (relationship tab parity):** Lead + Booking tabs use Documents recipe via `RelationshipTabShell` (white title + botanical strip); Activity icons all eucalyptus; Activity/Payments empties calm blue; invoice rows blush hover; Questionnaire apply panel calm guidance; quiet invoice/questionnaire status → `.htc-badge-active` (not muted gray).
+
 ---
 
 ## 3. Shared utilities (Phase 11D + Phase 12 + list recipe)

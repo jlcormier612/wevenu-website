@@ -333,7 +333,7 @@ function KindPanel({
           compact
           whatIsThis="Planning form"
           title={kindLabel(kind)}
-          status={<Badge variant={status === "sent" || status === "in_progress" ? "default" : "muted"}>{STATUS_LABEL[status] ?? "Draft"}</Badge>}
+          status={<Badge className="htc-badge-active">{STATUS_LABEL[status] ?? "Draft"}</Badge>}
           waitingOn={waitingOn}
           lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
           relationship={eventName ? { name: eventName } : null}
@@ -444,7 +444,7 @@ function KindPanel({
       </div>
 
       {canApplyTemplate && (
-        <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-2" data-testid="questionnaire-library-apply">
+        <div className="htc-surface-guidance-compact space-y-2 p-4" data-testid="questionnaire-library-apply">
           <p className="text-xs font-medium text-heading">
             {initial?.templateId ? "Library form applied (draft only)" : "Apply a library form? (optional)"}
           </p>

@@ -71,6 +71,7 @@ import type { Package } from "@/lib/packages/types";
 import { EventInventoryPanel } from "@/components/event-inventory/event-inventory-panel";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
+import { RelationshipTabShell } from "@/components/relationship/relationship-tab-shell";
 import type { ConversationMessage } from "@/lib/conversations/types";
 import type { ClientStatus } from "@/lib/clients/types";
 import { Button } from "@/components/ui/button";
@@ -1287,14 +1288,12 @@ export function EventDetail({
         </TabsContent>
 
         <TabsContent value="questionnaires">
-          <Card id="questionnaires">
-            <CardHeader>
-              <CardTitle className="text-base">Questionnaires</CardTitle>
-              <CardDescription>
-                Collect the information you need from clients when the timing is right by sending your prepared questionnaires here.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <RelationshipTabShell
+            title="Questionnaires"
+            description="Collect the information you need from clients when the timing is right by sending your prepared questionnaires here."
+            testId="event-questionnaires-tab"
+          >
+            <div id="questionnaires">
               <QuestionnaireFamilyPanel
                 eventId={event.id}
                 questionnaires={questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])}
@@ -1309,95 +1308,84 @@ export function EventDetail({
                 eventName={event.name}
                 venueName={venueName}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Timeline ──────────────────────────────────────────────── */}
         <TabsContent value="timeline">
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <CardTitle className="text-base">Timeline</CardTitle>
-                  <CardDescription>
-                    Manage the event schedule, then share it with the client through portal release
-                    or the existing explicit sharing workflow.
-                  </CardDescription>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    variant="outline" size="sm"
-                    render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
-                  >
-                    <Printer className="mr-1.5 h-3.5 w-3.5" />Print Timeline
-                  </Button>
-                  <Button
-                    variant="outline" size="sm"
-                    render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
-                  >
-                    <FileDown className="mr-1.5 h-3.5 w-3.5" />Export Timeline (PDF)
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <TimelineView
-                eventId={event.id}
-                venueId={event.venueId}
-                eventStartTime={event.startTime}
-                dayOfEndTime={event.endTime}
-                dayOfSetupTime={event.setupTime}
-                dayOfTeardownTime={event.teardownTime}
-                eventDate={event.eventDate}
-                eventEndDate={event.eventEndDate}
-                initialEntries={event.timeline ?? []}
-                initialSections={timelineSections}
-                initialLinksByEntry={timelineLinksByEntry}
-                initialAttachmentsByEntry={timelineAttachmentsByEntry}
-                availableDocuments={documents}
-                initialRelatedLinksByEntry={timelineRelatedLinksByEntry}
-                eventTasks={eventTasks}
-                vendorAssignments={event.vendorAssignments}
-                floorPlans={event.floorPlans}
-                conversationId={conversationId}
-                invoices={invoices}
-                teamMembers={teamMembers}
-                timelineTemplates={timelineTemplates}
-              />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Timeline"
+            description="Manage the event schedule, then share it with the client through portal release or the existing explicit sharing workflow."
+            testId="event-timeline-tab"
+            actions={
+              <>
+                <Button
+                  variant="outline" size="sm"
+                  render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
+                >
+                  <Printer className="mr-1.5 h-3.5 w-3.5" />Print Timeline
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
+                >
+                  <FileDown className="mr-1.5 h-3.5 w-3.5" />Export Timeline (PDF)
+                </Button>
+              </>
+            }
+          >
+            <TimelineView
+              eventId={event.id}
+              venueId={event.venueId}
+              eventStartTime={event.startTime}
+              dayOfEndTime={event.endTime}
+              dayOfSetupTime={event.setupTime}
+              dayOfTeardownTime={event.teardownTime}
+              eventDate={event.eventDate}
+              eventEndDate={event.eventEndDate}
+              initialEntries={event.timeline ?? []}
+              initialSections={timelineSections}
+              initialLinksByEntry={timelineLinksByEntry}
+              initialAttachmentsByEntry={timelineAttachmentsByEntry}
+              availableDocuments={documents}
+              initialRelatedLinksByEntry={timelineRelatedLinksByEntry}
+              eventTasks={eventTasks}
+              vendorAssignments={event.vendorAssignments}
+              floorPlans={event.floorPlans}
+              conversationId={conversationId}
+              invoices={invoices}
+              teamMembers={teamMembers}
+              timelineTemplates={timelineTemplates}
+            />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Floor Plans ───────────────────────────────────────────── */}
         <TabsContent value="floorplan">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Floor Plans</CardTitle>
-              <CardDescription>
-                Arrange furniture for this event. Add a layout, place items, then share when the couple should see it.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FloorPlanWorkspace
-                eventId={event.id}
-                floorPlans={event.floorPlans}
-                templates={floorPlanTemplates}
-                offers={floorPlanOffers}
-                spaces={spaces}
-                eventSpaceId={event.spaceId}
-                operationalFloorPlanId={event.operationalFloorPlanId}
-                coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
-                couplePreferenceStatus={event.couplePreferenceStatus ?? null}
-                coupleApprovedFloorPlanId={event.coupleApprovedFloorPlanId ?? null}
-                seatingInUseFloorPlanId={event.seatingInUseFloorPlanId ?? null}
-                seatCounts={floorPlanSeatCounts}
-                inventoryUsage={inventoryUsage}
-                canEdit={floorPlanCanEdit}
-                canDelete={floorPlanCanDelete}
-              />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Floor Plans"
+            description="Arrange furniture for this event. Add a layout, place items, then share when the couple should see it."
+            testId="event-floorplan-tab"
+          >
+            <FloorPlanWorkspace
+              eventId={event.id}
+              floorPlans={event.floorPlans}
+              templates={floorPlanTemplates}
+              offers={floorPlanOffers}
+              spaces={spaces}
+              eventSpaceId={event.spaceId}
+              operationalFloorPlanId={event.operationalFloorPlanId}
+              coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
+              couplePreferenceStatus={event.couplePreferenceStatus ?? null}
+              coupleApprovedFloorPlanId={event.coupleApprovedFloorPlanId ?? null}
+              seatingInUseFloorPlanId={event.seatingInUseFloorPlanId ?? null}
+              seatCounts={floorPlanSeatCounts}
+              inventoryUsage={inventoryUsage}
+              canEdit={floorPlanCanEdit}
+              canDelete={floorPlanCanDelete}
+            />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Documents ────────────────────────────────────────────── */}
@@ -1415,28 +1403,33 @@ export function EventDetail({
 
         {/* ── Vendors ────────────────────────────────────────────────── */}
         <TabsContent value="vendors" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Vendor Network</CardTitle>
+          <RelationshipTabShell
+            title="Vendors"
+            description="Preferred, recommended, and required classifications come from your Vendor Network. Assign who works this booking below."
+            testId="event-vendors-tab"
+          >
+          <Card className="htc-working-card gap-0 py-0">
+            <CardHeader className="py-4">
+              <CardTitle>Vendor Network</CardTitle>
               <CardDescription>
                 Preferred, recommended, and required classifications come from your Vendor Network.
                 Eligible vendors are available for client discovery by default.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-5">
               <VenueVendorDirectorySummary vendors={availableVendors} />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Optional highlights for this event</CardTitle>
+          <Card className="htc-working-card gap-0 py-0">
+            <CardHeader className="py-4">
+              <CardTitle>Optional highlights for this event</CardTitle>
               <CardDescription>
                 Suggest Vendor Network options for the client to consider. Separate from who is
                 assigned to work this booking.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-5">
               <EventVendorRecommendationsSection
                 eventId={event.id}
                 clientName={event.clientName}
@@ -1446,15 +1439,15 @@ export function EventDetail({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Assigned to This Event</CardTitle>
+          <Card className="htc-working-card gap-0 py-0">
+            <CardHeader className="py-4">
+              <CardTitle>Assigned to This Event</CardTitle>
               <CardDescription>
                 Who is operationally confirmed and working this event, and when they arrive.
                 Required vendors keep their existing Vendor Network assignment behavior.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-5">
               <EventVendorsSection
                 eventId={event.id}
                 initialAssignments={event.vendorAssignments}
@@ -1463,6 +1456,7 @@ export function EventDetail({
               />
             </CardContent>
           </Card>
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Event Order (canonical commercial workspace; P2-B composed) ─ */}
@@ -1545,32 +1539,29 @@ export function EventDetail({
 
         {/* ── Invoice / Payments ────────────────────────────────────── */}
         <TabsContent value="invoice">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <CardTitle className="text-base">Payments</CardTitle>
-                  <CardDescription>Financial summary for this event.</CardDescription>
-                </div>
-                {invoices.length > 0 && (
-                  <Button type="button" size="sm"
-                    render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
-                    + New Invoice
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {invoices.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">No invoice yet.</p>
+          <RelationshipTabShell
+            title="Payments"
+            description="Financial summary for this event."
+            testId="event-payments-tab"
+            actions={
+              invoices.length > 0 ? (
+                <Button type="button" size="sm"
+                  render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
+                  + New Invoice
+                </Button>
+              ) : null
+            }
+            empty={
+              invoices.length === 0 ? (
+                <>
+                  <p className="text-sm font-medium text-heading">No invoice yet</p>
                   {selectedPackage ? (
                     <>
                       <Button type="button" size="sm" onClick={() => setSetupPaymentsOpen(true)}>
                         Set up payments
                       </Button>
-                      <details className="text-left w-full max-w-sm mx-auto">
-                        <summary className="cursor-pointer text-xs text-muted-foreground text-center">More options</summary>
+                      <details className="w-full max-w-sm text-left">
+                        <summary className="cursor-pointer text-center text-xs text-muted-foreground">More options</summary>
                         <div className="mt-3 flex flex-col items-center gap-2">
                           {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}
                           <Button type="button" variant="outline" size="sm"
@@ -1597,7 +1588,7 @@ export function EventDetail({
                     </>
                   ) : (
                     <>
-                      <p className="text-xs text-muted-foreground max-w-sm">
+                      <p className="max-w-sm text-xs text-muted-foreground">
                         Select a package under Commercial first for the guided payment setup, or use an advanced option below.
                       </p>
                       <div className="flex flex-wrap items-center justify-center gap-2">
@@ -1609,33 +1600,38 @@ export function EventDetail({
                       </div>
                     </>
                   )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {invoices.map((inv) => (
-                    <Link key={inv.id} href={`/invoices/${inv.id}`}
-                      className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/30 transition-colors">
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-heading">
-                            {invoiceHumanLabel({ displayName: inv.displayName, invoiceNumber: inv.invoiceNumber })}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{inv.invoiceNumber}</p>
-                          <InvoiceStatusBadge status={inv.status} />
-                        </div>
+                </>
+              ) : undefined
+            }
+          >
+            {invoices.length > 0 ? (
+              <div className="space-y-2">
+                {invoices.map((inv) => (
+                  <Link
+                    key={inv.id}
+                    href={`/invoices/${inv.id}`}
+                    className="htc-working-row flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-heading">
+                          {invoiceHumanLabel({ displayName: inv.displayName, invoiceNumber: inv.invoiceNumber })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{inv.invoiceNumber}</p>
+                        <InvoiceStatusBadge status={inv.status} />
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-heading">{formatCurrency(inv.total)}</p>
-                        {inv.balanceDue > 0 && inv.status !== "paid" && (
-                          <p className="text-xs text-destructive">{formatCurrency(inv.balanceDue)} due</p>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold text-heading">{formatCurrency(inv.total)}</p>
+                      {inv.balanceDue > 0 && inv.status !== "paid" && (
+                        <p className="text-xs text-destructive">{formatCurrency(inv.balanceDue)} due</p>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Messages ─────────────────────────────────────────────── */}
@@ -1652,30 +1648,24 @@ export function EventDetail({
 
         {/* ── Activity — RC2, Milestone 4: the relationship's audit trail ── */}
         <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Activity</CardTitle>
-              <CardDescription>What happened, in order — the Conversation tab has what was said.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ActivityTimelineView leadId={originatingLeadId} clientId={event.clientId} />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Activity"
+            description="What happened, in order — the Conversation tab has what was said."
+            testId="event-activity-tab"
+          >
+            <ActivityTimelineView leadId={originatingLeadId} clientId={event.clientId} />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Internal notes ─────────────────────────────────────────── */}
         <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{INTERNAL_NOTES_LABEL}</CardTitle>
-              <CardDescription>
-                {INTERNAL_NOTES_PRIVACY_HINT}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventNotesSection eventId={event.id} items={internalNoteItems} venueTimezone={venueTimezone} />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title={INTERNAL_NOTES_LABEL}
+            description={INTERNAL_NOTES_PRIVACY_HINT}
+            testId="event-notes-tab"
+          >
+            <EventNotesSection eventId={event.id} items={internalNoteItems} venueTimezone={venueTimezone} />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Luv — same drafting surface as Lead, booked client/event context ── */}

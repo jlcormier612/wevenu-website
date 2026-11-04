@@ -90,6 +90,7 @@ import { ContextualLuvObservationsPanel } from "@/components/luv/contextual-obse
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
+import { RelationshipTabShell } from "@/components/relationship/relationship-tab-shell";
 import { TourAppointmentList, TourScheduleActions, TourScheduleRoot } from "@/components/leads/tour-panel";
 import { updateDraftStatusAction } from "@/app/(app)/leads/[id]/luv-actions";
 import { draftStatusAfterSuccessfulSend } from "@/lib/luv/draft-status";
@@ -1107,53 +1108,43 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
         {/* ── Internal notes ────────────────────────────────────────── */}
         <TabsContent value="notes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{INTERNAL_NOTES_LABEL}</CardTitle>
-              <CardDescription>
-                {INTERNAL_NOTES_PRIVACY_HINT}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <RelationshipTabShell
+            title={INTERNAL_NOTES_LABEL}
+            description={INTERNAL_NOTES_PRIVACY_HINT}
+            testId="lead-notes-tab"
+          >
+            <div className="space-y-4">
               <LeadInquiryRecord lead={lead} />
               <NotesSection leadId={lead.id} items={internalNotes} venueTimezone={venueTimezone} />
-            </CardContent>
-          </Card>
+            </div>
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Tasks (work to do — not date holds) ───────────────────── */}
         <TabsContent value="tasks">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Venue tasks</CardTitle>
-              <CardDescription>
-                One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Place hold under Sales & availability.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TasksSection
-                leadId={lead.id}
-                initialTasks={lead.tasks}
-                staffOptions={staffOptions}
-                defaultAssigneeId={currentStaffId}
-              />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Venue tasks"
+            description="One-off things your team needs to do for this lead. Assign an owner and due date — they also appear in Task Center. These are not client planning tasks and do not change your playbook templates. To reserve a date, use Place hold under Sales & availability."
+            testId="lead-tasks-tab"
+          >
+            <TasksSection
+              leadId={lead.id}
+              initialTasks={lead.tasks}
+              staffOptions={staffOptions}
+              defaultAssigneeId={currentStaffId}
+            />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Activity ──────────────────────────────────────────────── */}
         <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Activity</CardTitle>
-              <CardDescription>
-                A chronological record of everything that has happened with this lead.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ActivityTimelineView leadId={lead.id} clientId={null} />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Activity"
+            description="A chronological record of everything that has happened with this lead."
+            testId="lead-activity-tab"
+          >
+            <ActivityTimelineView leadId={lead.id} clientId={null} />
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Documents ────────────────────────────────────────────── */}
