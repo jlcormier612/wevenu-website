@@ -173,4 +173,15 @@ describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => 
     assert.match(tasks, /planning-task-status-row/);
     assert.match(tasks, /htc-badge-active text-xs shrink-0">Draft</);
   });
+
+  it("vendor Chosen by is eucalyptus Active; timeline Event start is soft blush", () => {
+    const highlights = read("components/events/vendors/event-vendor-recommendations-section.tsx");
+    const timeline = read("components/events/timeline/timeline-view.tsx");
+    assert.match(highlights, /htc-badge-active[\s\S]*?Chosen by|Chosen by[\s\S]*?htc-badge-active/);
+    assert.match(timeline, /timeline-event-start-badge[\s\S]*?htc-badge-attention|htc-badge-attention[\s\S]*?Event start/);
+    assert.doesNotMatch(
+      timeline.slice(timeline.indexOf("isEventStart"), timeline.indexOf("isEventStart") + 280),
+      /bg-primary\/10/,
+    );
+  });
 });

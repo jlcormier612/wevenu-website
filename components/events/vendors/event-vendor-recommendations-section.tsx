@@ -85,7 +85,7 @@ export function EventVendorRecommendationsSection({
             </Link>
             {r.vendorCategory && <span className="text-xs text-muted-foreground">{vendorCategoryLabel(r.vendorCategory)}</span>}
             {r.selectedAt && (
-              <Badge variant="success" className="text-[10px] flex items-center gap-1">
+              <Badge className="htc-badge-active text-[10px] flex items-center gap-1">
                 <Check className="h-3 w-3" /> Chosen by {clientName || "client"}
               </Badge>
             )}

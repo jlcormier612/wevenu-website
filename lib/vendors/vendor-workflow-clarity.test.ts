@@ -99,6 +99,11 @@ describe("vendor workflow clarity UI seams", () => {
     assert.match(highlights, /unrecommendVendorAction/);
   });
 
+  it("Chosen by chip uses eucalyptus Active — not muted success gray", () => {
+    assert.match(highlights, /htc-badge-active[\s\S]*?Chosen by/);
+    assert.doesNotMatch(highlights, /variant="success"/);
+  });
+
   it("remove recommendation action does not call removeVendorAssignment", () => {
     assert.match(removeAction, /export async function unrecommendVendorAction/);
     const fn = removeAction.slice(

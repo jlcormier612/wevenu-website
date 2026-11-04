@@ -226,7 +226,10 @@ function TimelineEntryRow({
                 </span>
               )}
               {isEventStart && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                <span
+                  className="htc-badge-attention rounded-full px-2 py-0.5 text-xs font-medium"
+                  data-testid="timeline-event-start-badge"
+                >
                   Event start
                 </span>
               )}
