@@ -3,7 +3,7 @@ import { HTC_LOGO_PUBLIC_PATH } from "@/shared/brand/logo";
 
 /**
  * Renders the Hello to Cheers platform logo everywhere platform branding appears.
- * Always uses the approved primary brand asset (olive/sage lettering + dusty-rose
+ * Always uses the approved primary brand asset (botanical #446B56 lettering + dusty-rose
  * accents). Do not swap to the lavender-gray on-dark raster — it washes out brand
  * color on the dark-mode sidebar (lightened taupe) and other themed surfaces.
  *

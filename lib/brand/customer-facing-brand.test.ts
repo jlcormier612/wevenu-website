@@ -92,8 +92,8 @@ describe("customer-facing brand — Hello to Cheers", () => {
 
     assert.match(reportsLayout, /title: "Reports"/);
     assert.match(reportsLayout, /ReportsLayoutShell/);
-    assert.match(reportsShell, /"Reports"/);
-    assert.match(reportsShell, /"Saved Reports"/);
+    assert.match(reportsShell, /title="Reports"/);
+    assert.doesNotMatch(reportsShell, /Saved Reports/);
 
     const clientList = readFileSync(join(ROOT, "components/clients/client-list.tsx"), "utf8");
     assert.match(clientList, /Search by client or event type/);

@@ -6,7 +6,8 @@ describe("Saved Reports navigation", () => {
   it("shows a Templates back link on the Reports shell", () => {
     const shell = readFileSync("components/reporting/reports-layout-shell.tsx", "utf8");
     assert.match(shell, /PageHeader/);
-    assert.match(shell, /title=\{onSaved \? "Saved Reports" : "Reports"\}/);
+    assert.match(shell, /title="Reports"/);
+    assert.doesNotMatch(shell, /Saved Reports/);
     assert.match(shell, /ReportTabs/);
     assert.match(shell, /CollectionBackLink/);
     assert.match(shell, /label="Templates"/);
