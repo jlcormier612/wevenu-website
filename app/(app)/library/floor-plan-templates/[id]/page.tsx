@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FloorPlanTemplateEditor } from "@/components/floor-plan-templates/floor-plan-template-editor";
 import { FloorPlanTemplateEditorHeader } from "@/components/floor-plan-templates/floor-plan-template-editor-header";
 import { CollectionBackLink } from "@/components/library/collection-back-link";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpaces } from "@/lib/availability/service";
 import { canEditFloorPlans } from "@/lib/floor-plans/authorize";
 import { getObjects, getTemplate } from "@/lib/floor-plan-templates/service";
@@ -35,24 +36,39 @@ export default async function FloorPlanTemplateEditorPage({ params }: Props) {
   const acceptedEventTypes = inquirySettings?.acceptedEventTypes ?? [];
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div
+      className="htc-hospitality-page mx-auto max-w-5xl space-y-5 sm:space-y-6"
+      data-htc-phase12="floor-plan-template-edit"
+    >
       <CollectionBackLink href="/library/floor-plan-templates" label="Floor Plan Templates" />
-      <FloorPlanTemplateEditorHeader
-        template={template}
-        spaces={spaces}
-        spaceName={spaceName}
-        objectCount={objects.length}
-        masterDescription={master?.description ?? null}
-        acceptedEventTypes={acceptedEventTypes}
-      />
-      <FloorPlanTemplateEditor
-        templateId={id}
-        venueId={venue.id}
-        initialPlan={{ ...template, objects }}
-        inventoryItems={inventoryItems}
-        inventoryCategories={inventoryCategories}
-        readOnly={!canEditFloorPlans(role)}
-      />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <FloorPlanTemplateEditorHeader
+          template={template}
+          spaces={spaces}
+          spaceName={spaceName}
+          objectCount={objects.length}
+          masterDescription={master?.description ?? null}
+          acceptedEventTypes={acceptedEventTypes}
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
+          <CardTitle>Layout editor</CardTitle>
+          <CardDescription>
+            Place furniture and labels on this reusable layout. Changes save as you edit.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-5">
+          <FloorPlanTemplateEditor
+            templateId={id}
+            venueId={venue.id}
+            initialPlan={{ ...template, objects }}
+            inventoryItems={inventoryItems}
+            inventoryCategories={inventoryCategories}
+            readOnly={!canEditFloorPlans(role)}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -160,6 +160,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 
 **Wave G1 (deeper-page consistency):** CollectionBackLink on template/inventory editors; merge-field chips white + blush hover (`.htc-merge-field-chip`); booking space chips white; client/event Vendors Required → `.htc-badge-attention`; Floor Plans empty → calm blue; notification bell rows → white cards on beige with blush hover (`.htc-notification-row`).
 
+**Wave G2 (template workspaces):** EO template edit — white `.htc-working-card` sections + eucalyptus headers (not beige-on-beige); one calm-blue orientation; empty “No couple choices” / no sections → calm blue; workflow chips eucalyptus (not charcoal). Timeline template edit — working-card items list, calm empty, botanical icon buttons (not muted gray). Floor Plan template edit — hospitality shell + working-card around layout editor; editor empty/info panels → calm guidance (not muted wash).
+
 ---
 
 ## 3. Shared utilities (Phase 11D + Phase 12 + list recipe)

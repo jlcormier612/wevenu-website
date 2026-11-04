@@ -31,7 +31,7 @@ export function TemplateWorkflowChrome({
       aria-label="Template workflow"
       data-testid="eo-template-workflow-chrome"
       className={cn(
-        "sticky top-0 z-20 -mx-1 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background/95 px-3 py-2 shadow-sm backdrop-blur",
+        "sticky top-0 z-20 -mx-1 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-sm",
         className,
       )}
     >
@@ -51,8 +51,8 @@ export function TemplateWorkflowChrome({
                 className={cn(
                   "rounded-full px-2.5 py-1 font-medium transition-colors",
                   active
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "htc-badge-active"
+                    : "border border-border bg-card text-primary hover:bg-[var(--htc-soft-blush)]",
                 )}
                 data-testid={`eo-template-workflow-${step.id}`}
               >

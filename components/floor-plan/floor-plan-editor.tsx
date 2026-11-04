@@ -1277,7 +1277,7 @@ export function FloorPlanEditor({
   // Empty state (no floor plan yet)
   if (!plan) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="htc-surface-guidance flex flex-col items-center justify-center px-4 py-16 text-center">
         <p className="font-heading text-lg font-medium text-heading">No floor plan yet</p>
         <p className="mt-1 mb-4 text-sm text-muted-foreground">
           {readOnly
@@ -1303,7 +1303,7 @@ export function FloorPlanEditor({
     <TooltipProvider>
     <div className="space-y-4">
       {readOnly ? (
-        <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <p className="htc-surface-guidance-compact px-3 py-2 text-xs">
           View-only — you can look at this layout, but only an Owner, Manager, or Coordinator can edit it.
         </p>
       ) : (
@@ -1600,7 +1600,7 @@ export function FloorPlanEditor({
             onReorder={handleReorder}
           />
         ) : (
-          <div className="rounded-xl border border-dashed border-border p-4 text-center">
+          <div className="htc-surface-guidance-compact p-4 text-center">
             <p className="text-xs text-muted-foreground">
               Select an object to edit its properties.
             </p>
@@ -1621,7 +1621,7 @@ export function FloorPlanEditor({
       {/* Inventory Usage (Requirement 2) — informational only, never blocks placement */}
       {liveUsage.length > 0 && (
         <div
-          className="rounded-xl border border-border bg-muted/20 p-4 space-y-2"
+          className="htc-surface-guidance space-y-2 p-4"
           data-testid="floor-plan-inventory-usage"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inventory Usage</p>

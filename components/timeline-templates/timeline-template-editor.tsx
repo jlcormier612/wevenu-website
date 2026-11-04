@@ -24,6 +24,7 @@ import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/li
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -285,22 +286,25 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   const formDayPreview = formatTemplateDayLabel(form.dayOffset ?? 0, formDayAnchor);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h2 className="font-heading text-lg font-medium text-heading">Timeline Items</h2>
-          <p className="text-xs text-muted-foreground">
-            Item edits use Save changes. Activities with times sort chronologically; drag to order matching or untimed activities (saves automatically).
-          </p>
+    <Card className="htc-working-card gap-0 py-0" data-testid="timeline-template-items-card">
+      <CardHeader className="py-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <CardTitle>Timeline Items</CardTitle>
+            <CardDescription>
+              Item edits use Save changes. Activities with times sort chronologically; drag to order matching or untimed activities (saves automatically).
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-3">
+            <LibrarySaveStatus status={saveUi.status} model="autosave" />
+            <Button type="button" size="sm" onClick={openAdd}><Plus className="mr-1.5 h-3.5 w-3.5" />Add Item</Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <LibrarySaveStatus status={saveUi.status} model="autosave" />
-          <Button type="button" size="sm" onClick={openAdd}><Plus className="mr-1.5 h-3.5 w-3.5" />Add Item</Button>
-        </div>
-      </div>
+      </CardHeader>
+      <CardContent className="space-y-4 py-5">
 
       {items.length === 0 ? (
-        <div className="rounded-sm border border-dashed border-border py-10 text-center">
+        <div className="htc-surface-guidance px-4 py-10 text-center" data-testid="timeline-template-empty">
           <p className="text-sm font-medium text-heading">No items yet</p>
           <p className="mt-1 text-xs text-muted-foreground">Add the first item in this timeline.</p>
         </div>
@@ -319,17 +323,17 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDrop(index)}
                 onDragEnd={handleDragEnd}
-                className={`flex items-start gap-3 rounded-sm border bg-card p-3 transition-colors ${
+                className={`htc-working-row flex items-start gap-3 rounded-sm border bg-card p-3 ${
                   item.needsReview ? "border-amber-300 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20" : dragOverIndex === index ? "border-primary bg-primary/5" : "border-border"
                 }`}
               >
-                <div className="mt-1 shrink-0 cursor-grab text-muted-foreground" aria-label="Drag to reorder">
+                <div className="mt-1 shrink-0 cursor-grab text-primary" aria-label="Drag to reorder">
                   <GripVertical className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {showDayBadge && (
-                      <Badge variant="secondary" className="text-[10px] font-medium">
+                      <Badge className="htc-badge-active text-[10px] font-medium">
                         {formatTemplateDayLabel(item.dayOffset ?? 0, item.dayAnchor ?? "event_start")}
                       </Badge>
                     )}
@@ -355,18 +359,28 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <button type="button" onClick={() => openEdit(item)} title="Edit" className="rounded p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={() => openEdit(item)} title="Edit" aria-label="Edit item">
                     <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} title="Delete" className="rounded p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleDelete(item.id)}
+                    disabled={deletingId === item.id}
+                    title="Delete"
+                    aria-label="Delete item"
+                    className="hover:text-destructive"
+                  >
                     {deletingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      </CardContent>
 
       <Sheet open={sheetOpen} onOpenChange={(next) => {
         if (!next && sheetDirty && !confirmLeave()) return;
@@ -504,7 +518,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               ) : null}
 
               {timingMode === "relative" ? (
-                <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                <div className="space-y-2 rounded-md border border-border bg-card p-3">
                   <p className="text-xs text-foreground">
                     Reference: <span className="font-medium">{DAY_OF_SCHEDULE_START_LABEL}</span>
                     {" "}(the event&apos;s Day-of schedule Start time — not ceremony or reception).
@@ -594,6 +608,6 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
           </div>
         </SheetContent>
       </Sheet>
-    </div>
+    </Card>
   );
 }

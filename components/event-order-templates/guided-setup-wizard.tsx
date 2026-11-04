@@ -19,6 +19,7 @@ import { OfferingEditorSheet } from "@/components/event-order-templates/offering
 import { PackageChoicesPanel } from "@/components/event-order-templates/package-choices-panel";
 import { SectionFloorPlanDefault } from "@/components/event-order-templates/section-floor-plan-default";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   SUGGESTED_CATEGORIES,
@@ -225,7 +226,7 @@ export function GuidedSetupWizard({
       ) : null}
       <div className="space-y-6" data-testid="eo-guided-step-workspace">
         {sectionsOrdered.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          <p className="htc-surface-guidance px-4 py-6 text-center text-sm" data-testid="eo-guided-no-sections">
             No sections yet. Add the first thing you sell, like Catering or Bar Service.
           </p>
         ) : null}
@@ -237,56 +238,58 @@ export function GuidedSetupWizard({
           const expanded = expandedSectionIds.has(section.id);
           const health = sectionBuilderHealthChip(template, section.id);
           return (
-            <section
+            <Card
               key={section.id}
               id={`eo-guided-configure-${section.id}`}
-              className="rounded-lg border border-border p-4 space-y-3 scroll-mt-28"
+              className="htc-working-card gap-0 py-0 scroll-mt-28"
               data-testid={`eo-guided-configure-${section.id}`}
               data-section-expanded={expanded ? "true" : "false"}
             >
-              <div className="flex items-start justify-between gap-2">
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-start gap-2 text-left"
-                  aria-expanded={expanded}
-                  data-testid={`eo-guided-section-toggle-${section.id}`}
-                  onClick={() => toggleSection(section.id)}
-                >
-                  {expanded ? (
-                    <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                  ) : (
-                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                  )}
-                  <span className="min-w-0">
-                    <span className="font-heading text-lg text-heading block">{section.name}</span>
-                    <span
-                      className="mt-0.5 block text-xs text-muted-foreground"
-                      data-testid={`eo-guided-section-health-${section.id}`}
-                    >
-                      {health}
+              <CardHeader className="py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                    aria-expanded={expanded}
+                    data-testid={`eo-guided-section-toggle-${section.id}`}
+                    onClick={() => toggleSection(section.id)}
+                  >
+                    {expanded ? (
+                      <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    ) : (
+                      <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    )}
+                    <span className="min-w-0">
+                      <CardTitle className="font-heading text-lg">{section.name}</CardTitle>
+                      <CardDescription
+                        className="mt-0.5"
+                        data-testid={`eo-guided-section-health-${section.id}`}
+                      >
+                        {health}
+                      </CardDescription>
                     </span>
-                  </span>
-                </button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  disabled={pending}
-                  aria-label={`Remove ${section.name}`}
-                  data-testid={`eo-guided-remove-section-${section.id}`}
-                  onClick={() => removeSection(section)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              {!expanded && warnings.length > 0 ? (
-                <p className="pl-6 text-xs text-amber-800" data-testid="eo-guided-review-warning-collapsed">
-                  {warnings.length} item{warnings.length === 1 ? "" : "s"} to finish — expand to edit
-                </p>
-              ) : null}
+                  </button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    disabled={pending}
+                    aria-label={`Remove ${section.name}`}
+                    data-testid={`eo-guided-remove-section-${section.id}`}
+                    onClick={() => removeSection(section)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {!expanded && warnings.length > 0 ? (
+                  <p className="pl-6 text-xs text-amber-800" data-testid="eo-guided-review-warning-collapsed">
+                    {warnings.length} item{warnings.length === 1 ? "" : "s"} to finish — expand to edit
+                  </p>
+                ) : null}
+              </CardHeader>
               {expanded ? (
-                <div className="space-y-5 pl-0 sm:pl-6" data-testid={`eo-guided-section-body-${section.id}`}>
+                <CardContent className="space-y-5 py-5" data-testid={`eo-guided-section-body-${section.id}`}>
                   {warnings.map((m) => (
                     <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">{m}</p>
                   ))}
@@ -329,16 +332,19 @@ export function GuidedSetupWizard({
                   />
 
                   <SpecialistRules template={template} sectionId={section.id} catalogOfferings={catalogOfferings} onPersist={onPersist} />
-                </div>
+                </CardContent>
               ) : null}
-            </section>
+            </Card>
           );
         })}
       </div>
 
       {addingSection ? (
-        <section className="space-y-3 rounded-lg border border-dashed border-border p-4" data-testid="eo-guided-step-categories">
-          <h2 className="text-sm font-semibold text-heading">Add section</h2>
+        <Card className="htc-working-card gap-0 py-0" data-testid="eo-guided-step-categories">
+          <CardHeader className="py-4">
+            <CardTitle>Add section</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 py-5">
           {remainingSuggested.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {remainingSuggested.map((cat) => (
@@ -379,7 +385,8 @@ export function GuidedSetupWizard({
               <Button type="button" variant="ghost" onClick={() => setAddingSection(false)}>Cancel</Button>
             ) : null}
           </div>
-        </section>
+          </CardContent>
+        </Card>
       ) : (
         <Button
           type="button"
@@ -491,11 +498,11 @@ function TemplateLinesBlock({
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       {lines.length > 0 ? (
-        <ul className="divide-y divide-border rounded-md border border-border">
+        <ul className="space-y-1.5">
           {lines.map((line) => (
             <li
               key={line.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+              className="htc-working-row flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
               data-testid={`eo-package-item-${line.id}`}
               data-included-by-default={line.includedByDefault ? "true" : "false"}
             >

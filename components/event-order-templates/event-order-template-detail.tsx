@@ -142,31 +142,36 @@ export function EventOrderTemplateDetail({
   }
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div
+      className="htc-hospitality-page space-y-5 sm:space-y-6 overflow-x-hidden"
+      data-htc-phase12="eo-template-edit"
+    >
       <TemplateWorkflowChrome templateId={template.id} current="edit" />
-      <BusinessAssetHeader
-        backHref="/library/event-order-templates"
-        backLabel="Event Order Templates"
-        whatIsThis="Event Order Template"
-        title={template.name}
-        status={
-          <>
-            {isStarter && !template.isArchived && <Badge variant="muted">{LIBRARY_LABELS.starter}</Badge>}
-            {!isStarter && !template.isArchived && <Badge variant="outline">{LIBRARY_LABELS.yourTemplate}</Badge>}
-            {template.isArchived ? <Badge variant="muted">{LIBRARY_LABELS.archived}</Badge> : null}
-          </>
-        }
-        lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-        primaryAction={
-          <div className="flex flex-wrap items-center gap-2">
-            <LibrarySaveStatus status={saveUi.status} model="autosave" />
-            <Button type="button" variant="outline" size="sm" render={<Link href={`/library/event-order-templates/${template.id}/preview`} />}>
-              Preview
-            </Button>
-            <EventOrderTemplateDetailsSheet template={template} />
-          </div>
-        }
-      />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <BusinessAssetHeader
+          backHref="/library/event-order-templates"
+          backLabel="Event Order Templates"
+          whatIsThis="Event Order Template"
+          title={template.name}
+          status={
+            <>
+              {isStarter && !template.isArchived && <Badge variant="muted">{LIBRARY_LABELS.starter}</Badge>}
+              {!isStarter && !template.isArchived && <Badge variant="outline">{LIBRARY_LABELS.yourTemplate}</Badge>}
+              {template.isArchived ? <Badge variant="muted">{LIBRARY_LABELS.archived}</Badge> : null}
+            </>
+          }
+          lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          primaryAction={
+            <div className="flex flex-wrap items-center gap-2">
+              <LibrarySaveStatus status={saveUi.status} model="autosave" />
+              <Button type="button" variant="outline" size="sm" render={<Link href={`/library/event-order-templates/${template.id}/preview`} />}>
+                Preview
+              </Button>
+              <EventOrderTemplateDetailsSheet template={template} />
+            </div>
+          }
+        />
+      </div>
 
       {isStarter ? (
         <StarterOwnershipBanner
@@ -187,17 +192,19 @@ export function EventOrderTemplateDetail({
         />
       ) : null}
 
-      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground" data-testid="eo-template-detail-intro">
-        Each section has three parts: <span className="font-medium text-heading">Included</span>{" "}
-        (always on the package, covered by its price), <span className="font-medium text-heading">Couple chooses</span>{" "}
-        (primary picks plus optional add-on groups the couple can select together), and{" "}
-        <span className="font-medium text-heading">Add-ons</span>{" "}
-        (staff-only extras toggled when you apply the template — not the couple path).{" "}
-        <Link href="/library/offerings" className="font-medium text-heading hover:underline">
-          Manage Offerings →
-        </Link>
-      </p>
-      {template.description ? <p className="text-sm text-foreground">{template.description}</p> : null}
+      <div className="htc-surface-guidance max-w-2xl px-3.5 py-3" data-testid="eo-template-detail-intro">
+        <p className="text-sm leading-relaxed">
+          Each section has three parts: <span className="font-medium text-heading">Included</span>{" "}
+          (always on the package, covered by its price), <span className="font-medium text-heading">Couple chooses</span>{" "}
+          (primary picks plus optional add-on groups the couple can select together), and{" "}
+          <span className="font-medium text-heading">Add-ons</span>{" "}
+          (staff-only extras toggled when you apply the template — not the couple path).{" "}
+          <Link href="/library/offerings" className="htc-record-link font-medium">
+            Manage Offerings →
+          </Link>
+        </p>
+        {template.description ? <p className="mt-2 text-sm text-foreground">{template.description}</p> : null}
+      </div>
 
       <GuidedSetupWizard
         template={template}

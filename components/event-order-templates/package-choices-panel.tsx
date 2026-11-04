@@ -380,7 +380,7 @@ export function PackageChoicesPanel({
 
       {choiceSets.length === 0 ? (
         <div
-          className="space-y-3 rounded-lg border border-dashed border-border p-4"
+          className="htc-surface-guidance space-y-3 px-3.5 py-3"
           data-testid="eo-package-choices-empty"
         >
           <p className="text-sm text-muted-foreground">
@@ -632,7 +632,7 @@ function ChoiceSetCard({
 
       {optionsWithDependents.length > 0 ? (
         <div
-          className="space-y-2 rounded-md border border-dashed border-border bg-muted/20 px-3 py-2"
+          className="space-y-2 rounded-md border border-dashed border-border bg-card px-3 py-2"
           data-testid={`eo-choice-path-preview-${setIndex}`}
         >
           <p className="text-xs font-medium text-heading">Try a couple path to edit follow-ups</p>
@@ -676,7 +676,7 @@ function ChoiceSetCard({
           return (
             <li
               key={opt.id}
-              className="rounded-md border border-border/80 bg-muted/20 p-3"
+              className="rounded-md border border-border/80 bg-card p-3"
               data-testid={`eo-choice-option-${opt.id}`}
               data-path-preview={hasDependents ? (pathOpen ? "open" : "collapsed") : "none"}
             >

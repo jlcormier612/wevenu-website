@@ -41,7 +41,7 @@ export function SectionFloorPlanDefault({
   }
 
   return (
-    <div className="space-y-1.5 rounded-md bg-muted/30 px-3 py-2" data-testid={`eo-template-section-floor-plan-${section.id}`}>
+    <div className="space-y-1.5 rounded-md border border-border bg-card px-3 py-2" data-testid={`eo-template-section-floor-plan-${section.id}`}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {!notOnPlan ? (
           <div className="flex items-center gap-2">
