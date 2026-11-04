@@ -171,11 +171,21 @@ export function DocumentWorkspace({
             <h2 className="htc-hospitality-section-label">Categories</h2>
             <div className="flex flex-wrap gap-1.5">
               <button type="button" onClick={() => setCategory("all")}>
-                <Badge variant={category === "all" ? "default" : "outline"}>All ({documents.length})</Badge>
+                <Badge
+                  variant="outline"
+                  className={category === "all" ? "htc-badge-active" : "bg-card"}
+                >
+                  All ({documents.length})
+                </Badge>
               </button>
               {visibleCategories.map((c) => (
                 <button key={c} type="button" onClick={() => setCategory(c)}>
-                  <Badge variant={category === c ? "default" : "outline"}>{c} ({categoryCounts.get(c) ?? 0})</Badge>
+                  <Badge
+                    variant="outline"
+                    className={category === c ? "htc-badge-active" : "bg-card"}
+                  >
+                    {c} ({categoryCounts.get(c) ?? 0})
+                  </Badge>
                 </button>
               ))}
             </div>

@@ -19,7 +19,7 @@ describe("booking Documents content model", () => {
     assert.doesNotMatch(tab, /Reusable templates your venue can send/);
   });
 
-  it("surfaces returned questionnaires only (not sent-only)", () => {
+  it("surfaces returned questionnaires only via the Documents list filter (not a separate card)", () => {
     assert.equal(isReturnedQuestionnaireDocumentStatus("sent"), false);
     assert.equal(isReturnedQuestionnaireDocumentStatus("in_progress"), false);
     assert.equal(isReturnedQuestionnaireDocumentStatus("draft"), false);
@@ -28,16 +28,18 @@ describe("booking Documents content model", () => {
     assert.equal(isReturnedQuestionnaireDocumentStatus("complete"), true);
     assert.equal(isReturnedQuestionnaireDocumentStatus("changes_requested"), true);
     assert.match(tab, /isReturnedQuestionnaireDocumentStatus/);
-    assert.match(tab, /Returned questionnaires/);
-    assert.match(tab, /View answers/);
+    assert.doesNotMatch(tab, /Returned questionnaires/);
+    assert.doesNotMatch(tab, /booking-documents-returned-questionnaire/);
   });
 
   it("workspace loader filters non-returned questionnaires out of Documents", () => {
     assert.match(service, /isReturnedQuestionnaireDocumentStatus\(d\.rawStatus\)/);
   });
 
-  it("keeps event-specific contracts section without template listing", () => {
-    assert.match(tab, /booking-documents-contracts/);
-    assert.match(tab, /Agreements created for this booking/);
+  it("does not stack a Contracts card above the primary Documents title", () => {
+    assert.doesNotMatch(tab, /booking-documents-contracts/);
+    assert.doesNotMatch(tab, /Agreements created for this booking/);
+    assert.match(tab, /DocumentWorkspace/);
+    assert.match(tab, /title="Documents"/);
   });
 });

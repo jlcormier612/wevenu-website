@@ -21,7 +21,6 @@ import {
 import { sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply-preview-sheet";
-import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -825,7 +824,7 @@ export function PlaybookApplyRow({
             <p className="text-xs text-muted-foreground flex-1">
               <span className="font-medium text-heading">For your couple:</span> {displayTitle} — draft, not yet visible to {clientName ?? "your couple"}
             </p>
-            <Badge variant="warning" className="text-xs shrink-0">Draft</Badge>
+            <Badge className="htc-badge-active text-xs shrink-0">Draft</Badge>
           </div>
           {readiness && (
             <p className="mt-1.5 pl-6 text-xs text-muted-foreground" data-testid="planning-required-progress">
@@ -1183,53 +1182,42 @@ export function EventTaskList({
   // be inventing state that doesn't exist. The header below shows real,
   // already-computed counts instead, and "Review Tasks" scrolls to the
   // existing list rather than adding a new action.
-  const mostRecentUpdate = tasks.length > 0
-    ? tasks.reduce((latest, t) => t.updatedAt > latest ? t.updatedAt : latest, tasks[0].updatedAt)
-    : null;
   const openCount = overdue.length + pending.length;
   const listCount = overdue.length + pending.length + complete.length + waived.length;
 
   return (
     <div className="space-y-4">
-      <BusinessAssetHeader
-        compact
-        whatIsThis="Task List"
-        title="Task List"
-        status={
-          tasks.length === 0
-            ? <Badge variant="muted">No tasks yet</Badge>
-            : openCount === 0
-              ? (
-                <Badge className="htc-badge-active" data-testid="task-list-status">
-                  {waived.length > 0 && complete.length === 0
-                    ? `${waived.length} waived · none open`
-                    : waived.length > 0
-                      ? `${complete.length} completed · ${waived.length} waived`
-                      : "All complete"}
-                </Badge>
-              )
-              : (
-                <Badge
-                  variant={overdue.length > 0 ? "destructive" : "outline"}
-                  className={overdue.length > 0 ? undefined : "htc-badge-active"}
-                  data-testid="task-list-status"
-                >
-                  {openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}
-                  {complete.length + waived.length > 0
-                    ? ` · ${complete.length} completed${waived.length > 0 ? ` · ${waived.length} waived` : ""}`
-                    : ""}
-                </Badge>
-              )
-        }
-        lastUpdated={mostRecentUpdate ? new Date(mostRecentUpdate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-        relationship={eventName ? { name: eventName } : null}
-        primaryAction={tasks.length > 0 && (
+      {/* Status + review only — tab shell already provides the Planning Tasks title. */}
+      <div className="flex flex-wrap items-center justify-end gap-2" data-testid="planning-task-status-row">
+        {tasks.length === 0 ? (
+          <Badge className="htc-badge-active">No tasks yet</Badge>
+        ) : openCount === 0 ? (
+          <Badge className="htc-badge-active" data-testid="task-list-status">
+            {waived.length > 0 && complete.length === 0
+              ? `${waived.length} waived · none open`
+              : waived.length > 0
+                ? `${complete.length} completed · ${waived.length} waived`
+                : "All complete"}
+          </Badge>
+        ) : (
+          <Badge
+            variant={overdue.length > 0 ? "destructive" : "outline"}
+            className={overdue.length > 0 ? undefined : "htc-badge-active"}
+            data-testid="task-list-status"
+          >
+            {openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}
+            {complete.length + waived.length > 0
+              ? ` · ${complete.length} completed${waived.length > 0 ? ` · ${waived.length} waived` : ""}`
+              : ""}
+          </Badge>
+        )}
+        {tasks.length > 0 ? (
           <Button type="button" variant="outline" size="sm"
             onClick={() => document.getElementById("planning-task-list")?.scrollIntoView({ behavior: "smooth" })}>
             Review Tasks
           </Button>
-        )}
-      />
+        ) : null}
+      </div>
       {/* Two independent planning systems — never merged into one status */}
       <div className="space-y-2" id="planning-edit" data-testid="planning-edit">
         {PLAYBOOK_KINDS.map((k) => (

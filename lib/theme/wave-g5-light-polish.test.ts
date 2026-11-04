@@ -150,4 +150,27 @@ describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => 
     assert.match(tasks, /bg-card/);
     assert.doesNotMatch(tasks, /bg-card\/40/);
   });
+
+  it("booking Documents matches Lead workspace recipe (no Contracts blurb above title)", () => {
+    const tab = read("components/events/booking-documents-tab.tsx");
+    assert.match(tab, /DocumentWorkspace/);
+    assert.doesNotMatch(tab, /Agreements created for this booking/);
+    assert.doesNotMatch(tab, /booking-documents-contracts/);
+  });
+
+  it("Documents chips/icons use eucalyptus Active wash", () => {
+    const badges = read("components/document-workspace/badges.tsx");
+    const card = read("components/document-workspace/document-card.tsx");
+    const workspace = read("components/document-workspace/document-workspace.tsx");
+    assert.match(badges, /htc-badge-active/);
+    assert.match(card, /--htc-eucalyptus-surface/);
+    assert.match(workspace, /htc-badge-active/);
+  });
+
+  it("Planning Tasks drops redundant Task List header; Draft is eucalyptus Active", () => {
+    const tasks = read("components/playbooks/event-task-list.tsx");
+    assert.doesNotMatch(tasks, /BusinessAssetHeader/);
+    assert.match(tasks, /planning-task-status-row/);
+    assert.match(tasks, /htc-badge-active text-xs shrink-0">Draft</);
+  });
 });

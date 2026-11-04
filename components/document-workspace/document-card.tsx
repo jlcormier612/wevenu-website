@@ -156,7 +156,7 @@ export function WorkspaceDocumentCard({
       className="group flex items-start gap-3 rounded-sm border border-border bg-card px-4 py-3 hover:bg-muted/20 transition-colors"
       data-htc-doc-row="workspace"
     >
-      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)]">
         <DocIcon doc={doc} />
       </div>
 
