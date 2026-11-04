@@ -9,7 +9,7 @@ import { HTC_LOGO_PUBLIC_PATH } from "@/shared/brand/logo";
  *
  * Public/auth invitation and login pages must wrap with AuthBrandFrame (or the
  * same light theme-lock + warm page chrome). Primary lettering is illegible on
- * theme-inherited `bg-muted` (heritage-sage under `.dark`).
+ * theme-inherited `bg-muted` (botanical lift under staff `.dark`).
  *
  * Pass logoUrl only when displaying a venue's own uploaded logo instead.
  * Pass forceLight / forceDark when a fixed-surface page must ignore the html

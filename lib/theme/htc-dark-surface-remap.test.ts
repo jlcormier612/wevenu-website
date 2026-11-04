@@ -81,6 +81,17 @@ describe("HTC dark surface remap — dark tokens + companions", () => {
     assert.doesNotMatch(darkRemap, /--htc-eucalyptus-surface:\s*#dce8e0/);
   });
 
+  it("dark staff green surfaces use botanical #446B56 (not army forest/heritage sage)", () => {
+    assert.match(darkRemap, /--htc-botanical:\s*#446b56/);
+    assert.match(darkRemap, /--background:\s*var\(--htc-botanical\)/);
+    assert.match(
+      darkRemap,
+      /--card:\s*color-mix\(in oklch, var\(--htc-botanical\) 86%, var\(--true-white\)\)/,
+    );
+    assert.doesNotMatch(darkRemap, /--background:\s*var\(--forest-sage\)/);
+    assert.doesNotMatch(darkRemap, /--card:\s*var\(--heritage-sage\)/);
+  });
+
   it("dark blush/calm mix into neutral dark — not green card (avoids muddy ochre)", () => {
     assert.match(darkRemap, /--htc-soft-blush:\s*color-mix\(in oklch, var\(--htc-blush\) 38%, #2c2829\)/);
     assert.match(darkRemap, /--htc-soft-rose:\s*color-mix\(in oklch, var\(--htc-blush\) 48%, #2c2829\)/);

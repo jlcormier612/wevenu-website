@@ -3099,36 +3099,41 @@ html.dark:has(.htc-staff) .htc-catalog-item-nested {
 /* CRM dark remap under staff scope (html.dark from next-themes) */
 .dark .htc-staff,
 html.dark:has(.htc-staff) {
-  --warm-gray: var(--forest-sage);
+  /*
+   * Staff dark greens use light-mode botanical (#446B56), not army olive
+   * forest/heritage sage. Card is a slight white lift off the canvas.
+   */
+  --htc-botanical: #446b56;
+  --warm-gray: var(--htc-botanical);
   --header-linen: color-mix(in oklch, var(--taupe-dark) 70%, white);
-  --natural-cream: var(--heritage-sage);
+  --natural-cream: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
 
-  --background: var(--forest-sage);
+  --background: var(--htc-botanical);
   --foreground: var(--true-white);
   --heading: var(--true-white);
-  --card: var(--heritage-sage);
+  --card: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
   --card-foreground: var(--true-white);
-  --popover: var(--heritage-sage);
+  --popover: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
   --popover-foreground: var(--true-white);
-  --muted: var(--heritage-sage);
+  --muted: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
   --muted-foreground: color-mix(in oklch, var(--true-white) 86%, transparent);
-  --secondary: var(--heritage-sage);
+  --secondary: color-mix(in oklch, var(--htc-botanical) 86%, var(--true-white));
   --secondary-foreground: var(--true-white);
   --border: color-mix(in oklch, var(--true-white) 28%, transparent);
   --input: color-mix(in oklch, var(--true-white) 32%, transparent);
   --primary: var(--soft-sage);
-  --primary-foreground: color-mix(in oklch, var(--forest-sage) 62%, black);
+  --primary-foreground: color-mix(in oklch, var(--htc-botanical) 62%, black);
   --ring: var(--soft-sage);
 
   --sidebar: color-mix(in oklch, var(--taupe-dark) 70%, white);
-  --sidebar-foreground: var(--forest-sage);
-  --sidebar-primary: var(--heritage-sage);
+  --sidebar-foreground: var(--htc-botanical);
+  --sidebar-primary: var(--htc-botanical);
   --sidebar-primary-foreground: var(--true-white);
   /* Active/hover nav on cream sidebar — pure white, not sage-tinted gray-green. */
   --sidebar-accent: var(--true-white);
-  --sidebar-accent-foreground: var(--forest-sage);
-  --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
-  --sidebar-ring: var(--heritage-sage);
+  --sidebar-accent-foreground: var(--htc-botanical);
+  --sidebar-border: color-mix(in oklch, var(--htc-botanical) 20%, transparent);
+  --sidebar-ring: var(--htc-botanical);
 
   /*
    * HTC hospitality tokens were light-mode only (Waves A–G out of dark scope).

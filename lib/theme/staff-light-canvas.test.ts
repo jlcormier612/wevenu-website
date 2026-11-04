@@ -46,7 +46,8 @@ describe("staff light canvas — Contemporary Botanical Stage 2B", () => {
   it("does not rewrite the dark staff remap block", () => {
     const dark = css.slice(css.indexOf("/* CRM dark remap"));
     assert.match(dark, /\.dark \.htc-staff/);
-    assert.match(dark, /--background:\s*var\(--forest-sage\)/);
-    assert.match(dark, /--card:\s*var\(--heritage-sage\)/);
+    assert.match(dark, /--background:\s*var\(--htc-botanical\)/);
+    assert.match(dark, /--card:\s*color-mix\(in oklch, var\(--htc-botanical\) 86%, var\(--true-white\)\)/);
+    assert.doesNotMatch(dark.slice(0, dark.indexOf("DARK STAFF — HTC hardcoded")), /--background:\s*var\(--forest-sage\)/);
   });
 });

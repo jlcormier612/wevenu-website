@@ -46,7 +46,7 @@ describe("Stage 1 — warm staff canvas foundations", () => {
   it("does not rewrite the dark staff remap block", () => {
     const dark = css.slice(css.indexOf("/* CRM dark remap"));
     assert.match(dark, /\.dark \.htc-staff/);
-    assert.match(dark, /--background:\s*var\(--forest-sage\)/);
+    assert.match(dark, /--background:\s*var\(--htc-botanical\)/);
   });
 });
 
