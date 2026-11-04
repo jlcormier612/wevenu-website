@@ -1202,7 +1202,7 @@ export function FloorPlanWorkspace({
 
       {!ensuring && !workingPlan && floorPlans.length === 0 ? (
         <div
-          className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border py-12 px-4 text-center"
+          className="htc-surface-guidance flex flex-col items-center justify-center gap-2 py-12 px-4 text-center"
           data-testid="floor-plan-empty-no-working"
         >
           <p className="text-sm font-medium text-heading">No layout for this event yet</p>

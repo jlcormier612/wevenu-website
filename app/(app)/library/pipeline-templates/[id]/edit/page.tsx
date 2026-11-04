@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { DeletePipelineTemplateButton } from "@/components/settings/delete-pipeline-template-button";
 import { PipelineTemplateForm } from "@/components/settings/pipeline-template-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -21,6 +22,7 @@ export default async function EditPipelineTemplatePage({ params }: Props) {
   if (!template) notFound();
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="pipeline-template-edit">
+      <CollectionBackLink href="/library/pipeline-templates" label="Pipeline Templates" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title={`Edit · ${template.name}`}

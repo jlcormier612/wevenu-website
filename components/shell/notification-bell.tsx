@@ -220,14 +220,14 @@ export function NotificationBell() {
                 <p className="text-xs text-muted-foreground">Notifications will appear here as activity happens.</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/50">
+              <div className="space-y-2 p-2">
                 {notifications.map(n => {
                   const isUnread = !n.readAt;
                   const href = normalizeVenueNotificationHref(n.link, n.type);
 
                   const itemContent = (
                     <div
-                      className={`flex gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 cursor-pointer ${isUnread ? "bg-primary/[0.03]" : ""}`}
+                      className="htc-notification-row flex cursor-pointer gap-3 rounded-lg border border-border bg-card px-3.5 py-3"
                       onClick={() => {
                         if (isUnread) void markOneRead(n.id);
                         setOpen(false);

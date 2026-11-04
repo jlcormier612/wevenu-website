@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { DeleteTemplateButton } from "@/components/communication/delete-template-button";
 import { MessageStarterEditGate } from "@/components/communication/message-starter-edit-gate";
 import { TemplateForm } from "@/components/communication/template-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getVenueDocuments } from "@/lib/documents/service";
@@ -41,6 +42,7 @@ export default async function EditMessageTemplatePage({ params, searchParams }: 
   if (isStarter) {
     return (
       <div className="space-y-6">
+        <CollectionBackLink href={returnTo ?? "/communication/templates"} label="Message Templates" />
         <PageHeader
           title={template.name}
           description="Hello to Cheers starter — customize to create your venue’s editable copy."
@@ -56,6 +58,7 @@ export default async function EditMessageTemplatePage({ params, searchParams }: 
   ]);
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="message-template-edit">
+      <CollectionBackLink href={returnTo ?? "/communication/templates"} label="Message Templates" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title={`Edit · ${template.name}`}

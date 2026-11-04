@@ -270,9 +270,9 @@ export function EventVendorsSection({
                     </Link>
                     <VendorCategoryBadge category={a.vendorCategory} />
                     {availableVendors.find((v) => v.id === a.vendorId)?.isRequired && (
-                      <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background">
+                      <Badge className="htc-badge-attention text-[10px]">
                         Required
-                      </span>
+                      </Badge>
                     )}
                     {availableVendors.find((v) => v.id === a.vendorId)?.isInHouse && (
                       <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">

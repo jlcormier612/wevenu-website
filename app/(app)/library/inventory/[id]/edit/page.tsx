@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { InventoryItemForm } from "@/components/inventory/inventory-item-form";
 import { ItemUpcomingReservations } from "@/components/inventory/item-upcoming-reservations";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent } from "@/components/ui/card";
 import { getItemUpcomingReservations } from "@/lib/inventory/reservations-service";
@@ -26,6 +27,7 @@ export default async function EditInventoryItemPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
+      <CollectionBackLink href="/library/inventory" label="Inventory" />
       <PageHeader title={item.name} description="Edit this inventory item." />
       <Card>
         <CardContent className="pt-6">

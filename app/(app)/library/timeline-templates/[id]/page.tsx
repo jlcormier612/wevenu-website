@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { TimelineTemplateEditor } from "@/components/timeline-templates/timeline-template-editor";
 import { TimelineTemplateEditorHeader } from "@/components/timeline-templates/timeline-template-editor-header";
 import { getSpaces } from "@/lib/availability/service";
@@ -29,12 +28,7 @@ export default async function TimelineTemplateEditorPage({ params }: Props) {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <Link
-        href="/library/timeline-templates"
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Timeline Templates
-      </Link>
+      <CollectionBackLink href="/library/timeline-templates" label="Timeline Templates" />
       <TimelineTemplateEditorHeader
         template={template}
         spaces={spaces}

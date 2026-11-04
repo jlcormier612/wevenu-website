@@ -606,7 +606,7 @@ export function ContractBuilder({
               <button
                 key={f.key}
                 type="button"
-                className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-left hover:border-primary/40 transition-colors"
+                className="htc-merge-field-chip w-full rounded-lg border border-border px-3 py-2 text-left"
                 onClick={() => insertSmartField(f.key)}
               >
                 <p className="font-mono text-xs font-medium text-primary">{`{{${f.key}}}`}</p>

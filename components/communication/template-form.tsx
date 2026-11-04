@@ -235,7 +235,7 @@ export function TemplateForm({
               <div className="space-y-2">
                 {MESSAGE_MERGE_FIELDS.map((f) => (
                   <div key={f.key}
-                    className="rounded-lg border border-border bg-muted/30 px-3 py-2 cursor-pointer hover:border-primary/40 transition-colors"
+                    className="htc-merge-field-chip rounded-lg border border-border px-3 py-2 cursor-pointer"
                     onClick={() => copyToken(f.key)}>
                     <p className="font-mono text-xs font-medium text-primary">{`{{${f.key}}}`}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>

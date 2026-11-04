@@ -18,6 +18,7 @@ import {
   duplicateQuestionnaireTemplateAction,
   saveQuestionnaireAuthoringAction,
 } from "@/app/(app)/events/[id]/questionnaire-actions";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
 import { StarterOwnershipBanner } from "@/components/library/starter-ownership-banner";
@@ -279,6 +280,11 @@ export function QuestionnaireAuthoringWorkspace({
 
   return (
     <div className="space-y-6">
+      <CollectionBackLink
+        href="/library/questionnaire-templates"
+        label="Questionnaire Templates"
+        confirmLeave={confirmLeave}
+      />
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">

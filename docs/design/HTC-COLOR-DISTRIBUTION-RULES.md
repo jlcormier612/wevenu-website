@@ -158,6 +158,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 
 **Wave F (deeper edit / detail workspaces):** Beige page canvas; **one** calm-blue orientation box (consolidate redundant how-to / save-scope copy); white working cards with **eucalyptus header banners** (`.htc-working-card`); botanical primary / directional actions; quiet eucalyptus chips (`.htc-badge-active`); blush only for Luv / true attention; openable rows / client-style bars use blush hover + `.htc-record-link` underline; staff inputs/selects stay white. Pilot: Automations edit/new; same working-card chrome on Message/Contract/Pipeline template edits, Vendor/Lead/Client/Event edit pages.
 
+**Wave G1 (deeper-page consistency):** CollectionBackLink on template/inventory editors; merge-field chips white + blush hover (`.htc-merge-field-chip`); booking space chips white; client/event Vendors Required → `.htc-badge-attention`; Floor Plans empty → calm blue; notification bell rows → white cards on beige with blush hover (`.htc-notification-row`).
+
 ---
 
 ## 3. Shared utilities (Phase 11D + Phase 12 + list recipe)
@@ -175,6 +177,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 | `.htc-working-row` | White row with soft-blush hover (openable / enrollment bars) |
 | `.htc-badge-active` | Restrained eucalyptus Active indicator |
 | `.htc-badge-attention` | Soft-blush attention / Required indicator |
+| `.htc-merge-field-chip` | White merge-field chip; soft blush on hover |
+| `.htc-notification-row` | White notification card; soft blush on hover |
 
 All are scoped under `.htc-staff`. Do not apply to portal, vendor-app, marketing, or print/PDF.
 

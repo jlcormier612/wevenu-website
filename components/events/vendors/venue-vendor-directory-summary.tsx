@@ -45,7 +45,7 @@ export function VenueVendorDirectorySummary({ vendors }: { vendors: Vendor[] }) 
                 {preference === "approved" && (
                   <Badge variant="outline" className="text-muted-foreground">Approved</Badge>
                 )}
-                {vendor.isRequired && <Badge className="bg-foreground text-background hover:bg-foreground">Required</Badge>}
+                {vendor.isRequired && <Badge className="htc-badge-attention">Required</Badge>}
                 {vendor.isInHouse && <Badge variant="secondary">In-house</Badge>}
                 <span className="sr-only">{vendorCategoryLabel(vendor.category)}</span>
               </li>

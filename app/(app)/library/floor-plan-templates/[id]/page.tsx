@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 import { FloorPlanTemplateEditor } from "@/components/floor-plan-templates/floor-plan-template-editor";
 import { FloorPlanTemplateEditorHeader } from "@/components/floor-plan-templates/floor-plan-template-editor-header";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { getSpaces } from "@/lib/availability/service";
 import { canEditFloorPlans } from "@/lib/floor-plans/authorize";
 import { getObjects, getTemplate } from "@/lib/floor-plan-templates/service";
@@ -37,9 +36,7 @@ export default async function FloorPlanTemplateEditorPage({ params }: Props) {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <Link href="/library/floor-plan-templates" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-3.5 w-3.5" /> Floor Plan Templates
-      </Link>
+      <CollectionBackLink href="/library/floor-plan-templates" label="Floor Plan Templates" />
       <FloorPlanTemplateEditorHeader
         template={template}
         spaces={spaces}

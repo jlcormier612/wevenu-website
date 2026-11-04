@@ -807,6 +807,31 @@ html:has(.htc-staff) [data-slot="card"] {
   background-color: color-mix(in oklch, var(--htc-soft-blush) 55%, white);
 }
 
+/*
+ * Wave G1 — merge-field chips + notification rows.
+ * White at rest, soft blush on hover (same family as toolbox / settings tiles).
+ */
+.htc-staff .htc-merge-field-chip {
+  background: #ffffff;
+  border-color: var(--htc-border-warm);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.htc-staff .htc-merge-field-chip:hover,
+.htc-staff .htc-merge-field-chip:focus-visible {
+  background: var(--htc-soft-blush);
+  border-color: color-mix(in oklch, var(--htc-soft-rose) 45%, var(--htc-border-warm));
+}
+
+.htc-staff .htc-notification-row {
+  transition: background-color 120ms ease;
+}
+
+.htc-staff .htc-notification-row:hover,
+.htc-staff .htc-notification-row:focus-visible {
+  background: var(--htc-soft-blush);
+}
+
 .htc-staff .htc-hospitality-table {
   overflow: hidden;
   border: 1px solid var(--htc-border-warm);

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PlaybookBuilder } from "@/components/playbooks/playbook-builder";
 import { PlaybookTemplateEditorHeader } from "@/components/playbooks/playbook-template-editor-header";
 import { getVenueDocuments } from "@/lib/documents/service";
@@ -25,9 +24,7 @@ export default async function PlaybookEditorPage({ params }: Props) {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <Link href="/library/playbooks" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-3.5 w-3.5" /> Planning Templates
-      </Link>
+      <CollectionBackLink href="/library/playbooks" label="Planning Templates" />
       <PlaybookTemplateEditorHeader
         template={template}
         taskCount={tasks.length}

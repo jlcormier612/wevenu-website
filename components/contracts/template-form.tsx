@@ -199,7 +199,7 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
           <div className="space-y-2">
             {MERGE_FIELDS.map((f) => (
               <div key={f.key}
-                className="rounded-lg border border-border bg-muted/30 px-3 py-2 cursor-pointer hover:border-primary/40 transition-colors"
+                className="htc-merge-field-chip rounded-lg border border-border px-3 py-2 cursor-pointer"
                 onClick={() => {
                   const token = `{{${f.key}}}`;
                   navigator.clipboard?.writeText(token).then(() => toast.success(`Copied ${token}`)).catch(() => {});

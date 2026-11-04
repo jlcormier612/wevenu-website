@@ -321,7 +321,7 @@ function EventHeroCard({
                   {group.components.map((c, i) => (
                     <li
                       key={`${c.useKey}-${i}`}
-                      className="rounded-md border border-border/50 bg-background/60 px-2.5 py-1.5 text-sm"
+                      className="rounded-md border border-border/50 bg-card px-2.5 py-1.5 text-sm"
                       data-testid={`booking-component-${c.useKey}`}
                     >
                       <p className="font-medium leading-snug text-heading">
