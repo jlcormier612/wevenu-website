@@ -4,7 +4,8 @@
 
 **Code:** `495387f75e7656e6a7c137f7a0c5400ba9bd942b` — Wave G5 light polish (templates, chips, relationship tabs)
 **Prior serving tip:** `46ba7d69` (dark white hover/nav)
-**Deploy branch:** `sandbox-deploy/htc-wave-g5-495387f7`
+**Deploy branch:** `sandbox-deploy/htc-wave-g5-495387f7`  
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41775471501
 
 ### This tip adds
 
