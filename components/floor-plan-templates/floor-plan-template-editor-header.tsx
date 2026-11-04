@@ -32,7 +32,7 @@ export function FloorPlanTemplateEditorHeader({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="font-heading text-2xl font-medium text-heading">{template.name}</h1>
           {isStarter && <Badge variant="muted">{LIBRARY_LABELS.starter}</Badge>}

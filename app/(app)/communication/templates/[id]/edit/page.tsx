@@ -66,7 +66,7 @@ export default async function EditMessageTemplatePage({ params, searchParams }: 
           actions={<DeleteTemplateButton templateId={template.id} templateName={template.name} />}
         />
       </div>
-      <Card className="htc-working-card gap-0 py-0">
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Template editor</CardTitle>
           <CardDescription>Changes take effect the next time this template is used.</CardDescription>

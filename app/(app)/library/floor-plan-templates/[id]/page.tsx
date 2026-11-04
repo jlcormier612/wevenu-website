@@ -37,20 +37,18 @@ export default async function FloorPlanTemplateEditorPage({ params }: Props) {
 
   return (
     <div
-      className="htc-hospitality-page mx-auto max-w-5xl space-y-5 sm:space-y-6"
+      className="htc-hospitality-page space-y-5 sm:space-y-6"
       data-htc-phase12="floor-plan-template-edit"
     >
       <CollectionBackLink href="/library/floor-plan-templates" label="Floor Plan Templates" />
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <FloorPlanTemplateEditorHeader
-          template={template}
-          spaces={spaces}
-          spaceName={spaceName}
-          objectCount={objects.length}
-          masterDescription={master?.description ?? null}
-          acceptedEventTypes={acceptedEventTypes}
-        />
-      </div>
+      <FloorPlanTemplateEditorHeader
+        template={template}
+        spaces={spaces}
+        spaceName={spaceName}
+        objectCount={objects.length}
+        masterDescription={master?.description ?? null}
+        acceptedEventTypes={acceptedEventTypes}
+      />
       <Card className="htc-working-card gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Layout editor</CardTitle>

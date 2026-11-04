@@ -15,6 +15,7 @@ import {
 import { GuidedSetupWizard } from "@/components/event-order-templates/guided-setup-wizard";
 import { TemplateWorkflowChrome } from "@/components/event-order-templates/template-workflow-chrome";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { StarterOwnershipBanner } from "@/components/library/starter-ownership-banner";
@@ -146,11 +147,10 @@ export function EventOrderTemplateDetail({
       className="htc-hospitality-page space-y-5 sm:space-y-6 overflow-x-hidden"
       data-htc-phase12="eo-template-edit"
     >
+      <CollectionBackLink href="/library/event-order-templates" label="Event Order Templates" />
       <TemplateWorkflowChrome templateId={template.id} current="edit" />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <BusinessAssetHeader
-          backHref="/library/event-order-templates"
-          backLabel="Event Order Templates"
           whatIsThis="Event Order Template"
           title={template.name}
           status={

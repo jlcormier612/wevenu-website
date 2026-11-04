@@ -1250,41 +1250,36 @@ export function EventDetail({
 
         {/* ── Playbook ─────────────────────────────────────────────── */}
         <TabsContent value="playbook">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Planning Tasks</CardTitle>
-              <CardDescription>
-                Manage the client checklist and your venue&apos;s internal task list. Client tasks are
-                shared through portal release; venue tasks remain internal.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventTaskList
-                eventId={event.id}
-                clientId={event.clientId}
-                eventDate={event.eventDate}
-                eventName={event.name}
-                clientName={event.clientName}
-                clientEmail={coupleEmail}
-                venueName={venueName}
-                eventType={event.eventType}
-                initialTasks={eventTasks}
-                readinessByKind={readinessByKind}
-                templates={playbookTemplates}
-                applications={playbookApplications}
-                contextLinksByTask={contextLinksByTask}
-                taskContacts={taskContacts}
-                linkableDocuments={linkableDocuments}
-                linkableTimelineEntries={linkableTimelineEntries}
-                linkableConversationMessages={linkableConversationMessages}
-                requestsByTaskId={requestsByTaskId}
-                staffOptions={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
-                preferOverviewRelease={Boolean(eventSetup.usesProfile)}
-                preferredClientTemplateId={eventSetup.inheritedTemplateRefs?.planningPlaybookTemplateId ?? null}
-                preferredVenueTemplateId={eventSetup.inheritedTemplateRefs?.venuePlanningPlaybookTemplateId ?? null}
-              />
-            </CardContent>
-          </Card>
+          <RelationshipTabShell
+            title="Planning Tasks"
+            description="Manage the client checklist and your venue's internal task list. Client tasks are shared through portal release; venue tasks remain internal."
+            testId="event-planning-tab"
+          >
+            <EventTaskList
+              eventId={event.id}
+              clientId={event.clientId}
+              eventDate={event.eventDate}
+              eventName={event.name}
+              clientName={event.clientName}
+              clientEmail={coupleEmail}
+              venueName={venueName}
+              eventType={event.eventType}
+              initialTasks={eventTasks}
+              readinessByKind={readinessByKind}
+              templates={playbookTemplates}
+              applications={playbookApplications}
+              contextLinksByTask={contextLinksByTask}
+              taskContacts={taskContacts}
+              linkableDocuments={linkableDocuments}
+              linkableTimelineEntries={linkableTimelineEntries}
+              linkableConversationMessages={linkableConversationMessages}
+              requestsByTaskId={requestsByTaskId}
+              staffOptions={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
+              preferOverviewRelease={Boolean(eventSetup.usesProfile)}
+              preferredClientTemplateId={eventSetup.inheritedTemplateRefs?.planningPlaybookTemplateId ?? null}
+              preferredVenueTemplateId={eventSetup.inheritedTemplateRefs?.venuePlanningPlaybookTemplateId ?? null}
+            />
+          </RelationshipTabShell>
         </TabsContent>
 
         <TabsContent value="questionnaires">
@@ -1408,7 +1403,7 @@ export function EventDetail({
             description="Preferred, recommended, and required classifications come from your Vendor Network. Assign who works this booking below."
             testId="event-vendors-tab"
           >
-          <Card className="htc-working-card gap-0 py-0">
+          <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
             <CardHeader className="py-4">
               <CardTitle>Vendor Network</CardTitle>
               <CardDescription>
@@ -1421,7 +1416,7 @@ export function EventDetail({
             </CardContent>
           </Card>
 
-          <Card className="htc-working-card gap-0 py-0">
+          <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
             <CardHeader className="py-4">
               <CardTitle>Optional highlights for this event</CardTitle>
               <CardDescription>
@@ -1439,7 +1434,7 @@ export function EventDetail({
             </CardContent>
           </Card>
 
-          <Card className="htc-working-card gap-0 py-0">
+          <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
             <CardHeader className="py-4">
               <CardTitle>Assigned to This Event</CardTitle>
               <CardDescription>

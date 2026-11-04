@@ -23,7 +23,10 @@ export default async function PlaybookEditorPage({ params }: Props) {
   if (!template) notFound();
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div
+      className="htc-hospitality-page space-y-5 sm:space-y-6"
+      data-htc-phase12="planning-template-edit"
+    >
       <CollectionBackLink href="/library/playbooks" label="Planning Templates" />
       <PlaybookTemplateEditorHeader
         template={template}

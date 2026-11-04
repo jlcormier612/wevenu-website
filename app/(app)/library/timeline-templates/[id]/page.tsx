@@ -28,19 +28,17 @@ export default async function TimelineTemplateEditorPage({ params }: Props) {
 
   return (
     <div
-      className="htc-hospitality-page mx-auto max-w-3xl space-y-5 sm:space-y-6"
+      className="htc-hospitality-page space-y-5 sm:space-y-6"
       data-htc-phase12="timeline-template-edit"
     >
       <CollectionBackLink href="/library/timeline-templates" label="Timeline Templates" />
-      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
-        <TimelineTemplateEditorHeader
-          template={template}
-          spaces={spaces}
-          spaceName={spaceName ?? null}
-          itemCount={items.length}
-          masterDescription={master?.description ?? null}
-        />
-      </div>
+      <TimelineTemplateEditorHeader
+        template={template}
+        spaces={spaces}
+        spaceName={spaceName ?? null}
+        itemCount={items.length}
+        masterDescription={master?.description ?? null}
+      />
       <TimelineTemplateEditor templateId={id} initialItems={items} />
     </div>
   );

@@ -57,8 +57,9 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   additional_inquiry_message: MessageSquareWarning,
 };
 
-/** Wave G3 — all activity icons eucalyptus (no gray/muted/mixed family fills). */
-const ACTIVITY_ICON_EUCALYPTUS = "bg-primary/15 text-primary";
+/** Wave G5 — visible eucalyptus wash (not washed-out primary/15 gray). */
+const ACTIVITY_ICON_EUCALYPTUS =
+  "bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)]";
 
 const TYPE_COLOR: Record<string, string> = {
   lead_created: ACTIVITY_ICON_EUCALYPTUS,

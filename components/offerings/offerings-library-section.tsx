@@ -218,12 +218,12 @@ export const OfferingsLibrarySection = React.forwardRef<
                         </Badge>
                         {o.isArchived && <Badge variant="outline">Archived</Badge>}
                         {isUnpriced(o) && (
-                          <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-unpriced-${o.id}`}>
+                          <Badge className="htc-badge-attention" data-testid={`offering-unpriced-${o.id}`}>
                             Unpriced
                           </Badge>
                         )}
                         {needsInventoryLink(o) && (
-                          <Badge variant="outline" className="border-amber-300 text-amber-800" data-testid={`offering-no-inventory-${o.id}`}>
+                          <Badge className="htc-badge-attention" data-testid={`offering-no-inventory-${o.id}`}>
                             No inventory link
                           </Badge>
                         )}
@@ -333,7 +333,7 @@ export const OfferingsLibrarySection = React.forwardRef<
                             <div className="flex flex-wrap items-center gap-2">
                               <Layers className="h-3.5 w-3.5 shrink-0 text-heading" aria-hidden />
                               <p className="text-sm font-semibold text-heading">{row.group.name}</p>
-                              <Badge variant="outline" className="bg-card">Category</Badge>
+                              <Badge className="htc-badge-active">Category</Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
                               Category under {parentName} · {memberCount} item{memberCount === 1 ? "" : "s"} the couple can pick from

@@ -38,8 +38,9 @@ const SOURCE_ICON: Record<ActivityTimelineSource, React.ElementType> = {
   automation: Workflow,
 };
 
-/** Wave G3 — all activity icons eucalyptus (no gray/muted/mixed family fills). */
-const ACTIVITY_ICON_EUCALYPTUS = "bg-primary/15 text-primary";
+/** Wave G5 — visible eucalyptus wash (not washed-out primary/15 gray). */
+const ACTIVITY_ICON_EUCALYPTUS =
+  "bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)]";
 
 const SOURCE_COLOR: Record<ActivityTimelineSource, string> = {
   lead: ACTIVITY_ICON_EUCALYPTUS,

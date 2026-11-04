@@ -112,7 +112,7 @@ type RelatedContext = {
 // ---- Single timeline entry row ----------------------------------------------
 
 const DUE_STATUS_BADGE: Record<"upcoming" | "today", string> = {
-  upcoming: "bg-muted text-muted-foreground",
+  upcoming: "htc-badge-active",
   today: "bg-primary/10 text-primary",
 };
 
@@ -646,7 +646,7 @@ export function TimelineView({
   });
   const dayOfWindowStrip = dayOfWindow ? (
     <div
-      className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm"
+      className="htc-hospitality-section-label px-3 py-2 text-sm"
       data-testid="timeline-day-of-booking-window"
       title={
         multiDay

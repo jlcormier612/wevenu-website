@@ -9,12 +9,9 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
     paid: "Paid",
     void: "Void",
   };
-  // Wave G3 — quiet statuses use eucalyptus; attention keeps warning; void stays destructive.
-  if (status === "draft") {
-    return <Badge className="htc-badge-active">{label.draft}</Badge>;
-  }
-  if (status === "paid") {
-    return <Badge className="htc-badge-active">{label.paid}</Badge>;
+  // Wave G5 — quiet statuses use eucalyptus Active; void stays destructive; sent stays warning.
+  if (status === "draft" || status === "paid" || status === "partially_paid") {
+    return <Badge className="htc-badge-active">{label[status]}</Badge>;
   }
   if (status === "void") {
     return <Badge variant="destructive">{label.void}</Badge>;

@@ -206,11 +206,11 @@ export function GuidedSetupWizard({
     <div className="space-y-6" data-testid="eo-guided-setup-wizard">
       {incompleteFlat.length > 0 ? (
         <div
-          className="sticky top-14 z-10 rounded-xl border border-amber-200 bg-amber-50/95 px-4 py-3 shadow-sm backdrop-blur"
+          className="htc-surface-attention sticky top-14 z-10 px-4 py-3 shadow-sm backdrop-blur"
           data-testid="eo-guided-incomplete-checklist"
         >
-          <p className="text-sm font-semibold text-amber-900">Finish before Use / Send</p>
-          <ul className="mt-2 space-y-1 text-xs text-amber-900/90">
+          <p className="text-sm font-semibold text-heading">Finish before Use / Send</p>
+          <ul className="mt-2 space-y-1 text-xs text-foreground/90">
             {incompleteFlat.map((item) => (
               <li key={`${item.sectionId}-${item.message}`}>
                 <a
@@ -283,7 +283,7 @@ export function GuidedSetupWizard({
                   </Button>
                 </div>
                 {!expanded && warnings.length > 0 ? (
-                  <p className="pl-6 text-xs text-amber-800" data-testid="eo-guided-review-warning-collapsed">
+                  <p className="pl-6 text-xs text-heading" data-testid="eo-guided-review-warning-collapsed">
                     {warnings.length} item{warnings.length === 1 ? "" : "s"} to finish — expand to edit
                   </p>
                 ) : null}
@@ -291,7 +291,7 @@ export function GuidedSetupWizard({
               {expanded ? (
                 <CardContent className="space-y-5 py-5" data-testid={`eo-guided-section-body-${section.id}`}>
                   {warnings.map((m) => (
-                    <p key={m} className="text-sm text-amber-800" data-testid="eo-guided-review-warning">{m}</p>
+                    <p key={m} className="htc-surface-attention px-3 py-2 text-sm" data-testid="eo-guided-review-warning">{m}</p>
                   ))}
                   <SectionFloorPlanDefault templateId={template.id} section={section} onPersist={onPersist} />
 

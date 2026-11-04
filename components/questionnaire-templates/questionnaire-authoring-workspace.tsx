@@ -279,16 +279,16 @@ export function QuestionnaireAuthoringWorkspace({
   const saveStatus = pending ? "saving" : dirty ? "dirty" : savedFlash ? "saved" : "idle";
 
   return (
-    <div className="space-y-6">
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="questionnaire-template-edit">
       <CollectionBackLink
         href="/library/questionnaire-templates"
         label="Questionnaire Templates"
         confirmLeave={confirmLeave}
       />
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <header className="htc-hospitality-heading htc-hospitality-intro-accent flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-medium tracking-tight text-heading">{state.name || template.name}</h1>
+            <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">{state.name || template.name}</h1>
             {isStarter && (
               <Badge variant="muted" className="text-[10px]">{LIBRARY_LABELS.starter}</Badge>
             )}

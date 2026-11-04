@@ -634,8 +634,8 @@ function MilestoneChapter({
   const editingTask = tasks.find((t) => t.id === editingId);
 
   return (
-    <div className="rounded-xl border border-border bg-card/60">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="htc-hospitality-section-label flex items-center gap-2 rounded-none border-x-0 border-t-0 px-4 py-3">
         {renaming ? (
           <div className="flex items-center gap-1.5 flex-1">
             <Input

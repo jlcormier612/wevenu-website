@@ -12,11 +12,14 @@ const STATUS_VARIANT: Record<LeadStatus, BadgeVariant> = {
   lost: "destructive",
 };
 
+/** Quiet positive lifecycle chips use eucalyptus Active treatment. */
+const EUCALYPTUS_STATUSES = new Set<LeadStatus>(["tour_scheduled", "booked", "enrolled_in_sequence"]);
+
 export function LeadStatusBadge({ status }: { status: LeadStatus }) {
   return (
     <Badge
       variant={STATUS_VARIANT[status] ?? "outline"}
-      className={status === "booked" ? "htc-badge-active" : undefined}
+      className={EUCALYPTUS_STATUSES.has(status) ? "htc-badge-active" : undefined}
     >
       {statusLabel(status)}
     </Badge>

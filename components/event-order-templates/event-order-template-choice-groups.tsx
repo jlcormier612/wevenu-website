@@ -715,7 +715,7 @@ export function EventOrderTemplateChoiceGroups({
               <li
                 key={g.id}
                 className={`rounded-lg border bg-background p-4 space-y-2 ${
-                  emptyDependent ? "border-amber-500/60" : "border-border"
+                  emptyDependent ? "border-[var(--htc-soft-rose)]" : "border-border"
                 } ${depth > 0 ? "ml-3 border-l-4 border-l-heading/30 sm:ml-5" : ""}`}
                 data-testid={`eo-choice-group-${g.id}`}
                 data-dependent={dependent ? "true" : "false"}
@@ -769,7 +769,7 @@ export function EventOrderTemplateChoiceGroups({
                     ) : null}
                     {emptyDependent ? (
                       <p
-                        className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-1.5 text-xs text-heading"
+                        className="htc-surface-attention mt-2 px-2 py-1.5 text-xs text-heading"
                         data-testid={`eo-incomplete-branch-${g.id}`}
                       >
                         {guidedOrdinary
@@ -1382,7 +1382,7 @@ export function EventOrderTemplateChoiceGroups({
 
       {completeness.length > 0 ? (
         <div
-          className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm text-heading"
+          className="htc-surface-attention px-3 py-2 text-sm text-heading"
           data-testid="eo-section-completeness"
         >
           <p className="font-medium">Incomplete configuration</p>

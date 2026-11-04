@@ -14,7 +14,7 @@ export default function NewPackagePage() {
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader title="New Package" description="Add an offering to your venue catalog." />
       </div>
-      <Card className="htc-working-card gap-0 py-0">
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Package details</CardTitle>
           <CardDescription>Packages can be selected as line items when creating invoices.</CardDescription>

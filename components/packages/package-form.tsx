@@ -7,7 +7,6 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createPackageAction, updatePackageAction } from "@/app/(app)/packages/actions";
-import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Field } from "@/components/setup/field";
@@ -63,7 +62,6 @@ export function PackageForm({ existing }: { existing?: PackageWithItems }) {
 
   return (
     <div className="space-y-5">
-      <CollectionBackLink href="/packages" label="Packages" confirmLeave={confirmLeave} />
       <Field label="Package name" htmlFor="pn" required error={errors.name}>
         <Input id="pn" value={input.name} onChange={(e) => set("name", e.target.value)}
           placeholder="Silver Package, Garden Ceremony, Full-Day Rental…" autoFocus aria-invalid={errors.name ? true : undefined} />

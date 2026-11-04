@@ -14,6 +14,7 @@ import {
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { InventoryTemplateDetailsSheet } from "@/components/event-inventory/inventory-template-details-sheet";
 import { TemplateItemEditSheet } from "@/components/event-inventory/template-item-edit-sheet";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibraryAutosaveHint, LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { StarterOwnershipBanner } from "@/components/library/starter-ownership-banner";
@@ -244,33 +245,36 @@ export function InventoryTemplateDetail({
   }
 
   return (
-    <div className="space-y-6">
-      <BusinessAssetHeader
-        backHref="/library/inventory-templates"
-        backLabel="Inventory Templates"
-        whatIsThis="Inventory Template"
-        title={template.name}
-        status={
-          <>
-            {isStarter && !template.isArchived && <Badge variant="muted">{LIBRARY_LABELS.starter}</Badge>}
-            {!isStarter && !template.isArchived && <Badge variant="outline">{LIBRARY_LABELS.yourTemplate}</Badge>}
-            {template.isArchived ? <Badge variant="muted">{LIBRARY_LABELS.archived}</Badge> : null}
-          </>
-        }
-        lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-        primaryAction={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-testid="inventory-template-edit-details"
-            onClick={() => setDetailsOpen(true)}
-          >
-            {LIBRARY_LABELS.editDetails}
-          </Button>
-        }
-      />
-      {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="inventory-template-edit">
+      <CollectionBackLink href="/library/inventory-templates" label="Inventory Templates" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <BusinessAssetHeader
+          whatIsThis="Inventory Template"
+          title={template.name}
+          status={
+            <>
+              {isStarter && !template.isArchived && <Badge variant="muted">{LIBRARY_LABELS.starter}</Badge>}
+              {!isStarter && !template.isArchived && <Badge variant="outline">{LIBRARY_LABELS.yourTemplate}</Badge>}
+              {template.isArchived ? <Badge variant="muted">{LIBRARY_LABELS.archived}</Badge> : null}
+            </>
+          }
+          lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          primaryAction={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="inventory-template-edit-details"
+              onClick={() => setDetailsOpen(true)}
+            >
+              {LIBRARY_LABELS.editDetails}
+            </Button>
+          }
+        />
+        {template.description ? (
+          <p className="mt-2 text-sm text-muted-foreground">{template.description}</p>
+        ) : null}
+      </div>
       {isStarter ? (
         <StarterOwnershipBanner
           templateName={template.name}
@@ -295,15 +299,15 @@ export function InventoryTemplateDetail({
         onOpenChange={setDetailsOpen}
       />
 
-      <p className="rounded-sm border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+      <p className="htc-surface-guidance px-3.5 py-3 text-xs text-muted-foreground">
         Add items from{" "}
-        <Link href="/library/inventory" className="font-medium text-heading hover:underline">
+        <Link href="/library/inventory" className="htc-record-link font-medium">
           Available Inventory
         </Link>
         {" "}first. Use a custom line only when something is not already in your catalog. Applying this template copies a snapshot onto the event.
       </p>
 
-      <Card>
+      <Card className="htc-working-card gap-0 py-0">
         <CardHeader className="flex-row items-center justify-between gap-2">
           <p className="text-sm font-medium text-heading">Items ({template.items.length})</p>
           <LibrarySaveStatus status={saveUi.status} model="autosave" />

@@ -800,6 +800,15 @@ html:has(.htc-staff) [data-slot="card"] {
   border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
 }
 
+/*
+ * Wave G5 — instructional working-card headers use calm blue (how-to /
+ * save-scope copy), not eucalyptus. Eucalyptus stays for group/section chrome.
+ */
+.htc-staff .htc-working-card.htc-working-card-guidance > [data-slot="card-header"] {
+  background-color: var(--htc-calm-blue);
+  border-bottom: 1px solid var(--htc-border-calm);
+}
+
 .htc-staff .htc-working-card > [data-slot="card-footer"] {
   background-color: #ffffff;
   border-top-color: var(--htc-border-warm);
@@ -3212,6 +3221,12 @@ html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-footer"] {
 html.dark:has(.htc-staff) .htc-working-card > [data-slot="card-header"] {
   background-color: var(--htc-eucalyptus-surface);
   border-bottom-color: var(--border);
+}
+
+.dark .htc-staff .htc-working-card.htc-working-card-guidance > [data-slot="card-header"],
+html.dark:has(.htc-staff) .htc-working-card.htc-working-card-guidance > [data-slot="card-header"] {
+  background-color: var(--htc-calm-blue);
+  border-bottom-color: var(--htc-border-calm);
 }
 
 /*

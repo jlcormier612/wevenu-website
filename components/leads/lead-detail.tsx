@@ -1076,7 +1076,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
 
         {/* ── Overview ─────────────────────────────────────────────── */}
         <TabsContent value="overview">
-          <div className="mb-4">
+          <RelationshipTabShell
+            title="Overview"
+            description="Booking details, package, and payment setup for this lead."
+            testId="lead-overview-tab"
+          >
             <BookingJourneyPanel
               journey={bookingJourney}
               packages={packages}
@@ -1091,7 +1095,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvent
               openSetupPayments={openSetupPayments}
               workspaceReturnTo={`/leads/${lead.id}#booking-journey-payments`}
             />
-          </div>
+          </RelationshipTabShell>
         </TabsContent>
 
         {/* ── Conversation ─────────────────────────────────────────── */}

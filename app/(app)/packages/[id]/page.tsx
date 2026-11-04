@@ -34,7 +34,7 @@ export default async function EditPackagePage({ params }: Props) {
           }
         />
       </div>
-      <Card className="htc-working-card gap-0 py-0">
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Package details</CardTitle>
           <CardDescription>
@@ -45,7 +45,7 @@ export default async function EditPackagePage({ params }: Props) {
           <PackageForm existing={pkg} />
         </CardContent>
       </Card>
-      <Card className="htc-working-card gap-0 py-0">
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>What&apos;s Included</CardTitle>
           <CardDescription>List everything a client receives in this package. Inclusions appear on invoices and print documents.</CardDescription>

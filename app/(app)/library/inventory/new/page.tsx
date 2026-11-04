@@ -17,7 +17,7 @@ export default async function NewInventoryItemPage() {
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader title="New Inventory Item" description="Add a reusable item to your inventory." />
       </div>
-      <Card className="htc-working-card gap-0 py-0">
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Item details</CardTitle>
           <CardDescription>You can edit quantity, category, and notes any time after you save.</CardDescription>

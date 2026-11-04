@@ -31,7 +31,7 @@ export default async function EditInventoryItemPage({ params }: Props) {
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader title={item.name} description="Edit this inventory item." />
       </div>
-      <Card className="htc-working-card gap-0 py-0">
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Item details</CardTitle>
           <CardDescription>Changes apply to this catalog item. Existing reservations are unchanged.</CardDescription>

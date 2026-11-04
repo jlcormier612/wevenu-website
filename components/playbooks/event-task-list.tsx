@@ -1188,7 +1188,7 @@ export function EventTaskList({
             ? <Badge variant="muted">No tasks yet</Badge>
             : openCount === 0
               ? (
-                <Badge variant="success" data-testid="task-list-status">
+                <Badge className="htc-badge-active" data-testid="task-list-status">
                   {waived.length > 0 && complete.length === 0
                     ? `${waived.length} waived · none open`
                     : waived.length > 0
@@ -1197,7 +1197,11 @@ export function EventTaskList({
                 </Badge>
               )
               : (
-                <Badge variant={overdue.length > 0 ? "destructive" : "default"} data-testid="task-list-status">
+                <Badge
+                  variant={overdue.length > 0 ? "destructive" : "outline"}
+                  className={overdue.length > 0 ? undefined : "htc-badge-active"}
+                  data-testid="task-list-status"
+                >
                   {openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}
                   {complete.length + waived.length > 0
                     ? ` · ${complete.length} completed${waived.length > 0 ? ` · ${waived.length} waived` : ""}`

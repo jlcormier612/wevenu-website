@@ -40,7 +40,7 @@ export default async function EditTemplatePage({ params }: Props) {
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader title={`Edit · ${template.name}`} description="Update the template content and merge fields." />
       </div>
-      <Card className="htc-working-card gap-0 py-0">
+      <Card className="htc-working-card htc-working-card-guidance gap-0 py-0">
         <CardHeader className="py-4">
           <CardTitle>Template editor</CardTitle>
           <CardDescription>Changes take effect for new contracts. Existing contracts are unaffected.</CardDescription>
