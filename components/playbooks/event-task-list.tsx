@@ -540,8 +540,8 @@ function TaskRow({
   }
 
   return (
-    <div className="border-b border-border/50 last:border-0">
-      <div className="group flex items-start gap-3 py-3">
+    <div className="mx-2 mb-1.5 rounded-md border border-border/60 bg-card last:mb-2">
+      <div className="group flex items-start gap-3 px-2.5 py-3">
         <button type="button" onClick={onToggleExpand} className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground" aria-label="Expand">
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
@@ -819,7 +819,7 @@ export function PlaybookApplyRow({
 
     if (isDraft) {
       return (
-        <div className="rounded-lg border border-dashed border-warning-foreground/30 bg-warning/5 px-3 py-2">
+        <div className="rounded-lg border border-dashed border-warning-foreground/30 bg-card px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="text-sm">{meta.emoji}</span>
             <p className="text-xs text-muted-foreground flex-1">
@@ -863,13 +863,13 @@ export function PlaybookApplyRow({
     }
 
     return (
-      <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+      <div className="rounded-lg border border-border bg-card px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{meta.emoji}</span>
           <p className="text-xs text-muted-foreground flex-1">
             <span className="font-medium text-heading">{meta.label}:</span> {displayTitle} applied
           </p>
-          <Badge variant="muted" className="text-xs shrink-0">
+          <Badge className="htc-badge-active text-xs shrink-0">
             {kind === "client" && application.releasedAt
               ? `Released ${new Date(application.releasedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
               : "Active"}
@@ -924,7 +924,7 @@ export function PlaybookApplyRow({
   // thing on screen with no way to act on it.
   if (templates.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border px-3 py-2">
+      <div className="rounded-lg border border-dashed border-border bg-card px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{meta.emoji}</span>
           <p className="text-xs text-muted-foreground flex-1">
@@ -949,7 +949,7 @@ export function PlaybookApplyRow({
     : kindCopy.emptyState;
 
   return (
-    <div className="rounded-lg border border-dashed border-border px-3 py-2">
+    <div className="rounded-lg border border-dashed border-border bg-card px-3 py-2">
       <div className="flex items-center gap-2">
         <span className="text-sm">{meta.emoji}</span>
         <div className="min-w-0 flex-1">
@@ -1131,8 +1131,18 @@ export function EventTaskList({
 
   const renderStatusGroup = (groupTasks: EventTask[], label: string, show: boolean) => !show || groupTasks.length === 0 ? null : (
     <div className="space-y-0">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground py-1.5">{label} ({groupTasks.length})</p>
-      {groupTasks.map(renderTaskRow)}
+      {label === "Completed" || label === "Overdue" ? (
+        <p className="htc-hospitality-section-label rounded-none border-x-0 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide">
+          {label} ({groupTasks.length})
+        </p>
+      ) : (
+        <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label} ({groupTasks.length})
+        </p>
+      )}
+      <div className="space-y-0 px-1 pb-1">
+        {groupTasks.map(renderTaskRow)}
+      </div>
     </div>
   );
 
@@ -1145,19 +1155,21 @@ export function EventTaskList({
     return (
       <section
         key={key}
-        className="rounded-lg border border-border bg-card/40 px-3 py-2 space-y-1"
+        className="overflow-hidden rounded-lg border border-border bg-card"
         data-testid={`planning-responsibility-${key}`}
         data-responsibility={key}
         data-task-count={sectionTasks.length}
       >
-        <h3 className="text-sm font-semibold text-heading pt-1 pb-0.5">
+        <h3 className="htc-hospitality-section-label rounded-none border-x-0 border-t-0 px-3 py-2 text-sm font-semibold">
           {TASK_RESPONSIBILITY_LABEL[key]}
           <span className="ml-1.5 text-xs font-normal text-muted-foreground">({sectionTasks.length})</span>
         </h3>
-        {renderStatusGroup(sectionOverdue, "Overdue", true)}
-        {renderStatusGroup(sectionPending, "Upcoming", true)}
-        {renderStatusGroup(sectionComplete, "Completed", true)}
-        {renderStatusGroup(sectionWaived, "Waived", sectionWaived.length > 0)}
+        <div className="space-y-1 py-1">
+          {renderStatusGroup(sectionOverdue, "Overdue", true)}
+          {renderStatusGroup(sectionPending, "Upcoming", true)}
+          {renderStatusGroup(sectionComplete, "Completed", true)}
+          {renderStatusGroup(sectionWaived, "Waived", sectionWaived.length > 0)}
+        </div>
       </section>
     );
   };
@@ -1245,7 +1257,7 @@ export function EventTaskList({
       </div>
 
       {clientTasks.length > 0 && (
-        <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
+        <div className="rounded-lg border border-border/60 bg-card px-3 py-2">
           <MilestoneStepper tasks={clientTasks} />
         </div>
       )}

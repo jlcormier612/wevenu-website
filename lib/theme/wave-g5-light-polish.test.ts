@@ -115,10 +115,39 @@ describe("Wave G5 — relationship workspace tabs", () => {
     assert.match(lead, /testId="lead-overview-tab"/);
   });
 
-  it("timeline summary bars use eucalyptus section labels", () => {
+  it("timeline summary stays eucalyptus; booking-window bar is white", () => {
     const summary = read("components/events/timeline/timeline-summary-bar.tsx");
     const view = read("components/events/timeline/timeline-view.tsx");
     assert.match(summary, /htc-hospitality-section-label/);
-    assert.match(view, /timeline-day-of-booking-window[\s\S]*htc-hospitality-section-label|htc-hospitality-section-label[\s\S]*timeline-day-of-booking-window/);
+    assert.match(view, /timeline-day-of-booking-window[\s\S]*bg-card|bg-card[\s\S]*timeline-day-of-booking-window/);
+    assert.doesNotMatch(
+      view,
+      /timeline-day-of-booking-window[\s\S]*htc-hospitality-section-label|htc-hospitality-section-label[\s\S]*timeline-day-of-booking-window/,
+    );
+  });
+});
+
+describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => {
+  it("Reports shell links back to Templates", () => {
+    const shell = read("components/reporting/reports-layout-shell.tsx");
+    assert.match(shell, /CollectionBackLink[\s\S]*href="\/library"[\s\S]*label="Templates"/);
+  });
+
+  it("EO offering picker fields are white card surfaces", () => {
+    const select = read("components/event-order-templates/categorized-offering-select.tsx");
+    assert.match(select, /bg-card/);
+    assert.doesNotMatch(select, /bg-background/);
+  });
+
+  it("timeline template items header uses calm-blue guidance", () => {
+    const editor = read("components/timeline-templates/timeline-template-editor.tsx");
+    assert.match(editor, /htc-working-card-guidance/);
+  });
+
+  it("planning responsibility sections use white cards + eucalyptus bars", () => {
+    const tasks = read("components/playbooks/event-task-list.tsx");
+    assert.match(tasks, /planning-responsibility-[\s\S]*htc-hospitality-section-label|htc-hospitality-section-label[\s\S]*planning-responsibility/);
+    assert.match(tasks, /bg-card/);
+    assert.doesNotMatch(tasks, /bg-card\/40/);
   });
 });

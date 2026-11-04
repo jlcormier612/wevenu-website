@@ -646,7 +646,7 @@ export function TimelineView({
   });
   const dayOfWindowStrip = dayOfWindow ? (
     <div
-      className="htc-hospitality-section-label px-3 py-2 text-sm"
+      className="rounded-md border border-border bg-card px-3 py-2 text-sm"
       data-testid="timeline-day-of-booking-window"
       title={
         multiDay

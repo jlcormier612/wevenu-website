@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 
-describe("Saved Reports navigation (Phase 11C)", () => {
-  it("does not show a Templates breadcrumb on the Reports shell", () => {
+describe("Saved Reports navigation", () => {
+  it("shows a Templates back link on the Reports shell", () => {
     const shell = readFileSync("components/reporting/reports-layout-shell.tsx", "utf8");
     assert.match(shell, /PageHeader[\s\S]*title="Reports"/);
     assert.match(shell, /ReportTabs/);
-    assert.doesNotMatch(shell, /CollectionBackLink/);
-    assert.doesNotMatch(shell, /label="Templates"/);
-    assert.doesNotMatch(shell, /href="\/library"/);
+    assert.match(shell, /CollectionBackLink/);
+    assert.match(shell, /label="Templates"/);
+    assert.match(shell, /href="\/library"/);
   });
 
   it("keeps Library Brochures Templates back link (library collection escape)", () => {
@@ -20,7 +20,7 @@ describe("Saved Reports navigation (Phase 11C)", () => {
     );
   });
 
-  it("keeps Saved Reports list page content and does not invent a back link there", () => {
+  it("keeps Saved Reports list page content under the shell", () => {
     const page = readFileSync("app/(app)/reporting/saved/page.tsx", "utf8");
     const list = readFileSync("components/reporting/saved-report-list.tsx", "utf8");
     assert.match(page, /PageHeader[\s\S]*title="Saved Reports"/);
@@ -30,14 +30,16 @@ describe("Saved Reports navigation (Phase 11C)", () => {
     assert.doesNotMatch(page, /starters point at/);
     assert.doesNotMatch(list, /htc-report-saved-shell/);
     assert.match(list, /data-report-saved-list/);
-    assert.doesNotMatch(page, /CollectionBackLink/);
-    assert.doesNotMatch(page, /label="Templates"/);
   });
 
   it("wires the reporting layout through ReportsLayoutShell", () => {
     const layout = readFileSync("app/(app)/reporting/layout.tsx", "utf8");
     assert.match(layout, /ReportsLayoutShell/);
-    assert.doesNotMatch(layout, /CollectionBackLink/);
-    assert.doesNotMatch(layout, /label="Templates"/);
+  });
+
+  it("manage mode keeps Saved Reports escape under the Templates shell link", () => {
+    const detail = readFileSync("components/reporting/saved-report-detail.tsx", "utf8");
+    assert.match(detail, /backHref="\/reporting\/saved"/);
+    assert.match(detail, /backLabel="Saved Reports"/);
   });
 });

@@ -92,7 +92,7 @@ export function CategorizedOfferingSelect({
           </Label>
           <select
             id={id ? `${id}-filter` : undefined}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
             value={filter}
             disabled={disabled}
             data-testid={testId ? `${testId}-filter` : "eo-offering-category-filter"}
@@ -149,7 +149,7 @@ export function CategorizedOfferingSelect({
       ) : null}
       <select
         id={id}
-        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         value={value}
         disabled={disabled || visible.length === 0}
         data-testid={testId ? `${testId}-list` : "eo-offering-list"}

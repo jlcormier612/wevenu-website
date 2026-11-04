@@ -10,8 +10,7 @@ export const metadata: Metadata = { title: "Reports" };
  * Reports answers "how is my business performing." Five shallow tabs,
  * no nested sub-navigation (brief §61).
  *
- * Saved Reports is a Reports tab. ReportTabs provide navigation — no
- * library Templates breadcrumb on /reporting/saved (Phase 11C).
+ * Saved Reports is a Reports tab. Shell CollectionBackLink returns to Templates.
  */
 export default function ReportingLayout({ children }: { children: React.ReactNode }) {
   return <ReportsLayoutShell>{children}</ReportsLayoutShell>;

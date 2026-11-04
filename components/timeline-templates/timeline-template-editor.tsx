@@ -286,7 +286,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   const formDayPreview = formatTemplateDayLabel(form.dayOffset ?? 0, formDayAnchor);
 
   return (
-    <Card className="htc-working-card gap-0 py-0" data-testid="timeline-template-items-card">
+    <Card className="htc-working-card htc-working-card-guidance gap-0 py-0" data-testid="timeline-template-items-card">
       <CardHeader className="py-4">
         <div className="flex items-center justify-between gap-2">
           <div>
