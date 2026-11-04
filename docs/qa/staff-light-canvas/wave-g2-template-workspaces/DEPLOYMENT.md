@@ -2,10 +2,11 @@
 
 ## Tip queued
 
-**Tip:** `69e35ddc78fe1839c4d9b2910962a48773bed3b0`  
+**Tip:** `eda32e3a133b685f47ffabcaf3389826cdeec728`  
 **Code:** `be7df513654b0252c78eace84a9d99f19cd2b059` — Wave G2 template workspace chrome  
 **Prior serving tip:** `f463a6d5` (Wave G1)  
-**Deploy branch:** `sandbox-deploy/htc-wave-g2-69e35ddc`
+**Deploy branch:** `sandbox-deploy/htc-wave-g2-eda32e3a`  
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41759605503
 
 ### This tip adds
 
