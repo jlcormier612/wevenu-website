@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { EventBookingDateForm } from "@/components/events/event-booking-date-form";
 import { EventEditForm } from "@/components/events/event-edit-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
@@ -37,8 +38,12 @@ export default async function EditEventPage({ params }: Props) {
     : undefined;
   const canEditBookingDate = role === "owner" || role === "manager";
   const spaceOperatingMode = venue?.spaceOperatingMode ?? "single";
+  const backHref = event.clientId ? `/clients/${event.clientId}` : `/events/${event.id}`;
+  const backLabel = event.clientId ? "Client" : event.name;
+
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="event-edit">
+      <CollectionBackLink href={backHref} label={backLabel} />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader title={`Edit · ${event.name}`} description="Update event details." />
       </div>

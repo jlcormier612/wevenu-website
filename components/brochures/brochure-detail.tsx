@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { deleteBrochureAction, sendBrochureToLeadAction, updateBrochureAction, updateBrochurePhotographyAction } from "@/app/(app)/library/brochures/actions";
 import { BrochurePhotosEditor } from "@/components/brochures/brochure-photos-editor";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
@@ -163,35 +164,35 @@ export function BrochureDetail({
   }
 
   return (
-    <div className="space-y-6">
-      <BusinessAssetHeader
-        backHref="/library/brochures"
-        backLabel="Brochures"
-        beforeNavigate={confirmLeave}
-        whatIsThis="Brochure"
-        title={brochure.name}
-        status={brochure.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
-        lastUpdated={new Date(brochure.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-        primaryAction={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              render={<Link href={`/library/brochures/${brochure.id}/preview`} />}
-            >
-              <Eye className="mr-1.5 h-3.5 w-3.5" />Preview
-            </Button>
-            <a href={`/api/brochures/${brochure.id}/pdf`} download>
-              <Button type="button" variant="ghost" size="sm"><Download className="mr-1.5 h-3.5 w-3.5" /></Button>
-            </a>
-          </div>
-        }
-      />
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="brochure-edit">
+      <CollectionBackLink href="/library/brochures" label="Brochures" confirmLeave={confirmLeave} />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <BusinessAssetHeader
+          whatIsThis="Brochure"
+          title={brochure.name}
+          status={brochure.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+          lastUpdated={new Date(brochure.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          primaryAction={
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                render={<Link href={`/library/brochures/${brochure.id}/preview`} />}
+              >
+                <Eye className="mr-1.5 h-3.5 w-3.5" />Preview
+              </Button>
+              <a href={`/api/brochures/${brochure.id}/pdf`} download>
+                <Button type="button" variant="ghost" size="sm"><Download className="mr-1.5 h-3.5 w-3.5" /></Button>
+              </a>
+            </div>
+          }
+        />
+      </div>
 
-      <Card>
-        <CardHeader><p className="text-sm font-medium text-heading">Content</p></CardHeader>
-        <CardContent className="space-y-5">
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Content</p></CardHeader>
+        <CardContent className="space-y-5 py-5">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium text-heading">Name</Label>
             <Input value={name} onChange={(e) => markDirty(setName)(e.target.value)} />
@@ -228,9 +229,9 @@ export function BrochureDetail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><p className="text-sm font-medium text-heading">Photography</p></CardHeader>
-        <CardContent>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Photography</p></CardHeader>
+        <CardContent className="py-5">
           <BrochurePhotosEditor
             brochureId={brochure.id}
             venueId={venueId}
@@ -244,9 +245,9 @@ export function BrochureDetail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><p className="text-sm font-medium text-heading">Share with a lead</p></CardHeader>
-        <CardContent className="space-y-3">
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Share with a lead</p></CardHeader>
+        <CardContent className="space-y-3 py-5">
           <p className="text-xs text-muted-foreground">
             Share sends an email with a view link. The public link for this brochure stays the same after you send —
             there is no separate revoke action. Archive hides the brochure from your Library list; previously shared
@@ -285,9 +286,9 @@ export function BrochureDetail({
       </Card>
 
       {brochure.activities.length > 0 && (
-        <Card>
-          <CardHeader><p className="text-sm font-medium text-heading">Activity</p></CardHeader>
-          <CardContent><ActivityTimeline activities={brochure.activities} /></CardContent>
+        <Card className="htc-working-card gap-0 py-0">
+          <CardHeader className="py-4"><p className="text-sm font-medium text-heading">Activity</p></CardHeader>
+          <CardContent className="py-5"><ActivityTimeline activities={brochure.activities} /></CardContent>
         </Card>
       )}
 

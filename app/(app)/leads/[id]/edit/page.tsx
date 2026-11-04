@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { LeadEditForm } from "@/components/leads/lead-edit-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { RelationshipPhotoEditor } from "@/components/relationship-photos/relationship-photo-editor";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import {
@@ -54,11 +55,14 @@ export default async function EditLeadPage({ params }: Props) {
     currentValue: lead.eventType,
   });
 
+  const displayName = leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName);
+
   return (
     <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="lead-edit">
+      <CollectionBackLink href={`/leads/${lead.id}`} label={displayName} />
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
-          title={`Edit · ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`}
+          title={`Edit · ${displayName}`}
           description="Update the contact information and event details for this lead."
         />
       </div>

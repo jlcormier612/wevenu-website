@@ -164,6 +164,8 @@ These treatments apply across **most staff pages**, not only classic list screen
 
 **Wave G3 (relationship tab parity):** Lead + Booking tabs use Documents recipe via `RelationshipTabShell` (white title + botanical strip); Activity icons all eucalyptus; Activity/Payments empties calm blue; invoice rows blush hover; Questionnaire apply panel calm guidance; quiet invoice/questionnaire status → `.htc-badge-active` (not muted gray).
 
+**Wave G4 (leftover editors):** Mechanical CollectionBackLink + `.htc-working-card` sweep — Pipeline/Inventory/Packages new+edit; Contract/Message template new; Automations new; Lead/Client/Vendor new+edit; Event edit; Brochure detail (CollectionBackLink above BusinessAssetHeader, working cards).
+
 ---
 
 ## 3. Shared utilities (Phase 11D + Phase 12 + list recipe)

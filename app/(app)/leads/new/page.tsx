@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { NewInquiryForm } from "@/components/leads/new-inquiry-form";
+import { CollectionBackLink } from "@/components/library/collection-back-link";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import {
   Card,
@@ -72,22 +73,25 @@ export default async function NewLeadPage({
   } : undefined;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={block ? "Convert to Lead" : "New Lead"}
-        description={block
-          ? `Turning "${block.title}" into a real Lead — nothing here was retyped, review and save when ready.`
-          : "Record a new lead from a call, email, or walk-in."}
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="lead-new">
+      <CollectionBackLink href="/leads" label="Leads" />
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={block ? "Convert to Lead" : "New Lead"}
+          description={block
+            ? `Turning "${block.title}" into a real Lead — nothing here was retyped, review and save when ready.`
+            : "Record a new lead from a call, email, or walk-in."}
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Lead details</CardTitle>
           <CardDescription>
             Fill in what you know. Everything is editable later from the lead
             record.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <NewInquiryForm
             initial={initial}
             fromBlockId={block ? fromBlockId : undefined}
