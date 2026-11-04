@@ -2,9 +2,9 @@
 
 ## Tip queued
 
-**Tip:** `83d031b261816382ae8f6ccee621012feb1733f9`  
+**Tip:** `e3f6087bac125c8b71143a63f5d06efd2b127e11`  
 **Prior serving tip:** `457efda4` (Timeline/Floor Plan copy)  
-**Deploy branch:** `sandbox-deploy/htc-wave-g1-83d031b2`
+**Deploy branch:** `sandbox-deploy/htc-wave-g1-e3f6087b`
 
 ### This tip adds
 
