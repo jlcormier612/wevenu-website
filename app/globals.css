@@ -762,8 +762,8 @@ html:has(.htc-staff) [data-slot="card"] {
 }
 
 /*
- * Saved Reports list — calm-blue informational nest (not linen).
- * Nested LibraryAssetCards stay white for readable working rows.
+ * Legacy Saved Reports nest (unused). Prefer calm-blue guidance above the list,
+ * then white LibraryAssetCards directly on the beige canvas.
  */
 .htc-staff .htc-report-saved-shell {
   border: 1px solid var(--htc-border-calm);

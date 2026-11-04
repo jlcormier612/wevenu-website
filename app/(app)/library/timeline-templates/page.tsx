@@ -28,7 +28,7 @@ export default async function TimelineTemplatesPage() {
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Timeline Templates"
-          description="Reusable day-of schedules a venue builds once and applies to any booking."
+          description="Reusable day-of schedules you build once and apply to any booking."
           actions={
             <TimelineTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} />
           }

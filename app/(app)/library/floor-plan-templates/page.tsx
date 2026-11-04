@@ -38,7 +38,7 @@ export default async function FloorPlanTemplatesPage() {
       <div className="htc-hospitality-heading htc-hospitality-intro-accent">
         <PageHeader
           title="Floor Plan Templates"
-          description="Reusable room layouts a venue builds once and applies to any booking."
+          description="Reusable room layouts you build once and apply to any booking."
           actions={
             canEdit ? (
               <FloorPlanTemplateStarterPicker

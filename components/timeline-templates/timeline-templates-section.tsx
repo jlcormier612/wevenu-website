@@ -362,7 +362,7 @@ export function TimelineTemplatesSection({
       <div className="rounded-sm border border-dashed border-border py-10 text-center space-y-3">
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No timeline templates yet</p>
-        <p className="text-xs text-muted-foreground">Reusable day-of schedules a venue builds once and applies to any booking.</p>
+        <p className="text-xs text-muted-foreground">Reusable day-of schedules you build once and apply to any booking.</p>
         <div className="flex justify-center gap-2 pt-1 flex-wrap">
           <StarterMenu missingKeys={missingStarterKeys} />
           {headerCreate ? (

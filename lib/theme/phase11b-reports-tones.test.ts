@@ -31,7 +31,7 @@ describe("Phase 11B — report tone CSS", () => {
     assert.doesNotMatch(collected, /--htc-soft-blush/);
   });
 
-  it("defines Saved Reports calm-blue informational shell with white nested cards", () => {
+  it("keeps legacy Saved Reports shell tokens available (list uses guidance + white cards)", () => {
     assert.match(css, /\.htc-staff \.htc-report-saved-shell[\s\S]*--htc-calm-blue/);
     assert.match(
       css,
@@ -125,8 +125,9 @@ describe("Phase 11B — page wiring", () => {
     assert.match(events, /tone="ops"/);
   });
 
-  it("Saved Reports uses calm-blue shell; Phase 10 chrome files untouched in structure", () => {
-    assert.match(saved, /htc-report-saved-shell/);
+  it("Saved Reports list is white cards on beige; Phase 10 chrome files untouched in structure", () => {
+    assert.match(saved, /data-report-saved-list/);
+    assert.doesNotMatch(saved, /htc-report-saved-shell/);
     assert.match(shell, /htc-hospitality-intro-accent/);
     assert.match(dates, /htc-hospitality-filter/);
     assert.match(tabs, /ReportTabs|report-tabs|data-htc-report/i);

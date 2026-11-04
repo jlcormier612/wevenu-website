@@ -22,8 +22,14 @@ describe("Saved Reports navigation (Phase 11C)", () => {
 
   it("keeps Saved Reports list page content and does not invent a back link there", () => {
     const page = readFileSync("app/(app)/reporting/saved/page.tsx", "utf8");
+    const list = readFileSync("components/reporting/saved-report-list.tsx", "utf8");
     assert.match(page, /PageHeader[\s\S]*title="Saved Reports"/);
     assert.match(page, /SavedReportList/);
+    assert.match(page, /htc-surface-guidance/);
+    assert.match(page, /About Saved Reports/);
+    assert.doesNotMatch(page, /starters point at/);
+    assert.doesNotMatch(list, /htc-report-saved-shell/);
+    assert.match(list, /data-report-saved-list/);
     assert.doesNotMatch(page, /CollectionBackLink/);
     assert.doesNotMatch(page, /label="Templates"/);
   });

@@ -438,7 +438,7 @@ export function FloorPlanTemplatesSection({
       <div className="rounded-xl border border-dashed border-border py-10 text-center space-y-3">
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No floor plan templates yet</p>
-        <p className="text-xs text-muted-foreground">Reusable room layouts a venue builds once and applies to any booking.</p>
+        <p className="text-xs text-muted-foreground">Reusable room layouts you build once and apply to any booking.</p>
         {canEdit && headerCreate && (
           <div className="flex justify-center gap-2 pt-1 flex-wrap">
             <StarterMenu missingKeys={missingStarterKeys} />

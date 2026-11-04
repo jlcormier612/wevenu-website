@@ -125,7 +125,7 @@ export const PublicFormList = React.forwardRef<
       )}
 
       {canEdit && showCreate && (
-        <div className="space-y-3 rounded-lg border border-border p-4">
+        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
           <div className="space-y-1.5">
             <Label className="text-xs">Form name</Label>
             <Input
@@ -168,7 +168,7 @@ export const PublicFormList = React.forwardRef<
       )}
 
       {forms.length === 0 && !showCreate ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="htc-surface-guidance flex flex-col items-center justify-center rounded-xl border-dashed py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No public forms yet</p>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Create a form, publish it, then share the link or create QR codes. Responses become leads.
@@ -178,23 +178,31 @@ export const PublicFormList = React.forwardRef<
         <div className="space-y-3">
           {active.map((f) => {
             const url = publicFormAbsoluteUrl(f.publicKey, appUrl);
+            const metaParts = [
+              `${f.questionCount} question${f.questionCount === 1 ? "" : "s"}`,
+              `${f.qrCount} QR code${f.qrCount === 1 ? "" : "s"}`,
+              `${f.leadCount} lead${f.leadCount === 1 ? "" : "s"}`,
+            ];
+            if (f.updatedAt) metaParts.push(`Updated ${formatDate(f.updatedAt)}`);
+            const showPublicTitle =
+              f.publicTitle.trim().length > 0 &&
+              f.publicTitle.trim().toLowerCase() !== f.internalName.trim().toLowerCase();
             return (
-              <div key={f.id} className="rounded-lg border border-border p-4">
+              <div key={f.id} className="rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <Link href={`/library/public-forms/${f.id}`} className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-heading">{f.internalName}</p>
-                      <Badge variant={f.status === "published" ? "default" : "muted"}>
+                      <Badge
+                        variant="outline"
+                        className={f.status === "published" ? "htc-badge-active" : undefined}
+                      >
                         {statusLabel(f.status)}
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {f.publicTitle} · {f.questionCount} question{f.questionCount === 1 ? "" : "s"}
-                      {" · "}
-                      {f.qrCount} QR code{f.qrCount === 1 ? "" : "s"}
-                      {" · "}
-                      {f.leadCount} lead{f.leadCount === 1 ? "" : "s"}
-                      {f.updatedAt ? ` · Updated ${formatDate(f.updatedAt)}` : ""}
+                      {showPublicTitle ? `${f.publicTitle} · ` : ""}
+                      {metaParts.join(" · ")}
                     </p>
                     {f.status === "published" && url ? (
                       <p className="mt-1 break-all text-[11px] text-muted-foreground">{url}</p>
@@ -253,7 +261,7 @@ export const PublicFormList = React.forwardRef<
                   <Link
                     key={f.id}
                     href={`/library/public-forms/${f.id}`}
-                    className="block rounded-lg border border-border p-4 opacity-70"
+                    className="block rounded-lg border border-border bg-card p-4 opacity-70"
                   >
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-heading">{f.internalName}</p>
