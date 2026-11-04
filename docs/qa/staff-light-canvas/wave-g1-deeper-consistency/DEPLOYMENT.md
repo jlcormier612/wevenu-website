@@ -2,9 +2,11 @@
 
 ## Tip queued
 
-**Tip:** `e1beadf3992c0a4475ed66effc1bbd73ecc544e7`  
+**Tip:** `f463a6d5e1cf2fc8dbb62bc8d33a82e07b1e18fa`  
+**Code:** `83d031b261816382ae8f6ccee621012feb1733f9` — Wave G1 polish  
 **Prior serving tip:** `457efda4` (Timeline/Floor Plan copy)  
-**Deploy branch:** `sandbox-deploy/htc-wave-g1-e1beadf3`
+**Deploy branch:** `sandbox-deploy/htc-wave-g1-f463a6d5`  
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41758879713
 
 ### This tip adds
 
