@@ -2,10 +2,10 @@
 
 ## Tip queued
 
-**Tip:** `f380d435c6de29793a1a7ca21afc4e97ebffa8de`  
+**Tip:** `69e35ddc78fe1839c4d9b2910962a48773bed3b0`  
 **Code:** `be7df513654b0252c78eace84a9d99f19cd2b059` — Wave G2 template workspace chrome  
 **Prior serving tip:** `f463a6d5` (Wave G1)  
-**Deploy branch:** `sandbox-deploy/htc-wave-g2-f380d435`
+**Deploy branch:** `sandbox-deploy/htc-wave-g2-69e35ddc`
 
 ### This tip adds
 
