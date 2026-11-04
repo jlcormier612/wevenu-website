@@ -4,7 +4,7 @@
 
 **Code:** `a71bf3c8d6af6ae9f66d7f69cbd2c73b7a9a8e35` — Wave G3 relationship tab parity
 **Prior serving tip:** `eda32e3a` (Wave G2)
-**Deploy branch:** `sandbox-deploy/htc-wave-g3-59058115`
+**Deploy branch:** `sandbox-deploy/htc-wave-g3-481874de`
 
 ### This tip adds
 
@@ -22,3 +22,5 @@
 
 - Production: untouched
 - Unrelated dirty tree preserved on `feat/spaces-booking-e1-smart-fields`
+
+**Actions:** https://github.com/jlcormier612/wevenu-website/actions/runs/41760179635
