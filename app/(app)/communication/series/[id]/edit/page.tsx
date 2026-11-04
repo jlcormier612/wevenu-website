@@ -46,19 +46,16 @@ export default async function EditSeriesPage({ params }: Props) {
         />
       </div>
       <AutomationsHelp />
-      <Card>
-        <CardHeader>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Automation</CardTitle>
-          <CardDescription>
-            Changes to messages only affect people who enter this automation after you save. Preview updates as you edit.
-          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <SeriesForm series={series} templates={templates} />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>People in this automation</CardTitle>
           <CardDescription>
             {series.triggerType
@@ -66,7 +63,7 @@ export default async function EditSeriesPage({ params }: Props) {
               : `This automation only starts when you add someone. ${activeCount} active right now.`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <SeriesEnrollments sequenceId={series.id} enrollments={enrollments} />
         </CardContent>
       </Card>

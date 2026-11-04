@@ -55,6 +55,10 @@ describe("Phase 12 — Automations", () => {
   const help = read("components/communication/automations-help.tsx");
   const form = read("components/communication/series-form.tsx");
   const view = read("components/communication/series-view.tsx");
+  const edit = read("app/(app)/communication/series/[id]/edit/page.tsx");
+  const create = read("app/(app)/communication/series/new/page.tsx");
+  const enrollments = read("components/communication/series-enrollments.tsx");
+  const css = read("app/globals.css");
 
   it("list page uses white primary heading with botanical side strip", () => {
     assert.match(page, /htc-hospitality-heading htc-hospitality-intro-accent/);
@@ -83,6 +87,32 @@ describe("Phase 12 — Automations", () => {
   it("What will happen preview uses calm guidance", () => {
     assert.match(form, /htc-surface-guidance/);
     assert.match(form, /What will happen\?/);
+  });
+
+  it("Wave F edit/new use working cards with eucalyptus headers", () => {
+    assert.match(css, /\.htc-staff \.htc-working-card \{[\s\S]*?background:\s*#ffffff/);
+    assert.match(
+      css,
+      /\.htc-staff \.htc-working-card > \[data-slot="card-header"\][\s\S]*?background(?:-color)?:\s*var\(--htc-eucalyptus-surface\)/,
+    );
+    assert.match(css, /\.htc-staff \.htc-working-row:hover \{[\s\S]*?--htc-soft-blush/);
+    assert.match(edit, /data-htc-phase12="automations-edit"/);
+    assert.match(edit, /htc-working-card/);
+    assert.match(edit, /htc-hospitality-page/);
+    assert.match(create, /data-htc-phase12="automations-new"/);
+    assert.match(create, /htc-working-card/);
+    assert.match(create, /htc-hospitality-page/);
+  });
+
+  it("Wave F keeps one calm-blue orientation; save-scope is quiet copy", () => {
+    assert.match(edit, /<AutomationsHelp/);
+    assert.match(create, /<AutomationsHelp/);
+    assert.match(form, /Saving changes applies to people who enter this automation after you save/);
+    assert.doesNotMatch(form, /htc-surface-guidance-compact/);
+    assert.match(form, /htc-record-link[\s\S]*Edit message|Edit message[\s\S]*htc-record-link/);
+    assert.match(form, /htc-badge-active/);
+    assert.match(enrollments, /htc-working-row/);
+    assert.match(enrollments, /htc-badge-active/);
   });
 });
 
@@ -116,20 +146,39 @@ describe("Phase 12 — broader staff framing", () => {
 
   it("EO template example uses calm guidance", () => {
     const eo = read("app/(app)/library/event-order-templates/page.tsx");
-    assert.match(eo, /htc-surface-guidance/);
+    assert.match(eo, /LibraryDependencyNote/);
+    assert.match(eo, /tone="calm"/);
     assert.match(eo, /eo-templates-landing-example/);
+  });
+
+  it("Wave F deeper editors use working-card chrome", () => {
+    const pages = [
+      "app/(app)/communication/templates/[id]/edit/page.tsx",
+      "app/(app)/contracts/templates/[id]/edit/page.tsx",
+      "app/(app)/library/pipeline-templates/[id]/edit/page.tsx",
+      "app/(app)/vendors/[id]/edit/page.tsx",
+      "app/(app)/clients/[id]/edit/page.tsx",
+      "app/(app)/leads/[id]/edit/page.tsx",
+      "app/(app)/events/[id]/edit/page.tsx",
+    ];
+    for (const rel of pages) {
+      const src = read(rel);
+      assert.match(src, /htc-working-card/, rel);
+      assert.match(src, /htc-hospitality-page/, rel);
+      assert.match(src, /htc-hospitality-heading htc-hospitality-intro-accent/, rel);
+    }
   });
 });
 
 describe("Phase 12 — Phase 11D relationship workspace preserved", () => {
-  it("does not strip Lead/Booking surface roles", () => {
+  it("does not strip Lead/Booking surface roles (Rule K slot map)", () => {
     const lead = read("components/leads/lead-detail.tsx");
     const prefs = read("components/leads/space-preference-fields.tsx");
     const event = read("components/events/event-detail.tsx");
-    assert.match(lead, /htc-surface-operational/);
-    assert.match(lead, /lead-sales-availability/);
-    assert.match(prefs, /htc-surface-operational/);
-    assert.match(event, /htc-surface-summary|event-booking-summary/);
+    assert.match(lead, /lead-sales-availability[\s\S]*htc-surface-working|htc-surface-working[\s\S]*lead-sales-availability/);
+    assert.match(prefs, /htc-surface-summary/);
+    assert.match(event, /htc-surface-summary-pale|event-booking-summary/);
+    assert.match(event, /htc-surface-working/);
   });
 });
 
@@ -165,6 +214,14 @@ describe("Phase 12 final — Task Center overdue readability", () => {
 
 describe("Phase 12 final — Lead date-hold mobile layout", () => {
   const holds = read("components/availability/date-holds-section.tsx");
+
+  it("Not protected uses attention chip — not muted gray wash", () => {
+    assert.match(holds, /date-hold-protection-headline[\s\S]*?htc-badge-attention|htc-badge-attention[\s\S]*?Not protected/);
+    assert.doesNotMatch(
+      holds.slice(holds.indexOf("Not protected") - 200, holds.indexOf("Not protected") + 40),
+      /bg-muted\/50/,
+    );
+  });
   const lead = read("components/leads/lead-detail.tsx");
 
   it("stacks Sales owner above Date hold on mobile", () => {

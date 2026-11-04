@@ -36,15 +36,17 @@ export default async function EditClientPage({ params }: Props) {
       });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit · ${clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}`}
-        description={client.linkedEventId
-          ? "Update this client's contact information. Event details are edited on the event."
-          : "Update client information and event details."}
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="client-edit">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={`Edit · ${clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}`}
+          description={client.linkedEventId
+            ? "Update this client's contact information. Event details are edited on the event."
+            : "Update client information and event details."}
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>{client.linkedEventId ? "Contact information" : "Client details"}</CardTitle>
           <CardDescription>
             {client.linkedEventId
@@ -52,7 +54,7 @@ export default async function EditClientPage({ params }: Props) {
               : "Changes are logged to the activity timeline."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 py-5">
           {client.relationshipId && venue ? (
             <>
               <RelationshipPhotoEditor

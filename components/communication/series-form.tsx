@@ -63,10 +63,12 @@ function AutomationStepTemplatePreview({
   const body = isEmail ? (template.emailBody ?? "") : (template.smsBody ?? "");
 
   return (
-    <div className="min-w-0 space-y-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2.5">
+    <div className="min-w-0 space-y-2 rounded-md border border-border bg-card px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {isEmail ? <Mail className="h-3.5 w-3.5" aria-hidden /> : <MessageSquare className="h-3.5 w-3.5" aria-hidden />}
-        <span>{isEmail ? "Email" : "SMS"}</span>
+        <span className="htc-badge-active rounded-sm border px-1.5 py-0.5 normal-case tracking-normal">
+          {isEmail ? "Email" : "Text"}
+        </span>
         <span className="normal-case tracking-normal text-muted-foreground/80">· from “{template.name}”</span>
       </div>
       {isEmail && subject.trim() && (
@@ -89,10 +91,7 @@ function AutomationStepTemplatePreview({
         </p>
       </div>
       <div>
-        <Link
-          href={editHref}
-          className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-        >
+        <Link href={editHref} className="htc-record-link text-sm font-medium">
           Edit message
         </Link>
       </div>
@@ -171,7 +170,7 @@ export function SeriesForm({
   return (
     <div className="space-y-8">
       {isEdit && (
-        <p className="htc-surface-guidance-compact text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Saving changes applies to people who enter this automation after you save. People already in this automation keep the steps they started with.
         </p>
       )}
@@ -244,7 +243,7 @@ export function SeriesForm({
         )}
 
         {(!input.triggerType || ["lead_created", "lead_stage_changed", "tour_completed"].includes(input.triggerType)) && (
-        <label className="flex max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card/40 px-3 py-2.5">
+        <label className="flex max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
           <input
             type="checkbox"
             className="mt-0.5"
@@ -269,7 +268,7 @@ export function SeriesForm({
             title="What happens"
             hint="Messages send in the order you set them. A message set to 0 days sends immediately. Messages scheduled for a later day go out at 10:00 AM in your venue’s local time."
           />
-          <Button type="button" size="sm" variant="outline" onClick={addStep} className="shrink-0 self-start">
+          <Button type="button" size="sm" onClick={addStep} className="shrink-0 self-start">
             + Add message
           </Button>
         </div>
@@ -286,7 +285,7 @@ export function SeriesForm({
               const selected = templates.find((t) => t.id === step.templateId) ?? null;
               const isFirst = i === 0;
               return (
-                <div key={i} className="min-w-0 space-y-3 rounded-lg border border-border p-3">
+                <div key={i} className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                     <div className="flex shrink-0 items-center gap-1 self-start">
                       <Button type="button" size="icon-sm" variant="ghost" disabled={i === 0} onClick={() => moveStep(i, -1)}>

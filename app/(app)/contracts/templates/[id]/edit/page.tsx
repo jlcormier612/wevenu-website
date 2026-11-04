@@ -33,14 +33,16 @@ export default async function EditTemplatePage({ params }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title={`Edit · ${template.name}`} description="Update the template content and merge fields." />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="contract-template-edit">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader title={`Edit · ${template.name}`} description="Update the template content and merge fields." />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Template editor</CardTitle>
           <CardDescription>Changes take effect for new contracts. Existing contracts are unaffected.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <TemplateForm template={template} />
         </CardContent>
       </Card>

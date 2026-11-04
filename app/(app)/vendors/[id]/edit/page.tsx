@@ -19,14 +19,16 @@ export default async function EditVendorPage({ params }: Props) {
   const vendor = await getVendor(id);
   if (!vendor) notFound();
   return (
-    <div className="space-y-6">
-      <PageHeader title={`Edit · ${vendor.businessName}`} description="Update vendor details." />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="vendor-edit">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader title={`Edit · ${vendor.businessName}`} description="Update vendor details." />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Vendor details</CardTitle>
           <CardDescription>Changes take effect immediately.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <VendorEditForm vendor={vendor} />
         </CardContent>
       </Card>

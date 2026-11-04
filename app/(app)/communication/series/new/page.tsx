@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AutomationsHelp } from "@/components/communication/automations-help";
 import { SeriesForm } from "@/components/communication/series-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTemplates } from "@/lib/message-templates/service";
 
 export const metadata: Metadata = { title: "New Automation" };
@@ -19,14 +19,11 @@ export default async function NewSeriesPage() {
         />
       </div>
       <AutomationsHelp />
-      <Card>
-        <CardHeader>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Build your automation</CardTitle>
-          <CardDescription>
-            Keep it simple: who it starts for → what happens → when it stops. Use your existing Templates for the message content.
-          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <SeriesForm templates={templates} />
         </CardContent>
       </Card>

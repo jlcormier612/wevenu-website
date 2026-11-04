@@ -55,18 +55,20 @@ export default async function EditMessageTemplatePage({ params, searchParams }: 
     getVenueDocuments(),
   ]);
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit · ${template.name}`}
-        description="Update the template content and merge fields."
-        actions={<DeleteTemplateButton templateId={template.id} templateName={template.name} />}
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="message-template-edit">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={`Edit · ${template.name}`}
+          description="Update the template content and merge fields."
+          actions={<DeleteTemplateButton templateId={template.id} templateName={template.name} />}
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Template editor</CardTitle>
           <CardDescription>Changes take effect the next time this template is used.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <TemplateForm
             template={template}
             attachments={attachments}

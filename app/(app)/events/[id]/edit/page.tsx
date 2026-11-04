@@ -38,16 +38,18 @@ export default async function EditEventPage({ params }: Props) {
   const canEditBookingDate = role === "owner" || role === "manager";
   const spaceOperatingMode = venue?.spaceOperatingMode ?? "single";
   return (
-    <div className="space-y-6">
-      <PageHeader title={`Edit · ${event.name}`} description="Update event details." />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="event-edit">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader title={`Edit · ${event.name}`} description="Update event details." />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Booking date</CardTitle>
           <CardDescription>
             Used for payments due at booking. Separate from the Event date.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <EventBookingDateForm
             eventId={event.id}
             bookedAt={event.bookedAt}
@@ -55,12 +57,12 @@ export default async function EditEventPage({ params }: Props) {
           />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Event details</CardTitle>
           <CardDescription>Changes are logged to the event activity timeline.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <EventEditForm
             event={event}
             spaces={spaces}

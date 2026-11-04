@@ -55,19 +55,21 @@ export default async function EditLeadPage({ params }: Props) {
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit · ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`}
-        description="Update the contact information and event details for this lead."
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="lead-edit">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={`Edit · ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`}
+          description="Update the contact information and event details for this lead."
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Lead details</CardTitle>
           <CardDescription>
             Changes are saved immediately and logged to the activity timeline.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 py-5">
           {lead.relationshipId && venue ? (
             <>
               <RelationshipPhotoEditor

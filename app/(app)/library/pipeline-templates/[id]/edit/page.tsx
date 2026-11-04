@@ -20,18 +20,20 @@ export default async function EditPipelineTemplatePage({ params }: Props) {
   const template = await getTemplate(id);
   if (!template) notFound();
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit · ${template.name}`}
-        description="Update the stages. Nothing here affects your current Leads pipeline yet."
-        actions={<DeletePipelineTemplateButton templateId={template.id} templateName={template.name} />}
-      />
-      <Card>
-        <CardHeader>
+    <div className="htc-hospitality-page space-y-5 sm:space-y-6" data-htc-phase12="pipeline-template-edit">
+      <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+        <PageHeader
+          title={`Edit · ${template.name}`}
+          description="Update the stages. Nothing here affects your current Leads pipeline yet."
+          actions={<DeletePipelineTemplateButton templateId={template.id} templateName={template.name} />}
+        />
+      </div>
+      <Card className="htc-working-card gap-0 py-0">
+        <CardHeader className="py-4">
           <CardTitle>Pipeline editor</CardTitle>
           <CardDescription>Drag stages to reorder them. Each stage maps to a fixed canonical stage used for reporting.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="py-5">
           <PipelineTemplateForm template={template} />
         </CardContent>
       </Card>
