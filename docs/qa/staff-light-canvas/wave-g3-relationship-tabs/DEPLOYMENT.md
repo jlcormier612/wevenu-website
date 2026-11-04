@@ -4,7 +4,7 @@
 
 **Code:** `a71bf3c8d6af6ae9f66d7f69cbd2c73b7a9a8e35` — Wave G3 relationship tab parity
 **Prior serving tip:** `eda32e3a` (Wave G2)
-**Deploy branch:** `sandbox-deploy/htc-wave-g3-a71bf3c8`
+**Deploy branch:** `sandbox-deploy/htc-wave-g3-59058115`
 
 ### This tip adds
 
