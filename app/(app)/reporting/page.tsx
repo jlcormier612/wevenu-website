@@ -55,10 +55,13 @@ export default async function ReportingOverviewPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <ReportHeader
-        title="How the business moved"
-        description={`What happened during ${range.label}, then what happened to the leads that came in during those dates.`}
+        title="Overview"
+        description="How the business moved during the selected period."
       />
       <DateRangeControl current={range.preset} label={range.label} />
+      <p className="text-sm text-muted-foreground -mt-2" data-testid="overview-period-orientation">
+        What happened during {range.label}, then what happened to the leads that came in during those dates.
+      </p>
 
       <BusinessFunnel funnel={businessFunnel} rangeLabel={range.label} />
 

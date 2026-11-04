@@ -209,7 +209,9 @@ describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => 
     const funnel = read("components/reporting/business-funnel.tsx");
     assert.match(header, /htc-surface-guidance/);
     assert.match(header, /data-testid="report-header"/);
-    assert.match(overview, /How the business moved/);
+    assert.match(overview, /title="Overview"/);
+    assert.match(overview, /How the business moved during the selected period/);
+    assert.match(overview, /overview-period-orientation/);
     assert.match(overview, /ReportHeader/);
     assert.doesNotMatch(funnel, /How the business moved/);
   });
