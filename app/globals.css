@@ -379,6 +379,54 @@ html:has(.htc-staff.htc-vendor) {
   border-color: color-mix(in oklch, var(--htc-blush) 28%, var(--htc-border-warm));
 }
 
+/*
+ * Couple portal — calm-blue guidance / empty shells (same Rule D tokens as staff).
+ * Used for informational empties (timeline, payments, docs) — not every blank.
+ */
+.htc-portal .htc-surface-guidance,
+.htc-portal [data-portal-empty="guidance"] {
+  border: 1px solid var(--htc-border-calm, #d5e1eb);
+  border-left: 3px solid var(--htc-calm-blue-deep, #dfe9f1);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue, #eaf1f7);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+/*
+ * Vendor workspace — empty / framed shells on hospitality canvas.
+ * Documents empty → calm blue (informational). Other empties → linen frame
+ * for contrast without inventing colors. See HTC-COLOR-DISTRIBUTION-RULES.md.
+ */
+.htc-staff.htc-vendor [data-vendor-empty="documents"],
+.htc-staff.htc-vendor .htc-vendor-empty-documents {
+  border: 1px solid var(--htc-border-calm);
+  border-left: 3px solid var(--htc-calm-blue-deep);
+  border-radius: 0.65rem;
+  background: var(--htc-calm-blue);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff.htc-vendor [data-vendor-empty="framed"],
+.htc-staff.htc-vendor .htc-vendor-empty-framed {
+  border: 1px solid var(--htc-border-warm);
+  border-radius: 0.65rem;
+  background: var(--htc-linen);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.htc-staff.htc-vendor [data-vendor-notif-item] {
+  transition: background-color 140ms ease;
+}
+.htc-staff.htc-vendor [data-vendor-notif-item]:hover {
+  background: color-mix(in oklch, var(--htc-eucalyptus) 26%, white);
+}
+.htc-staff.htc-vendor [data-vendor-notif-item][data-unread="true"]:hover {
+  background: color-mix(in oklch, var(--htc-eucalyptus) 34%, white);
+}
+
 /* Soft depth on staff cards — white working surfaces on warm canvas */
 .htc-staff [data-slot="card"],
 html:has(.htc-staff) [data-slot="card"] {

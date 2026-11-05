@@ -633,10 +633,13 @@ export function PaymentSection({ token }: { token: string }) {
           <h2 className="font-heading text-2xl font-medium text-heading">Payments</h2>
           <p className="text-sm text-muted-foreground mt-1">Your payment schedule with your venue.</p>
         </div>
-        <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 text-center">
-          <p className="text-3xl mb-3">💳</p>
-          <p className="text-sm font-medium text-heading mb-1">No payment schedule yet</p>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+        <div
+          data-portal-empty="guidance"
+          className="htc-surface-guidance p-10 text-center"
+        >
+          <p className="mb-3 text-3xl">💳</p>
+          <p className="mb-1 text-sm font-medium text-heading">No payment schedule yet</p>
+          <p className="mx-auto max-w-xs text-xs text-muted-foreground">
             Your venue coordinator will set up your payment plan here. Check back soon or reach out if you have questions.
           </p>
         </div>

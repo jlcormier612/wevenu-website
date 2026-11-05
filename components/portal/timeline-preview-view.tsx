@@ -49,7 +49,8 @@ export function TimelinePortalPreviewView({
   if (entries.length === 0) {
     return (
       <div
-        className="rounded-2xl border border-dashed border-border py-16 text-center px-6 space-y-2"
+        className="htc-surface-guidance space-y-2 px-6 py-16 text-center"
+        data-portal-empty="guidance"
         data-testid="timeline-portal-preview-empty"
       >
         <p className="text-2xl" aria-hidden>

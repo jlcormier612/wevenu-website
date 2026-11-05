@@ -99,7 +99,7 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
   }
 
   return (
-    <div className="space-y-5 rounded-sm border border-border bg-card p-6">
+    <div className="htc-surface-working space-y-5 p-6">
       <p className="text-sm font-medium text-heading">Business details</p>
 
       {/* Logo — contain (not cover) so wide wordmarks stay readable in small nav tiles */}
