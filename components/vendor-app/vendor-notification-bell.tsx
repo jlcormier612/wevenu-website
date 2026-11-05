@@ -36,12 +36,11 @@ function relativeTime(iso: string): string {
 
 /**
  * Vendor notification center — history feed with mark-one / mark-all read
- * and clear-one / clear-all dismiss. Lives in VendorAppShell (sidebar + mobile
- * header), matching venue NotificationBell.
+ * and clear-one / clear-all dismiss. Lives in VendorAppShell main header
+ * (top-right), matching venue NotificationBell placement.
  *
- * Panel is portaled + fixed so a 320px dropdown is never clipped/off-screen
- * when the trigger sits in the narrow left sidebar (absolute right-0 would
- * overflow past the viewport left edge).
+ * Panel is portaled + fixed so a 320px dropdown stays in the viewport when
+ * the trigger sits at the right edge of the header.
  */
 export function VendorNotificationBell({
   triggerClassName,

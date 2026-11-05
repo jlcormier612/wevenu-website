@@ -64,6 +64,21 @@ describe("vendor surface contrast", () => {
     );
   });
 
+  it("places vendor notifications in the main header top-right, not the sidebar logo row", () => {
+    const shell = read("components/vendor-app/vendor-app-shell.tsx");
+    const bell = read("components/vendor-app/vendor-notification-bell.tsx");
+    assert.match(
+      shell,
+      /header[\s\S]*?ml-auto[\s\S]*?<VendorNotificationBell\s*\/>/,
+    );
+    assert.doesNotMatch(
+      shell,
+      /Wordmark[\s\S]{0,220}<VendorNotificationBell/,
+    );
+    assert.doesNotMatch(shell, /lg:hidden[\s\S]{0,80}<VendorNotificationBell/);
+    assert.match(bell, /main header/);
+  });
+
   it("gives event tabs title cards and overview eucalyptus banners + day-of green", () => {
     const workspace = read("components/vendor-app/vendor-event-workspace.tsx");
     const css = read("app/globals.css");

@@ -154,7 +154,8 @@ export function VendorAppShell({
           </button>
           {/* Vendor mark lives in the left nav only — avoid a tiny unreadably cropped chip here. */}
           <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
-          <div className="ml-auto flex items-center gap-1 lg:hidden">
+          {/* Notifications top-right (venue header parity) — keeps sidebar logo row uncluttered. */}
+          <div className="ml-auto flex items-center gap-1">
             <VendorNotificationBell />
           </div>
         </header>
@@ -202,11 +203,8 @@ function SidebarContent({
     <>
       {/* Header — platform Wordmark + readable vendor mark in the nav only */}
       <div className="border-b px-4 pb-4 pt-5">
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-3">
           <Wordmark sizeClassName="h-9 w-auto max-w-[9.5rem]" />
-          <div className="hidden items-center gap-1 text-sidebar-foreground lg:flex">
-            <VendorNotificationBell triggerClassName="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
-          </div>
         </div>
         <div className="flex items-center gap-3">
           {logoUrl ? (
