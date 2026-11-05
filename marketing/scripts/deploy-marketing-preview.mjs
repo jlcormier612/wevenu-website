@@ -110,7 +110,10 @@ export function assertPreviewArgv(argv) {
 function forbiddenFileReason(relativePath) {
   const base = relativePath.split("/").at(-1) ?? relativePath;
   if (base === "vercel.json") return "vercel.json";
-  if (base === ".env" || base.startsWith(".env.")) return base;
+  // Allow committed .env.example templates; block real env files.
+  if (base === ".env" || (base.startsWith(".env.") && !base.endsWith(".example"))) {
+    return base;
+  }
   if (base === "credentials.json" || base === "credentials") return base;
   if (/\.(pem|p12|pfx)$/i.test(base)) return base;
   return null;
