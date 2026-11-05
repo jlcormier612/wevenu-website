@@ -43,10 +43,13 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
 /**
  * Venue Dashboard — concise awareness / briefing surface.
  *
- * Section jobs (must stay distinct):
- *   1. Today's Focus — what requires attention TODAY (actionable NOW)
- *   2. Coming up — what's coming (awareness, not another task queue)
- *   3. Business Snapshot — compact business-state numbers (not Reports)
+ * Section order (must stay distinct):
+ *   1. Greeting
+ *   2. Business Snapshot — compact business-state numbers (not Reports)
+ *   3. Today's Focus — what requires attention TODAY (actionable NOW)
+ *   4. Luv
+ *   5. Coming up — what's coming (awareness, not another task queue)
+ *   6. View Reports
  *
  * Owning surfaces do the work (Leads, Inbox/Conversation, Contracts,
  * Invoices, Tours, Task Center). Dashboard does not reproduce their queues.
@@ -130,6 +133,8 @@ export default async function DashboardPage({ searchParams }: Props) {
         setupHref={data.onboarding.show ? "/setup-hub" : "/setup-hub"}
       />
 
+      {snapshot && <BusinessSnapshotSection cards={snapshot.cards} />}
+
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-primary" />}
@@ -167,8 +172,6 @@ export default async function DashboardPage({ searchParams }: Props) {
           renderRow={(item) => <ClassifiedRow item={item} />}
         />
       </section>
-
-      {snapshot && <BusinessSnapshotSection cards={snapshot.cards} />}
 
       <section>
         <Link

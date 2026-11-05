@@ -192,15 +192,17 @@ describe("buildBusinessSnapshotCards", () => {
 });
 
 describe("Dashboard Business Snapshot wiring", () => {
-  it("renders Business Snapshot after Coming up and before View Reports", () => {
+  it("renders Business Snapshot after Greeting and before Today's Focus", () => {
     const page = read("app/(app)/dashboard/page.tsx");
     assert.match(page, /BusinessSnapshotSection/);
     assert.match(page, /getBusinessSnapshot/);
-    const comingIdx = page.indexOf('title="Coming up"');
+    const greetingIdx = page.indexOf("<Greeting");
     const snapIdx = page.indexOf("<BusinessSnapshotSection");
+    const focusIdx = page.indexOf('title="Today\'s Focus"');
     const reportsIdx = page.indexOf(">View Reports<");
-    assert.ok(comingIdx > 0, "Coming up section missing");
-    assert.ok(snapIdx > comingIdx, "Business Snapshot must follow Coming up");
+    assert.ok(greetingIdx >= 0, "Greeting missing");
+    assert.ok(snapIdx > greetingIdx, "Business Snapshot must follow Greeting");
+    assert.ok(focusIdx > snapIdx, "Today's Focus must follow Business Snapshot");
     assert.ok(reportsIdx > snapIdx, "View Reports must follow Business Snapshot");
     assert.doesNotMatch(page, /Your Next Steps/);
   });

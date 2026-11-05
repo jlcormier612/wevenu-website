@@ -24,11 +24,22 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /htc-hospitality-heading/);
   });
 
-  it("places Luv after Today's Focus and before Coming up", () => {
+  it("places sections in Greeting → Snapshot → Focus → Luv → Coming up → Reports order", () => {
+    const greeting = page.indexOf("<Greeting");
+    const snap = page.indexOf("<BusinessSnapshotSection");
     const focus = page.indexOf('title="Today\'s Focus"');
     const luv = page.indexOf("{luvEntry &&");
     const upcoming = page.indexOf('title="Coming up"');
-    assert.ok(focus >= 0 && luv > focus && upcoming > luv, "Luv sits between Today's Focus and Coming up");
+    const reports = page.indexOf(">View Reports<");
+    assert.ok(
+      greeting >= 0 &&
+        snap > greeting &&
+        focus > snap &&
+        luv > focus &&
+        upcoming > luv &&
+        reports > upcoming,
+      "Dashboard sections must follow Greeting → Snapshot → Focus → Luv → Coming up → Reports",
+    );
   });
 
   it("does not render Your Next Steps", () => {
