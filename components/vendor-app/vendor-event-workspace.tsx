@@ -146,6 +146,24 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "notes",     label: "Internal notes"    },
 ];
 
+/** Title card matching Documents "Event Folder" — botanical left accent on white. */
+function VendorEventTabIntro({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="htc-hospitality-heading htc-hospitality-intro-accent">
+      <h2 className="font-heading text-2xl font-medium text-heading">{title}</h2>
+      {description ? (
+        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
@@ -270,7 +288,7 @@ export function VendorEventWorkspace({
             >
               {label}
               {id === "tasks" && detail.eventTasks.filter((t) => t.status !== "complete").length + detail.personalTasks.filter((t) => t.status !== "complete").length > 0 && (
-                <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-bold text-primary">
+                <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--htc-eucalyptus-surface)] px-1 text-[10px] font-bold text-[var(--htc-botanical)]">
                   {detail.eventTasks.filter((t) => t.status !== "complete").length + detail.personalTasks.filter((t) => t.status !== "complete").length}
                 </span>
               )}
@@ -436,14 +454,22 @@ function OverviewTab({
   }
 
   return (
+    <div className="space-y-4">
+      <VendorEventTabIntro
+        title="Overview"
+        description="Your day-of assignment, open work, and recent updates for this event."
+      />
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {/* Assignment info */}
       <div
-        className={`htc-surface-working space-y-3 p-4 ${
+        className={`htc-surface-working overflow-hidden ${
           emphasizeCheckin ? "border-primary/50 ring-2 ring-primary/25" : ""
         }`}
       >
-        <h2 className="text-sm font-semibold text-foreground">Your assignment</h2>
+        <div data-vendor-section-banner="" className="px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-heading">Your assignment</h2>
+        </div>
+        <div className="space-y-3 p-4">
         <div className="space-y-2 text-sm">
           {detail.arrivalTime && (
             <div className="flex items-start gap-2">
@@ -483,8 +509,8 @@ function OverviewTab({
                 disabled={pendingField !== null}
                 className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                   checkedIn
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "border-[color-mix(in_oklch,var(--htc-botanical)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)]"
+                    : "border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)] hover:bg-[var(--htc-soft-sage,#c9d9ce)]"
                 }`}
               >
                 {pendingField === "checked_in" ? (
@@ -500,8 +526,8 @@ function OverviewTab({
                 disabled={pendingField !== null}
                 className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                   setupDone
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "border-[color-mix(in_oklch,var(--htc-botanical)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)]"
+                    : "border-[color-mix(in_oklch,var(--htc-eucalyptus)_45%,var(--htc-border-warm))] bg-[var(--htc-eucalyptus-surface)] text-[var(--htc-botanical)] hover:bg-[var(--htc-soft-sage,#c9d9ce)]"
                 }`}
               >
                 {pendingField === "setup_complete" ? (
@@ -562,12 +588,15 @@ function OverviewTab({
             </button>
           )}
         </div>
+        </div>
       </div>
 
       {/* At a glance — actionable deep links into event tabs */}
       <div className="htc-surface-working overflow-hidden">
-        <h2 className="px-4 pb-2 pt-4 text-sm font-semibold text-foreground">At a glance</h2>
-        <div className="divide-y divide-border border-t border-border">
+        <div data-vendor-section-banner="" className="px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-heading">At a glance</h2>
+        </div>
+        <div className="divide-y divide-border">
           <button
             type="button"
             onClick={() => onNavigate("tasks")}
@@ -666,12 +695,16 @@ function OverviewTab({
           charge, Event Order line, or invoice. Payments happen outside HTC.
           Hidden when the venue hasn't set a fee. */}
       {detail.agreedFee != null && (
-        <div className="htc-surface-working sm:col-span-2 space-y-2 p-4">
-          <h2 className="text-sm font-semibold text-foreground">Venue cost for this event</h2>
-          <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">
-            What the venue recorded as owed to you for coordination — not a couple charge in Hello to Cheers. Payments happen outside the app.
-          </p>
+        <div className="htc-surface-working sm:col-span-2 overflow-hidden">
+          <div data-vendor-section-banner="" className="px-4 py-2.5">
+            <h2 className="text-sm font-semibold text-heading">Venue cost for this event</h2>
+          </div>
+          <div className="space-y-2 p-4">
+            <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">
+              What the venue recorded as owed to you for coordination — not a couple charge in Hello to Cheers. Payments happen outside the app.
+            </p>
+          </div>
         </div>
       )}
 
@@ -679,8 +712,10 @@ function OverviewTab({
           FYI within 72h. Hidden when empty. */}
       {activityFeed.length > 0 && (
         <div className="htc-surface-working sm:col-span-2 overflow-hidden">
-          <h2 className="px-4 pb-2 pt-4 text-sm font-semibold text-foreground">Recent activity</h2>
-          <div className="divide-y divide-border border-t border-border">
+          <div data-vendor-section-banner="" className="px-4 py-2.5">
+            <h2 className="text-sm font-semibold text-heading">Recent activity</h2>
+          </div>
+          <div className="divide-y divide-border">
             {activityFeed.map((item) => (
               <button
                 key={item.id}
@@ -707,6 +742,7 @@ function OverviewTab({
         </div>
       )}
     </div>
+    </div>
   );
 }
 
@@ -720,12 +756,18 @@ function TimelineTab({ detail }: { detail: VendorEventDetail }) {
 
   if (detail.timeline.length === 0) {
     return (
-      <div className="rounded-sm border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium text-foreground">No timeline items yet</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-          The venue shares day-of timing with vendors when they are ready.
-          Check back once they release your items for this event.
-        </p>
+      <div className="space-y-4">
+        <VendorEventTabIntro
+          title="Timeline"
+          description="Day-of timing the venue has shared with you for this event."
+        />
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
+          <p className="text-sm font-medium text-foreground">No timeline items yet</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+            The venue shares day-of timing with vendors when they are ready.
+            Check back once they release your items for this event.
+          </p>
+        </div>
       </div>
     );
   }
@@ -753,6 +795,10 @@ function TimelineTab({ detail }: { detail: VendorEventDetail }) {
 
   return (
     <div className="space-y-5">
+      <VendorEventTabIntro
+        title="Timeline"
+        description="Day-of timing the venue has shared with you for this event."
+      />
       {Array.from(byDay.entries()).map(([day, entries]) => (
         <div key={day} className="space-y-2">
           {multiDay && detail.eventDate && (
@@ -1162,6 +1208,10 @@ function TasksTab({
 
   return (
     <div className="space-y-4">
+      <VendorEventTabIntro
+        title="Tasks"
+        description="Work assigned by the venue and tasks you track for this event."
+      />
       {/* Venue-assigned tasks */}
       {detail.eventTasks.length > 0 && (
         <div className="space-y-2">
@@ -1478,9 +1528,15 @@ function MessagesTab({
   }
   if (!threads.length || !activeId) {
     return (
-      <div className="rounded-sm border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium text-foreground">Messages</p>
-        <p className="text-xs text-muted-foreground mt-1">No conversation for this event yet.</p>
+      <div className="space-y-4">
+        <VendorEventTabIntro
+          title="Messages"
+          description="Conversation with the venue and couple for this booking."
+        />
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
+          <p className="text-sm font-medium text-foreground">Messages</p>
+          <p className="text-xs text-muted-foreground mt-1">No conversation for this event yet.</p>
+        </div>
       </div>
     );
   }
@@ -1490,6 +1546,10 @@ function MessagesTab({
 
   return (
     <div className="space-y-3">
+      <VendorEventTabIntro
+        title="Messages"
+        description="Conversation with the venue and couple for this booking."
+      />
       {threads.length > 1 && (
         <div className="flex flex-wrap gap-2">
           {threads.map((t) => {
@@ -1571,7 +1631,7 @@ function DocumentsTab({
   return (
     <div className={highlight ? "space-y-4 rounded-sm p-1 -m-1 ring-2 ring-primary/25 bg-primary/5" : "space-y-4"}>
       <DocumentWorkspace
-        title="Event folder"
+        title="Event Folder"
         description={`Files for this booking — from ${detail.venueName}, shared by you, and (when enabled) with the couple.`}
         documents={workspaceDocuments}
         initialPinnedKeys={[]}
@@ -1601,12 +1661,26 @@ function VenueInfoTab({ detail }: { detail: VendorEventDetail }) {
   }
   if (!handbook) {
     return (
-      <div className="rounded-sm border border-dashed border-border py-12 text-center">
-        <p className="text-sm text-muted-foreground">Venue information isn&apos;t available for this event.</p>
+      <div className="space-y-4">
+        <VendorEventTabIntro
+          title="Venue Information"
+          description={`Logistics and house details from ${detail.venueName}.`}
+        />
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
+          <p className="text-sm text-muted-foreground">Venue information isn&apos;t available for this event.</p>
+        </div>
       </div>
     );
   }
-  return <VendorHandbookView handbook={handbook} />;
+  return (
+    <div className="space-y-4">
+      <VendorEventTabIntro
+        title="Venue Information"
+        description={`Logistics and house details from ${detail.venueName}.`}
+      />
+      <VendorHandbookView handbook={handbook} />
+    </div>
+  );
 }
 
 function NotesTab({ detail }: { detail: VendorEventDetail }) {
@@ -1623,8 +1697,10 @@ function NotesTab({ detail }: { detail: VendorEventDetail }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-foreground">{VENDOR_PRIVATE_NOTES_LABEL}</p>
-      <p className="text-xs text-muted-foreground">{VENDOR_PRIVATE_NOTES_HINT}</p>
+      <VendorEventTabIntro
+        title={VENDOR_PRIVATE_NOTES_LABEL}
+        description={VENDOR_PRIVATE_NOTES_HINT}
+      />
       <textarea
         className="w-full rounded-sm border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[200px] resize-none"
         placeholder="Add notes for your vendor team…"

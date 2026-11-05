@@ -132,31 +132,20 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
               />
             </label>
             <p className="max-w-sm text-xs text-muted-foreground">
-              Shown small in your sidebar. Square or centered marks work best; wide wordmarks stay
+              Shown in your left nav. Square or centered marks work best; wide wordmarks stay
               fully visible (letterboxed) rather than cropped. PNG, JPG, WebP, or SVG.
             </p>
           </div>
         </div>
         {input.logoUrl ? (
-          <div className="flex items-center gap-3 pl-0.5">
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Sidebar</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={input.logoUrl}
-                alt=""
-                className="h-9 w-9 rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Header</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={input.logoUrl}
-                alt=""
-                className="h-6 w-6 rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
-              />
-            </div>
+          <div className="space-y-1 pl-0.5">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Nav preview</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={input.logoUrl}
+              alt=""
+              className="h-16 w-16 rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+            />
           </div>
         ) : null}
       </div>

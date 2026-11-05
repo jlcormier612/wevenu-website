@@ -42,8 +42,43 @@ describe("vendor surface contrast", () => {
 
   it("adds visible notification item hover hooks", () => {
     const bell = read("components/vendor-app/vendor-notification-bell.tsx");
+    const css = read("app/globals.css");
+    assert.match(bell, /data-vendor-notif-panel/);
     assert.match(bell, /data-vendor-notif-item/);
     assert.match(bell, /data-unread/);
+    // Portaled panel must not require `.htc-vendor` ancestor for hover/unread.
+    assert.match(css, /\[data-vendor-notif-panel\] \[data-vendor-notif-item\]:hover/);
+    assert.doesNotMatch(css, /\.htc-staff\.htc-vendor \[data-vendor-notif-item\]:hover/);
+    assert.match(bell, /bg-\[#f7e9eb\].*new|new[\s\S]*bg-\[#f7e9eb\]/);
+  });
+
+  it("uses botanical Wordmark + larger nav-only vendor logo", () => {
+    const shell = read("components/vendor-app/vendor-app-shell.tsx");
+    assert.match(shell, /Wordmark/);
+    assert.match(shell, /h-16 w-16/);
+    assert.doesNotMatch(shell, /Hello to Cheers/);
+    // Tiny header chip removed — mark lives in the left nav only.
+    assert.doesNotMatch(
+      shell,
+      /header[\s\S]*?logoUrl \? \([\s\S]*?<img[\s\S]*?h-6 w-6/,
+    );
+  });
+
+  it("gives event tabs title cards and overview eucalyptus banners + day-of green", () => {
+    const workspace = read("components/vendor-app/vendor-event-workspace.tsx");
+    const css = read("app/globals.css");
+    assert.match(workspace, /title="Event Folder"/);
+    assert.match(workspace, /function VendorEventTabIntro/);
+    assert.match(workspace, /data-vendor-section-banner/);
+    assert.match(workspace, /Your assignment/);
+    assert.match(workspace, /At a glance/);
+    assert.match(workspace, /Venue cost for this event/);
+    assert.match(workspace, /Recent activity/);
+    assert.match(css, /\[data-vendor-section-banner\]/);
+    assert.match(
+      workspace,
+      /htc-eucalyptus-surface[\s\S]{0,500}I've arrived/,
+    );
   });
 });
 

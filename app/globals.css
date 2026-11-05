@@ -417,14 +417,34 @@ html:has(.htc-staff.htc-vendor) {
   box-shadow: none;
 }
 
-.htc-staff.htc-vendor [data-vendor-notif-item] {
-  transition: background-color 140ms ease;
+/*
+ * Vendor notification panel is portaled to document.body (outside `.htc-vendor`),
+ * so hover/unread styles must not rely on the staff/vendor ancestor.
+ * Use hard hex fallbacks — panel is outside the staff token tree.
+ */
+[data-vendor-notif-panel] [data-vendor-notif-item] {
+  background: #ffffff;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
 }
-.htc-staff.htc-vendor [data-vendor-notif-item]:hover {
-  background: color-mix(in oklch, var(--htc-eucalyptus) 26%, white);
+[data-vendor-notif-panel] [data-vendor-notif-item][data-unread="true"] {
+  background: #fbf6f7;
 }
-.htc-staff.htc-vendor [data-vendor-notif-item][data-unread="true"]:hover {
-  background: color-mix(in oklch, var(--htc-eucalyptus) 34%, white);
+[data-vendor-notif-panel] a:hover [data-vendor-notif-item],
+[data-vendor-notif-panel] [data-vendor-notif-item]:hover {
+  background: #dce8e0;
+  box-shadow: inset 3px 0 0 #446b56;
+}
+[data-vendor-notif-panel] a:hover [data-vendor-notif-item][data-unread="true"],
+[data-vendor-notif-panel] [data-vendor-notif-item][data-unread="true"]:hover {
+  background: #d0e0d6;
+  box-shadow: inset 3px 0 0 #446b56;
+}
+
+/* Eucalyptus section banner strip — vendor event overview cards */
+.htc-staff.htc-vendor [data-vendor-section-banner] {
+  border-bottom: 1px solid color-mix(in oklch, var(--htc-eucalyptus) 40%, var(--htc-border-warm));
+  background: var(--htc-eucalyptus-surface);
+  color: var(--heading);
 }
 
 /* Soft depth on staff cards — white working surfaces on warm canvas */
