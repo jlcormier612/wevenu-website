@@ -194,6 +194,7 @@ export function VendorNotificationBell({
       ? createPortal(
           <div
             ref={panelRef}
+            data-vendor-notif-panel=""
             className="fixed z-50 w-[320px] overflow-hidden rounded-sm border border-border bg-card shadow-lg shadow-[color-mix(in_oklch,#24332b_12%,transparent)]"
             style={{
               top: coords.top,
@@ -207,7 +208,7 @@ export function VendorNotificationBell({
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-foreground">Notifications</p>
                 {hasUnread && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  <span className="rounded-full bg-[#f7e9eb] px-2 py-0.5 text-[10px] font-semibold text-[#8f555a]">
                     {unreadCount} new
                   </span>
                 )}
@@ -259,9 +260,7 @@ export function VendorNotificationBell({
                       <div
                         data-vendor-notif-item=""
                         data-unread={isUnread ? "true" : "false"}
-                        className={`flex cursor-pointer gap-2.5 px-3 py-3 transition-colors ${
-                          isUnread ? "bg-primary/[0.06]" : ""
-                        }`}
+                        className="flex cursor-pointer gap-2.5 px-3 py-3"
                         onClick={() => {
                           if (isUnread) void markOneRead(n.id);
                           setOpen(false);
@@ -353,7 +352,7 @@ export function VendorNotificationBell({
       >
         <Bell className="h-4 w-4" />
         {hasUnread && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--htc-blush,#d99a9e)] px-1 text-[9px] font-bold text-[#24332b]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

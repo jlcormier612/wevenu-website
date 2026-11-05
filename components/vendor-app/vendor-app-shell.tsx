@@ -11,6 +11,7 @@ import {
 
 import { signOutVendor } from "@/app/auth/portal-session-actions";
 import { getVendorEventVenueIdAction } from "@/app/vendor/(workspace)/events/actions";
+import { Wordmark } from "@/components/brand/wordmark";
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
 import type { VendorRole } from "@/lib/vendors/types";
@@ -66,7 +67,7 @@ function NavItem({
       />
       <span className="flex-1">{label}</span>
       {badgeCount != null && badgeCount > 0 && (
-        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--htc-blush,#d99a9e)] px-1.5 text-[10px] font-bold text-[#24332b]">
           {badgeCount}
         </span>
       )}
@@ -151,14 +152,7 @@ export function VendorAppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logoUrl}
-              alt=""
-              className="h-6 w-6 shrink-0 rounded-sm border border-border/60 bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
-            />
-          ) : null}
+          {/* Vendor mark lives in the left nav only — avoid a tiny unreadably cropped chip here. */}
           <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
           <div className="ml-auto flex items-center gap-1 lg:hidden">
             <VendorNotificationBell />
@@ -206,26 +200,24 @@ function SidebarContent({
 
   return (
     <>
-      {/* Header */}
-      <div className="border-b px-5 pb-4 pt-6">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/60">
-            Hello to Cheers
-          </p>
+      {/* Header — platform Wordmark + readable vendor mark in the nav only */}
+      <div className="border-b px-4 pb-4 pt-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <Wordmark sizeClassName="h-9 w-auto max-w-[9.5rem]" />
           <div className="hidden items-center gap-1 text-sidebar-foreground lg:flex">
             <VendorNotificationBell triggerClassName="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logoUrl}
               alt=""
-              className="h-9 w-9 shrink-0 rounded-sm border border-sidebar-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+              className="h-16 w-16 shrink-0 rounded-sm border border-sidebar-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
             />
           ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-xs font-bold text-sidebar-foreground/70">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-sm font-bold text-sidebar-foreground/70">
               {businessName.slice(0, 2).toUpperCase()}
             </div>
           )}
