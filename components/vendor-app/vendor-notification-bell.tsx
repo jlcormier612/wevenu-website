@@ -194,7 +194,7 @@ export function VendorNotificationBell({
       ? createPortal(
           <div
             ref={panelRef}
-            className="fixed z-50 w-[320px] overflow-hidden rounded-sm border border-border bg-card"
+            className="fixed z-50 w-[320px] overflow-hidden rounded-sm border border-border bg-card shadow-lg shadow-[color-mix(in_oklch,#24332b_12%,transparent)]"
             style={{
               top: coords.top,
               left: coords.left,
@@ -257,8 +257,10 @@ export function VendorNotificationBell({
 
                     const item = (
                       <div
-                        className={`flex gap-2.5 px-3 py-3 transition-colors hover:bg-muted/50 cursor-pointer ${
-                          isUnread ? "bg-primary/[0.04]" : ""
+                        data-vendor-notif-item=""
+                        data-unread={isUnread ? "true" : "false"}
+                        className={`flex cursor-pointer gap-2.5 px-3 py-3 transition-colors ${
+                          isUnread ? "bg-primary/[0.06]" : ""
                         }`}
                         onClick={() => {
                           if (isUnread) void markOneRead(n.id);
@@ -341,7 +343,8 @@ export function VendorNotificationBell({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+          "relative rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_28%,white)] hover:text-foreground",
+          open && "bg-[color-mix(in_oklch,var(--htc-eucalyptus)_28%,white)] text-foreground",
           triggerClassName,
         )}
         aria-label={hasUnread ? `${unreadCount} unread notifications` : "Notifications"}

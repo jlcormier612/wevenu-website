@@ -439,8 +439,8 @@ function OverviewTab({
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {/* Assignment info */}
       <div
-        className={`rounded-sm border bg-card p-4 space-y-3 ${
-          emphasizeCheckin ? "border-primary/50 ring-2 ring-primary/25" : "border-border"
+        className={`htc-surface-working space-y-3 p-4 ${
+          emphasizeCheckin ? "border-primary/50 ring-2 ring-primary/25" : ""
         }`}
       >
         <h2 className="text-sm font-semibold text-foreground">Your assignment</h2>
@@ -565,13 +565,13 @@ function OverviewTab({
       </div>
 
       {/* At a glance — actionable deep links into event tabs */}
-      <div className="rounded-sm border border-border bg-card overflow-hidden">
-        <h2 className="text-sm font-semibold text-foreground px-4 pt-4 pb-2">At a glance</h2>
+      <div className="htc-surface-working overflow-hidden">
+        <h2 className="px-4 pb-2 pt-4 text-sm font-semibold text-foreground">At a glance</h2>
         <div className="divide-y divide-border border-t border-border">
           <button
             type="button"
             onClick={() => onNavigate("tasks")}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">
@@ -593,7 +593,12 @@ function OverviewTab({
           <button
             type="button"
             onClick={() => onNavigate("documents")}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+            data-vendor-empty={detail.documents.length === 0 ? "documents" : undefined}
+            className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${
+              detail.documents.length === 0
+                ? "bg-[var(--htc-calm-blue)] hover:bg-[var(--htc-calm-blue-deep)]"
+                : "hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
+            }`}
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">
@@ -611,7 +616,7 @@ function OverviewTab({
           <button
             type="button"
             onClick={() => onNavigate("messages", "venue")}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">Message venue</p>
@@ -624,10 +629,10 @@ function OverviewTab({
             <button
               type="button"
               onClick={() => onNavigate("messages", "couple")}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Message couple</p>
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_oklch,var(--htc-eucalyptus)_18%,white)]"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Message couple</p>
                 <p className="text-xs text-muted-foreground truncate">Open the couple thread</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -661,7 +666,7 @@ function OverviewTab({
           charge, Event Order line, or invoice. Payments happen outside HTC.
           Hidden when the venue hasn't set a fee. */}
       {detail.agreedFee != null && (
-        <div className="rounded-sm border border-border bg-card p-4 space-y-2 sm:col-span-2">
+        <div className="htc-surface-working sm:col-span-2 space-y-2 p-4">
           <h2 className="text-sm font-semibold text-foreground">Venue cost for this event</h2>
           <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground">
@@ -673,8 +678,8 @@ function OverviewTab({
       {/* Recent activity — attention surface: action-needed until addressed,
           FYI within 72h. Hidden when empty. */}
       {activityFeed.length > 0 && (
-        <div className="rounded-sm border border-border bg-card overflow-hidden sm:col-span-2">
-          <h2 className="text-sm font-semibold text-foreground px-4 pt-4 pb-2">Recent activity</h2>
+        <div className="htc-surface-working sm:col-span-2 overflow-hidden">
+          <h2 className="px-4 pb-2 pt-4 text-sm font-semibold text-foreground">Recent activity</h2>
           <div className="divide-y divide-border border-t border-border">
             {activityFeed.map((item) => (
               <button

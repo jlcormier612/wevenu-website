@@ -609,10 +609,15 @@ export function TimelineSection({
     return (
       <div className="w-full space-y-5">
         <ShareTimelineWithVendors token={token} onShared={refresh} />
-        <div className="rounded-2xl border border-dashed border-border py-16 text-center px-6 space-y-2">
+        <div
+          data-portal-empty="guidance"
+          className="htc-surface-guidance space-y-2 px-6 py-16 text-center"
+        >
           <p className="text-2xl">🕒</p>
           <p className="text-sm font-medium text-heading">No timeline shared yet</p>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto">Your venue will share the Timeline here as it comes together.</p>
+          <p className="mx-auto max-w-xs text-xs text-muted-foreground">
+            Your venue will share the Timeline here as it comes together.
+          </p>
         </div>
       </div>
     );
