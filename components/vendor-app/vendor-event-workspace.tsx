@@ -1504,8 +1504,8 @@ function MessagesTab({
                 className={`max-w-full truncate rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                   activeId === t.conversationId
                     ? t.counterpartyLabel === "Couple"
-                      ? "border-[color-mix(in_oklch,var(--dusty-rose)_45%,var(--border))] bg-[color-mix(in_oklch,var(--dusty-rose)_14%,transparent)] text-foreground dark:border-[color-mix(in_oklch,var(--dusty-rose)_50%,transparent)] dark:bg-[color-mix(in_oklch,var(--dusty-rose)_20%,transparent)] dark:text-[var(--true-white)]"
-                      : "border-[color-mix(in_oklch,var(--forest-sage)_40%,var(--border))] bg-[color-mix(in_oklch,var(--forest-sage)_10%,transparent)] text-foreground dark:border-[color-mix(in_oklch,var(--soft-sage)_45%,transparent)] dark:bg-white/10 dark:text-[var(--true-white)]"
+                      ? "border-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_45%,var(--border))] bg-[color-mix(in_oklch,var(--htc-blush,#d99a9e)_14%,transparent)] text-foreground"
+                      : "border-[color-mix(in_oklch,var(--htc-botanical,#446b56)_40%,var(--border))] bg-[color-mix(in_oklch,var(--htc-botanical,#446b56)_10%,transparent)] text-foreground"
                     : "border-border bg-card text-muted-foreground hover:text-foreground"
                 }`}
               >

@@ -335,6 +335,19 @@ html:has(.htc-staff) {
   --htc-hover-lift: var(--htc-soft-blush);
 }
 
+/*
+ * Vendor workspace accent — same Contemporary Botanical light tokens as venue
+ * (`.htc-staff`), with softer leaf-muted chrome so partner surfaces read
+ * distinct. Do not invent a parallel palette. Light only — no vendor dark remap.
+ * See docs/design/htc-visual-system.md §1.2 (muted leaf).
+ */
+.htc-staff.htc-vendor,
+html:has(.htc-staff.htc-vendor) {
+  --sidebar-primary: var(--htc-leaf-muted);
+  --sidebar-ring: var(--htc-leaf-muted);
+  --ring: var(--htc-leaf-muted);
+}
+
 /* Soft depth on staff cards — white working surfaces on warm canvas */
 .htc-staff [data-slot="card"],
 html:has(.htc-staff) [data-slot="card"] {

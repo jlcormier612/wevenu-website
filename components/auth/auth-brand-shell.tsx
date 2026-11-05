@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { VENDOR_AUTH_HOSPITALITY_STYLE } from "@/lib/theme/vendor-auth-hospitality";
 
 /**
  * Always-light public/auth brand surface. Primary Wordmark (dark olive lettering)
@@ -52,17 +53,24 @@ export const AUTH_BRAND_PAGE_STYLE = {
 export function AuthBrandFrame({
   children,
   contentClassName,
+  pageStyle = AUTH_BRAND_PAGE_STYLE,
+  hospitality = false,
 }: {
   children: ReactNode;
   /** Defaults to max-w-sm; pass e.g. max-w-md for wider chooser cards. */
   contentClassName?: string;
+  /** Override page chrome (e.g. vendor Contemporary Botanical pin). */
+  pageStyle?: CSSProperties;
+  /** Marks vendor hospitality auth surfaces for tests / QA. */
+  hospitality?: boolean;
 }) {
   return (
     <main
       data-theme-lock="light"
       data-auth-brand-frame=""
+      {...(hospitality ? { "data-vendor-auth-hospitality": "" } : {})}
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
-      style={AUTH_BRAND_PAGE_STYLE}
+      style={pageStyle}
     >
       <div className={cn("flex w-full max-w-sm flex-col gap-6", contentClassName)}>
         <div className="flex justify-center">
@@ -79,14 +87,21 @@ export function AuthBrandShell({
   description,
   children,
   footer,
+  audience = "venue",
 }: {
   title: string;
   description: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Vendor recovery uses hospitality canvas; venue/client keep legacy brand chrome. */
+  audience?: "venue" | "vendor" | "client";
 }) {
+  const vendorHospitality = audience === "vendor";
   return (
-    <AuthBrandFrame>
+    <AuthBrandFrame
+      pageStyle={vendorHospitality ? VENDOR_AUTH_HOSPITALITY_STYLE : AUTH_BRAND_PAGE_STYLE}
+      hospitality={vendorHospitality}
+    >
       <Card>
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-xl">{title}</CardTitle>

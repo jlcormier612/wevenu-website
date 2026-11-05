@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import { createVendorClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
-import {
-  AUTH_BRAND_PAGE_STYLE,
-} from "@/components/auth/auth-brand-shell";
 import { Wordmark } from "@/components/brand/wordmark";
 import { VendorAcceptAuthedPanel } from "@/components/vendor-app/vendor-accept-authed-panel";
 import { VendorAcceptUnauthPanel } from "@/components/vendor-app/vendor-accept-unauth-panel";
+import { VENDOR_AUTH_HOSPITALITY_STYLE } from "@/lib/theme/vendor-auth-hospitality";
 
 export const metadata: Metadata = { title: "Claim Your Vendor Profile — Hello to Cheers" };
 
@@ -83,11 +81,11 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
   return (
     <div
       data-theme-lock="light"
-      data-auth-brand-frame=""
+      data-vendor-auth-hospitality=""
       className="min-h-screen flex items-center justify-center p-4"
-      style={AUTH_BRAND_PAGE_STYLE}
+      style={VENDOR_AUTH_HOSPITALITY_STYLE}
     >
-      <div className="w-full max-w-md bg-background border border-border rounded-2xl p-8 shadow-sm space-y-6">
+      <div className="w-full max-w-md bg-card border border-border rounded-sm p-8 shadow-sm space-y-6">
         <div className="flex justify-center">
           <Wordmark forceLight />
         </div>
@@ -144,11 +142,11 @@ function InvalidToken() {
   return (
     <div
       data-theme-lock="light"
-      data-auth-brand-frame=""
+      data-vendor-auth-hospitality=""
       className="min-h-screen flex items-center justify-center p-4"
-      style={AUTH_BRAND_PAGE_STYLE}
+      style={VENDOR_AUTH_HOSPITALITY_STYLE}
     >
-        <div className="w-full max-w-md bg-background border border-border rounded-2xl p-8 shadow-sm text-center space-y-3">
+        <div className="w-full max-w-md bg-card border border-border rounded-sm p-8 shadow-sm text-center space-y-3">
         <div className="flex justify-center">
           <Wordmark forceLight />
         </div>

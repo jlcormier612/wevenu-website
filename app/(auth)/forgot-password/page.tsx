@@ -27,6 +27,7 @@ export default async function ForgotPasswordPage({ searchParams }: Props) {
 
   return (
     <AuthBrandShell
+      audience={audience}
       title="Reset your password"
       description="Enter the email for your Hello to Cheers workspace. We’ll send a link if an account exists."
       footer={
