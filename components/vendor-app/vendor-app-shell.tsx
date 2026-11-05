@@ -12,7 +12,6 @@ import {
 import { signOutVendor } from "@/app/auth/portal-session-actions";
 import { getVendorEventVenueIdAction } from "@/app/vendor/(workspace)/events/actions";
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
-import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
 import type { VendorRole } from "@/lib/vendors/types";
 import { cn } from "@/lib/utils";
@@ -104,7 +103,7 @@ export function VendorAppShell({
   const closeMobile = () => setMobileOpen(false);
 
   return (
-    <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
+    <div className="htc-staff htc-vendor flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar — same pattern as WorkspaceShell (`hidden` + `lg:flex`) */}
       <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarContent
@@ -159,7 +158,6 @@ export function VendorAppShell({
           <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
           <div className="ml-auto flex items-center gap-1 lg:hidden">
             <VendorNotificationBell />
-            <ThemeToggle />
           </div>
         </header>
 
@@ -212,7 +210,6 @@ function SidebarContent({
           </p>
           <div className="hidden items-center gap-1 text-sidebar-foreground lg:flex">
             <VendorNotificationBell triggerClassName="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
-            <ThemeToggle />
           </div>
         </div>
         <div className="flex items-center gap-2.5">

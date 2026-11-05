@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -15,6 +14,7 @@ import {
 import { createVendorClient } from "@/integrations/supabase/server";
 import { safeInternalNextPath } from "@/lib/auth/portal-home";
 import { isSupabaseConfigured } from "@/lib/env";
+import { VENDOR_AUTH_HOSPITALITY_STYLE } from "@/lib/theme/vendor-auth-hospitality";
 
 export const metadata: Metadata = { title: "Vendor sign in — Hello to Cheers" };
 
@@ -22,32 +22,10 @@ export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ next?: string; reset?: string }> };
 
-/** Always-light brand surface — same contract as venue login. */
-const LIGHT_THEME_VARS = {
-  "--background": "var(--true-white)",
-  "--foreground": "var(--black)",
-  "--card": "var(--true-white)",
-  "--card-foreground": "var(--black)",
-  "--popover": "var(--true-white)",
-  "--popover-foreground": "var(--black)",
-  "--heading": "var(--forest-sage)",
-  "--muted": "var(--natural-cream)",
-  "--muted-foreground":
-    "color-mix(in oklch, var(--forest-sage) 80%, transparent)",
-  "--secondary": "var(--natural-cream)",
-  "--secondary-foreground": "var(--forest-sage)",
-  "--primary": "var(--heritage-sage)",
-  "--primary-foreground": "var(--true-white)",
-  "--accent": "var(--soft-sage)",
-  "--accent-foreground": "var(--forest-sage)",
-  "--border": "var(--taupe-light)",
-  "--input": "var(--taupe-light)",
-  "--ring": "var(--heritage-sage)",
-} as CSSProperties;
-
 /**
  * Vendor-only login. Uses the vendor auth cookie jar so a venue session in the
- * same browser stays signed in.
+ * same browser stays signed in. Light Contemporary Botanical surface (pinned
+ * hospitality tokens — outside `.htc-staff`).
  */
 export default async function VendorLoginPage({ searchParams }: Props) {
   const { next: nextRaw, reset } = await searchParams;
@@ -76,12 +54,9 @@ export default async function VendorLoginPage({ searchParams }: Props) {
   return (
     <main
       data-theme-lock="light"
+      data-vendor-auth-hospitality=""
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
-      style={{
-        background:
-          "color-mix(in oklch, var(--linen), var(--taupe-dark) 45%)",
-        ...LIGHT_THEME_VARS,
-      }}
+      style={VENDOR_AUTH_HOSPITALITY_STYLE}
     >
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="flex justify-center">
@@ -99,7 +74,7 @@ export default async function VendorLoginPage({ searchParams }: Props) {
             {justReset ? (
               <p
                 role="status"
-                className="rounded-md border border-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)] px-3 py-2 text-sm text-foreground"
+                className="rounded-md border border-[color-mix(in_srgb,#a7c2af_45%,transparent)] bg-[color-mix(in_srgb,#dce8e0_55%,transparent)] px-3 py-2 text-sm text-foreground"
               >
                 Your password was updated. Sign in with your new password.
               </p>

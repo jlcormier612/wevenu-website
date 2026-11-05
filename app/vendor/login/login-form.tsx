@@ -73,7 +73,7 @@ export function VendorLoginForm({ next }: { next?: string }) {
         <div className="flex justify-end">
           <Link
             href="/forgot-password?audience=vendor"
-            className="text-sm font-medium text-[var(--forest-sage)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--heritage-sage)]/40"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             Forgot password?
           </Link>

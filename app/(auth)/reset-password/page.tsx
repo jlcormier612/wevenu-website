@@ -33,6 +33,7 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
 
   return (
     <AuthBrandShell
+      audience={audience}
       title="Choose a new password"
       description="Enter a new password for your Hello to Cheers workspace, then sign in with it."
     >
