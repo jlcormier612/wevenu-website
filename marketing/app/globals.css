@@ -22,7 +22,7 @@
   /* Celebration accent — champagne gold, imagery only (never UI fill) */
   --celebration-gold: #c4a882;
   /* Header/footer — two shades lighter than prior mid linen */
-  --header-linen: #efe9e1;
+  --header-linen: #f3f0e9;
   /* Motion — SEND 4 + SEND 5
    * Base: 180–250ms, ease-out, opacity ± translateY.
    * Journey story: thin connecting line (scaleX/Y) + chapter opacity only.

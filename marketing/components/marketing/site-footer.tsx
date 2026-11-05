@@ -17,6 +17,7 @@ export function SiteFooter() {
               src={MARKETING_MEDIA.logo}
               alt="Hello to Cheers"
               fill
+              unoptimized
               className="object-contain object-left"
             />
           </Link>
