@@ -136,15 +136,16 @@ import {
 } from "@/lib/legal/welcome-integration";
 import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
 
-// Portal chrome uses Hello to Cheers design tokens (see PortalShell root).
-// Legacy aliases `--venue-*` resolve to HTC tokens so existing section chrome
-// stays tokenized without venue palette theming. TAUPE stays fixed for body/
-// icon muted text. ROSE/ROSE_DEEP remain Luv's persona colors only.
-const SAGE = "var(--venue-primary)"; // → HTC --primary (heritage sage)
-const LINEN = "var(--venue-neutral)"; // → HTC --secondary (natural cream)
+// Portal chrome uses Hello to Cheers design tokens (see PortalShell root +
+// Celebration Soft B in app/(portal)/layout.tsx). Legacy `--venue-*` aliases
+// resolve to HTC tokens — not venues.palette. ROSE hexes match --htc-blush
+// (celebration / Luv-adjacent only). Kept as HEX so existing `${ROSE}28`
+// alpha suffixes in inline styles keep working.
+const SAGE = "var(--venue-primary)"; // → HTC botanical primary
+const LINEN = "var(--venue-neutral)"; // → HTC linen / secondary
 const TAUPE = "#B8AEA1";
-const ROSE  = "#D8A7AA";
-const ROSE_DEEP = "#C17F84";
+const ROSE = "#d99a9e"; // --htc-blush
+const ROSE_DEEP = "#b87a7e"; // deeper blush label ink on ivory
 const CREAM = "var(--venue-neutral)";
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
@@ -485,7 +486,11 @@ const COMING_UP_BY_BRACKET: Record<string, { emoji: string; text: string }[]> = 
 function ComingUpCard({ bracket, onNavigate }: { bracket: string; onNavigate: (s: PortalSection) => void }) {
   const items = COMING_UP_BY_BRACKET[bracket] ?? COMING_UP_BY_BRACKET["6-9"];
   return (
-    <div className="rounded-2xl p-5 space-y-3" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}28` }}>
+    <div
+      data-portal-celebration=""
+      className="rounded-2xl p-5 space-y-3"
+      style={{ background: `linear-gradient(135deg, ${ROSE}18 0%, #faf9f5 100%)`, border: `1px solid ${ROSE}28` }}
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>💗 Coming Up</p>
       <div className="space-y-2.5">
         {items.map(item => (
@@ -530,8 +535,8 @@ function SeasonalInspirationCard({
   const inspiration = INSPIRATION_CONTENT[bracket] ?? INSPIRATION_CONTENT["6-9"];
 
   return (
-    <div className="rounded-3xl overflow-hidden" style={{ border: `1px solid ${ROSE}28` }}>
-      <div className="p-6 sm:p-7 space-y-5" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FBF9F6 100%)` }}>
+    <div data-portal-celebration="" className="rounded-3xl overflow-hidden" style={{ border: `1px solid ${ROSE}28` }}>
+      <div className="p-6 sm:p-7 space-y-5" style={{ background: `linear-gradient(135deg, ${ROSE}18 0%, #faf9f5 100%)` }}>
         <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>{emoji} Seasonal Inspiration</p>
 
         {/* Seasonal reminder — the season's own narrative framing */}
@@ -594,10 +599,14 @@ function WeddingJourneySection({ guestStats }: { guestStats: GuestStats | null }
   const doneCount = Object.values(completed).filter(Boolean).length;
 
   return (
-    <div className="rounded-3xl p-6 sm:p-8" style={{
-      background: "linear-gradient(135deg, #F7F5F0 0%, #F0EDE6 100%)",
-      border: "1px solid #E8E2D8",
-    }}>
+    <div
+      data-portal-celebration=""
+      className="rounded-3xl p-6 sm:p-8"
+      style={{
+        background: `linear-gradient(135deg, ${ROSE}14 0%, #faf9f5 55%, #f3f0e9 100%)`,
+        border: `1px solid ${ROSE}28`,
+      }}
+    >
       <div className="flex items-start justify-between mb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-1" style={{ color: ROSE_DEEP }}>💗 Your Wedding Journey</p>
@@ -5097,13 +5106,13 @@ export function PortalShell({
       className="h-full flex flex-col overflow-hidden overscroll-none"
       data-portal-document={documentFocus ? "focus" : "workspace"}
       style={{
-        // Two-layer branding: HTC owns application chrome. Keep the legacy
-        // `--venue-*` names so portal sections stay token-driven, but bind
-        // them to Hello to Cheers design-system tokens — not venues.palette.
-        // Venue logo / name / hero imagery still render from context.venue.*
-        // identity assets. Correspondence (email, contracts, brochures, etc.)
-        // continues to use live venue colors outside this shell.
-        background: "var(--background)",
+        // Two-layer branding: HTC owns application chrome (Celebration Soft B).
+        // Keep legacy `--venue-*` names so portal sections stay token-driven,
+        // bound to Hello to Cheers tokens — not venues.palette. Venue logo /
+        // name / hero imagery still render from context.venue.* identity
+        // assets. Correspondence continues to use live venue colors outside
+        // this shell.
+        background: "var(--htc-ivory, var(--background))",
         "--venue-primary": "var(--primary)",
         "--venue-secondary": "var(--heading)",
         "--venue-accent": "var(--accent)",
@@ -5118,7 +5127,11 @@ export function PortalShell({
           <div className="flex items-center gap-2.5 min-w-0">
             {context.venue.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={context.venue.logoUrl} alt={context.venue.name} className="h-7 w-7 rounded-full object-cover shrink-0" />
+              <img
+                src={context.venue.logoUrl}
+                alt={context.venue.name}
+                className="h-7 w-7 shrink-0 rounded-full border border-border/50 bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+              />
             )}
             <p className="text-sm font-semibold text-heading leading-tight font-heading truncate">{coupleName}</p>
             <span className="text-muted-foreground/40 text-xs shrink-0">·</span>

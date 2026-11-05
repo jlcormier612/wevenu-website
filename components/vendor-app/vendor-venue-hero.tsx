@@ -150,7 +150,11 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
           <div className="flex items-center gap-2.5">
             {venue.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={venue.logoUrl} alt="" className="h-8 w-8 rounded-full object-cover border border-white/40 shrink-0" />
+              <img
+                src={venue.logoUrl}
+                alt=""
+                className="h-8 w-8 shrink-0 rounded-full border border-white/40 bg-white/90 object-contain p-0.5"
+              />
             )}
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Partnering with</span>
           </div>

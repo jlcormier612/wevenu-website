@@ -252,8 +252,9 @@ export function VenueSettings({
             bucket="uploads"
             path={`${venueId}/logo`}
             label="Logo"
-            hint="Square format works best (it appears in a circle on the couple portal). Preview fills the frame the same way. PNG, SVG or JPG, up to 5 MB."
-            objectFit="cover"
+            hint="Shown small in navigation and as a circle on the couple portal. Square or centered marks work best; wide wordmarks stay fully visible (letterboxed) rather than cropped. PNG, SVG, or JPG, up to 5 MB."
+            objectFit="contain"
+            showLogoSizePreviews
             onUpload={async (url) => {
               set("logoUrl", url);
               await updateLogoAction(url);
