@@ -348,6 +348,37 @@ html:has(.htc-staff.htc-vendor) {
   --ring: var(--htc-leaf-muted);
 }
 
+/*
+ * Couple portal — Celebration Soft (palette B).
+ * Ivory canvas + white working cards + botanical actions.
+ * Soft blush is reserved for celebration / Luv-adjacent modules
+ * (`[data-portal-celebration]`), not a full-page pink wash.
+ * Token values are also pinned in app/(portal)/layout.tsx for .dark lock.
+ * Do not invent a parallel palette — docs/design/htc-visual-system.md.
+ */
+.htc-portal {
+  --htc-ivory: #faf9f5;
+  --htc-canvas: #faf9f5;
+  --htc-soft-blush: #f7e9eb;
+  --htc-blush: #d99a9e;
+  --htc-petal: #f0d8db;
+  --htc-blush-pale: #fbf6f7;
+  --htc-border-warm: #e6e3dc;
+  --htc-botanical: #446b56;
+  --htc-eucalyptus: #a7c2af;
+  color: var(--foreground);
+  background: var(--htc-ivory);
+}
+
+.htc-portal [data-portal-celebration] {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--htc-soft-blush) 70%, white) 0%,
+    var(--htc-ivory) 100%
+  );
+  border-color: color-mix(in oklch, var(--htc-blush) 28%, var(--htc-border-warm));
+}
+
 /* Soft depth on staff cards — white working surfaces on warm canvas */
 .htc-staff [data-slot="card"],
 html:has(.htc-staff) [data-slot="card"] {

@@ -153,7 +153,11 @@ export function VendorAppShell({
           </button>
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="" className="h-6 w-6 shrink-0 rounded-sm object-cover" />
+            <img
+              src={logoUrl}
+              alt=""
+              className="h-6 w-6 shrink-0 rounded-sm border border-border/60 bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+            />
           ) : null}
           <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
           <div className="ml-auto flex items-center gap-1 lg:hidden">
@@ -214,7 +218,12 @@ function SidebarContent({
         </div>
         <div className="flex items-center gap-2.5">
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-sm border border-sidebar-border object-cover" />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt=""
+              className="h-9 w-9 shrink-0 rounded-sm border border-sidebar-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+            />
           ) : (
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-xs font-bold text-sidebar-foreground/70">
               {businessName.slice(0, 2).toUpperCase()}

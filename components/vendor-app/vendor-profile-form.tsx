@@ -102,28 +102,63 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
     <div className="space-y-5 rounded-sm border border-border bg-card p-6">
       <p className="text-sm font-medium text-heading">Business details</p>
 
-      {/* Logo */}
-      <div className="flex items-center gap-4">
-        {input.logoUrl ? (
-          <img src={input.logoUrl} alt="Logo" className="h-16 w-16 rounded-sm object-cover border border-border" />
-        ) : (
-          <div className="h-16 w-16 rounded-sm bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground border border-border">
-            {profile.businessName.slice(0, 2).toUpperCase()}
-          </div>
-        )}
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground cursor-pointer hover:text-primary">
-            {uploading ? "Uploading…" : "Change logo"}
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              disabled={uploading}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }}
+      {/* Logo — contain (not cover) so wide wordmarks stay readable in small nav tiles */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-4">
+          {input.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={input.logoUrl}
+              alt="Logo"
+              className="h-16 w-16 rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-1"
             />
-          </label>
-          <p className="text-xs text-muted-foreground">PNG, JPG or WebP</p>
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-sm border border-border bg-muted text-xl font-bold text-muted-foreground">
+              {profile.businessName.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="space-y-1">
+            <label className="cursor-pointer text-sm font-medium text-foreground hover:text-primary">
+              {uploading ? "Uploading…" : "Change logo"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                className="sr-only"
+                disabled={uploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleLogoUpload(f);
+                }}
+              />
+            </label>
+            <p className="max-w-sm text-xs text-muted-foreground">
+              Shown small in your sidebar. Square or centered marks work best; wide wordmarks stay
+              fully visible (letterboxed) rather than cropped. PNG, JPG, WebP, or SVG.
+            </p>
+          </div>
         </div>
+        {input.logoUrl ? (
+          <div className="flex items-center gap-3 pl-0.5">
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Sidebar</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={input.logoUrl}
+                alt=""
+                className="h-9 w-9 rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Header</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={input.logoUrl}
+                alt=""
+                className="h-6 w-6 rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

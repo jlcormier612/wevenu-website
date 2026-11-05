@@ -27,8 +27,10 @@ export function ImageUpload({
   accept = "image/*",
   maxSizeMB = 5,
   aspectRatio,
-  /** How the preview fills its frame. Prefer `cover` for photos meant to fill a hero/card. */
+  /** How the preview fills its frame. Prefer `cover` for photos meant to fill a hero/card; `contain` for logos. */
   objectFit = "contain",
+  /** When true, also show tiny circle + square chips so logo crops are obvious before save. */
+  showLogoSizePreviews = false,
   className,
 }: {
   currentUrl: string | null | undefined;
@@ -45,6 +47,7 @@ export function ImageUpload({
   /** Optional CSS aspect-ratio class applied to the preview container. */
   aspectRatio?: string;
   objectFit?: "contain" | "cover";
+  showLogoSizePreviews?: boolean;
   className?: string;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -102,7 +105,7 @@ export function ImageUpload({
       {/* Preview */}
       <div
         className={cn(
-          "relative flex items-center justify-center overflow-hidden rounded-sm border border-border bg-muted/40",
+          "relative flex items-center justify-center overflow-hidden rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)]",
           aspectRatio,
           !aspectRatio && "h-40 w-40",
         )}
@@ -113,7 +116,7 @@ export function ImageUpload({
             alt={label}
             className={cn(
               "h-full w-full",
-              objectFit === "cover" ? "object-cover" : "object-contain",
+              objectFit === "cover" ? "object-cover" : "object-contain p-2",
             )}
           />
         ) : (
@@ -125,6 +128,29 @@ export function ImageUpload({
           </div>
         )}
       </div>
+
+      {showLogoSizePreviews && preview ? (
+        <div className="flex items-center gap-3">
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Nav</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={preview}
+              alt=""
+              className="h-9 w-9 rounded-sm border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Portal</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={preview}
+              alt=""
+              className="h-7 w-7 rounded-full border border-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+            />
+          </div>
+        </div>
+      ) : null}
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
