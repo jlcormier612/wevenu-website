@@ -1,87 +1,103 @@
 import Image from "next/image";
-import Link from "next/link";
-import type { ReactNode } from "react";
 
-import { CelebrationWorkspaceMock } from "@/components/marketing/journey/celebration-workspace-mock";
-import { ClientWorkspaceMock } from "@/components/marketing/journey/client-workspace-mock";
-import { ContractWorkspaceMock } from "@/components/marketing/journey/contract-workspace-mock";
-import { FloorWorkspaceMock } from "@/components/marketing/journey/floor-workspace-mock";
-import { GuestWorkspaceMock } from "@/components/marketing/journey/guest-workspace-mock";
-import { InquiryWorkspaceMock } from "@/components/marketing/journey/inquiry-workspace-mock";
-import { PaymentsWorkspaceMock } from "@/components/marketing/journey/payments-workspace-mock";
-import { PlanningWorkspaceMock } from "@/components/marketing/journey/planning-workspace-mock";
-import { ProposalWorkspaceMock } from "@/components/marketing/journey/proposal-workspace-mock";
-import { TimelineWorkspaceMock } from "@/components/marketing/journey/timeline-workspace-mock";
-import { TourWorkspaceMock } from "@/components/marketing/journey/tour-workspace-mock";
-import { VendorsWorkspaceMock } from "@/components/marketing/journey/vendors-workspace-mock";
 import { Reveal } from "@/components/marketing/reveal";
-import { JOURNEY_CHAPTER_FILM } from "@/lib/marketing/journey-chapters";
-import type { ProductJourneyId } from "@/lib/marketing/journey";
-import { EDITORIAL_FRAME, EDITORIAL_IMAGE, HOVER_WHISPER } from "@/lib/marketing/rhythm";
+import type { ProductStoryChapter } from "@/lib/marketing/product-story";
+import { EDITORIAL_FRAME, EDITORIAL_IMAGE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
-
-const MOCKS: Record<ProductJourneyId, () => ReactNode> = {
-  inquiry: () => <InquiryWorkspaceMock />,
-  tour: () => <TourWorkspaceMock />,
-  proposal: () => <ProposalWorkspaceMock />,
-  "contract-inventory": () => <ContractWorkspaceMock />,
-  "invoice-payment": () => <PaymentsWorkspaceMock />,
-  planning: () => <PlanningWorkspaceMock />,
-  vendors: () => <VendorsWorkspaceMock />,
-  timeline: () => <TimelineWorkspaceMock />,
-  "floor-seating": () => <FloorWorkspaceMock />,
-  "client-portal-website": () => <ClientWorkspaceMock />,
-  "guest-portal": () => <GuestWorkspaceMock />,
-  celebration: () => <CelebrationWorkspaceMock />,
-};
 
 export type JourneyChapterStatus = "active" | "past" | "upcoming";
 
 type ProductJourneyChapterProps = {
-  id: ProductJourneyId;
+  chapter: ProductStoryChapter;
   index: number;
-  title: string;
-  emotion: string;
-  body: string;
-  /** SEND 5 — reading position in the continuous story */
   status?: JourneyChapterStatus;
-  /** Alternate image/mock side for visual rhythm */
-  reverse?: boolean;
 };
 
 /**
- * One Product journey chapter — image, product proof, short copy, Explore →
+ * Seven-chapter Product Journey — editorial photo + contained product proof.
  */
 export function ProductJourneyChapter({
-  id,
+  chapter,
   index,
-  title,
-  emotion,
-  body,
   status = "upcoming",
-  reverse,
 }: ProductJourneyChapterProps) {
-  const film = JOURNEY_CHAPTER_FILM[id];
-  const Mock = MOCKS[id];
   const n = String(index + 1).padStart(2, "0");
   const isActive = status === "active";
+  const immersive = chapter.product === null;
+
+  const photo = immersive ? (
+    <div className={cn("pj-photo pj-photo--immersive overflow-hidden", EDITORIAL_FRAME)}>
+      <Image
+        src={chapter.photo.src}
+        alt={chapter.photo.alt}
+        width={1600}
+        height={1067}
+        className="pj-photo-img--celebration h-auto w-full"
+        sizes="100vw"
+        priority={index === 0}
+      />
+    </div>
+  ) : (
+    <div
+      className={cn(
+        "pj-photo pj-photo--pair relative w-full overflow-hidden",
+        EDITORIAL_FRAME,
+      )}
+    >
+      <Image
+        src={chapter.photo.src}
+        alt={chapter.photo.alt}
+        fill
+        className={EDITORIAL_IMAGE}
+        sizes="(max-width:768px) 100vw, 50vw"
+        priority={index === 0}
+      />
+    </div>
+  );
+
+  const product =
+    chapter.product == null ? null : (
+      <figure
+        className={cn(
+          "pj-product",
+          `pj-product--${chapter.product.frame}`,
+          `pj-product-overlap--${chapter.product.overlap}`,
+        )}
+      >
+        <div className="pj-product-frame">
+          <Image
+            src={chapter.product.src}
+            alt={chapter.product.alt}
+            width={1200}
+            height={900}
+            className="pj-product-img"
+            sizes="(max-width:768px) 92vw, 48vw"
+            unoptimized
+          />
+        </div>
+        {"caption" in chapter.product && chapter.product.caption ? (
+          <figcaption className="pj-product-caption">
+            {chapter.product.caption}
+          </figcaption>
+        ) : null}
+      </figure>
+    );
 
   return (
     <section
-      id={`ch-${id}`}
+      id={`ch-${chapter.id}`}
       data-journey-status={status}
       className={cn(
-        "journey-chapter relative scroll-mt-28 py-28 md:py-36",
+        "journey-chapter relative scroll-mt-28 py-16 md:py-20",
         status === "active" && "opacity-100",
-        status === "past" && "opacity-[0.52]",
-        status === "upcoming" && "opacity-[0.62]",
+        status === "past" && "opacity-[0.78]",
+        status === "upcoming" && "opacity-[0.88]",
       )}
     >
-      {/* Spine node — sits on the story line (in the pl-10 gutter) */}
       <span
         aria-hidden
         className={cn(
-          "journey-chapter-node absolute top-28 -left-10 hidden h-2 w-2 -translate-x-1/2 rounded-full md:block",
+          "journey-chapter-node absolute top-20 -left-10 hidden h-2 w-2 -translate-x-1/2 rounded-full md:block",
           isActive
             ? "bg-[var(--heritage-sage)]"
             : status === "past"
@@ -93,7 +109,7 @@ export function ProductJourneyChapter({
       <Reveal>
         <p
           className={cn(
-            "flex items-center gap-3 text-[0.7125rem] tracking-[0.22em] uppercase transition-colors duration-200 ease-out",
+            "pj-eyebrow flex flex-wrap items-center gap-3 text-[0.7125rem] tracking-[0.22em] uppercase transition-colors duration-200 ease-out",
             isActive
               ? "text-[var(--heritage-sage)]"
               : "text-[var(--heritage-sage)]/82",
@@ -112,53 +128,31 @@ export function ProductJourneyChapter({
           <span aria-hidden className="text-[var(--taupe-dark)]">
             ·
           </span>
-          <span>{title}</span>
+          <span>{chapter.eyebrow}</span>
         </p>
-        <h2 className="mt-7 max-w-2xl font-heading text-[2.1rem] whitespace-pre-line text-[var(--forest-sage)] md:text-[3.36rem]">
-          {emotion}
+        <h2 className="pj-headline mt-6 max-w-3xl font-heading text-[2.1rem] font-normal tracking-[-0.02em] md:text-[3.1rem]">
+          {chapter.headline}
         </h2>
-        <p className="mt-5 max-w-4xl text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-          {body}
-        </p>
+        <div className="pj-body mt-5 max-w-[65ch] space-y-4 text-base leading-[1.7] md:text-lg">
+          {chapter.body.map((paragraph) => (
+            <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+          ))}
+        </div>
       </Reveal>
 
-      <div
-        className={cn(
-          "mt-14 grid items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10",
-          reverse && "md:[&>*:first-child]:order-2",
-        )}
-      >
+      {immersive ? (
+        <div className="pj-compose-immersive mt-10 md:mt-12">{photo}</div>
+      ) : (
         <div
           className={cn(
-            "relative aspect-[16/10] w-full md:aspect-[5/3]",
-            EDITORIAL_FRAME,
+            "pj-compose mt-10 md:mt-12",
+            chapter.photoFirst ? "pj-compose--photo-first" : "pj-compose--product-first",
           )}
         >
-          <Image
-            src={film.src}
-            alt={film.alt}
-            fill
-            className={EDITORIAL_IMAGE}
-            sizes="(max-width:768px) 100vw, 55vw"
-          />
+          <div className="pj-compose-photo">{photo}</div>
+          <div className="pj-compose-product">{product}</div>
         </div>
-        <Link
-          href={`/product/journey/${id}`}
-          aria-label={`See ${title}`}
-          className={`group flex flex-col justify-center self-stretch transition-opacity duration-200 ease-out ${HOVER_WHISPER} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--heritage-sage)]`}
-        >
-          {Mock()}
-        </Link>
-      </div>
-
-      <div className="mt-12">
-        <Link
-          href={`/product/journey/${id}`}
-          className={`inline-flex items-center font-heading text-xl text-[var(--forest-sage)] underline-offset-8 transition duration-200 ease-out hover:underline md:text-2xl`}
-        >
-          See {title} →
-        </Link>
-      </div>
+      )}
     </section>
   );
 }

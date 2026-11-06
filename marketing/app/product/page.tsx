@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { ProductExperience } from "@/components/marketing/product-experience";
 
 export const metadata: Metadata = {
-  title: "Follow One Celebration",
+  title: "Product",
   description:
-    "One connected workspace for how independent venues actually operate—sales, planning, communication, operations, finances, and guest experience.",
+    "Your venue, beautifully connected—run your business, collaborate with clients, and coordinate with vendors in one Hello to Cheers platform.",
 };
 
 export default function ProductPage() {
