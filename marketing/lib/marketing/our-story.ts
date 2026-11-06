@@ -98,6 +98,7 @@ export const OUR_STORY = {
       "What if software could feel less like another thing to manage and more like a genuinely helpful member of the team?",
       "And what if, when a venue owner had a great idea or spotted something that needed improving, we could actually do something about it?",
     ],
+    conclusionHeadline: "The freedom to do better.",
     afterQuestions: [
       "That last part matters enormously to me.",
       "After years of listening to customers and wishing we could move faster, I finally have the freedom to build, improve, and respond with the care and urgency they deserve.",

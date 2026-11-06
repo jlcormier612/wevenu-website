@@ -701,6 +701,37 @@
   text-wrap: pretty;
 }
 
+.htc-home .operations-bridge {
+  margin: 4rem auto 0;
+  max-width: 36rem;
+  text-align: center;
+  padding-top: 2.5rem;
+  border-top: 1px solid #d9d6ce;
+}
+
+.htc-home .operations-bridge-headline {
+  font-family: var(--font-heading);
+  font-size: clamp(1.65rem, 2.4vw, 2rem);
+  font-weight: 400;
+  line-height: 1.2;
+  color: #24332b;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.htc-home .operations-bridge-body {
+  margin: 0.85rem auto 0;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #24332b;
+  text-wrap: pretty;
+}
+
+.htc-home .operations-bridge .btn {
+  margin-top: 1.5rem;
+}
+
 /* —— §5 Ecosystem (three audience editorial portraits) —— */
 .htc-home .ecosystem {
   background: #f3f0e9;
@@ -1482,6 +1513,11 @@
     margin-top: 3.25rem;
   }
 
+  .htc-home .operations-bridge {
+    margin-top: 3.25rem;
+    padding-top: 2rem;
+  }
+
   .htc-home .operations-pillar-title {
     font-size: 1.875rem;
   }
@@ -1892,6 +1928,19 @@
   .htc-home .operations-pillar-body {
     font-size: 1rem;
     max-width: 100%;
+  }
+
+  .htc-home .operations-bridge {
+    margin-top: 2.75rem;
+    padding-top: 1.75rem;
+  }
+
+  .htc-home .operations-bridge-headline {
+    font-size: 1.625rem;
+  }
+
+  .htc-home .operations-bridge-body {
+    font-size: 1rem;
   }
 
   .htc-home .ecosystem {

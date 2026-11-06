@@ -133,6 +133,11 @@ export const HOME_COPY = {
         body: "Keep timelines, event orders, inventory, and day-of details organized so everyone knows what comes next.",
       },
     ],
+    featuresBridge: {
+      headline: "Everything works better together.",
+      body: "From your first inquiry to the final celebration, discover the tools that make it all possible.",
+      cta: { href: "/features", label: "Explore All Features →" },
+    },
   },
   ecosystem: {
     kicker: "Better Together",
@@ -169,7 +174,7 @@ export const HOME_COPY = {
     ],
     closing: "Everyone has a part to play. You don't have to play every part.",
   },
-  // §6 homepage — editorial capability index (typography only)
+  // Preserved for Features redesign handoff — no longer rendered on homepage
   capabilities: {
     kicker: "A Closer Look at the Platform",
     headline: "All the tools. None of the chaos.",

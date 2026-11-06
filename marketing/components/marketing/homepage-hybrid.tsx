@@ -6,9 +6,10 @@ import { HOME_ASSETS, HOME_COPY } from "@/lib/marketing/homepage-v3";
 import "@/app/homepage-v3.css";
 
 /**
- * Nine-section homepage from the approved manuscript.
- * Hero + §2–§9 editorial.
- * FeatureExplorer component preserved (not rendered on homepage §6).
+ * Homepage from the approved manuscript.
+ * Hero + connected journey through invitation.
+ * Capabilities catalog removed from homepage (data retained for Features redesign).
+ * FeatureExplorer component preserved (not rendered).
  */
 export function HomepageHybrid() {
   const c = HOME_COPY;
@@ -159,6 +160,14 @@ export function HomepageHybrid() {
               </article>
             ))}
           </div>
+
+          <div className="operations-bridge" id="features">
+            <h3 className="operations-bridge-headline">{c.operations.featuresBridge.headline}</h3>
+            <p className="operations-bridge-body">{c.operations.featuresBridge.body}</p>
+            <Link className="btn btn-primary" href={c.operations.featuresBridge.cta.href}>
+              {c.operations.featuresBridge.cta.label}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -199,36 +208,7 @@ export function HomepageHybrid() {
         </div>
       </section>
 
-      {/* 6. CAPABILITIES — editorial typographic index */}
-      <section className="capabilities" id="features" aria-labelledby="capabilities-heading">
-        <div className="capabilities-inner">
-          <header className="capabilities-intro">
-            <p className="capabilities-eyebrow">{c.capabilities.kicker}</p>
-            <h2 className="capabilities-headline" id="capabilities-heading">
-              {c.capabilities.headline}
-            </h2>
-            <p className="capabilities-lede">{c.capabilities.lede}</p>
-          </header>
-
-          <ol className="capabilities-index" aria-label="Platform capabilities">
-            {c.capabilities.entries.map((entry) => (
-              <li key={entry.id} className="capabilities-entry">
-                <p className="capabilities-category">{entry.category}</p>
-                <h3 className="capabilities-entry-title">{entry.title}</h3>
-                <p className="capabilities-entry-body">{entry.body}</p>
-              </li>
-            ))}
-          </ol>
-
-          <div className="capabilities-cta">
-            <Link className="btn btn-primary" href={c.capabilities.cta.href}>
-              {c.capabilities.cta.label}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. GETTING STARTED — editorial split: copy left, workspace photography right */}
+      {/* 6. GETTING STARTED — editorial split: copy left, workspace photography right */}
       <section
         className="getting-started"
         id="getting-started"

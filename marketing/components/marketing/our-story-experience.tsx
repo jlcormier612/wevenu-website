@@ -219,10 +219,15 @@ export function OurStoryExperience() {
         </div>
         <div className="os-turning-light">
           <div className="os-wrap os-turning-light-grid">
-            <div className="os-prose">
-              {page.turningPoint.afterQuestions.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+            <div>
+              <h3 className="os-turning-conclusion-title">
+                {page.turningPoint.conclusionHeadline}
+              </h3>
+              <div className="os-prose">
+                {page.turningPoint.afterQuestions.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
             </div>
             <figure className="os-frame os-behind-scenes-visual">
               <Image
