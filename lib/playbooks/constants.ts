@@ -334,3 +334,67 @@ export const STANDARD_VENUE_WORKFLOW_TASKS: SeedTask[] = [
   { ...R, title: "Day-of setup",            description: null, ownerType: "team", visibility: "coordinator_only", daysOffset: 0, category: "meeting", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 5, dependsOnTaskId: null },
   { ...R, title: "Send thank-you note",     description: "Send a warm thank-you to the client.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: 3, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 6, dependsOnTaskId: null },
 ];
+
+// ── Optional Corporate starters (Library only — not auto-assigned Setup Profiles) ──
+
+export const CORPORATE_CLIENT_PLANNING_MILESTONES: SeedMilestone[] = [
+  { name: "Planning", kind: null },
+  { name: "Event Week", kind: "final_stretch" },
+  { name: "After the Event", kind: null },
+];
+
+export const CORPORATE_CLIENT_PLANNING_TASKS: SeedTask[] = [
+  { ...R, title: "Share event goals and agenda", description: "Tell us what success looks like for this gathering — agenda highlights, must-haves, and any brand or hospitality preferences.", ownerType: "couple", visibility: "client_owned", daysOffset: -45, category: "planning", milestoneIndex: 0, autoCompleteTrigger: null, isRequired: true, sortOrder: 0, dependsOnTaskId: null },
+  { ...R, title: "Confirm expected headcount", description: "Share your expected attendance so we can plan seating, catering, and room set.", ownerType: "couple", visibility: "client_owned", daysOffset: -21, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "guest_count_finalized", isRequired: true, sortOrder: 1, dependsOnTaskId: null },
+  { ...R, title: "Submit AV, tech, and room needs", description: "List presentation, AV, branding, or room-set needs so we can prepare the space.", ownerType: "couple", visibility: "client_owned", daysOffset: -14, category: "planning", milestoneIndex: 1, autoCompleteTrigger: null, isRequired: true, sortOrder: 2, dependsOnTaskId: null },
+  { ...R, title: "Confirm final run-of-show details", description: "Confirm timing, speakers, and any last-minute changes before the event week.", ownerType: "couple", visibility: "client_owned", daysOffset: -7, category: "planning", milestoneIndex: 1, autoCompleteTrigger: null, isRequired: true, sortOrder: 3, dependsOnTaskId: null },
+  { ...R, title: "Share feedback", description: "Tell us how the event went so we can improve for next time.", ownerType: "couple", visibility: "client_owned", daysOffset: 7, category: "communication", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: false, sortOrder: 4, dependsOnTaskId: null },
+];
+
+export const CORPORATE_VENUE_WORKFLOW_MILESTONES: SeedMilestone[] = [
+  { name: "Planning", kind: null },
+  { name: "Event Week", kind: "final_stretch" },
+  { name: "Event Day", kind: "event_day" },
+  { name: "Follow-Up", kind: null },
+];
+
+export const CORPORATE_VENUE_WORKFLOW_TASKS: SeedTask[] = [
+  { ...R, title: "Confirm room set and capacity", description: "Confirm the agreed layout and capacity against the booked space.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -21, category: "planning", milestoneIndex: 0, autoCompleteTrigger: null, isRequired: true, sortOrder: 0, dependsOnTaskId: null },
+  { ...R, title: "Confirm AV and tech plan", description: "Confirm presentation, mic, and tech needs with the client and vendors.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -14, category: "communication", milestoneIndex: 0, autoCompleteTrigger: null, isRequired: true, sortOrder: 1, dependsOnTaskId: null },
+  { ...R, title: "Build run of show", description: "Draft the day-of run of show from arrival through load-out.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -10, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "timeline_created", isRequired: true, sortOrder: 2, dependsOnTaskId: null },
+  { ...R, title: "Final client confirmation", description: "Confirm headcount, timing, and special requests before event week.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -5, category: "communication", milestoneIndex: 1, autoCompleteTrigger: null, isRequired: true, sortOrder: 3, dependsOnTaskId: null },
+  { ...R, title: "Day-of hosting and setup", description: "Prepare the space, greet the host, and support the run of show.", ownerType: "team", visibility: "coordinator_only", daysOffset: 0, category: "meeting", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 4, dependsOnTaskId: null },
+  { ...R, title: "Send follow-up note", description: "Thank the host and capture anything useful for the next booking.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: 2, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 5, dependsOnTaskId: null },
+];
+
+// ── Optional Social Event starters (Library only — not auto-assigned Setup Profiles) ──
+
+export const SOCIAL_CLIENT_PLANNING_MILESTONES: SeedMilestone[] = [
+  { name: "Planning", kind: null },
+  { name: "Final Details", kind: "final_stretch" },
+  { name: "After Your Celebration", kind: null },
+];
+
+export const SOCIAL_CLIENT_PLANNING_TASKS: SeedTask[] = [
+  { ...R, title: "Share your celebration vision", description: "Tell us the feel of the gathering — formal or casual, must-have moments, and anything special for your guests.", ownerType: "couple", visibility: "client_owned", daysOffset: -45, category: "planning", milestoneIndex: 0, autoCompleteTrigger: null, isRequired: true, sortOrder: 0, dependsOnTaskId: null },
+  { ...R, title: "Confirm guest count", description: "Share your expected headcount so we can plan seating and catering.", ownerType: "couple", visibility: "client_owned", daysOffset: -21, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "guest_count_finalized", isRequired: true, sortOrder: 1, dependsOnTaskId: null },
+  { ...R, title: "Share timing and special moments", description: "Note arrival windows, toasts, cake, or other moments you want woven into the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -14, category: "planning", milestoneIndex: 1, autoCompleteTrigger: null, isRequired: false, sortOrder: 2, dependsOnTaskId: null },
+  { ...R, title: "Confirm final details", description: "Confirm headcount, timing, and any last changes before your celebration.", ownerType: "couple", visibility: "client_owned", daysOffset: -7, category: "planning", milestoneIndex: 1, autoCompleteTrigger: null, isRequired: true, sortOrder: 3, dependsOnTaskId: null },
+  { ...R, title: "Leave a note of thanks", description: "We'd love to hear how your celebration went.", ownerType: "couple", visibility: "client_owned", daysOffset: 7, category: "communication", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: false, sortOrder: 4, dependsOnTaskId: null },
+];
+
+export const SOCIAL_VENUE_WORKFLOW_MILESTONES: SeedMilestone[] = [
+  { name: "Planning", kind: null },
+  { name: "Final Details", kind: "final_stretch" },
+  { name: "Celebration Day", kind: "event_day" },
+  { name: "Follow-Up", kind: null },
+];
+
+export const SOCIAL_VENUE_WORKFLOW_TASKS: SeedTask[] = [
+  { ...R, title: "Confirm layout and capacity", description: "Confirm the agreed layout against the booked space and guest count.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -21, category: "planning", milestoneIndex: 0, autoCompleteTrigger: null, isRequired: true, sortOrder: 0, dependsOnTaskId: null },
+  { ...R, title: "Confirm catering and timing", description: "Align food, beverage, and service windows with the celebration plan.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -14, category: "communication", milestoneIndex: 0, autoCompleteTrigger: null, isRequired: true, sortOrder: 1, dependsOnTaskId: null },
+  { ...R, title: "Build celebration timeline", description: "Draft arrival through send-off so the team knows the flow.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -10, category: "planning", milestoneIndex: 0, autoCompleteTrigger: "timeline_created", isRequired: true, sortOrder: 2, dependsOnTaskId: null },
+  { ...R, title: "Final client confirmation", description: "Confirm headcount, special moments, and access times.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: -5, category: "communication", milestoneIndex: 1, autoCompleteTrigger: null, isRequired: true, sortOrder: 3, dependsOnTaskId: null },
+  { ...R, title: "Day-of setup and hosting", description: "Prepare the space and support the celebration timeline.", ownerType: "team", visibility: "coordinator_only", daysOffset: 0, category: "meeting", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 4, dependsOnTaskId: null },
+  { ...R, title: "Send a warm follow-up", description: "Thank the host and note anything useful for future celebrations.", ownerType: "coordinator", visibility: "coordinator_only", daysOffset: 2, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 5, dependsOnTaskId: null },
+];

@@ -6,6 +6,7 @@ import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { getVenueDocuments } from "@/lib/documents/service";
 import { getImportBatches } from "@/lib/import/batches";
 import { getQuickBooksConnection } from "@/lib/quickbooks/service";
+import { listVenueSetupProfiles } from "@/lib/event-setup/profiles";
 import { getLeadCaptureStageStatus, getSetupHubState } from "@/lib/setup-hub/service";
 import { getTeamMembers } from "@/lib/team/service";
 import { getTourSettings } from "@/lib/tours/service";
@@ -23,6 +24,7 @@ export default async function SetupHubPage() {
   const [
     hubState, leadCapture, spaces, capacityRules, tourSettings,
     importBatches, readyCounts, teamMembers, quickbooksConnection, setupConcierge, venueDocuments, venueSettings, intake,
+    setupProfiles,
   ] = await Promise.all([
     getSetupHubState(),
     getLeadCaptureStageStatus(),
@@ -37,6 +39,7 @@ export default async function SetupHubPage() {
     getVenueDocuments(),
     getVenueSettings(),
     getIntakeForVenue(venue.id),
+    listVenueSetupProfiles(venue.id),
   ]);
 
   // Team Setup Hub completion: only deliberate Team/Owners actions (invited_by set).
@@ -105,6 +108,7 @@ export default async function SetupHubPage() {
           primaryColor: venue.primaryColor,
         }}
         intakeBringBusinessChoice={intake?.bringBusinessChoice ?? null}
+        setupProfileCount={setupProfiles.profiles.length}
       />
     </div>
   );

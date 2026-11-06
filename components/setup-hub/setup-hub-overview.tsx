@@ -68,6 +68,7 @@ export function SetupHubOverview({
   spaceOperatingMode,
   yourVenueFacts,
   intakeBringBusinessChoice = null,
+  setupProfileCount = 0,
 }: {
   venueName: string;
   ownerFirstName: string | null;
@@ -90,6 +91,8 @@ export function SetupHubOverview({
   spaceOperatingMode: SpaceOperatingMode | null;
   yourVenueFacts: YourVenueFacts;
   intakeBringBusinessChoice?: BringBusinessChoice | null;
+  /** Venue Setup Profiles — 0 means Library starters are not yet wired to event types. */
+  setupProfileCount?: number;
 }) {
   const yourVenueDone = isYourVenueComplete(yourVenueFacts);
   const calendarDone = isCalendarAvailabilityComplete({ spaceOperatingMode, spacesCount });
@@ -194,7 +197,12 @@ export function SetupHubOverview({
       detail: `${clientExperienceCount} item${clientExperienceCount === 1 ? "" : "s"} of your own across contracts, questionnaires, messages, and planning guides.`
         + (uploadedMaterialsCount > 0
           ? ` You also brought over ${uploadedMaterialsCount} file${uploadedMaterialsCount === 1 ? "" : "s"} during setup — head to Library to turn the ${uploadedMaterialsCount === 1 ? "one that matters" : "ones that matter"} into templates.`
-          : ""),
+          : "")
+        + (setupProfileCount === 0
+          ? " Library starters are ready to customize — open Setup Profiles to choose what weddings (and later other event types) should inherit. Wedding starters are not applied to non-wedding bookings until you configure them."
+          : setupProfileCount === 1
+            ? " One Setup Profile is in place — confirm it covers the event types you accept; other types stay unconfigured until you add them."
+            : ""),
       required: STAGE_COPY["client-experience"].required,
       action: !clientExperienceDone ? (
         <StageAcknowledgeButton
@@ -258,6 +266,15 @@ export function SetupHubOverview({
         {!bringYourBusinessDone ? (
           <p className="text-sm text-muted-foreground">
             Already have clients elsewhere? Importing is one path — adding things yourself or starting fresh are equally fine.
+          </p>
+        ) : null}
+        {setupProfileCount === 0 && readyCounts.playbookTemplates > 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid="setup-hub-no-profile-guidance">
+            Your Library already has planning starters. Open{" "}
+            <Link href="/settings/leads/setup-profiles" className="underline underline-offset-2 hover:text-foreground">
+              Setup Profiles
+            </Link>{" "}
+            to tell Hello to Cheers how weddings should start. Other event types stay unconfigured until you add them — wedding content is never applied automatically to non-wedding bookings.
           </p>
         ) : null}
       </div>

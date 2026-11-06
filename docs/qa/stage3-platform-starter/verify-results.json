@@ -1,0 +1,241 @@
+{
+  "stamp": 1794006913091,
+  "venueId": "46817d4e-f95b-4fc0-acd4-1574ec201276",
+  "venueName": "Stage3 Starter Venue 1794006913091",
+  "ownerEmail": "stage3-starter-1794006913091@hellotocheers-test.invalid",
+  "ownerUserId": "8da08645-ff33-435c-9bf9-6b968fe25e21",
+  "enrollmentId": "97a8ac4d-3dbc-473e-8a5a-c9804caa85fd",
+  "passwordFile": "/tmp/stage3-starter-creds.json",
+  "profileId": "12618b53-9fa9-4741-8df2-9dd29b9c7d17",
+  "weddingEventId": "52fd5ef9-5bfb-45dc-8205-2ef8680a047a",
+  "corporateEventId": "fe10ec62-bdc6-4235-9e6f-bdf3d912e786",
+  "checks": [
+    {
+      "id": "auth.user",
+      "ok": true,
+      "detail": "8da08645-ff33-435c-9bf9-6b968fe25e21"
+    },
+    {
+      "id": "enrollment",
+      "ok": true,
+      "detail": "97a8ac4d-3dbc-473e-8a5a-c9804caa85fd"
+    },
+    {
+      "id": "provision.venue",
+      "ok": true,
+      "detail": "46817d4e-f95b-4fc0-acd4-1574ec201276"
+    },
+    {
+      "id": "provision.starters_ok",
+      "ok": true,
+      "detail": "{\"seeded\":[\"inventory\",\"message_templates\",\"automations\",\"contracts\",\"playbooks\",\"questionnaires\",\"event_orders\",\"timelines\",\"floor_plans\",\"packages\",\"faq\",\"brochures\",\"saved_reports\",\"schedule_item_types\",\"standard_pipeline\",\"setup_profiles\"],\"failed\":[]}"
+    },
+    {
+      "id": "playbook.PB-CLIENT-01",
+      "ok": true,
+      "detail": "Standard Wedding — Client Planning (wedding)"
+    },
+    {
+      "id": "playbook.PB-VENUE-01",
+      "ok": true,
+      "detail": "Standard Wedding — Venue Planning (wedding)"
+    },
+    {
+      "id": "playbook.PB-CLIENT-CORP-01",
+      "ok": true,
+      "detail": "Standard Corporate — Client Planning (corporate)"
+    },
+    {
+      "id": "playbook.PB-VENUE-CORP-01",
+      "ok": true,
+      "detail": "Standard Corporate — Venue Planning (corporate)"
+    },
+    {
+      "id": "playbook.PB-CLIENT-SOCIAL-01",
+      "ok": true,
+      "detail": "Standard Social — Client Planning (social_event)"
+    },
+    {
+      "id": "playbook.PB-VENUE-SOCIAL-01",
+      "ok": true,
+      "detail": "Standard Social — Venue Planning (social_event)"
+    },
+    {
+      "id": "playbook.wedding_only_defaults",
+      "ok": true,
+      "detail": "[{\"key\":\"PB-CLIENT-01\",\"event_type\":\"wedding\"},{\"key\":\"PB-VENUE-01\",\"event_type\":\"wedding\"}]"
+    },
+    {
+      "id": "timeline.TL-01",
+      "ok": true,
+      "detail": "[\"TL-01\",\"TL-02\",\"TL-03\"]"
+    },
+    {
+      "id": "questionnaire.QST-CP",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "id": "questionnaire.QST-FD",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "id": "profile.count_named",
+      "ok": true,
+      "detail": "count=1"
+    },
+    {
+      "id": "profile.planning",
+      "ok": true,
+      "detail": "set_up"
+    },
+    {
+      "id": "profile.timeline",
+      "ok": true,
+      "detail": "set_up"
+    },
+    {
+      "id": "profile.questionnaires",
+      "ok": true,
+      "detail": "set_up"
+    },
+    {
+      "id": "profile.vendors",
+      "ok": true,
+      "detail": "set_up"
+    },
+    {
+      "id": "profile.floor_plans_not_included",
+      "ok": true,
+      "detail": "skipped"
+    },
+    {
+      "id": "profile.refs.client_playbook",
+      "ok": true,
+      "detail": "abf6bce8-117e-427d-b208-a4fba77658ad"
+    },
+    {
+      "id": "profile.refs.venue_playbook",
+      "ok": true,
+      "detail": "d5b8a607-4549-4bdd-8307-d604dec4a7df"
+    },
+    {
+      "id": "profile.refs.timeline",
+      "ok": true,
+      "detail": "adfa35cc-810d-414e-a242-3a6c703676dd"
+    },
+    {
+      "id": "profile.refs.questionnaires",
+      "ok": true,
+      "detail": "[\"dbefc231-4f46-416f-a703-d171714df852\",\"8009f2ca-4dec-4d16-8146-27f0cd8cbba1\"]"
+    },
+    {
+      "id": "profile.refs.no_floor_plan",
+      "ok": true,
+      "detail": "{\"defaultFloorPlanTemplateId\":null,\"floorPlanTemplateIds\":[]}"
+    },
+    {
+      "id": "profile.refs.no_vendors_forced",
+      "ok": true,
+      "detail": "empty vendor refs"
+    },
+    {
+      "id": "assignment.wedding_once",
+      "ok": true,
+      "detail": "[{\"profile_id\":\"12618b53-9fa9-4741-8df2-9dd29b9c7d17\",\"event_type\":\"wedding\"}]"
+    },
+    {
+      "id": "assignment.no_venue_default",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "automation.SEQ-01_paused",
+      "ok": true,
+      "detail": "New Inquiry Welcome=paused"
+    },
+    {
+      "id": "automation.SEQ-02_paused",
+      "ok": true,
+      "detail": "Tour Follow-Up=paused"
+    },
+    {
+      "id": "automation.SEQ-03_paused",
+      "ok": true,
+      "detail": "Proposal Follow-Up=paused"
+    },
+    {
+      "id": "automation.SEQ-04_paused",
+      "ok": true,
+      "detail": "Post-Event Thank You=paused"
+    },
+    {
+      "id": "reseed.ok",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "reseed.playbooks_stable",
+      "ok": true,
+      "detail": "6→6"
+    },
+    {
+      "id": "reseed.profiles_stable",
+      "ok": true,
+      "detail": "1→1"
+    },
+    {
+      "id": "reseed.sequences_stable",
+      "ok": true,
+      "detail": "4→4"
+    },
+    {
+      "id": "inherit.wedding_profile",
+      "ok": true,
+      "detail": "{\"uses_profile\":true,\"profile_name\":\"Standard Wedding Setup\",\"profile_id\":\"12618b53-9fa9-4741-8df2-9dd29b9c7d17\"}"
+    },
+    {
+      "id": "inherit.wedding_has_tasks",
+      "ok": true,
+      "detail": "tasks=7"
+    },
+    {
+      "id": "inherit.corporate_no_wedding_profile",
+      "ok": true,
+      "detail": "null"
+    },
+    {
+      "id": "inherit.corporate_no_wedding_tasks",
+      "ok": true,
+      "detail": "{\"corpTaskCount\":0,\"leaked\":[],\"weddingSample\":[\"Build timeline\",\"Create floor plan\",\"Confirm rentals\",\"Vendor COIs in file\",\"Prepare venue\"]}"
+    },
+    {
+      "id": "side_effects.no_messages",
+      "ok": true,
+      "detail": "scheduled_messages=0"
+    },
+    {
+      "id": "side_effects.no_invitations",
+      "ok": true,
+      "detail": "client_invitations=0"
+    },
+    {
+      "id": "regression.wg_signature",
+      "ok": true,
+      "detail": "09829788-c776-496f-802b-d7be4b372563"
+    },
+    {
+      "id": "regression.jen_standard",
+      "ok": true,
+      "detail": "b2c5bb44-cdea-4b1a-9aca-995c04fea327"
+    },
+    {
+      "id": "regression.jen_seq01_untouched_row",
+      "ok": true,
+      "detail": "SEQ-01 rows=1"
+    }
+  ],
+  "failed": [],
+  "verdict": "GREEN"
+}

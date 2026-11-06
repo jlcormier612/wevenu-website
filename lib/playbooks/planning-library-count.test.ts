@@ -97,10 +97,21 @@ describe("Venue Planning starter provisioning", () => {
     assert.equal(
       shouldSkipVenuePlanningStarterProvision({
         hasPbVenue01: false,
+        hasActiveVenueTemplate: false,
+        hasSameName: true,
+      }),
+      true,
+    );
+  });
+
+  it("still provisions PB-VENUE-01 when another active venue template exists", () => {
+    assert.equal(
+      shouldSkipVenuePlanningStarterProvision({
+        hasPbVenue01: false,
         hasActiveVenueTemplate: true,
         hasSameName: false,
       }),
-      true,
+      false,
     );
   });
 

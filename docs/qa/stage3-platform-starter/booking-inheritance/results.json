@@ -1,0 +1,606 @@
+{
+  "venueId": "46817d4e-f95b-4fc0-acd4-1574ec201276",
+  "stamp": 1794007836347,
+  "weddingLeadId": "66cdf8c7-b4d0-43d4-abde-ff264999cf6a",
+  "corpLeadId": "19b5fb0c-2eeb-4010-b064-e8ed330d6628",
+  "spaceId": "6332e6c4-cc1c-4cfa-b9df-416aed278f78",
+  "shots": [],
+  "weddingBook": {
+    "clientId": "1073f8fd-5a21-46ee-b259-d94e64b07e51",
+    "eventId": "e1fb93f2-3c4e-459a-b552-0148e5eab5bf",
+    "href": "http://127.0.0.1:3000/leads/66cdf8c7-b4d0-43d4-abde-ff264999cf6a",
+    "leadId": "66cdf8c7-b4d0-43d4-abde-ff264999cf6a"
+  },
+  "weddingDb": {
+    "setup": {
+      "event_id": "e1fb93f2-3c4e-459a-b552-0148e5eab5bf",
+      "uses_profile": true,
+      "profile_id": "12618b53-9fa9-4741-8df2-9dd29b9c7d17",
+      "profile_name": "Standard Wedding Setup",
+      "inherited_decisions": {
+        "vendors": "set_up",
+        "planning": "set_up",
+        "timeline": "set_up",
+        "floor_plans": "skipped",
+        "questionnaires": "set_up"
+      },
+      "inherited_template_refs": {
+        "requiredVendorIds": [],
+        "timelineTemplateId": "adfa35cc-810d-414e-a242-3a6c703676dd",
+        "inventoryTemplateId": null,
+        "timelineTemplateIds": [],
+        "eventOrderTemplateId": null,
+        "floorPlanTemplateIds": [],
+        "recommendedVendorIds": [],
+        "questionnaireTemplateIds": [
+          "dbefc231-4f46-416f-a703-d171714df852",
+          "8009f2ca-4dec-4d16-8146-27f0cd8cbba1"
+        ],
+        "defaultFloorPlanTemplateId": null,
+        "planningPlaybookTemplateId": "abf6bce8-117e-427d-b208-a4fba77658ad",
+        "venuePlanningPlaybookTemplateId": "d5b8a607-4549-4bdd-8307-d604dec4a7df"
+      },
+      "overrides": {}
+    },
+    "apps": [
+      {
+        "id": "1a8f3bb4-9d79-4d33-84a5-60f9ee233b8f",
+        "kind": "client",
+        "template_id": "abf6bce8-117e-427d-b208-a4fba77658ad",
+        "playbook_templates": {
+          "kind": "client",
+          "name": "Standard Wedding — Client Planning",
+          "source_master_key": "PB-CLIENT-01"
+        }
+      },
+      {
+        "id": "29ea6eae-cd31-4899-9c0b-3e9aef37965f",
+        "kind": "venue",
+        "template_id": "d5b8a607-4549-4bdd-8307-d604dec4a7df",
+        "playbook_templates": {
+          "kind": "venue",
+          "name": "Standard Wedding — Venue Planning",
+          "source_master_key": "PB-VENUE-01"
+        }
+      }
+    ],
+    "tasks": [
+      {
+        "id": "94e89114-0336-4a6b-a7a9-568e7893efbd",
+        "title": "Complete your questionnaire",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "373b334e-ec33-4476-a522-a15f6cfe3160",
+        "title": "Purchase event insurance",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "ca0419c3-5706-4b5a-8d2f-5eb3c435c1fa",
+        "title": "Choose your vendors",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "a3342499-6871-4c24-8015-f9fecb4a765c",
+        "title": "Submit your guest count",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "ab8300ab-760a-47ec-aa12-5b73d9223449",
+        "title": "Final payment",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "9f0c907a-6a5f-4f5c-bd8c-ee6da7ba3afa",
+        "title": "Submit your seating plan",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "5d8cf791-fb43-41ff-8a82-4663a815f18b",
+        "title": "Build timeline",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      },
+      {
+        "id": "029b35c4-1aa1-490c-9cb5-7d62c534512b",
+        "title": "Create floor plan",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      },
+      {
+        "id": "04744c02-8653-4e0a-842f-6efbf5aa6076",
+        "title": "Submit your timeline",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "3c4b2b90-e80a-40a9-8857-bd1bbdcd43b6",
+        "title": "Confirm rentals",
+        "visibility": "vendor_owned",
+        "owner_type": "vendor"
+      },
+      {
+        "id": "cfeb9c21-b489-45ad-bf4a-8eb4c7aeb83c",
+        "title": "Vendor COIs in file",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      },
+      {
+        "id": "2eb430d0-710a-427d-9ba7-72c54d4150a4",
+        "title": "Prepare venue",
+        "visibility": "coordinator_only",
+        "owner_type": "team"
+      },
+      {
+        "id": "97ed7c5e-95fa-4a44-8c29-17c4960f41f6",
+        "title": "Day-of setup",
+        "visibility": "coordinator_only",
+        "owner_type": "team"
+      },
+      {
+        "id": "b5f93b57-5b1c-4171-9f86-0f9729211f4b",
+        "title": "Send thank-you note",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      },
+      {
+        "id": "856505b8-5c06-49b8-ab12-8dd86a0f3e06",
+        "title": "Leave a review",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      }
+    ],
+    "clientTasks": [
+      {
+        "id": "94e89114-0336-4a6b-a7a9-568e7893efbd",
+        "title": "Complete your questionnaire",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "373b334e-ec33-4476-a522-a15f6cfe3160",
+        "title": "Purchase event insurance",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "ca0419c3-5706-4b5a-8d2f-5eb3c435c1fa",
+        "title": "Choose your vendors",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "a3342499-6871-4c24-8015-f9fecb4a765c",
+        "title": "Submit your guest count",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "ab8300ab-760a-47ec-aa12-5b73d9223449",
+        "title": "Final payment",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "9f0c907a-6a5f-4f5c-bd8c-ee6da7ba3afa",
+        "title": "Submit your seating plan",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "04744c02-8653-4e0a-842f-6efbf5aa6076",
+        "title": "Submit your timeline",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      },
+      {
+        "id": "856505b8-5c06-49b8-ab12-8dd86a0f3e06",
+        "title": "Leave a review",
+        "visibility": "client_owned",
+        "owner_type": "couple"
+      }
+    ],
+    "venueTasks": [
+      {
+        "id": "5d8cf791-fb43-41ff-8a82-4663a815f18b",
+        "title": "Build timeline",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      },
+      {
+        "id": "029b35c4-1aa1-490c-9cb5-7d62c534512b",
+        "title": "Create floor plan",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      },
+      {
+        "id": "3c4b2b90-e80a-40a9-8857-bd1bbdcd43b6",
+        "title": "Confirm rentals",
+        "visibility": "vendor_owned",
+        "owner_type": "vendor"
+      },
+      {
+        "id": "cfeb9c21-b489-45ad-bf4a-8eb4c7aeb83c",
+        "title": "Vendor COIs in file",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      },
+      {
+        "id": "2eb430d0-710a-427d-9ba7-72c54d4150a4",
+        "title": "Prepare venue",
+        "visibility": "coordinator_only",
+        "owner_type": "team"
+      },
+      {
+        "id": "97ed7c5e-95fa-4a44-8c29-17c4960f41f6",
+        "title": "Day-of setup",
+        "visibility": "coordinator_only",
+        "owner_type": "team"
+      },
+      {
+        "id": "b5f93b57-5b1c-4171-9f86-0f9729211f4b",
+        "title": "Send thank-you note",
+        "visibility": "coordinator_only",
+        "owner_type": "coordinator"
+      }
+    ],
+    "timeline": [
+      {
+        "id": "34dbb4fb-fbdb-45f9-8367-430cb19897eb",
+        "title": "Venue Access / Team Arrival"
+      },
+      {
+        "id": "b5b59123-fc54-475c-ab14-09403e0b070a",
+        "title": "Venue Setup Begins"
+      },
+      {
+        "id": "dbe0459e-4ad4-4dff-a6bf-821fc30e44dd",
+        "title": "Rentals / Inventory Setup"
+      },
+      {
+        "id": "e4da2863-6aa1-47a4-bf4f-fa1c38f87e00",
+        "title": "Vendor Load-In"
+      },
+      {
+        "id": "3fff965e-9f68-4eb1-9769-84cfa1e1a1bf",
+        "title": "Catering Setup"
+      },
+      {
+        "id": "4c603d65-30b5-4fa7-be27-b09c1a61c055",
+        "title": "Bar Setup"
+      },
+      {
+        "id": "4c5c584d-dc80-4f83-b673-427e002a375b",
+        "title": "Ceremony Setup"
+      },
+      {
+        "id": "53707e91-6795-4f94-8579-2b45e72ff306",
+        "title": "Reception Setup"
+      },
+      {
+        "id": "7df21389-76a3-4979-8c99-b57e08d64234",
+        "title": "Final Venue Walkthrough"
+      },
+      {
+        "id": "4920d2cb-2de7-4b5c-bab9-7bd81f7fb43f",
+        "title": "Guest Arrival"
+      },
+      {
+        "id": "267996c5-1888-4f1b-b0c7-f75fcc90ee94",
+        "title": "Ceremony Seating"
+      },
+      {
+        "id": "405f451e-74f4-4244-bd4c-74fffcc9f388",
+        "title": "Ceremony Begins"
+      },
+      {
+        "id": "734e85a3-bfd0-48a0-99c0-de1ca6926a93",
+        "title": "Ceremony Ends"
+      },
+      {
+        "id": "3dbbae64-3d0c-44a2-9f71-7e84e8d4da56",
+        "title": "Family / Wedding Party Photos"
+      },
+      {
+        "id": "cc78692a-e882-4608-8d0a-b8cf351e3044",
+        "title": "Guest Transition to Cocktail Hour"
+      },
+      {
+        "id": "ab13f3a1-ceea-431c-959e-6d0f6cb44a47",
+        "title": "Cocktail Hour Begins"
+      },
+      {
+        "id": "a406cfa6-4de3-4592-bf53-447b82e6bdad",
+        "title": "Bar Service Begins"
+      },
+      {
+        "id": "9f223105-f157-4e10-b91a-b3c3c97d0e7b",
+        "title": "Passed Appetizers / Cocktail Service"
+      },
+      {
+        "id": "09f47eb5-88ea-400b-b676-a3d0eb19388a",
+        "title": "Couple Photos"
+      },
+      {
+        "id": "85b064e8-a044-4d22-b0f5-3bbd72e59178",
+        "title": "Reception Room Final Check"
+      },
+      {
+        "id": "2693052c-35c3-48f6-9ddd-ca178f4e55f9",
+        "title": "Guests Invited to Reception"
+      },
+      {
+        "id": "9f316479-5699-4c84-871d-1df27e3bb914",
+        "title": "Reception Begins"
+      },
+      {
+        "id": "120e1aac-30ec-45c9-a061-8b92957e74bd",
+        "title": "Grand Entrance"
+      },
+      {
+        "id": "5f18dab7-ae7c-4efb-af01-ba2ec93c164c",
+        "title": "Welcome / Opening Remarks"
+      },
+      {
+        "id": "3cce8cef-45c7-4458-98a0-c8afb9f53a92",
+        "title": "Dinner Service Begins"
+      },
+      {
+        "id": "6aeb282a-1a3b-4c1f-a949-9e96fe0841a4",
+        "title": "Dinner Service Complete"
+      },
+      {
+        "id": "90a96da8-6a03-4414-8ed5-2ac3d9beebe7",
+        "title": "Toasts / Speeches"
+      },
+      {
+        "id": "8a88a85c-6ec5-4cc4-86c2-a55ded76d594",
+        "title": "First Dance"
+      },
+      {
+        "id": "6e65f647-2333-463a-b900-f30eea4ef3e6",
+        "title": "Parent / Family Dances"
+      },
+      {
+        "id": "6069dc8d-0c09-4bd4-88a1-175daf2bd3a9",
+        "title": "Cake Cutting"
+      },
+      {
+        "id": "a44b639a-9c67-4834-98b6-c2b2d001a5c0",
+        "title": "Dessert Service"
+      },
+      {
+        "id": "a63b830b-f90a-4fbf-ac6d-c5da71a80993",
+        "title": "Open Dancing"
+      },
+      {
+        "id": "a8944ba5-2105-49b9-81d1-38e44a274465",
+        "title": "Last Call / Final Service"
+      },
+      {
+        "id": "1095a429-639d-4745-96db-229f23184315",
+        "title": "Final Guest Departure"
+      },
+      {
+        "id": "f00a776d-7f74-4d2d-995e-0db6529e0a64",
+        "title": "Vendor Load-Out"
+      },
+      {
+        "id": "ca0a8e53-ed05-4a37-bf0c-8616b71ec136",
+        "title": "Personal Items Collected"
+      },
+      {
+        "id": "b638388d-4972-40ed-ad38-1bff2a8e4a6a",
+        "title": "Venue Breakdown"
+      },
+      {
+        "id": "93197c5e-4b2b-47f3-a8b7-8c2e231b9afc",
+        "title": "Event Closeout"
+      }
+    ],
+    "questionnaires": [
+      {
+        "id": "49b060b0-9ed2-4c6d-8085-15489b9edd87",
+        "status": "draft",
+        "template_id": "dbefc231-4f46-416f-a703-d171714df852",
+        "questionnaire_templates": {
+          "name": "Client Planning Questionnaire",
+          "source_master_key": "QST-CP"
+        }
+      },
+      {
+        "id": "8aae9992-2a5b-4ad9-b1fe-beda619d8845",
+        "status": "draft",
+        "template_id": "8009f2ca-4dec-4d16-8146-27f0cd8cbba1",
+        "questionnaire_templates": {
+          "name": "Final Details",
+          "source_master_key": "QST-FD"
+        }
+      }
+    ],
+    "floorPlans": [],
+    "vendorRecs": []
+  },
+  "weddingUiHints": {
+    "mentionsStandardWedding": true,
+    "timelineHasCeremony": true,
+    "hasQuestionnaireCopy": true
+  },
+  "corpBook": {
+    "clientId": "226ca724-4274-4a16-b252-89c3b79eda96",
+    "eventId": "65c3bace-0e63-44e0-b9f4-f19023da97f6",
+    "href": "http://127.0.0.1:3000/clients/226ca724-4274-4a16-b252-89c3b79eda96/booked?eventId=65c3bace-0e63-44e0-b9f4-f19023da97f6",
+    "leadId": "19b5fb0c-2eeb-4010-b064-e8ed330d6628"
+  },
+  "corpDb": {
+    "setup": null,
+    "apps": [],
+    "tasks": [],
+    "clientTasks": [],
+    "venueTasks": [],
+    "timeline": [],
+    "questionnaires": [],
+    "floorPlans": [],
+    "vendorRecs": []
+  },
+  "checks": [
+    {
+      "id": "seed.wedding_lead",
+      "ok": true,
+      "detail": "66cdf8c7-b4d0-43d4-abde-ff264999cf6a"
+    },
+    {
+      "id": "seed.corp_lead",
+      "ok": true,
+      "detail": "19b5fb0c-2eeb-4010-b064-e8ed330d6628"
+    },
+    {
+      "id": "seed.space",
+      "ok": true,
+      "detail": "6332e6c4-cc1c-4cfa-b9df-416aed278f78"
+    },
+    {
+      "id": "wedding.booked_event",
+      "ok": true,
+      "detail": "e1fb93f2-3c4e-459a-b552-0148e5eab5bf"
+    },
+    {
+      "id": "wedding.client",
+      "ok": true,
+      "detail": "1073f8fd-5a21-46ee-b259-d94e64b07e51"
+    },
+    {
+      "id": "wedding.profile_selected",
+      "ok": true,
+      "detail": "{\"uses_profile\":true,\"profile_id\":\"12618b53-9fa9-4741-8df2-9dd29b9c7d17\",\"profile_name\":\"Standard Wedding Setup\"}"
+    },
+    {
+      "id": "wedding.floor_plans_excluded",
+      "ok": true,
+      "detail": "skipped"
+    },
+    {
+      "id": "wedding.planning_included",
+      "ok": true,
+      "detail": "set_up"
+    },
+    {
+      "id": "wedding.timeline_included",
+      "ok": true,
+      "detail": "set_up"
+    },
+    {
+      "id": "wedding.questionnaires_included",
+      "ok": true,
+      "detail": "set_up"
+    },
+    {
+      "id": "wedding.client_playbook_applied",
+      "ok": true,
+      "detail": "{\"app\":\"1a8f3bb4-9d79-4d33-84a5-60f9ee233b8f\",\"key\":\"PB-CLIENT-01\",\"clientTasks\":8}"
+    },
+    {
+      "id": "wedding.venue_playbook_applied",
+      "ok": true,
+      "detail": "{\"app\":\"29ea6eae-cd31-4899-9c0b-3e9aef37965f\",\"key\":\"PB-VENUE-01\",\"venueTasks\":7}"
+    },
+    {
+      "id": "wedding.client_tasks_present",
+      "ok": true,
+      "detail": "clientTasks=8 sample=Complete your questionnaire; Purchase event insurance; Choose your vendors"
+    },
+    {
+      "id": "wedding.venue_tasks_present",
+      "ok": true,
+      "detail": "venueTasks=7 sample=Build timeline; Create floor plan; Confirm rentals"
+    },
+    {
+      "id": "wedding.timeline_prepared",
+      "ok": true,
+      "detail": "timeline_entries=38"
+    },
+    {
+      "id": "wedding.questionnaires_prepared",
+      "ok": true,
+      "detail": "[{\"status\":\"draft\",\"key\":\"QST-CP\",\"name\":\"Client Planning Questionnaire\"},{\"status\":\"draft\",\"key\":\"QST-FD\",\"name\":\"Final Details\"}]"
+    },
+    {
+      "id": "wedding.floor_plans_none",
+      "ok": true,
+      "detail": "floor_plans=0"
+    },
+    {
+      "id": "wedding.vendor_recs_network_only",
+      "ok": true,
+      "detail": "recommendations=0 (empty OK — no network vendors configured)"
+    },
+    {
+      "id": "wedding.tasks_are_event_copies",
+      "ok": true,
+      "detail": "{\"id\":\"94e89114-0336-4a6b-a7a9-568e7893efbd\",\"title\":\"Complete your questionnaire\",\"template_task_id\":\"dafb0f9a-cb10-4e83-bba3-60892825702d\"}"
+    },
+    {
+      "id": "corp.booked_event",
+      "ok": true,
+      "detail": "65c3bace-0e63-44e0-b9f4-f19023da97f6"
+    },
+    {
+      "id": "corp.no_wedding_profile",
+      "ok": true,
+      "detail": "null"
+    },
+    {
+      "id": "corp.no_wedding_tasks",
+      "ok": true,
+      "detail": "{\"taskCount\":0,\"leaked\":[]}"
+    },
+    {
+      "id": "corp.no_wedding_playbook_apps",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "corp.starters_optional_unassigned",
+      "ok": true,
+      "detail": "[{\"id\":\"55bdf2e1-70cc-438e-bc17-77a137e8bb35\",\"source_master_key\":\"PB-CLIENT-CORP-01\",\"is_default\":false},{\"id\":\"328f5bfc-24d8-4164-84a0-e7a59528925c\",\"source_master_key\":\"PB-CLIENT-SOCIAL-01\",\"is_default\":false},{\"id\":\"af5e2e5f-1b37-470e-b655-6b165b1d9636\",\"source_master_key\":\"PB-VENUE-CORP-01\",\"is_default\":false},{\"id\":\"2583b8ef-d318-44e5-889c-1eb34c82b00b\",\"source_master_key\":\"PB-VENUE-SOCIAL-01\",\"is_default\":false}]"
+    },
+    {
+      "id": "side_effects.no_messages",
+      "ok": true,
+      "detail": "scheduled_messages=0"
+    },
+    {
+      "id": "side_effects.no_invitations",
+      "ok": true,
+      "detail": "client_invitations=0"
+    },
+    {
+      "id": "side_effects.sequences_paused",
+      "ok": true,
+      "detail": "[{\"source_master_key\":\"SEQ-01\",\"status\":\"paused\"},{\"source_master_key\":\"SEQ-02\",\"status\":\"paused\"},{\"source_master_key\":\"SEQ-03\",\"status\":\"paused\"},{\"source_master_key\":\"SEQ-04\",\"status\":\"paused\"}]"
+    },
+    {
+      "id": "regression.wg",
+      "ok": true,
+      "detail": "09829788-c776-496f-802b-d7be4b372563"
+    },
+    {
+      "id": "regression.jen",
+      "ok": true,
+      "detail": "b2c5bb44-cdea-4b1a-9aca-995c04fea327"
+    },
+    {
+      "id": "config.one_profile",
+      "ok": true,
+      "detail": "profiles=1"
+    }
+  ],
+  "failed": [],
+  "verdict": "GREEN"
+}

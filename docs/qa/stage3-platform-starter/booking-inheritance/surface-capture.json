@@ -1,0 +1,21 @@
+{
+  "shots": [
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/booking-inheritance/screenshots/wedding-09-event-setup-focus.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/booking-inheritance/screenshots/wedding-10-planning-tasks.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/booking-inheritance/screenshots/wedding-11-timeline-items.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/booking-inheritance/screenshots/wedding-12-questionnaires.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/booking-inheritance/screenshots/corporate-09-overview.png",
+    "/Users/jensmac/Developer/wevenu-website/docs/qa/stage3-platform-starter/booking-inheritance/screenshots/corporate-10-setup-area.png"
+  ],
+  "weddingHints": {
+    "hasStandardWeddingSetup": false,
+    "hasClientPlanning": true,
+    "hasVenuePlanning": false,
+    "hasTimelineItems": false,
+    "hasQuestionnaires": true
+  },
+  "corpHints": {
+    "noWeddingSetup": true,
+    "isCorporate": true
+  }
+}

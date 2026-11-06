@@ -132,6 +132,16 @@ const STEPS: SeedStep[] = [
       if (error) throw error;
     },
   },
+  {
+    // After Library starters so refs resolve. Idempotent; wedding-only assignment.
+    key: "setup_profiles",
+    run: async (venueId) => {
+      const { seedStandardWeddingSetupProfile } = await import(
+        "@/lib/event-setup/provision-standard-wedding-setup"
+      );
+      await seedStandardWeddingSetupProfile(venueId);
+    },
+  },
 ];
 
 /**

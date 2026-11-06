@@ -42,14 +42,14 @@ describe("Client Planning starter skip rules", () => {
     );
   });
 
-  it("does not duplicate an existing active Client Planning template", () => {
+  it("still provisions PB-CLIENT-01 when another active client template exists", () => {
     assert.equal(
       shouldSkipClientPlanningStarterProvision({
         hasPbClient01: false,
         hasActiveClientTemplate: true,
         hasSameName: false,
       }),
-      true,
+      false,
     );
   });
 

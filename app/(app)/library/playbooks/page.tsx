@@ -7,11 +7,14 @@ import { LibraryHowItWorks } from "@/components/library/library-guidance";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { PlaybooksSection } from "@/components/settings/playbooks-section";
 import { getEvents } from "@/lib/events/service";
+import { ensurePlaybookStartersForCurrentVenue } from "@/lib/playbooks/provision";
 import { getTemplatesForLibrary } from "@/lib/playbooks/service";
 
 export const metadata: Metadata = { title: "Planning Templates" };
 
 export default async function PlaybooksLibraryPage() {
+  // Lazy-ensure platform starters for venues that missed initial provisioning.
+  await ensurePlaybookStartersForCurrentVenue();
   const [templates, events] = await Promise.all([
     getTemplatesForLibrary(),
     getEvents(),

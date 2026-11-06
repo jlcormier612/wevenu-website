@@ -307,7 +307,25 @@ export function SetupProfilesSection({
 
       <ul className="space-y-3">
         {profiles.length === 0 ? (
-          <li className="text-sm text-muted-foreground">No setup profiles yet.</li>
+          <li className="space-y-2 rounded-lg border border-border px-4 py-3" data-testid="setup-profiles-empty-guidance">
+            <p className="text-sm font-medium text-heading">No setup profiles yet</p>
+            <p className="text-sm text-muted-foreground">
+              Your Library can hold starter planning materials, timelines, and questionnaires.
+              A Setup Profile tells Hello to Cheers which of those to prepare automatically when you
+              book an event of a given type.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              New venues normally receive a Standard Wedding Setup for weddings only. Other event
+              types stay unconfigured until you create a profile for them — wedding materials are
+              never applied to non-wedding bookings by default.
+            </p>
+            {canEdit ? (
+              <p className="text-sm text-muted-foreground">
+                Create a setup profile when you&apos;re ready, or wait for the wedding starter if
+                provisioning is still finishing.
+              </p>
+            ) : null}
+          </li>
         ) : profiles.map((profile) => {
           const usedFor = assignments.filter((row) => row.profileId === profile.id).map((row) => row.eventType);
           const gaps = profileConfigGaps(profile.decisions, profile.templateRefs, decisionSteps);
