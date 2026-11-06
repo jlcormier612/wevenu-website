@@ -117,7 +117,7 @@ export const OUR_STORY = {
       "After years of working with wedding and event venues, I know how much heart goes into this business—and how much happens behind the scenes that nobody ever sees.",
       "I built Hello to Cheers because I believe the people creating extraordinary celebrations deserve extraordinary support, too.",
       "And while the platform is new, the way I want to work with our customers isn't.",
-      "I want to listen. I want to help. I want to keep learning. And I want to build something that gets better because of the people using it.",
+      "I want to listen. I want to help. I want to keep learning. And I want Hello to Cheers to keep getting better because of the people using it.",
       "If we've worked together before, I hope this feels like catching up with an old friend.",
       "And if we haven't met yet, I can't wait to get to know you.",
     ],
@@ -129,7 +129,7 @@ export const OUR_STORY = {
     eyebrow: "Chapter 6",
     headline: "The best part is still ahead.",
     paragraphs: [
-      "There are so many things I'm excited to build, so many ideas still waiting to come to life, and so many wonderful people I hope to meet along the way.",
+      "I'm so proud of what we've created, and even more excited about where we can go from here. There are always new ideas to explore, new ways to make things better, and so many wonderful people I hope to meet along the way.",
       "To the venues who helped shape the journey that brought me here: thank you. You probably have no idea how much your ideas, encouragement, and trust have meant to me.",
       "And to the venues we're meeting for the first time: welcome. I hope you'll find something here that makes you feel just as excited as those little moments that started all of this.",
       "I'd love to show you what we've been building.",
