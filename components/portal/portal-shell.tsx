@@ -5131,6 +5131,8 @@ export function PortalShell({
               className="shrink-0"
             />
             <div className="flex min-w-0 items-center gap-2.5 border-l border-border/60 pl-3">
+              <p className="truncate font-heading text-sm font-semibold leading-tight text-heading">{coupleName}</p>
+              <span className="shrink-0 text-xs text-muted-foreground/40">·</span>
               {context.venue.logoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -5139,8 +5141,6 @@ export function PortalShell({
                   className="h-7 w-7 shrink-0 rounded-full border border-border/50 bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
                 />
               )}
-              <p className="truncate font-heading text-sm font-semibold leading-tight text-heading">{coupleName}</p>
-              <span className="shrink-0 text-xs text-muted-foreground/40">·</span>
               <p className="truncate text-xs text-muted-foreground">{context.venue.name}</p>
             </div>
           </div>
