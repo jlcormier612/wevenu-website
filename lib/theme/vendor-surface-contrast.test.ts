@@ -55,12 +55,16 @@ describe("vendor surface contrast", () => {
   it("uses botanical Wordmark + larger nav-only vendor logo", () => {
     const shell = read("components/vendor-app/vendor-app-shell.tsx");
     assert.match(shell, /Wordmark/);
-    assert.match(shell, /h-16 w-16/);
+    assert.match(shell, /h-20 w-20/);
     assert.doesNotMatch(shell, /Hello to Cheers/);
-    // Tiny header chip removed — mark lives in the left nav only.
+    // Vendor name/logo live in the left nav only — not the top chrome.
     assert.doesNotMatch(
       shell,
       /header[\s\S]*?logoUrl \? \([\s\S]*?<img[\s\S]*?h-6 w-6/,
+    );
+    assert.doesNotMatch(
+      shell,
+      /Open navigation[\s\S]{0,220}<span className="truncate text-sm font-semibold text-foreground">\{businessName\}<\/span>/,
     );
   });
 

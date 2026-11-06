@@ -152,9 +152,7 @@ export function VendorAppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
-          {/* Vendor mark lives in the left nav only — avoid a tiny unreadably cropped chip here. */}
-          <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
-          {/* Notifications top-right (venue header parity) — keeps sidebar logo row uncluttered. */}
+          {/* Vendor name + logo live in the left nav only — keep the top bar uncluttered. */}
           <div className="ml-auto flex items-center gap-1">
             <VendorNotificationBell />
           </div>
@@ -212,10 +210,10 @@ function SidebarContent({
             <img
               src={logoUrl}
               alt=""
-              className="h-16 w-16 shrink-0 rounded-sm border border-sidebar-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+              className="h-20 w-20 shrink-0 rounded-sm border border-sidebar-border bg-[var(--htc-ivory,#faf9f5)] object-contain p-px"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-sm font-bold text-sidebar-foreground/70">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-sm font-bold text-sidebar-foreground/70">
               {businessName.slice(0, 2).toUpperCase()}
             </div>
           )}

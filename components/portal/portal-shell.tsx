@@ -5130,9 +5130,7 @@ export function PortalShell({
               sizeClassName="h-7 w-auto max-w-[8.25rem] sm:h-8 sm:max-w-[9.5rem]"
               className="shrink-0"
             />
-            <div className="flex min-w-0 items-center gap-2.5 border-l border-border/60 pl-3">
-              <p className="truncate font-heading text-sm font-semibold leading-tight text-heading">{coupleName}</p>
-              <span className="shrink-0 text-xs text-muted-foreground/40">·</span>
+            <div className="flex min-w-0 items-center gap-2 border-l border-border/60 pl-3">
               {context.venue.logoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
