@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Wordmark } from "@/components/brand/wordmark";
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import {
   Sheet,
@@ -5122,20 +5123,26 @@ export function PortalShell({
 
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border">
-        {/* Venue + couple identity */}
+        {/* Platform Wordmark (top-left) + couple/venue identity */}
         <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {context.venue.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={context.venue.logoUrl}
-                alt={context.venue.name}
-                className="h-7 w-7 shrink-0 rounded-full border border-border/50 bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
-              />
-            )}
-            <p className="text-sm font-semibold text-heading leading-tight font-heading truncate">{coupleName}</p>
-            <span className="text-muted-foreground/40 text-xs shrink-0">·</span>
-            <p className="text-xs text-muted-foreground truncate">{context.venue.name}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <Wordmark
+              sizeClassName="h-7 w-auto max-w-[8.25rem] sm:h-8 sm:max-w-[9.5rem]"
+              className="shrink-0"
+            />
+            <div className="flex min-w-0 items-center gap-2.5 border-l border-border/60 pl-3">
+              {context.venue.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={context.venue.logoUrl}
+                  alt={context.venue.name}
+                  className="h-7 w-7 shrink-0 rounded-full border border-border/50 bg-[var(--htc-ivory,#faf9f5)] object-contain p-0.5"
+                />
+              )}
+              <p className="truncate font-heading text-sm font-semibold leading-tight text-heading">{coupleName}</p>
+              <span className="shrink-0 text-xs text-muted-foreground/40">·</span>
+              <p className="truncate text-xs text-muted-foreground">{context.venue.name}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {context.event && !documentFocus && (
@@ -5405,10 +5412,7 @@ export function PortalShell({
         )}
       </main>
 
-      {/* Venue Brand Experience Phase 1: "Powered by Hello to Cheers" removed —
-          the venue is the only visible brand on this customer-facing surface.
-          Pinned outside the scroll region so couples cannot scroll past it
-          into empty page chrome. */}
+      {/* Footer stays venue-named; platform brand lives in the header Wordmark. */}
       <footer className="text-center py-3 text-[10px] border-t border-border/30 shrink-0" style={{ color: TAUPE }}>
         {context.venue.name}
       </footer>

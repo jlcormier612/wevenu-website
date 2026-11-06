@@ -19,6 +19,15 @@ describe("logo display + upload honesty", () => {
     assert.match(hero, /venue\.logoUrl[\s\S]{0,200}object-contain/);
   });
 
+  it("shows Hello to Cheers Wordmark in client portal header chrome", () => {
+    const portal = read("components/portal/portal-shell.tsx");
+    assert.match(portal, /import \{ Wordmark \} from "@\/components\/brand\/wordmark"/);
+    assert.match(
+      portal,
+      /Sticky Header[\s\S]{0,500}<Wordmark[\s\S]{0,180}sizeClassName=/,
+    );
+  });
+
   it("tells venue + vendor uploaders how small chrome will show the mark", () => {
     const venue = read("components/settings/venue-settings.tsx");
     const vendor = read("components/vendor-app/vendor-profile-form.tsx");
