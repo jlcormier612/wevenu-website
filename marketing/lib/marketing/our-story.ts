@@ -71,7 +71,7 @@ export const OUR_STORY = {
       "Then one day, Ron suggested something surprisingly simple.",
     ],
     ronQuote: "Why don't you just build Weven?",
-    afterRon: ["I laughed. I thought he was ridiculous."],
+    afterRon: ["I laughed. I thought he was being ridiculous."],
     untilMoment: "Until I didn't.",
     afterUntil: [
       "Because the more I thought about it, the more I remembered all those conversations with venue owners. All the things they'd wished for. All the possibilities we hadn't been able to explore.",
