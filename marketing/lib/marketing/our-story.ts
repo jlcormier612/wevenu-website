@@ -50,7 +50,7 @@ export const OUR_STORY = {
       "Over the years, we worked with hundreds of wonderful venues. They welcomed us into their businesses, shared their challenges, celebrated their wins, and trusted us to help make their days a little easier.",
       "When Weven's chapter came to an end, saying goodbye was harder than I expected.",
       "I'd spent years working alongside an incredible team and getting to know the people we served. I did my best to see our customers through that transition with the same care we'd always tried to give them.",
-      "When it was over, I genuinely thought my time in the wedding industry was over, too.",
+      "When it was over, I genuinely thought my time in the wedding and events industry was over too.",
       "But some things have a way of staying with you.",
       "The people. The conversations. The ideas that never quite made it off the wish list.",
       "And the feeling that maybe, someday, there could be another chapter.",
@@ -115,7 +115,7 @@ export const OUR_STORY = {
     paragraphs: [
       "I'm the founder of Hello to Cheers, a longtime champion of venue owners, and someone who genuinely loves finding better ways to make people's work a little easier.",
       "After years of working with wedding and event venues, I know how much heart goes into this business—and how much happens behind the scenes that nobody ever sees.",
-      "I built Hello to Cheers because I believe the people creating extraordinary celebrations deserve extraordinary support, too.",
+      "I built Hello to Cheers because I believe the people creating extraordinary celebrations deserve extraordinary support too.",
       "And while the platform is new, the way I want to work with our customers isn't.",
       "I want to listen. I want to help. I want to keep learning. And I want Hello to Cheers to keep getting better because of the people using it.",
       "If we've worked together before, I hope this feels like catching up with an old friend.",
@@ -131,8 +131,8 @@ export const OUR_STORY = {
     paragraphs: [
       "I'm so proud of what we've created, and even more excited about where we can go from here. There are always new ideas to explore, new ways to make things better, and so many wonderful people I hope to meet along the way.",
       "To the venues who helped shape the journey that brought me here: thank you. You probably have no idea how much your ideas, encouragement, and trust have meant to me.",
-      "And to the venues we're meeting for the first time: welcome. I hope you'll find something here that makes you feel just as excited as those little moments that started all of this.",
-      "I'd love to show you what we've been building.",
+      "And to the venues we're meeting for the first time: welcome. I hope you'll find something here that makes you feel just as excited as those little moments that started all of this made me.",
+      "I'd love to show you what we've built.",
     ],
     primaryCta: { href: "/walkthrough", label: "Schedule a Walkthrough" },
     secondaryCta: { href: "/contact", label: "Get in Touch" },
