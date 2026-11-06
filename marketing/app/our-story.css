@@ -1,0 +1,515 @@
+/* Our Story — scoped editorial narrative. Does not affect Homepage or Product. */
+
+.htc-story {
+  --story-ink: #343b35;
+  --story-ink-soft: #343b35;
+  --story-muted: color-mix(in srgb, #343b35 68%, transparent);
+  --story-linen: #ebe5da;
+  --story-linen-soft: #f3efe6;
+  --story-ivory: #faf8f4;
+  --story-botanical: #446b56;
+  --story-botanical-deep: #2f4638;
+  --story-on-dark: #f7f4ee;
+  --story-measure: 38rem;
+  color: var(--story-ink);
+  background: var(--story-ivory);
+}
+
+.htc-story .os-wrap,
+.htc-story .os-wrap-narrow,
+.htc-story .os-wrap-wide {
+  box-sizing: border-box;
+  margin-inline: auto;
+  max-width: 100%;
+}
+
+.htc-story .os-wrap {
+  width: min(1120px, calc(100% - 2.5rem));
+}
+
+.htc-story .os-wrap-narrow {
+  width: min(42rem, calc(100% - 2.5rem));
+}
+
+.htc-story .os-wrap-wide {
+  width: min(1240px, calc(100% - 2.5rem));
+}
+
+.htc-story .os-kicker {
+  margin: 0;
+  font-size: 0.7125rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--heritage-sage) 88%, transparent);
+}
+
+.htc-story .os-title {
+  margin: 0.85rem 0 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(2.1rem, 4.2vw, 3.55rem);
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+  color: var(--forest-sage);
+  text-wrap: balance;
+}
+
+.htc-story .os-lede,
+.htc-story .os-prose p {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.72;
+  color: var(--story-ink);
+}
+
+.htc-story .os-prose {
+  display: grid;
+  gap: 1.15rem;
+  max-width: var(--story-measure);
+}
+
+.htc-story .os-italic {
+  font-style: italic;
+  color: var(--forest-sage);
+}
+
+.htc-story .os-frame {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 0.125rem;
+  border: 1px solid color-mix(in srgb, var(--taupe-medium) 28%, transparent);
+  box-shadow: 0 20px 50px -38px rgba(47, 55, 47, 0.22);
+  background: var(--taupe-light);
+}
+
+.htc-story .os-frame img {
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(0.99) contrast(1.02) saturate(1.04);
+}
+
+.htc-story .os-frame-portrait img {
+  object-position: center 18%;
+  filter: none;
+}
+
+/* ── Opening ── */
+.htc-story .os-opening {
+  padding: 7.5rem 0 4.5rem;
+  background: var(--story-linen);
+}
+
+.htc-story .os-opening-grid {
+  display: grid;
+  gap: 2.75rem;
+  align-items: end;
+}
+
+.htc-story .os-opening-grid > * {
+  min-width: 0;
+}
+
+.htc-story .os-opening-copy {
+  max-width: 34rem;
+}
+
+.htc-story .os-opening .os-title {
+  font-size: clamp(2.55rem, 5.5vw, 4.35rem);
+  line-height: 1.08;
+}
+
+.htc-story .os-opening-lines {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+
+.htc-story .os-opening-lines p {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  line-height: 1.45;
+  color: var(--story-ink);
+}
+
+.htc-story .os-opening-visual {
+  aspect-ratio: 3 / 2;
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-opening {
+    padding: 8.5rem 0 5.5rem;
+  }
+
+  .htc-story .os-opening-grid {
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: 3.5rem;
+    align-items: center;
+  }
+
+  .htc-story .os-opening-visual {
+    aspect-ratio: 3 / 2;
+  }
+}
+
+/* ── Shared chapter shell ── */
+.htc-story .os-chapter {
+  padding: 4.75rem 0;
+}
+
+.htc-story .os-chapter-linen {
+  background: var(--story-linen-soft);
+  border-block: 1px solid color-mix(in srgb, var(--taupe-medium) 28%, transparent);
+}
+
+.htc-story .os-chapter-white {
+  background: var(--true-white);
+}
+
+.htc-story .os-chapter-ivory {
+  background: var(--story-ivory);
+}
+
+.htc-story .os-chapter-head {
+  margin-bottom: 2rem;
+  max-width: 40rem;
+}
+
+.htc-story .os-split {
+  display: grid;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.htc-story .os-split > * {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-chapter {
+    padding: 6rem 0;
+  }
+
+  .htc-story .os-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3.75rem;
+    align-items: start;
+  }
+
+  .htc-story .os-split-reverse > :first-child {
+    order: 2;
+  }
+
+  .htc-story .os-split-reverse > :last-child {
+    order: 1;
+  }
+}
+
+.htc-story .os-listening-visual {
+  aspect-ratio: 4 / 3;
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-listening-visual {
+    aspect-ratio: 5 / 4;
+    align-self: start;
+  }
+}
+
+/* Pull quote */
+.htc-story .os-pull {
+  margin: 1.75rem 0;
+  padding: 1.5rem 1.35rem 1.5rem 1.5rem;
+  border-left: 2px solid color-mix(in srgb, var(--heritage-sage) 55%, transparent);
+  background: color-mix(in srgb, var(--story-linen) 55%, var(--true-white));
+}
+
+.htc-story .os-pull p {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+  line-height: 1.35;
+  color: var(--forest-sage);
+  font-style: italic;
+}
+
+/* First friends — single cherished still */
+.htc-story .os-friends-visual {
+  aspect-ratio: 3 / 2;
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-friends-visual {
+    aspect-ratio: 4 / 3;
+    width: 100%;
+    margin-top: 0.35rem;
+  }
+}
+
+/* Encouragement moment */
+.htc-story .os-laugh-line {
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: clamp(1.2rem, 1.9vw, 1.4rem);
+  line-height: 1.45;
+  color: var(--forest-sage);
+}
+
+.htc-story .os-until {
+  margin: 1.75rem 0 2rem;
+  padding: 1.5rem 0;
+  text-align: center;
+  border-block: 1px solid color-mix(in srgb, var(--taupe-medium) 35%, transparent);
+}
+
+.htc-story .os-until p {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--forest-sage);
+}
+
+.htc-story .os-ron-quote {
+  margin: 1.35rem 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  line-height: 1.35;
+  font-style: italic;
+  color: var(--forest-sage);
+}
+
+.htc-story .os-encourage-visual {
+  aspect-ratio: 4 / 3;
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-encourage-visual {
+    aspect-ratio: 5 / 4;
+    align-self: start;
+  }
+}
+
+/* Turning point — botanical lead → light conclusion */
+.htc-story .os-turning {
+  padding: 0;
+}
+
+.htc-story .os-turning-botanical {
+  padding: 4.75rem 0 4rem;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--story-botanical-deep) 94%, #1c2a22) 0%,
+      var(--story-botanical) 58%,
+      color-mix(in srgb, var(--story-botanical) 90%, #5a7a64) 100%
+    );
+  color: var(--story-on-dark);
+}
+
+.htc-story .os-turning-botanical .os-kicker {
+  color: color-mix(in srgb, var(--story-on-dark) 78%, transparent);
+}
+
+.htc-story .os-turning-botanical .os-title {
+  color: var(--story-on-dark);
+}
+
+.htc-story .os-prose-on-dark p {
+  color: var(--story-on-dark);
+}
+
+.htc-story .os-turning-light {
+  padding: 3.5rem 0 5rem;
+  background: var(--story-linen);
+}
+
+.htc-story .os-turning-light-grid {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.htc-story .os-turning-light-grid > * {
+  min-width: 0;
+}
+
+.htc-story .os-behind-scenes-visual {
+  aspect-ratio: 4 / 5;
+  max-width: 28rem;
+  width: 100%;
+  margin-inline: auto;
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-turning-light-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 3.75rem;
+    align-items: center;
+  }
+
+  .htc-story .os-behind-scenes-visual {
+    max-width: none;
+    margin-inline: 0;
+    aspect-ratio: 4 / 5;
+  }
+
+  .htc-story .os-turning-light .os-prose {
+    max-width: 36rem;
+  }
+}
+
+@media (max-width: 899px) {
+  .htc-story .os-turning-light-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .htc-story .os-behind-scenes-visual {
+    order: 2;
+    max-width: 22rem;
+  }
+}
+
+.htc-story .os-turning-visual {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 2.75rem;
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-turning-botanical {
+    padding: 6rem 0 4.5rem;
+  }
+
+  .htc-story .os-turning-light {
+    padding: 4rem 0 6rem;
+  }
+
+  .htc-story .os-turning-visual {
+    aspect-ratio: 21 / 10;
+  }
+}
+
+.htc-story .os-questions {
+  display: grid;
+  gap: 0;
+  margin: 2.5rem 0 0;
+  max-width: 44rem;
+  border-top: 1px solid color-mix(in srgb, var(--story-on-dark) 28%, transparent);
+}
+
+.htc-story .os-question {
+  margin: 0;
+  padding: 1.35rem 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: clamp(1.25rem, 2.1vw, 1.65rem);
+  line-height: 1.42;
+  color: var(--story-on-dark);
+  border-bottom: 1px solid color-mix(in srgb, var(--story-on-dark) 22%, transparent);
+}
+
+/* Jennifer */
+.htc-story .os-jennifer-grid {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.htc-story .os-jennifer-grid > * {
+  min-width: 0;
+}
+
+.htc-story .os-jennifer-portrait {
+  aspect-ratio: 4 / 5;
+  max-width: 460px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.htc-story .os-signature {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--taupe-medium) 40%, transparent);
+}
+
+.htc-story .os-signature-name {
+  margin: 0;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 1.55rem;
+  line-height: 1.2;
+  color: var(--forest-sage);
+}
+
+.htc-story .os-signature-title {
+  margin: 0.45rem 0 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--story-muted);
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-jennifer-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 4rem;
+  }
+
+  .htc-story .os-jennifer-portrait {
+    margin-inline: 0;
+  }
+}
+
+/* Invitation */
+.htc-story .os-invite {
+  padding: 5rem 0 6rem;
+  background: var(--story-linen);
+  text-align: center;
+}
+
+.htc-story .os-invite .os-chapter-head {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.htc-story .os-invite .os-prose {
+  margin-inline: auto;
+  text-align: left;
+}
+
+.htc-story .os-invite-visual {
+  aspect-ratio: 16 / 10;
+  max-width: 960px;
+  margin: 0 auto 2.75rem;
+}
+
+.htc-story .os-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  justify-content: center;
+  margin-top: 2.25rem;
+}
+
+@media (max-width: 480px) {
+  .htc-story .os-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .htc-story .os-cta-row a {
+    width: 100%;
+  }
+}
+
+@media (min-width: 900px) {
+  .htc-story .os-invite {
+    padding: 6.5rem 0 7.5rem;
+  }
+
+  .htc-story .os-invite-visual {
+    aspect-ratio: 2 / 1;
+  }
+}

@@ -1,268 +1,319 @@
 import Image from "next/image";
-import Link from "next/link";
 
-import { ClosingCta } from "@/components/marketing/closing-cta";
-import { HospitalityHeart, TrustRule } from "@/components/marketing/brand-accents";
-import { OurFirstFriends } from "@/components/marketing/our-first-friends";
-import { FILM } from "@/lib/marketing/film";
-import { EDITORIAL_BREAK_Y, EDITORIAL_FRAME, EDITORIAL_IMAGE } from "@/lib/marketing/rhythm";
-import { OUR_STORY } from "@/lib/marketing/our-story";
+import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { OUR_STORY, OUR_STORY_ASSETS } from "@/lib/marketing/our-story";
+
+import "@/app/our-story.css";
 
 /**
- * Our Story — editorial belief chapter.
- * Unique purpose: why this company exists. Never repeats Home.
+ * Our Story — founder narrative editorial.
+ * Scoped styles in our-story.css; does not alter Homepage or Product.
  */
 export function OurStoryExperience() {
   const page = OUR_STORY;
+  const assets = OUR_STORY_ASSETS;
 
   return (
-    <div className="bg-[var(--true-white)]">
-      {/* ── Opening — belief, not Home ── */}
-      <section className="px-6 pt-[140px] pb-28 md:pb-36">
-        <div className="mx-auto max-w-[65ch]">
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.opening.eyebrow}
-          </p>
-          <h1 className="mt-8 font-heading text-[2.52rem] font-medium leading-[1.21] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem]">
-            {page.opening.chapterTitle}
-          </h1>
-          <div className="mt-8 space-y-5 md:space-y-6">
-            {page.opening.lines.map((line, i) => {
-              const isLead = i < 2;
-              const isBeliefClose = line === "Belief.";
-              const isQuestion = line.startsWith('"Does this');
-              const isHumanLine =
-                line === "Relationships." ||
-                line === "Trust." ||
-                line === "Presence." ||
-                line === "Care.";
+    <div className="htc-story">
+      {/* ── Opening ── */}
+      <section className="os-opening" aria-labelledby="our-story-opening">
+        <div className="os-wrap-wide os-opening-grid">
+          <div className="os-opening-copy">
+            <p className="os-kicker">{page.opening.eyebrow}</p>
+            <h1 id="our-story-opening" className="os-title">
+              {page.opening.headline}
+            </h1>
+            <div className="os-opening-lines">
+              {page.opening.lines.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+          </div>
+          <figure className="os-frame os-opening-visual">
+            <Image
+              src={assets.opening}
+              alt="Three venue professionals laughing together while arranging a reception table with florals and candles — an illustrative editorial photograph"
+              fill
+              priority
+              sizes="(max-width: 900px) 100vw, 56vw"
+              className="object-cover object-[center_35%]"
+            />
+          </figure>
+        </div>
+      </section>
 
-              return (
-                <p
-                  key={`${i}-${line.slice(0, 36)}`}
-                  className={
-                    isLead
-                      ? "font-heading text-[2.1rem] font-medium leading-[1.26] text-[var(--forest-sage)] md:text-[3.36rem]"
-                      : isBeliefClose
-                        ? "pt-4 font-heading text-[2.1rem] font-medium text-[var(--forest-sage)] md:text-[3.36rem]"
-                        : isQuestion
-                          ? "font-heading text-[1.4rem] leading-[1.37] text-[var(--forest-sage)] md:text-[2.52rem]"
-                          : isHumanLine
-                            ? "font-heading text-[1.4rem] leading-[1.37] text-[var(--forest-sage)] md:text-[2.1rem]"
-                            : "font-heading text-xl leading-[1.4] text-[var(--forest-sage)]/75 md:text-2xl"
-                  }
-                >
-                  {line}
+      {/* ── Chapter 1 — Listening ── */}
+      <section
+        id="listening"
+        className="os-chapter os-chapter-white"
+        aria-labelledby="story-listening"
+      >
+        <div className="os-wrap">
+          <div className="os-split">
+            <figure className="os-frame os-listening-visual">
+              <Image
+                src={assets.listening}
+                alt="Two women sharing a joyful moment at a laptop during a collaborative venue conversation — an illustrative editorial photograph, not an actual customer portrait"
+                fill
+                sizes="(max-width: 900px) 100vw, 44vw"
+                className="object-cover object-center"
+              />
+            </figure>
+            <div>
+              <header className="os-chapter-head">
+                <p className="os-kicker">{page.listening.eyebrow}</p>
+                <h2 id="story-listening" className="os-title">
+                  {page.listening.headline}
+                </h2>
+              </header>
+              <div className="os-prose">
+                {page.listening.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+              <blockquote className="os-pull">
+                <p>“{page.listening.pullQuote}”</p>
+              </blockquote>
+              <div className="os-prose">
+                {page.listening.afterQuote.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Chapter 2 — Our first friends ── */}
+      <section
+        id="our-first-friends"
+        className="os-chapter os-chapter-linen scroll-mt-28"
+        aria-labelledby="story-first-friends"
+      >
+        <div className="os-wrap">
+          <div className="os-split os-split-reverse">
+            <div>
+              <header className="os-chapter-head">
+                <p className="os-kicker">{page.firstFriends.eyebrow}</p>
+                <h2 id="story-first-friends" className="os-title">
+                  {page.firstFriends.headline}
+                </h2>
+              </header>
+              <div className="os-prose">
+                {page.firstFriends.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+            <figure className="os-frame os-friends-visual">
+              <Image
+                src={assets.firstFriends}
+                alt="Intimate keepsakes on a sunlit wooden table — handwritten notes, an open journal, a gold pen, coffee, and a candle — illustrative editorial memories"
+                fill
+                sizes="(max-width: 900px) 100vw, 44vw"
+                className="object-cover object-center"
+              />
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Chapter 3 — Encouragement ── */}
+      <section
+        id="encouragement"
+        className="os-chapter os-chapter-ivory"
+        aria-labelledby="story-encouragement"
+      >
+        <div className="os-wrap">
+          <div className="os-split">
+            <div>
+              <header className="os-chapter-head">
+                <p className="os-kicker">{page.encouragement.eyebrow}</p>
+                <h2 id="story-encouragement" className="os-title">
+                  {page.encouragement.headline}
+                </h2>
+              </header>
+              <div className="os-prose">
+                {page.encouragement.beforeMoment.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                <p className="os-italic">{page.encouragement.italicThought}</p>
+                {page.encouragement.afterThought.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                <p className="os-ron-quote">“{page.encouragement.ronQuote}”</p>
+                {page.encouragement.afterRon.map((paragraph) => (
+                  <p key={paragraph} className="os-laugh-line">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+              <div className="os-until">
+                <p>{page.encouragement.untilMoment}</p>
+              </div>
+              <div className="os-prose">
+                {page.encouragement.afterUntil.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                <p className="os-italic">{page.encouragement.italicVision}</p>
+                {page.encouragement.afterVisionLead.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                <p>
+                  {page.encouragement.tryPhraseBefore}
+                  <em className="os-italic">{page.encouragement.tryPhraseItalic}</em>
+                  {page.encouragement.tryPhraseAfter}
                 </p>
-              );
-            })}
+                <p>{page.encouragement.closing}</p>
+              </div>
+            </div>
+            <figure className="os-frame os-encourage-visual">
+              <Image
+                src={assets.encouragement}
+                alt="A notebook titled Next Chapter on a sunlit desk with a coffee mug and laptop — checklist for Venue, Clients, Vendors, Automation, and Experience"
+                fill
+                sizes="(max-width: 900px) 100vw, 44vw"
+                className="object-cover object-center"
+              />
+            </figure>
           </div>
         </div>
       </section>
 
-      {/* ── Hospitality Comes First ── */}
+      {/* ── Chapter 4 — Turning point (botanical → light) ── */}
       <section
-        id="hospitality"
-        className="scroll-mt-28 border-y border-[var(--taupe-light)] bg-[var(--linen)] px-6 py-28 md:py-36"
+        id="turning-point"
+        className="os-turning"
+        aria-labelledby="story-turning-point"
       >
-        <div className="mx-auto max-w-6xl">
-          <HospitalityHeart size={14} className="mb-5 opacity-[0.8]" />
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.hospitality.eyebrow}
-          </p>
-          <h2 className="mt-7 max-w-3xl font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
-            {page.hospitality.headline}
-          </h2>
-          <div className="mt-14 space-y-6 md:mt-16">
-            {page.hospitality.lines.map((line, i) => (
-              <p
-                key={line}
-                className={
-                  i < 3
-                    ? "font-heading text-2xl leading-[1.3] text-[var(--forest-sage)] md:text-3xl"
-                    : "font-heading text-xl leading-[1.35] text-[var(--forest-sage)]/70 md:text-2xl"
-                }
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Care before guests — hospitality without words */}
-      <div className={`px-6 ${EDITORIAL_BREAK_Y}`}>
-        <div className={`relative mx-auto aspect-[16/9] w-full max-w-5xl md:aspect-[2.2/1] ${EDITORIAL_FRAME}`}>
-          <Image
-            src={FILM.whyCarePrep}
-            alt="Our Promise — built on trust, focused on hospitality"
-            fill
-            className={EDITORIAL_IMAGE}
-            sizes="100vw"
-            priority
-          />
-        </div>
-      </div>
-
-      {/* ── Our Promise ── */}
-      <section
-        id="promise"
-        className="scroll-mt-28 px-6 py-28 md:py-36"
-      >
-        <div className="mx-auto max-w-6xl">
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.promise.eyebrow}
-          </p>
-          <h2 className="mt-7 max-w-3xl font-heading text-[2.1rem] font-medium leading-[1.21] whitespace-pre-line text-[var(--forest-sage)] md:text-[3.36rem]">
-            {page.promise.headline}
-          </h2>
-          <div className="mt-14 space-y-6 md:mt-16">
-            {page.promise.lines.map((line) => {
-              const isQuestion = line.startsWith("Will ");
-              return (
-                <p
-                  key={line}
-                  className={
-                    isQuestion
-                      ? "font-heading text-2xl leading-[1.3] text-[var(--forest-sage)] md:text-3xl"
-                      : "font-heading text-xl leading-[1.4] text-[var(--forest-sage)]/75 md:text-2xl"
-                  }
-                >
-                  {line}
+        <div className="os-turning-botanical">
+          <div className="os-wrap-wide">
+            <figure className="os-frame os-turning-visual">
+              <Image
+                src={assets.turningPoint}
+                alt="Sunlit garden courtyard viewed through an architectural doorway — a hopeful, forward-looking hospitality landscape"
+                fill
+                sizes="100vw"
+                className="object-cover object-center"
+              />
+            </figure>
+            <header className="os-chapter-head">
+              <p className="os-kicker">{page.turningPoint.eyebrow}</p>
+              <h2 id="story-turning-point" className="os-title">
+                {page.turningPoint.headline}
+              </h2>
+            </header>
+            <div className="os-prose os-prose-on-dark">
+              {page.turningPoint.lead.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+            <div className="os-questions" role="list">
+              {page.turningPoint.questions.map((question) => (
+                <p key={question} className="os-question" role="listitem">
+                  {question}
                 </p>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="os-turning-light">
+          <div className="os-wrap os-turning-light-grid">
+            <div className="os-prose">
+              {page.turningPoint.afterQuestions.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+            <figure className="os-frame os-behind-scenes-visual">
+              <Image
+                src={assets.behindTheScenes}
+                alt="A venue professional in a sage apron carefully placing a name card on a linen napkin at a candlelit reception table — illustrative editorial photograph"
+                fill
+                sizes="(max-width: 900px) 100vw, 40vw"
+                className="object-cover object-[center_20%]"
+              />
+            </figure>
           </div>
         </div>
       </section>
 
-      {/* ── The Role of Luv ── */}
+      {/* ── Chapter 5 — Jennifer ── */}
       <section
-        id="role-of-luv"
-        className="scroll-mt-28 border-y border-[var(--taupe-light)] bg-[var(--linen)] px-6 py-28 md:py-36"
+        id="jennifer"
+        className="os-chapter os-chapter-white"
+        aria-labelledby="story-jennifer"
       >
-        <div className="mx-auto max-w-6xl">
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.roleOfLuv.eyebrow}
-          </p>
-          <h2 className="mt-7 max-w-3xl font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
-            {page.roleOfLuv.headline}
-          </h2>
-          <div className="mt-14 space-y-6 md:mt-16">
-            {page.roleOfLuv.lines.map((line, i) => (
-              <p
-                key={line}
-                className={
-                  i === 1
-                    ? "font-heading text-xl leading-[1.35] text-[var(--forest-sage)]/70 md:text-2xl"
-                    : "font-heading text-2xl leading-[1.3] text-[var(--forest-sage)] md:text-3xl"
-                }
-              >
-                {line}
-              </p>
-            ))}
+        <div className="os-wrap">
+          <div className="os-jennifer-grid">
+            <figure className="os-frame os-frame-portrait os-jennifer-portrait">
+              <Image
+                src={assets.jenniferPortrait}
+                alt="Jennifer Cormier, founder of Hello to Cheers, seated in a sage-green sweater with soft ivory surroundings and eucalyptus"
+                fill
+                sizes="(max-width: 900px) 90vw, 420px"
+                className="object-cover"
+                priority
+              />
+            </figure>
+            <div>
+              <header className="os-chapter-head">
+                <p className="os-kicker">{page.jennifer.eyebrow}</p>
+                <h2 id="story-jennifer" className="os-title">
+                  {page.jennifer.headline}
+                </h2>
+              </header>
+              <div className="os-prose">
+                {page.jennifer.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+              <div className="os-signature">
+                <p className="os-signature-name">{page.jennifer.signatureName}</p>
+                <p className="os-signature-title">{page.jennifer.signatureTitle}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Our First Friends ── */}
-      <div id="our-first-friends" className="scroll-mt-28">
-        <OurFirstFriends letterOnly />
-      </div>
-
-      {/* ── Trust ── */}
-      <section
-        id="trust"
-        className="scroll-mt-28 border-y border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36"
-      >
-        <div className="mx-auto max-w-3xl">
-          <TrustRule className="mb-5" />
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.trust.eyebrow}
-          </p>
-          <h2 className="mt-7 font-heading text-[2.1rem] font-medium text-[var(--forest-sage)] md:text-[3.36rem]">
-            {page.trust.headline}
-          </h2>
-          <p className="mt-6 font-heading text-2xl leading-snug text-[var(--forest-sage)]/80 md:text-3xl">
-            {page.trust.subhead}
-          </p>
-          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.trust.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <ul className="mt-14 flex flex-wrap gap-x-8 gap-y-3">
-            {page.trust.ideas.map((idea) => (
-              <li
-                key={idea}
-                className="text-sm tracking-[0.12em] uppercase text-[var(--heritage-sage)]"
-              >
-                {idea}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-14">
-            <Link
-              href={page.trust.cta.href}
-              className="font-heading text-xl text-[var(--forest-sage)] underline-offset-8 hover:underline md:text-2xl"
-            >
-              {page.trust.cta.label}
-            </Link>
-          </p>
-        </div>
-      </section>
-
-      {/* ── Pricing Philosophy — short, links out ── */}
-      <section
-        id="pricing-philosophy"
-        className="scroll-mt-28 px-6 py-28 md:py-36"
-      >
-        <div className="mx-auto max-w-3xl">
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.pricingPhilosophy.eyebrow}
-          </p>
-          <div className="mt-10 space-y-6">
-            {page.pricingPhilosophy.lines.map((line) => (
-              <p
-                key={line}
-                className="font-heading text-2xl leading-[1.35] text-[var(--forest-sage)] md:text-3xl"
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-          <p className="mt-14">
-            <Link
-              href={page.pricingPhilosophy.cta.href}
-              className="font-heading text-xl text-[var(--forest-sage)] underline-offset-8 hover:underline md:text-2xl"
-            >
-              {page.pricingPhilosophy.cta.label}
-            </Link>
-          </p>
-        </div>
-      </section>
-
-      {/* ── An Invitation ── */}
+      {/* ── Chapter 6 — Invitation ── */}
       <section
         id="welcome"
-        className="scroll-mt-28 border-t border-[var(--taupe-medium)]/40 px-6 py-28 text-center md:py-36"
+        className="os-invite"
+        aria-labelledby="story-invitation"
       >
-        <div className="mx-auto max-w-5xl">
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.welcome.eyebrow}
-          </p>
-          <div className="mt-10 space-y-8">
-            {page.welcome.lines.map((line) => (
-              <p
-                key={line}
-                className="font-heading text-2xl leading-[1.3] text-[var(--forest-sage)] md:text-4xl"
-              >
-                {line}
-              </p>
+        <div className="os-wrap">
+          <figure className="os-frame os-invite-visual">
+            <Image
+              src={assets.invitation}
+              alt="Golden-hour garden reception table with white florals, candles, and string lights — a warm invitation to what lies ahead"
+              fill
+              sizes="(max-width: 900px) 100vw, 920px"
+              className="object-cover object-center"
+            />
+          </figure>
+          <header className="os-chapter-head">
+            <p className="os-kicker">{page.invitation.eyebrow}</p>
+            <h2 id="story-invitation" className="os-title">
+              {page.invitation.headline}
+            </h2>
+          </header>
+          <div className="os-prose">
+            {page.invitation.paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
-          <div className="mt-14 flex justify-center md:mt-16">
-            <ClosingCta />
+          <div className="os-cta-row">
+            <MarketingCta
+              href={page.invitation.primaryCta.href}
+              label={page.invitation.primaryCta.label}
+              variant="primary"
+            />
+            <MarketingCta
+              href={page.invitation.secondaryCta.href}
+              label={page.invitation.secondaryCta.label}
+              variant="secondary"
+            />
           </div>
         </div>
       </section>

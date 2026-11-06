@@ -9,7 +9,7 @@ export const CHAPTERS = {
   why: {
     href: "/our-story",
     chapter: "Our Story",
-    title: "Hospitality First",
+    title: null,
   },
   product: {
     href: "/product",
