@@ -1,0 +1,127 @@
+{
+  "checkpoint": "A",
+  "status": "VERIFIED",
+  "date_available": true,
+  "demo_a_lead": {
+    "id": "52173016-faaf-46df-bde7-ca11e6fafc81",
+    "first_name": "Claire",
+    "last_name": "Ellison",
+    "partner_first_name": "Noah",
+    "partner_last_name": "Ellison",
+    "event_date": "2028-06-10",
+    "guest_count": 120,
+    "sales_stage": "tour_scheduled",
+    "source_data": {
+      "sandbox": true,
+      "demo_label": "Claire & Noah Ellison — commercial flagship",
+      "demo_marker": "demo_a_commercial",
+      "package_price": 15000,
+      "ceremony_space": "Garden Lawn",
+      "deposit_amount": 3750,
+      "package_target": "Essential Wedding",
+      "deposit_percent": 25,
+      "reception_space": "Carriage House",
+      "no_external_comms": true
+    },
+    "email": "claire.ellison+sandbox@hellotocheers.demo",
+    "phone": "555-010-2806"
+  },
+  "claire_tour_id": "3b37c56e-563c-4a52-816a-bc54a904b57d",
+  "meridian_tour_id": "1f274a87-b917-42cd-a75f-b04a566f6bc9",
+  "tours": [
+    {
+      "id": "3b37c56e-563c-4a52-816a-bc54a904b57d",
+      "lead_id": "52173016-faaf-46df-bde7-ca11e6fafc81",
+      "scheduled_at": "2026-11-10T16:00:00+00:00",
+      "status": "confirmed",
+      "contact_name": "Claire & Noah Ellison"
+    },
+    {
+      "id": "1f274a87-b917-42cd-a75f-b04a566f6bc9",
+      "lead_id": "35b389dd-00bd-4f70-9558-b656fb6caa0f",
+      "scheduled_at": "2026-11-12T19:00:00+00:00",
+      "status": "confirmed",
+      "contact_name": "Meridian Partners"
+    }
+  ],
+  "packages": [
+    {
+      "id": "e2207263-6de0-4255-8b0c-b61f048a06ca",
+      "name": "Celebration Package",
+      "base_price": 12500,
+      "is_active": true
+    },
+    {
+      "id": "21923c90-adba-4e90-be13-cdf1c81d375e",
+      "name": "Essential Wedding",
+      "base_price": 15000,
+      "is_active": true
+    },
+    {
+      "id": "3b0a5bc9-c0ce-4bf4-9f9e-2a40c8581918",
+      "name": "Estate Wedding",
+      "base_price": 18500,
+      "is_active": true
+    },
+    {
+      "id": "20feb34a-ffe7-4144-80f4-48afecf5d868",
+      "name": "Signature Wedding",
+      "base_price": 24500,
+      "is_active": true
+    },
+    {
+      "id": "8098f480-3bd4-47be-bbfe-d1fab99a56a7",
+      "name": "Full-Service Wedding",
+      "base_price": null,
+      "is_active": true
+    },
+    {
+      "id": "9a22bb1c-0402-4dd2-b590-1b40ef588d2b",
+      "name": "Garden Lawn Ceremony",
+      "base_price": 6500,
+      "is_active": true
+    },
+    {
+      "id": "cd508d70-d153-459d-bf63-98dab042eb93",
+      "name": "Grove Pavilion Gathering",
+      "base_price": 4800,
+      "is_active": true
+    }
+  ],
+  "prefs": {
+    "useTaxes": false,
+    "defaultTaxPercent": 0,
+    "defaultDepositPercent": 25,
+    "defaultSchedulePresetId": "wedding_four",
+    "remainingBalanceMode": "plan"
+  },
+  "tour_scheduling_enabled": true,
+  "windows": [
+    {
+      "day_of_week": 2,
+      "start_time": "10:00:00",
+      "end_time": "16:00:00"
+    },
+    {
+      "day_of_week": 3,
+      "start_time": "10:00:00",
+      "end_time": "16:00:00"
+    },
+    {
+      "day_of_week": 4,
+      "start_time": "10:00:00",
+      "end_time": "16:00:00"
+    },
+    {
+      "day_of_week": 5,
+      "start_time": "10:00:00",
+      "end_time": "16:00:00"
+    },
+    {
+      "day_of_week": 6,
+      "start_time": "10:00:00",
+      "end_time": "16:00:00"
+    }
+  ],
+  "automations": null
+}

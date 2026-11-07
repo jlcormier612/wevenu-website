@@ -430,8 +430,50 @@ describe("Booking Journey derivation", () => {
     assert.equal(j.commercialReady, true);
     assert.match(j.direction, /Mark them Booked when you're ready/i);
     assert.match(j.direction, /optional/i);
+    assert.match(j.direction, /\$800(?:\.00)? paid/);
     assert.equal(j.primaryAction, "invite_portal");
     assert.equal(j.stages.find((s) => s.key === "ready")?.label, "Next steps");
+  });
+
+  it("ready stage never labels a scheduled deposit as paid without recorded payment", () => {
+    // paymentCollection none → commercial ready without collecting; must not invent a paid claim
+    const noCollection = buildBookingJourney({
+      clientId: "client-1",
+      eventId: "event-1",
+      selection: selection({ status: "accepted", depositAmount: 3750, totalAmount: 15000 }),
+      contract: { id: "c1", status: "signed" },
+      paymentLines: [],
+      portalInvited: false,
+      planningStarted: false,
+      prefs: {
+        ...DEFAULT_COMMERCIAL_BOOKING_PREFS,
+        collectInitialPayment: false,
+        initialPaymentRequired: false,
+      },
+    });
+    assert.equal(noCollection.commercialReady, true);
+    assert.doesNotMatch(noCollection.direction, /\$3,750(?:\.00)? paid/i);
+    assert.doesNotMatch(noCollection.direction, /Deposit \$3,750/i);
+
+    // Recorded cash wins over selection.depositAmount when they diverge
+    const recordedLess = buildBookingJourney({
+      clientId: "client-1",
+      eventId: "event-1",
+      selection: selection({ status: "accepted", depositAmount: 3750, totalAmount: 15000 }),
+      contract: { id: "c1", status: "signed" },
+      paymentLines: [{
+        obligationKind: "deposit",
+        status: "paid",
+        amount: 3750,
+        paidAmount: 2000,
+      }],
+      portalInvited: false,
+      planningStarted: false,
+    });
+    assert.equal(recordedLess.commercialReady, true);
+    assert.match(recordedLess.direction, /\$2,000(?:\.00)? paid/);
+    assert.doesNotMatch(recordedLess.direction, /\$3,750(?:\.00)? paid/);
+    assert.match(recordedLess.direction, /\$13,000(?:\.00)? remains on the payment plan/);
   });
 
   it("ignores legacy processOrder deposit_first", () => {

@@ -473,11 +473,34 @@ export function buildBookingJourney(input: JourneyInputs): BookingJourneyModel {
       }
     }
   } else if (!planningDone) {
-    const paidNote = collectPayment && (selection?.depositAmount ?? 0) > 0
-      ? `${formatCurrency(selection!.depositAmount)} paid. `
-      : "";
-    const remainNote = collectPayment && remaining != null
-      ? `${formatCurrency(remaining)} remains on the payment plan. `
+    // Amount paid must come from recorded payment lines — never treat a scheduled
+    // deposit allocation as paid (commercial-ready can precede any cash received).
+    const recordedPaid = input.paymentLines
+      .filter((line) => line.status !== "cancelled")
+      .reduce((sum, line) => {
+        if (
+          line.status === "paid"
+          || line.status === "partially_paid"
+          || line.status === "partially_refunded"
+          || line.status === "refunded"
+        ) {
+          return sum + (line.paidAmount ?? (line.status === "paid" ? line.amount : 0));
+        }
+        return sum;
+      }, 0);
+    const balanceRemaining = selection
+      ? Math.max(0, selection.totalAmount - recordedPaid)
+      : remaining;
+    let paidNote = "";
+    if (collectPayment) {
+      if (recordedPaid > 0) {
+        paidNote = `${formatCurrency(recordedPaid)} paid. `;
+      } else if ((selection?.depositAmount ?? 0) > 0) {
+        paidNote = `Deposit ${formatCurrency(selection!.depositAmount)} scheduled — not paid until a payment is recorded. `;
+      }
+    }
+    const remainNote = collectPayment && balanceRemaining != null
+      ? `${formatCurrency(balanceRemaining)} remains on the payment plan. `
       : "";
     direction = `Commercial steps are ready. ${paidNote}${remainNote}Mark them Booked when you're ready, then invite them to the portal and start planning — optional if they won't use planning.`;
     primaryLabel = input.portalInvited ? "Start planning" : "Invite client";

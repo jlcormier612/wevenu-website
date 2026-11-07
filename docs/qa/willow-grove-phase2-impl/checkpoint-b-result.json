@@ -1,0 +1,69 @@
+{
+  "steps": [
+    {
+      "name": "selection",
+      "at": "2026-11-07T00:49:08.678Z",
+      "data": {
+        "total": 15000,
+        "deposit": 3750,
+        "status": "accepted"
+      }
+    },
+    {
+      "name": "click_contract",
+      "at": "2026-11-07T00:49:18.758Z",
+      "data": "/Create contract/i"
+    },
+    {
+      "name": "contracts_after_ui",
+      "at": "2026-11-07T00:49:21.233Z",
+      "data": []
+    },
+    {
+      "name": "fallback_create_contract",
+      "at": "2026-11-07T00:49:21.233Z"
+    },
+    {
+      "name": "contract_sample_keys",
+      "at": "2026-11-07T00:49:21.349Z",
+      "data": [
+        "id",
+        "venue_id",
+        "client_id",
+        "event_id",
+        "template_id",
+        "title",
+        "content",
+        "status",
+        "sign_token",
+        "signer_name",
+        "signed_at",
+        "sent_at",
+        "expires_at",
+        "created_at",
+        "updated_at",
+        "is_couple_visible",
+        "signer_ip",
+        "signer_user_agent",
+        "consent_confirmed",
+        "amends_contract_id",
+        "branding_snapshot",
+        "attention_notified_at",
+        "execution_origin"
+      ]
+    },
+    {
+      "name": "contract_insert_error",
+      "at": "2026-11-07T00:49:21.379Z",
+      "data": {
+        "code": "PGRST204",
+        "details": null,
+        "hint": null,
+        "message": "Could not find the 'deposit_amount' column of 'contracts' in the schema cache"
+      }
+    }
+  ],
+  "math": {},
+  "leadApproved": "Leads\nCE\nClaire Ellison & Noah Ellison\nWedding\n·\nPreferred date: Jun 17, 2028. This is a preference, not a reservation.\n·\n120 guests\n·\n$15,000\n\nPIPELINE STAGE\n\nTour Scheduled\nChange stage\nEdit\nMerge lead\nDelete\nArchive\nSchedule Tour\nStart booking file\n\nSALES & AVAILABILITY\n\nSales owner\nUnassigned\nEdit/Save\nDate hold\nNot protected\nNo active hold is protecting this event date.\nPlace hold on Jun 17, 2028\n\nSPACE PREFERENCES\n\nWhich parts of the event are taking place at your venue?\n\nCeremony\nReception\nCocktail Hour\nTour & follow-up\n\nScheduled tours, next steps, and last contact for this lead.\n\nCopy scheduling link\n\nUse this personalized scheduling link for this lead. The Calendar page's Copy Inquiry/Tour Link is a general link for new prospects only.\n\nTOURS\n\nFOLLOW-UP\n\nEdit\nNext action: REHEARSAL: run commercial journey acceptance\nFollow-up: —\nLast contacted: —\nContact information\n\nClaire Ellison\n\nEmail\n\nclaire.ellison.rehearsal+sandbox@hellotocheers.demo\n\nPhone\n\n(555) 010-2807\n\nNoah Ellison\n\nEmail\n\nnoah.ellison.rehearsal+sandbox@hellotocheers.demo\n\nCOMMUNICATION PREFERENCES\n●\nNot opted in\nOverview\nConversation\nInternal notes\nTasks\nActivity\n2\nDocuments\nLuv\nOverview\n\nBooking details, package, and payment setup for this lead.\n\nBOOKING DETAILS\n\nWhat they booked\n\nThese records are separate from the sales pipeline. You mark a relationship Booked when you're ready — payment does not decide it.\n\nCreate a contract to continue. Accepting a package does not execute the contract.\n\nSelected P",
+  "error": "[object Object]"
+}

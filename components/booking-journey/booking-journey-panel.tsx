@@ -355,24 +355,26 @@ export function BookingJourneyPanel({
           {selection && (
             <div className="mb-4 rounded-lg border border-border bg-muted/20 p-4 text-sm">
               <p className="font-medium text-heading">{selection.name}</p>
-              <p>Package {formatCurrency(selection.packageAmount)}</p>
+              <p>Package subtotal {formatCurrency(selection.packageAmount)}</p>
               {selection.discountAmount > 0 && (
                 <p className="text-muted-foreground">
                   Discount −{formatCurrency(selection.discountAmount)}
                 </p>
               )}
-              {selection.taxApplied && selection.taxAmount > 0 && (
+              {selection.taxApplied && selection.taxAmount > 0 ? (
                 <p className="text-muted-foreground">
                   Tax {selection.taxRatePercent != null ? `${selection.taxRatePercent}% ` : ""}
                   {formatCurrency(selection.taxAmount)}
                 </p>
+              ) : (
+                <p className="text-muted-foreground">Tax not applied</p>
               )}
               <p className="font-medium text-heading">
-                Agreed total {formatCurrency(selection.totalAmount)}
+                Total amount due {formatCurrency(selection.totalAmount)}
               </p>
               {journey.prefs.collectInitialPayment && (
               <p className="mt-1 text-muted-foreground">
-                Deposit allocation {formatCurrency(selection.depositAmount)} · Remaining{" "}
+                Deposit allocation {formatCurrency(selection.depositAmount)} (scheduled) · Remaining after deposit{" "}
                 {formatCurrency(remainingAmount(selection.totalAmount, selection.depositAmount))}
               </p>
               )}

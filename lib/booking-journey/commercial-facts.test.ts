@@ -133,7 +133,7 @@ describe("commercial artifact states", () => {
     });
     const pkg = facts.find((row) => row.key === "package");
     const proposal = facts.find((row) => row.key === "proposal");
-    assert.equal(pkg?.state, "Essential Wedding · $15,000.00");
+    assert.match(pkg?.state ?? "", /Essential Wedding · \$15,000(?:\.00)?/);
     assert.match(pkg?.detail ?? "", /Selected internally · Not yet shared/);
     assert.equal(proposal, undefined);
     assert.equal(
@@ -176,7 +176,7 @@ describe("commercial artifact states", () => {
     const pkg = facts.find((row) => row.key === "package");
     const proposal = facts.find((row) => row.key === "proposal");
     const contract = facts.find((row) => row.key === "contract");
-    assert.equal(pkg?.state, "Essential Wedding · $15,000.00");
+    assert.match(pkg?.state ?? "", /Essential Wedding · \$15,000(?:\.00)?/);
     assert.match(pkg?.detail ?? "", /Selected internally · Not yet shared/);
     assert.equal(proposal?.state, "Withdrawn");
     assert.doesNotMatch(proposal?.detail ?? "", /Waiting for the couple/);
@@ -253,7 +253,7 @@ describe("commercial artifact states", () => {
     });
     assert.equal(facts.find((row) => row.key === "invoice"), undefined);
     assert.notEqual(facts.find((row) => row.key === "deposit")?.state, "Paid");
-    assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /Included when you send/);
+    assert.match(facts.find((row) => row.key === "deposit")?.detail ?? "", /not marked paid until a payment is recorded/i);
     assert.equal(
       commercialStepsComplete({
         selection: selection({ status: "accepted", invoiceId: "inv-1" }),
@@ -306,11 +306,14 @@ describe("commercial artifact states", () => {
     });
     const plan = facts.find((row) => row.key === "payment_plan");
     assert.equal(plan?.state, "0 of 2 paid");
-    assert.match(plan?.detail ?? "", /Initial payment — \$4,500\.00 due today/);
-    assert.match(plan?.detail ?? "", /Final payment — \$13,500\.00 due September 11, 2027/);
+    assert.match(plan?.detail ?? "", /Initial payment — \$4,500(?:\.00)? due today/);
+    assert.match(plan?.detail ?? "", /Final payment — \$13,500(?:\.00)? due September 11, 2027/);
     const deposit = facts.find((row) => row.key === "deposit");
-    assert.equal(deposit?.state, "$4,500.00 due today");
-    assert.equal(deposit?.detail, "Included when you send");
+    assert.match(deposit?.state ?? "", /\$4,500(?:\.00)? due today/);
+    assert.match(deposit?.detail ?? "", /not marked paid until a payment is recorded/i);
+    assert.match(plan?.detail ?? "", /Plan total \$18,000(?:\.00)?/);
+    assert.match(plan?.detail ?? "", /Amount paid \$0(?:\.00)?/);
+    assert.match(plan?.detail ?? "", /Remaining balance \$18,000(?:\.00)?/);
     assert.equal(facts.find((row) => row.key === "invoice"), undefined);
   });
 
@@ -338,8 +341,108 @@ describe("commercial artifact states", () => {
       today: "2026-09-28",
     });
     const deposit = facts.find((row) => row.key === "deposit");
-    assert.equal(deposit?.detail, null);
-    assert.match(deposit?.state ?? "", /\$4,500\.00 due today/);
+    assert.match(deposit?.detail ?? "", /Scheduled — not paid until a payment is recorded/);
+    assert.match(deposit?.state ?? "", /\$4,500(?:\.00)? due today/);
+  });
+
+  it("tax-free package labels subtotal, no tax, and total amount due without calling deposit paid", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({
+        packageAmount: 15000,
+        taxApplied: false,
+        taxAmount: 0,
+        totalAmount: 15000,
+        depositAmount: 3750,
+        proposalId: "prop-1",
+        status: "accepted",
+      }),
+      proposal: {
+        id: "prop-1",
+        status: "approved",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: "sel-1",
+      },
+      contract: null,
+      paymentLines: [],
+    });
+    const pkg = facts.find((row) => row.key === "package");
+    assert.match(pkg?.state ?? "", /Essential Wedding · \$15,000(?:\.00)?/);
+    assert.match(pkg?.detail ?? "", /Package subtotal \$15,000(?:\.00)?/);
+    assert.match(pkg?.detail ?? "", /Tax not applied/);
+    assert.match(pkg?.detail ?? "", /Total amount due \$15,000(?:\.00)?/);
+    assert.match(pkg?.detail ?? "", /Deposit allocation \$3,750(?:\.00)? \(scheduled — not marked paid/);
+    assert.doesNotMatch(pkg?.detail ?? "", /Deposit allocation \$3,750(?:\.00)? — Paid/i);
+  });
+
+  it("tax-inclusive package shows subtotal, tax, and total amount due distinctly", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({
+        packageAmount: 15000,
+        taxApplied: true,
+        taxRatePercent: 6.25,
+        taxAmount: 937.5,
+        totalAmount: 15937.5,
+        depositAmount: 3984.38,
+        proposalId: "prop-1",
+        status: "accepted",
+      }),
+      proposal: {
+        id: "prop-1",
+        status: "approved",
+        offeredAt: "2026-09-19T19:42:00.000Z",
+        acceptToken: "tok",
+        selectionId: "sel-1",
+      },
+      contract: null,
+      paymentLines: [
+        { obligationKind: "deposit", status: "pending", amount: 3984.38, dueDate: "2026-11-14", label: "Booking deposit" },
+        { obligationKind: "installment", status: "pending", amount: 3984.37, dueDate: "2027-06-17", label: "Installment 2" },
+        { obligationKind: "installment", status: "pending", amount: 3984.37, dueDate: "2027-12-17", label: "Installment 3" },
+        { obligationKind: "final", status: "pending", amount: 3984.38, dueDate: "2028-05-17", label: "Final balance" },
+      ],
+      today: "2026-11-07",
+    });
+    const pkg = facts.find((row) => row.key === "package");
+    assert.match(pkg?.state ?? "", /Essential Wedding · \$15,937(?:\.50)?/);
+    assert.match(pkg?.detail ?? "", /Package subtotal \$15,000(?:\.00)?/);
+    assert.match(pkg?.detail ?? "", /Tax 6\.25% \(\$937(?:\.50)?\)/);
+    assert.match(pkg?.detail ?? "", /Total amount due \$15,937(?:\.50)?/);
+    const plan = facts.find((row) => row.key === "payment_plan");
+    assert.match(plan?.detail ?? "", /Plan total \$15,937(?:\.50)?/);
+    assert.match(plan?.detail ?? "", /Amount paid \$0(?:\.00)?/);
+    assert.match(plan?.detail ?? "", /Remaining balance \$15,937(?:\.50)?/);
+    assert.match(plan?.detail ?? "", /Booking deposit — \$3,984(?:\.38)? due/);
+    assert.doesNotMatch(plan?.detail ?? "", /Booking deposit — Paid/);
+    const deposit = facts.find((row) => row.key === "deposit");
+    assert.notEqual(deposit?.state, "Paid");
+  });
+
+  it("partial deposit payment reports amount paid without claiming the installment is fully paid", () => {
+    const facts = describeCommercialFacts({
+      selection: selection({ invoiceId: "inv-1", totalAmount: 15000 }),
+      contract: null,
+      paymentLines: [
+        {
+          obligationKind: "deposit",
+          status: "partially_paid",
+          amount: 3750,
+          paidAmount: 2000,
+          dueDate: "2026-11-14",
+          label: "Booking deposit",
+        },
+        { obligationKind: "final", status: "pending", amount: 11250, dueDate: "2028-05-17", label: "Final balance" },
+      ],
+      today: "2026-11-07",
+    });
+    const deposit = facts.find((row) => row.key === "deposit");
+    assert.equal(deposit?.state, "Partially paid");
+    assert.match(deposit?.detail ?? "", /Amount paid \$2,000(?:\.00)?/);
+    assert.match(deposit?.detail ?? "", /Remaining on this installment \$1,750(?:\.00)?/);
+    const plan = facts.find((row) => row.key === "payment_plan");
+    assert.match(plan?.detail ?? "", /Amount paid \$2,000(?:\.00)?/);
+    assert.match(plan?.detail ?? "", /Remaining balance \$13,000(?:\.00)?/);
+    assert.match(plan?.detail ?? "", /Booking deposit — \$2,000(?:\.00)? paid · \$1,750(?:\.00)? remaining/);
   });
 
   it("Booked fact never derives Booked from payment", () => {

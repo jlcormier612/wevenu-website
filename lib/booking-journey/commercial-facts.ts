@@ -53,7 +53,7 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
   }
   const price = `${selection.name} · ${formatCurrency(selection.totalAmount)}`;
   const financialBits: string[] = [
-    `Package ${formatCurrency(selection.packageAmount)}`,
+    `Package subtotal ${formatCurrency(selection.packageAmount)}`,
   ];
   if (selection.discountAmount > 0) {
     financialBits.push(
@@ -68,10 +68,14 @@ export function packageFact(selection: CommercialSelection | null): CommercialFa
         ? `Tax ${selection.taxRatePercent}% (${formatCurrency(selection.taxAmount)})`
         : `Tax ${formatCurrency(selection.taxAmount)}`,
     );
+  } else {
+    financialBits.push("Tax not applied");
   }
-  financialBits.push(`Agreed total ${formatCurrency(selection.totalAmount)}`);
+  financialBits.push(`Total amount due ${formatCurrency(selection.totalAmount)}`);
   if (selection.depositAmount > 0) {
-    financialBits.push(`Deposit allocation ${formatCurrency(selection.depositAmount)}`);
+    financialBits.push(
+      `Deposit allocation ${formatCurrency(selection.depositAmount)} (scheduled — not marked paid until a payment is recorded)`,
+    );
   }
   const financialDetail = financialBits.join(" · ");
   // Provenance is commercial_selections.proposal_id — stamped only by
@@ -259,7 +263,9 @@ export function paymentPlanFact(
       ? "Paid in full"
       : null;
   const detail = [
-    `${formatCurrency(paidAmount)} paid · ${formatCurrency(remainingAmount)} remaining`,
+    `Plan total ${formatCurrency(planTotal)}`,
+    `Amount paid ${formatCurrency(paidAmount)}`,
+    `Remaining balance ${formatCurrency(remainingAmount)}`,
     ...installmentLines,
     nextLine,
   ].filter(Boolean).join("\n");
@@ -287,7 +293,16 @@ export function depositFact(input: {
       key: "deposit",
       title: "Initial payment",
       state: "Paid",
-      detail: formatCurrency(line.amount),
+      detail: `Amount paid ${formatCurrency(line.paidAmount ?? line.amount)}`,
+    };
+  }
+  if (line.status === "partially_paid") {
+    const received = line.paidAmount ?? 0;
+    return {
+      key: "deposit",
+      title: "Initial payment",
+      state: "Partially paid",
+      detail: `Amount paid ${formatCurrency(received)} · Remaining on this installment ${formatCurrency(Math.max(0, line.amount - received))}`,
     };
   }
   const due = `${formatCurrency(line.amount)} due ${formatInstallmentDue(line.dueDate, input.today)}`;
@@ -296,14 +311,14 @@ export function depositFact(input: {
       key: "deposit",
       title: "Initial payment",
       state: due,
-      detail: null,
+      detail: "Scheduled — not paid until a payment is recorded.",
     };
   }
   return {
     key: "deposit",
     title: "Initial payment",
     state: due,
-    detail: "Included when you send",
+    detail: "Scheduled on the payment plan — not marked paid until a payment is recorded.",
   };
 }
 

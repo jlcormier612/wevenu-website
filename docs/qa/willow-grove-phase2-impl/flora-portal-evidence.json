@@ -1,0 +1,12 @@
+{
+  "email": "lila@floraandbranch.example",
+  "dashboardUrl": "https://app.sandbox.hellotocheers.com/vendor/dashboard",
+  "dash": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace",
+  "events": "Vendor sign in\nSign in to your vendor portal. This does not replace a venue or client session in this browser.\nEmail\nPassword\nForgot password?\nSign in\n\nVenue staff? Venue sign in · Switch workspace",
+  "hayes": "",
+  "showsHayes": false,
+  "showsFloorPlanNav": false,
+  "exposesVenuePrivateNotes": false,
+  "exposesFinancials": false,
+  "showsSharedPlanning": false
+}
