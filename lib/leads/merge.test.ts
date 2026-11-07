@@ -485,6 +485,28 @@ describe("lead merge safety contracts (source)", () => {
     assert.doesNotMatch(migration, /delete from public\.leads/);
   });
 
+  it("RPC syncs linked client + relationship identity to the surviving lead", () => {
+    const syncMig = readFileSync(
+      resolve("supabase/migrations/20261427600000_merge_leads_sync_client_identity.sql"),
+      "utf8",
+    );
+    assert.match(syncMig, /Surviving lead identity wins/);
+    assert.match(
+      syncMig,
+      /update public\.clients[\s\S]*first_name = v_primary\.first_name[\s\S]*partner_email = v_primary\.partner_email[\s\S]*lead_id = p_primary_id/,
+    );
+    assert.match(
+      syncMig,
+      /update public\.venue_customer_relationships r[\s\S]*first_name = v_primary\.first_name[\s\S]*else v_primary\.email/,
+    );
+    // Reparent alone is not enough — identity sync must follow clients.lead_id move.
+    const clientsReparent = syncMig.indexOf(
+      "update public.clients\n  set lead_id = p_primary_id",
+    );
+    const identitySync = syncMig.indexOf("Surviving lead identity wins");
+    assert.ok(clientsReparent >= 0 && identitySync > clientsReparent);
+  });
+
   it("RPC does not send messages or enroll sequences", () => {
     assert.doesNotMatch(migration, /sequence_enrollment|send_email|enqueue.*message/i);
     assert.doesNotMatch(mergeTs, /enrollSequence|sendTour|sendEmail/);
