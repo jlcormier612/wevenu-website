@@ -39,11 +39,17 @@ describe("10 — stock dates include the year", () => {
 });
 
 describe("11 — proposal inclusions do not repeat the unit", () => {
-  it("drops unit when the description already ends with it", () => {
+  it("hides taxonomy units and drops countable units already in the description", () => {
     assert.equal(inclusionUnitLabel("Ceremony seating furniture setup", "setup"), null);
     assert.equal(inclusionUnitLabel("Reception tables and chairs setup", "setup"), null);
-    assert.equal(inclusionUnitLabel("Day-of venue contact", "event"), "event");
+    assert.equal(inclusionUnitLabel("Day-of venue contact", "event"), null);
+    assert.equal(inclusionUnitLabel("Client planning portal access", "booking"), null);
+    assert.equal(
+      inclusionUnitLabel("Exclusive use of selected venue spaces for contracted event hours", "event"),
+      null,
+    );
     assert.equal(inclusionUnitLabel("Chiavari chairs", "each"), "each");
+    assert.equal(inclusionUnitLabel("Guest parking passes", "each"), "each");
   });
   it("proposal surfaces use the helper", () => {
     for (const path of [

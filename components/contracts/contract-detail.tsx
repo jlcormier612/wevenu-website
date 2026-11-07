@@ -647,7 +647,7 @@ export function ContractDetail({
                   {contract.signedAt ? ` on ${formatContractDate(venueCalendarDateFromValue(contract.signedAt, venueTimezone))}` : ""}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Agreement fully signed. Next: collect the deposit if you haven&apos;t already. Booking isn&apos;t complete until the deposit is paid.
+                  Agreement fully signed. You can now set up or review payment arrangements. When you&apos;re ready to confirm the booking, use Mark as Booked in the lead workspace — signing and payment do not book automatically.
                   {finalized
                     ? " The final PDF is ready to download."
                     : " Finalize Contract generates the official PDF — it does not collect payment."}
