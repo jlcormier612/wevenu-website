@@ -71,6 +71,24 @@ describe("lead page layout refinement", () => {
     assert.doesNotMatch(contact, /Lydia Cormier|Ali Shazam/);
   });
 
+  it("keeps long partner emails inside their column (no bleed into primary contact)", () => {
+    const infoRow = detail.slice(
+      detail.indexOf("function InfoRow("),
+      detail.indexOf("// ---- main component"),
+    );
+    assert.match(infoRow, /flex min-w-0 items-start gap-3/);
+    assert.match(infoRow, /className="min-w-0"/);
+    assert.match(infoRow, /break-words/);
+    assert.match(
+      detail,
+      /className="min-w-0 space-y-2" data-testid="lead-primary-contact"/,
+    );
+    assert.match(
+      detail,
+      /className="min-w-0 space-y-2" data-testid="lead-partner-contact"/,
+    );
+  });
+
   it("collapsed compact Date hold omits space names and expiration", () => {
     const marker = 'data-testid="date-hold-summary-date"';
     const start = holds.indexOf(marker);
