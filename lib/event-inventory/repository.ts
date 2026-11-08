@@ -133,8 +133,16 @@ export async function setStatus(client: DbClient, venueId: string, id: string, s
   if (status === "finalized") patch.finalized_at = new Date().toISOString();
   if (status === "draft") patch.finalized_at = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("event_inventory") as any).update(patch).eq("id", id).eq("venue_id", venueId);
+  const { data, error } = await (client.from("event_inventory") as any)
+    .update(patch)
+    .eq("id", id)
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  // RLS / wrong venue can return ok with 0 rows — never treat that as success.
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error("Could not update Event Inventory status.");
+  }
 }
 
 export async function setCollaborationMode(
@@ -144,11 +152,16 @@ export async function setCollaborationMode(
   mode: EventInventoryCollaborationMode,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("event_inventory") as any)
+  const { data, error } = await (client.from("event_inventory") as any)
     .update({ collaboration_mode: mode })
     .eq("id", id)
-    .eq("venue_id", venueId);
+    .eq("venue_id", venueId)
+    .select("id");
   if (error) throw error;
+  // RLS / wrong venue can return ok with 0 rows — never treat that as success.
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error("Could not update Event Inventory collaboration mode.");
+  }
 }
 
 export async function setItemClientSelectable(

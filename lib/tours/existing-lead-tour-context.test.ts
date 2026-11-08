@@ -83,16 +83,20 @@ describe("existing-lead tour preferred event date", () => {
   it("Calendar and lead surfaces distinguish general tour link vs personal scheduling link", () => {
     const calendar = readFileSync(resolve("components/calendar/share-tour-availability.tsx"), "utf8");
     assert.match(calendar, /calendar-tour-link-lead-guidance/);
-    assert.match(
-      calendar,
-      /Already working with someone\? Use the personalized scheduling link that resides in their\s+lead record, under &apos;Tour &amp; follow-up&apos;\. That will preserve any preferred date holds and\s+other previously gathered information\./,
-    );
+    assert.match(calendar, /Already working with someone\?/);
+    assert.match(calendar, /personalized scheduling link on their lead record/);
+    assert.match(calendar, /Tour &amp; follow-up/);
+    assert.match(calendar, /This Calendar link is the general link for websites, QR codes, and new/);
+    assert.doesNotMatch(calendar, /href=\{[^}]*\?o=/);
     const panel = readFileSync(resolve("components/leads/tour-panel.tsx"), "utf8");
     assert.match(panel, /lead-scheduling-link-guidance/);
+    assert.match(panel, /Personalized scheduling link/);
+    assert.match(panel, /For this lead only/);
     assert.match(
       panel,
-      /Use this personalized scheduling link for this lead\. The Calendar page&apos;s\{\" \"\}\s*<span className="font-medium text-foreground">Copy Inquiry\/Tour Link<\/span> is a general link for new\s+prospects only\./,
+      /Copy tour scheduling link<\/span> is the\s+general link for websites, QR codes, and new prospects/,
     );
+    assert.match(panel, /publicTourSchedulingPathForLead|getLeadPublicTourSchedulingUrlAction/);
   });
 
   it("book_public_tour_for_lead copies lead.event_date onto the appointment and never updates leads", () => {

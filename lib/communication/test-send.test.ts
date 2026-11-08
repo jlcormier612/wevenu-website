@@ -130,7 +130,23 @@ describe("channel-specific readiness test results", () => {
     const sms = ready.find((i) => i.key === "test_sms")!;
     assert.equal(sms.state, "ready");
     assert.match(sms.detail, /texting provider/i);
+    assert.doesNotMatch(sms.detail, /approved|Brand|Campaign/i);
     assert.equal(readinessItemCountsTowardAllReady(sms, true), true);
+  });
+
+  it("email success does not claim SMS success or Twilio approval", () => {
+    const items = buildChannelTestReadinessItems({
+      emailTested: true,
+      smsTested: false,
+      smsConfigured: true,
+    });
+    const email = items.find((i) => i.key === "test_email")!;
+    const sms = items.find((i) => i.key === "test_sms")!;
+    assert.equal(email.state, "ready");
+    assert.equal(sms.state, "untested");
+    assert.doesNotMatch(email.label, /text|SMS|Twilio/i);
+    assert.doesNotMatch(email.detail, /texting provider|Brand|Campaign|approved/i);
+    assert.doesNotMatch(`${email.detail} ${sms.detail}`, /Test message successful/);
   });
 
   it("getCommunicationReadiness no longer ORs email and SMS into one test_message item", () => {

@@ -138,7 +138,12 @@ describe("Payment timing — contract signing does not book the relationship", (
       "lib/contracts/signature-blocks.ts",
     ]) {
       const src = readFileSync(resolve(file), "utf8");
-      assert.doesNotMatch(src, /ensureEventBookedAt|setEventBookedAt|\.booked_at|bookedAt:/, `${file}`);
+      // Mutation APIs / write patterns only — not comments or read-only event?.bookedAt.
+      assert.doesNotMatch(
+        src,
+        /ensureEventBookedAt|setEventBookedAt|updateEventBookedAt_|bookClient\(|stampBookingDateIfNeeded|booked_at:\s*new Date|bookedAt:\s*new Date/,
+        `${file}`,
+      );
     }
   });
 });

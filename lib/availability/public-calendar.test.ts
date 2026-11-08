@@ -133,16 +133,23 @@ describe("share control and public page", () => {
     const view = readFileSync(resolve("components/availability/public-availability-view.tsx"), "utf8");
     const month = readFileSync(resolve("lib/availability/public-calendar-month.ts"), "utf8");
     assert.match(calendar, /\/availability\/\$\{venue\.embedKey\}/);
-    assert.match(share, /Copy availability link/);
+    assert.match(share, /Copy event availability link/);
     assert.match(share, /Preview/);
-    assert.match(share, /Availability link copied/);
-    assert.match(share, /Public availability/);
-    assert.match(share, /Share your current available event selection dates with couples\./);
-    assert.match(share, /always reflects your current availability/);
+    assert.match(share, /Event availability link copied/);
+    assert.match(share, /Public Event Availability/);
+    assert.match(
+      share,
+      /Share the dates your venue currently has available for couples planning their event\./,
+    );
+    assert.match(share, /Opens the couple-facing availability page in a new tab/);
     assert.match(share, /href=\{url\}/);
     assert.match(share, /writeText\(url\)/);
+    assert.match(share, /url:\s*string\s*\|\s*null/);
+    assert.match(share, /Public event availability isn&apos;t available for this venue yet/);
+    assert.match(share, /\/settings\/leads/);
     assert.doesNotMatch(share, /Send calendar|Calendar sent|Share sent/);
     assert.doesNotMatch(calendar, /rotateEmbed|regenerateEmbed|crypto\.randomUUID/);
+    assert.doesNotMatch(share, /rotateEmbed|regenerateEmbed|crypto\.randomUUID/);
     assert.match(page, /PublicAvailabilityView/);
     assert.match(view, /Available/);
     assert.match(view, /Not available/);

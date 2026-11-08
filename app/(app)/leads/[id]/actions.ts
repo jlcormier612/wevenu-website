@@ -320,8 +320,12 @@ export async function completeFollowUpAction(
 // These actions only ever call into that one engine, never touch
 // tour_appointments directly.
 
-export async function getCoordinatorTourSlotsAction(startDate: string, endDate: string): Promise<TourSlot[]> {
-  return getCoordinatorTourSlots(startDate, endDate);
+export async function getCoordinatorTourSlotsAction(
+  startDate: string,
+  endDate: string,
+  excludeAppointmentId?: string | null,
+): Promise<TourSlot[]> {
+  return getCoordinatorTourSlots(startDate, endDate, excludeAppointmentId);
 }
 
 export async function getLeadPublicTourSchedulingUrlAction(leadId: string): Promise<string | null> {

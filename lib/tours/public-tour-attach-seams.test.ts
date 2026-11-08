@@ -65,7 +65,8 @@ describe("public tour attach seams", () => {
     const route = read("app/api/tours/book/route.ts");
     assert.match(route, /originToken/);
     const panel = read("components/leads/tour-panel.tsx");
-    assert.match(panel, /Copy scheduling link/);
+    assert.match(panel, /Copy link/);
+    assert.match(panel, /Personalized scheduling link/);
     assert.match(panel, /getLeadPublicTourSchedulingUrlAction/);
   });
 

@@ -13,10 +13,12 @@ const ALL_TAB_HASHES = new Set([
   "overview", "playbook", "timeline", "floorplan", "documents", "vendors",
   "event-order", "inventory", "invoice", "messages", "activity", "notes",
   "team", "feedback", "questionnaires",
+  // Commercial deep-link anchors on the Event Order tab (event-detail.tsx)
+  "event-order-choices", "event-order-order", "event-order-invoice",
 ]);
 
 describe("Task Destination Audit — venue-side action types", () => {
-  it("every action type resolves to a real event-detail tab", () => {
+  it("every action type resolves to a real event-detail tab or commercial anchor", () => {
     for (const a of TASK_ACTION_TYPES) {
       assert.ok(
         ALL_TAB_HASHES.has(a.tabHash),
@@ -29,6 +31,7 @@ describe("Task Destination Audit — venue-side action types", () => {
     assert.equal(taskActionHref("questionnaire", "evt-1"), "/events/evt-1#questionnaires");
     assert.equal(taskActionHref("timeline", "evt-1"), "/events/evt-1#timeline");
     assert.equal(taskActionHref("contract", "evt-1"), "/events/evt-1#documents");
+    assert.equal(taskActionHref("client_choices", "evt-1"), "/events/evt-1#event-order-choices");
     assert.equal(taskActionHref(null, "evt-1"), null);
   });
 

@@ -195,10 +195,11 @@ describe("Wave G5 follow-up — Reports / EO fields / planning contrast", () => 
     assert.doesNotMatch(invEdit, /opacity-0 group-hover:opacity-100/);
   });
 
-  it("Saved Reports uses the primary shell title — no second Saved Reports header", () => {
+  it("Reports shell title stays Reports on every tab including Saved", () => {
     const shell = read("components/reporting/reports-layout-shell.tsx");
     const page = read("app/(app)/reporting/saved/page.tsx");
-    assert.match(shell, /onSaved \? "Saved Reports" : "Reports"/);
+    assert.match(shell, /title="Reports"/);
+    assert.doesNotMatch(shell, /Saved Reports/);
     assert.doesNotMatch(page, /PageHeader/);
     assert.match(page, /title="Saved"/);
   });
