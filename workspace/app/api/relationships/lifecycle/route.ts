@@ -79,6 +79,10 @@ export async function POST(request: Request) {
     foundingMember?: boolean;
     implementationNotes?: string;
     implementationAssets?: Record<string, string>;
+    accessOverrideUntil?: string;
+    pauseBillingSuspend?: boolean;
+    retentionHold?: boolean;
+    manualSecurityLock?: boolean;
   };
 
   const action = body.action;
@@ -581,7 +585,7 @@ export async function POST(request: Request) {
       // Timeline breadcrumb in CRM (access-only — Stripe unchanged).
       const { appendTimelineEvent } = await import("@shared/relationships");
       await appendTimelineEvent(relationshipId, {
-        type: "note",
+        type: "note_added",
         title: `Founder override: ${action}`,
         body: `${reason} · ${result.detail}`,
         actorId: actor.id,
