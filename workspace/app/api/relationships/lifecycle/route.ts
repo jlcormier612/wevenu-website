@@ -588,6 +588,7 @@ export async function POST(request: Request) {
         type: "note_added",
         title: `Founder override: ${action}`,
         body: `${reason} · ${result.detail}`,
+        occurredAt: new Date().toISOString(),
         actorId: actor.id,
         meta: {
           founder_action: action,
