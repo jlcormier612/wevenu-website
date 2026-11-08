@@ -102,6 +102,10 @@ export function LifecycleActions({
       url?: string;
       emailed?: boolean;
       activateUrl?: string;
+      note?: string;
+      stripe?: { customerId?: string | null; subscriptionId?: string | null };
+      product?: { venue?: { entitlement_status?: string | null } };
+      result?: { detail?: string; ok?: boolean };
     };
     if (!res.ok) {
       setMessage(data.error || "Action failed");
@@ -327,6 +331,111 @@ export function LifecycleActions({
             </ActionButton>
             <ActionButton disabled={pending} onClick={() => run("reactivate")}>
               Reactivate Account
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={async () => {
+                const data = await run("get_entitlement");
+                if (data) {
+                  setMessage(
+                    `Stripe customer ${data.stripe?.customerId ?? "—"} · product ${
+                      data.product?.venue?.entitlement_status ??
+                      data.note ??
+                      "n/a"
+                    }`,
+                  );
+                }
+              }}
+            >
+              View Entitlement
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const until = window.prompt(
+                  "Extend access until (YYYY-MM-DD). Access-only — does not change Stripe invoices.",
+                );
+                if (!until) return;
+                const reason = window.prompt("Reason for this override?");
+                if (!reason?.trim()) return;
+                void run("founder_extend_access", {
+                  accessOverrideUntil: `${until}T23:59:59.000Z`,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Extend Access
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason to pause billing suspension?");
+                if (!reason?.trim()) return;
+                void run("founder_pause_suspend", {
+                  pauseBillingSuspend: true,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Pause Billing Suspend
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason to clear access override / pause?");
+                if (!reason?.trim()) return;
+                void run("founder_clear_override", { reason: reason.trim() });
+              }}
+            >
+              Clear Override
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason for retention hold?");
+                if (!reason?.trim()) return;
+                void run("founder_retention_hold", {
+                  retentionHold: true,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Retention Hold
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt(
+                  "Reason for SECURITY lock? Payment success will NOT clear this.",
+                );
+                if (!reason?.trim()) return;
+                if (
+                  !window.confirm(
+                    "Set independent security lock? This blocks access even after payment.",
+                  )
+                ) {
+                  return;
+                }
+                void run("founder_security_lock", {
+                  manualSecurityLock: true,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Security Lock
+            </ActionButton>
+            <ActionButton
+              disabled={pending}
+              onClick={() => {
+                const reason = window.prompt("Reason to clear security lock?");
+                if (!reason?.trim()) return;
+                void run("founder_security_lock", {
+                  manualSecurityLock: false,
+                  reason: reason.trim(),
+                });
+              }}
+            >
+              Clear Security Lock
             </ActionButton>
           </>
         ) : null}

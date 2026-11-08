@@ -97,7 +97,12 @@ export const PUBLIC_PATHS = [
 ];
 
 /** Authenticated routes still reachable when the venue SaaS account is suspended. */
-const SUSPENDED_ALLOW_PATHS = ["/billing/suspended", "/api/billing/portal"];
+const SUSPENDED_ALLOW_PATHS = [
+  "/billing/suspended",
+  "/api/billing/portal",
+  // Restricted recovery: venue data export while SaaS access is suspended.
+  "/api/venue/export",
+];
 
 function isSuspendedAllowPath(pathname: string): boolean {
   return SUSPENDED_ALLOW_PATHS.some(

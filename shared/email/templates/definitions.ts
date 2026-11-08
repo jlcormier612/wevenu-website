@@ -341,6 +341,15 @@ export const welcomeHomeTemplate: EmailTemplateDefinition = {
   },
 };
 
+/**
+ * Full three-sided / client-vendor notice copy is Phase 2.
+ * Keep it prepared but gated so Sandbox cannot send those claims early.
+ * Enable only when HTC_PHASE2_LIFECYCLE_COMMS=true after Phase 2 is GREEN.
+ */
+function phase2LifecycleCommsEnabled(): boolean {
+  return process.env.HTC_PHASE2_LIFECYCLE_COMMS === "true";
+}
+
 export const paymentReminderTemplate: EmailTemplateDefinition = {
   id: "payment_reminder",
   name: "Payment Reminder",
@@ -349,19 +358,67 @@ export const paymentReminderTemplate: EmailTemplateDefinition = {
   render(vars) {
     const name = firstName(vars);
     const venue = venueName(vars);
-    const day = String(vars.dunningDay ?? "0");
+    const day = Number(vars.dunningDay ?? "0");
     const portalUrl = String(vars.billingPortalUrl || "").trim();
-    const subject = `Action needed: update payment for ${venue}`;
+    const accessEndsRaw = String(vars.accessEndsAt || "").trim();
+    const accessEndsLabel = accessEndsRaw
+      ? new Date(accessEndsRaw).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          timeZone: "UTC",
+        }) + " (UTC)"
+      : null;
+    const phase2 = phase2LifecycleCommsEnabled();
+    const subject =
+      day >= 14
+        ? `Action required — Your Hello to Cheers access may end soon`
+        : day >= 7
+          ? `Reminder: update payment for ${venue}`
+          : `Action needed: update payment for ${venue}`;
     const paragraphs = [
       `Hi ${name},`,
       `We weren't able to process the latest payment for ${venue}'s Hello to Cheers subscription.`,
       portalUrl
-        ? `Please update your payment method here: ${portalUrl}`
+        ? `You can resolve this securely here: ${portalUrl}`
         : `Please update your payment method from the billing email Stripe sent, or reply and we'll help.`,
-      Number(day) >= 14
-        ? `Your account is at risk of suspension if payment isn't resolved soon. Your data remains safe.`
-        : `No action needed if you've already updated your card — thank you.`,
     ];
+    if (day >= 7 && accessEndsLabel) {
+      paragraphs.push(
+        phase2
+          ? `If this isn't resolved by ${accessEndsLabel}, access to your venue workspace will be suspended. Connected client portals, vendor workspaces, wedding websites, and automated communications that depend on your subscription will also stop when that date arrives.`
+          : `If this isn't resolved by ${accessEndsLabel}, access to your venue workspace will be suspended. Your venue data will be preserved.`,
+      );
+      paragraphs.push(
+        phase2
+          ? `Before then, please export any information you wish to retain from Settings → Team & Data → Export my data. Clients can use Export my data in their planning portal. Vendors can download documents available in their workspace.`
+          : `Before then, please export any information you wish to retain from Settings → Team & Data → Export my data (or from the recovery screen if access is already paused).`,
+      );
+    }
+    if (day >= 14) {
+      if (phase2) {
+        paragraphs.push(
+          `Beginning seven days before the scheduled suspension, clients and vendors who sign in may see a discreet in-app notice about the date their workspace becomes unavailable. Hello to Cheers will not email or text your clients or vendors about this change, and we will not share the reason. We encourage you to communicate with them directly.`,
+        );
+      }
+      paragraphs.push(
+        `Your account information will be retained for a limited recovery period after suspension, subject to our retention policy.`,
+      );
+    } else if (day >= 7) {
+      if (phase2) {
+        paragraphs.push(
+          `If the issue remains unresolved, client and vendor in-app notices will begin seven days before suspension. Hello to Cheers will not email or text your clients or vendors about this change.`,
+        );
+      } else {
+        paragraphs.push(
+          `Your services remain available until the suspension date above. Please update billing to avoid interruption.`,
+        );
+      }
+    } else {
+      paragraphs.push(
+        `No action needed if you've already updated your card — thank you. Your services remain fully available while we work through this.`,
+      );
+    }
     const text = paragraphs.join("\n\n");
     return {
       subject,
@@ -386,7 +443,8 @@ export const accountSuspendedTemplate: EmailTemplateDefinition = {
     const paragraphs = [
       `Hi ${name},`,
       `We've paused access to Hello to Cheers for ${venue} because payment is still unresolved.`,
-      `Your data is preserved. Update your payment method to restore access${portalUrl ? `: ${portalUrl}` : "."}`,
+      `Your venue data is preserved. You can update your payment method to restore access${portalUrl ? `: ${portalUrl}` : "."}`,
+      `While access is paused, authorized owners can still open billing recovery and export venue data from the recovery screen.`,
       `Reply anytime — we're here to help you get back online.`,
     ];
     const text = paragraphs.join("\n\n");

@@ -138,10 +138,48 @@ export async function POST(request: Request) {
       });
     }
 
+    // Payment / CRM reactivate must never clear an independent security lock.
+    if (body.locked === false) {
+      const { data: security } = await admin
+        .from("venues")
+        .select("manual_security_lock")
+        .eq("id", resolved.venueId)
+        .maybeSingle<{ manual_security_lock: boolean | null }>();
+      if (security?.manual_security_lock === true) {
+        const detail =
+          "Unlock refused — manual_security_lock is set. Clear the security lock explicitly before restoring access.";
+        console.warn("[product-access/lock]", {
+          relationshipId: body.relationshipId ?? null,
+          venueId: resolved.venueId,
+          locked: false,
+          detail,
+        });
+        return NextResponse.json({
+          ok: false,
+          error: detail,
+          venueId: resolved.venueId,
+          detail,
+          securityLock: true,
+        });
+      }
+    }
+
     const patch: Record<string, unknown> = {
       access_disabled: body.locked,
       account_status: body.locked ? "suspended" : "active",
     };
+    if (body.locked === true) {
+      patch.access_loss_reason = body.reason?.toLowerCase().includes("dunning")
+        ? "nonpayment"
+        : body.reason?.toLowerCase().includes("cancel")
+          ? "voluntary_cancel"
+          : patch.access_loss_reason;
+      patch.access_ended_at = new Date().toISOString();
+      patch.entitlement_status = "suspended";
+    } else {
+      patch.entitlement_status = "active";
+      patch.access_loss_reason = null;
+    }
     const customerId = body.stripeCustomerId?.trim();
     if (customerId) {
       patch.saas_stripe_customer_id = customerId;

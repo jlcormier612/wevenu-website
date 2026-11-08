@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { signOut } from "@/app/auth/actions";
+import { SuspendedExportButton } from "@/components/billing/suspended-export-button";
 import { UpdatePaymentMethodButton } from "@/components/billing/update-payment-method-button";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,12 @@ export default async function BillingSuspendedPage() {
                 help restore access without losing your data.
               </p>
             )}
+
+            <SuspendedExportButton />
+            <p className="text-center text-xs text-muted-foreground">
+              Export downloads venue-owned records available to authorized owners.
+              This does not restore planning, messaging, or other operational access.
+            </p>
 
             <form action={signOut}>
               <Button type="submit" variant="outline" className="w-full">

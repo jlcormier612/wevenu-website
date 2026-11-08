@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import { sendRelationshipEmail, sendReactivationEmail } from "@shared/email";
+import { sendReactivationEmail } from "@shared/email";
 import {
   loadLiveStore,
-  markDunningReminderSent,
   reactivateRelationshipAccount,
   recordPaymentFailed,
   type DunningDay,
@@ -328,6 +327,50 @@ async function handleSubscriptionLifecycle(
     allowCreate: Boolean(email),
   });
 
+  // Sync authoritative Stripe period/cancel facts → product entitlement.
+  // Never suspend early solely because cancel_at_period_end flipped true.
+  try {
+    const { syncStripeEntitlementToProduct } = await import(
+      "@shared/product-sync/entitlement-sync"
+    );
+    const { loadLiveStore } = await import("@shared/relationships");
+    const store = await loadLiveStore();
+    const rel =
+      store.relationships.find((r) => r.stripeSubscriptionId === subscription.id) ||
+      (customerId
+        ? store.relationships.find((r) => r.stripeCustomerId === customerId)
+        : undefined);
+    const periodEndUnix = (
+      subscription as { current_period_end?: number }
+    ).current_period_end;
+    const currentPeriodEnd =
+      typeof periodEndUnix === "number"
+        ? new Date(periodEndUnix * 1000).toISOString()
+        : null;
+    const stripeStatus = deleted ? "canceled" : subscription.status;
+    await syncStripeEntitlementToProduct({
+      venueId: rel?.productSync?.venueId ?? null,
+      ownerEmail: email ?? rel?.owner?.email ?? null,
+      relationshipId: rel?.id ?? null,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripeStatus,
+      cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end) && !deleted,
+      currentPeriodEnd,
+      dunningStartedAt: rel?.dunning?.startedAt ?? null,
+      dunningClearedAt: rel?.dunning?.clearedAt ?? null,
+      preferNonpaymentReason:
+        stripeStatus === "past_due" ||
+        stripeStatus === "unpaid" ||
+        Boolean(rel?.dunning && !rel.dunning.clearedAt),
+      reason: deleted
+        ? "Stripe subscription deleted"
+        : `Stripe subscription ${stripeStatus}`,
+    });
+  } catch (error) {
+    console.warn("[stripe] entitlement sync failed", error);
+  }
+
   if (
     !deleted &&
     (subscription.status === "past_due" || subscription.status === "unpaid")
@@ -354,6 +397,7 @@ async function handleSubscriptionLifecycle(
     created: _created,
     mrrCents,
     plan,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
   });
 }
 
@@ -424,34 +468,31 @@ async function handleDunningForCustomer(
     invoiceId: input.invoiceId,
   });
 
-  if (!result.relationship || result.reminderDay == null) return;
+  if (!result.relationship) return;
+
+  // Always attempt notification when a checkpoint is due OR suspension just happened.
+  // Suspension itself is already applied inside recordPaymentFailed when shouldSuspend.
+  if (result.reminderDay == null && !result.shouldSuspend) return;
 
   const portalUrl = await createBillingPortalUrl(
     stripe,
     result.relationship.stripeCustomerId || input.stripeCustomerId,
   );
-  const to = result.relationship.owner.email?.trim();
-  if (!to) return;
-
-  const day = result.reminderDay as DunningDay;
-  const templateId =
-    day === 21 || result.shouldSuspend ? "account_suspended" : "payment_reminder";
+  const day = (result.reminderDay ?? 21) as DunningDay;
 
   try {
-    await sendRelationshipEmail({
+    const { sendDunningCheckpointEmail } = await import(
+      "@shared/relationships/dunning-notify"
+    );
+    const notify = await sendDunningCheckpointEmail({
       relationshipId: result.relationship.id,
-      to,
-      templateId,
-      vars: {
-        firstName: result.relationship.owner.firstName,
-        venueName: result.relationship.venue.name,
-        planName: result.relationship.planName,
-        dunningDay: day,
-        billingPortalUrl: portalUrl,
-      },
-      meta: { trigger: "invoice.payment_failed", dunning_day: day },
+      day,
+      shouldSuspend: result.shouldSuspend,
+      billingPortalUrl: portalUrl,
     });
-    await markDunningReminderSent(result.relationship.id, day);
+    if (notify.error) {
+      console.error("[stripe] dunning email failed", notify.error);
+    }
   } catch (error) {
     console.error("[stripe] dunning email failed", error);
   }
@@ -479,6 +520,40 @@ async function handleInvoicePaid(
     customer: customerId,
     amount_paid: invoice.amount_paid,
   });
+
+  if (subscriptionId) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      const { syncStripeEntitlementToProduct } = await import(
+        "@shared/product-sync/entitlement-sync"
+      );
+      const store = await loadLiveStore();
+      const rel =
+        store.relationships.find((r) => r.stripeSubscriptionId === subscriptionId) ||
+        (customerId
+          ? store.relationships.find((r) => r.stripeCustomerId === customerId)
+          : undefined);
+      const periodEndUnix = (sub as { current_period_end?: number }).current_period_end;
+      await syncStripeEntitlementToProduct({
+        venueId: rel?.productSync?.venueId ?? null,
+        ownerEmail: email ?? rel?.owner?.email ?? null,
+        relationshipId: rel?.id ?? null,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        stripeStatus: sub.status,
+        cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+        currentPeriodEnd:
+          typeof periodEndUnix === "number"
+            ? new Date(periodEndUnix * 1000).toISOString()
+            : null,
+        dunningStartedAt: rel?.dunning?.startedAt ?? null,
+        dunningClearedAt: new Date().toISOString(),
+        reason: "invoice.paid entitlement sync",
+      });
+    } catch (error) {
+      console.warn("[stripe] invoice.paid entitlement sync failed", error);
+    }
+  }
 
   await maybeReactivateFromPayment({
     stripeCustomerId: customerId,

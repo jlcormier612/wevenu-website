@@ -76,6 +76,12 @@ export default async function SettingsPage() {
       summary: `${paymentsConnected ? "Payments connected" : "Payments not connected"} · ${quickbooksConnected ? "QuickBooks connected" : "QuickBooks not connected"}`,
     },
     {
+      href: "/settings/billing",
+      title: "Subscription & Billing",
+      icon: CreditCard,
+      description: "Hello to Cheers plan, payment method, and cancellation.",
+    },
+    {
       href: "/settings/team",
       title: "Team & Data",
       icon: UsersRound,

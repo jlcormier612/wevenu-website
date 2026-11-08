@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { BillingAttentionBanner } from "@/components/billing/billing-attention-banner";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -172,16 +173,19 @@ export default async function WorkspaceLayout({
   const staffRole = await getCurrentUserRole();
 
   return (
-    <WorkspaceShell
-      email={user.email ?? ""}
-      venueName={venue.name}
-      venueLogo={venue.logoUrl}
-      staffRole={staffRole}
-      pathname={pathname}
-      activeVenueId={boot.status === "ready" ? boot.venueId : venue.id}
-      memberships={boot.memberships}
-    >
-      {children}
-    </WorkspaceShell>
+    <>
+      <BillingAttentionBanner />
+      <WorkspaceShell
+        email={user.email ?? ""}
+        venueName={venue.name}
+        venueLogo={venue.logoUrl}
+        staffRole={staffRole}
+        pathname={pathname}
+        activeVenueId={boot.status === "ready" ? boot.venueId : venue.id}
+        memberships={boot.memberships}
+      >
+        {children}
+      </WorkspaceShell>
+    </>
   );
 }

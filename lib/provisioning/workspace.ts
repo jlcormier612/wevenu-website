@@ -45,6 +45,8 @@ type EnrollmentRow = {
   intake_token: string | null;
   white_glove_status: string | null;
   purchase_hold: boolean | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
 };
 
 function newIntakeToken(): string {
@@ -68,7 +70,7 @@ export async function provisionWorkspaceFromEnrollment(
   const { data: enrollment, error: enrollErr } = await admin
     .from("venue_enrollments")
     .select(
-      "id, venue_name, owner_email, owner_first_name, owner_last_name, onboarding_type, status, venue_id, intake_token, white_glove_status, purchase_hold",
+      "id, venue_name, owner_email, owner_first_name, owner_last_name, onboarding_type, status, venue_id, intake_token, white_glove_status, purchase_hold, stripe_customer_id, stripe_subscription_id",
     )
     .eq("id", input.enrollmentId)
     .maybeSingle<EnrollmentRow>();
@@ -163,6 +165,19 @@ export async function provisionWorkspaceFromEnrollment(
   }
 
   const starters = await seedWorkspaceStarters(venueId, admin);
+
+  // Persist SaaS Stripe identifiers on the venue for Billing Portal + entitlement sync.
+  // Does not change access_disabled — activation remains a separate step.
+  try {
+    const { persistSaasStripeIds } = await import("@/lib/entitlement");
+    await persistSaasStripeIds({
+      venueId,
+      stripeCustomerId: enrollment.stripe_customer_id,
+      stripeSubscriptionId: enrollment.stripe_subscription_id,
+    });
+  } catch (persistErr) {
+    console.warn("[provisioning] saas stripe id persist skipped", persistErr);
+  }
 
   return {
     ok: true,

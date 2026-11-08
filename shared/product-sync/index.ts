@@ -34,6 +34,13 @@ export {
   type ProductAccessLockResult,
 } from "./access-lock";
 export {
+  syncStripeEntitlementToProduct,
+  applyFounderOverrideRemote,
+  type SyncStripeEntitlementInput,
+  type SyncStripeEntitlementResult,
+  type FounderOverrideRemoteInput,
+} from "./entitlement-sync";
+export {
   syncVenueProfileFromProduct,
   type ProductVenueProfileFields,
   type SyncVenueProfileFromProductInput,
