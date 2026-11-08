@@ -1098,7 +1098,7 @@
 
 /* —— §7 Getting Started (editorial split: copy left, photo right) —— */
 .htc-home .getting-started {
-  background: #f3f0e9;
+  background: var(--white);
   color: #24332b;
   padding: 7rem 0;
 }
@@ -1216,7 +1216,7 @@
 
 /* —— §8 Our First Friends (editorial split: story left, photo right) —— */
 .htc-home .first-friends {
-  background: #ffffff;
+  background: var(--linen);
   color: #24332b;
   padding: 7rem 0;
 }
@@ -1335,7 +1335,7 @@
 
 /* —— §9 Invitation (centered final CTA) —— */
 .htc-home .invitation {
-  background: #f3f0e9;
+  background: var(--white);
   color: #24332b;
   padding: 6.5rem 0 7rem;
   text-align: center;

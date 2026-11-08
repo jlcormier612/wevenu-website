@@ -1,13 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import { HOME_ASSETS, HOME_COPY } from "@/lib/marketing/homepage-v3";
 
 import "@/app/homepage-v3.css";
 
 /**
  * Homepage from the approved manuscript.
- * Hero + connected journey through invitation.
+ * Hero + connected journey through Signature Closing CTA.
  * Capabilities catalog removed from homepage (data retained for Features redesign).
  * FeatureExplorer component preserved (not rendered).
  */
@@ -286,25 +287,15 @@ export function HomepageHybrid() {
         </div>
       </section>
 
-      {/* 9. INVITATION — centered final CTA */}
-      <section className="invitation" id="get-started" aria-labelledby="invitation-heading">
-        <div className="invitation-inner">
-          <p className="invitation-eyebrow">{c.close.kicker}</p>
-          <h2 className="invitation-headline" id="invitation-heading">
-            {c.close.headline}
-          </h2>
-          <div className="invitation-body">
-            <p>{c.close.lede}</p>
-            <p>{c.close.body}</p>
-          </div>
-          <div className="invitation-cta">
-            <Link className="btn btn-primary" href={c.close.primaryCta.href}>
-              {c.close.primaryCta.label}
-            </Link>
-          </div>
-          <p className="invitation-note">{c.close.note}</p>
-        </div>
-      </section>
+      {/* 9. Signature Closing CTA */}
+      <SignatureClosingCta
+        id="get-started"
+        headingId="invitation-heading"
+        headline={c.close.headline}
+        body={c.close.lines}
+        bodyVariant="lines"
+        surface="botanical"
+      />
     </div>
   );
 }

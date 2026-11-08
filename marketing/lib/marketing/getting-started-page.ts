@@ -1,6 +1,7 @@
 /**
  * Getting Started introductory page — claims verified against Sandbox + pricing.
- * Do not imply automatic HoneyBook/Tripleseat migration.
+ * Public copy does not name competitors or imply automatic migration.
+ * In-app onboarding may still note a venue's previous platform for setup guidance.
  */
 
 export const GETTING_STARTED_PAGE = {
@@ -37,8 +38,11 @@ export const GETTING_STARTED_PAGE = {
     },
   ],
   importHonesty: {
-    title: "About HoneyBook, Tripleseat, and other systems",
-    body: "If you currently use HoneyBook, Tripleseat, or another system, we can note that during setup so our team can guide a supported export and review. Selecting a provider does not automatically migrate everything. Nothing imports from that answer alone—you stay in control of what comes over.",
+    title: "Moving from another platform?",
+    paragraphs: [
+      "Already using another system to manage your venue? We'll take that into account as we help you get started, so your Hello to Cheers setup reflects the way your venue operates today.",
+      "There's no need to start from scratch or change everything at once. We'll help you make a thoughtful transition at a pace that works for you.",
+    ],
   },
   whiteGlove: {
     title: "White Glove Setup",
@@ -46,7 +50,7 @@ export const GETTING_STARTED_PAGE = {
     cta: { href: "/pricing", label: "Explore Pricing" },
   },
   nextSteps: {
-    title: "Ready when you are",
+    title: "Ready when you are.",
     body: "Explore pricing, schedule a walkthrough, or continue learning how the platform fits the way your venue already works.",
     primaryCta: { href: "/walkthrough", label: "Schedule a Walkthrough" },
     secondaryCta: { href: "/pricing", label: "Explore Pricing" },

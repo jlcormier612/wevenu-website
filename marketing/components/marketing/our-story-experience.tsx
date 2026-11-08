@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import { OUR_STORY, OUR_STORY_ASSETS } from "@/lib/marketing/our-story";
 
 import "@/app/our-story.css";
@@ -281,47 +281,19 @@ export function OurStoryExperience() {
         </div>
       </section>
 
-      {/* ── Chapter 6 — Invitation ── */}
-      <section
+      {/* ── Signature Closing CTA ── */}
+      <SignatureClosingCta
         id="welcome"
-        className="os-invite"
-        aria-labelledby="story-invitation"
-      >
-        <div className="os-wrap">
-          <figure className="os-frame os-invite-visual">
-            <Image
-              src={assets.invitation}
-              alt="Golden-hour garden reception table with white florals, candles, and string lights — a warm invitation to what lies ahead"
-              fill
-              sizes="(max-width: 900px) 100vw, 920px"
-              className="object-cover object-center"
-            />
-          </figure>
-          <header className="os-chapter-head">
-            <p className="os-kicker">{page.invitation.eyebrow}</p>
-            <h2 id="story-invitation" className="os-title">
-              {page.invitation.headline}
-            </h2>
-          </header>
-          <div className="os-prose">
-            {page.invitation.paragraphs.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
-            ))}
-          </div>
-          <div className="os-cta-row">
-            <MarketingCta
-              href={page.invitation.primaryCta.href}
-              label={page.invitation.primaryCta.label}
-              variant="primary"
-            />
-            <MarketingCta
-              href={page.invitation.secondaryCta.href}
-              label={page.invitation.secondaryCta.label}
-              variant="secondary"
-            />
-          </div>
-        </div>
-      </section>
+        headingId="story-invitation"
+        eyebrow={page.invitation.eyebrow}
+        headline={page.invitation.headline}
+        body={page.invitation.paragraphs}
+        bodyVariant="paragraphs"
+        note={page.invitation.note}
+        surface="story-linen"
+        primaryLabel={page.invitation.primaryCta.label}
+        secondaryLabel={page.invitation.secondaryCta.label}
+      />
     </div>
   );
 }

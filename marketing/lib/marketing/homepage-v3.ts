@@ -318,11 +318,12 @@ export const HOME_COPY = {
     cta: { href: "/our-story", label: "Get to Know Our Story" },
   },
   close: {
-    kicker: "Ready for a Better Way?",
-    headline: "See what Hello to Cheers can do for your venue.",
-    lede: "You've built a business that's uniquely yours. We'd love to show you how Hello to Cheers can help you run it.",
-    body: "Come see how everything can work together—from simplifying the day-to-day to connecting your people and managing every event, from the first hello to the final cheers.",
-    note: "A closer look at the platform, with your venue's needs in mind.",
-    primaryCta: { href: "/walkthrough", label: "Schedule a Walkthrough" },
+    headline: "Everything connected.",
+    lines: [
+      "No switching between disconnected systems.",
+      "No duplicate entry.",
+      "No wondering which version is correct.",
+      "Just one calm workspace built around how venues actually operate.",
+    ],
   },
 } as const;

@@ -1,13 +1,14 @@
 import Link from "next/link";
 
-import { ClosingCta } from "@/components/marketing/closing-cta";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { PricingCheckoutButton } from "@/components/marketing/pricing-checkout-button";
+import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import {
   getEnrollmentConfig,
   isFounderPricingActive,
   type EnrollmentConfig,
 } from "@/lib/marketing/enrollment";
+import { MORE_INFO_CTA } from "@/lib/marketing/nav";
 import { PRICING_PAGE } from "@/lib/marketing/pricing-page";
 import { TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -285,22 +286,16 @@ export function PricingExperience({
         </div>
       </section>
 
-      {/* ── Closing CTA ── */}
-      <section className="border-t border-[var(--taupe-medium)]/40 bg-[var(--header-linen)] px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="font-heading text-[2.52rem] text-[var(--forest-sage)] md:text-[3.36rem]">
-            {page.closing.headline}
-          </h2>
-          <div className="mt-8 space-y-3 text-base text-[var(--forest-sage)]/65 md:text-lg">
-            {page.closing.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <div className="mt-12 flex justify-center">
-            <ClosingCta label={page.closing.cta} />
-          </div>
-        </div>
-      </section>
+      {/* ── Signature Closing CTA ── */}
+      <SignatureClosingCta
+        headline={page.closing.headline}
+        body={page.closing.lines}
+        bodyVariant="lines"
+        surface="warm-beige"
+        className="border-t border-[var(--taupe-medium)]/40"
+        primaryLabel={page.closing.cta}
+        secondaryLabel={MORE_INFO_CTA.label}
+      />
     </div>
   );
 }

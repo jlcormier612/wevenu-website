@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ProductJourneyChapter } from "@/components/marketing/product-journey-chapter";
 import { ProductOpening } from "@/components/marketing/product-opening";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
-import { ClosingCta } from "@/components/marketing/closing-cta";
+import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import { Reveal } from "@/components/marketing/reveal";
 import { PRODUCT_PAGE } from "@/lib/marketing/product-page";
 import { PRODUCT_STORY, type ProductStoryId } from "@/lib/marketing/product-story";
@@ -166,25 +165,15 @@ export function ProductExperience() {
         </div>
       </div>
 
-      {/* ── Closing CTA — preserved ── */}
-      <section className="border-t border-[var(--taupe-light)] bg-[var(--linen)] px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-xl text-center">
-          <h2 className="font-heading text-[2.52rem] text-[var(--forest-sage)] md:text-[3.36rem]">
-            {p.cta.headline}
-          </h2>
-          <div className="mt-8 space-y-3 text-base text-[var(--forest-sage)]/65 md:text-lg">
-            {p.cta.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-          <div className="mt-12 flex justify-center">
-            <ClosingCta label={p.cta.button} />
-          </div>
-          <p className="mt-8">
-            <MarketingCta href="/" label="Back to Home" variant="ghost" />
-          </p>
-        </div>
-      </section>
+      {/* ── Signature Closing CTA ── */}
+      <SignatureClosingCta
+        headline={p.cta.headline}
+        body={p.cta.lines}
+        bodyVariant="lines"
+        surface="white-card"
+        className="border-t border-[var(--taupe-light)]"
+        primaryLabel={p.cta.button}
+      />
     </div>
   );
 }

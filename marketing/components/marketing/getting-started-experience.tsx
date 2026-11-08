@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { SignatureClosingCta } from "@/components/marketing/signature-closing-cta";
 import { GETTING_STARTED_PAGE } from "@/lib/marketing/getting-started-page";
 import { TYPE_HERO_SHELL, TYPE_LABEL } from "@/lib/marketing/rhythm";
 
@@ -59,9 +60,11 @@ export function GettingStartedExperience() {
           <h2 className="font-heading text-[2rem] font-medium tracking-tight text-[var(--forest-sage)] md:text-[2.6rem]">
             {page.importHonesty.title}
           </h2>
-          <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
-            {page.importHonesty.body}
-          </p>
+          <div className="mt-6 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
+            {page.importHonesty.paragraphs.map((paragraph) => (
+              <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -84,36 +87,30 @@ export function GettingStartedExperience() {
         </div>
       </section>
 
-      <section className="px-6 py-20 md:py-28">
-        <div className="mx-auto max-w-[65ch] text-center">
-          <h2 className="font-heading text-[2rem] font-medium tracking-tight text-[var(--forest-sage)] md:text-[2.6rem]">
-            {page.nextSteps.title}
-          </h2>
-          <p className="mx-auto mt-6 max-w-[48ch] text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
-            {page.nextSteps.body}
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href={page.nextSteps.primaryCta.href}
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--botanical,#446b56)] px-6 text-sm font-medium text-white transition hover:opacity-90"
-            >
-              {page.nextSteps.primaryCta.label}
-            </Link>
-            <Link
-              href={page.nextSteps.secondaryCta.href}
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-[var(--botanical,#446b56)]/35 bg-white px-6 text-sm font-medium text-[var(--forest-sage)] transition hover:border-[var(--botanical,#446b56)]/55"
-            >
-              {page.nextSteps.secondaryCta.label}
-            </Link>
-            <Link
-              href={page.nextSteps.tertiaryCta.href}
-              className="inline-flex min-h-12 items-center justify-center rounded-full px-4 text-sm font-medium text-[var(--forest-sage)]/70 transition hover:text-[var(--botanical,#446b56)]"
-            >
-              {page.nextSteps.tertiaryCta.label}
-            </Link>
-          </div>
-        </div>
-      </section>
+      <SignatureClosingCta
+        headingId="getting-started-close-heading"
+        headline={page.nextSteps.title}
+        body={page.nextSteps.body}
+        bodyVariant="paragraphs"
+        surface="white"
+        actions={[
+          {
+            href: page.nextSteps.primaryCta.href,
+            label: page.nextSteps.primaryCta.label,
+            variant: "secondary",
+          },
+          {
+            href: page.nextSteps.secondaryCta.href,
+            label: page.nextSteps.secondaryCta.label,
+            variant: "primary",
+          },
+          {
+            href: page.nextSteps.tertiaryCta.href,
+            label: page.nextSteps.tertiaryCta.label,
+            variant: "secondary",
+          },
+        ]}
+      />
     </div>
   );
 }

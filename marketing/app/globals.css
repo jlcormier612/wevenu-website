@@ -7,6 +7,12 @@
 }
 
 :root {
+  /* Primary botanical — filled CTAs / primary actions (#446B56) */
+  --botanical: #446b56;
+  --eucalyptus: #dce8e0;
+  --blush: #f7e9eb;
+  --warm-canvas: #f8f7f3;
+  /* Legacy sage tokens — labels, muted chrome, secondary surfaces */
   --heritage-sage: #5d6f5d;
   --forest-sage: #4f5f4f;
   --soft-sage: #b9d1c2;

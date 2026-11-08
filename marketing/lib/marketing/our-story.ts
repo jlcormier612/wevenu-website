@@ -127,15 +127,17 @@ export const OUR_STORY = {
   },
 
   invitation: {
-    eyebrow: "Chapter 6",
-    headline: "The best part is still ahead.",
+    eyebrow: "READY FOR A BETTER WAY?",
+    headline: "See what Hello to Cheers can do for your venue.",
     paragraphs: [
-      "I'm so proud of what we've created, and even more excited about where we can go from here. There are always new ideas to explore, new ways to make things better, and so many wonderful people I hope to meet along the way.",
-      "To the venues who helped shape the journey that brought me here: thank you. You probably have no idea how much your ideas, encouragement, and trust have meant to me.",
-      "And to the venues we're meeting for the first time: welcome. I hope you'll find something here that makes you feel just as excited as those little moments that started all of this made me.",
-      "I'd love to show you what we've built.",
+      "You've built a business that's uniquely yours. We'd love to show you how Hello to Cheers can help you run it.",
+      "Come see how everything can work together—from simplifying the day-to-day to connecting your people and managing every event, from the first hello to the final cheers.",
     ],
+    note: "A closer look at the platform, with your venue's needs in mind.",
     primaryCta: { href: "/walkthrough", label: "Schedule a Walkthrough" },
-    secondaryCta: { href: "/contact", label: "Get in Touch" },
+    secondaryCta: {
+      href: "/walkthrough?intent=more-info#request-info",
+      label: "Request More Information",
+    },
   },
 } as const;

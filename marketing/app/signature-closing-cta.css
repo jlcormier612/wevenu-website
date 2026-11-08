@@ -1,0 +1,327 @@
+/* Signature Closing CTA — shared Home / Product / Our Story / future marketing pages */
+
+.signature-closing {
+  --sc-charcoal: #24332b;
+  --sc-botanical: #446b56;
+  --sc-muted: rgba(36, 51, 43, 0.68);
+  --sc-white: #ffffff;
+  --sc-ivory: #f8f7f3;
+  --sc-blush: #f7e9eb;
+  --sc-linen: #f5f4f2;
+  --sc-story-linen: #ebe5da;
+  /* Features / Pricing warm beige — matches header-linen / fs-linen */
+  --sc-warm-beige: #f3f0e9;
+  color: var(--sc-charcoal);
+  text-align: center;
+  padding: 6.5rem 0 7rem;
+}
+
+.signature-closing--white {
+  background: var(--sc-white);
+}
+
+.signature-closing--linen {
+  background: var(--sc-linen);
+}
+
+.signature-closing--story-linen {
+  background: var(--sc-story-linen);
+}
+
+.signature-closing--warm-beige {
+  background: var(--sc-warm-beige);
+}
+
+/* —— Botanical closing band (“Everything connected.”) —— */
+.signature-closing--botanical {
+  background: var(--sc-botanical);
+  color: var(--sc-ivory);
+}
+
+.signature-closing--botanical .signature-closing-eyebrow {
+  color: color-mix(in srgb, var(--sc-ivory) 88%, transparent);
+}
+
+.signature-closing--botanical .signature-closing-headline {
+  color: var(--sc-ivory);
+}
+
+.signature-closing--botanical .signature-closing-body p,
+.signature-closing--botanical .signature-closing-lines p {
+  color: color-mix(in srgb, var(--sc-ivory) 92%, transparent);
+}
+
+.signature-closing--botanical .signature-closing-note {
+  color: color-mix(in srgb, var(--sc-ivory) 72%, transparent);
+}
+
+.signature-closing--botanical .signature-closing-actions .story-end-heart {
+  color: var(--sc-blush);
+}
+
+.signature-closing--botanical .signature-closing-btn:focus-visible {
+  outline-color: var(--sc-ivory);
+}
+
+.signature-closing--botanical .signature-closing-btn-primary {
+  background: var(--sc-ivory);
+  color: var(--sc-botanical);
+}
+
+.signature-closing--botanical .signature-closing-btn-primary:hover {
+  background: color-mix(in srgb, var(--sc-ivory) 92%, white);
+  color: var(--sc-botanical);
+}
+
+.signature-closing--botanical .signature-closing-btn-secondary {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--sc-ivory) 72%, transparent);
+  color: var(--sc-ivory);
+}
+
+.signature-closing--botanical .signature-closing-btn-secondary:hover {
+  border-color: var(--sc-ivory);
+  background: color-mix(in srgb, var(--sc-ivory) 10%, transparent);
+  color: var(--sc-ivory);
+}
+
+.signature-closing--botanical .signature-closing-cta-row--triple .signature-closing-btn-secondary {
+  border-color: color-mix(in srgb, var(--sc-ivory) 72%, transparent);
+  color: var(--sc-ivory);
+}
+
+.signature-closing--botanical .signature-closing-cta-row--triple .signature-closing-btn-secondary:hover {
+  border-color: var(--sc-ivory);
+  background: color-mix(in srgb, var(--sc-ivory) 10%, transparent);
+}
+
+/* —— Platform elevated white invitation card —— */
+.signature-closing--white-card {
+  background: transparent;
+  padding: 4.75rem 0 6rem;
+}
+
+.signature-closing--white-card .signature-closing-inner {
+  width: min(56.25rem, calc(100% - 2.5rem));
+  padding: 3.25rem 2.5rem 3.5rem;
+  background: var(--sc-white);
+  border: 1px solid rgba(47, 55, 47, 0.12);
+  border-radius: 0.35rem;
+  box-shadow: 0 22px 48px -36px rgba(47, 55, 47, 0.32);
+}
+
+.signature-closing--white-card .signature-closing-headline {
+  color: var(--sc-botanical);
+}
+
+.signature-closing--white-card .signature-closing-body p,
+.signature-closing--white-card .signature-closing-lines p {
+  color: var(--sc-charcoal);
+}
+
+.signature-closing-inner {
+  width: min(56.25rem, calc(100% - 2.5rem));
+  margin-inline: auto;
+}
+
+.signature-closing-eyebrow {
+  margin: 0 0 1.75rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--sc-charcoal);
+}
+
+.signature-closing-headline {
+  margin: 0 auto;
+  max-width: 53.125rem;
+  font-family: var(--font-heading), ui-serif, Georgia, serif;
+  font-size: 3.75rem;
+  font-weight: 400;
+  /* Tight enough for multi-line headlines; still airy editorial */
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: var(--sc-charcoal);
+  text-wrap: balance;
+}
+
+.signature-closing-body,
+.signature-closing-lines {
+  margin: 1.75rem auto 0;
+  max-width: 46.25rem;
+}
+
+.signature-closing-body p,
+.signature-closing-lines p {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--sc-charcoal);
+  text-wrap: pretty;
+}
+
+.signature-closing-body p + p {
+  margin-top: 1.125rem;
+}
+
+.signature-closing-lines {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.signature-closing-actions {
+  margin-top: 2.25rem;
+}
+
+.signature-closing-actions .story-end-heart {
+  color: var(--dusty-rose);
+}
+
+.signature-closing-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+}
+
+.signature-closing-cta-row--triple {
+  gap: 0.75rem;
+  /* Keep the three Features pills as one cohesive row on desktop */
+  flex-wrap: nowrap;
+}
+
+.signature-closing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0.85rem 2rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 0.2s ease-out,
+    border-color 0.2s ease-out,
+    color 0.2s ease-out;
+}
+
+.signature-closing-btn:focus-visible {
+  outline: 2px solid var(--sc-botanical);
+  outline-offset: 3px;
+}
+
+.signature-closing-btn-primary {
+  background: var(--sc-botanical);
+  color: var(--sc-white);
+}
+
+.signature-closing-btn-primary:hover {
+  background: color-mix(in srgb, var(--sc-botanical) 88%, black);
+}
+
+.signature-closing-btn-secondary {
+  background: transparent;
+  border-color: rgba(36, 51, 43, 0.22);
+  color: var(--sc-charcoal);
+}
+
+.signature-closing-btn-secondary:hover {
+  border-color: rgba(36, 51, 43, 0.4);
+}
+
+/* Features triple group: botanical outline pills so none reads as a bare text link */
+.signature-closing-cta-row--triple .signature-closing-btn-secondary {
+  border-color: color-mix(in srgb, var(--sc-botanical) 42%, transparent);
+  color: var(--sc-botanical);
+}
+
+.signature-closing-cta-row--triple .signature-closing-btn-secondary:hover {
+  border-color: color-mix(in srgb, var(--sc-botanical) 70%, transparent);
+  background: color-mix(in srgb, var(--sc-botanical) 6%, transparent);
+}
+
+.signature-closing-note {
+  margin: 1.125rem auto 0;
+  max-width: 28rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--sc-muted);
+  text-wrap: pretty;
+}
+
+@media (max-width: 900px) {
+  .signature-closing {
+    padding: 4.5rem 0 5rem;
+  }
+
+  .signature-closing--white-card {
+    padding: 3.25rem 0 4rem;
+  }
+
+  .signature-closing--white-card .signature-closing-inner {
+    width: calc(100% - 2.5rem);
+    padding: 2.5rem 1.5rem 2.75rem;
+  }
+
+  .signature-closing-inner {
+    width: calc(100% - 2.5rem);
+  }
+
+  .signature-closing-eyebrow {
+    margin-bottom: 1.5rem;
+  }
+
+  .signature-closing-headline {
+    font-size: 2.375rem;
+  }
+
+  .signature-closing-body,
+  .signature-closing-lines {
+    margin-top: 1.5rem;
+  }
+
+  .signature-closing-body p,
+  .signature-closing-lines p {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .signature-closing-actions {
+    margin-top: 2rem;
+  }
+
+  .signature-closing-note {
+    margin-top: 1rem;
+    max-width: 22rem;
+  }
+
+  /* Triple Features CTAs: stack before a lone third button wraps awkwardly */
+  .signature-closing-cta-row--triple {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: min(22rem, 100%);
+    margin-inline: auto;
+  }
+
+  .signature-closing-cta-row--triple .signature-closing-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .signature-closing-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .signature-closing-btn {
+    width: 100%;
+  }
+}

@@ -172,7 +172,8 @@ export const FEATURES_PAGE = {
   ],
   close: {
     headline: "Everything connected.",
-    lines: [
+    /** Short stacked lines — Features signature close (not Getting Started). */
+    body: [
       "No switching between disconnected systems.",
       "No duplicate entry.",
       "No wondering which version is correct.",
