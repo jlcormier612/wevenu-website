@@ -17,6 +17,10 @@ type PricingCheckoutButtonProps = {
   variant?: "primary" | "secondary";
   /** Phase 2 Weven Checkout available (server readiness). */
   wevenOfferAvailable?: boolean;
+  /** Phase 4 Add Another Venue — durable reservation id (server resolves group price). */
+  organizationReservationId?: string | null;
+  /** Prefill new property name from Add Another Venue. */
+  prefillVenueName?: string | null;
   className?: string;
 };
 
@@ -32,6 +36,8 @@ export function PricingCheckoutButton({
   label,
   variant = "primary",
   wevenOfferAvailable = false,
+  organizationReservationId = null,
+  prefillVenueName = null,
   className,
 }: PricingCheckoutButtonProps) {
   const [open, setOpen] = useState(false);
@@ -57,9 +63,12 @@ export function PricingCheckoutButton({
           welcome_back: selection.welcomeBack,
           onboarding_type: selection.onboardingType,
           legal_accepted: selection.legalAccepted,
-          venue_name: selection.venueName,
+          venue_name: selection.venueName || prefillVenueName || "",
           first_name: selection.firstName,
           last_name: selection.lastName,
+          ...(organizationReservationId
+            ? { organization_reservation_id: organizationReservationId }
+            : {}),
         }),
       });
       const data = (await res.json()) as { url?: string; error?: string };

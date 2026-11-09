@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/communications", label: "Communications" },
   { href: "/founding", label: "Founder Dashboard" },
   { href: "/tier-upgrades", label: "Tier upgrades" },
+  { href: "/organizations", label: "Organizations" },
   { href: "/commissions", label: "Commissions" },
   { href: "/team", label: "Team" },
   { href: "/reports", label: "Reports" },

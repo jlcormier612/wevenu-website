@@ -219,6 +219,103 @@ export async function POST(request: Request) {
             grantBindErr,
           );
         }
+
+        // Phase 4 — fulfill org reservation + queue prospective group adjustments.
+        try {
+          const {
+            ACTIVE_TIER_UPGRADE_STATUSES,
+            executeGroupCouponChange,
+            fulfillOrganizationVenueActivation,
+            getPricingOfferStore: getOfferStoreForGrants,
+            getTierUpgradeStore,
+            isPricingGroupV1FlagEnabled,
+            requireDurableGroupOrgStore,
+          } = await import("@shared/pricing");
+          if (isPricingGroupV1FlagEnabled()) {
+            const orgStore = requireDurableGroupOrgStore();
+            const offerStoreForGrants = getOfferStoreForGrants();
+            const tierStore = getTierUpgradeStore();
+            await fulfillOrganizationVenueActivation({
+              store: orgStore,
+              reservationId: null,
+              checkoutSessionId,
+              venueId: row.venue_id,
+              loadMemberBilling: async (venueIds) => {
+                if (venueIds.length === 0) return [];
+                const { data } = await admin
+                  .from("venues")
+                  .select(
+                    "id, saas_plan_key, saas_subscription_status, saas_stripe_subscription_id",
+                  )
+                  .in("id", venueIds);
+                const snaps = [];
+                for (const v of data ?? []) {
+                  const venueId = v.id as string;
+                  const grants =
+                    await offerStoreForGrants.listEarnedGrantsForVenue(venueId);
+                  const upgrades =
+                    await tierStore.listUpgradesForVenue(venueId);
+                  const pending =
+                    upgrades.find((u) =>
+                      (ACTIVE_TIER_UPGRADE_STATUSES as readonly string[]).includes(
+                        u.status,
+                      ),
+                    ) ?? null;
+                  snaps.push({
+                    venueId,
+                    planKey: ((v.saas_plan_key as string) ||
+                      "starter") as "starter" | "growing" | "professional",
+                    subscriptionStatus:
+                      (v.saas_subscription_status as string | null) ?? null,
+                    stripeSubscriptionId:
+                      (v.saas_stripe_subscription_id as string | null) ?? null,
+                    grants: grants.map((g) => ({
+                      id: g.id,
+                      offerType: g.offerType,
+                      percentOff: g.percentOff ?? 0,
+                      status: g.status,
+                    })),
+                    pendingTierUpgrade: pending,
+                  });
+                }
+                return snaps;
+              },
+              executeAdjustments: async (adjustment, decision) => {
+                if (
+                  !adjustment.stripeSubscriptionId ||
+                  decision.action === "noop" ||
+                  decision.action === "defer_to_schedule"
+                ) {
+                  return { ok: true };
+                }
+                try {
+                  const Stripe = (await import("stripe")).default;
+                  const key = process.env.STRIPE_SECRET_KEY;
+                  if (!key) {
+                    return { ok: false, error: "STRIPE_SECRET_KEY missing" };
+                  }
+                  const stripe = new Stripe(key);
+                  return executeGroupCouponChange({
+                    stripe,
+                    subscriptionId: adjustment.stripeSubscriptionId,
+                    decision,
+                    idempotencyKey: adjustment.idempotencyKey,
+                  });
+                } catch (err) {
+                  return {
+                    ok: false,
+                    error: err instanceof Error ? err.message : String(err),
+                  };
+                }
+              },
+            });
+          }
+        } catch (groupErr) {
+          console.error(
+            "[enrollment/activate] Phase 4 organization fulfill failed",
+            groupErr,
+          );
+        }
       }
     }
 

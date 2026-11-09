@@ -295,6 +295,44 @@ async function handleCheckoutCompleted(
       mrrCents,
     });
 
+    // Phase 4 — link reservation to this Session (fulfillment waits for venue activation).
+    const orgReservationId = meta.org_reservation_id?.trim() || null;
+    if (orgReservationId || meta.group_eligible === "true") {
+      try {
+        const {
+          isPricingGroupV1FlagEnabled,
+          requireDurableGroupOrgStore,
+        } = await import("@shared/pricing");
+        if (isPricingGroupV1FlagEnabled()) {
+          const orgStore = requireDurableGroupOrgStore();
+          let reservation = orgReservationId
+            ? await orgStore.getReservationById(orgReservationId)
+            : null;
+          if (!reservation) {
+            reservation = await orgStore.getReservationByCheckoutSessionId(
+              session.id,
+            );
+          }
+          if (reservation && reservation.status === "reserved") {
+            await orgStore.attachCheckoutSession({
+              reservationId: reservation.id,
+              stripeCheckoutSessionId: session.id,
+              checkoutOfferId: checkoutOffer?.id ?? null,
+            });
+            console.info("[stripe] Phase 4 reservation attached on paid Checkout", {
+              reservationId: reservation.id,
+              sessionId: session.id,
+            });
+          }
+        }
+      } catch (orgAttachErr) {
+        console.error(
+          "[stripe] Phase 4 reservation attach failed (activation will retry)",
+          orgAttachErr,
+        );
+      }
+    }
+
     if (checkoutOffer) {
       await offerStore.markOfferStatus(checkoutOffer.id, "paid", {
         paidAt: new Date().toISOString(),

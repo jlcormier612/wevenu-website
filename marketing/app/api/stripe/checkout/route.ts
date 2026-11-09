@@ -25,17 +25,23 @@ import {
 } from "@/lib/stripe/config";
 import {
   FOUNDING_PERCENT_OFF,
+  GROUP_PERCENT_OFF,
   WEVEN_PERCENT_OFF,
   abandonIssuedOfferOnStripeFailure,
+  getPricingGroupV1Readiness,
   getPricingLaunchOperationalSignal,
   getPricingLaunchV1Readiness,
   getPricingWevenOperationalSignal,
   getPricingWevenV1Readiness,
+  isPricingGroupV1Ready,
   isPricingLaunchV1Ready,
   isPricingWevenV1Misconfigured,
   isPricingWevenV1Ready,
+  requireDurableGroupOrgStore,
   requireDurablePricingOfferStore,
+  resolveReservationGroupEligibility,
 } from "@shared/pricing";
+import { createCrmAdminClient } from "@shared/relationships/pg-client";
 
 export const runtime = "nodejs";
 
@@ -78,6 +84,11 @@ export async function POST(request: Request) {
       stripe_customer_id?: string;
       /** Required for public Pricing checkout (not CRM-assisted). */
       legal_accepted?: unknown;
+      /**
+       * Phase 4 Add Another Venue reservation. Server resolves group eligibility
+       * from this durable id — never trust a client `groupEligible` flag.
+       */
+      organization_reservation_id?: string;
     };
     const plan = body.plan;
 
@@ -227,12 +238,87 @@ export async function POST(request: Request) {
           (await offerStore.countEarnedFoundingVenues()))
         : 0;
 
+    // Phase 4 — server-authoritative group eligibility from durable reservation.
+    let groupEligible = false;
+    let organizationReservationId: string | null = null;
+    const reservationIdRaw = body.organization_reservation_id?.trim() || "";
+    if (reservationIdRaw) {
+      const groupReadiness = getPricingGroupV1Readiness();
+      if (groupReadiness.mode === "group_misconfigured") {
+        return NextResponse.json(
+          {
+            error:
+              "Organization group pricing is temporarily unavailable. Please try again shortly.",
+            code: "pricing_group_misconfigured",
+            missing: groupReadiness.missing,
+          },
+          { status: 503 },
+        );
+      }
+      if (!isPricingGroupV1Ready(groupReadiness)) {
+        return NextResponse.json(
+          {
+            error:
+              "Organization group pricing is not active yet. Contact support to add another venue.",
+            code: "pricing_group_disabled",
+          },
+          { status: 503 },
+        );
+      }
+      try {
+        const orgStore = requireDurableGroupOrgStore();
+        const admin = createCrmAdminClient();
+        const resolved = await resolveReservationGroupEligibility({
+          store: orgStore,
+          reservationId: reservationIdRaw,
+          loadMemberBilling: async (venueIds) => {
+            if (venueIds.length === 0) return [];
+            const { data } = await admin
+              .from("venues")
+              .select(
+                "id, saas_plan_key, saas_subscription_status, saas_stripe_subscription_id",
+              )
+              .in("id", venueIds);
+            return (data ?? []).map((v) => ({
+              venueId: v.id as string,
+              planKey: ((v.saas_plan_key as string) ||
+                "starter") as "starter" | "growing" | "professional",
+              subscriptionStatus:
+                (v.saas_subscription_status as string | null) ?? null,
+              stripeSubscriptionId:
+                (v.saas_stripe_subscription_id as string | null) ?? null,
+            }));
+          },
+        });
+        groupEligible = resolved.groupEligibleForCheckout;
+        organizationReservationId = resolved.reservation.id;
+      } catch (reservationError) {
+        const message =
+          reservationError instanceof Error
+            ? reservationError.message
+            : String(reservationError);
+        console.error("[checkout] organization reservation resolve failed", {
+          reservationId: reservationIdRaw,
+          message,
+        });
+        return NextResponse.json(
+          {
+            error:
+              "This Add Another Venue link is no longer valid. Return to Billing and try again.",
+            code: "organization_reservation_invalid",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const pricing = launchReady
       ? getCheckoutPricingForPlan(plan, {
           launch: {
             earnedFoundingVenueCount: earnedFoundingCount,
             programActive: enrollment.founderProgramActive,
             wevenDeclared,
+            groupEligible,
           },
         })
       : getCheckoutPricingForPlan(plan, { founder: founderActive });
@@ -306,6 +392,16 @@ export async function POST(request: Request) {
         : "0";
       metadata.applied_offer_type = pricing.launch.appliedOfferType ?? "";
       metadata.list_amount_cents = String(pricing.launch.listAmountCents);
+      metadata.expected_recurring_amount_cents = String(
+        pricing.launch.expectedRecurringAmountCents,
+      );
+      metadata.group_eligible = groupEligible ? "true" : "false";
+      metadata.group_percent_off = pricing.launch.groupPercentOff
+        ? String(pricing.launch.groupPercentOff)
+        : "0";
+      if (organizationReservationId) {
+        metadata.org_reservation_id = organizationReservationId;
+      }
       if (checkoutOfferId) metadata.checkout_offer_id = checkoutOfferId;
     }
     if (venueName) {
@@ -434,6 +530,22 @@ export async function POST(request: Request) {
       }
     }
 
+    if (organizationReservationId) {
+      try {
+        const orgStore = requireDurableGroupOrgStore();
+        await orgStore.attachCheckoutSession({
+          reservationId: organizationReservationId,
+          stripeCheckoutSessionId: session.id,
+          checkoutOfferId,
+        });
+      } catch (attachReservationError) {
+        console.error(
+          "[checkout] failed to attach session to organization reservation",
+          attachReservationError,
+        );
+      }
+    }
+
     // Draft / link relationship when we have venue, email, or existing relationship id.
     await syncCheckoutStartedToRelationship({
       email: customerEmail || null,
@@ -456,6 +568,17 @@ export async function POST(request: Request) {
       checkout_offer_id: checkoutOfferId,
       pricing_mode: pricing.mode,
       applied_offer_type: pricing.launch?.appliedOfferType ?? null,
+      group_eligible: groupEligible,
+      group_percent_off: pricing.launch?.groupPercentOff ?? null,
+      expected_recurring_amount_cents:
+        pricing.launch?.expectedRecurringAmountCents ?? null,
+      org_reservation_id: organizationReservationId,
+      list_amount_cents: pricing.launch?.listAmountCents ?? null,
+      // Surface GROUP_PERCENT_OFF for UI when group wins (not when Weven/Founding wins).
+      group_catalog_percent:
+        pricing.launch?.appliedOfferType === "group_pct"
+          ? GROUP_PERCENT_OFF
+          : null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout failed.";

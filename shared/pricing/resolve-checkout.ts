@@ -1,24 +1,29 @@
 /**
- * Launch V1 (+ Phase 2 Weven) Checkout pricing resolution.
+ * Launch V1 (+ Phase 2 Weven + Phase 4 Group) Checkout pricing resolution.
  * Uses standard recurring Prices + optional percent-forever coupons.
  * Never selects founder-specific fixed recurring Prices or the legacy $30 coupon.
  *
- * Best-offer at Checkout:
- *   Weven 20% (when declared + Phase 2 ready) beats Founding 10%.
- *   Founding eligibility may still be recorded when Weven wins.
+ * Best-offer at Checkout (via selectBestOffer ranks):
+ *   Weven 20% > Founding 10% > Group 10% > none.
+ *   Equal 10%: Founding wins over Group (preserves earned grant; avoids coupon churn).
+ *   Founding eligibility may still be recorded when Weven or Group wins.
  */
 
 import {
   FOUNDING_PERCENT_OFF,
+  GROUP_PERCENT_OFF,
   PRICING_VERSION_V1,
   WEVEN_PERCENT_OFF,
   isSaasPlanKey,
   listAmountCents,
 } from "./catalog";
+import { selectBestOffer, type EligibleGrant } from "./best-offer";
 import { decideFoundingIssuance } from "./founding";
 import {
+  getPricingGroupV1Readiness,
   getPricingLaunchV1Readiness,
   getPricingWevenV1Readiness,
+  type PricingGroupReadiness,
   type PricingLaunchReadiness,
   type PricingWevenReadiness,
 } from "./readiness";
@@ -36,6 +41,9 @@ export type LaunchCheckoutPricing = {
   /** Explicit former-Weven self-declaration on this Checkout. */
   wevenDeclared: boolean;
   wevenPercentOff: number | null;
+  /** Organization group eligibility for this Checkout (paid or reserved). */
+  groupEligible: boolean;
+  groupPercentOff: number | null;
   /** Winning discount applied to the Stripe subscription (never stacked). */
   appliedOfferType: OfferType | null;
   /** Coupon attached to the Session (winning discount only). */
@@ -45,11 +53,13 @@ export type LaunchCheckoutPricing = {
   mode:
     | "launch_standard"
     | "launch_founding_percent"
-    | "launch_weven_percent";
+    | "launch_weven_percent"
+    | "launch_group_percent";
   earnedFoundingCountAtIssue: number;
   issuanceReason: string;
   /** Weven $399 White Glove Price when Phase 2 ready; else null. */
   wevenWhiteGlovePriceId: string | null;
+  expectedRecurringAmountCents: number;
 };
 
 export function resolveLaunchCheckoutPricing(input: {
@@ -61,8 +71,14 @@ export function resolveLaunchCheckoutPricing(input: {
   honorFoundingIssued?: boolean;
   /** Explicit customer self-declaration (never inferred from email). */
   wevenDeclared?: boolean;
+  /**
+   * Organization already has ≥2 qualifying venues, OR a Checkout reservation
+   * bridges this Session to become the second qualifying property.
+   */
+  groupEligible?: boolean;
   readiness?: PricingLaunchReadiness;
   wevenReadiness?: PricingWevenReadiness;
+  groupReadiness?: PricingGroupReadiness;
 }): LaunchCheckoutPricing {
   const readiness = input.readiness ?? getPricingLaunchV1Readiness();
   if (!readiness.ready) {
@@ -74,10 +90,15 @@ export function resolveLaunchCheckoutPricing(input: {
   }
 
   const wevenReadiness = input.wevenReadiness ?? getPricingWevenV1Readiness();
+  const groupReadiness = input.groupReadiness ?? getPricingGroupV1Readiness();
   const wevenRequested = Boolean(input.wevenDeclared);
+  const groupRequested = Boolean(input.groupEligible);
 
   if (wevenRequested && wevenReadiness.mode === "weven_misconfigured") {
     throw new Error(wevenReadiness.diagnosticMessage);
+  }
+  if (groupRequested && groupReadiness.mode === "group_misconfigured") {
+    throw new Error(groupReadiness.diagnosticMessage);
   }
 
   const priceIdByPlan: Record<SaasPlanKey, string | null> = {
@@ -113,7 +134,37 @@ export function resolveLaunchCheckoutPricing(input: {
   }
 
   const wevenActive = wevenRequested && wevenReadiness.ready;
+  const groupActive = groupRequested && groupReadiness.ready;
+
+  const grants: EligibleGrant[] = [];
+  if (foundingIssued) {
+    grants.push({
+      id: "checkout-founding",
+      offerType: "founding_pct",
+      percentOff: FOUNDING_PERCENT_OFF,
+      status: "earned",
+    });
+  }
   if (wevenActive) {
+    grants.push({
+      id: "checkout-weven",
+      offerType: "weven_pct",
+      percentOff: WEVEN_PERCENT_OFF,
+      status: "earned",
+    });
+  }
+  if (groupActive) {
+    grants.push({
+      id: "checkout-group",
+      offerType: "group_pct",
+      percentOff: GROUP_PERCENT_OFF,
+      status: "earned",
+    });
+  }
+
+  const best = selectBestOffer({ listAmountCents: listCents, grants });
+
+  if (best.offerType === "weven_pct") {
     const couponId = wevenReadiness.wevenPercentCouponId;
     if (!couponId) {
       throw new Error("STRIPE_WEVEN_PERCENT_COUPON_ID is required for Weven Checkout.");
@@ -126,6 +177,8 @@ export function resolveLaunchCheckoutPricing(input: {
       foundingPercentOff: foundingIssued ? FOUNDING_PERCENT_OFF : null,
       wevenDeclared: true,
       wevenPercentOff: WEVEN_PERCENT_OFF,
+      groupEligible: groupRequested,
+      groupPercentOff: groupActive ? GROUP_PERCENT_OFF : null,
       appliedOfferType: "weven_pct",
       foundingCouponId: couponId,
       allowPromotionCodes: false,
@@ -136,10 +189,11 @@ export function resolveLaunchCheckoutPricing(input: {
         ? `${issuanceReason}+weven_wins_applied`
         : `weven_only:${issuanceReason}`,
       wevenWhiteGlovePriceId: wevenReadiness.wevenWhiteGlovePriceId,
+      expectedRecurringAmountCents: best.expectedAmountCents,
     };
   }
 
-  if (foundingIssued) {
+  if (best.offerType === "founding_pct") {
     const couponId = readiness.foundingPercentCouponId;
     if (!couponId) {
       throw new Error("STRIPE_FOUNDING_PERCENT_COUPON_ID is required for Founding Checkout.");
@@ -150,16 +204,49 @@ export function resolveLaunchCheckoutPricing(input: {
       listAmountCents: listCents,
       foundingIssued: true,
       foundingPercentOff: FOUNDING_PERCENT_OFF,
-      wevenDeclared: false,
-      wevenPercentOff: null,
+      // Only surface Weven when Phase 2 is actually active on this Session.
+      wevenDeclared: wevenActive,
+      wevenPercentOff: wevenActive ? WEVEN_PERCENT_OFF : null,
+      groupEligible: groupRequested,
+      groupPercentOff: groupActive ? GROUP_PERCENT_OFF : null,
       appliedOfferType: "founding_pct",
       foundingCouponId: couponId,
       allowPromotionCodes: false,
       pricingVersion: PRICING_VERSION_V1,
       mode: "launch_founding_percent",
       earnedFoundingCountAtIssue: earnedCount,
-      issuanceReason,
+      issuanceReason: groupActive
+        ? `${issuanceReason}+founding_beats_group`
+        : issuanceReason,
       wevenWhiteGlovePriceId: null,
+      expectedRecurringAmountCents: best.expectedAmountCents,
+    };
+  }
+
+  if (best.offerType === "group_pct") {
+    const couponId = groupReadiness.groupPercentCouponId;
+    if (!couponId) {
+      throw new Error("STRIPE_GROUP_PERCENT_COUPON_ID is required for Group Checkout.");
+    }
+    return {
+      plan: input.plan,
+      priceId,
+      listAmountCents: listCents,
+      foundingIssued,
+      foundingPercentOff: foundingIssued ? FOUNDING_PERCENT_OFF : null,
+      wevenDeclared: wevenActive,
+      wevenPercentOff: wevenActive ? WEVEN_PERCENT_OFF : null,
+      groupEligible: true,
+      groupPercentOff: GROUP_PERCENT_OFF,
+      appliedOfferType: "group_pct",
+      foundingCouponId: couponId,
+      allowPromotionCodes: false,
+      pricingVersion: PRICING_VERSION_V1,
+      mode: "launch_group_percent",
+      earnedFoundingCountAtIssue: earnedCount,
+      issuanceReason: `${issuanceReason}+group_applied`,
+      wevenWhiteGlovePriceId: null,
+      expectedRecurringAmountCents: best.expectedAmountCents,
     };
   }
 
@@ -171,6 +258,8 @@ export function resolveLaunchCheckoutPricing(input: {
     foundingPercentOff: null,
     wevenDeclared: false,
     wevenPercentOff: null,
+    groupEligible: groupRequested,
+    groupPercentOff: null,
     appliedOfferType: null,
     foundingCouponId: null,
     allowPromotionCodes: true,
@@ -179,5 +268,6 @@ export function resolveLaunchCheckoutPricing(input: {
     earnedFoundingCountAtIssue: earnedCount,
     issuanceReason,
     wevenWhiteGlovePriceId: null,
+    expectedRecurringAmountCents: listCents,
   };
 }

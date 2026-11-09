@@ -305,3 +305,89 @@ export function getPricingWevenOperationalSignal(): {
     message: readiness.diagnosticMessage,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Phase 4 — Organization group pricing gate (independent; default off)
+// ---------------------------------------------------------------------------
+
+/** Explicit Phase 4 group pricing flag. Default false until Sandbox activation. */
+export function isPricingGroupV1FlagEnabled(): boolean {
+  return parseBooleanFlag(process.env.PRICING_GROUP_V1, false);
+}
+
+/** Distinct 10% group coupon — must NOT be Founding or Weven coupon IDs. */
+export function resolveGroupPercentCouponId(): string | null {
+  return (
+    readEnvId("STRIPE_GROUP_PERCENT_COUPON_ID") ||
+    readEnvId("STRIPE_GROUP_10_COUPON_ID")
+  );
+}
+
+export type PricingGroupMode = "disabled" | "group_ready" | "group_misconfigured";
+
+export type PricingGroupReadiness = {
+  mode: PricingGroupMode;
+  ready: boolean;
+  flagEnabled: boolean;
+  missing: string[];
+  groupPercentCouponId: string | null;
+  diagnosticMessage: string;
+};
+
+export function getPricingGroupV1Readiness(): PricingGroupReadiness {
+  const flagEnabled = isPricingGroupV1FlagEnabled();
+  const groupPercentCouponId = resolveGroupPercentCouponId();
+  const foundingId = resolveLaunchFoundingPercentCouponId();
+  const wevenId = resolveWevenPercentCouponId();
+
+  const missing: string[] = [];
+  if (!groupPercentCouponId) missing.push("STRIPE_GROUP_PERCENT_COUPON_ID");
+  if (
+    groupPercentCouponId &&
+    foundingId &&
+    groupPercentCouponId === foundingId
+  ) {
+    missing.push("STRIPE_GROUP_PERCENT_COUPON_ID must differ from Founding coupon");
+  }
+  if (groupPercentCouponId && wevenId && groupPercentCouponId === wevenId) {
+    missing.push("STRIPE_GROUP_PERCENT_COUPON_ID must differ from Weven coupon");
+  }
+
+  if (!flagEnabled) {
+    return {
+      mode: "disabled",
+      ready: false,
+      flagEnabled: false,
+      missing: [],
+      groupPercentCouponId,
+      diagnosticMessage:
+        "PRICING_GROUP_V1 is off — organization group Checkout discount is not active.",
+    };
+  }
+
+  if (missing.length > 0) {
+    return {
+      mode: "group_misconfigured",
+      ready: false,
+      flagEnabled: true,
+      missing,
+      groupPercentCouponId,
+      diagnosticMessage: `Group pricing is enabled but incomplete: missing ${missing.join(", ")}.`,
+    };
+  }
+
+  return {
+    mode: "group_ready",
+    ready: true,
+    flagEnabled: true,
+    missing: [],
+    groupPercentCouponId,
+    diagnosticMessage: "Organization group pricing (Phase 4) is ready.",
+  };
+}
+
+export function isPricingGroupV1Ready(
+  readiness: PricingGroupReadiness = getPricingGroupV1Readiness(),
+): boolean {
+  return readiness.ready;
+}

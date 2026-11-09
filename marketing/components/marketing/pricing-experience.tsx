@@ -9,7 +9,10 @@ import {
   type EnrollmentConfig,
 } from "@/lib/marketing/enrollment";
 import { MORE_INFO_CTA } from "@/lib/marketing/nav";
-import { getPricingDisplayState } from "@/lib/marketing/pricing-page";
+import {
+  getPricingDisplayState,
+  type SubscriptionPlanId,
+} from "@/lib/marketing/pricing-page";
 import { isPricingWevenV1Ready } from "@shared/pricing";
 import { TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -22,9 +25,17 @@ import { TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 export function PricingExperience({
   canceled,
   enrollment = getEnrollmentConfig(),
+  organizationReservationId = null,
+  preferredPlanId = null,
+  prefillVenueName = null,
+  addVenue = false,
 }: {
   canceled?: boolean;
   enrollment?: EnrollmentConfig;
+  organizationReservationId?: string | null;
+  preferredPlanId?: SubscriptionPlanId | null;
+  prefillVenueName?: string | null;
+  addVenue?: boolean;
 }) {
   const display = getPricingDisplayState();
   const page = display.page;
@@ -51,6 +62,13 @@ export function PricingExperience({
               <p key={line}>{line}</p>
             ))}
           </div>
+          {addVenue ? (
+            <p className="mt-10 text-sm tracking-wide text-[var(--heritage-sage)]">
+              Adding another property
+              {prefillVenueName ? ` — ${prefillVenueName}` : ""}. Choose a plan
+              below; group pricing is applied automatically when you qualify.
+            </p>
+          ) : null}
           {canceled ? (
             <p className="mt-10 text-sm tracking-wide text-[var(--forest-sage)]/55">
               Checkout was canceled. Your plan choices are still here whenever you&apos;re ready.
@@ -167,9 +185,23 @@ export function PricingExperience({
                   checkoutAvailable ? (
                     <PricingCheckoutButton
                       planId={plan.id}
-                      label={plan.cta}
-                      variant={plan.id === "growing" ? "primary" : "secondary"}
+                      label={
+                        preferredPlanId && plan.id === preferredPlanId
+                          ? "Continue with this plan"
+                          : plan.cta
+                      }
+                      variant={
+                        preferredPlanId
+                          ? plan.id === preferredPlanId
+                            ? "primary"
+                            : "secondary"
+                          : plan.id === "growing"
+                            ? "primary"
+                            : "secondary"
+                      }
                       wevenOfferAvailable={wevenOfferAvailable}
+                      organizationReservationId={organizationReservationId}
+                      prefillVenueName={prefillVenueName}
                     />
                   ) : (
                     <p className="text-sm tracking-wide text-[var(--forest-sage)]/55">

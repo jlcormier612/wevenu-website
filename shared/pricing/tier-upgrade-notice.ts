@@ -36,7 +36,9 @@ export function buildTierUpgradeNoticeDraft(input: {
         ? "Your Former Weven 20% lifetime discount continues."
         : input.upgrade.appliedOfferType === "founding_pct"
           ? "Your Founding Member 10% lifetime discount continues."
-          : `Your ${input.upgrade.appliedPercentOff}% lifetime discount continues.`
+          : input.upgrade.appliedOfferType === "group_pct"
+            ? "Your organization group 10% discount continues while you remain eligible."
+            : `Your ${input.upgrade.appliedPercentOff}% discount continues.`
       : "Standard subscription pricing applies.";
 
   return {

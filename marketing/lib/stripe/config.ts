@@ -79,6 +79,8 @@ export function getCheckoutPricingForPlan(
       venueAlreadyEarnedFounding?: boolean;
       honorFoundingIssued?: boolean;
       wevenDeclared?: boolean;
+      /** Server-resolved organization group eligibility (never trust the client). */
+      groupEligible?: boolean;
     };
   },
 ): CheckoutPricingResolution {

@@ -37,7 +37,8 @@ export type CheckoutPricingResolution = {
     | "plan_founder_price"
     | "launch_standard"
     | "launch_founding_percent"
-    | "launch_weven_percent";
+    | "launch_weven_percent"
+    | "launch_group_percent";
   /** Present on Launch V1 resolutions only */
   launch?: LaunchCheckoutPricing;
 };
@@ -212,6 +213,8 @@ export function resolveCheckoutPricing(
       honorFoundingIssued?: boolean;
       /** Explicit former-Weven self-declaration (never inferred from email). */
       wevenDeclared?: boolean;
+      /** Server-resolved organization group eligibility (never trust the client). */
+      groupEligible?: boolean;
     };
   },
 ): CheckoutPricingResolution {
@@ -228,6 +231,7 @@ export function resolveCheckoutPricing(
       venueAlreadyEarnedFounding: options.launch.venueAlreadyEarnedFounding,
       honorFoundingIssued: options.launch.honorFoundingIssued,
       wevenDeclared: options.launch.wevenDeclared,
+      groupEligible: options.launch.groupEligible,
     });
     return {
       plan,

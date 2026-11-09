@@ -86,6 +86,10 @@ export function wevenAmountCents(planKey: SaasPlanKey): number {
   return amountAfterPercentOff(listAmountCents(planKey), WEVEN_PERCENT_OFF);
 }
 
+export function groupAmountCents(planKey: SaasPlanKey): number {
+  return amountAfterPercentOff(listAmountCents(planKey), GROUP_PERCENT_OFF);
+}
+
 export function planWevenDisplayAmounts(planKey: SaasPlanKey): {
   list: string;
   weven: string;

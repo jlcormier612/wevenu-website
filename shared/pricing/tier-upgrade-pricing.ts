@@ -10,6 +10,7 @@ import {
 import { selectBestOffer, type EligibleGrant } from "./best-offer";
 import type { OfferType, SaasPlanKey } from "./types";
 import {
+  resolveGroupPercentCouponId,
   resolveLaunchCelebratePriceId,
   resolveLaunchFlourishPriceId,
   resolveLaunchGatherPriceId,
@@ -44,9 +45,11 @@ export function previewUpgradeAmounts(input: {
       ? "Former Weven 20% lifetime discount"
       : best.offerType === "founding_pct"
         ? "Founding Member 10% lifetime discount"
-        : best.offerType
-          ? `${best.offerType} ${best.percentOff}%`
-          : "No promotional discount";
+        : best.offerType === "group_pct"
+          ? "Organization group 10% discount"
+          : best.offerType
+            ? `${best.offerType} ${best.percentOff}%`
+            : "No promotional discount";
 
   return {
     currentListAmountCents: currentList,
@@ -116,6 +119,7 @@ export function expectedCouponIdForOffer(
 ): string | null {
   if (offerType === "weven_pct") return resolveWevenPercentCouponId();
   if (offerType === "founding_pct") return resolveLaunchFoundingPercentCouponId();
+  if (offerType === "group_pct") return resolveGroupPercentCouponId();
   return null;
 }
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { BillingPortalButton } from "@/components/billing/billing-portal-button";
+import { OrganizationBillingCard } from "@/components/billing/organization-billing-card";
 import { SubscriptionStatusCard } from "@/components/billing/subscription-status-card";
 import { TierUpgradeStatusCard } from "@/components/billing/tier-upgrade-status-card";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -62,6 +63,8 @@ export default async function SubscriptionBillingSettingsPage() {
           />
 
           <TierUpgradeStatusCard />
+
+          <OrganizationBillingCard />
 
           <Card>
             <CardHeader>
