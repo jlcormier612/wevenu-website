@@ -7,7 +7,7 @@ import {
   type TierUpgradeStatus,
 } from "@shared/pricing";
 
-import { actorCan } from "@/lib/program4/session";
+import { actorCan, getSessionMember } from "@/lib/program4/session";
 
 export const runtime = "nodejs";
 
@@ -25,15 +25,26 @@ const STATUSES = new Set<TierUpgradeStatus>([
   "blocked_review",
 ]);
 
+async function requireFounderSession(): Promise<Response | null> {
+  // Do not fall through to DEFAULT_ACTOR_ID — unauthenticated callers must be denied.
+  const session = await getSessionMember();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!(await actorCan("manage_welcome_back"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}
+
 /**
  * Founder CRM visibility into pending / blocked / scheduled tier upgrades.
  * Holds: POST { action: "place_hold" | "release_hold", ... }
  * Billing mutations never happen here.
  */
 export async function GET(request: Request) {
-  if (!(await actorCan("manage_welcome_back"))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const denied = await requireFounderSession();
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const statusParam = url.searchParams.get("status")?.trim() || null;
