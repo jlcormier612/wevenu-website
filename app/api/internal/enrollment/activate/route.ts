@@ -296,7 +296,8 @@ export async function POST(request: Request) {
                   }
                   const stripe = new Stripe(key);
                   return executeGroupCouponChange({
-                    stripe,
+                    // Stripe SDK types are wider than the minimal executor surface.
+                    stripe: stripe as unknown as import("@shared/pricing").GroupStripeExecutor,
                     subscriptionId: adjustment.stripeSubscriptionId,
                     decision,
                     idempotencyKey: adjustment.idempotencyKey,
