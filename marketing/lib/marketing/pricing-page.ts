@@ -195,8 +195,15 @@ export type PricingPlanCard = {
   kind: "subscription" | "contact";
 };
 
-export type PricingPageContent = Omit<typeof PRICING_PAGE, "plans"> & {
+export type PricingPageContent = Omit<typeof PRICING_PAGE, "plans" | "welcomeBack"> & {
   plans: PricingPlanCard[];
+  /**
+   * Welcome Back / Former Weven copy may switch between Phase 1 founding
+   * messaging and Phase 2 20% lifetime messaging based on readiness.
+   */
+  welcomeBack: Omit<(typeof PRICING_PAGE)["welcomeBack"], "note"> & {
+    note: readonly string[];
+  };
 };
 
 export type PricingDisplayState = {
