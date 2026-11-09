@@ -224,3 +224,26 @@ create index if not exists weven_claims_review_status_idx
 
 comment on table public.weven_claims is
   'Trust-first former-Weven self-declaration + founder review. Discount apply/revoke is Phase 2.';
+
+-- ---------------------------------------------------------------------------
+-- Service-role only (RLS on, no anon/authenticated grants)
+-- Sandbox follow-up 20270109121000 also applies this for environments that
+-- already ran the create-table section before this block existed.
+-- ---------------------------------------------------------------------------
+alter table public.saas_price_versions enable row level security;
+alter table public.saas_checkout_offers enable row level security;
+alter table public.saas_offer_grants enable row level security;
+alter table public.saas_offer_applications enable row level security;
+alter table public.weven_claims enable row level security;
+
+revoke all on table public.saas_price_versions from authenticated, anon;
+revoke all on table public.saas_checkout_offers from authenticated, anon;
+revoke all on table public.saas_offer_grants from authenticated, anon;
+revoke all on table public.saas_offer_applications from authenticated, anon;
+revoke all on table public.weven_claims from authenticated, anon;
+
+grant all on table public.saas_price_versions to service_role;
+grant all on table public.saas_checkout_offers to service_role;
+grant all on table public.saas_offer_grants to service_role;
+grant all on table public.saas_offer_applications to service_role;
+grant all on table public.weven_claims to service_role;
