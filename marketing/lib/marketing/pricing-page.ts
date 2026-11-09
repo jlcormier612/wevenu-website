@@ -11,7 +11,9 @@ import {
   getCatalogEntry,
   getPricingLaunchMode,
   getPricingLaunchV1Readiness,
+  isPricingWevenV1Ready,
   planDisplayAmounts,
+  planWevenDisplayAmounts,
   type PricingLaunchMode,
 } from "@shared/pricing";
 
@@ -141,8 +143,8 @@ export const PRICING_PAGE = {
       "If you were with us at Weven, we'd be honored to serve you again.",
     ],
     note: [
-      "Former Weven customers receive Founding Member pricing during our launch period.",
-      "At checkout, simply note that your venue was part of the Weven family.",
+      "Former Weven venue customers receive 20% off their Hello to Cheers subscription for life.",
+      "At checkout, simply confirm that your venue was a Weven customer — we'll apply the discount now and confirm eligibility afterward.",
     ],
   },
   closing: {
@@ -205,12 +207,13 @@ export type PricingDisplayState = {
   readinessMessage: string;
 };
 
-function buildLaunchPlans(): PricingPlanCard[] {
+function buildLaunchPlans(wevenReady: boolean): PricingPlanCard[] {
   const launchPlans: PricingPlanCard[] = (
     ["starter", "growing", "professional"] as const
   ).map((id) => {
     const catalog = getCatalogEntry(id);
     const amounts = planDisplayAmounts(id);
+    const weven = planWevenDisplayAmounts(id);
     return {
       id,
       name: catalog.name,
@@ -218,8 +221,8 @@ function buildLaunchPlans(): PricingPlanCard[] {
       price: amounts.list,
       period: "/month",
       foundingPrice: amounts.founding,
-      // Weven display remains Phase 2; keep founding figure as placeholder.
-      welcomeBackPrice: amounts.founding,
+      // Only advertise Weven 20% amounts when Phase 2 Checkout can fulfill them.
+      welcomeBackPrice: wevenReady ? weven.weven : amounts.founding,
       cta: "Get Started",
       kind: "subscription",
     };
@@ -251,11 +254,21 @@ export function getPricingDisplayState(): PricingDisplayState {
     };
   }
 
+  const wevenReady = isPricingWevenV1Ready();
   return {
     mode,
     page: {
       ...PRICING_PAGE,
-      plans: buildLaunchPlans(),
+      plans: buildLaunchPlans(wevenReady),
+      welcomeBack: {
+        ...PRICING_PAGE.welcomeBack,
+        note: wevenReady
+          ? [...PRICING_PAGE.welcomeBack.note]
+          : [
+              "Former Weven customers receive Founding Member pricing during our launch period.",
+              "At checkout, simply note that your venue was part of the Weven family.",
+            ],
+      },
     },
     checkoutAvailable: mode === "v1_ready",
     readinessMessage: readiness.diagnosticMessage,

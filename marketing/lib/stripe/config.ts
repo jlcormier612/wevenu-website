@@ -68,7 +68,7 @@ export function getPriceIdForPlan(
   return resolveLegacyCheckoutPricing(plan, { founder: useFounder }).priceId;
 }
 
-/** Full Checkout pricing resolution (price + optional Founding coupon). */
+/** Full Checkout pricing resolution (price + optional Founding/Weven coupon). */
 export function getCheckoutPricingForPlan(
   plan: SubscriptionPlanId,
   options?: {
@@ -78,6 +78,7 @@ export function getCheckoutPricingForPlan(
       programActive?: boolean;
       venueAlreadyEarnedFounding?: boolean;
       honorFoundingIssued?: boolean;
+      wevenDeclared?: boolean;
     };
   },
 ): CheckoutPricingResolution {

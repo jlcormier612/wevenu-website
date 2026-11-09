@@ -15,6 +15,8 @@ type PricingCheckoutButtonProps = {
   label: string;
   /** primary — one filled plan CTA; secondary — quiet outline peers */
   variant?: "primary" | "secondary";
+  /** Phase 2 Weven Checkout available (server readiness). */
+  wevenOfferAvailable?: boolean;
   className?: string;
 };
 
@@ -29,6 +31,7 @@ export function PricingCheckoutButton({
   planId,
   label,
   variant = "primary",
+  wevenOfferAvailable = false,
   className,
 }: PricingCheckoutButtonProps) {
   const [open, setOpen] = useState(false);
@@ -97,6 +100,7 @@ export function PricingCheckoutButton({
         planLabel={getPlanDisplayName(planId)}
         loading={loading}
         error={error}
+        wevenOfferAvailable={wevenOfferAvailable}
         onClose={() => {
           if (!loading) {
             setOpen(false);

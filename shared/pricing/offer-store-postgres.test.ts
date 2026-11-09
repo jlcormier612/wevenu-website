@@ -16,10 +16,15 @@ type Row = Record<string, unknown>;
  * Minimal in-process Supabase mock that exercises the Postgres store paths
  * without applying migrations or talking to a real database.
  */
-function createFakeSupabase(seed?: { offers?: Row[]; grants?: Row[] }) {
+function createFakeSupabase(seed?: {
+  offers?: Row[];
+  grants?: Row[];
+  wevenClaims?: Row[];
+}) {
   const offers: Row[] = [...(seed?.offers ?? [])];
   const grants: Row[] = [...(seed?.grants ?? [])];
   const applications: Row[] = [];
+  const wevenClaims: Row[] = [...(seed?.wevenClaims ?? [])];
 
   function table(name: string) {
     const bucket =
@@ -27,16 +32,20 @@ function createFakeSupabase(seed?: { offers?: Row[]; grants?: Row[] }) {
         ? offers
         : name === "saas_offer_grants"
           ? grants
-          : applications;
+          : name === "weven_claims"
+            ? wevenClaims
+            : applications;
 
     const state: {
       filters: Array<[string, unknown]>;
+      nullFilters: string[];
       patch: Row | null;
       insertRow: Row | null;
       wantSingle: boolean;
       wantMaybe: boolean;
     } = {
       filters: [],
+      nullFilters: [],
       patch: null,
       insertRow: null,
       wantSingle: false,
@@ -58,6 +67,11 @@ function createFakeSupabase(seed?: { offers?: Row[]; grants?: Row[] }) {
       state.filters.push([col, value]);
       return api;
     };
+    api.is = (col: string, value: unknown) => {
+      if (value === null) state.nullFilters.push(col);
+      else state.filters.push([col, value]);
+      return api;
+    };
     api.single = async () => {
       state.wantSingle = true;
       return run();
@@ -75,16 +89,20 @@ function createFakeSupabase(seed?: { offers?: Row[]; grants?: Row[] }) {
         return { data: state.insertRow, error: null };
       }
 
-      let rows = bucket.filter((row) =>
-        state.filters.every(([col, value]) => row[col] === value),
+      let rows = bucket.filter(
+        (row) =>
+          state.filters.every(([col, value]) => row[col] === value) &&
+          state.nullFilters.every((col) => row[col] == null),
       );
 
       if (state.patch) {
         if (rows.length === 0) {
           return { data: null, error: { message: "not found" } };
         }
-        Object.assign(rows[0]!, state.patch);
-        rows = [rows[0]!];
+        for (const row of rows) {
+          Object.assign(row, state.patch);
+        }
+        rows = [...rows];
       }
 
       if (state.wantSingle) {
@@ -122,8 +140,16 @@ function createFakeSupabase(seed?: { offers?: Row[]; grants?: Row[] }) {
       state.filters.push([col, value]);
       return listApi;
     };
+    listApi.is = (col: string, value: unknown) => {
+      if (value === null) state.nullFilters.push(col);
+      else state.filters.push([col, value]);
+      return listApi;
+    };
     listApi.insert = api.insert;
-    listApi.update = api.update;
+    listApi.update = (patch: Row) => {
+      state.patch = patch;
+      return listApi;
+    };
     listApi.single = api.single;
     listApi.maybeSingle = api.maybeSingle;
     (listApi as { then: typeof thenable.then }).then = thenable.then;
@@ -137,6 +163,7 @@ function createFakeSupabase(seed?: { offers?: Row[]; grants?: Row[] }) {
     },
     _offers: offers,
     _grants: grants,
+    _wevenClaims: wevenClaims,
   };
 }
 

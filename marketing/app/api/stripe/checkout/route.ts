@@ -25,10 +25,15 @@ import {
 } from "@/lib/stripe/config";
 import {
   FOUNDING_PERCENT_OFF,
+  WEVEN_PERCENT_OFF,
   abandonIssuedOfferOnStripeFailure,
   getPricingLaunchOperationalSignal,
   getPricingLaunchV1Readiness,
+  getPricingWevenOperationalSignal,
+  getPricingWevenV1Readiness,
   isPricingLaunchV1Ready,
+  isPricingWevenV1Misconfigured,
+  isPricingWevenV1Ready,
   requireDurablePricingOfferStore,
 } from "@shared/pricing";
 
@@ -103,6 +108,8 @@ export async function POST(request: Request) {
     }
 
     const launchReady = isPricingLaunchV1Ready(launchReadiness);
+    const wevenReadiness = getPricingWevenV1Readiness();
+    const wevenReady = isPricingWevenV1Ready(wevenReadiness);
     const enrollment = launchReady
       ? await getEnrollmentConfigAsync()
       : getEnrollmentConfig();
@@ -110,6 +117,25 @@ export async function POST(request: Request) {
     const welcomeBack = parseWelcomeBackRequested(
       body.welcome_back ?? body.welcome_back_requested,
     );
+    // Explicit self-declaration only. When Phase 2 is ready, welcome_back drives
+    // the Weven 20% Checkout path. When Phase 2 is off, it remains a CRM flag.
+    const wevenDeclared = welcomeBack && wevenReady;
+    if (welcomeBack && isPricingWevenV1Misconfigured(wevenReadiness)) {
+      const signal = getPricingWevenOperationalSignal();
+      console.error("[checkout] Weven Phase 2 misconfigured — refusing Weven Checkout", {
+        missing: signal.missing,
+        message: signal.message,
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Former Weven checkout is temporarily unavailable. Please continue without the Weven option, or contact us for help.",
+          code: "pricing_weven_misconfigured",
+          missing: signal.missing,
+        },
+        { status: 503 },
+      );
+    }
     const onboardingType = parseOnboardingType(body.onboarding_type);
     const onboardingPackage = getOnboardingPackage(onboardingType);
     const venueName = body.venue_name?.trim() || "";
@@ -206,11 +232,13 @@ export async function POST(request: Request) {
           launch: {
             earnedFoundingVenueCount: earnedFoundingCount,
             programActive: enrollment.founderProgramActive,
+            wevenDeclared,
           },
         })
       : getCheckoutPricingForPlan(plan, { founder: founderActive });
 
-    // Launch V1: founding comes from the issued offer, never from a later capacity recheck.
+    // Launch V1: founding eligibility comes from the issued offer (soft-100).
+    // When Weven wins the applied coupon, foundingIssued can still be true for the grant.
     // Legacy: automatic founding while program spots remain.
     const foundingMember = launchReady
       ? Boolean(pricing.launch?.foundingIssued)
@@ -236,7 +264,16 @@ export async function POST(request: Request) {
         stripePriceId: pricing.priceId,
         foundingIssued: pricing.launch.foundingIssued,
         foundingPercentOff: pricing.launch.foundingPercentOff,
+        wevenDeclared: pricing.launch.wevenDeclared,
+        wevenPercentOff: pricing.launch.wevenPercentOff,
+        appliedOfferType: pricing.launch.appliedOfferType,
         stripeCouponId: pricing.foundingCouponId,
+        whiteGlovePriceId:
+          onboardingType === "white_glove"
+            ? wevenDeclared
+              ? pricing.launch.wevenWhiteGlovePriceId
+              : getOnboardingAddonPriceId("STRIPE_PRICE_WHITE_GLOVE")
+            : null,
         pricingVersion: pricing.launch.pricingVersion,
         relationshipId: relationshipId || null,
         stripeCustomerId: stripeCustomerId || null,
@@ -254,6 +291,7 @@ export async function POST(request: Request) {
       plan_name: planName,
       htc_plan: plan,
       welcome_back: welcomeBack ? "true" : "false",
+      weven_declared: wevenDeclared ? "true" : "false",
       onboarding_type: onboardingType,
       founding_member: foundingMember ? "true" : "false",
       pricing_mode: pricing.mode,
@@ -263,6 +301,10 @@ export async function POST(request: Request) {
       metadata.founding_percent_off = foundingMember
         ? String(FOUNDING_PERCENT_OFF)
         : "0";
+      metadata.weven_percent_off = wevenDeclared
+        ? String(WEVEN_PERCENT_OFF)
+        : "0";
+      metadata.applied_offer_type = pricing.launch.appliedOfferType ?? "";
       metadata.list_amount_cents = String(pricing.launch.listAmountCents);
       if (checkoutOfferId) metadata.checkout_offer_id = checkoutOfferId;
     }
@@ -296,14 +338,22 @@ export async function POST(request: Request) {
     ];
 
     if (onboardingPackage.stripePriceEnv) {
-      const addonPriceId = getOnboardingAddonPriceId(onboardingPackage.stripePriceEnv);
+      // Weven White Glove uses a dedicated $399 Price so the 20% subscription
+      // coupon (restricted via Stripe applies_to on plan products) does not
+      // reduce the one-time onboarding charge.
+      const addonEnv =
+        wevenDeclared && onboardingPackage.id === "white_glove"
+          ? "STRIPE_PRICE_WHITE_GLOVE_WEVEN"
+          : onboardingPackage.stripePriceEnv;
+      const addonPriceId = getOnboardingAddonPriceId(addonEnv);
       if (!addonPriceId) {
         return NextResponse.json(
-          { error: `${onboardingPackage.stripePriceEnv} is not configured.` },
+          { error: `${addonEnv} is not configured.` },
           { status: 503 },
         );
       }
       lineItems.push({ price: addonPriceId, quantity: 1 });
+      metadata.white_glove_price_id = addonPriceId;
     }
 
     const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
@@ -399,11 +449,13 @@ export async function POST(request: Request) {
       url: session.url,
       session_id: session.id,
       welcome_back: welcomeBack,
+      weven_declared: wevenDeclared,
       onboarding_type: onboardingType,
       founding_member: foundingMember,
       relationship_id: relationshipId || null,
       checkout_offer_id: checkoutOfferId,
       pricing_mode: pricing.mode,
+      applied_offer_type: pricing.launch?.appliedOfferType ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout failed.";

@@ -10,6 +10,7 @@ import {
 } from "@/lib/marketing/enrollment";
 import { MORE_INFO_CTA } from "@/lib/marketing/nav";
 import { getPricingDisplayState } from "@/lib/marketing/pricing-page";
+import { isPricingWevenV1Ready } from "@shared/pricing";
 import { TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
 /**
@@ -28,6 +29,7 @@ export function PricingExperience({
   const display = getPricingDisplayState();
   const page = display.page;
   const checkoutAvailable = display.checkoutAvailable;
+  const wevenOfferAvailable = isPricingWevenV1Ready();
   const founderActive =
     checkoutAvailable && isFounderPricingActive(enrollment);
   const spots = enrollment.founderSpotsRemaining;
@@ -167,6 +169,7 @@ export function PricingExperience({
                       planId={plan.id}
                       label={plan.cta}
                       variant={plan.id === "growing" ? "primary" : "secondary"}
+                      wevenOfferAvailable={wevenOfferAvailable}
                     />
                   ) : (
                     <p className="text-sm tracking-wide text-[var(--forest-sage)]/55">

@@ -82,6 +82,28 @@ export function foundingAmountCents(planKey: SaasPlanKey): number {
   return amountAfterPercentOff(listAmountCents(planKey), FOUNDING_PERCENT_OFF);
 }
 
+export function wevenAmountCents(planKey: SaasPlanKey): number {
+  return amountAfterPercentOff(listAmountCents(planKey), WEVEN_PERCENT_OFF);
+}
+
+export function planWevenDisplayAmounts(planKey: SaasPlanKey): {
+  list: string;
+  weven: string;
+  whiteGlove: string;
+  listCents: number;
+  wevenCents: number;
+} {
+  const listCents = listAmountCents(planKey);
+  const wevenCents = wevenAmountCents(planKey);
+  return {
+    list: formatUsdFromCents(listCents),
+    weven: formatUsdFromCents(wevenCents),
+    whiteGlove: formatUsdFromCents(WEVEN_WHITE_GLOVE_AMOUNT_CENTS),
+    listCents,
+    wevenCents,
+  };
+}
+
 /** Format cents as `$199` or `$179.10` for marketing display. */
 export function formatUsdFromCents(cents: number): string {
   const dollars = cents / 100;

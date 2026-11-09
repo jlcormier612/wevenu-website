@@ -18,7 +18,11 @@ import type {
   CheckoutOfferRecord,
   CheckoutOfferStatus,
   OfferGrantRecord,
+  OfferType,
   SaasPlanKey,
+  WevenClaimDecision,
+  WevenClaimRecord,
+  WevenClaimReviewStatus,
 } from "./types";
 
 export type IssueCheckoutOfferInput = {
@@ -27,7 +31,11 @@ export type IssueCheckoutOfferInput = {
   stripePriceId: string;
   foundingIssued: boolean;
   foundingPercentOff: number | null;
+  wevenDeclared?: boolean;
+  wevenPercentOff?: number | null;
+  appliedOfferType?: OfferType | null;
   stripeCouponId: string | null;
+  whiteGlovePriceId?: string | null;
   pricingVersion: string;
   relationshipId?: string | null;
   stripeCustomerId?: string | null;
@@ -35,6 +43,20 @@ export type IssueCheckoutOfferInput = {
   venueNameNormalized?: string | null;
   earnedFoundingCountAtIssue?: number | null;
   checkoutSessionId?: string | null;
+};
+
+export type UpsertWevenClaimInput = {
+  checkoutSessionId: string;
+  checkoutOfferId?: string | null;
+  stripeSubscriptionId?: string | null;
+  venueId?: string | null;
+  relationshipId?: string | null;
+  ownerEmailNormalized?: string | null;
+  venueNameNormalized?: string | null;
+  grantId?: string | null;
+  appliedOfferType?: OfferType | null;
+  appliedPercentOff?: number | null;
+  foundingAlsoEarned?: boolean;
 };
 
 export type PricingOfferStore = {
@@ -62,10 +84,22 @@ export type PricingOfferStore = {
     relationshipId?: string | null;
     percentOff: number;
   }): Promise<{ grant: OfferGrantRecord; created: boolean }>;
+  earnWevenGrant(input: {
+    offerId: string;
+    checkoutSessionId: string;
+    venueId?: string | null;
+    relationshipId?: string | null;
+    percentOff: number;
+  }): Promise<{ grant: OfferGrantRecord; created: boolean }>;
   bindGrantVenue(
     checkoutSessionId: string,
     venueId: string,
   ): Promise<OfferGrantRecord | null>;
+  /** Bind every earned grant for the Session (Founding + Weven). */
+  bindAllGrantsForSession(
+    checkoutSessionId: string,
+    venueId: string,
+  ): Promise<OfferGrantRecord[]>;
   listEarnedGrantsForVenue(venueId: string): Promise<OfferGrantRecord[]>;
   recordApplication(
     input: Omit<AppliedOfferRecord, "id" | "effectiveFrom"> & {
@@ -73,6 +107,22 @@ export type PricingOfferStore = {
     },
   ): Promise<AppliedOfferRecord>;
   venueHasEarnedFounding(venueId: string): Promise<boolean>;
+  upsertWevenClaim(input: UpsertWevenClaimInput): Promise<WevenClaimRecord>;
+  getWevenClaimBySessionId(
+    checkoutSessionId: string,
+  ): Promise<WevenClaimRecord | null>;
+  listWevenClaims(filter?: {
+    reviewStatus?: WevenClaimReviewStatus;
+    limit?: number;
+  }): Promise<WevenClaimRecord[]>;
+  updateWevenClaimReview(input: {
+    claimId: string;
+    reviewStatus: WevenClaimReviewStatus;
+    reviewedBy: string;
+    note?: string | null;
+    /** Must stay false unless a separately authorized billing action is taken. */
+    billingActionAuthorized?: boolean;
+  }): Promise<WevenClaimRecord>;
 };
 
 function nowIso(): string {
@@ -85,6 +135,66 @@ export function createMemoryPricingOfferStore(): PricingOfferStore {
   const offersBySession = new Map<string, string>();
   const grants = new Map<string, OfferGrantRecord>();
   const applications: AppliedOfferRecord[] = [];
+  const wevenClaims = new Map<string, WevenClaimRecord>();
+  const wevenClaimsBySession = new Map<string, string>();
+
+  async function earnGrantOfType(
+    offerType: OfferType,
+    input: {
+      offerId: string;
+      checkoutSessionId: string;
+      venueId?: string | null;
+      relationshipId?: string | null;
+      percentOff: number;
+    },
+  ): Promise<{ grant: OfferGrantRecord; created: boolean }> {
+    for (const g of grants.values()) {
+      if (
+        g.offerType === offerType &&
+        g.sourceCheckoutSessionId === input.checkoutSessionId &&
+        g.status === "earned"
+      ) {
+        return { grant: { ...g }, created: false };
+      }
+    }
+    if (input.venueId) {
+      for (const g of grants.values()) {
+        if (
+          g.offerType === offerType &&
+          g.venueId === input.venueId &&
+          g.status === "earned"
+        ) {
+          return { grant: { ...g }, created: false };
+        }
+      }
+    }
+
+    const id = randomUUID();
+    const grant: OfferGrantRecord = {
+      id,
+      offerType,
+      status: "earned",
+      percentOff: input.percentOff,
+      venueId: input.venueId ?? null,
+      relationshipId: input.relationshipId ?? null,
+      sourceCheckoutSessionId: input.checkoutSessionId,
+      sourceOfferId: input.offerId,
+      earnedAt: nowIso(),
+    };
+    grants.set(id, grant);
+
+    const offer = offers.get(input.offerId);
+    if (offer) {
+      offers.set(input.offerId, {
+        ...offer,
+        offerStatus: "earned",
+        paidAt: offer.paidAt ?? nowIso(),
+        earnedAt: grant.earnedAt,
+      });
+    }
+
+    return { grant: { ...grant }, created: true };
+  }
 
   return {
     durable: false,
@@ -113,7 +223,11 @@ export function createMemoryPricingOfferStore(): PricingOfferStore {
         stripePriceId: input.stripePriceId,
         foundingIssued: input.foundingIssued,
         foundingPercentOff: input.foundingPercentOff,
+        wevenDeclared: Boolean(input.wevenDeclared),
+        wevenPercentOff: input.wevenPercentOff ?? null,
+        appliedOfferType: input.appliedOfferType ?? null,
         stripeCouponId: input.stripeCouponId,
+        whiteGlovePriceId: input.whiteGlovePriceId ?? null,
         pricingVersion: input.pricingVersion,
         relationshipId: input.relationshipId ?? null,
         stripeCustomerId: input.stripeCustomerId ?? null,
@@ -175,80 +289,63 @@ export function createMemoryPricingOfferStore(): PricingOfferStore {
     },
 
     async earnFoundingGrant(input) {
-      for (const g of grants.values()) {
-        if (
-          g.offerType === "founding_pct" &&
-          g.sourceCheckoutSessionId === input.checkoutSessionId &&
-          g.status === "earned"
-        ) {
-          return { grant: { ...g }, created: false };
-        }
-      }
-      if (input.venueId) {
-        for (const g of grants.values()) {
-          if (
-            g.offerType === "founding_pct" &&
-            g.venueId === input.venueId &&
-            g.status === "earned"
-          ) {
-            return { grant: { ...g }, created: false };
-          }
-        }
-      }
+      return earnGrantOfType("founding_pct", input);
+    },
 
-      const id = randomUUID();
-      const grant: OfferGrantRecord = {
-        id,
-        offerType: "founding_pct",
-        status: "earned",
-        percentOff: input.percentOff,
-        venueId: input.venueId ?? null,
-        relationshipId: input.relationshipId ?? null,
-        sourceCheckoutSessionId: input.checkoutSessionId,
-        sourceOfferId: input.offerId,
-        earnedAt: nowIso(),
-      };
-      grants.set(id, grant);
-
-      const offer = offers.get(input.offerId);
-      if (offer) {
-        offers.set(input.offerId, {
-          ...offer,
-          offerStatus: "earned",
-          paidAt: offer.paidAt ?? nowIso(),
-          earnedAt: grant.earnedAt,
-        });
-      }
-
-      return { grant: { ...grant }, created: true };
+    async earnWevenGrant(input) {
+      return earnGrantOfType("weven_pct", input);
     },
 
     async bindGrantVenue(checkoutSessionId, venueId) {
+      const bound = await this.bindAllGrantsForSession(
+        checkoutSessionId,
+        venueId,
+      );
+      return bound.find((g) => g.offerType === "founding_pct") ?? bound[0] ?? null;
+    },
+
+    async bindAllGrantsForSession(checkoutSessionId, venueId) {
+      const updated: OfferGrantRecord[] = [];
       for (const [id, g] of grants.entries()) {
         if (
-          g.offerType === "founding_pct" &&
-          g.sourceCheckoutSessionId === checkoutSessionId &&
-          g.status === "earned"
+          g.sourceCheckoutSessionId !== checkoutSessionId ||
+          g.status !== "earned"
         ) {
-          if (g.venueId && g.venueId !== venueId) {
-            return { ...g };
-          }
-          for (const other of grants.values()) {
-            if (
-              other.id !== id &&
-              other.offerType === "founding_pct" &&
-              other.status === "earned" &&
-              other.venueId === venueId
-            ) {
-              return { ...other };
-            }
-          }
-          const updated = { ...g, venueId };
-          grants.set(id, updated);
-          return { ...updated };
+          continue;
+        }
+        if (g.venueId && g.venueId !== venueId) {
+          updated.push({ ...g });
+          continue;
+        }
+        if (g.venueId === venueId) {
+          updated.push({ ...g });
+          continue;
+        }
+        const conflict = [...grants.values()].find(
+          (other) =>
+            other.id !== id &&
+            other.offerType === g.offerType &&
+            other.status === "earned" &&
+            other.venueId === venueId,
+        );
+        if (conflict) {
+          updated.push({ ...conflict });
+          continue;
+        }
+        const next = { ...g, venueId };
+        grants.set(id, next);
+        updated.push({ ...next });
+      }
+      for (const claim of wevenClaims.values()) {
+        if (claim.checkoutSessionId === checkoutSessionId && !claim.venueId) {
+          wevenClaims.set(claim.id, {
+            ...claim,
+            venueId,
+            updatedAt: nowIso(),
+          });
         }
       }
-      return null;
+      return updated;
     },
 
     async listEarnedGrantsForVenue(venueId) {
@@ -285,6 +382,108 @@ export function createMemoryPricingOfferStore(): PricingOfferStore {
         }
       }
       return false;
+    },
+
+    async upsertWevenClaim(input) {
+      const existingId = wevenClaimsBySession.get(input.checkoutSessionId);
+      if (existingId) {
+        const existing = wevenClaims.get(existingId)!;
+        const merged: WevenClaimRecord = {
+          ...existing,
+          venueId: input.venueId ?? existing.venueId,
+          relationshipId: input.relationshipId ?? existing.relationshipId,
+          stripeSubscriptionId:
+            input.stripeSubscriptionId ?? existing.stripeSubscriptionId,
+          checkoutOfferId: input.checkoutOfferId ?? existing.checkoutOfferId,
+          ownerEmailNormalized:
+            input.ownerEmailNormalized ?? existing.ownerEmailNormalized,
+          venueNameNormalized:
+            input.venueNameNormalized ?? existing.venueNameNormalized,
+          grantId: input.grantId ?? existing.grantId,
+          appliedOfferType: input.appliedOfferType ?? existing.appliedOfferType,
+          appliedPercentOff:
+            input.appliedPercentOff ?? existing.appliedPercentOff,
+          foundingAlsoEarned:
+            input.foundingAlsoEarned ?? existing.foundingAlsoEarned,
+          updatedAt: nowIso(),
+        };
+        wevenClaims.set(existingId, merged);
+        return { ...merged };
+      }
+      const id = randomUUID();
+      const record: WevenClaimRecord = {
+        id,
+        venueId: input.venueId ?? null,
+        relationshipId: input.relationshipId ?? null,
+        checkoutSessionId: input.checkoutSessionId,
+        stripeSubscriptionId: input.stripeSubscriptionId ?? null,
+        checkoutOfferId: input.checkoutOfferId ?? null,
+        ownerEmailNormalized: input.ownerEmailNormalized ?? null,
+        venueNameNormalized: input.venueNameNormalized ?? null,
+        selfDeclaredAt: nowIso(),
+        reviewStatus: "pending",
+        reviewedAt: null,
+        reviewedBy: null,
+        reviewNotes: null,
+        grantId: input.grantId ?? null,
+        appliedOfferType: input.appliedOfferType ?? null,
+        appliedPercentOff: input.appliedPercentOff ?? null,
+        foundingAlsoEarned: Boolean(input.foundingAlsoEarned),
+        decisionHistory: [],
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      };
+      wevenClaims.set(id, record);
+      wevenClaimsBySession.set(input.checkoutSessionId, id);
+      return { ...record };
+    },
+
+    async getWevenClaimBySessionId(checkoutSessionId) {
+      const id = wevenClaimsBySession.get(checkoutSessionId);
+      if (!id) return null;
+      const claim = wevenClaims.get(id);
+      return claim ? { ...claim, decisionHistory: [...claim.decisionHistory] } : null;
+    },
+
+    async listWevenClaims(filter) {
+      let rows = [...wevenClaims.values()];
+      if (filter?.reviewStatus) {
+        rows = rows.filter((r) => r.reviewStatus === filter.reviewStatus);
+      }
+      rows.sort((a, b) => b.selfDeclaredAt.localeCompare(a.selfDeclaredAt));
+      const limit = filter?.limit ?? 100;
+      return rows.slice(0, limit).map((r) => ({
+        ...r,
+        decisionHistory: [...r.decisionHistory],
+      }));
+    },
+
+    async updateWevenClaimReview(input) {
+      const existing = wevenClaims.get(input.claimId);
+      if (!existing) throw new Error(`Unknown Weven claim ${input.claimId}`);
+      if (input.billingActionAuthorized) {
+        throw new Error(
+          "Billing corrections require a separately authorized Phase 2 billing action — verification alone must not change Stripe.",
+        );
+      }
+      const decision: WevenClaimDecision = {
+        at: nowIso(),
+        by: input.reviewedBy,
+        action: input.reviewStatus,
+        note: input.note ?? null,
+        billingActionAuthorized: false,
+      };
+      const updated: WevenClaimRecord = {
+        ...existing,
+        reviewStatus: input.reviewStatus,
+        reviewedAt: decision.at,
+        reviewedBy: input.reviewedBy,
+        reviewNotes: input.note ?? existing.reviewNotes,
+        decisionHistory: [...existing.decisionHistory, decision],
+        updatedAt: decision.at,
+      };
+      wevenClaims.set(input.claimId, updated);
+      return { ...updated, decisionHistory: [...updated.decisionHistory] };
     },
   };
 }

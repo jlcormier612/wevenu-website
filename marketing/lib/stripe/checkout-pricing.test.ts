@@ -20,6 +20,7 @@ import {
 
 const ENV_KEYS = [
   "PRICING_LAUNCH_V1",
+  "PRICING_WEVEN_V1",
   "STRIPE_PRICE_GATHER_199",
   "STRIPE_GATHER_PRICE_ID",
   "GATHER_PRICE_ID",
@@ -32,6 +33,8 @@ const ENV_KEYS = [
   "FOUNDING_MEMBER_COUPON_ID",
   "STRIPE_FOUNDING_MEMBER_COUPON_ID",
   "STRIPE_FOUNDING_PERCENT_COUPON_ID",
+  "STRIPE_WEVEN_PERCENT_COUPON_ID",
+  "STRIPE_PRICE_WHITE_GLOVE_WEVEN",
 ] as const;
 
 const saved: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
@@ -228,6 +231,25 @@ describe("marketing + checkout price consistency", () => {
     assert.equal(display.page.plans[0]?.price, "$199");
     assert.notEqual(display.page.plans[0]?.price, "$149");
     assert.equal(getPricingPage().plans[0]?.price, "$199");
+  });
+
+  it("advertises Weven $159.20 only when Phase 2 is ready; otherwise keeps founding figure", () => {
+    stashEnv();
+    process.env.PRICING_LAUNCH_V1 = "true";
+    process.env.STRIPE_PRICE_GATHER_199 = "price_gather_199";
+    process.env.STRIPE_PRICE_GROWING = "price_celebrate_249";
+    process.env.STRIPE_PRICE_PROFESSIONAL = "price_flourish_349";
+    process.env.STRIPE_FOUNDING_PERCENT_COUPON_ID = "coupon_founding_10";
+    const withoutWeven = getPricingDisplayState();
+    assert.equal(withoutWeven.page.plans[0]?.welcomeBackPrice, "$179.10");
+
+    process.env.PRICING_WEVEN_V1 = "true";
+    process.env.STRIPE_WEVEN_PERCENT_COUPON_ID = "coupon_weven_20";
+    process.env.STRIPE_PRICE_WHITE_GLOVE_WEVEN = "price_wg_399";
+    const withWeven = getPricingDisplayState();
+    assert.equal(withWeven.page.plans[0]?.welcomeBackPrice, "$159.20");
+    assert.equal(withWeven.page.plans[1]?.welcomeBackPrice, "$199.20");
+    assert.equal(withWeven.page.plans[2]?.welcomeBackPrice, "$279.20");
   });
 });
 

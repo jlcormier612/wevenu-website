@@ -41,7 +41,11 @@ export type CheckoutOfferRecord = {
   stripePriceId: string;
   foundingIssued: boolean;
   foundingPercentOff: number | null;
+  wevenDeclared: boolean;
+  wevenPercentOff: number | null;
+  appliedOfferType: OfferType | null;
   stripeCouponId: string | null;
+  whiteGlovePriceId: string | null;
   pricingVersion: string;
   relationshipId: string | null;
   stripeCustomerId: string | null;
@@ -51,6 +55,45 @@ export type CheckoutOfferRecord = {
   issuedAt: string;
   paidAt: string | null;
   earnedAt: string | null;
+};
+
+export type WevenClaimReviewStatus =
+  | "pending"
+  | "verified"
+  | "needs_review"
+  | "not_eligible"
+  | "rejected";
+
+export type WevenClaimDecision = {
+  at: string;
+  by: string;
+  action: WevenClaimReviewStatus | "note";
+  note?: string | null;
+  /** Explicit: never auto-execute Stripe billing changes from verification alone. */
+  billingActionAuthorized?: boolean;
+};
+
+export type WevenClaimRecord = {
+  id: string;
+  venueId: string | null;
+  relationshipId: string | null;
+  checkoutSessionId: string | null;
+  stripeSubscriptionId: string | null;
+  checkoutOfferId: string | null;
+  ownerEmailNormalized: string | null;
+  venueNameNormalized: string | null;
+  selfDeclaredAt: string;
+  reviewStatus: WevenClaimReviewStatus;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewNotes: string | null;
+  grantId: string | null;
+  appliedOfferType: OfferType | null;
+  appliedPercentOff: number | null;
+  foundingAlsoEarned: boolean;
+  decisionHistory: WevenClaimDecision[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type OfferGrantRecord = {

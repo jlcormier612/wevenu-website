@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   getPricingLaunchOperationalSignal,
   getPricingOfferStore,
+  getPricingWevenOperationalSignal,
   preferPostgresPricingOfferStore,
   requireDurablePricingOfferStore,
 } from "@shared/pricing";
@@ -28,8 +29,10 @@ export async function GET(request: Request) {
   }
 
   const signal = getPricingLaunchOperationalSignal();
+  const wevenSignal = getPricingWevenOperationalSignal();
   let durableStore = false;
   let earnedFoundingCount: number | null = null;
+  let pendingWevenClaims: number | null = null;
   let storeError: string | null = null;
 
   try {
@@ -41,6 +44,11 @@ export async function GET(request: Request) {
     durableStore = Boolean(store.durable && preferPg);
     if (store.durable) {
       earnedFoundingCount = await store.countEarnedFoundingVenues();
+      const pending = await store.listWevenClaims({
+        reviewStatus: "pending",
+        limit: 500,
+      });
+      pendingWevenClaims = pending.length;
     }
   } catch (error) {
     storeError = error instanceof Error ? error.message : String(error);
@@ -49,10 +57,12 @@ export async function GET(request: Request) {
   const body = {
     ok: true,
     pricing: signal,
+    weven: wevenSignal,
     offerStore: {
       prefersPostgres: preferPostgresPricingOfferStore(),
       durable: durableStore,
       earnedFoundingCount,
+      pendingWevenClaims,
       error: storeError,
     },
     envPresent: {
@@ -67,7 +77,16 @@ export async function GET(request: Request) {
       STRIPE_PRICE_WHITE_GLOVE: Boolean(
         process.env.STRIPE_PRICE_WHITE_GLOVE?.trim(),
       ),
+      STRIPE_WEVEN_PERCENT_COUPON_ID: Boolean(
+        process.env.STRIPE_WEVEN_PERCENT_COUPON_ID?.trim() ||
+          process.env.STRIPE_COUPON_WEVEN_20?.trim(),
+      ),
+      STRIPE_PRICE_WHITE_GLOVE_WEVEN: Boolean(
+        process.env.STRIPE_PRICE_WHITE_GLOVE_WEVEN?.trim() ||
+          process.env.STRIPE_PRICE_WHITE_GLOVE_WEVEN_399?.trim(),
+      ),
       PRICING_LAUNCH_V1: process.env.PRICING_LAUNCH_V1 ?? null,
+      PRICING_WEVEN_V1: process.env.PRICING_WEVEN_V1 ?? null,
       SUPABASE_SERVICE_ROLE_KEY: Boolean(
         process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
       ),

@@ -34,6 +34,10 @@ export type ResolveWelcomeBackOk = {
   foundingMember: boolean;
   emailDelivery?: "sent" | "simulated" | "failed" | "skipped";
   taskId?: string;
+  /** True when a durable weven_claims row was updated. */
+  wevenClaimUpdated?: boolean;
+  /** Verification never mutates Stripe billing by itself. */
+  billingUnchanged?: boolean;
 };
 
 export async function resolveWelcomeBackInWorkspace(
@@ -195,6 +199,55 @@ export async function resolveWelcomeBackInWorkspace(
   const foundingMember =
     action === "approve" ? true : existing.foundingMember;
 
+  // Mirror the decision onto durable weven_claims when present.
+  // Verification alone never authorizes Stripe discount removal.
+  let wevenClaimUpdated = false;
+  try {
+    const {
+      getPricingOfferStore,
+      isPricingLaunchV1Ready,
+      requireDurablePricingOfferStore,
+    } = await import("@shared/pricing");
+    const offerStore = isPricingLaunchV1Ready()
+      ? requireDurablePricingOfferStore()
+      : getPricingOfferStore();
+    const claims = await offerStore.listWevenClaims({ limit: 200 });
+    const related = claims.filter(
+      (c) => c.relationshipId === relationshipId,
+    );
+    const reviewStatus =
+      action === "approve"
+        ? "verified"
+        : action === "reject"
+          ? "not_eligible"
+          : "needs_review";
+    for (const claim of related) {
+      if (
+        claim.reviewStatus === "verified" ||
+        claim.reviewStatus === "not_eligible"
+      ) {
+        continue;
+      }
+      await offerStore.updateWevenClaimReview({
+        claimId: claim.id,
+        reviewStatus,
+        reviewedBy: actor.id,
+        note:
+          note ||
+          (action === "reject"
+            ? "Founder marked not eligible — no automatic Stripe billing change."
+            : null),
+        billingActionAuthorized: false,
+      });
+      wevenClaimUpdated = true;
+    }
+  } catch (claimErr) {
+    console.error(
+      "[welcome-back] weven claim review sync failed (relationship verification still saved)",
+      claimErr,
+    );
+  }
+
   return {
     ok: true,
     action,
@@ -202,5 +255,7 @@ export async function resolveWelcomeBackInWorkspace(
     foundingMember,
     emailDelivery,
     taskId,
+    wevenClaimUpdated,
+    billingUnchanged: true,
   };
 }

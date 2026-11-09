@@ -192,8 +192,9 @@ export async function POST(request: Request) {
         console.error("[enrollment/activate] onboarding handoff failed", handoff.error);
       }
 
-      // Bind earned Founding grant to the venue (idempotent). Soft-milestone
-      // issuance already happened at Checkout — activation never rechecks capacity.
+      // Bind every earned grant for this Session (Founding and/or Weven) to the
+      // venue. Soft-milestone issuance already happened at Checkout — activation
+      // never rechecks capacity. Pending Weven verification must not block this.
       const checkoutSessionId =
         typeof enrollment.stripe_checkout_session_id === "string"
           ? enrollment.stripe_checkout_session_id
@@ -208,10 +209,13 @@ export async function POST(request: Request) {
           const offerStore = isPricingLaunchV1Ready()
             ? requireDurablePricingOfferStore()
             : getPricingOfferStore();
-          await offerStore.bindGrantVenue(checkoutSessionId, row.venue_id);
+          await offerStore.bindAllGrantsForSession(
+            checkoutSessionId,
+            row.venue_id,
+          );
         } catch (grantBindErr) {
           console.error(
-            "[enrollment/activate] founding grant venue bind failed",
+            "[enrollment/activate] offer grant venue bind failed",
             grantBindErr,
           );
         }

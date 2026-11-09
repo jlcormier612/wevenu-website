@@ -23,6 +23,7 @@ import {
 } from "@/lib/stripe/mrr";
 import {
   FOUNDING_PERCENT_OFF,
+  WEVEN_PERCENT_OFF,
   getPricingOfferStore,
   isPricingLaunchV1Ready,
   requireDurablePricingOfferStore,
@@ -209,6 +210,7 @@ async function handleCheckoutCompleted(
   const plan = meta.plan_tier ?? meta.htc_plan ?? meta.wevenu_plan ?? "unknown";
   const welcomeBack = readWelcomeBackFromMeta(meta);
   const onboardingType = parseOnboardingType(meta.onboarding_type);
+  const wevenDeclaredMeta = parseWelcomeBackRequested(meta.weven_declared);
 
   // Prefer durable issued offer when Launch V1 is active — honors founding even
   // if the soft 100 milestone was reached after this Session was created.
@@ -229,6 +231,8 @@ async function handleCheckoutCompleted(
   if (checkoutOffer) {
     foundingMember = shouldHonorIssuedFoundingOffer(checkoutOffer);
   }
+  const wevenDeclared =
+    Boolean(checkoutOffer?.wevenDeclared) || wevenDeclaredMeta;
 
   const customerId =
     typeof session.customer === "string"
@@ -295,10 +299,11 @@ async function handleCheckoutCompleted(
       await offerStore.markOfferStatus(checkoutOffer.id, "paid", {
         paidAt: new Date().toISOString(),
       });
+      let wevenGrantId: string | null = null;
       if (foundingMember) {
         const percentOff =
           checkoutOffer.foundingPercentOff ?? FOUNDING_PERCENT_OFF;
-        const { created } = await offerStore.earnFoundingGrant({
+        const { created, grant } = await offerStore.earnFoundingGrant({
           offerId: checkoutOffer.id,
           checkoutSessionId: session.id,
           relationshipId: meta.relationship_id || checkoutOffer.relationshipId,
@@ -309,6 +314,55 @@ async function handleCheckoutCompleted(
           offerId: checkoutOffer.id,
           created,
           percentOff,
+          grantId: grant.id,
+        });
+      }
+      if (wevenDeclared) {
+        const percentOff =
+          checkoutOffer.wevenPercentOff ?? WEVEN_PERCENT_OFF;
+        const { created, grant } = await offerStore.earnWevenGrant({
+          offerId: checkoutOffer.id,
+          checkoutSessionId: session.id,
+          relationshipId: meta.relationship_id || checkoutOffer.relationshipId,
+          percentOff,
+        });
+        wevenGrantId = grant.id;
+        console.info("[stripe] weven grant earn", {
+          sessionId: session.id,
+          offerId: checkoutOffer.id,
+          created,
+          percentOff,
+          grantId: grant.id,
+        });
+        const appliedOfferType =
+          checkoutOffer.appliedOfferType ??
+          (meta.applied_offer_type === "weven_pct" ||
+          meta.applied_offer_type === "founding_pct"
+            ? meta.applied_offer_type
+            : "weven_pct");
+        const claim = await offerStore.upsertWevenClaim({
+          checkoutSessionId: session.id,
+          checkoutOfferId: checkoutOffer.id,
+          stripeSubscriptionId: subscriptionId,
+          relationshipId: meta.relationship_id || checkoutOffer.relationshipId,
+          ownerEmailNormalized:
+            customerEmail?.trim().toLowerCase() ||
+            checkoutOffer.ownerEmailNormalized,
+          venueNameNormalized:
+            venueName.trim().toLowerCase() || checkoutOffer.venueNameNormalized,
+          grantId: wevenGrantId,
+          appliedOfferType,
+          appliedPercentOff:
+            appliedOfferType === "weven_pct"
+              ? percentOff
+              : checkoutOffer.foundingPercentOff ?? FOUNDING_PERCENT_OFF,
+          foundingAlsoEarned: foundingMember,
+        });
+        console.info("[stripe] weven claim upsert", {
+          sessionId: session.id,
+          claimId: claim.id,
+          reviewStatus: claim.reviewStatus,
+          foundingAlsoEarned: claim.foundingAlsoEarned,
         });
       }
     }
@@ -318,6 +372,7 @@ async function handleCheckoutCompleted(
       plan: record.plan,
       foundingMember: record.foundingMember,
       welcomeBack: record.welcomeBackRequested,
+      wevenDeclared,
       welcomeBackVerified: record.welcomeBackVerified,
       onboardingType: record.onboardingType,
       mrrCents: record.mrrCents,

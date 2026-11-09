@@ -1,12 +1,12 @@
 /**
- * Resolve SaaS Checkout price + Founding discount for Hello to Cheers (System A).
+ * Resolve SaaS Checkout price + Founding/Weven discount for Hello to Cheers.
  *
- * Dual path:
+ * Paths:
  * - Legacy (default): Gather $149 + optional $30 forever coupon / founder Prices.
- * - Launch V1 (PRICING_LAUNCH_V1 + config ready): Gather $199 / Celebrate $249 /
- *   Flourish $349 + optional 10% forever Founding percent coupon.
+ * - Launch V1: Gather $199 / Celebrate $249 / Flourish $349 + optional 10% Founding.
+ * - Phase 2 Weven (when declared + ready): same list Prices + 20% forever Weven coupon
+ *   (best-offer; may still earn a Founding grant without stacking coupons).
  *
- * Launch path never uses founder-specific fixed recurring Prices or the $30 coupon.
  * Env names only — never hardcode Stripe Price / Coupon IDs.
  */
 
@@ -24,6 +24,7 @@ export type CheckoutPricingResolution = {
   /**
    * When set, Checkout Session must use `discounts: [{ coupon }]` and must NOT
    * set `allow_promotion_codes` (Stripe forbids both).
+   * Holds the winning coupon (Founding 10% or Weven 20%).
    */
   foundingCouponId: string | null;
   allowPromotionCodes: boolean;
@@ -35,7 +36,8 @@ export type CheckoutPricingResolution = {
     | "plan_standard"
     | "plan_founder_price"
     | "launch_standard"
-    | "launch_founding_percent";
+    | "launch_founding_percent"
+    | "launch_weven_percent";
   /** Present on Launch V1 resolutions only */
   launch?: LaunchCheckoutPricing;
 };
@@ -208,6 +210,8 @@ export function resolveCheckoutPricing(
       programActive?: boolean;
       venueAlreadyEarnedFounding?: boolean;
       honorFoundingIssued?: boolean;
+      /** Explicit former-Weven self-declaration (never inferred from email). */
+      wevenDeclared?: boolean;
     };
   },
 ): CheckoutPricingResolution {
@@ -223,6 +227,7 @@ export function resolveCheckoutPricing(
       programActive: options.launch.programActive,
       venueAlreadyEarnedFounding: options.launch.venueAlreadyEarnedFounding,
       honorFoundingIssued: options.launch.honorFoundingIssued,
+      wevenDeclared: options.launch.wevenDeclared,
     });
     return {
       plan,
