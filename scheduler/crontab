@@ -25,3 +25,6 @@
 # Phase 3 SaaS tier-upgrade population cycle (evaluate → notice → apply).
 # Daily 06:15 UTC; 180s curl budget for Stripe Test retrieves across Sandbox venues.
 15 6 * * * /app/invoke.sh tier-upgrades-process "$VENUE_APP_BASE_URL/api/internal/pricing/tier-upgrades/process" 180
+# Phase 5 founder custom pricing — activate scheduled / expire arrangements.
+# Hourly; short budget (Stripe Test coupon/price apply for due rows only).
+20 * * * * /app/invoke.sh founder-arrangements-process "$VENUE_APP_BASE_URL/api/internal/pricing/founder-arrangements/process" 120

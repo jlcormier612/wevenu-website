@@ -19,6 +19,8 @@ import {
   amountAfterPercentOff,
   listAmountCents,
 } from "./catalog";
+import { selectWinningCommercialPrice } from "./founder-arrange";
+import type { FounderArrangementRecord } from "./founder-types";
 import {
   resolveGroupPercentCouponId,
   resolveLaunchFoundingPercentCouponId,
@@ -47,6 +49,8 @@ export type GroupReconcileVenueInput = {
   pendingTierUpgrade: TierUpgradeRecord | null;
   currentStripeCouponId?: string | null;
   currentAppliedOfferType?: OfferType | null;
+  /** Phase 5 founder arrangements — dollar comparison when present. */
+  founderArrangements?: FounderArrangementRecord[];
 };
 
 export type GroupReconcileDecision =
@@ -100,6 +104,27 @@ export function grantsWithGroupEligibility(input: {
 export function decideGroupBillingAdjustment(
   input: GroupReconcileVenueInput,
 ): GroupReconcileDecision {
+  // When founder arrangements exist, dollar-best may be a founder override.
+  // Do not race an independent group coupon mutation in that case — founder
+  // reconcile owns Stripe execution for the venue.
+  if (input.founderArrangements && input.founderArrangements.length > 0) {
+    const commercial = selectWinningCommercialPrice({
+      planKey: input.planKey,
+      grants: input.grants,
+      groupEligible: input.groupEligible,
+      arrangements: input.founderArrangements,
+    });
+    if (commercial.winner.source === "founder_override") {
+      return {
+        action: "noop",
+        reason:
+          "Founder arrangement wins dollar comparison — defer Stripe mutation to Phase 5 founder reconcile.",
+        desiredOfferType: "founder_override",
+        expectedRecurringAmountCents: commercial.winner.expectedAmountCents,
+      };
+    }
+  }
+
   const grants = grantsWithGroupEligibility({
     grants: input.grants,
     groupEligible: input.groupEligible,

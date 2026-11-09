@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { BillingPortalButton } from "@/components/billing/billing-portal-button";
 import { OrganizationBillingCard } from "@/components/billing/organization-billing-card";
+import { SpecialPricingCard } from "@/components/billing/special-pricing-card";
 import { SubscriptionStatusCard } from "@/components/billing/subscription-status-card";
 import { TierUpgradeStatusCard } from "@/components/billing/tier-upgrade-status-card";
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -61,6 +62,8 @@ export default async function SubscriptionBillingSettingsPage() {
               entitlement?.saas_stripe_customer_id ?? venue.saasStripeCustomerId
             }
           />
+
+          <SpecialPricingCard />
 
           <TierUpgradeStatusCard />
 

@@ -391,3 +391,95 @@ export function isPricingGroupV1Ready(
 ): boolean {
   return readiness.ready;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 5 — Founder custom pricing controls (independent; default off)
+// ---------------------------------------------------------------------------
+
+/** Explicit Phase 5 founder pricing flag. Default false until Sandbox activation. */
+export function isPricingFounderV1FlagEnabled(): boolean {
+  return parseBooleanFlag(process.env.PRICING_FOUNDER_V1, false);
+}
+
+/**
+ * Stripe Product that owns Launch V1 recurring Prices.
+ * Used to create durable fixed-rate Prices without Dashboard work.
+ */
+export function resolveSaasProductId(): string | null {
+  return (
+    readEnvId("STRIPE_SAAS_PRODUCT_ID") ||
+    readEnvId("STRIPE_HTC_SAAS_PRODUCT_ID")
+  );
+}
+
+export type PricingFounderMode =
+  | "disabled"
+  | "founder_ready"
+  | "founder_misconfigured";
+
+export type PricingFounderReadiness = {
+  mode: PricingFounderMode;
+  ready: boolean;
+  flagEnabled: boolean;
+  missing: string[];
+  saasProductId: string | null;
+  diagnosticMessage: string;
+};
+
+export function getPricingFounderV1Readiness(): PricingFounderReadiness {
+  const flagEnabled = isPricingFounderV1FlagEnabled();
+  const saasProductId = resolveSaasProductId();
+  const gather = resolveLaunchGatherPriceId();
+  const celebrate = resolveLaunchCelebratePriceId();
+  const flourish = resolveLaunchFlourishPriceId();
+
+  const missing: string[] = [];
+  // Product id is preferred for fixed-rate creation; gather price alone is
+  // enough for percent/amount coupons. Flag misconfigured only when fixed
+  // path is impossible AND product missing — still allow percent-only if
+  // Launch prices exist.
+  if (!gather) missing.push("STRIPE_PRICE_GATHER_199");
+  if (!celebrate) missing.push("STRIPE_PRICE_GROWING");
+  if (!flourish) missing.push("STRIPE_PRICE_PROFESSIONAL");
+  if (!saasProductId) {
+    missing.push("STRIPE_SAAS_PRODUCT_ID (required for fixed-rate / rate-freeze)");
+  }
+
+  if (!flagEnabled) {
+    return {
+      mode: "disabled",
+      ready: false,
+      flagEnabled: false,
+      missing: [],
+      saasProductId,
+      diagnosticMessage:
+        "PRICING_FOUNDER_V1 is off — Founder CRM custom pricing mutations are not active.",
+    };
+  }
+
+  if (missing.length > 0) {
+    return {
+      mode: "founder_misconfigured",
+      ready: false,
+      flagEnabled: true,
+      missing,
+      saasProductId,
+      diagnosticMessage: `Founder pricing is enabled but incomplete: missing ${missing.join(", ")}.`,
+    };
+  }
+
+  return {
+    mode: "founder_ready",
+    ready: true,
+    flagEnabled: true,
+    missing: [],
+    saasProductId,
+    diagnosticMessage: "Founder custom pricing (Phase 5) is ready.",
+  };
+}
+
+export function isPricingFounderV1Ready(
+  readiness: PricingFounderReadiness = getPricingFounderV1Readiness(),
+): boolean {
+  return readiness.ready;
+}
