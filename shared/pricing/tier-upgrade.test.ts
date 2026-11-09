@@ -932,9 +932,10 @@ describe("phase3 rehearsal wiring", () => {
       mayApplyTierUpgradeStripe,
       maySendTierUpgradeNotice,
       assertRehearsalNoticeRecipient,
+      resolveTierUpgradeNoticeRecipient,
     } = await import("./tier-upgrade-rehearsal-guard").then(async () => {
       const guard = await import("./tier-upgrade-rehearsal-guard");
-      const recipients = await import("./tier-upgrade-rehearsal-recipients");
+      const recipients = await import("./tier-upgrade-notice-recipients");
       return { ...guard, ...recipients };
     });
 
@@ -977,6 +978,25 @@ describe("phase3 rehearsal wiring", () => {
       assertRehearsalNoticeRecipient("customer@example.com").ok,
       false,
     );
+
+    // Global gates authorize without fixture; notices redirect to internal inbox.
+    process.env.TIER_UPGRADE_SEND_NOTICE = "true";
+    process.env.TIER_UPGRADE_APPLY_STRIPE = "true";
+    assert.equal(maySendTierUpgradeNotice({ isRehearsalFixture: false }), true);
+    assert.equal(mayApplyTierUpgradeStripe({ isRehearsalFixture: false }), true);
+    const redirected = resolveTierUpgradeNoticeRecipient({
+      billingEmail: "htc-p1-lifecycle-1794174723@example.com",
+      forceInternalRedirect: true,
+    });
+    assert.equal(redirected.ok, true);
+    if (redirected.ok) {
+      assert.equal(redirected.email, "jennifer@hellotocheers.com");
+      assert.equal(redirected.redirected, true);
+      assert.equal(
+        redirected.originalEmail,
+        "htc-p1-lifecycle-1794174723@example.com",
+      );
+    }
   });
 
   it("reconciles invoice.paid into applied with idempotent retries", async () => {

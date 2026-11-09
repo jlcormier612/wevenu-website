@@ -17,9 +17,12 @@ import { isSupabaseConfigured } from "@/lib/env";
 export const runtime = "nodejs";
 
 /**
- * Fixture-only Phase 3 Stripe schedule apply.
- * Global TIER_UPGRADE_APPLY_STRIPE must remain false; authorized only for
- * htc_phase3_rehearsal fixtures that already passed the notice gate.
+ * Phase 3 Stripe schedule apply.
+ *
+ * Authorized when:
+ * - Global TIER_UPGRADE_APPLY_STRIPE=true (Sandbox population), OR
+ * - Fixture rehearsal: TIER_UPGRADE_REHEARSAL_ENABLED + htc_phase3_rehearsal
+ *   metadata on customer and subscription (and notice already accepted).
  */
 function authorize(request: Request): boolean {
   const header = request.headers.get("authorization") || "";
@@ -112,21 +115,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Stripe customer deleted" }, { status: 400 });
   }
 
-  const fixture = assertPhase3RehearsalFixture({
-    venueId: venue.id,
-    customer: {
-      id: customer.id,
-      metadata: (customer as { metadata?: Record<string, string> }).metadata,
-    },
-    subscription: {
-      id: subRaw.id,
-      metadata: (subRaw as { metadata?: Record<string, string> }).metadata,
-    },
-  });
-  if (!fixture.ok) {
-    return NextResponse.json({ error: fixture.reason }, { status: 403 });
+  const applyStripeGlobal = process.env.TIER_UPGRADE_APPLY_STRIPE === "true";
+  let fixtureAuthorized = false;
+
+  if (!applyStripeGlobal) {
+    const fixture = assertPhase3RehearsalFixture({
+      venueId: venue.id,
+      customer: {
+        id: customer.id,
+        metadata: (customer as { metadata?: Record<string, string> }).metadata,
+      },
+      subscription: {
+        id: subRaw.id,
+        metadata: (subRaw as { metadata?: Record<string, string> }).metadata,
+      },
+    });
+    if (!fixture.ok) {
+      return NextResponse.json({ error: fixture.reason }, { status: 403 });
+    }
+    fixtureAuthorized = true;
   }
-  if (!mayApplyTierUpgradeStripe({ isRehearsalFixture: true })) {
+
+  if (
+    !mayApplyTierUpgradeStripe({
+      isRehearsalFixture: fixtureAuthorized,
+    })
+  ) {
     return NextResponse.json(
       { error: "Stripe apply not authorized (global and fixture gates closed)" },
       { status: 403 },
@@ -173,8 +187,8 @@ export async function POST(request: Request) {
         upgradeId: applied.upgrade?.id ?? upgrade.id,
         status: applied.upgrade?.status ?? upgrade.status,
         gates: {
-          applyStripeGlobal: process.env.TIER_UPGRADE_APPLY_STRIPE === "true",
-          fixtureAuthorized: true,
+          applyStripeGlobal,
+          fixtureAuthorized,
         },
       },
       { status: applied.defer ? 409 : 422 },
@@ -189,8 +203,8 @@ export async function POST(request: Request) {
     effectiveAt: applied.upgrade.scheduledEffectiveAt,
     reason: applied.reason,
     gates: {
-      applyStripeGlobal: process.env.TIER_UPGRADE_APPLY_STRIPE === "true",
-      fixtureAuthorized: true,
+      applyStripeGlobal,
+      fixtureAuthorized,
     },
   });
 }

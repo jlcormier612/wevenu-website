@@ -22,3 +22,6 @@
 0 * * * *    /app/invoke.sh facebook-reconcile-process "$VENUE_APP_BASE_URL/api/facebook/reconcile/process"
 0 * * * *    /app/invoke.sh saved-reports-process "$VENUE_APP_BASE_URL/api/saved-reports/process"
 */10 * * * * /app/invoke.sh workspace-cron-automations "$WORKSPACE_BASE_URL/api/cron/automations"
+# Phase 3 SaaS tier-upgrade population cycle (evaluate → notice → apply).
+# Daily 06:15 UTC; 180s curl budget for Stripe Test retrieves across Sandbox venues.
+15 6 * * * /app/invoke.sh tier-upgrades-process "$VENUE_APP_BASE_URL/api/internal/pricing/tier-upgrades/process" 180

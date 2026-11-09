@@ -175,9 +175,21 @@ export {
 } from "./tier-upgrade-rehearsal-guard";
 
 export {
+  approvedInternalNoticeInboxes,
   assertRehearsalNoticeRecipient,
   rehearsalNoticeAllowlist,
-} from "./tier-upgrade-rehearsal-recipients";
+  resolveTierUpgradeNoticeRecipient,
+} from "./tier-upgrade-notice-recipients";
+
+export {
+  evaluateVenueTierUpgrade,
+  sendNoticeForUpgrade,
+  applyScheduleForUpgrade,
+  type VenueTierUpgradeSource,
+  type EvaluateVenueOutcome,
+  type NoticeVenueOutcome,
+  type ApplyVenueOutcome,
+} from "./tier-upgrade-cycle";
 
 export {
   buildTierUpgradeNoticeDraft,

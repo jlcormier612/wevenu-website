@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   assertPhase3RehearsalFixture,
-  assertRehearsalNoticeRecipient,
   getTierUpgradeStore,
   maySendTierUpgradeNotice,
+  resolveTierUpgradeNoticeRecipient,
   sendTierUpgradeNotice,
 } from "@shared/pricing";
 import { createAdminClient } from "@/integrations/supabase/admin";
@@ -14,10 +14,13 @@ import { isSupabaseConfigured } from "@/lib/env";
 export const runtime = "nodejs";
 
 /**
- * Fixture-only Phase 3 notice send.
- * Global TIER_UPGRADE_SEND_NOTICE must remain false; authorized only when
- * Stripe Customer + Subscription carry htc_phase3_rehearsal=true and the
- * recipient is on the internal rehearsal allowlist.
+ * Phase 3 notice send.
+ *
+ * Authorized when:
+ * - Global TIER_UPGRADE_SEND_NOTICE=true (Sandbox population; recipients
+ *   redirected to the approved internal inbox), OR
+ * - Fixture rehearsal: TIER_UPGRADE_REHEARSAL_ENABLED + htc_phase3_rehearsal
+ *   metadata on customer and subscription.
  */
 function authorize(request: Request): boolean {
   const header = request.headers.get("authorization") || "";
@@ -108,21 +111,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Stripe customer deleted" }, { status: 400 });
   }
 
-  const fixture = assertPhase3RehearsalFixture({
-    venueId: venue.id,
-    customer: {
-      id: customer.id,
-      metadata: (customer as { metadata?: Record<string, string> }).metadata,
-    },
-    subscription: {
-      id: subscription.id,
-      metadata: (subscription as { metadata?: Record<string, string> }).metadata,
-    },
-  });
-  if (!fixture.ok) {
-    return NextResponse.json({ error: fixture.reason }, { status: 403 });
+  const sendNoticeGlobal = process.env.TIER_UPGRADE_SEND_NOTICE === "true";
+  let fixtureAuthorized = false;
+
+  if (!sendNoticeGlobal) {
+    const fixture = assertPhase3RehearsalFixture({
+      venueId: venue.id,
+      customer: {
+        id: customer.id,
+        metadata: (customer as { metadata?: Record<string, string> }).metadata,
+      },
+      subscription: {
+        id: subscription.id,
+        metadata: (subscription as { metadata?: Record<string, string> }).metadata,
+      },
+    });
+    if (!fixture.ok) {
+      return NextResponse.json({ error: fixture.reason }, { status: 403 });
+    }
+    fixtureAuthorized = true;
   }
-  if (!maySendTierUpgradeNotice({ isRehearsalFixture: true })) {
+
+  if (
+    !maySendTierUpgradeNotice({
+      isRehearsalFixture: fixtureAuthorized,
+    })
+  ) {
     return NextResponse.json(
       { error: "Notice send not authorized (global and fixture gates closed)" },
       { status: 403 },
@@ -131,7 +145,10 @@ export async function POST(request: Request) {
 
   const billingEmail =
     (customer as { email?: string | null }).email?.trim() || "";
-  const recipient = assertRehearsalNoticeRecipient(billingEmail);
+  const recipient = resolveTierUpgradeNoticeRecipient({
+    billingEmail,
+    forceInternalRedirect: sendNoticeGlobal,
+  });
   if (!recipient.ok) {
     return NextResponse.json({ error: recipient.reason }, { status: 403 });
   }
@@ -152,9 +169,11 @@ export async function POST(request: Request) {
         message: sent.message,
         deliveryStatus: sent.deliveryStatus,
         upgradeId: sent.upgrade?.id ?? upgrade.id,
+        redirected: recipient.redirected,
+        originalEmail: recipient.originalEmail,
         gates: {
-          sendNoticeGlobal: process.env.TIER_UPGRADE_SEND_NOTICE === "true",
-          fixtureAuthorized: true,
+          sendNoticeGlobal,
+          fixtureAuthorized,
         },
       },
       { status: 502 },
@@ -168,12 +187,14 @@ export async function POST(request: Request) {
     noticeSentAt: sent.noticeSentAt,
     idempotencyKey: sent.idempotencyKey,
     to: sent.to,
+    redirected: recipient.redirected,
+    originalEmail: recipient.originalEmail,
     subject: sent.subject,
     upgradeId: sent.upgrade.id,
     status: sent.upgrade.status,
     gates: {
-      sendNoticeGlobal: process.env.TIER_UPGRADE_SEND_NOTICE === "true",
-      fixtureAuthorized: true,
+      sendNoticeGlobal,
+      fixtureAuthorized,
     },
   });
 }
