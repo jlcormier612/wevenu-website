@@ -313,6 +313,9 @@ export function createPostgresTierUpgradeStore(): TierUpgradeStore {
         if (input.patch.scheduleIdempotencyKey !== undefined) {
           patch.schedule_idempotency_key = input.patch.scheduleIdempotencyKey;
         }
+        if (input.patch.metadata !== undefined) {
+          patch.metadata = input.patch.metadata;
+        }
       }
 
       const existing = await this.getUpgradeById(input.id);

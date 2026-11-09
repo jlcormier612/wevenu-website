@@ -76,10 +76,17 @@ export async function GET() {
         "failed",
       ].includes(u.status),
     ) ?? null;
+  const lastApplied =
+    upgrades.find((u) => u.status === "applied") ?? null;
   const hold = await store.getActiveHoldForVenue(venue.id);
 
+  // After webhook marks applied, venues.saas_plan_key is authoritative.
+  // While a pending upgrade exists, billed current remains the pending snapshot.
   const reconciledPlanKey =
-    pending?.currentPlanKey ?? asPlanKey(venueRow?.saas_plan_key) ?? null;
+    pending?.currentPlanKey ??
+    asPlanKey(venueRow?.saas_plan_key) ??
+    lastApplied?.requiredPlanKey ??
+    null;
 
   const currentPlan = reconciledPlanKey
     ? {
@@ -128,6 +135,19 @@ export async function GET() {
           discountPercent: pending.appliedPercentOff,
           skippedImminentRenewal: pending.skippedImminentRenewal,
           activeNow: false,
+        }
+      : null,
+    lastAppliedUpgrade: lastApplied
+      ? {
+          id: lastApplied.id,
+          status: lastApplied.status,
+          fromPlanName: getCatalogEntry(lastApplied.currentPlanKey).name,
+          toPlanName: getCatalogEntry(lastApplied.requiredPlanKey).name,
+          effectiveAt: lastApplied.scheduledEffectiveAt,
+          invoiceId:
+            typeof lastApplied.metadata?.appliedInvoiceId === "string"
+              ? lastApplied.metadata.appliedInvoiceId
+              : null,
         }
       : null,
     holdActive: Boolean(hold),

@@ -48,6 +48,7 @@ export type TierUpgradeStore = {
         | "stripeSchedulePhaseStartAt"
         | "scheduledEffectiveAt"
         | "scheduleIdempotencyKey"
+        | "metadata"
       >
     >;
     audit?: TierUpgradeAuditEntry;

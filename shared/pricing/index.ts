@@ -167,9 +167,38 @@ export {
 export { assertVenueSubscriptionIsolation } from "./tier-upgrade-venue-guard";
 
 export {
+  assertPhase3RehearsalFixture,
+  isPhase3RehearsalMetadata,
+  maySendTierUpgradeNotice,
+  mayApplyTierUpgradeStripe,
+} from "./tier-upgrade-rehearsal-guard";
+
+export {
+  assertRehearsalNoticeRecipient,
+  rehearsalNoticeAllowlist,
+} from "./tier-upgrade-rehearsal-recipients";
+
+export {
   buildTierUpgradeNoticeDraft,
   renderTierUpgradeNoticeBody,
 } from "./tier-upgrade-notice";
+
+export {
+  sendTierUpgradeNotice,
+  type SendTierUpgradeNoticeResult,
+} from "./tier-upgrade-notice-send";
+
+export {
+  applyTierUpgradeSchedule,
+  type ApplyTierUpgradeResult,
+} from "./tier-upgrade-apply";
+
+export {
+  reconcileTierUpgradeFromInvoice,
+  type TierUpgradeReconcileResult,
+} from "./tier-upgrade-reconcile";
+
+export { releaseScheduledTierUpgrade } from "./tier-upgrade-release";
 
 export {
   createMemoryTierUpgradeStore,

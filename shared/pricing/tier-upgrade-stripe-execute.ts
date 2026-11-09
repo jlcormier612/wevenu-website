@@ -94,7 +94,11 @@ export function htcOwnsSchedule(input: {
   }
   // Allow release of schedules we just created in the same acceptance flow when
   // metadata write failed — still require exact id match from HTC persistence.
-  if (meta.htc_tier_upgrade_id || meta.htc_phase3_acceptance === "true") {
+  if (
+    meta.htc_tier_upgrade_id ||
+    meta.htc_phase3_acceptance === "true" ||
+    meta.htc_phase3_rehearsal === "true"
+  ) {
     return { owned: true, reason: "HTC acceptance/upgrade metadata present." };
   }
   return {
@@ -217,7 +221,10 @@ export async function executeStripeScheduleUpgrade(input: {
             htc_tier_upgrade: "true",
             htc_tier_upgrade_id: input.upgradeId,
             ...(input.acceptanceFixture
-              ? { htc_phase3_acceptance: "true" }
+              ? {
+                  htc_phase3_acceptance: "true",
+                  htc_phase3_rehearsal: "true",
+                }
               : {}),
           },
         },
@@ -273,7 +280,10 @@ export async function executeStripeScheduleUpgrade(input: {
           htc_next_price: input.intent.nextPriceId,
           htc_effective_unix: String(input.intent.effectiveUnix),
           ...(input.acceptanceFixture
-            ? { htc_phase3_acceptance: "true" }
+            ? {
+                htc_phase3_acceptance: "true",
+                htc_phase3_rehearsal: "true",
+              }
             : {}),
         },
       },

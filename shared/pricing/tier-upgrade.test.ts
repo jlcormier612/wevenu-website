@@ -897,3 +897,134 @@ describe("stripe schedule confirmation + notice + webhook", () => {
     assert.match(body, /Celebrate/);
   });
 });
+
+describe("phase3 rehearsal wiring", () => {
+  const prevApply = process.env.TIER_UPGRADE_APPLY_STRIPE;
+  const prevSend = process.env.TIER_UPGRADE_SEND_NOTICE;
+  const prevAllow = process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO;
+
+  beforeEach(() => {
+    process.env.TIER_UPGRADE_APPLY_STRIPE = "false";
+    process.env.TIER_UPGRADE_SEND_NOTICE = "false";
+    delete process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO;
+  });
+
+  afterEach(() => {
+    if (prevApply === undefined) delete process.env.TIER_UPGRADE_APPLY_STRIPE;
+    else process.env.TIER_UPGRADE_APPLY_STRIPE = prevApply;
+    if (prevSend === undefined) delete process.env.TIER_UPGRADE_SEND_NOTICE;
+    else process.env.TIER_UPGRADE_SEND_NOTICE = prevSend;
+    if (prevAllow === undefined) delete process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO;
+    else process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO = prevAllow;
+  });
+
+  it("authorizes fixture-only notice/apply while global gates stay off", async () => {
+    const {
+      assertPhase3RehearsalFixture,
+      mayApplyTierUpgradeStripe,
+      maySendTierUpgradeNotice,
+      assertRehearsalNoticeRecipient,
+    } = await import("./tier-upgrade-rehearsal-guard").then(async () => {
+      const guard = await import("./tier-upgrade-rehearsal-guard");
+      const recipients = await import("./tier-upgrade-rehearsal-recipients");
+      return { ...guard, ...recipients };
+    });
+
+    assert.equal(maySendTierUpgradeNotice({ isRehearsalFixture: false }), false);
+    assert.equal(maySendTierUpgradeNotice({ isRehearsalFixture: true }), true);
+    assert.equal(mayApplyTierUpgradeStripe({ isRehearsalFixture: false }), false);
+    assert.equal(mayApplyTierUpgradeStripe({ isRehearsalFixture: true }), true);
+
+    const ok = assertPhase3RehearsalFixture({
+      venueId: "v-rehearse",
+      customer: { id: "cus_1", metadata: { htc_phase3_rehearsal: "true" } },
+      subscription: { id: "sub_1", metadata: { htc_phase3_rehearsal: "true" } },
+    });
+    assert.equal(ok.ok, true);
+
+    const denied = assertPhase3RehearsalFixture({
+      venueId: "v-other",
+      customer: { id: "cus_2", metadata: {} },
+      subscription: { id: "sub_2", metadata: { htc_phase3_rehearsal: "true" } },
+    });
+    assert.equal(denied.ok, false);
+
+    assert.equal(
+      assertRehearsalNoticeRecipient("jennifer@hellotocheers.com").ok,
+      true,
+    );
+    assert.equal(
+      assertRehearsalNoticeRecipient("customer@example.com").ok,
+      false,
+    );
+  });
+
+  it("reconciles invoice.paid into applied with idempotent retries", async () => {
+    const store = createMemoryTierUpgradeStore();
+    setTierUpgradeStoreForTests(store);
+    const scheduled = await store.upsertPendingUpgrade({
+      ...baseUpgrade({
+        status: "scheduled",
+        stripeScheduleId: "sub_sched_1",
+        requiredStripePriceId: "price_celebrate_test",
+        expectedRecurringAmountCents: 24900,
+      }),
+      id: "up-reconcile-1",
+    });
+    assert.equal(scheduled.status, "scheduled");
+
+    const { reconcileTierUpgradeFromInvoice } = await import(
+      "./tier-upgrade-reconcile"
+    );
+
+    const first = await reconcileTierUpgradeFromInvoice({
+      store,
+      stripeEventId: "evt_paid_1",
+      subscriptionId: "sub_1",
+      subscriptionPriceId: "price_celebrate_test",
+      invoiceId: "in_1",
+      invoiceAmountExcludingTaxCents: 24900,
+      invoiceAmountPaidCents: 24900,
+      invoiceStatus: "paid",
+    });
+    assert.equal(first.ok, true);
+    assert.equal(first.action, "mark_applied");
+    assert.equal(first.upgrade?.status, "applied");
+    assert.equal(
+      (first.upgrade?.metadata?.processedStripeEventIds as string[])?.[0],
+      "evt_paid_1",
+    );
+
+    const dup = await reconcileTierUpgradeFromInvoice({
+      store,
+      stripeEventId: "evt_paid_1",
+      subscriptionId: "sub_1",
+      subscriptionPriceId: "price_celebrate_test",
+      invoiceId: "in_1",
+      invoiceAmountExcludingTaxCents: 24900,
+      invoiceAmountPaidCents: 24900,
+      invoiceStatus: "paid",
+    });
+    assert.equal(dup.action, "ignore_duplicate");
+  });
+
+  it("apply gate still refuses near-term increases before notice window", () => {
+    const blocked = evaluateTierUpgradeApplyGate({
+      upgrade: baseUpgrade({
+        noticeSentAt: "2026-06-01T12:00:00.000Z",
+        scheduledEffectiveAt: "2026-06-05T12:00:00.000Z",
+      }),
+      noticeDeliveryStatus: "provider_accepted",
+      volumeRecommendedPlan: "growing",
+      activeHold: false,
+      subscriptionStatus: "active",
+      cancelAtPeriodEnd: false,
+      applyStripeEnabled: true,
+      nowIso: "2026-06-02T12:00:00.000Z",
+    });
+    assert.equal(blocked.allowed, false);
+    if (!blocked.allowed) {
+      assert.equal(blocked.code, "notice_window_unsatisfied");
+    }
+  });
+});

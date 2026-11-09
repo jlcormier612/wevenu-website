@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     }
     case "invoice.paid": {
       const invoice = event.data.object as Stripe.Invoice;
-      await handleInvoicePaid(stripe, invoice);
+      await handleInvoicePaid(stripe, invoice, event.id);
       break;
     }
     case "invoice.payment_failed": {
@@ -624,6 +624,7 @@ async function handleDunningForCustomer(
 async function handleInvoicePaid(
   stripe: Stripe,
   invoice: Stripe.Invoice,
+  stripeEventId?: string,
 ): Promise<void> {
   const customerId =
     typeof invoice.customer === "string"
@@ -685,6 +686,47 @@ async function handleInvoicePaid(
         dunningClearedAt: new Date().toISOString(),
         reason: "invoice.paid entitlement sync",
       });
+
+      // Phase 3: correlate paid renewal invoices with scheduled tier upgrades.
+      try {
+        const {
+          getTierUpgradeStore,
+          reconcileTierUpgradeFromInvoice,
+          preferPostgresTierUpgradeStore,
+        } = await import("@shared/pricing");
+        if (preferPostgresTierUpgradeStore()) {
+          const priceId =
+            typeof sub.items?.data?.[0]?.price === "string"
+              ? sub.items.data[0].price
+              : sub.items?.data?.[0]?.price?.id ?? null;
+          const amountExcludingTax =
+            typeof (invoice as { total_excluding_tax?: number | null })
+              .total_excluding_tax === "number"
+              ? (invoice as { total_excluding_tax?: number }).total_excluding_tax!
+              : typeof (invoice as { amount_excluding_tax?: number | null })
+                    .amount_excluding_tax === "number"
+                ? (invoice as { amount_excluding_tax?: number }).amount_excluding_tax!
+                : null;
+          const reconcile = await reconcileTierUpgradeFromInvoice({
+            store: getTierUpgradeStore(),
+            stripeEventId: stripeEventId || `invoice.paid:${invoice.id}`,
+            subscriptionId,
+            subscriptionPriceId: priceId,
+            invoiceId: invoice.id,
+            invoiceAmountExcludingTaxCents: amountExcludingTax,
+            invoiceAmountPaidCents:
+              typeof invoice.amount_paid === "number" ? invoice.amount_paid : null,
+            invoiceStatus: invoice.status ?? null,
+          });
+          console.info("[stripe] invoice.paid tier-upgrade reconcile", {
+            action: reconcile.action,
+            upgradeId: reconcile.upgrade?.id ?? null,
+            reason: reconcile.reason,
+          });
+        }
+      } catch (tierErr) {
+        console.warn("[stripe] invoice.paid tier-upgrade reconcile failed", tierErr);
+      }
     } catch (error) {
       console.warn("[stripe] invoice.paid entitlement sync failed", error);
     }

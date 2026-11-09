@@ -50,6 +50,8 @@ export async function GET(request: Request) {
             "pending_notice",
             "notice_sent",
             "scheduled",
+            "applied",
+            "cancelled",
             "blocked_hold",
             "blocked_legacy",
             "blocked_review",
@@ -71,10 +73,18 @@ export async function GET(request: Request) {
       peakYear: u.peakYear,
       effectiveAt: u.scheduledEffectiveAt,
       noticeSentAt: u.noticeSentAt,
+      noticeDeliveryStatus: u.noticeDeliveryStatus,
+      noticeProviderMessageId: u.noticeProviderMessageId,
+      stripeScheduleId: u.stripeScheduleId,
       currentAmount: formatUsdFromCents(u.currentListAmountCents),
       expectedAmount: formatUsdFromCents(u.expectedRecurringAmountCents),
       discountPercent: u.appliedPercentOff,
       skippedImminentRenewal: u.skippedImminentRenewal,
+      appliedInvoiceId:
+        typeof u.metadata?.appliedInvoiceId === "string"
+          ? u.metadata.appliedInvoiceId
+          : null,
+      audit: u.audit.slice(-12),
     })),
   });
 }
