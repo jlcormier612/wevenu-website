@@ -333,7 +333,10 @@ jobs:
               "ParameterKey=PricingLaunchV1,ParameterValue=true" \
               "ParameterKey=StripeWevenPercentCouponId,ParameterValue=6d2PFuDb" \
               "ParameterKey=StripePriceWhiteGloveWeven,ParameterValue=price_1UZk1EErUqJH7nkt4lWfvbIT" \
-              "ParameterKey=PricingWevenV1,ParameterValue=true"
+              "ParameterKey=PricingWevenV1,ParameterValue=true" \
+              "ParameterKey=PricingTierUpgradeStore,ParameterValue=postgres" \
+              "ParameterKey=TierUpgradeApplyStripe,ParameterValue=false" \
+              "ParameterKey=TierUpgradeSendNotice,ParameterValue=false"
 
           for _ in $(seq 1 40); do
             st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
@@ -428,6 +431,9 @@ jobs:
               StripeWevenPercentCouponId=6d2PFuDb \
               StripePriceWhiteGloveWeven=price_1UZk1EErUqJH7nkt4lWfvbIT \
               PricingWevenV1=true \
+              PricingTierUpgradeStore=postgres \
+              TierUpgradeApplyStripe=false \
+              TierUpgradeSendNotice=false \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
             --no-fail-on-empty-changeset

@@ -19,6 +19,7 @@ export const EMAIL_TEMPLATE_IDS = [
   "subscription_link",
   "trial_reminder",
   "renewal_reminder",
+  "tier_upgrade_notice",
   "inquiry_confirmation",
   "feedback_confirmation",
   "luv_suggestion",

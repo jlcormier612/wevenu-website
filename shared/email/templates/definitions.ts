@@ -673,3 +673,47 @@ export const luvSuggestionTemplate: EmailTemplateDefinition = {
     };
   },
 };
+
+/**
+ * Phase 3 automatic tier-upgrade notice.
+ * Registry-only until Sandbox activation authorizes real sends.
+ */
+export const tierUpgradeNoticeTemplate: EmailTemplateDefinition = {
+  id: "tier_upgrade_notice",
+  name: "Tier Upgrade Notice",
+  description:
+    "Advance notice that a venue's subscription will move to a higher plan at an eligible renewal. No immediate charge.",
+  status: "registry",
+  render(vars) {
+    const venue = venueName(vars);
+    const currentPlan = String(vars.current_plan_name || vars.currentPlanName || "Gather");
+    const newPlan = String(vars.new_plan_name || vars.newPlanName || "Celebrate");
+    const effective = String(vars.effective_date || vars.effectiveDate || "your next eligible renewal");
+    const currentAmount = String(vars.current_amount || vars.currentAmount || "");
+    const newAmount = String(vars.new_amount || vars.newAmount || "");
+    const discount = String(vars.discount_label || vars.discountLabel || "");
+    const peakCount = String(vars.peak_count || vars.peakCount || "");
+    const peakYear = String(vars.peak_year || vars.peakYear || "");
+    const contact = String(vars.contact_email || vars.contactEmail || "jennifer@hellotocheers.com");
+    const subject = "Your Hello to Cheers plan is growing with you";
+    const paragraphs = [
+      `Hi ${venue},`,
+      `Your venue has reached the booking volume for our ${newPlan} plan${peakCount && peakYear ? ` (${peakCount} qualifying celebrations in ${peakYear})` : ""}.`,
+      `Your subscription will move from ${currentPlan} to ${newPlan} at your next eligible renewal on ${effective}.`,
+      currentAmount && newAmount
+        ? `Current recurring subscription: ${currentAmount}/month. New recurring subscription: ${newAmount}/month.`
+        : `Your recurring subscription amount will update on ${effective}.`,
+      discount || "Any existing lifetime discount continues on the new plan.",
+      "There is no immediate charge. Your current plan and billing amount stay the same until that renewal date.",
+      `Questions? Reply to this email or contact ${contact}.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml(subject, paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Tier Upgrade Notice Prepared",
+    };
+  },
+};

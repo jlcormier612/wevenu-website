@@ -176,4 +176,58 @@ describe("evaluateEventVolume", () => {
     });
     assert.equal(result.peakCount, 0);
   });
+
+  it("excludes past calendar years from peak (year rollover)", () => {
+    const result = evaluateEventVolume({
+      asOfDate: "2027-01-15",
+      events: [
+        ...Array.from({ length: 80 }, (_, i) => ({
+          id: `past${i}`,
+          status: "confirmed" as const,
+          eventDate: "2026-06-01",
+          bookedAt: "2025-01-01T00:00:00Z",
+        })),
+        ...Array.from({ length: 10 }, (_, i) => ({
+          id: `cur${i}`,
+          status: "confirmed" as const,
+          eventDate: "2027-03-01",
+          bookedAt: "2026-01-01T00:00:00Z",
+        })),
+      ],
+    });
+    assert.equal(result.byYear[2026], undefined);
+    assert.equal(result.peakYear, 2027);
+    assert.equal(result.peakCount, 10);
+    assert.equal(result.recommendedPlan, "starter");
+    assert.equal(
+      recommendedUpgrade({
+        currentPlan: "professional",
+        recommendedPlan: result.recommendedPlan,
+      }),
+      null,
+    );
+  });
+
+  it("uses future-year peak when higher than current year", () => {
+    const result = evaluateEventVolume({
+      asOfDate: "2026-06-01",
+      events: [
+        ...Array.from({ length: 15 }, (_, i) => ({
+          id: `y${i}`,
+          status: "confirmed" as const,
+          eventDate: "2026-07-01",
+          bookedAt: "2025-01-01T00:00:00Z",
+        })),
+        ...Array.from({ length: 80 }, (_, i) => ({
+          id: `n${i}`,
+          status: "confirmed" as const,
+          eventDate: "2027-07-01",
+          bookedAt: "2025-01-01T00:00:00Z",
+        })),
+      ],
+    });
+    assert.equal(result.peakYear, 2027);
+    assert.equal(result.peakCount, 80);
+    assert.equal(result.recommendedPlan, "professional");
+  });
 });

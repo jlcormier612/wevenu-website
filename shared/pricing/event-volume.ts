@@ -6,8 +6,9 @@
  * - Qualifying: status in confirmed | in_progress | complete AND bookedAt set.
  * - Cancelled excluded even if bookedAt remains.
  * - Each event counted once (start-date year for multi-day).
- * - Recommended tier uses the peak year count across all years.
- * - Does not mutate or schedule Stripe changes (Phase 3).
+ * - Peak year is the highest count among the current calendar year and future
+ *   calendar years only (past years excluded). `asOfDate` selects "today".
+ * - Does not mutate or schedule Stripe changes by itself (Phase 3 orchestrator).
  */
 
 import type { SaasPlanKey } from "./types";
@@ -60,17 +61,31 @@ export function planForPeakCount(peakCount: number): SaasPlanKey {
   return "starter";
 }
 
+function resolveAsOfYear(asOfDate?: string): number {
+  if (asOfDate) {
+    const year = calendarYearFromEventDate(asOfDate);
+    if (year != null) return year;
+  }
+  return new Date().getUTCFullYear();
+}
+
 export function evaluateEventVolume(input: {
   events: EventVolumeInputEvent[];
-  /** Reserved for future as-of filtering; unused in Phase 1A. */
+  /**
+   * Civil date (YYYY-MM-DD) or ISO timestamp used to determine the current
+   * calendar year. Past years relative to this date are excluded from peak.
+   */
   asOfDate?: string;
 }): EventVolumeEvaluation {
+  const asOfYear = resolveAsOfYear(input.asOfDate);
   const byYear: Record<number, number> = {};
 
   for (const event of input.events) {
     if (!isQualifyingVolumeEvent(event)) continue;
     const year = calendarYearFromEventDate(event.eventDate);
     if (year == null) continue;
+    // Past calendar years never drive the required tier.
+    if (year < asOfYear) continue;
     byYear[year] = (byYear[year] ?? 0) + 1;
   }
 
@@ -87,7 +102,7 @@ export function evaluateEventVolume(input: {
   const recommendedPlan = planForPeakCount(peakCount);
   const explanation =
     peakYear == null
-      ? "No qualifying booked events; recommended Gather (0–25)."
+      ? "No qualifying booked events in the current or future calendar year; recommended Gather (0–25)."
       : `Peak ${peakCount} qualifying event(s) in ${peakYear}; recommended ${recommendedPlan}.`;
 
   return {

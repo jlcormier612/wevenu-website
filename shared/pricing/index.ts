@@ -100,3 +100,110 @@ export {
   evaluateVenueEventVolume,
   type EventVolumeRow,
 } from "./event-volume-repository";
+
+export {
+  DEFAULT_TIER_UPGRADE_NOTICE_DAYS,
+  chooseEligibleRenewal,
+  billingIntervalSecondsFromPeriod,
+  noticeWindowSatisfied,
+  calendarDaysBetween,
+  civilUtcDateFromUnix,
+  type EligibleRenewalDecision,
+  type EligibleRenewalResult,
+} from "./tier-upgrade-timing";
+
+export {
+  previewUpgradeAmounts,
+  knownLaunchV1PriceIds,
+  planKeyFromLaunchPriceId,
+  resolveRequiredLaunchPriceId,
+  isLegacyOrUnmappedSubscriptionPrice,
+  expectedCouponIdForOffer,
+  expectedAmountForPlanAndPercent,
+  type TierUpgradeAmountPreview,
+} from "./tier-upgrade-pricing";
+
+export {
+  decideTierUpgrade,
+  shouldSupersedePending,
+  buildEvaluationIdempotencyKey,
+  buildNoticeIdempotencyKey,
+  type TierUpgradeEvaluationDecision,
+} from "./tier-upgrade-evaluate";
+
+export {
+  evaluateTierUpgradeApplyGate,
+  isNoticeDeliverySufficientForBilling,
+  resolveNoticeDeliveryStatus,
+  type TierUpgradeNoticeDeliveryStatus,
+  type TierUpgradeApplyGateResult,
+} from "./tier-upgrade-apply-gate";
+
+export {
+  buildStripeScheduleUpgradeIntent,
+  buildStripeScheduleReleaseIntent,
+  assessExistingSubscriptionSchedule,
+  confirmUpgradeAppliedFromStripe,
+  classifyUpgradeWebhookEvidence,
+  type ExistingScheduleAssessment,
+} from "./tier-upgrade-stripe-plan";
+
+export {
+  billingSnapshotFromStripeSubscription,
+  type StripeSubscriptionLike,
+} from "./tier-upgrade-stripe-snapshot";
+
+export {
+  resolveSaasStripeSecretKey,
+  createSaasStripeClient,
+} from "./tier-upgrade-stripe-client";
+
+export {
+  htcOwnsSchedule,
+  scheduleContainsFuturePriceIncrease,
+  confirmScheduleReleasedClean,
+  executeStripeScheduleUpgrade,
+  executeStripeScheduleRelease,
+  cancellationPersistenceDecision,
+} from "./tier-upgrade-stripe-execute";
+
+export { assertVenueSubscriptionIsolation } from "./tier-upgrade-venue-guard";
+
+export {
+  buildTierUpgradeNoticeDraft,
+  renderTierUpgradeNoticeBody,
+} from "./tier-upgrade-notice";
+
+export {
+  createMemoryTierUpgradeStore,
+  getTierUpgradeStore,
+  preferPostgresTierUpgradeStore,
+  setTierUpgradeStoreForTests,
+  resetTierUpgradeStoreForTests,
+  type TierUpgradeStore,
+  type UpsertTierUpgradeInput,
+} from "./tier-upgrade-store";
+
+export { createPostgresTierUpgradeStore } from "./tier-upgrade-store-postgres";
+
+export {
+  evaluateAndPersistTierUpgrade,
+  type TierUpgradeOrchestrationResult,
+} from "./tier-upgrade-orchestrator";
+
+export type {
+  TierUpgradeStatus,
+  TierUpgradeRecord,
+  TierUpgradeHoldRecord,
+  TierUpgradeAuditEntry,
+  TierUpgradeErrorEntry,
+  TierUpgradeNoticeDraft,
+  StripeSubscriptionBillingSnapshot,
+  StripeScheduleUpgradeIntent,
+  StripeScheduleReleaseIntent,
+} from "./tier-upgrade-types";
+
+export {
+  ACTIVE_TIER_UPGRADE_STATUSES,
+  TERMINAL_TIER_UPGRADE_STATUSES,
+} from "./tier-upgrade-types";
