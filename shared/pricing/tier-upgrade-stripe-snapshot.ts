@@ -20,6 +20,9 @@ export type StripeSubscriptionLike = {
   items?: {
     data?: Array<{
       price?: { id?: string } | string | null;
+      /** Newer Stripe API versions expose period anchors on items */
+      current_period_end?: number | null;
+      current_period_start?: number | null;
     }>;
   } | null;
   discount?: {
@@ -74,19 +77,34 @@ function couponIdOf(sub: StripeSubscriptionLike): string | null {
  * Build a billing snapshot from Stripe. Returns null when required period end
  * is missing — callers must fail closed.
  */
+function periodEndOf(sub: StripeSubscriptionLike): number | null {
+  if (typeof sub.current_period_end === "number" && sub.current_period_end > 0) {
+    return sub.current_period_end;
+  }
+  const itemEnd = sub.items?.data?.[0]?.current_period_end;
+  if (typeof itemEnd === "number" && itemEnd > 0) return itemEnd;
+  return null;
+}
+
+function periodStartOf(sub: StripeSubscriptionLike): number | null {
+  if (
+    typeof sub.current_period_start === "number" &&
+    sub.current_period_start > 0
+  ) {
+    return sub.current_period_start;
+  }
+  const itemStart = sub.items?.data?.[0]?.current_period_start;
+  if (typeof itemStart === "number" && itemStart > 0) return itemStart;
+  return null;
+}
+
 export function billingSnapshotFromStripeSubscription(
   sub: StripeSubscriptionLike,
 ): StripeSubscriptionBillingSnapshot | null {
-  const periodEnd =
-    typeof sub.current_period_end === "number" && sub.current_period_end > 0
-      ? sub.current_period_end
-      : null;
+  const periodEnd = periodEndOf(sub);
   if (periodEnd == null) return null;
 
-  const periodStart =
-    typeof sub.current_period_start === "number" && sub.current_period_start > 0
-      ? sub.current_period_start
-      : null;
+  const periodStart = periodStartOf(sub);
 
   const priceId = priceIdOf(sub);
 

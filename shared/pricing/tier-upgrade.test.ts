@@ -789,21 +789,30 @@ describe("stripe subscription snapshot mapping", () => {
       customer: "cus_live",
       status: "active",
       cancel_at_period_end: false,
-      current_period_start: 1_700_000_000,
-      current_period_end: 1_700_000_000 + 30 * DAY,
       billing_cycle_anchor: 1_700_000_000,
       schedule: null,
-      items: { data: [{ price: { id: "price_gather_199_test" } }] },
+      // Newer Stripe API: period anchors live on items, not subscription root.
+      items: {
+        data: [
+          {
+            price: { id: "price_gather_199_test" },
+            current_period_start: 1_700_000_000,
+            current_period_end: 1_700_000_000 + 30 * DAY,
+          },
+        ],
+      },
       discounts: [{ source: { coupon: "6d2PFuDb" } }],
     });
     assert.ok(snap);
     assert.equal(snap!.currentPeriodStartUnix, 1_700_000_000);
+    assert.equal(snap!.currentPeriodEndUnix, 1_700_000_000 + 30 * DAY);
     assert.equal(snap!.planKey, "starter");
     assert.equal(snap!.couponId, "6d2PFuDb");
     assert.equal(
       billingSnapshotFromStripeSubscription({
         id: "sub_bad",
         current_period_end: null,
+        items: { data: [{ price: { id: "price_x" } }] },
       }),
       null,
     );
