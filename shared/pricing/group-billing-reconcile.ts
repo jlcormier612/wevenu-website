@@ -163,7 +163,8 @@ export function decideGroupBillingAdjustment(
     };
   }
 
-  if (currentOffer === "group_pct" && desiredOfferType !== "group_pct") {
+  // desiredOfferType is already narrowed away from group_pct above.
+  if (currentOffer === "group_pct") {
     // Removing group — either fall back to founding/weven coupon or none.
     if (desiredOfferType === "founding_pct" || desiredOfferType === "weven_pct") {
       return {
