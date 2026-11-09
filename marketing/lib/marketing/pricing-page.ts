@@ -1,9 +1,34 @@
 /**
  * Pricing page — editorial hospitality catalog, not SaaS comparison.
  * Display mode (Founder vs Welcome Back vs regular) is controlled by enrollment config.
+ *
+ * Legacy PRICING_PAGE amounts ($149 / $119 Founding fixed) remain the default so
+ * Sandbox keeps advertising the currently serving prices until Launch V1 is ready.
+ * When Launch V1 is ready, `getPricingPage()` rewrites plan amounts from the shared catalog.
  */
 
+import {
+  getCatalogEntry,
+  getPricingLaunchMode,
+  getPricingLaunchV1Readiness,
+  planDisplayAmounts,
+  type PricingLaunchMode,
+} from "@shared/pricing";
+
 export type SubscriptionPlanId = "starter" | "growing" | "professional";
+
+const ENTERPRISE_PLAN = {
+  id: "enterprise" as const,
+  name: "Custom",
+  capacity: "Multi-venue/More Celebrations",
+  price: null as string | null,
+  period: null as string | null,
+  priceLabel: "Let's build something together.",
+  foundingPrice: null as string | null,
+  welcomeBackPrice: null as string | null,
+  cta: "Let's Talk.",
+  kind: "contact" as const,
+};
 
 export const PRICING_PAGE = {
   hero: {
@@ -49,18 +74,7 @@ export const PRICING_PAGE = {
       cta: "Get Started",
       kind: "subscription" as const,
     },
-    {
-      id: "enterprise" as const,
-      name: "Custom",
-      capacity: "Multi-venue/More Celebrations",
-      price: null,
-      period: null,
-      priceLabel: "Let's build something together.",
-      foundingPrice: null,
-      welcomeBackPrice: null,
-      cta: "Let's Talk.",
-      kind: "contact" as const,
-    },
+    ENTERPRISE_PLAN,
   ],
   founderPricing: {
     label: "Founding Membership",
@@ -165,3 +179,90 @@ export const PRICING_PAGE = {
     ],
   },
 } as const;
+
+export type PricingPlanCard = {
+  id: SubscriptionPlanId | "enterprise";
+  name: string;
+  capacity: string;
+  price: string | null;
+  period: string | null;
+  priceLabel?: string;
+  foundingPrice: string | null;
+  welcomeBackPrice: string | null;
+  cta: string;
+  kind: "subscription" | "contact";
+};
+
+export type PricingPageContent = Omit<typeof PRICING_PAGE, "plans"> & {
+  plans: PricingPlanCard[];
+};
+
+export type PricingDisplayState = {
+  mode: PricingLaunchMode;
+  page: PricingPageContent;
+  /** False when Launch V1 is flagged on but Checkout cannot fulfill purchases. */
+  checkoutAvailable: boolean;
+  readinessMessage: string;
+};
+
+function buildLaunchPlans(): PricingPlanCard[] {
+  const launchPlans: PricingPlanCard[] = (
+    ["starter", "growing", "professional"] as const
+  ).map((id) => {
+    const catalog = getCatalogEntry(id);
+    const amounts = planDisplayAmounts(id);
+    return {
+      id,
+      name: catalog.name,
+      capacity: catalog.capacityLabel,
+      price: amounts.list,
+      period: "/month",
+      foundingPrice: amounts.founding,
+      // Weven display remains Phase 2; keep founding figure as placeholder.
+      welcomeBackPrice: amounts.founding,
+      cta: "Get Started",
+      kind: "subscription",
+    };
+  });
+  return [...launchPlans, { ...ENTERPRISE_PLAN }];
+}
+
+/**
+ * Marketing + Checkout display source with explicit launch mode.
+ *
+ * - legacy: current Sandbox amounts ($149 / fixed founding)
+ * - v1_ready: catalog V1 amounts; Checkout purchasable
+ * - v1_misconfigured: show intended V1 amounts but disable purchase
+ *   (never silently advertise legacy $149 while flag is on)
+ */
+export function getPricingDisplayState(): PricingDisplayState {
+  const readiness = getPricingLaunchV1Readiness();
+  const mode = getPricingLaunchMode(readiness);
+
+  if (mode === "legacy") {
+    return {
+      mode,
+      page: {
+        ...PRICING_PAGE,
+        plans: PRICING_PAGE.plans.map((plan) => ({ ...plan })),
+      },
+      checkoutAvailable: true,
+      readinessMessage: readiness.diagnosticMessage,
+    };
+  }
+
+  return {
+    mode,
+    page: {
+      ...PRICING_PAGE,
+      plans: buildLaunchPlans(),
+    },
+    checkoutAvailable: mode === "v1_ready",
+    readinessMessage: readiness.diagnosticMessage,
+  };
+}
+
+/** @deprecated Prefer getPricingDisplayState for readiness-aware UI. */
+export function getPricingPage(): PricingPageContent {
+  return getPricingDisplayState().page;
+}

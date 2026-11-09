@@ -327,7 +327,10 @@ jobs:
               "ParameterKey=StripePriceProfessional,ParameterValue=price_1U5rfpErUqJH7nktREPKO5zo" \
               "ParameterKey=StripePriceProfessionalFounder,ParameterValue=price_1U5rfqErUqJH7nktQg0wIXla" \
               "ParameterKey=StripePriceWhiteGlove,ParameterValue=price_1U5rfrErUqJH7nktV23SeLsM" \
-              "ParameterKey=StripeFoundingCouponId,ParameterValue=FOUNDING100"
+              "ParameterKey=StripeFoundingCouponId,ParameterValue=FOUNDING100" \
+              "ParameterKey=StripePriceGather199,ParameterValue=price_1UZj6YErUqJH7nktmVMM7sgB" \
+              "ParameterKey=StripeFoundingPercentCouponId,ParameterValue=32aTTfXi" \
+              "ParameterKey=PricingLaunchV1,ParameterValue=false"
 
           for _ in $(seq 1 40); do
             st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
@@ -416,6 +419,9 @@ jobs:
               StripePriceProfessionalFounder=price_1U5rfqErUqJH7nktQg0wIXla \
               StripePriceWhiteGlove=price_1U5rfrErUqJH7nktV23SeLsM \
               StripeFoundingCouponId=FOUNDING100 \
+              StripePriceGather199=price_1UZj6YErUqJH7nktmVMM7sgB \
+              StripeFoundingPercentCouponId=32aTTfXi \
+              PricingLaunchV1=false \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
             --no-fail-on-empty-changeset

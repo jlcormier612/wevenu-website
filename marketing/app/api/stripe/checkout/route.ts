@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   getEnrollmentConfig,
+  getEnrollmentConfigAsync,
   isAutomaticFoundingMember,
   isFounderPricingActive,
   parseOnboardingType,
@@ -22,6 +23,14 @@ import {
   getStripe,
   isSubscriptionPlanId,
 } from "@/lib/stripe/config";
+import {
+  FOUNDING_PERCENT_OFF,
+  abandonIssuedOfferOnStripeFailure,
+  getPricingLaunchOperationalSignal,
+  getPricingLaunchV1Readiness,
+  isPricingLaunchV1Ready,
+  requireDurablePricingOfferStore,
+} from "@shared/pricing";
 
 export const runtime = "nodejs";
 
@@ -73,9 +82,31 @@ export async function POST(request: Request) {
 
     const crmAssisted = authorizeCrmAssistedCheckout(request);
 
-    const enrollment = getEnrollmentConfig();
+    const launchReadiness = getPricingLaunchV1Readiness();
+    if (launchReadiness.mode === "v1_misconfigured") {
+      const signal = getPricingLaunchOperationalSignal();
+      console.error("[checkout] Pricing Launch V1 misconfigured — refusing Checkout", {
+        mode: signal.mode,
+        missing: signal.missing,
+        message: signal.message,
+        crmAssisted,
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Subscription checkout is temporarily unavailable. Pricing Launch V1 is enabled but incomplete.",
+          code: "pricing_launch_misconfigured",
+          missing: signal.missing,
+        },
+        { status: 503 },
+      );
+    }
+
+    const launchReady = isPricingLaunchV1Ready(launchReadiness);
+    const enrollment = launchReady
+      ? await getEnrollmentConfigAsync()
+      : getEnrollmentConfig();
     const founderActive = isFounderPricingActive(enrollment);
-    const foundingMember = isAutomaticFoundingMember(enrollment);
     const welcomeBack = parseWelcomeBackRequested(
       body.welcome_back ?? body.welcome_back_requested,
     );
@@ -137,7 +168,53 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripe();
-    const pricing = getCheckoutPricingForPlan(plan, { founder: founderActive });
+    let offerStore: ReturnType<typeof requireDurablePricingOfferStore> | null =
+      null;
+    if (launchReady) {
+      try {
+        offerStore = requireDurablePricingOfferStore();
+        if (!offerStore.durable) {
+          throw new Error(
+            "Pricing Launch V1 requires durable Postgres offer persistence.",
+          );
+        }
+      } catch (storeError) {
+        const message =
+          storeError instanceof Error ? storeError.message : String(storeError);
+        console.error("[checkout] durable pricing store unavailable", {
+          message,
+        });
+        return NextResponse.json(
+          {
+            error:
+              "Subscription checkout is temporarily unavailable. Durable pricing persistence is not configured.",
+            code: "pricing_offer_store_unavailable",
+          },
+          { status: 503 },
+        );
+      }
+    }
+
+    const earnedFoundingCount =
+      launchReady && offerStore
+        ? (enrollment.foundingEarnedCount ??
+          (await offerStore.countEarnedFoundingVenues()))
+        : 0;
+
+    const pricing = launchReady
+      ? getCheckoutPricingForPlan(plan, {
+          launch: {
+            earnedFoundingVenueCount: earnedFoundingCount,
+            programActive: enrollment.founderProgramActive,
+          },
+        })
+      : getCheckoutPricingForPlan(plan, { founder: founderActive });
+
+    // Launch V1: founding comes from the issued offer, never from a later capacity recheck.
+    // Legacy: automatic founding while program spots remain.
+    const foundingMember = launchReady
+      ? Boolean(pricing.launch?.foundingIssued)
+      : isAutomaticFoundingMember(enrollment);
     const siteUrl = getMarketingSiteUrl();
 
     const forwardedFor = request.headers.get("x-forwarded-for");
@@ -151,6 +228,27 @@ export async function POST(request: Request) {
       ? await fetchActiveVenueLegalDocuments()
       : null;
 
+    let checkoutOfferId: string | null = null;
+    if (launchReady && pricing.launch && offerStore) {
+      const issued = await offerStore.issueCheckoutOffer({
+        planKey: plan,
+        listAmountCents: pricing.launch.listAmountCents,
+        stripePriceId: pricing.priceId,
+        foundingIssued: pricing.launch.foundingIssued,
+        foundingPercentOff: pricing.launch.foundingPercentOff,
+        stripeCouponId: pricing.foundingCouponId,
+        pricingVersion: pricing.launch.pricingVersion,
+        relationshipId: relationshipId || null,
+        stripeCustomerId: stripeCustomerId || null,
+        ownerEmailNormalized: customerEmail
+          ? customerEmail.trim().toLowerCase()
+          : null,
+        venueNameNormalized: venueName ? venueName.trim().toLowerCase() : null,
+        earnedFoundingCountAtIssue: pricing.launch.earnedFoundingCountAtIssue,
+      });
+      checkoutOfferId = issued.id;
+    }
+
     const metadata: Record<string, string> = {
       plan_tier: plan,
       plan_name: planName,
@@ -160,6 +258,14 @@ export async function POST(request: Request) {
       founding_member: foundingMember ? "true" : "false",
       pricing_mode: pricing.mode,
     };
+    if (launchReady && pricing.launch) {
+      metadata.pricing_version = pricing.launch.pricingVersion;
+      metadata.founding_percent_off = foundingMember
+        ? String(FOUNDING_PERCENT_OFF)
+        : "0";
+      metadata.list_amount_cents = String(pricing.launch.listAmountCents);
+      if (checkoutOfferId) metadata.checkout_offer_id = checkoutOfferId;
+    }
     if (venueName) {
       metadata.venue_name = venueName;
     }
@@ -236,13 +342,46 @@ export async function POST(request: Request) {
       sessionParams.customer_email = customerEmail;
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    let session: Awaited<
+      ReturnType<typeof stripe.checkout.sessions.create>
+    >;
+    try {
+      session = await stripe.checkout.sessions.create(sessionParams);
+    } catch (stripeError) {
+      if (offerStore && checkoutOfferId) {
+        await abandonIssuedOfferOnStripeFailure(
+          offerStore,
+          checkoutOfferId,
+          stripeError instanceof Error ? stripeError.message : "stripe_create_failed",
+        );
+      }
+      throw stripeError;
+    }
 
     if (!session.url) {
+      if (offerStore && checkoutOfferId) {
+        await abandonIssuedOfferOnStripeFailure(
+          offerStore,
+          checkoutOfferId,
+          "session_missing_url",
+        );
+      }
       return NextResponse.json(
         { error: "Unable to start checkout." },
         { status: 500 },
       );
+    }
+
+    if (checkoutOfferId && offerStore) {
+      try {
+        await offerStore.attachCheckoutSession(checkoutOfferId, session.id);
+      } catch (attachError) {
+        // Session already carries checkout_offer_id in metadata for webhook recovery.
+        console.error(
+          "[checkout] failed to attach session to pricing offer",
+          attachError,
+        );
+      }
     }
 
     // Draft / link relationship when we have venue, email, or existing relationship id.
@@ -263,6 +402,8 @@ export async function POST(request: Request) {
       onboarding_type: onboardingType,
       founding_member: foundingMember,
       relationship_id: relationshipId || null,
+      checkout_offer_id: checkoutOfferId,
+      pricing_mode: pricing.mode,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout failed.";

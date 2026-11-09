@@ -104,7 +104,9 @@ export async function POST(request: Request) {
   try {
     const { data: enrollment, error: lookupErr } = await admin
       .from("venue_enrollments")
-      .select("id, owner_email, owner_first_name, owner_last_name, venue_name, status, venue_id, onboarding_type")
+      .select(
+        "id, owner_email, owner_first_name, owner_last_name, venue_name, status, venue_id, onboarding_type, stripe_checkout_session_id",
+      )
       .eq("activation_token", token)
       .maybeSingle();
     if (lookupErr) throw lookupErr;
@@ -188,6 +190,31 @@ export async function POST(request: Request) {
       });
       if (!handoff.ok) {
         console.error("[enrollment/activate] onboarding handoff failed", handoff.error);
+      }
+
+      // Bind earned Founding grant to the venue (idempotent). Soft-milestone
+      // issuance already happened at Checkout — activation never rechecks capacity.
+      const checkoutSessionId =
+        typeof enrollment.stripe_checkout_session_id === "string"
+          ? enrollment.stripe_checkout_session_id
+          : null;
+      if (checkoutSessionId) {
+        try {
+          const {
+            isPricingLaunchV1Ready,
+            requireDurablePricingOfferStore,
+            getPricingOfferStore,
+          } = await import("@shared/pricing");
+          const offerStore = isPricingLaunchV1Ready()
+            ? requireDurablePricingOfferStore()
+            : getPricingOfferStore();
+          await offerStore.bindGrantVenue(checkoutSessionId, row.venue_id);
+        } catch (grantBindErr) {
+          console.error(
+            "[enrollment/activate] founding grant venue bind failed",
+            grantBindErr,
+          );
+        }
       }
     }
 

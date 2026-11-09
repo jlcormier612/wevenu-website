@@ -61,6 +61,12 @@
       ],
       "@shared/brand/*": [
         "../shared/brand/*"
+      ],
+      "@shared/pricing": [
+        "../shared/pricing/index.ts"
+      ],
+      "@shared/pricing/*": [
+        "../shared/pricing/*"
       ]
     }
   },

@@ -1,13 +1,21 @@
 /**
- * Resolve SaaS Checkout price + Founding coupon for Hello to Cheers (System A).
+ * Resolve SaaS Checkout price + Founding discount for Hello to Cheers (System A).
  *
- * Gather (starter): canonical $149 Price + optional $30/mo Founding coupon → $119.
- * Celebrate / Flourish: keep existing standard / Founder Price ID env model.
+ * Dual path:
+ * - Legacy (default): Gather $149 + optional $30 forever coupon / founder Prices.
+ * - Launch V1 (PRICING_LAUNCH_V1 + config ready): Gather $199 / Celebrate $249 /
+ *   Flourish $349 + optional 10% forever Founding percent coupon.
  *
+ * Launch path never uses founder-specific fixed recurring Prices or the $30 coupon.
  * Env names only — never hardcode Stripe Price / Coupon IDs.
  */
 
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
+import {
+  isPricingLaunchV1Ready,
+  resolveLaunchCheckoutPricing,
+  type LaunchCheckoutPricing,
+} from "@shared/pricing";
 
 export type CheckoutPricingResolution = {
   plan: SubscriptionPlanId;
@@ -25,7 +33,11 @@ export type CheckoutPricingResolution = {
     | "gather_founding_coupon"
     | "gather_founding_legacy_price"
     | "plan_standard"
-    | "plan_founder_price";
+    | "plan_founder_price"
+    | "launch_standard"
+    | "launch_founding_percent";
+  /** Present on Launch V1 resolutions only */
+  launch?: LaunchCheckoutPricing;
 };
 
 function readEnvId(envName: string): string | null {
@@ -34,7 +46,7 @@ function readEnvId(envName: string): string | null {
   return value;
 }
 
-/** Canonical Gather ($149) Price — preferred env names then legacy starter. */
+/** Canonical Gather Price — preferred env names then legacy starter. */
 export function resolveGatherPriceId(): string {
   const priceId =
     readEnvId("STRIPE_GATHER_PRICE_ID") ||
@@ -48,7 +60,7 @@ export function resolveGatherPriceId(): string {
   return priceId;
 }
 
-/** $30/mo Founding Member coupon → $119 on Gather. */
+/** Legacy $30/mo Founding Member coupon → $119 on Gather. Not used by Launch V1. */
 export function resolveFoundingCouponId(): string | null {
   return (
     readEnvId("STRIPE_FOUNDING_COUPON_ID") ||
@@ -104,9 +116,9 @@ export function shouldProvisionFromCheckoutSession(input: {
 }
 
 /**
- * Resolve recurring Price (+ optional Founding coupon) for a Checkout Session.
+ * Legacy Resolve recurring Price (+ optional Founding coupon) for a Checkout Session.
  */
-export function resolveCheckoutPricing(
+export function resolveLegacyCheckoutPricing(
   plan: SubscriptionPlanId,
   options?: { founder?: boolean },
 ): CheckoutPricingResolution {
@@ -176,4 +188,51 @@ export function resolveCheckoutPricing(
     allowPromotionCodes: true,
     mode: "plan_standard",
   };
+}
+
+/**
+ * Resolve Checkout pricing.
+ *
+ * When Launch V1 is ready, `options.launch` must supply earned founding count
+ * (and optional honor/venue flags). Without launch options while ready, throws
+ * so callers cannot accidentally skip the soft-milestone issuance decision.
+ *
+ * When Launch V1 is not ready, uses the legacy path unchanged.
+ */
+export function resolveCheckoutPricing(
+  plan: SubscriptionPlanId,
+  options?: {
+    founder?: boolean;
+    launch?: {
+      earnedFoundingVenueCount: number;
+      programActive?: boolean;
+      venueAlreadyEarnedFounding?: boolean;
+      honorFoundingIssued?: boolean;
+    };
+  },
+): CheckoutPricingResolution {
+  if (isPricingLaunchV1Ready()) {
+    if (!options?.launch) {
+      throw new Error(
+        "Pricing Launch V1 is ready — Checkout must supply launch issuance context.",
+      );
+    }
+    const launch = resolveLaunchCheckoutPricing({
+      plan,
+      earnedFoundingVenueCount: options.launch.earnedFoundingVenueCount,
+      programActive: options.launch.programActive,
+      venueAlreadyEarnedFounding: options.launch.venueAlreadyEarnedFounding,
+      honorFoundingIssued: options.launch.honorFoundingIssued,
+    });
+    return {
+      plan,
+      priceId: launch.priceId,
+      foundingCouponId: launch.foundingCouponId,
+      allowPromotionCodes: launch.allowPromotionCodes,
+      mode: launch.mode,
+      launch,
+    };
+  }
+
+  return resolveLegacyCheckoutPricing(plan, { founder: options?.founder });
 }

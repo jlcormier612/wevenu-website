@@ -21,6 +21,13 @@ import {
   estimateMrrCentsFromPlan,
   mrrCentsFromStripeSubscription,
 } from "@/lib/stripe/mrr";
+import {
+  FOUNDING_PERCENT_OFF,
+  getPricingOfferStore,
+  isPricingLaunchV1Ready,
+  requireDurablePricingOfferStore,
+  shouldHonorIssuedFoundingOffer,
+} from "@shared/pricing";
 
 export const runtime = "nodejs";
 
@@ -104,6 +111,11 @@ function readFoundingFromMeta(meta: Stripe.Metadata): boolean {
   const foundingFromMeta = meta.founding_member;
   if (foundingFromMeta != null) {
     return parseWelcomeBackRequested(foundingFromMeta);
+  }
+  // Launch V1: never recheck soft-milestone capacity after Session creation.
+  // Missing metadata ⇒ non-founding (fail closed for discount).
+  if (isPricingLaunchV1Ready()) {
+    return false;
   }
   return isAutomaticFoundingMember();
 }
@@ -197,7 +209,26 @@ async function handleCheckoutCompleted(
   const plan = meta.plan_tier ?? meta.htc_plan ?? meta.wevenu_plan ?? "unknown";
   const welcomeBack = readWelcomeBackFromMeta(meta);
   const onboardingType = parseOnboardingType(meta.onboarding_type);
-  const foundingMember = readFoundingFromMeta(meta);
+
+  // Prefer durable issued offer when Launch V1 is active — honors founding even
+  // if the soft 100 milestone was reached after this Session was created.
+  let foundingMember = readFoundingFromMeta(meta);
+  const offerStore = isPricingLaunchV1Ready()
+    ? requireDurablePricingOfferStore()
+    : getPricingOfferStore();
+  let checkoutOffer = await offerStore.getOfferBySessionId(session.id);
+  if (!checkoutOffer && meta.checkout_offer_id) {
+    checkoutOffer = await offerStore.getOfferById(meta.checkout_offer_id);
+    if (checkoutOffer && !checkoutOffer.checkoutSessionId) {
+      checkoutOffer = await offerStore.attachCheckoutSession(
+        checkoutOffer.id,
+        session.id,
+      );
+    }
+  }
+  if (checkoutOffer) {
+    foundingMember = shouldHonorIssuedFoundingOffer(checkoutOffer);
+  }
 
   const customerId =
     typeof session.customer === "string"
@@ -260,6 +291,28 @@ async function handleCheckoutCompleted(
       mrrCents,
     });
 
+    if (checkoutOffer) {
+      await offerStore.markOfferStatus(checkoutOffer.id, "paid", {
+        paidAt: new Date().toISOString(),
+      });
+      if (foundingMember) {
+        const percentOff =
+          checkoutOffer.foundingPercentOff ?? FOUNDING_PERCENT_OFF;
+        const { created } = await offerStore.earnFoundingGrant({
+          offerId: checkoutOffer.id,
+          checkoutSessionId: session.id,
+          relationshipId: meta.relationship_id || checkoutOffer.relationshipId,
+          percentOff,
+        });
+        console.info("[stripe] founding grant earn", {
+          sessionId: session.id,
+          offerId: checkoutOffer.id,
+          created,
+          percentOff,
+        });
+      }
+    }
+
     console.info("[stripe] checkout.session.completed → venue enrollment", {
       enrollmentId: record.id,
       plan: record.plan,
@@ -271,6 +324,7 @@ async function handleCheckoutCompleted(
       relationshipId: meta.relationship_id || null,
       legalAccepted: meta.legal_accepted === "true",
       pricingMode: meta.pricing_mode || null,
+      checkoutOfferId: checkoutOffer?.id ?? null,
     });
   } catch (error) {
     console.error("[stripe] failed to create venue enrollment", error);

@@ -10,6 +10,11 @@
  */
 
 import {
+  foundingSpotsRemainingForDisplay,
+  isPricingLaunchV1Ready,
+  requireDurablePricingOfferStore,
+} from "@shared/pricing";
+import {
   getFounderProgramCapacity,
   hasLiveRelationshipsSync,
   loadLiveStoreSync,
@@ -20,6 +25,8 @@ import {
 export type EnrollmentConfig = {
   founderProgramActive: boolean;
   founderSpotsRemaining: number;
+  /** Distinct venues that have earned Founding (may exceed soft capacity). */
+  foundingEarnedCount?: number;
 };
 
 /** Onboarding choice passed through checkout metadata (selection UI lives elsewhere). */
@@ -47,6 +54,32 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
  * Prefer `await getEnrollmentConfigAsync()` on server pages so Postgres CRM is warm.
  */
 export function getEnrollmentConfig(): EnrollmentConfig {
+  const founderProgramActive = parseBooleanFlag(
+    process.env.FOUNDER_PROGRAM_ACTIVE,
+    true,
+  );
+  const capacity = getFounderProgramCapacity();
+
+  // Launch V1: remaining display is driven by earned founding grants (soft 100).
+  // Abandoned Checkouts are not counted. Actual earned may later exceed capacity.
+  if (isPricingLaunchV1Ready()) {
+    try {
+      // Memory/Postgres store — sync count via deasync-free best effort:
+      // callers that need durable accuracy should use getEnrollmentConfigAsync.
+      const cached = (globalThis as { __htcFoundingEarnedCount?: number })
+        .__htcFoundingEarnedCount;
+      if (typeof cached === "number") {
+        return {
+          founderProgramActive,
+          founderSpotsRemaining: foundingSpotsRemainingForDisplay(cached, capacity),
+          foundingEarnedCount: cached,
+        };
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+
   let foundingCount: number | undefined;
   try {
     if (hasLiveRelationshipsSync()) {
@@ -58,16 +91,40 @@ export function getEnrollmentConfig(): EnrollmentConfig {
   }
 
   return {
-    founderProgramActive: parseBooleanFlag(process.env.FOUNDER_PROGRAM_ACTIVE, true),
+    founderProgramActive,
     founderSpotsRemaining: resolveFounderSpotsRemaining({
       foundingCount,
-      capacity: getFounderProgramCapacity(),
+      capacity,
     }),
+    foundingEarnedCount: foundingCount,
   };
 }
 
-/** Server-side: warm durable CRM then return enrollment config. */
+/** Server-side: warm durable CRM / grant store then return enrollment config. */
 export async function getEnrollmentConfigAsync(): Promise<EnrollmentConfig> {
+  if (isPricingLaunchV1Ready()) {
+    try {
+      const earned =
+        await requireDurablePricingOfferStore().countEarnedFoundingVenues();
+      (globalThis as { __htcFoundingEarnedCount?: number }).__htcFoundingEarnedCount =
+        earned;
+      const capacity = getFounderProgramCapacity();
+      return {
+        founderProgramActive: parseBooleanFlag(
+          process.env.FOUNDER_PROGRAM_ACTIVE,
+          true,
+        ),
+        founderSpotsRemaining: foundingSpotsRemainingForDisplay(earned, capacity),
+        foundingEarnedCount: earned,
+      };
+    } catch (error) {
+      console.error("[enrollment] durable founding count unavailable", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      /* fall through to CRM relationship count for display only */
+    }
+  }
+
   try {
     await warmLiveStore();
   } catch {

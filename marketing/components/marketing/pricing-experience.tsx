@@ -9,12 +9,14 @@ import {
   type EnrollmentConfig,
 } from "@/lib/marketing/enrollment";
 import { MORE_INFO_CTA } from "@/lib/marketing/nav";
-import { PRICING_PAGE } from "@/lib/marketing/pricing-page";
+import { getPricingDisplayState } from "@/lib/marketing/pricing-page";
 import { TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
 /**
  * Editorial Pricing experience — calm hospitality catalog.
  * Promo display + checkout links are driven by enrollment config.
+ * Plan amounts come from getPricingDisplayState() so marketing cannot
+ * advertise a purchasable offer Checkout cannot fulfill.
  */
 export function PricingExperience({
   canceled,
@@ -23,8 +25,11 @@ export function PricingExperience({
   canceled?: boolean;
   enrollment?: EnrollmentConfig;
 }) {
-  const page = PRICING_PAGE;
-  const founderActive = isFounderPricingActive(enrollment);
+  const display = getPricingDisplayState();
+  const page = display.page;
+  const checkoutAvailable = display.checkoutAvailable;
+  const founderActive =
+    checkoutAvailable && isFounderPricingActive(enrollment);
   const spots = enrollment.founderSpotsRemaining;
 
   const beneathLines = founderActive
@@ -47,6 +52,12 @@ export function PricingExperience({
           {canceled ? (
             <p className="mt-10 text-sm tracking-wide text-[var(--forest-sage)]/55">
               Checkout was canceled. Your plan choices are still here whenever you&apos;re ready.
+            </p>
+          ) : null}
+          {!checkoutAvailable ? (
+            <p className="mt-10 text-sm tracking-wide text-[var(--forest-sage)]/70">
+              Online checkout is temporarily unavailable while we finish pricing
+              configuration. Please contact us if you need help enrolling.
             </p>
           ) : null}
         </div>
@@ -150,12 +161,18 @@ export function PricingExperience({
                 )}
               </div>
               <div className="mt-10">
-                {plan.kind === "subscription" ? (
-                  <PricingCheckoutButton
-                    planId={plan.id}
-                    label={plan.cta}
-                    variant={plan.id === "growing" ? "primary" : "secondary"}
-                  />
+                {plan.kind === "subscription" && plan.id !== "enterprise" ? (
+                  checkoutAvailable ? (
+                    <PricingCheckoutButton
+                      planId={plan.id}
+                      label={plan.cta}
+                      variant={plan.id === "growing" ? "primary" : "secondary"}
+                    />
+                  ) : (
+                    <p className="text-sm tracking-wide text-[var(--forest-sage)]/55">
+                      Checkout unavailable
+                    </p>
+                  )
                 ) : (
                   <MarketingCta
                     href="/contact"
