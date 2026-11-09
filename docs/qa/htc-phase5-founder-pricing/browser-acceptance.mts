@@ -56,19 +56,28 @@ function productSyncApiKey(): string | null {
     const raw = execFileSync(
       "aws",
       [
-        "ssm",
-        "get-parameter",
-        "--name",
-        "/htc/sandbox/PRODUCT_SYNC_API_KEY",
-        "--with-decryption",
+        "secretsmanager",
+        "get-secret-value",
+        "--secret-id",
+        "htc/sandbox/product-sync-api-key",
         "--query",
-        "Parameter.Value",
+        "SecretString",
         "--output",
         "text",
       ],
       { encoding: "utf8" },
     ).trim();
-    return raw || null;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      return (
+        parsed.value ||
+        parsed.PRODUCT_SYNC_API_KEY ||
+        parsed.api_key ||
+        raw
+      );
+    } catch {
+      return raw || null;
+    }
   } catch {
     return null;
   }

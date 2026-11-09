@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "arrangement": {
+    "id": "d19dcbdf-8c52-48d3-a650-0ffe7fcf0069",
+    "venueId": "afb25ffb-8782-4906-bc3c-16a794e06dc5",
+    "stripeSubscriptionId": "sub_1UZw7IErUqJH7nktbvFBgOCm",
+    "stripeCustomerId": "cus_Vb8OvNpzTS3r7J",
+    "kind": "percent_off",
+    "percentOff": 15,
+    "amountOffCents": null,
+    "fixedRateCents": null,
+    "frozenListAmountCents": null,
+    "planScope": "all",
+    "planKeyAtCreate": "starter",
+    "survivesTierChange": true,
+    "preventsTierUpgrade": false,
+    "protectsBaseRate": false,
+    "effectiveAt": "2026-11-09T23:26:15+00:00",
+    "expiresAt": null,
+    "durationBillingCycles": null,
+    "cyclesConsumed": 0,
+    "status": "ended",
+    "reason": "Phase 5 acceptance create",
+    "internalNotes": null,
+    "customerFacingLabel": "Special pricing",
+    "createdByUserId": null,
+    "createdByEmail": "jennifer@hellotocheers.com",
+    "endedByEmail": "jennifer@hellotocheers.com",
+    "endedAt": "2026-11-09T23:26:19.625+00:00",
+    "endReason": "Phase 5 acceptance cleanup",
+    "stripeCouponId": "htc_fnd_pct_15_d19dcbdf8c5248d3a6",
+    "stripePriceId": null,
+    "reconciliationStatus": "pending",
+    "expectedRecurringAmountCents": 16915,
+    "lastReconcileError": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing.",
+    "lastReconciledAt": "2026-11-09T23:26:17.395+00:00",
+    "supersedesArrangementId": null,
+    "supersededByArrangementId": null,
+    "relatedTierHoldId": null,
+    "idempotencyKey": "p5-verify-afb25ffb-8782-4906-bc3c-16a794e06dc5-1794266775",
+    "audit": [
+      {
+        "at": "2026-11-09T23:26:16.672Z",
+        "by": "jennifer@hellotocheers.com",
+        "kind": "percent_off",
+        "action": "created",
+        "status": "active"
+      },
+      {
+        "at": "2026-11-09T23:26:17.395Z",
+        "error": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing.",
+        "action": "reconcile_failed",
+        "deferred": true
+      },
+      {
+        "at": "2026-11-09T23:26:19.625Z",
+        "by": "jennifer@hellotocheers.com",
+        "action": "ended",
+        "reason": "Phase 5 acceptance cleanup"
+      }
+    ],
+    "metadata": {},
+    "createdAt": "2026-11-09T23:26:16.710411+00:00",
+    "updatedAt": "2026-11-09T23:26:19.659+00:00"
+  }
+}

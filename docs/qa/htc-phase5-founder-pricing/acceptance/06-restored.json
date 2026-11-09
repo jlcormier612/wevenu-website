@@ -1,0 +1,92 @@
+{
+  "ok": true,
+  "readiness": {
+    "mode": "founder_ready",
+    "ready": true,
+    "flagEnabled": true,
+    "missing": [],
+    "saasProductId": "prod_V4AgrDDqyO0YGF",
+    "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+  },
+  "venue": {
+    "id": "afb25ffb-8782-4906-bc3c-16a794e06dc5",
+    "name": "[DISPOSABLE-P3-HOLD] 1794244343",
+    "planKey": "starter",
+    "planName": "Gather",
+    "listAmountCents": 19900,
+    "stripeSubscriptionId": "sub_1UZw7IErUqJH7nktbvFBgOCm",
+    "stripeCustomerId": "cus_Vb8OvNpzTS3r7J",
+    "subscriptionStatus": "active",
+    "currentPeriodEnd": null,
+    "listAmount": "$199"
+  },
+  "grants": [],
+  "groupEligible": false,
+  "holdActive": false,
+  "pendingTierUpgrade": {
+    "id": "ba001edf-edd5-4098-85fb-e773ee156b8a",
+    "status": "scheduled",
+    "requiredPlan": "growing",
+    "effectiveAt": "2026-12-09T17:12:23+00:00"
+  },
+  "appliedOffer": {
+    "source": "standard",
+    "label": "Standard catalog pricing",
+    "amountCents": 19900,
+    "amount": "$199"
+  },
+  "nextInvoicePreviewCents": 24900,
+  "nextInvoicePreview": "$249",
+  "nextInvoicePreviewSource": "stripe_test_preview",
+  "arrangements": [
+    {
+      "id": "d19dcbdf-8c52-48d3-a650-0ffe7fcf0069",
+      "kind": "percent_off",
+      "status": "ended",
+      "percentOff": 15,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:26:15+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "reason": "Phase 5 acceptance create",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "pending",
+      "expectedRecurringAmountCents": 16915,
+      "expectedRecurringAmount": "$169.15",
+      "lastReconcileError": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing.",
+      "lastReconciledAt": "2026-11-09T23:26:17.395+00:00",
+      "stripeCouponId": "htc_fnd_pct_15_d19dcbdf8c5248d3a6",
+      "stripePriceId": null,
+      "audit": [
+        {
+          "at": "2026-11-09T23:26:16.672Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "percent_off",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:26:17.395Z",
+          "error": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing.",
+          "action": "reconcile_failed",
+          "deferred": true
+        },
+        {
+          "at": "2026-11-09T23:26:19.625Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "ended",
+          "reason": "Phase 5 acceptance cleanup"
+        }
+      ],
+      "createdAt": "2026-11-09T23:26:16.710411+00:00"
+    }
+  ]
+}

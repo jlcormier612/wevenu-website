@@ -1,0 +1,57 @@
+{
+  "ok": true,
+  "preview": {
+    "currentAmountCents": 19900,
+    "proposedAmountCents": 16915,
+    "differenceCents": -2985,
+    "currentWinnerSource": "standard",
+    "proposedWinnerSource": "founder_override",
+    "producesFinancialBenefit": true,
+    "ineffectiveBecauseBetterOffer": false,
+    "requiresConfirmation": false,
+    "explanation": "Best recurring amount $169.15 via founder_override (Proposed special pricing).",
+    "selection": {
+      "winner": {
+        "id": "draft",
+        "source": "founder_override",
+        "label": "Proposed special pricing",
+        "expectedAmountCents": 16915,
+        "tieBreakRank": 100,
+        "percentOff": 15
+      },
+      "candidates": [
+        {
+          "id": "draft",
+          "source": "founder_override",
+          "label": "Proposed special pricing",
+          "expectedAmountCents": 16915,
+          "tieBreakRank": 100,
+          "percentOff": 15
+        },
+        {
+          "id": "standard",
+          "source": "standard",
+          "label": "Standard catalog pricing",
+          "expectedAmountCents": 19900,
+          "tieBreakRank": 0
+        }
+      ],
+      "explanation": "Best recurring amount $169.15 via founder_override (Proposed special pricing)."
+    },
+    "tierFreezeActive": false,
+    "currentAmount": "$199",
+    "proposedAmount": "$169.15",
+    "difference": "$29.85",
+    "differenceSign": -2985,
+    "calculationSource": "htc_estimate",
+    "note": "HTC estimate \u2014 not a guaranteed Stripe invoice until reconciled."
+  },
+  "readiness": {
+    "mode": "founder_ready",
+    "ready": true,
+    "flagEnabled": true,
+    "missing": [],
+    "saasProductId": "prod_V4AgrDDqyO0YGF",
+    "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+  }
+}

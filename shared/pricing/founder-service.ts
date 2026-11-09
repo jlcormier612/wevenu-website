@@ -358,6 +358,34 @@ export async function endFounderArrangement(input: {
     });
   }
 
+  let currentCoupon = input.currentStripeCouponId ?? null;
+  let currentPrice = input.currentStripePriceId ?? null;
+  if (input.ctx.stripe) {
+    try {
+      const live = await input.ctx.stripe.subscriptions.retrieve(
+        existing.stripeSubscriptionId,
+        { expand: ["discounts", "items.data.price"] },
+      );
+      const disc = live.discounts?.[0];
+      if (disc && typeof disc !== "string") {
+        const source = disc.source?.coupon;
+        if (typeof source === "string") currentCoupon = source;
+        else if (source && typeof source === "object" && source.id) {
+          currentCoupon = source.id;
+        } else if (typeof disc.coupon === "string") {
+          currentCoupon = disc.coupon;
+        } else if (disc.coupon && typeof disc.coupon === "object") {
+          currentCoupon = disc.coupon.id ?? currentCoupon;
+        }
+      }
+      const price = live.items?.data?.[0]?.price;
+      currentPrice =
+        typeof price === "string" ? price : price?.id ?? currentPrice;
+    } catch {
+      // keep caller snapshot
+    }
+  }
+
   await reconcileVenueFounderPricing(input.ctx, {
     venueId: existing.venueId,
     planKey: input.planKey,
@@ -365,8 +393,8 @@ export async function endFounderArrangement(input: {
     grants: input.grants,
     groupEligible: input.groupEligible,
     pendingTierUpgrade: input.pendingTierUpgrade ?? null,
-    currentStripeCouponId: input.currentStripeCouponId,
-    currentStripePriceId: input.currentStripePriceId,
+    currentStripeCouponId: currentCoupon,
+    currentStripePriceId: currentPrice,
   });
 
   updated = (await input.ctx.store.getArrangement(existing.id)) ?? updated;

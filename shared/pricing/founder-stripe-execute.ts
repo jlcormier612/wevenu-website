@@ -343,8 +343,10 @@ export async function executeFounderBillingChange(input: {
     proration_behavior: "none",
   };
 
+  // Prefer empty array for Stripe API 2024+ discount removal. An empty string
+  // can be ignored or mis-encoded by some SDK serializers, leaving the coupon.
   if (desiredCoupon === null) {
-    params.discounts = "";
+    params.discounts = [];
   } else if (typeof desiredCoupon === "string") {
     params.discounts = [{ coupon: desiredCoupon }];
   }
@@ -357,18 +359,34 @@ export async function executeFounderBillingChange(input: {
     idempotencyKey: input.idempotencyKey.slice(0, 255),
   });
 
-  const after = await input.stripe.subscriptions.retrieve(
+  let after = await input.stripe.subscriptions.retrieve(
     input.subscriptionId,
     expand,
   );
-  const confirmedCoupon = couponIdOf(after);
+  let confirmedCoupon = couponIdOf(after);
   const confirmedPrice = primaryItem(after)?.priceId ?? null;
+
+  // Fallback clear if empty-array update did not remove the discount.
+  if (desiredCoupon === null && confirmedCoupon) {
+    await input.stripe.subscriptions.update(
+      input.subscriptionId,
+      { proration_behavior: "none", discounts: "" },
+      {
+        idempotencyKey: `${input.idempotencyKey}:clear`.slice(0, 255),
+      },
+    );
+    after = await input.stripe.subscriptions.retrieve(
+      input.subscriptionId,
+      expand,
+    );
+    confirmedCoupon = couponIdOf(after);
+  }
 
   if (desiredCoupon && confirmedCoupon !== desiredCoupon) {
     return {
       ok: false,
       confirmedCouponId: confirmedCoupon,
-      confirmedPriceId: confirmedPrice,
+      confirmedPriceId: primaryItem(after)?.priceId ?? confirmedPrice,
       error: `Stripe coupon mismatch: expected ${desiredCoupon}, got ${confirmedCoupon ?? "none"}`,
     };
   }
@@ -376,7 +394,7 @@ export async function executeFounderBillingChange(input: {
     return {
       ok: false,
       confirmedCouponId: confirmedCoupon,
-      confirmedPriceId: confirmedPrice,
+      confirmedPriceId: primaryItem(after)?.priceId ?? confirmedPrice,
       error: `Expected no coupon; still has ${confirmedCoupon}`,
     };
   }

@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "readiness": {
+    "mode": "founder_ready",
+    "ready": true,
+    "flagEnabled": true,
+    "missing": [],
+    "saasProductId": "prod_V4AgrDDqyO0YGF",
+    "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+  },
+  "venue": {
+    "id": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "name": "[DISPOSABLE-P3-CANCEL] 1794244329",
+    "planKey": "starter",
+    "planName": "Gather",
+    "listAmountCents": 19900,
+    "stripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "stripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+    "subscriptionStatus": "active",
+    "currentPeriodEnd": null,
+    "listAmount": "$199"
+  },
+  "grants": [],
+  "groupEligible": false,
+  "holdActive": false,
+  "pendingTierUpgrade": null,
+  "appliedOffer": {
+    "source": "founder_override",
+    "label": "Special pricing",
+    "amountCents": 16915,
+    "amount": "$169.15"
+  },
+  "nextInvoicePreviewCents": 16915,
+  "nextInvoicePreview": "$169.15",
+  "nextInvoicePreviewSource": "stripe_test_preview",
+  "arrangements": [
+    {
+      "id": "59b2938f-338a-4894-b964-3b1dbd1ece10",
+      "kind": "percent_off",
+      "status": "active",
+      "percentOff": 15,
+      "amountOffCents": null,
+      "fixedRateCents": null,
+      "frozenListAmountCents": null,
+      "planScope": "all",
+      "survivesTierChange": true,
+      "preventsTierUpgrade": false,
+      "protectsBaseRate": false,
+      "effectiveAt": "2026-11-09T23:27:18+00:00",
+      "expiresAt": null,
+      "durationBillingCycles": null,
+      "reason": "Phase 5 clean-venue acceptance",
+      "internalNotes": null,
+      "customerFacingLabel": "Special pricing",
+      "createdByEmail": "jennifer@hellotocheers.com",
+      "reconciliationStatus": "applied",
+      "expectedRecurringAmountCents": 16915,
+      "expectedRecurringAmount": "$169.15",
+      "lastReconcileError": null,
+      "lastReconciledAt": "2026-11-09T23:27:20.546+00:00",
+      "stripeCouponId": "htc_fnd_pct_15_59b2938f338a4894b9",
+      "stripePriceId": "price_1UZj6YErUqJH7nktmVMM7sgB",
+      "audit": [
+        {
+          "at": "2026-11-09T23:27:19.312Z",
+          "by": "jennifer@hellotocheers.com",
+          "kind": "percent_off",
+          "action": "created",
+          "status": "active"
+        },
+        {
+          "at": "2026-11-09T23:27:20.546Z",
+          "error": null,
+          "action": "reconciled",
+          "deferred": false
+        }
+      ],
+      "createdAt": "2026-11-09T23:27:19.33676+00:00"
+    }
+  ]
+}

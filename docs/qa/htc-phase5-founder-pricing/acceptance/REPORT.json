@@ -1,0 +1,132 @@
+{
+  "servingSha": "2077eb78c00b83bb012b045dec07c7d02f76bfb3",
+  "venueId": "afb25ffb-8782-4906-bc3c-16a794e06dc5",
+  "steps": [
+    {
+      "step": "before",
+      "status": 200,
+      "applied": {
+        "source": "standard",
+        "label": "Standard catalog pricing",
+        "amountCents": 19900,
+        "amount": "$199"
+      },
+      "readiness": {
+        "mode": "founder_ready",
+        "ready": true,
+        "flagEnabled": true,
+        "missing": [],
+        "saasProductId": "prod_V4AgrDDqyO0YGF",
+        "diagnosticMessage": "Founder custom pricing (Phase 5) is ready."
+      }
+    },
+    {
+      "step": "preview",
+      "status": 200,
+      "preview": {
+        "currentAmountCents": 19900,
+        "proposedAmountCents": 16915,
+        "differenceCents": -2985,
+        "currentWinnerSource": "standard",
+        "proposedWinnerSource": "founder_override",
+        "producesFinancialBenefit": true,
+        "ineffectiveBecauseBetterOffer": false,
+        "requiresConfirmation": false,
+        "explanation": "Best recurring amount $169.15 via founder_override (Proposed special pricing).",
+        "selection": {
+          "winner": {
+            "id": "draft",
+            "source": "founder_override",
+            "label": "Proposed special pricing",
+            "expectedAmountCents": 16915,
+            "tieBreakRank": 100,
+            "percentOff": 15
+          },
+          "candidates": [
+            {
+              "id": "draft",
+              "source": "founder_override",
+              "label": "Proposed special pricing",
+              "expectedAmountCents": 16915,
+              "tieBreakRank": 100,
+              "percentOff": 15
+            },
+            {
+              "id": "standard",
+              "source": "standard",
+              "label": "Standard catalog pricing",
+              "expectedAmountCents": 19900,
+              "tieBreakRank": 0
+            }
+          ],
+          "explanation": "Best recurring amount $169.15 via founder_override (Proposed special pricing)."
+        },
+        "tierFreezeActive": false,
+        "currentAmount": "$199",
+        "proposedAmount": "$169.15",
+        "difference": "$29.85",
+        "differenceSign": -2985,
+        "calculationSource": "htc_estimate",
+        "note": "HTC estimate \u2014 not a guaranteed Stripe invoice until reconciled."
+      }
+    },
+    {
+      "step": "create",
+      "status": 200,
+      "stripeApplied": false,
+      "deferred": true,
+      "arrangementId": "d19dcbdf-8c52-48d3-a650-0ffe7fcf0069",
+      "warning": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing.",
+      "error": null
+    },
+    {
+      "step": "after",
+      "status": 200,
+      "applied": {
+        "source": "founder_override",
+        "label": "Special pricing",
+        "amountCents": 16915,
+        "amount": "$169.15"
+      },
+      "nextInvoice": "$249",
+      "nextSource": "stripe_test_preview"
+    },
+    {
+      "step": "end",
+      "status": 200,
+      "ok": true,
+      "statusArr": "ended"
+    },
+    {
+      "step": "restored",
+      "applied": {
+        "source": "standard",
+        "label": "Standard catalog pricing",
+        "amountCents": 19900,
+        "amount": "$199"
+      }
+    },
+    {
+      "step": "fixed",
+      "status": 200,
+      "stripeApplied": false,
+      "error": null,
+      "amount": 14900
+    },
+    {
+      "step": "tier_freeze",
+      "status": 200,
+      "hold": "74b557c2-ce46-43a9-af26-7b1e26f6492d",
+      "error": null
+    }
+  ],
+  "ok": false,
+  "checks": {
+    "percent_create_stripe": false,
+    "percent_applied_offer": true,
+    "end_ok": true,
+    "fixed_stripe": false,
+    "tier_freeze_hold": true,
+    "readiness": true
+  }
+}

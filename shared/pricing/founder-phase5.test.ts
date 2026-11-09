@@ -596,6 +596,110 @@ describe("Phase 5 lifecycle + Phase 3/4 compatibility", () => {
     assert.equal(decision.desiredOfferType, "founder_override");
   });
 
+  it("clearing founder discount sends empty discounts array", async () => {
+    const store = createMemoryFounderArrangementStore();
+    setFounderArrangementStoreForTests(store);
+    const updates: Array<Record<string, unknown>> = [];
+    const stripeState = {
+      coupon: "htc_fnd_pct_15_x" as string | null,
+      price: "price_gather",
+    };
+    const stripe = {
+      coupons: {
+        async retrieve(id: string) {
+          return { id };
+        },
+        async create(params: Record<string, unknown>) {
+          return { id: String(params.id) };
+        },
+      },
+      prices: {
+        async list() {
+          return { data: [] };
+        },
+        async create() {
+          return { id: "price_fixed", unit_amount: 14900 };
+        },
+      },
+      subscriptions: {
+        async retrieve() {
+          return {
+            id: "sub_1",
+            schedule: null,
+            discount: stripeState.coupon
+              ? { coupon: stripeState.coupon }
+              : null,
+            discounts: stripeState.coupon
+              ? [{ coupon: stripeState.coupon }]
+              : [],
+            items: {
+              data: [{ id: "si_1", price: { id: stripeState.price } }],
+            },
+          };
+        },
+        async update(_id: string, params: Record<string, unknown>) {
+          updates.push(params);
+          if (params.discounts === "" || (Array.isArray(params.discounts) && params.discounts.length === 0)) {
+            stripeState.coupon = null;
+          } else if (Array.isArray(params.discounts)) {
+            const first = params.discounts[0] as { coupon?: string };
+            stripeState.coupon = first?.coupon ?? null;
+          }
+          return this.retrieve();
+        },
+      },
+    };
+
+    const created = await createFounderArrangement(
+      {
+        store,
+        stripe,
+        saasProductId: "prod_test",
+        catalogPriceIdForPlan: () => "price_gather",
+      },
+      {
+        draft: {
+          venueId: "venue-1",
+          stripeSubscriptionId: "sub_1",
+          kind: "percent_off",
+          percentOff: 25,
+          effectiveAt: new Date(Date.now() - 1000).toISOString(),
+          reason: "clear-test",
+          idempotencyKey: "clear-1",
+          createdByEmail: "jennifer@hellotocheers.com",
+        },
+        planKey: "starter",
+        grants: [],
+        groupEligible: false,
+      },
+    );
+    assert.equal(created.stripeApplied, true);
+
+    await endFounderArrangement({
+      ctx: {
+        store,
+        stripe,
+        saasProductId: "prod_test",
+        catalogPriceIdForPlan: () => "price_gather",
+      },
+      arrangementId: created.arrangement.id,
+      endedByEmail: "jennifer@hellotocheers.com",
+      endReason: "cleanup",
+      planKey: "starter",
+      grants: [],
+      groupEligible: false,
+      currentStripeCouponId: stripeState.coupon,
+      currentStripePriceId: stripeState.price,
+    });
+
+    const clearUpdate = updates.find(
+      (u) =>
+        Array.isArray(u.discounts) && (u.discounts as unknown[]).length === 0,
+    );
+    assert.ok(clearUpdate, "expected discounts: [] clear update");
+    assert.equal(stripeState.coupon, null);
+  });
+
   it("idempotent create returns same arrangement", async () => {
     const store = createMemoryFounderArrangementStore();
     setFounderArrangementStoreForTests(store);
