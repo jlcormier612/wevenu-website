@@ -5,6 +5,7 @@ import {
   formatUsdFromCents,
   getCatalogEntry,
   getTierUpgradeStore,
+  listAmountCents,
   mapEventRowsToVolumeInputs,
   type EventVolumeRow,
   type SaasPlanKey,
@@ -102,10 +103,21 @@ export async function GET() {
         available: false as const,
       };
 
+  const currentRecurringAmountCents = reconciledPlanKey
+    ? lastApplied && lastApplied.requiredPlanKey === reconciledPlanKey
+      ? lastApplied.expectedRecurringAmountCents
+      : listAmountCents(reconciledPlanKey)
+    : null;
+
   return NextResponse.json({
     ok: true,
     venueId: venue.id,
     currentPlan,
+    currentRecurringAmount:
+      currentRecurringAmountCents != null
+        ? formatUsdFromCents(currentRecurringAmountCents)
+        : null,
+    currentRecurringAmountCents,
     scheduledEffectivePlan: pending?.scheduledEffectiveAt
       ? {
           key: pending.requiredPlanKey,
@@ -148,6 +160,7 @@ export async function GET() {
             typeof lastApplied.metadata?.appliedInvoiceId === "string"
               ? lastApplied.metadata.appliedInvoiceId
               : null,
+          amount: formatUsdFromCents(lastApplied.expectedRecurringAmountCents),
         }
       : null,
     holdActive: Boolean(hold),

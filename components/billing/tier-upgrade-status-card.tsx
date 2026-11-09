@@ -18,6 +18,7 @@ type TierUpgradePayload = {
     available: boolean;
     source?: string;
   };
+  currentRecurringAmount?: string | null;
   scheduledEffectivePlan?: {
     key: string;
     name: string;
@@ -41,6 +42,15 @@ type TierUpgradePayload = {
     discountPercent: number | null;
     skippedImminentRenewal: boolean;
     activeNow: boolean;
+  } | null;
+  lastAppliedUpgrade?: {
+    id: string;
+    status: string;
+    fromPlanName: string;
+    toPlanName: string;
+    effectiveAt: string | null;
+    invoiceId: string | null;
+    amount?: string | null;
   } | null;
   holdActive?: boolean;
 };
@@ -103,6 +113,7 @@ export function TierUpgradeStatusCard() {
   }
 
   const pending = data.pendingUpgrade;
+  const lastApplied = data.lastAppliedUpgrade;
   const volume = data.volume;
   const currentName = data.currentPlan?.available
     ? data.currentPlan.name
@@ -129,6 +140,14 @@ export function TierUpgradeStatusCard() {
                   Subscription plan snapshot not yet reconciled
                 </span>
               ) : null}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Current recurring price</dt>
+            <dd className="font-medium">
+              {data.currentRecurringAmount
+                ? `${data.currentRecurringAmount}/month`
+                : "—"}
             </dd>
           </div>
           <div>
@@ -186,6 +205,22 @@ export function TierUpgradeStatusCard() {
             qualifying booked volume grows — never as a surprise mid-cycle charge.
           </p>
         )}
+
+        {lastApplied ? (
+          <div className="rounded-md border border-border/70 p-3 space-y-1">
+            <p className="font-medium">
+              Last completed upgrade: {lastApplied.fromPlanName} →{" "}
+              {lastApplied.toPlanName}
+            </p>
+            <p className="text-muted-foreground">
+              Effective {formatUtc(lastApplied.effectiveAt)}
+              {lastApplied.amount ? ` · ${lastApplied.amount}/month` : ""}
+              {lastApplied.invoiceId
+                ? ` · Invoice ${lastApplied.invoiceId}`
+                : ""}
+            </p>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

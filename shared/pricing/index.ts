@@ -169,6 +169,7 @@ export { assertVenueSubscriptionIsolation } from "./tier-upgrade-venue-guard";
 export {
   assertPhase3RehearsalFixture,
   isPhase3RehearsalMetadata,
+  isPhase3RehearsalExecutionEnabled,
   maySendTierUpgradeNotice,
   mayApplyTierUpgradeStripe,
 } from "./tier-upgrade-rehearsal-guard";

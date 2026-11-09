@@ -902,11 +902,15 @@ describe("phase3 rehearsal wiring", () => {
   const prevApply = process.env.TIER_UPGRADE_APPLY_STRIPE;
   const prevSend = process.env.TIER_UPGRADE_SEND_NOTICE;
   const prevAllow = process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO;
+  const prevRehearsal = process.env.TIER_UPGRADE_REHEARSAL_ENABLED;
+  const prevVenueIds = process.env.TIER_UPGRADE_REHEARSAL_VENUE_IDS;
 
   beforeEach(() => {
     process.env.TIER_UPGRADE_APPLY_STRIPE = "false";
     process.env.TIER_UPGRADE_SEND_NOTICE = "false";
     delete process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO;
+    delete process.env.TIER_UPGRADE_REHEARSAL_ENABLED;
+    delete process.env.TIER_UPGRADE_REHEARSAL_VENUE_IDS;
   });
 
   afterEach(() => {
@@ -916,9 +920,13 @@ describe("phase3 rehearsal wiring", () => {
     else process.env.TIER_UPGRADE_SEND_NOTICE = prevSend;
     if (prevAllow === undefined) delete process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO;
     else process.env.TIER_UPGRADE_REHEARSAL_NOTICE_TO = prevAllow;
+    if (prevRehearsal === undefined) delete process.env.TIER_UPGRADE_REHEARSAL_ENABLED;
+    else process.env.TIER_UPGRADE_REHEARSAL_ENABLED = prevRehearsal;
+    if (prevVenueIds === undefined) delete process.env.TIER_UPGRADE_REHEARSAL_VENUE_IDS;
+    else process.env.TIER_UPGRADE_REHEARSAL_VENUE_IDS = prevVenueIds;
   });
 
-  it("authorizes fixture-only notice/apply while global gates stay off", async () => {
+  it("refuses fixture-only notice/apply unless rehearsal execution is explicitly enabled", async () => {
     const {
       assertPhase3RehearsalFixture,
       mayApplyTierUpgradeStripe,
@@ -930,9 +938,21 @@ describe("phase3 rehearsal wiring", () => {
       return { ...guard, ...recipients };
     });
 
+    // Metadata alone must never authorize.
     assert.equal(maySendTierUpgradeNotice({ isRehearsalFixture: false }), false);
-    assert.equal(maySendTierUpgradeNotice({ isRehearsalFixture: true }), true);
+    assert.equal(maySendTierUpgradeNotice({ isRehearsalFixture: true }), false);
     assert.equal(mayApplyTierUpgradeStripe({ isRehearsalFixture: false }), false);
+    assert.equal(mayApplyTierUpgradeStripe({ isRehearsalFixture: true }), false);
+
+    const deniedWithoutEnv = assertPhase3RehearsalFixture({
+      venueId: "v-rehearse",
+      customer: { id: "cus_1", metadata: { htc_phase3_rehearsal: "true" } },
+      subscription: { id: "sub_1", metadata: { htc_phase3_rehearsal: "true" } },
+    });
+    assert.equal(deniedWithoutEnv.ok, false);
+
+    process.env.TIER_UPGRADE_REHEARSAL_ENABLED = "true";
+    assert.equal(maySendTierUpgradeNotice({ isRehearsalFixture: true }), true);
     assert.equal(mayApplyTierUpgradeStripe({ isRehearsalFixture: true }), true);
 
     const ok = assertPhase3RehearsalFixture({

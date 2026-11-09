@@ -60,31 +60,76 @@ export async function GET(request: Request) {
         )
       ).flat();
 
+  const venueIds = [...new Set(rows.map((u) => u.venueId))];
+  const venueNameById = new Map<string, string>();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && serviceKey && venueIds.length > 0) {
+    const filter = venueIds.map(encodeURIComponent).join(",");
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/venues?id=in.(${filter})&select=id,name`,
+      {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+        },
+        cache: "no-store",
+      },
+    ).catch(() => null);
+    if (res?.ok) {
+      const venues = (await res.json()) as Array<{ id: string; name: string | null }>;
+      for (const v of venues) {
+        venueNameById.set(v.id, v.name || v.id);
+      }
+    }
+  }
+
+  const holds = (
+    await Promise.all(venueIds.map((id) => store.getActiveHoldForVenue(id)))
+  ).filter((h): h is NonNullable<typeof h> => Boolean(h));
+
+  const holdByVenue = new Map(holds.map((h) => [h.venueId, h]));
+
   return NextResponse.json({
     ok: true,
-    upgrades: rows.map((u) => ({
-      id: u.id,
-      venueId: u.venueId,
-      subscriptionId: u.stripeSubscriptionId,
-      status: u.status,
-      currentPlan: getCatalogEntry(u.currentPlanKey).name,
-      requiredPlan: getCatalogEntry(u.requiredPlanKey).name,
-      peakCount: u.peakCount,
-      peakYear: u.peakYear,
-      effectiveAt: u.scheduledEffectiveAt,
-      noticeSentAt: u.noticeSentAt,
-      noticeDeliveryStatus: u.noticeDeliveryStatus,
-      noticeProviderMessageId: u.noticeProviderMessageId,
-      stripeScheduleId: u.stripeScheduleId,
-      currentAmount: formatUsdFromCents(u.currentListAmountCents),
-      expectedAmount: formatUsdFromCents(u.expectedRecurringAmountCents),
-      discountPercent: u.appliedPercentOff,
-      skippedImminentRenewal: u.skippedImminentRenewal,
-      appliedInvoiceId:
-        typeof u.metadata?.appliedInvoiceId === "string"
-          ? u.metadata.appliedInvoiceId
-          : null,
-      audit: u.audit.slice(-12),
+    upgrades: rows.map((u) => {
+      const hold = holdByVenue.get(u.venueId) ?? null;
+      return {
+        id: u.id,
+        venueId: u.venueId,
+        venueName: venueNameById.get(u.venueId) ?? null,
+        subscriptionId: u.stripeSubscriptionId,
+        status: u.status,
+        currentPlan: getCatalogEntry(u.currentPlanKey).name,
+        requiredPlan: getCatalogEntry(u.requiredPlanKey).name,
+        peakCount: u.peakCount,
+        peakYear: u.peakYear,
+        effectiveAt: u.scheduledEffectiveAt,
+        noticeSentAt: u.noticeSentAt,
+        noticeDeliveryStatus: u.noticeDeliveryStatus,
+        noticeProviderMessageId: u.noticeProviderMessageId,
+        stripeScheduleId: u.stripeScheduleId,
+        currentAmount: formatUsdFromCents(u.currentListAmountCents),
+        expectedAmount: formatUsdFromCents(u.expectedRecurringAmountCents),
+        discountPercent: u.appliedPercentOff,
+        skippedImminentRenewal: u.skippedImminentRenewal,
+        appliedInvoiceId:
+          typeof u.metadata?.appliedInvoiceId === "string"
+            ? u.metadata.appliedInvoiceId
+            : null,
+        holdActive: Boolean(hold),
+        holdId: hold?.id ?? null,
+        audit: u.audit.slice(-12),
+      };
+    }),
+    holds: holds.map((h) => ({
+      id: h.id,
+      venueId: h.venueId,
+      stripeSubscriptionId: h.stripeSubscriptionId,
+      reason: h.reason,
+      placedBy: h.placedBy,
+      placedAt: h.placedAt,
+      active: h.active,
     })),
   });
 }
