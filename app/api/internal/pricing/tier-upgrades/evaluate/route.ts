@@ -10,6 +10,7 @@ import {
   mapEventRowsToVolumeInputs,
   resolveSaasStripeSecretKey,
   type EventVolumeRow,
+  type StripeSubscriptionLike,
 } from "@shared/pricing";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -109,9 +110,9 @@ export async function POST(request: Request) {
     if (!subscriptionId) continue;
 
     try {
-      const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+      const sub = (await stripe.subscriptions.retrieve(subscriptionId, {
         expand: ["discounts.source.coupon", "items.data.price"],
-      });
+      })) as StripeSubscriptionLike;
       const snapshot = billingSnapshotFromStripeSubscription(sub);
       if (!snapshot) {
         results.push({
