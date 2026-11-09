@@ -111,7 +111,10 @@ export {
   type GroupOrgStore,
 } from "./group-org-store";
 
-export { createPostgresGroupOrgStore } from "./group-org-store-postgres";
+// Postgres adapter is server-only — import from
+// `@shared/pricing/group-org-store-postgres` in service-role routes.
+// Do not re-export it from this barrel (marketing Client Components import
+// readiness helpers from here).
 
 export {
   resolveReservationGroupEligibility,

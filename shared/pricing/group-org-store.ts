@@ -3,12 +3,6 @@
  * Memory for unit tests; Postgres when CRM service-role is configured.
  */
 
-import { randomUUID } from "node:crypto";
-
-import {
-  crmSupabaseConfigured,
-  usePostgresCrmStore,
-} from "../relationships/pg-client";
 import type {
   GroupBillingAdjustmentRecord,
   GroupBillingAdjustmentStatus,
@@ -18,6 +12,22 @@ import type {
   OrganizationMembershipRecord,
   SaasOrganizationRecord,
 } from "./group-types";
+
+function randomUUID(): string {
+  return globalThis.crypto.randomUUID();
+}
+
+function crmSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return Boolean(url?.trim() && key?.trim());
+}
+
+function usePostgresCrmStore(): boolean {
+  if (process.env.HTC_CRM_STORE === "file") return false;
+  if (process.env.HTC_CRM_STORE === "postgres") return true;
+  return crmSupabaseConfigured();
+}
 
 export type GroupOrgStore = {
   durable: boolean;
@@ -485,11 +495,18 @@ export function preferPostgresGroupOrgStore(): boolean {
 
 export function getGroupOrgStore(): GroupOrgStore {
   if (testStore) return testStore;
+  // Never load the Postgres adapter into a browser / Client Component graph.
+  if (typeof window !== "undefined") {
+    return createMemoryGroupOrgStore();
+  }
   if (preferPostgresGroupOrgStore()) {
     if (!postgresSingleton) {
-      // Lazy require avoids pulling Supabase into pure unit tests.
+      // Lazy require + webpackIgnore keep marketing Client Components from
+      // resolving the service-role Postgres module.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { createPostgresGroupOrgStore } = require("./group-org-store-postgres") as {
+      const { createPostgresGroupOrgStore } = require(
+        /* webpackIgnore: true */ "./group-org-store-postgres",
+      ) as {
         createPostgresGroupOrgStore: () => GroupOrgStore;
       };
       postgresSingleton = createPostgresGroupOrgStore();
