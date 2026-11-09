@@ -692,11 +692,8 @@ describe("Phase 5 lifecycle + Phase 3/4 compatibility", () => {
       currentStripePriceId: stripeState.price,
     });
 
-    const clearUpdate = updates.find(
-      (u) =>
-        Array.isArray(u.discounts) && (u.discounts as unknown[]).length === 0,
-    );
-    assert.ok(clearUpdate, "expected discounts: [] clear update");
+    const clearUpdate = updates.find((u) => u.discounts === "");
+    assert.ok(clearUpdate, "expected discounts: \"\" clear update");
     assert.equal(stripeState.coupon, null);
   });
 

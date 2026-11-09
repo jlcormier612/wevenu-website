@@ -343,10 +343,10 @@ export async function executeFounderBillingChange(input: {
     proration_behavior: "none",
   };
 
-  // Prefer empty array for Stripe API 2024+ discount removal. An empty string
-  // can be ignored or mis-encoded by some SDK serializers, leaving the coupon.
+  // Stripe Node encodes discounts:"" reliably for removal (same as Phase 4).
+  // Empty array can be dropped by serializers; keep "" as the primary clear.
   if (desiredCoupon === null) {
-    params.discounts = [];
+    params.discounts = "";
   } else if (typeof desiredCoupon === "string") {
     params.discounts = [{ coupon: desiredCoupon }];
   }
@@ -366,13 +366,13 @@ export async function executeFounderBillingChange(input: {
   let confirmedCoupon = couponIdOf(after);
   const confirmedPrice = primaryItem(after)?.priceId ?? null;
 
-  // Fallback clear if empty-array update did not remove the discount.
+  // Fallback: retry clear once with a distinct idempotency key if needed.
   if (desiredCoupon === null && confirmedCoupon) {
     await input.stripe.subscriptions.update(
       input.subscriptionId,
       { proration_behavior: "none", discounts: "" },
       {
-        idempotencyKey: `${input.idempotencyKey}:clear`.slice(0, 255),
+        idempotencyKey: `${input.idempotencyKey}:clear-retry`.slice(0, 255),
       },
     );
     after = await input.stripe.subscriptions.retrieve(

@@ -573,11 +573,33 @@ export async function reconcileVenueFounderPricing(
     nowIso: input.nowIso,
   });
 
+  const desiredCoupon =
+    "desiredStripeCouponId" in refreshedDecision
+      ? refreshedDecision.desiredStripeCouponId
+      : null;
+  const desiredPrice =
+    "desiredStripePriceId" in refreshedDecision
+      ? refreshedDecision.desiredStripePriceId
+      : null;
+  // Include desired Stripe targets + key version so parameter changes
+  // (e.g. discounts "" → []) never collide with prior idempotent attempts.
+  const idempotencyKey = [
+    "founder-reconcile",
+    "v2",
+    input.venueId,
+    refreshedDecision.action,
+    relatedId ?? "none",
+    desiredCoupon ?? "nocoupon",
+    desiredPrice ?? "noprice",
+    input.currentStripeCouponId ?? "curcoupon-none",
+    input.currentStripePriceId ?? "curprice-none",
+  ].join(":");
+
   const exec = await executeFounderBillingChange({
     stripe: ctx.stripe,
     subscriptionId: input.stripeSubscriptionId,
     decision: refreshedDecision,
-    idempotencyKey: `founder-reconcile-${input.venueId}-${refreshedDecision.action}-${relatedId ?? "none"}`,
+    idempotencyKey,
     productId: ctx.saasProductId,
     arrangement,
   });
