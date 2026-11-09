@@ -153,10 +153,7 @@ export {
   type StripeSubscriptionLike,
 } from "./tier-upgrade-stripe-snapshot";
 
-export {
-  resolveSaasStripeSecretKey,
-  createSaasStripeClient,
-} from "./tier-upgrade-stripe-client";
+export { resolveSaasStripeSecretKey } from "./tier-upgrade-stripe-client";
 
 export {
   htcOwnsSchedule,

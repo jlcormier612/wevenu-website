@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import {
   assertVenueSubscriptionIsolation,
   billingSnapshotFromStripeSubscription,
-  createSaasStripeClient,
   evaluateAndPersistTierUpgrade,
   getPricingOfferStore,
   getTierUpgradeStore,
@@ -13,6 +12,7 @@ import {
   type StripeSubscriptionLike,
 } from "@shared/pricing";
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { createSaasStripeClient } from "@/lib/billing/saas-stripe";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";
