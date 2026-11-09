@@ -1,0 +1,57 @@
+{
+  "phase": 4,
+  "asOf": "2026-11-09T21:20:00Z",
+  "servingSha": "a3073ab0c2782300ad4011e507c59753e0d29eb0",
+  "implementationCommits": [
+    "3bc6335d",
+    "06c209c7",
+    "c413aaa4",
+    "29258f95",
+    "68701ae6",
+    "a3073ab0"
+  ],
+  "migration": {
+    "file": "20270112120000_saas_pricing_phase4_organizations.sql",
+    "applyRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/42691354359",
+    "result": "Applied and recorded",
+    "tablesObserved": [
+      "saas_organizations",
+      "saas_organization_memberships",
+      "saas_organization_admins",
+      "saas_org_checkout_reservations",
+      "saas_group_eligibility_snapshots",
+      "saas_group_billing_adjustments"
+    ]
+  },
+  "deploys": {
+    "codeDeploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/42695923144",
+    "flagActivationDeploy": "https://github.com/jlcormier612/wevenu-website/actions/runs/42698232593"
+  },
+  "stripeTest": {
+    "groupCouponId": "htc_group_10_forever",
+    "appliesToProducts": [
+      "prod_V4AgrDDqyO0YGF",
+      "prod_V63nmGj2zZHfLv",
+      "prod_V63nOGBb59uzct"
+    ],
+    "disposableProof": {
+      "subscriptionId": "sub_1UZzfUErUqJH7nktaURHuKKc",
+      "invoiceId": "in_1UZzfUErUqJH7nktJ2FQRU5T",
+      "amountDueCents": 17910,
+      "discountAmountCents": 1990,
+      "cancelled": true
+    }
+  },
+  "liveEnv": {
+    "PRICING_GROUP_V1": "true",
+    "STRIPE_GROUP_PERCENT_COUPON_ID": "htc_group_10_forever",
+    "TIER_UPGRADE_APPLY_STRIPE": "true"
+  },
+  "automatedTests": {
+    "sharedPricing": "112/112 PASS (earlier full suite)",
+    "phase4Focused": "22/22 PASS",
+    "acceptanceHarnessAH": "PASS (docs/qa/htc-phase4-group-pricing/acceptance-results.json)"
+  },
+  "phase3Preserved": true,
+  "residual": "Authenticated browser Add Another Venue → Checkout Session → webhook → activation → Property A prospective reconcile not yet walked end-to-end against a disposable Sandbox venue login."
+}
