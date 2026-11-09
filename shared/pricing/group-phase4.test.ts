@@ -283,6 +283,20 @@ describe("Phase 4 Checkout resolution", () => {
     assert.equal(pricing.groupPercentOff, GROUP_PERCENT_OFF);
   });
 
+  it("Add Another Venue suppresses Founding so Group coupon applies while soft-100 remains", () => {
+    const pricing = resolveLaunchCheckoutPricing({
+      plan: "starter",
+      earnedFoundingVenueCount: 10,
+      groupEligible: true,
+      honorFoundingIssued: false,
+    });
+    assert.equal(pricing.appliedOfferType, "group_pct");
+    assert.equal(pricing.mode, "launch_group_percent");
+    assert.equal(pricing.foundingIssued, false);
+    assert.equal(pricing.foundingCouponId, "coupon_group_10");
+    assert.equal(pricing.expectedRecurringAmountCents, 17910);
+  });
+
   it("Founding still wins over Group at Checkout when both apply", () => {
     const pricing = resolveLaunchCheckoutPricing({
       plan: "growing",

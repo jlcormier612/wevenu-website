@@ -319,6 +319,13 @@ export async function POST(request: Request) {
             programActive: enrollment.founderProgramActive,
             wevenDeclared,
             groupEligible,
+            // Add Another Venue: do not consume Founding soft-100 slots on
+            // organization-linked properties. Group 10% is the intended offer
+            // when the reservation bridges eligibility (Founding still wins
+            // over Group on ordinary first-venue Checkout).
+            ...(organizationReservationId && groupEligible
+              ? { honorFoundingIssued: false }
+              : {}),
           },
         })
       : getCheckoutPricingForPlan(plan, { founder: founderActive });

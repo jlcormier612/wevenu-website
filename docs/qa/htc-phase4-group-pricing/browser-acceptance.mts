@@ -14,7 +14,7 @@ mkdirSync(OUT, { recursive: true });
 const APP = "https://app.sandbox.hellotocheers.com";
 const MARKETING = "https://sandbox.hellotocheers.com";
 const WS = "https://workspace.sandbox.hellotocheers.com";
-const EXPECTED_SHA = "c3b5b4aca2590502ee965f2196d9a5d689dae9af";
+const EXPECTED_SHA = "d33510898c7c8184b0782fbccea1a49a81d588b9";
 const EMAIL = "jennifer@hellotocheers.com";
 const JEN = "2fa73101-337b-4530-8c77-f3c272c5463e";
 const PROP_B_NAME = `[DISPOSABLE-P4-PROP-B] ${Date.now()}`;
@@ -316,9 +316,17 @@ async function main() {
     if (await lastName.count()) await lastName.first().fill("Cormier");
     if (await venueNameInput.count()) await venueNameInput.first().fill(PROP_B_NAME);
 
-    // Legal acceptance checkbox (second checkbox after welcome-back)
+    // Must NOT claim Weven — Group 10% is the offer under test (Weven 20% would win).
+    const wevenNo = page.getByRole("radio", { name: /No,? I.?m a new customer/i });
+    if (await wevenNo.count()) {
+      await wevenNo.first().check({ force: true }).catch(() => wevenNo.first().click());
+    } else {
+      await page.getByText(/No,? I.?m a new customer/i).click().catch(() => {});
+    }
+
+    // Legal acceptance checkbox
     const legal = page
-      .locator('label')
+      .locator("label")
       .filter({ hasText: /Terms of Service/i })
       .locator('input[type="checkbox"]');
     if (await legal.count()) {
@@ -329,34 +337,103 @@ async function main() {
       if (n > 0) await boxes.nth(n - 1).check({ force: true }).catch(() => {});
     }
 
-    // Select Gather / Self-guided package card if visible
-    const gatherCard = page.locator("article").filter({ hasText: /Gather|Self.?guided|Self.?setup/i }).first();
-    if (await gatherCard.count()) {
-      const selectBtn = gatherCard.getByRole("button").first();
-      if (await selectBtn.count()) await selectBtn.click().catch(() => {});
+    // Capture checkout API via route interception (avoids lost response bodies
+    // when the page immediately navigates to Stripe Checkout).
+    let checkoutJson: Record<string, unknown> | null = null;
+    let checkoutStatus = 0;
+    await page.route("**/api/stripe/checkout", async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      checkoutStatus = response.status();
+      const text = await response.text();
+      try {
+        checkoutJson = text ? (JSON.parse(text) as Record<string, unknown>) : null;
+      } catch {
+        checkoutJson = { raw: text };
+      }
+      await route.fulfill({
+        status: response.status(),
+        headers: response.headers(),
+        body: text,
+      });
+    });
+
+    // Click Continue on the self-setup card only — never White Glove (.last()
+    // previously selected White Glove and charged the $499 add-on).
+    const selfCard = page
+      .locator("article")
+      .filter({ hasText: /I.?ll set it up myself/i })
+      .first();
+    if (await selfCard.count()) {
+      await selfCard
+        .getByRole("button", { name: /Continue to Checkout/i })
+        .click();
+    } else {
+      await page
+        .getByRole("button", { name: /Continue to Checkout/i })
+        .first()
+        .click();
     }
 
-    // Capture checkout API response for amount proof
-    const checkoutRespPromise = page.waitForResponse(
-      (r) => r.url().includes("/api/stripe/checkout") && r.request().method() === "POST",
-      { timeout: 90000 },
-    );
+    // Wait for either API capture or Stripe redirect.
+    for (let i = 0; i < 60 && !checkoutJson; i++) {
+      if (/checkout\.stripe\.com/.test(page.url())) break;
+      await page.waitForTimeout(500);
+    }
+    await page.unroute("**/api/stripe/checkout").catch(() => {});
 
-    const continueBtn = page.getByRole("button", {
-      name: /Continue with this plan|Continue|Proceed|Start checkout|Checkout/i,
-    }).last();
-    await continueBtn.click();
+    // Fallback: resolve session id from Stripe Checkout URL if body was lost.
+    let sessionIdFromUrl: string | null = null;
+    if (!checkoutJson?.session_id) {
+      try {
+        await page.waitForURL(/checkout\.stripe\.com/, { timeout: 45000 });
+      } catch {
+        /* continue */
+      }
+      const m = page.url().match(/cs_test_[A-Za-z0-9]+/);
+      sessionIdFromUrl = m?.[0] ?? null;
+    }
 
-    const checkoutResp = await checkoutRespPromise;
-    const checkoutJson = (await checkoutResp.json()) as Record<string, unknown>;
+    const stripeKeyEarly = process.env.STRIPE_SECRET_KEY!;
+    if ((!checkoutJson || !checkoutJson.session_id) && sessionIdFromUrl) {
+      const sess = await (
+        await fetch(
+          `https://api.stripe.com/v1/checkout/sessions/${sessionIdFromUrl}`,
+          { headers: { Authorization: `Bearer ${stripeKeyEarly}` } },
+        )
+      ).json();
+      checkoutJson = {
+        session_id: sess.id,
+        url: page.url(),
+        applied_offer_type: sess.metadata?.applied_offer_type,
+        group_eligible: sess.metadata?.group_eligible,
+        expected_recurring_amount_cents: Number(
+          sess.metadata?.expected_recurring_amount_cents || 0,
+        ),
+        org_reservation_id: sess.metadata?.org_reservation_id,
+        stripe_session_fallback: true,
+        amount_total: sess.amount_total,
+        total_details: sess.total_details,
+        metadata: sess.metadata,
+      };
+      checkoutStatus = 200;
+    }
+
+    if (!checkoutJson) {
+      throw new Error(`Checkout API returned empty body (status ${checkoutStatus})`);
+    }
     save("05-checkout-api.json", JSON.stringify(checkoutJson, null, 2));
     step("C_checkout_api", {
-      status: checkoutResp.status(),
+      status: checkoutStatus,
       applied_offer_type: checkoutJson.applied_offer_type,
       group_eligible: checkoutJson.group_eligible,
       expected_recurring_amount_cents: checkoutJson.expected_recurring_amount_cents,
       session_id: checkoutJson.session_id,
       org_reservation_id: checkoutJson.org_reservation_id,
+      stripe_session_fallback: Boolean(checkoutJson.stripe_session_fallback),
     });
 
     if (checkoutJson.expected_recurring_amount_cents !== 17910) {
@@ -369,59 +446,132 @@ async function main() {
         `Expected applied_offer_type group_pct, got ${checkoutJson.applied_offer_type}`,
       );
     }
-    if (!checkoutJson.url || typeof checkoutJson.url !== "string") {
-      throw new Error("Checkout Session URL missing");
+    if (!checkoutJson.session_id) {
+      throw new Error("Checkout Session id missing");
     }
 
     // --- D. Stripe Test payment ---
-    await page.goto(checkoutJson.url as string, {
-      waitUntil: "domcontentloaded",
-      timeout: 90000,
-    });
+    if (!/checkout\.stripe\.com/.test(page.url())) {
+      if (typeof checkoutJson.url === "string" && checkoutJson.url.includes("stripe.com")) {
+        await page.goto(checkoutJson.url, {
+          waitUntil: "domcontentloaded",
+          timeout: 90000,
+        });
+      } else {
+        throw new Error("Not on Stripe Checkout and no session URL available");
+      }
+    }
     await page.waitForTimeout(4000);
     await shot(page, "06-stripe-checkout");
 
-    // Fill Stripe Checkout
-    const email = page.locator('input[type="email"], input[name="email"]').first();
-    if (await email.count()) {
-      await email.fill(EMAIL);
-    }
-    // Card fields in iframes
-    const cardNumber = page.frameLocator('iframe[name*="cardNumber"], iframe[title*="card number" i]').locator("input").first();
-    // Stripe often uses Payment Element
-    const cardFrame = page.frameLocator("iframe").filter({ has: page.locator('input[name="cardnumber"], input[autocomplete="cc-number"]') }).first();
-    // Try common selectors
-    try {
-      await page.getByPlaceholder(/card number/i).fill("4242424242424242", { timeout: 5000 });
-    } catch {
-      // iframe path
-      const frames = page.frames();
-      for (const f of frames) {
-        const input = f.locator('input[name="cardnumber"], input[autocomplete="cc-number"], input[placeholder*="Card number" i]');
-        if (await input.count()) {
-          await input.fill("4242424242424242");
-          break;
+    // Fill Stripe Checkout (Payment Element / Hosted Checkout)
+    await page.getByRole("radio", { name: /^card$/i }).click({ force: true }).catch(() => {});
+    await page.getByTestId("card-accordion-item-button").click({ force: true }).catch(() => {});
+    await page.waitForTimeout(1500);
+
+    async function fillFirst(sels: string[], value: string, seq = false) {
+      for (const frame of [page.mainFrame(), ...page.frames()]) {
+        for (const sel of sels) {
+          const loc = frame.locator(sel).first();
+          if (!(await loc.count().catch(() => 0))) continue;
+          const visible = await loc.isVisible().catch(() => false);
+          if (!visible && frame === page.mainFrame()) continue;
+          await loc.click({ force: true }).catch(() => {});
+          if (seq) {
+            await loc.fill("").catch(() => {});
+            await loc
+              .pressSequentially(value, { delay: 25 })
+              .catch(async () => loc.fill(value));
+          } else {
+            await loc.fill(value).catch(() => {});
+          }
+          return sel;
         }
       }
+      return null;
     }
-    for (const f of page.frames()) {
-      const exp = f.locator('input[name="exp-date"], input[autocomplete="cc-exp"], input[placeholder*="MM" i]');
-      if (await exp.count()) await exp.fill("1234");
-      const cvc = f.locator('input[name="cvc"], input[autocomplete="cc-csc"], input[placeholder*="CVC" i]');
-      if (await cvc.count()) await cvc.fill("123");
+
+    const emailFilled = await fillFirst(
+      ['input[type="email"]', 'input[name="email"]'],
+      EMAIL,
+    );
+    const cardFilled = await fillFirst(
+      [
+        'input[autocomplete="cc-number"]',
+        'input[name="cardnumber"]',
+        'input[placeholder*="1234"]',
+        "#cardNumber",
+      ],
+      "4242424242424242",
+      true,
+    );
+    const expFilled = await fillFirst(
+      [
+        'input[autocomplete="cc-exp"]',
+        'input[name="exp-date"]',
+        'input[placeholder*="MM"]',
+        "#cardExpiry",
+      ],
+      "1230",
+      true,
+    );
+    const cvcFilled = await fillFirst(
+      [
+        'input[autocomplete="cc-csc"]',
+        'input[name="cvc"]',
+        'input[placeholder*="CVC"]',
+        "#cardCvc",
+      ],
+      "123",
+      true,
+    );
+    await fillFirst(
+      [
+        'input[autocomplete="cc-name"]',
+        'input[name="billingName"]',
+        'input[name="name"]',
+      ],
+      "Jennifer Cormier",
+    );
+    await fillFirst(
+      [
+        'input[autocomplete="postal-code"]',
+        'input[name="billingPostalCode"]',
+        'input[name="postalCode"]',
+        'input[placeholder*="ZIP" i]',
+      ],
+      "10001",
+      true,
+    );
+    save(
+      "07-stripe-fill-log.json",
+      JSON.stringify({ emailFilled, cardFilled, expFilled, cvcFilled }, null, 2),
+    );
+    if (!cardFilled) {
+      throw new Error("Stripe Checkout card number field not found");
     }
-    // Billing name / address
-    const nameInput = page.locator('input[name="billingName"], input[name="name"]').first();
-    if (await nameInput.count()) await nameInput.fill("Jennifer Cormier");
-    const zip = page.locator('input[name="billingPostalCode"], input[placeholder*="ZIP" i]').first();
-    if (await zip.count()) await zip.fill("10001");
 
     await shot(page, "07-stripe-filled");
-    const submit = page.getByRole("button", { name: /Subscribe|Pay|Complete|Start trial/i }).first();
-    await submit.click({ timeout: 15000 }).catch(async () => {
-      await page.locator('button[type="submit"]').first().click();
-    });
-    await page.waitForTimeout(8000);
+    const submit = page
+      .getByRole("button", { name: /^Subscribe$|^Pay$|^Start trial$/i })
+      .or(page.locator('button[type="submit"]').filter({ hasText: /Subscribe|Pay|Start trial/i }))
+      .first();
+    await submit.waitFor({ state: "visible", timeout: 20000 });
+    for (let i = 0; i < 40; i++) {
+      const disabled = await submit.getAttribute("disabled");
+      const aria = await submit.getAttribute("aria-disabled");
+      if (!disabled && aria !== "true") break;
+      await page.waitForTimeout(400);
+    }
+    await submit.click({ timeout: 15000 });
+    try {
+      await page.waitForURL(
+        /pricing\/success|hellotocheers\.com\/(pricing|activate|onboarding)/i,
+        { timeout: 120000 },
+      );
+    } catch {
+      await page.waitForTimeout(10000);
+    }
     await shot(page, "08-after-stripe-submit");
     save("08-url.txt", page.url());
 
