@@ -1,0 +1,18 @@
+{
+  "id": "9f5d3033-1a6f-4d29-b814-8df99b365bca",
+  "organization_id": "90efb537-aa7e-4302-8f38-1c4d6e196d99",
+  "source_venue_id": "4609a143-556c-4eb3-b64e-fc64f2dc19f8",
+  "checkout_offer_id": "f838b66c-809d-4eba-926a-3f45a99cc624",
+  "stripe_checkout_session_id": "cs_test_a1R3xaWHxAj4MzknEqy5dESuAKd79xBrRRLNQSEZA5I8Gar3gu0l9lrmLa",
+  "status": "reserved",
+  "counts_toward_eligibility": true,
+  "plan_key": "starter",
+  "expires_at": null,
+  "fulfilled_venue_id": null,
+  "fulfilled_at": null,
+  "released_at": null,
+  "release_reason": null,
+  "created_by_user_id": "2fa73101-337b-4530-8c77-f3c272c5463e",
+  "created_at": "2026-11-09T22:41:19.503375+00:00",
+  "updated_at": "2026-11-09T22:41:27.158+00:00"
+}

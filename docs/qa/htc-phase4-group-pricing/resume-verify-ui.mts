@@ -234,32 +234,24 @@ async function main() {
       sameOrg: orgApiB.body?.organization?.id === ORG,
     });
 
-    // Founder CRM — workspace session via same magic-link pattern if possible
-    const genWs = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
-      method: "POST",
-      headers: {
-        apikey: service,
-        Authorization: `Bearer ${service}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "magiclink",
-        email: EMAIL,
-        options: { redirect_to: `${WS}/organizations` },
-      }),
-    });
-    const linkWs = (await genWs.json()) as { hashed_token?: string };
-    await page.goto(
-      `${WS}/auth/confirm?token_hash=${encodeURIComponent(linkWs.hashed_token!)}&type=magiclink&next=${encodeURIComponent("/organizations")}`,
-      { waitUntil: "domcontentloaded", timeout: 90000 },
-    ).catch(() => {});
-    await page.waitForTimeout(4000);
+    // Founder CRM — workspace uses program4 password login (not Supabase magic link).
+    await page.goto(`${WS}/login`, { waitUntil: "networkidle", timeout: 90000 });
+    await page.locator('input[type="email"], input[name="email"]').first().fill(EMAIL);
+    await page
+      .locator('input[type="password"], input[name="password"]')
+      .first()
+      .fill("cheers-demo");
+    await page.getByRole("button", { name: /sign in|log in|continue/i }).click();
+    await page.waitForTimeout(3000);
     await page.goto(`${WS}/organizations`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle",
       timeout: 90000,
     });
     await page.waitForTimeout(3000);
-    await page.screenshot({ path: `${OUT}/resume-24-crm-organizations.png`, fullPage: true });
+    await page.screenshot({
+      path: `${OUT}/resume-24-crm-organizations.png`,
+      fullPage: true,
+    });
     const crmText = await page.locator("body").innerText();
     const crmApi = await page.evaluate(async () => {
       const res = await fetch("/api/relationships/organizations");
@@ -271,14 +263,27 @@ async function main() {
       }
     }).catch((e) => ({ status: 0, body: String(e) }));
     writeFileSync(`${OUT}/resume-crm-api.json`, JSON.stringify(crmApi, null, 2));
+    const orgs = Array.isArray((crmApi.body as { organizations?: unknown[] })?.organizations)
+      ? (crmApi.body as { organizations: Array<Record<string, unknown>> }).organizations
+      : [];
+    const ourOrg = orgs.find((o) => o.id === ORG || /DISPOSABLE-P4/i.test(JSON.stringify(o)));
     step("J_crm", {
       url: page.url(),
-      hasDisposable: /DISPOSABLE-P4/i.test(crmText),
+      hasDisposable: /DISPOSABLE-P4/i.test(crmText) || Boolean(ourOrg),
       apiStatus: crmApi.status,
-      orgCount: Array.isArray((crmApi.body as any)?.organizations)
-        ? (crmApi.body as any).organizations.length
+      orgCount: orgs.length,
+      ourOrg: ourOrg
+        ? {
+            id: ourOrg.id,
+            qualifyingVenueCount: ourOrg.qualifyingVenueCount,
+            groupEligible: ourOrg.groupEligible,
+            memberCount: Array.isArray(ourOrg.members) ? ourOrg.members.length : null,
+          }
         : null,
     });
+    if (crmApi.status !== 200 || !ourOrg) {
+      throw new Error("Founder CRM organizations verification failed");
+    }
 
     report.ok = true;
     step("DONE", { ok: true });
