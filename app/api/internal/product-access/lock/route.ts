@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
+import {
+  isVenueUuid,
+  resolveVenueFromCandidates,
+  type VenueResolution,
+} from "@/lib/entitlement/resolve-venue";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -11,24 +16,25 @@ export const runtime = "nodejs";
  * Auth: Bearer PRODUCT_SYNC_API_KEY
  *
  * Body:
- *   { venueId?, ownerEmail?, stripeCustomerId?, locked: boolean, reason?, relationshipId? }
+ *   { venueId?, stripeCustomerId?, locked: boolean, reason?, relationshipId? }
  *
- * Resolves venue by UUID first, then owner email (venues.email / venue_staff).
+ * Venue resolution never uses owner email. Prefer an explicit venues.id UUID,
+ * then an unambiguous saas_stripe_customer_id. Ambiguous or missing identity
+ * fails closed without mutating any venue.
+ *
  * Sets access_disabled + account_status; stores saas_stripe_customer_id for portal.
  * Never deletes data.
  */
 
 type LockBody = {
   venueId?: string | null;
+  /** Accepted for audit/compat only — never used for venue selection. */
   ownerEmail?: string | null;
   stripeCustomerId?: string | null;
   locked?: boolean;
   reason?: string | null;
   relationshipId?: string | null;
 };
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function authorize(request: Request): boolean {
   const expected = process.env.PRODUCT_SYNC_API_KEY?.trim();
@@ -38,49 +44,44 @@ function authorize(request: Request): boolean {
   return Boolean(token && token === expected);
 }
 
-async function resolveVenueId(
+async function resolveVenueForLock(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
-  venueId: string | null | undefined,
-  ownerEmail: string | null | undefined,
-): Promise<{ venueId: string | null; how: string }> {
-  if (venueId && UUID_RE.test(venueId.trim())) {
+  input: {
+    venueId?: string | null;
+    stripeCustomerId?: string | null;
+  },
+): Promise<VenueResolution> {
+  const explicit = input.venueId?.trim() || "";
+  if (explicit && isVenueUuid(explicit)) {
     const { data, error } = await admin
       .from("venues")
       .select("id")
-      .eq("id", venueId.trim())
+      .eq("id", explicit)
       .maybeSingle();
     if (error) throw error;
-    if (data?.id) return { venueId: data.id as string, how: "venueId" };
+    if (data?.id) {
+      return { ok: true, venueId: data.id as string, how: "venue_id" };
+    }
   }
 
-  const email = ownerEmail?.trim().toLowerCase();
-  if (!email) return { venueId: null, how: "none" };
-
-  const { data: byVenueEmail, error: veErr } = await admin
-    .from("venues")
-    .select("id")
-    .ilike("email", email)
-    .limit(1)
-    .maybeSingle();
-  if (veErr) throw veErr;
-  if (byVenueEmail?.id) {
-    return { venueId: byVenueEmail.id as string, how: "venues.email" };
+  const customerId = input.stripeCustomerId?.trim() || "";
+  let customerMatches: string[] = [];
+  if (customerId) {
+    const { data, error } = await admin
+      .from("venues")
+      .select("id")
+      .eq("saas_stripe_customer_id", customerId);
+    if (error) throw error;
+    customerMatches = ((data as { id: string }[] | null) ?? []).map((row) => row.id);
   }
 
-  const { data: byStaff, error: stErr } = await admin
-    .from("venue_staff")
-    .select("venue_id")
-    .ilike("email", email)
-    .eq("is_owner", true)
-    .limit(1)
-    .maybeSingle();
-  if (stErr) throw stErr;
-  if (byStaff?.venue_id) {
-    return { venueId: byStaff.venue_id as string, how: "venue_staff.email" };
-  }
-
-  return { venueId: null, how: "none" };
+  // ownerEmail is intentionally ignored — multi-venue purchasers share email.
+  return resolveVenueFromCandidates({
+    explicitVenueId: null,
+    subscriptionMatches: [],
+    customerMatches,
+  });
 }
 
 export async function POST(request: Request) {
@@ -118,16 +119,25 @@ export async function POST(request: Request) {
 
   try {
     const admin = createAdminClient();
-    const resolved = await resolveVenueId(admin, body.venueId, body.ownerEmail);
+    const resolved = await resolveVenueForLock(admin, {
+      venueId: body.venueId,
+      stripeCustomerId: body.stripeCustomerId,
+    });
 
-    if (!resolved.venueId) {
+    if (!resolved.ok) {
       const detail =
-        "No matching product venue (need a real venues.id UUID or owner email match). CRM suspend still applies; product hard lock skipped.";
+        resolved.reason === "ambiguous"
+          ? `Ambiguous product venue match via ${resolved.how} (${resolved.candidateIds.length} candidates). Provide productSync.venueId UUID. No venue was changed.`
+          : "No matching product venue (need a real venues.id UUID, or a Stripe Customer that maps to exactly one venue). CRM suspend still applies; product hard lock skipped.";
       console.warn("[product-access/lock]", {
         relationshipId: body.relationshipId ?? null,
         venueId: body.venueId ?? null,
-        ownerEmail: body.ownerEmail ?? null,
+        stripeCustomerId: body.stripeCustomerId ?? null,
+        ownerEmailIgnored: Boolean(body.ownerEmail?.trim()),
         locked: body.locked,
+        reason: resolved.reason,
+        how: resolved.how,
+        candidateIds: resolved.candidateIds,
         detail,
       });
       return NextResponse.json({
@@ -135,6 +145,9 @@ export async function POST(request: Request) {
         error: detail,
         venueId: null,
         detail,
+        reason: resolved.reason,
+        how: resolved.how,
+        candidateIds: resolved.candidateIds,
       });
     }
 
@@ -215,12 +228,14 @@ export async function POST(request: Request) {
       how: resolved.how,
       locked: body.locked,
       reason: body.reason ?? null,
+      ownerEmailIgnored: Boolean(body.ownerEmail?.trim()),
     });
 
     return NextResponse.json({
       ok: true,
       venueId: resolved.venueId,
       detail,
+      how: resolved.how,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

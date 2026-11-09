@@ -1,8 +1,10 @@
 /**
  * Product-app access lock bridge (CRM Suspend ↔ venue hard lock).
  *
- * Prefer updating a real Supabase venue when productSync.venueId is a UUID
- * (or owner email matches a venue). Always records intent on the local
+ * Prefer updating a real Supabase venue when productSync.venueId is a UUID.
+ * Fall back only to stripeCustomerId when the product API can resolve it to
+ * exactly one venue. Owner email is never used for venue selection — one HTC
+ * login may own multiple venues. Always records intent on the local
  * product-sync artifact so simulated provision still has an audit trail.
  *
  * Never deletes venue data.
@@ -140,6 +142,7 @@ async function callProductLockApi(
       },
       body: JSON.stringify({
         venueId: input.venueId ?? null,
+        // Audit/compat only — product lock API ignores email for resolution.
         ownerEmail: input.ownerEmail ?? null,
         stripeCustomerId: input.stripeCustomerId ?? null,
         locked: input.locked,
@@ -186,11 +189,11 @@ export async function applyProductAccessLock(
   input: ProductAccessLockInput,
 ): Promise<ProductAccessLockResult> {
   const hasUuid = isRealVenueUuid(input.venueId);
-  const hasEmail = Boolean(input.ownerEmail?.trim());
+  const hasCustomer = Boolean(input.stripeCustomerId?.trim());
 
-  if (!hasUuid && !hasEmail) {
+  if (!hasUuid && !hasCustomer) {
     const detail =
-      "No productSync.venueId (UUID) and no owner email — CRM suspend recorded; product lock skipped";
+      "No productSync.venueId (UUID) and no stripeCustomerId — CRM suspend recorded; product lock skipped (email is not used for venue selection)";
     console.warn("[product-access-lock]", {
       relationshipId: input.relationshipId,
       locked: input.locked,

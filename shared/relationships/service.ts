@@ -107,7 +107,11 @@ export type PurchaseIdentity = {
 };
 
 export type PurchaseMatchDecision<T extends PurchaseIdentity> =
-  | { action: "reuse"; relationship: T; via: "session" | "subscription" }
+  | {
+      action: "reuse";
+      relationship: T;
+      via: "session" | "subscription" | "unestablished_lead";
+    }
   | { action: "create" }
   | { action: "hold"; relationship: T };
 
@@ -214,8 +218,10 @@ export function resolveSubscriptionLifecycleRelationship<
 
 /**
  * Purchase-only identity. Does not change findExisting (inquiry/contact/newsletter/support).
- * Session id, then subscription id when that row has no other session, then a new
- * session is a new purchase unless the normalized venue name matches — that case holds.
+ * Session id, then subscription id when that row has no other session. Same email +
+ * normalized venue name holds only when that Relationship is already an established
+ * purchase; an unpaid CRM lead reuses so its first subscription can complete even if
+ * checkout-start never bound the session. Email/name never grants access by itself.
  */
 export function decidePurchaseMatch<T extends PurchaseIdentity>(
   relationships: T[],
@@ -270,10 +276,33 @@ export function decidePurchaseMatch<T extends PurchaseIdentity>(
     const sameEmail = relationships.filter(
       (r) => normalizeEmail(r.owner.email) === email,
     );
-    const sameName = sameEmail.find(
+    const sameNameMatches = sameEmail.filter(
       (r) => normalizeVenueName(r.venue.name) === venueKey,
     );
-    if (sameName) return { action: "hold", relationship: sameName };
+    if (sameNameMatches.length > 0) {
+      const established = sameNameMatches.find((r) =>
+        isEstablishedPurchaseRelationship(r, subscriptions),
+      );
+      if (established) {
+        return { action: "hold", relationship: established };
+      }
+      // Exactly one unpaid CRM lead with no checkout session bound yet: attach
+      // the first legitimate purchase (covers checkout-start bind failures).
+      // A draft that already owns a different session, or multiple same-name
+      // drafts, fail closed (hold) rather than merge or create duplicates.
+      if (sameNameMatches.length === 1) {
+        const lead = sameNameMatches[0]!;
+        if (!lead.stripeCheckoutSessionId?.trim()) {
+          return {
+            action: "reuse",
+            relationship: lead,
+            via: "unestablished_lead",
+          };
+        }
+        return { action: "hold", relationship: lead };
+      }
+      return { action: "hold", relationship: sameNameMatches[0]! };
+    }
   }
 
   return { action: "create" };

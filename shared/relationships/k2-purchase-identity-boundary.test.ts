@@ -103,6 +103,84 @@ describe("checkout.session.completed classification", () => {
       assert.equal(decision.relationship.stripeSubscriptionId, "sub_a");
     }
   });
+
+  it("unestablished CRM lead without bound session reuses for first purchase", () => {
+    const lead: PurchaseIdentity = {
+      id: "rel_lead",
+      owner: { email: "lead@example.com" },
+      venue: { name: "Willow Grove" },
+    };
+    const decision = decidePurchaseMatch([lead], [], {
+      email: "lead@example.com",
+      venueName: "Willow Grove",
+      stripeCheckoutSessionId: "cs_first",
+      stripeSubscriptionId: "sub_first",
+    });
+    assert.equal(decision.action, "reuse");
+    if (decision.action === "reuse") {
+      assert.equal(decision.via, "unestablished_lead");
+      assert.equal(decision.relationship.id, "rel_lead");
+    }
+  });
+
+  it("unestablished CRM lead with bound session still reuses via session", () => {
+    const lead: PurchaseIdentity = {
+      id: "rel_lead",
+      owner: { email: "lead@example.com" },
+      venue: { name: "Willow Grove" },
+      stripeCheckoutSessionId: "cs_bound",
+    };
+    const decision = decidePurchaseMatch([lead], [], {
+      email: "lead@example.com",
+      venueName: "Willow Grove",
+      stripeCheckoutSessionId: "cs_bound",
+      stripeSubscriptionId: "sub_first",
+    });
+    assert.equal(decision.action, "reuse");
+    if (decision.action === "reuse") {
+      assert.equal(decision.via, "session");
+      assert.equal(decision.relationship.id, "rel_lead");
+    }
+  });
+
+  it("multiple unestablished same-name drafts hold instead of guessing", () => {
+    const a: PurchaseIdentity = {
+      id: "rel_draft_a",
+      owner: { email: "dup@example.com" },
+      venue: { name: "Twin Hall" },
+    };
+    const b: PurchaseIdentity = {
+      id: "rel_draft_b",
+      owner: { email: "dup@example.com" },
+      venue: { name: "Twin Hall" },
+    };
+    const decision = decidePurchaseMatch([a, b], [], {
+      email: "dup@example.com",
+      venueName: "Twin Hall",
+      stripeCheckoutSessionId: "cs_ambiguous",
+      stripeSubscriptionId: "sub_ambiguous",
+    });
+    assert.equal(decision.action, "hold");
+  });
+
+  it("unestablished lead that already owns a different session holds", () => {
+    const lead: PurchaseIdentity = {
+      id: "rel_lead",
+      owner: { email: "lead@example.com" },
+      venue: { name: "Willow Grove" },
+      stripeCheckoutSessionId: "cs_other",
+    };
+    const decision = decidePurchaseMatch([lead], [], {
+      email: "lead@example.com",
+      venueName: "Willow Grove",
+      stripeCheckoutSessionId: "cs_first",
+      stripeSubscriptionId: "sub_first",
+    });
+    assert.equal(decision.action, "hold");
+    if (decision.action === "hold") {
+      assert.equal(decision.relationship.stripeCheckoutSessionId, "cs_other");
+    }
+  });
 });
 
 describe("subscription.created before checkout.completed", () => {

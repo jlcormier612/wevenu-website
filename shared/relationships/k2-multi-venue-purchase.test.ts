@@ -152,6 +152,39 @@ describe("K2 purchase match", () => {
     }
   });
 
+  it("unpaid CRM lead without session binding reuses for first purchase only", () => {
+    const unpaidLead = rel({
+      id: "rel_unpaid",
+      owner: { email: "owner@example.com" },
+      venue: { name: "New Oak Barn" },
+    });
+    const first = decidePurchaseMatch([unpaidLead], [], {
+      email: "owner@example.com",
+      venueName: "New Oak Barn",
+      stripeCheckoutSessionId: "cs_new_oak",
+      stripeSubscriptionId: "sub_new_oak",
+    });
+    assert.equal(first.action, "reuse");
+    if (first.action === "reuse") {
+      assert.equal(first.via, "unestablished_lead");
+      assert.equal(first.relationship.id, "rel_unpaid");
+    }
+
+    const establishedLead = rel({
+      ...unpaidLead,
+      stripeCheckoutSessionId: "cs_new_oak",
+      stripeSubscriptionId: "sub_new_oak",
+      activationToken: "act_new_oak",
+    });
+    const duplicate = decidePurchaseMatch([establishedLead], [], {
+      email: "owner@example.com",
+      venueName: "New Oak Barn",
+      stripeCheckoutSessionId: "cs_dup_oak",
+      stripeSubscriptionId: "sub_dup_oak",
+    });
+    assert.equal(duplicate.action, "hold");
+  });
+
   it("R findExisting stays email-first and purchase matching is a separate path", () => {
     const src = readFileSync(resolve("shared/relationships/service.ts"), "utf8");
     const findStart = src.indexOf("function findExisting(");
