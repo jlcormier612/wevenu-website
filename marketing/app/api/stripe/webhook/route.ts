@@ -6,6 +6,7 @@ import {
   loadLiveStore,
   reactivateRelationshipAccount,
   recordPaymentFailed,
+  resolveRelationshipForSubscription,
   type DunningDay,
 } from "@shared/relationships";
 import { createVenueEnrollment } from "@/lib/crm/service";
@@ -333,13 +334,25 @@ async function handleSubscriptionLifecycle(
     const { syncStripeEntitlementToProduct } = await import(
       "@shared/product-sync/entitlement-sync"
     );
-    const { loadLiveStore } = await import("@shared/relationships");
     const store = await loadLiveStore();
-    const rel =
-      store.relationships.find((r) => r.stripeSubscriptionId === subscription.id) ||
-      (customerId
-        ? store.relationships.find((r) => r.stripeCustomerId === customerId)
-        : undefined);
+    const relResolution = resolveRelationshipForSubscription(
+      store.relationships,
+      {
+        stripeSubscriptionId: subscription.id,
+        stripeCustomerId: customerId,
+      },
+    );
+    if (!relResolution.ok && relResolution.reason === "ambiguous") {
+      console.warn(
+        "[stripe] entitlement sync skipped CRM venue hint — ambiguous relationship",
+        {
+          subscriptionId: subscription.id,
+          customerId,
+          candidateIds: relResolution.candidateIds,
+        },
+      );
+    }
+    const rel = relResolution.ok ? relResolution.relationship : null;
     const periodEndUnix = (
       subscription as { current_period_end?: number }
     ).current_period_end;
@@ -348,9 +361,10 @@ async function handleSubscriptionLifecycle(
         ? new Date(periodEndUnix * 1000).toISOString()
         : null;
     const stripeStatus = deleted ? "canceled" : subscription.status;
+    // Do not pass ownerEmail for venue resolution — product resolves by
+    // venueId / subscription id / unambiguous customer id only.
     await syncStripeEntitlementToProduct({
       venueId: rel?.productSync?.venueId ?? null,
-      ownerEmail: email ?? rel?.owner?.email ?? null,
       relationshipId: rel?.id ?? null,
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
@@ -528,15 +542,27 @@ async function handleInvoicePaid(
         "@shared/product-sync/entitlement-sync"
       );
       const store = await loadLiveStore();
-      const rel =
-        store.relationships.find((r) => r.stripeSubscriptionId === subscriptionId) ||
-        (customerId
-          ? store.relationships.find((r) => r.stripeCustomerId === customerId)
-          : undefined);
+      const relResolution = resolveRelationshipForSubscription(
+        store.relationships,
+        {
+          stripeSubscriptionId: subscriptionId,
+          stripeCustomerId: customerId,
+        },
+      );
+      if (!relResolution.ok && relResolution.reason === "ambiguous") {
+        console.warn(
+          "[stripe] invoice.paid entitlement — ambiguous relationship; product resolves by subscription",
+          {
+            subscriptionId,
+            customerId,
+            candidateIds: relResolution.candidateIds,
+          },
+        );
+      }
+      const rel = relResolution.ok ? relResolution.relationship : null;
       const periodEndUnix = (sub as { current_period_end?: number }).current_period_end;
       await syncStripeEntitlementToProduct({
         venueId: rel?.productSync?.venueId ?? null,
-        ownerEmail: email ?? rel?.owner?.email ?? null,
         relationshipId: rel?.id ?? null,
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscriptionId,
@@ -568,26 +594,25 @@ async function maybeReactivateFromPayment(input: {
   email?: string | null;
 }): Promise<void> {
   const store = await loadLiveStore();
-  const relationship =
-    (input.stripeSubscriptionId
-      ? store.relationships.find(
-          (r) => r.stripeSubscriptionId === input.stripeSubscriptionId,
-        )
-      : undefined) ||
-    (input.stripeCustomerId
-      ? store.relationships.find(
-          (r) => r.stripeCustomerId === input.stripeCustomerId,
-        )
-      : undefined) ||
-    (input.email
-      ? store.relationships.find(
-          (r) =>
-            (r.owner.email || "").trim().toLowerCase() ===
-            input.email!.trim().toLowerCase(),
-        )
-      : undefined);
-
-  if (!relationship) return;
+  // Email is never used for multi-venue identity — only subscription / unique customer.
+  const resolution = resolveRelationshipForSubscription(store.relationships, {
+    stripeSubscriptionId: input.stripeSubscriptionId,
+    stripeCustomerId: input.stripeCustomerId,
+  });
+  if (!resolution.ok) {
+    if (resolution.reason === "ambiguous") {
+      console.warn(
+        "[stripe] reactivation skipped — ambiguous relationship for subscription/customer",
+        {
+          subscriptionId: input.stripeSubscriptionId ?? null,
+          customerId: input.stripeCustomerId,
+          candidateIds: resolution.candidateIds,
+        },
+      );
+    }
+    return;
+  }
+  const relationship = resolution.relationship;
   const needsReactivate =
     relationship.status === "suspended" ||
     relationship.status === "at_risk" ||

@@ -131,9 +131,26 @@ export async function POST(request: Request) {
       let checkoutUrl: string;
       let sessionId: string | null = null;
       try {
+        // Marketing Checkout only reuses an existing Stripe Customer when this
+        // server-to-server call presents PRODUCT_SYNC_API_KEY. The operator is
+        // already authorized via edit_relationships; the relationship row (and
+        // its stripeCustomerId) is loaded server-side — never from the browser.
+        const syncKey = process.env.PRODUCT_SYNC_API_KEY?.trim() || "";
+        if (!syncKey) {
+          return NextResponse.json(
+            {
+              error:
+                "PRODUCT_SYNC_API_KEY is not configured — cannot authorize CRM Checkout.",
+            },
+            { status: 503 },
+          );
+        }
         const res = await fetch(`${marketingBaseUrl()}/api/stripe/checkout`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${syncKey}`,
+          },
           body: JSON.stringify({
             plan: planTier,
             venue_name: relationship.venue.name,

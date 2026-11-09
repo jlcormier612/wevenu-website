@@ -6,6 +6,11 @@ import {
   applyStripeSubscriptionToVenue,
   loadVenueEntitlementRow,
 } from "@/lib/entitlement";
+import {
+  isVenueUuid,
+  resolveVenueFromCandidates,
+  type VenueResolution,
+} from "@/lib/entitlement/resolve-venue";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -19,6 +24,10 @@ export const runtime = "nodejs";
  *   sync_stripe — apply Stripe subscription facts and re-evaluate access
  *   founder_override — access/retention/security controls (never mutates Stripe)
  *   get — read current entitlement snapshot
+ *
+ * Venue resolution never uses purchaser email. Prefer venueId, then
+ * saas_stripe_subscription_id, then an unambiguous saas_stripe_customer_id.
+ * Ambiguous multi-venue matches fail closed for reconciliation.
  */
 
 type Body = {
@@ -46,9 +55,6 @@ type Body = {
   manualSecurityLockReason?: string | null;
 };
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 function authorize(request: Request): boolean {
   const expected = process.env.PRODUCT_SYNC_API_KEY?.trim();
   if (!expected) return false;
@@ -57,47 +63,57 @@ function authorize(request: Request): boolean {
   return Boolean(token && token === expected);
 }
 
-async function resolveVenueId(
+async function resolveVenueForEntitlement(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
-  venueId: string | null | undefined,
-  ownerEmail: string | null | undefined,
-  stripeCustomerId?: string | null,
-): Promise<string | null> {
-  if (venueId && UUID_RE.test(venueId.trim())) {
+  input: {
+    venueId?: string | null;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+  },
+): Promise<VenueResolution> {
+  const explicit = input.venueId?.trim() || "";
+  if (explicit && isVenueUuid(explicit)) {
     const { data } = await admin
       .from("venues")
       .select("id")
-      .eq("id", venueId.trim())
+      .eq("id", explicit)
       .maybeSingle();
-    if (data?.id) return data.id as string;
+    if (data?.id) {
+      return { ok: true, venueId: data.id as string, how: "venue_id" };
+    }
   }
-  if (stripeCustomerId?.trim()) {
+
+  const subscriptionId = input.stripeSubscriptionId?.trim() || "";
+  let subscriptionMatches: string[] = [];
+  if (subscriptionId) {
     const { data } = await admin
       .from("venues")
       .select("id")
-      .eq("saas_stripe_customer_id", stripeCustomerId.trim())
-      .limit(1)
-      .maybeSingle();
-    if (data?.id) return data.id as string;
+      .eq("saas_stripe_subscription_id", subscriptionId);
+    subscriptionMatches = ((data as { id: string }[] | null) ?? []).map(
+      (row) => row.id,
+    );
   }
-  const email = ownerEmail?.trim().toLowerCase();
-  if (!email) return null;
-  const { data: byVenueEmail } = await admin
-    .from("venues")
-    .select("id")
-    .ilike("email", email)
-    .limit(1)
-    .maybeSingle();
-  if (byVenueEmail?.id) return byVenueEmail.id as string;
-  const { data: byStaff } = await admin
-    .from("venue_staff")
-    .select("venue_id")
-    .ilike("email", email)
-    .eq("is_owner", true)
-    .limit(1)
-    .maybeSingle();
-  return (byStaff?.venue_id as string | undefined) ?? null;
+
+  const customerId = input.stripeCustomerId?.trim() || "";
+  let customerMatches: string[] = [];
+  if (customerId) {
+    const { data } = await admin
+      .from("venues")
+      .select("id")
+      .eq("saas_stripe_customer_id", customerId);
+    customerMatches = ((data as { id: string }[] | null) ?? []).map(
+      (row) => row.id,
+    );
+  }
+
+  // ownerEmail is intentionally ignored — multi-venue purchasers share email.
+  return resolveVenueFromCandidates({
+    explicitVenueId: null,
+    subscriptionMatches,
+    customerMatches,
+  });
 }
 
 export async function POST(request: Request) {
@@ -120,23 +136,53 @@ export async function POST(request: Request) {
 
   const action = body.action ?? "sync_stripe";
   const admin = createAdminClient();
-  const venueId = await resolveVenueId(
-    admin,
-    body.venueId,
-    body.ownerEmail,
-    body.stripeCustomerId,
-  );
-  if (!venueId) {
+  const resolution = await resolveVenueForEntitlement(admin, {
+    venueId: body.venueId,
+    stripeCustomerId: body.stripeCustomerId,
+    stripeSubscriptionId: body.stripeSubscriptionId,
+  });
+
+  if (!resolution.ok) {
+    const recoverable = resolution.reason === "ambiguous";
+    console.warn("[product-access/entitlement] venue resolution failed closed", {
+      action,
+      reason: resolution.reason,
+      how: resolution.how,
+      candidateIds: resolution.candidateIds,
+      stripeSubscriptionId: body.stripeSubscriptionId ?? null,
+      stripeCustomerId: body.stripeCustomerId ?? null,
+      relationshipId: body.relationshipId ?? null,
+      ownerEmailIgnored: Boolean(body.ownerEmail?.trim()),
+      recoverable,
+    });
     return NextResponse.json(
-      { ok: false, error: "No matching product venue" },
-      { status: 404 },
+      {
+        ok: false,
+        applied: false,
+        error:
+          resolution.reason === "ambiguous"
+            ? "Ambiguous venue resolution — reconciliation required"
+            : "No matching product venue",
+        detail: resolution.how,
+        reason: resolution.reason,
+        candidateIds: resolution.candidateIds,
+        recoverable,
+      },
+      { status: resolution.reason === "ambiguous" ? 409 : 404 },
     );
   }
+
+  const venueId = resolution.venueId;
 
   try {
     if (action === "get") {
       const row = await loadVenueEntitlementRow(venueId);
-      return NextResponse.json({ ok: true, venueId, venue: row });
+      return NextResponse.json({
+        ok: true,
+        venueId,
+        resolvedHow: resolution.how,
+        venue: row,
+      });
     }
 
     if (action === "founder_override") {
@@ -163,7 +209,7 @@ export async function POST(request: Request) {
         dunningClearedAt: body.dunningClearedAt,
         reevaluate: true,
       });
-      return NextResponse.json(result);
+      return NextResponse.json({ ...result, resolvedHow: resolution.how });
     }
 
     // sync_stripe
@@ -187,7 +233,7 @@ export async function POST(request: Request) {
       actorId: body.actorId ?? "stripe_webhook",
       reason: body.reason,
     });
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, resolvedHow: resolution.how });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[product-access/entitlement]", message);

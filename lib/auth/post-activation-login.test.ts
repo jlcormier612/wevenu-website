@@ -215,13 +215,18 @@ describe("identity-handoff scenario matrix — supported path contracts", () => 
     const success = read("marketing/app/pricing/success/page.tsx");
     assert.match(success, /whiteGloveIntakeUrlFromToken/);
     assert.match(success, /activationUrlFromToken/);
-    // Pending white-glove branch (not already-activated) uses intake only.
-    const wgPending = success.slice(
-      success.indexOf('else if (enrollment.onboardingType === "white_glove")'),
-      success.indexOf("else if (enrollment.activationToken)"),
+    // White-glove ready CTA branch uses intake only — not post-activation login.
+    const wgStart = success.indexOf(
+      '} else if (view === "white_glove_ready" && enrollment)',
     );
-    assert.match(wgPending, /whiteGloveIntakeUrlFromToken/);
-    assert.doesNotMatch(wgPending, /productPostActivationLoginUrl/);
+    const wgEnd = success.indexOf(
+      '} else if (view === "self_setup_ready" && enrollment?.activationToken)',
+    );
+    assert.ok(wgStart > 0 && wgEnd > wgStart, "white-glove CTA branch missing");
+    const wgReady = success.slice(wgStart, wgEnd);
+    assert.match(wgReady, /whiteGloveIntakeUrlFromToken/);
+    assert.doesNotMatch(wgReady, /productPostActivationLoginUrl/);
+    assert.doesNotMatch(wgReady, /activationUrlFromToken/);
   });
 
   it("multi-venue ordinary login keep (B_keep_valid) is unchanged by activation handoff", () => {

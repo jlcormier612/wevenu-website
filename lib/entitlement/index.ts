@@ -31,3 +31,9 @@ export {
   markNotificationAttempt,
   type LifecycleNotificationCheckpoint,
 } from "./notifications";
+
+export {
+  isVenueUuid,
+  resolveVenueFromCandidates,
+  type VenueResolution,
+} from "./resolve-venue";

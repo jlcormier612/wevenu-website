@@ -197,3 +197,8 @@ export {
   ensureWhiteGloveChecklistsForLiveStore,
   isWhiteGloveChecklistTitle,
 } from "./white-glove-checklist";
+export {
+  resolveRelationshipForSubscription,
+  type RelationshipStripeRef,
+  type SubscriptionRelationshipResolution,
+} from "./resolve-subscription-relationship";

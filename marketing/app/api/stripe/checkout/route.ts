@@ -13,6 +13,8 @@ import {
 } from "@/lib/marketing/onboarding-packages";
 import { fetchActiveVenueLegalDocuments } from "@/lib/legal/product-legal";
 import { syncCheckoutStartedToRelationship } from "@/lib/relationships/bridge";
+import { authorizeCrmAssistedCheckout } from "@/lib/stripe/crm-checkout-auth";
+import { resolveCrmCheckoutPrivileges } from "@/lib/stripe/crm-checkout-privileges";
 import {
   getCheckoutPricingForPlan,
   getMarketingSiteUrl,
@@ -27,13 +29,21 @@ export const runtime = "nodejs";
  * Create a Stripe Checkout Session for a Hello to Cheers SaaS subscription.
  * Single session: plan subscription + optional onboarding one-time add-on.
  *
+ * Authorization:
+ * - Public marketing Checkout (anonymous prospects): email / new Customer only.
+ *   Client-supplied Stripe Customer IDs and relationship IDs are ignored for
+ *   Customer reuse and Path-2 privileges.
+ * - CRM-assisted Checkout (Send Subscription Link): workspace authenticates the
+ *   operator, then calls this endpoint with Bearer PRODUCT_SYNC_API_KEY. Only
+ *   then may an existing Stripe Customer be reused and relationship_id bound.
+ *
  * Metadata:
  * - venue_name
  * - plan_name / plan_tier
  * - founding_member: "true" | "false"
  * - welcome_back: "true" | "false"
  * - onboarding_type: self_guided | white_glove
- * - relationship_id (Path 2 — Send Subscription Link from Relationship Workspace)
+ * - relationship_id (CRM-assisted only)
  * - legal_accepted / legal document ids / accept IP+UA (public pricing flow)
  */
 export async function POST(request: Request) {
@@ -47,12 +57,12 @@ export async function POST(request: Request) {
       venue_name?: string;
       first_name?: string;
       last_name?: string;
-      /** Existing Relationship — Path 2 subscription link */
+      /** Existing Relationship — CRM-assisted subscription link only */
       relationship_id?: string;
       customer_email?: string;
-      /** Prefer Stripe customer when re-linking */
+      /** Prefer Stripe customer when CRM-assisted re-linking */
       stripe_customer_id?: string;
-      /** Required for public Pricing checkout (not Path 2 CRM links). */
+      /** Required for public Pricing checkout (not CRM-assisted). */
       legal_accepted?: unknown;
     };
     const plan = body.plan;
@@ -60,6 +70,8 @@ export async function POST(request: Request) {
     if (!plan || !isSubscriptionPlanId(plan)) {
       return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
     }
+
+    const crmAssisted = authorizeCrmAssistedCheckout(request);
 
     const enrollment = getEnrollmentConfig();
     const founderActive = isFounderPricingActive(enrollment);
@@ -73,9 +85,27 @@ export async function POST(request: Request) {
     const ownerFirstName = body.first_name?.trim() || "";
     const ownerLastName = body.last_name?.trim() || "";
     const planName = getPlanDisplayName(plan);
-    const relationshipId = body.relationship_id?.trim() || "";
     const customerEmail = body.customer_email?.trim() || "";
-    const isPath2 = Boolean(relationshipId);
+
+    // Relationship + existing Stripe Customer are only trusted when the caller
+    // proved CRM-assisted authorization. Public callers may still supply an
+    // email for a new Customer.
+    const privileges = resolveCrmCheckoutPrivileges({
+      crmAssisted,
+      relationshipId: body.relationship_id,
+      stripeCustomerId: body.stripe_customer_id,
+    });
+    const { relationshipId, stripeCustomerId, isPath2 } = privileges;
+
+    // Reject unauthenticated attempts to force Customer reuse explicitly so
+    // callers cannot rely on silent ignore as success.
+    if (privileges.rejectedUnauthCustomerReuse) {
+      return NextResponse.json(
+        { error: "Existing Stripe Customer reuse requires CRM authorization." },
+        { status: 403 },
+      );
+    }
+
     const legalAccepted =
       body.legal_accepted === true ||
       body.legal_accepted === "true" ||
@@ -83,7 +113,7 @@ export async function POST(request: Request) {
       body.legal_accepted === "1";
 
     // Public Pricing flow must accept Venue ToS + Privacy before Checkout.
-    // Path 2 (CRM Send Subscription Link) keeps prior behavior (no blocking).
+    // CRM-assisted Path 2 keeps prior behavior (no blocking).
     if (!isPath2 && !legalAccepted) {
       return NextResponse.json(
         {
@@ -96,8 +126,7 @@ export async function POST(request: Request) {
 
     // Public Pricing flow must collect distinct subscriber first/last name and
     // venue name at checkout — never derived later from Stripe's billing name.
-    // Path 2 (CRM Send Subscription Link) already carries these on the
-    // Relationship and keeps prior behavior.
+    // CRM-assisted Path 2 already carries these on the Relationship.
     if (!isPath2 && (!venueName || !ownerFirstName || !ownerLastName)) {
       return NextResponse.json(
         {
@@ -193,8 +222,16 @@ export async function POST(request: Request) {
 
     // Subscription mode always creates/uses a Customer — `customer_creation`
     // is payment-mode only and Stripe rejects it here.
-    if (body.stripe_customer_id?.trim()) {
-      sessionParams.customer = body.stripe_customer_id.trim();
+    // Existing Customer + automatic_tax / tax_id_collection requires
+    // customer_update so Checkout can save the entered billing address
+    // onto the Customer (CRM-assisted re-link only). Email-only public
+    // Checkout creates a fresh Customer and does not need this.
+    if (stripeCustomerId) {
+      sessionParams.customer = stripeCustomerId;
+      sessionParams.customer_update = {
+        name: "auto",
+        address: "auto",
+      };
     } else if (customerEmail) {
       sessionParams.customer_email = customerEmail;
     }
