@@ -647,4 +647,48 @@ describe("Phase 4 Stripe group coupon executor", () => {
     assert.equal(result.confirmedCouponId, "coupon_group_10");
     assert.equal(updatedParams?.proration_behavior, "none");
   });
+
+  it("confirms coupons from expanded discounts[].source.coupon (API 2024+)", async () => {
+    const retrieves: Array<string[] | undefined> = [];
+    const stripe = {
+      subscriptions: {
+        async retrieve(_id: string, params?: { expand?: string[] }) {
+          retrieves.push(params?.expand);
+          return {
+            id: "sub_1",
+            schedule: null,
+            // Mimic expanded Stripe discount shape after apply.
+            discounts: [
+              {
+                id: "di_1",
+                source: { coupon: "coupon_group_10", type: "coupon" },
+              },
+            ],
+          };
+        },
+        async update(_id: string, params: Record<string, unknown>) {
+          assert.equal(params.proration_behavior, "none");
+          return { id: "sub_1", schedule: null, discounts: [] };
+        },
+      },
+    };
+    const result = await executeGroupCouponChange({
+      stripe,
+      subscriptionId: "sub_1",
+      decision: {
+        action: "apply_coupon",
+        reason: "test",
+        desiredOfferType: "group_pct",
+        desiredPercentOff: 10,
+        desiredStripeCouponId: "coupon_group_10",
+        expectedRecurringAmountCents: 17910,
+        relatedTierUpgradeId: null,
+        schedulePreserveCouponId: null,
+      },
+      idempotencyKey: "apply-group-source",
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.confirmedCouponId, "coupon_group_10");
+    assert.ok(retrieves.every((e) => e?.includes("discounts")));
+  });
 });

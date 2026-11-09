@@ -14,7 +14,7 @@ mkdirSync(OUT, { recursive: true });
 const APP = "https://app.sandbox.hellotocheers.com";
 const MARKETING = "https://sandbox.hellotocheers.com";
 const WS = "https://workspace.sandbox.hellotocheers.com";
-const EXPECTED_SHA = "d33510898c7c8184b0782fbccea1a49a81d588b9";
+const EXPECTED_SHA = "e8d3f96913cc6a2bcfb692ba90ed3d10838736bd";
 const EMAIL = "jennifer@hellotocheers.com";
 const JEN = "2fa73101-337b-4530-8c77-f3c272c5463e";
 const PROP_B_NAME = `[DISPOSABLE-P4-PROP-B] ${Date.now()}`;
@@ -68,6 +68,42 @@ async function setActiveVenue(venueId: string) {
       updated_at: new Date().toISOString(),
     }),
   });
+}
+
+async function productSyncApiKey(): Promise<string | null> {
+  if (process.env.PRODUCT_SYNC_API_KEY?.trim()) {
+    return process.env.PRODUCT_SYNC_API_KEY.trim();
+  }
+  try {
+    const { execFileSync } = await import("node:child_process");
+    const raw = execFileSync(
+      "aws",
+      [
+        "secretsmanager",
+        "get-secret-value",
+        "--secret-id",
+        "htc/sandbox/product-sync-api-key",
+        "--query",
+        "SecretString",
+        "--output",
+        "text",
+      ],
+      { encoding: "utf8" },
+    ).trim();
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      return (
+        parsed.value ||
+        parsed.PRODUCT_SYNC_API_KEY ||
+        parsed.api_key ||
+        raw
+      );
+    } catch {
+      return raw;
+    }
+  } catch {
+    return null;
+  }
 }
 
 /** Ensure disposable Prop A can reach Settings → Billing (intake gate). */
@@ -302,40 +338,33 @@ async function main() {
     await page.waitForTimeout(1500);
     await shot(page, "05-onboarding-selection");
 
-    // Fill onboarding selection modal if present
-    const firstName = page.getByLabel(/^First name$/i).or(
-      page.locator('input[placeholder="Sally"]'),
-    );
-    const lastName = page.getByLabel(/^Last name$/i).or(
-      page.locator('input[placeholder="Sunshine"]'),
-    );
-    const venueNameInput = page.getByLabel(/^Venue name$/i).or(
-      page.locator('input[placeholder="Sally Sunshine Events"]'),
-    );
-    if (await firstName.count()) await firstName.first().fill("Jennifer");
-    if (await lastName.count()) await lastName.first().fill("Cormier");
-    if (await venueNameInput.count()) await venueNameInput.first().fill(PROP_B_NAME);
+    // Fill the onboarding dialog (portal) — not the page-body duplicate cards.
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: 15000 });
+
+    await dialog.getByLabel(/^First name$/i).fill("Jennifer");
+    await dialog.getByLabel(/^Last name$/i).fill("Cormier");
+    await dialog.getByLabel(/^Venue name$/i).fill(PROP_B_NAME);
 
     // Must NOT claim Weven — Group 10% is the offer under test (Weven 20% would win).
-    const wevenNo = page.getByRole("radio", { name: /No,? I.?m a new customer/i });
-    if (await wevenNo.count()) {
-      await wevenNo.first().check({ force: true }).catch(() => wevenNo.first().click());
-    } else {
-      await page.getByText(/No,? I.?m a new customer/i).click().catch(() => {});
+    // Welcome Back is a single optional checkbox (default unchecked).
+    const wevenYes = dialog
+      .locator("label")
+      .filter({ hasText: /Weven customer|Weven family/i })
+      .locator('input[type="checkbox"]');
+    if (await wevenYes.count()) {
+      const checked = await wevenYes.first().isChecked().catch(() => false);
+      if (checked) await wevenYes.first().uncheck({ force: true });
     }
 
     // Legal acceptance checkbox
-    const legal = page
+    const legal = dialog
       .locator("label")
       .filter({ hasText: /Terms of Service/i })
       .locator('input[type="checkbox"]');
-    if (await legal.count()) {
-      await legal.first().check({ force: true }).catch(() => {});
-    } else {
-      const boxes = page.locator('input[type="checkbox"]');
-      const n = await boxes.count();
-      if (n > 0) await boxes.nth(n - 1).check({ force: true }).catch(() => {});
-    }
+    await legal.first().check({ force: true });
+
+    await shot(page, "05b-onboarding-filled");
 
     // Capture checkout API via route interception (avoids lost response bodies
     // when the page immediately navigates to Stripe Checkout).
@@ -361,22 +390,12 @@ async function main() {
       });
     });
 
-    // Click Continue on the self-setup card only — never White Glove (.last()
-    // previously selected White Glove and charged the $499 add-on).
-    const selfCard = page
+    // Click Continue on the self-setup card inside the dialog only.
+    await dialog
       .locator("article")
       .filter({ hasText: /I.?ll set it up myself/i })
-      .first();
-    if (await selfCard.count()) {
-      await selfCard
-        .getByRole("button", { name: /Continue to Checkout/i })
-        .click();
-    } else {
-      await page
-        .getByRole("button", { name: /Continue to Checkout/i })
-        .first()
-        .click();
-    }
+      .getByRole("button", { name: /Continue to Checkout/i })
+      .click();
 
     // Wait for either API capture or Stripe redirect.
     for (let i = 0; i < 60 && !checkoutJson; i++) {
@@ -464,18 +483,13 @@ async function main() {
     await page.waitForTimeout(4000);
     await shot(page, "06-stripe-checkout");
 
-    // Fill Stripe Checkout (Payment Element / Hosted Checkout)
-    await page.getByRole("radio", { name: /^card$/i }).click({ force: true }).catch(() => {});
-    await page.getByTestId("card-accordion-item-button").click({ force: true }).catch(() => {});
-    await page.waitForTimeout(1500);
-
+    // Hosted Checkout: email first, then Card method, then camelCase card fields
+    // on the main document (not iframes). Fields mount only after Card is selected.
     async function fillFirst(sels: string[], value: string, seq = false) {
       for (const frame of [page.mainFrame(), ...page.frames()]) {
         for (const sel of sels) {
           const loc = frame.locator(sel).first();
           if (!(await loc.count().catch(() => 0))) continue;
-          const visible = await loc.isVisible().catch(() => false);
-          if (!visible && frame === page.mainFrame()) continue;
           await loc.click({ force: true }).catch(() => {});
           if (seq) {
             await loc.fill("").catch(() => {});
@@ -485,129 +499,254 @@ async function main() {
           } else {
             await loc.fill(value).catch(() => {});
           }
-          return sel;
+          return `${frame === page.mainFrame() ? "main" : "frame"}:${sel}`;
         }
       }
       return null;
     }
 
-    const emailFilled = await fillFirst(
-      ['input[type="email"]', 'input[name="email"]'],
+    async function fillUntil(
+      sels: string[],
+      value: string,
+      seq = false,
+      attempts = 16,
+    ) {
+      for (let i = 0; i < attempts; i++) {
+        const hit = await fillFirst(sels, value, seq);
+        if (hit) return hit;
+        await page.waitForTimeout(400);
+      }
+      return null;
+    }
+
+    const emailFilled = await fillUntil(
+      ["#email", 'input[name="email"]', 'input[autocomplete="email"]'],
       EMAIL,
     );
-    const cardFilled = await fillFirst(
+    await page.waitForTimeout(800);
+    // Link "save my information" often forces a phone field that then fails validation.
+    for (let i = 0; i < 3; i++) {
+      const saveInfo = page.getByLabel(/save my information/i);
+      if (await saveInfo.count()) {
+        if (await saveInfo.isChecked().catch(() => false)) {
+          await saveInfo.uncheck({ force: true }).catch(() => {});
+        }
+      }
+      const linkBox = page.locator('input[name="enableStripePass"]');
+      if (await linkBox.count()) {
+        if (await linkBox.isChecked().catch(() => false)) {
+          await linkBox.uncheck({ force: true }).catch(() => {});
+        }
+      }
+      await page.waitForTimeout(300);
+    }
+
+    // Select Card payment method — radio role often fails; click Card text.
+    await page.getByRole("radio", { name: /^Card$/i }).click({ force: true }).catch(() => {});
+    const cardLabel = page.getByText(/^Card$/, { exact: true }).first();
+    if (await cardLabel.count()) {
+      const box = await cardLabel.boundingBox();
+      if (box) {
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      } else {
+        await cardLabel.click({ force: true }).catch(() => {});
+      }
+    }
+    await page.waitForTimeout(2000);
+
+    const cardFilled = await fillUntil(
       [
+        'input[name="cardNumber"]',
         'input[autocomplete="cc-number"]',
-        'input[name="cardnumber"]',
+        'input[aria-label="Card number"]',
         'input[placeholder*="1234"]',
-        "#cardNumber",
       ],
       "4242424242424242",
       true,
+      25,
     );
-    const expFilled = await fillFirst(
+    const expFilled = await fillUntil(
       [
+        'input[name="cardExpiry"]',
         'input[autocomplete="cc-exp"]',
-        'input[name="exp-date"]',
-        'input[placeholder*="MM"]',
-        "#cardExpiry",
+        'input[aria-label="Expiration"]',
+        'input[placeholder*="MM" i]',
       ],
       "1230",
       true,
     );
-    const cvcFilled = await fillFirst(
+    const cvcFilled = await fillUntil(
       [
+        'input[name="cardCvc"]',
         'input[autocomplete="cc-csc"]',
-        'input[name="cvc"]',
-        'input[placeholder*="CVC"]',
-        "#cardCvc",
+        'input[placeholder*="CVC" i]',
       ],
       "123",
       true,
     );
-    await fillFirst(
+    await fillUntil(
       [
-        'input[autocomplete="cc-name"]',
         'input[name="billingName"]',
-        'input[name="name"]',
+        'input[autocomplete="cc-name"]',
+        'input[placeholder*="Full name" i]',
       ],
       "Jennifer Cormier",
     );
-    await fillFirst(
+    const country = page
+      .locator('select[name="billingCountry"], select[name="country"]')
+      .first();
+    if (await country.count()) {
+      await country.selectOption("US").catch(() => {});
+    }
+    // Prefer a non-autocomplete street to avoid Google Places overlay blocking Subscribe.
+    const line1 = page
+      .locator(
+        'input[name="billingAddressLine1"], input[autocomplete="billing address-line1"], input[autocomplete="address-line1"]',
+      )
+      .first();
+    if (await line1.count()) {
+      await line1.click({ force: true });
+      await line1.fill("");
+      await line1.pressSequentially("123 Test Street", { delay: 20 });
+      await page.waitForTimeout(600);
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.keyboard.press("Escape").catch(() => {});
+      // Click away from autocomplete
+      await page.locator("#email, input[name=email]").first().click().catch(() => {});
+      await page.waitForTimeout(400);
+    }
+    await fillUntil(
       [
-        'input[autocomplete="postal-code"]',
+        'input[name="billingLocality"]',
+        'input[autocomplete="billing address-level2"]',
+        'input[autocomplete="address-level2"]',
+      ],
+      "Austin",
+    );
+    const state = page
+      .locator(
+        'select[name="billingAdministrativeArea"], select[name="state"]',
+      )
+      .first();
+    if (await state.count()) {
+      await state.selectOption("TX").catch(() =>
+        state.selectOption({ label: "Texas" }),
+      );
+    }
+    await fillUntil(
+      [
         'input[name="billingPostalCode"]',
-        'input[name="postalCode"]',
+        'input[autocomplete="billing postal-code"]',
+        'input[autocomplete="postal-code"]',
         'input[placeholder*="ZIP" i]',
       ],
-      "10001",
+      "78701",
       true,
     );
+    // Final dismiss of any leftover Places overlay
+    await page.keyboard.press("Escape").catch(() => {});
+    await page.locator("body").click({ position: { x: 10, y: 10 } }).catch(() => {});
+    await page.waitForTimeout(500);
+
+    // Clear optional phone — a red Link phone validation can block Subscribe.
+    const phone = page.locator('input[name="phoneNumber"], input[autocomplete="tel"]').first();
+    if (await phone.count()) {
+      await phone.fill("").catch(() => {});
+      // If phone remains required, use a valid US test number.
+      const stillVisible = await phone.isVisible().catch(() => false);
+      if (stillVisible) {
+        await phone.fill("5125550100").catch(() => {});
+      }
+    }
+    // Uncheck Link again after address fill (Stripe re-enables it).
+    const linkAgain = page.locator('input[name="enableStripePass"]');
+    if (await linkAgain.count() && (await linkAgain.isChecked().catch(() => false))) {
+      await linkAgain.uncheck({ force: true }).catch(() => {});
+    }
     save(
       "07-stripe-fill-log.json",
-      JSON.stringify({ emailFilled, cardFilled, expFilled, cvcFilled }, null, 2),
+      JSON.stringify(
+        { emailFilled, cardFilled, expFilled, cvcFilled },
+        null,
+        2,
+      ),
     );
     if (!cardFilled) {
+      await shot(page, "07-stripe-card-missing");
       throw new Error("Stripe Checkout card number field not found");
     }
 
     await shot(page, "07-stripe-filled");
     const submit = page
-      .getByRole("button", { name: /^Subscribe$|^Pay$|^Start trial$/i })
-      .or(page.locator('button[type="submit"]').filter({ hasText: /Subscribe|Pay|Start trial/i }))
+      .getByRole("button", { name: /^Subscribe$/ })
+      .or(
+        page
+          .locator('button[type="submit"]')
+          .filter({ hasText: /^Subscribe$/ }),
+      )
       .first();
     await submit.waitFor({ state: "visible", timeout: 20000 });
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 50; i++) {
       const disabled = await submit.getAttribute("disabled");
       const aria = await submit.getAttribute("aria-disabled");
       if (!disabled && aria !== "true") break;
       await page.waitForTimeout(400);
     }
-    await submit.click({ timeout: 15000 });
+    // Ensure overlay is gone, then click Subscribe (force if needed).
+    await page.keyboard.press("Escape").catch(() => {});
+    await submit.scrollIntoViewIfNeeded().catch(() => {});
+    await submit.click({ timeout: 15000 }).catch(async () => {
+      await submit.click({ force: true, timeout: 10000 });
+    });
     try {
       await page.waitForURL(
-        /pricing\/success|hellotocheers\.com\/(pricing|activate|onboarding)/i,
+        /pricing\/success|hellotocheers\.com\/(pricing|activate|onboarding)|session_id=/i,
         { timeout: 120000 },
       );
     } catch {
-      await page.waitForTimeout(10000);
+      await page.waitForTimeout(15000);
+      const alerts = await page
+        .locator('[role="alert"], .FieldError-container, [data-testid*="error"]')
+        .allInnerTexts()
+        .catch(() => []);
+      save("08-stripe-alerts.json", JSON.stringify({ alerts, url: page.url() }, null, 2));
     }
     await shot(page, "08-after-stripe-submit");
     save("08-url.txt", page.url());
 
     const sessionId = String(checkoutJson.session_id || "");
-    // Verify Stripe objects
+    // Verify Stripe objects — poll while Checkout completes.
     const stripeKey = process.env.STRIPE_SECRET_KEY!;
-    const sessionRes = await fetch(
-      `https://api.stripe.com/v1/checkout/sessions/${sessionId}?expand[]=subscription&expand[]=invoice`,
-      { headers: { Authorization: `Bearer ${stripeKey}` } },
-    );
-    const sessionObj = await sessionRes.json();
-    save("09-stripe-session.json", JSON.stringify(sessionObj, null, 2));
-
-    let subscriptionId =
-      typeof sessionObj.subscription === "string"
-        ? sessionObj.subscription
-        : sessionObj.subscription?.id;
-    if (!subscriptionId && sessionObj.status === "open") {
-      // payment may still be processing — wait and re-fetch
-      await page.waitForTimeout(10000);
-      const again = await (
+    let sessionObj: Record<string, any> = {};
+    let subscriptionId: string | undefined;
+    for (let i = 0; i < 24; i++) {
+      sessionObj = await (
         await fetch(
-          `https://api.stripe.com/v1/checkout/sessions/${sessionId}?expand[]=subscription`,
+          `https://api.stripe.com/v1/checkout/sessions/${sessionId}?expand[]=subscription&expand[]=invoice`,
           { headers: { Authorization: `Bearer ${stripeKey}` } },
         )
       ).json();
-      save("09b-stripe-session-retry.json", JSON.stringify(again, null, 2));
       subscriptionId =
-        typeof again.subscription === "string"
-          ? again.subscription
-          : again.subscription?.id;
-      Object.assign(sessionObj, again);
+        typeof sessionObj.subscription === "string"
+          ? sessionObj.subscription
+          : sessionObj.subscription?.id;
+      if (subscriptionId || sessionObj.status === "complete") break;
+      // If still open, try clicking Subscribe again once mid-poll.
+      if (i === 4 && /checkout\.stripe\.com/.test(page.url())) {
+        await page.keyboard.press("Escape").catch(() => {});
+        await page
+          .getByRole("button", { name: /^Subscribe$/ })
+          .click({ force: true })
+          .catch(() => {});
+      }
+      await page.waitForTimeout(5000);
     }
+    save("09-stripe-session.json", JSON.stringify(sessionObj, null, 2));
 
     if (!subscriptionId) {
-      throw new Error(`No subscription on Checkout Session ${sessionId}; status=${sessionObj.status}`);
+      throw new Error(
+        `No subscription on Checkout Session ${sessionId}; status=${sessionObj.status}; payment=${sessionObj.payment_status}; url=${page.url()}`,
+      );
     }
 
     const subRes = await fetch(
@@ -676,25 +815,51 @@ async function main() {
       enrollment = enr2 as typeof enrollment;
 
       if (enrollment?.activation_token && enrollment.status !== "activated") {
-        // Use internal activate with a disposable password via PRODUCT_SYNC if available
-        const syncKey = process.env.PRODUCT_SYNC_API_KEY;
-        if (syncKey) {
-          const act = await fetch(`${APP}/api/internal/enrollment/activate`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${syncKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              token: enrollment.activation_token,
-              password: `Phase4Accept!${Date.now()}`,
-              purchaserIsOwner: true,
-              legalAccepted: true,
-            }),
-          });
-          const actJson = await act.json();
-          save("12-activation-api.json", JSON.stringify({ status: act.status, body: actJson }, null, 2));
-          step("E_activation_api", { status: act.status, body: actJson });
+        const syncKey = await productSyncApiKey();
+        if (!syncKey) {
+          throw new Error("PRODUCT_SYNC_API_KEY unavailable for activation");
+        }
+        const act = await fetch(`${APP}/api/internal/enrollment/activate`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${syncKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: enrollment.activation_token,
+            password: `Phase4Accept!${Date.now()}`,
+            purchaserIsOwner: true,
+            legalAccepted: true,
+          }),
+        });
+        const actText = await act.text();
+        let actJson: unknown = actText;
+        try {
+          actJson = JSON.parse(actText);
+        } catch {
+          /* gateway HTML on timeout */
+        }
+        save(
+          "12-activation-api.json",
+          JSON.stringify({ status: act.status, body: actJson }, null, 2),
+        );
+        step("E_activation_api", { status: act.status });
+        // Activate can 504 after succeeding — poll enrollment status.
+        for (let i = 0; i < 24; i++) {
+          const { data: enrPoll } = await admin
+            .from("venue_enrollments")
+            .select("id,status,venue_id")
+            .eq("id", enrollment.id)
+            .single();
+          if (enrPoll?.status === "activated" && enrPoll.venue_id) {
+            enrollment = {
+              ...enrollment,
+              status: enrPoll.status,
+              venue_id: enrPoll.venue_id,
+            };
+            break;
+          }
+          await page.waitForTimeout(5000);
         }
       }
     }

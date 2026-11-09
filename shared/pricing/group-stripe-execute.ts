@@ -22,7 +22,10 @@ export type StripeSubscriptionDiscountLike = {
 
 export type GroupStripeExecutor = {
   subscriptions: {
-    retrieve(id: string): Promise<StripeSubscriptionDiscountLike>;
+    retrieve(
+      id: string,
+      params?: { expand?: string[] },
+    ): Promise<StripeSubscriptionDiscountLike>;
     update(
       id: string,
       params: Record<string, unknown>,
@@ -39,6 +42,8 @@ function couponIdOf(sub: StripeSubscriptionDiscountLike): string | null {
   }
   const first = sub.discounts?.[0];
   if (!first) return null;
+  // Unexpanded retrieve returns discount ids as strings — no coupon there.
+  if (typeof first === "string") return null;
   const sourceCoupon = first.source?.coupon;
   if (typeof sourceCoupon === "string" && sourceCoupon) return sourceCoupon;
   if (sourceCoupon && typeof sourceCoupon === "object" && sourceCoupon.id) {
@@ -80,7 +85,13 @@ export async function executeGroupCouponChange(input: {
     };
   }
 
-  const before = await input.stripe.subscriptions.retrieve(input.subscriptionId);
+  // Expand discounts so confirmation can read source.coupon (API 2024+ returns
+  // unexpanded discount id strings that look like "no coupon").
+  const expandDiscounts = { expand: ["discounts"] };
+  const before = await input.stripe.subscriptions.retrieve(
+    input.subscriptionId,
+    expandDiscounts,
+  );
   if (scheduleIdOf(before)) {
     return {
       ok: false,
@@ -109,7 +120,10 @@ export async function executeGroupCouponChange(input: {
     idempotencyKey: input.idempotencyKey.slice(0, 255),
   });
 
-  const after = await input.stripe.subscriptions.retrieve(input.subscriptionId);
+  const after = await input.stripe.subscriptions.retrieve(
+    input.subscriptionId,
+    expandDiscounts,
+  );
   const confirmed = couponIdOf(after);
 
   if (desiredCoupon && confirmed !== desiredCoupon) {
