@@ -1,0 +1,42 @@
+{
+  "startedAt": "2026-11-09T20:17:21.441Z",
+  "scenarios": {
+    "A_first_venue_not_group_eligible": {
+      "ok": true,
+      "reason": "Single qualifying venue — group pricing not yet available (need a second property)."
+    },
+    "B_second_venue_checkout_17910": {
+      "ok": true,
+      "reservationId": "2188aec7-975b-477f-b88a-b23d91bb7a91",
+      "expectedRecurringAmountCents": 17910,
+      "coupon": "htc_group_10_forever"
+    },
+    "C_property_a_prospective_adjustment_queued": {
+      "ok": true,
+      "adjustments": [
+        {
+          "venueId": "prop-a",
+          "status": "pending",
+          "expected": 17910
+        }
+      ]
+    },
+    "D_third_venue_celebrate_group_22410": {
+      "ok": true
+    },
+    "E_weven_beats_group": {
+      "ok": true
+    },
+    "F_founding_wins_equal_10": {
+      "ok": true
+    },
+    "G_eligibility_loss": {
+      "ok": true
+    },
+    "H_eligibility_restored": {
+      "ok": true
+    }
+  },
+  "finishedAt": "2026-11-09T20:17:21.446Z",
+  "allPassed": true
+}
