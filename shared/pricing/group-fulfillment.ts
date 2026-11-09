@@ -252,15 +252,12 @@ export async function fulfillOrganizationVenueActivation(input: {
       stripeSubscriptionId: snap.stripeSubscriptionId,
       status,
       desiredOfferType: decision.desiredOfferType,
-      desiredPercentOff:
-        decision.action === "noop" ? null : decision.desiredPercentOff,
-      desiredStripeCouponId:
-        decision.action === "noop" ? null : decision.desiredStripeCouponId,
+      desiredPercentOff: decision.desiredPercentOff,
+      desiredStripeCouponId: decision.desiredStripeCouponId,
       previousOfferType: snap.currentAppliedOfferType ?? null,
       previousStripeCouponId: snap.currentStripeCouponId ?? null,
       expectedRecurringAmountCents: decision.expectedRecurringAmountCents,
-      relatedTierUpgradeId:
-        decision.action === "noop" ? null : decision.relatedTierUpgradeId,
+      relatedTierUpgradeId: decision.relatedTierUpgradeId,
       idempotencyKey,
       audit: [
         {
