@@ -7,7 +7,7 @@ import {
   type TierUpgradeStatus,
 } from "@shared/pricing";
 
-import { actorCan } from "@/lib/program4/actor";
+import { actorCan } from "@/lib/program4/session";
 
 export const runtime = "nodejs";
 
