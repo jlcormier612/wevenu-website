@@ -1,6 +1,18 @@
 /**
  * SaaS (platform) Stripe client for Phase 3 — never Connect.
+ *
+ * Avoid `import("stripe")` in exported type positions so marketing builds that
+ * import `@shared/pricing` do not require the stripe package for typecheck.
  */
+
+export type SaasStripeClientLike = {
+  subscriptions: {
+    retrieve(
+      id: string,
+      params?: Record<string, unknown>,
+    ): Promise<Record<string, unknown>>;
+  };
+};
 
 export function resolveSaasStripeSecretKey(): string | null {
   const saas = process.env.HTC_SAAS_STRIPE_SECRET_KEY?.trim();
@@ -16,7 +28,7 @@ export function resolveSaasStripeSecretKey(): string | null {
 }
 
 export async function createSaasStripeClient(): Promise<{
-  stripe: import("stripe").default;
+  stripe: SaasStripeClientLike;
   keySource: "HTC_SAAS_STRIPE_SECRET_KEY" | "STRIPE_SECRET_KEY";
 }> {
   const key = resolveSaasStripeSecretKey();
@@ -28,9 +40,12 @@ export async function createSaasStripeClient(): Promise<{
   if (!key.startsWith("sk_test_") && process.env.ALLOW_LIVE_STRIPE_TIER_UPGRADE !== "true") {
     throw new Error("Refusing non-test Stripe key for Phase 3 tier-upgrade operations.");
   }
-  const Stripe = (await import("stripe")).default;
+  // Runtime-only resolution — do not reference stripe in type space.
+  const stripeModule = (await Function('return import("stripe")')()) as {
+    default: new (apiKey: string) => SaasStripeClientLike;
+  };
   const keySource = process.env.HTC_SAAS_STRIPE_SECRET_KEY?.trim()
     ? "HTC_SAAS_STRIPE_SECRET_KEY"
     : "STRIPE_SECRET_KEY";
-  return { stripe: new Stripe(key), keySource };
+  return { stripe: new stripeModule.default(key), keySource };
 }
