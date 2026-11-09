@@ -87,9 +87,16 @@ export async function sendTierUpgradeNotice(input: {
     ],
   });
 
+  const providerMessageId =
+    sendResult.ok && "providerId" in sendResult
+      ? sendResult.providerId ?? null
+      : null;
+  const failureMessage =
+    !sendResult.ok && "message" in sendResult ? sendResult.message : null;
+
   const deliveryStatus = resolveNoticeDeliveryStatus({
     providerOk: sendResult.ok,
-    providerMessageId: sendResult.providerId ?? null,
+    providerMessageId,
     simulated: sendResult.delivery === "simulated",
   });
 
@@ -104,21 +111,21 @@ export async function sendTierUpgradeNotice(input: {
       error: {
         at: new Date().toISOString(),
         code: "notice_send_failed",
-        message: sendResult.message || `Notice delivery status ${deliveryStatus}`,
+        message: failureMessage || `Notice delivery status ${deliveryStatus}`,
         retryable: true,
       },
       audit: {
         at: new Date().toISOString(),
         by: "system",
         action: "notice_send_failed",
-        note: sendResult.message || deliveryStatus,
+        note: failureMessage || deliveryStatus,
       },
     });
     return {
       ok: false,
       code: "notice_not_provider_accepted",
       message:
-        sendResult.message ||
+        failureMessage ||
         `Notice not provider-accepted (status=${deliveryStatus}). Simulated/draft sends do not authorize billing.`,
       deliveryStatus,
       upgrade: failed,
@@ -132,16 +139,16 @@ export async function sendTierUpgradeNotice(input: {
     patch: {
       noticeSentAt,
       noticeDeliveryStatus: "provider_accepted",
-      noticeProviderMessageId: sendResult.providerId ?? null,
+      noticeProviderMessageId: providerMessageId,
       noticeIdempotencyKey: draft.idempotencyKey,
     },
     audit: {
       at: noticeSentAt,
       by: "system",
       action: "notice_provider_accepted",
-      note: `Resend accepted message ${sendResult.providerId}`,
+      note: `Resend accepted message ${providerMessageId}`,
       detail: {
-        providerMessageId: sendResult.providerId,
+        providerMessageId,
         to,
         delivery: "provider_accepted",
       },
@@ -151,7 +158,7 @@ export async function sendTierUpgradeNotice(input: {
   return {
     ok: true,
     deliveryStatus: "provider_accepted",
-    providerMessageId: sendResult.providerId ?? null,
+    providerMessageId,
     noticeSentAt,
     idempotencyKey: draft.idempotencyKey,
     upgrade: upgraded,
