@@ -229,8 +229,10 @@ export async function POST(request: Request) {
             getPricingOfferStore: getOfferStoreForGrants,
             getTierUpgradeStore,
             isPricingGroupV1FlagEnabled,
-            requireDurableGroupOrgStore,
           } = await import("@shared/pricing");
+          const { requireDurableGroupOrgStore } = await import(
+            "@shared/pricing/group-org-store-access"
+          );
           if (isPricingGroupV1FlagEnabled()) {
             const orgStore = requireDurableGroupOrgStore();
             const offerStoreForGrants = getOfferStoreForGrants();

@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 
 import {
   evaluateGroupEligibility,
-  getGroupOrgStore,
   listAmountCents,
   previewGroupRecurringAmountCents,
   type VenueSubscriptionEligibilityInput,
 } from "@shared/pricing";
+import { getGroupOrgStore } from "@shared/pricing/group-org-store-access";
 import { hasCapability } from "@/lib/authorization";
 import { getActiveVenueMembership } from "@/lib/authorization/membership";
 import { createAdminClient } from "@/integrations/supabase/admin";

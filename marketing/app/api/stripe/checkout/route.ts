@@ -37,10 +37,10 @@ import {
   isPricingLaunchV1Ready,
   isPricingWevenV1Misconfigured,
   isPricingWevenV1Ready,
-  requireDurableGroupOrgStore,
   requireDurablePricingOfferStore,
   resolveReservationGroupEligibility,
 } from "@shared/pricing";
+import { requireDurableGroupOrgStore } from "@shared/pricing/group-org-store-access";
 import { createCrmAdminClient } from "@shared/relationships/pg-client";
 
 export const runtime = "nodejs";

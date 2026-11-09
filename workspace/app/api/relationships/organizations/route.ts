@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   evaluateGroupEligibility,
-  getGroupOrgStore,
   type VenueSubscriptionEligibilityInput,
 } from "@shared/pricing";
+import { getGroupOrgStore } from "@shared/pricing/group-org-store-access";
 import {
   createCrmAdminClient,
   crmSupabaseConfigured,

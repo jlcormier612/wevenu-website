@@ -477,7 +477,6 @@ export function createMemoryGroupOrgStore(): GroupOrgStore {
 }
 
 let testStore: GroupOrgStore | null = null;
-let postgresSingleton: GroupOrgStore | null = null;
 
 export function setGroupOrgStoreForTests(store: GroupOrgStore | null) {
   testStore = store;
@@ -493,35 +492,25 @@ export function preferPostgresGroupOrgStore(): boolean {
   return usePostgresCrmStore() && crmSupabaseConfigured();
 }
 
+/**
+ * Memory / test accessor only. Production server routes must use
+ * `@shared/pricing/group-org-store-access` (server-only + static Postgres).
+ *
+ * Do not load the Postgres adapter from this module — a dynamic require with
+ * webpackIgnore omitted the file from ECS bundles and returned HTTP 500 on
+ * `/api/billing/organization`.
+ */
 export function getGroupOrgStore(): GroupOrgStore {
   if (testStore) return testStore;
-  // Never load the Postgres adapter into a browser / Client Component graph.
-  if (typeof window !== "undefined") {
-    return createMemoryGroupOrgStore();
-  }
-  if (preferPostgresGroupOrgStore()) {
-    if (!postgresSingleton) {
-      // Lazy require + webpackIgnore keep marketing Client Components from
-      // resolving the service-role Postgres module.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { createPostgresGroupOrgStore } = require(
-        /* webpackIgnore: true */ "./group-org-store-postgres",
-      ) as {
-        createPostgresGroupOrgStore: () => GroupOrgStore;
-      };
-      postgresSingleton = createPostgresGroupOrgStore();
-    }
-    return postgresSingleton;
-  }
   return createMemoryGroupOrgStore();
 }
 
-/** Launch/activation paths that must not silently use memory across processes. */
+/** @deprecated Use `@shared/pricing/group-org-store-access` in server routes. */
 export function requireDurableGroupOrgStore(): GroupOrgStore {
   const store = getGroupOrgStore();
   if (!store.durable) {
     throw new Error(
-      "Phase 4 organization group pricing requires durable Postgres persistence (saas_organizations).",
+      "Phase 4 organization group pricing requires durable Postgres persistence (saas_organizations). Import getGroupOrgStore from @shared/pricing/group-org-store-access on the server.",
     );
   }
   return store;

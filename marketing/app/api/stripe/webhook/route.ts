@@ -299,10 +299,10 @@ async function handleCheckoutCompleted(
     const orgReservationId = meta.org_reservation_id?.trim() || null;
     if (orgReservationId || meta.group_eligible === "true") {
       try {
-        const {
-          isPricingGroupV1FlagEnabled,
-          requireDurableGroupOrgStore,
-        } = await import("@shared/pricing");
+        const { isPricingGroupV1FlagEnabled } = await import("@shared/pricing");
+        const { requireDurableGroupOrgStore } = await import(
+          "@shared/pricing/group-org-store-access"
+        );
         if (isPricingGroupV1FlagEnabled()) {
           const orgStore = requireDurableGroupOrgStore();
           let reservation = orgReservationId

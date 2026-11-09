@@ -103,18 +103,16 @@ export {
 
 export {
   createMemoryGroupOrgStore,
-  getGroupOrgStore,
-  requireDurableGroupOrgStore,
   preferPostgresGroupOrgStore,
   setGroupOrgStoreForTests,
   resetGroupOrgStoreForTests,
   type GroupOrgStore,
 } from "./group-org-store";
 
-// Postgres adapter is server-only — import from
-// `@shared/pricing/group-org-store-postgres` in service-role routes.
-// Do not re-export it from this barrel (marketing Client Components import
-// readiness helpers from here).
+// Server routes: import getGroupOrgStore / requireDurableGroupOrgStore from
+// `@shared/pricing/group-org-store-access` (server-only + Postgres).
+// Do not re-export Postgres or the server accessor from this barrel —
+// marketing Client Components import readiness helpers from here.
 
 export {
   resolveReservationGroupEligibility,
