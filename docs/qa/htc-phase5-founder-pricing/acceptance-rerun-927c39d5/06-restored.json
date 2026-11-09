@@ -1,0 +1,9 @@
+{
+  "applied": {
+    "source": "standard",
+    "label": "Standard catalog pricing",
+    "amountCents": 19900,
+    "amount": "$199"
+  },
+  "invoice": "$199"
+}

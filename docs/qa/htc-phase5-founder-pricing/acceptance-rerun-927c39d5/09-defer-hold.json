@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "arrangement": {
+    "id": "d7df86b6-167b-4597-a97b-07787fe68aa4",
+    "venueId": "afb25ffb-8782-4906-bc3c-16a794e06dc5",
+    "stripeSubscriptionId": "sub_1UZw7IErUqJH7nktbvFBgOCm",
+    "stripeCustomerId": "cus_Vb8OvNpzTS3r7J",
+    "kind": "percent_off",
+    "percentOff": 15,
+    "amountOffCents": null,
+    "fixedRateCents": null,
+    "frozenListAmountCents": null,
+    "planScope": "all",
+    "planKeyAtCreate": "starter",
+    "survivesTierChange": true,
+    "preventsTierUpgrade": false,
+    "protectsBaseRate": false,
+    "effectiveAt": "2026-11-09T23:53:43+00:00",
+    "expiresAt": null,
+    "durationBillingCycles": null,
+    "cyclesConsumed": 0,
+    "status": "active",
+    "reason": "Phase 5 final deferral",
+    "internalNotes": null,
+    "customerFacingLabel": "Special pricing",
+    "createdByUserId": null,
+    "createdByEmail": "jennifer@hellotocheers.com",
+    "endedByEmail": null,
+    "endedAt": null,
+    "endReason": null,
+    "stripeCouponId": "htc_fnd_pct_15_d7df86b6167b4597a9",
+    "stripePriceId": null,
+    "reconciliationStatus": "deferred_schedule",
+    "expectedRecurringAmountCents": 16915,
+    "lastReconcileError": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing.",
+    "lastReconciledAt": "2026-11-09T23:53:44.234+00:00",
+    "supersedesArrangementId": null,
+    "supersededByArrangementId": null,
+    "relatedTierHoldId": null,
+    "idempotencyKey": "p5-final-defer-1794268423",
+    "audit": [
+      {
+        "at": "2026-11-09T23:53:43.861Z",
+        "by": "jennifer@hellotocheers.com",
+        "kind": "percent_off",
+        "action": "created",
+        "status": "active"
+      },
+      {
+        "at": "2026-11-09T23:53:44.234Z",
+        "error": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing.",
+        "action": "reconcile_failed",
+        "deferred": true
+      }
+    ],
+    "metadata": {},
+    "createdAt": "2026-11-09T23:53:43.874721+00:00",
+    "updatedAt": "2026-11-09T23:53:44.281+00:00"
+  },
+  "preview": {
+    "currentAmountCents": 19900,
+    "proposedAmountCents": 16915,
+    "differenceCents": -2985,
+    "currentWinnerSource": "standard",
+    "proposedWinnerSource": "founder_override",
+    "producesFinancialBenefit": true,
+    "ineffectiveBecauseBetterOffer": false,
+    "requiresConfirmation": false,
+    "explanation": "Best recurring amount $169.15 via founder_override (Special pricing).",
+    "selection": {
+      "winner": {
+        "id": "draft",
+        "source": "founder_override",
+        "label": "Special pricing",
+        "expectedAmountCents": 16915,
+        "tieBreakRank": 100,
+        "percentOff": 15
+      },
+      "candidates": [
+        {
+          "id": "draft",
+          "source": "founder_override",
+          "label": "Special pricing",
+          "expectedAmountCents": 16915,
+          "tieBreakRank": 100,
+          "percentOff": 15
+        },
+        {
+          "id": "standard",
+          "source": "standard",
+          "label": "Standard catalog pricing",
+          "expectedAmountCents": 19900,
+          "tieBreakRank": 0
+        }
+      ],
+      "explanation": "Best recurring amount $169.15 via founder_override (Special pricing)."
+    },
+    "tierFreezeActive": false
+  },
+  "stripeApplied": false,
+  "deferredToSchedule": true,
+  "warning": "defer_to_schedule \u2014 refuse independent founder mutation while Phase 3 owns pricing."
+}

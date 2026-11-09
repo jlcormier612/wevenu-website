@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "arrangement": {
+    "id": "bc8b8c36-29c3-4ef1-8362-442e9e6ae2f3",
+    "venueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "stripeSubscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "stripeCustomerId": "cus_Vb8Ng5wqMg59Z5",
+    "kind": "percent_off",
+    "percentOff": 15,
+    "amountOffCents": null,
+    "fixedRateCents": null,
+    "frozenListAmountCents": null,
+    "planScope": "all",
+    "planKeyAtCreate": "starter",
+    "survivesTierChange": true,
+    "preventsTierUpgrade": false,
+    "protectsBaseRate": false,
+    "effectiveAt": "2026-11-09T23:53:29+00:00",
+    "expiresAt": null,
+    "durationBillingCycles": null,
+    "cyclesConsumed": 0,
+    "status": "ended",
+    "reason": "Phase 5 final rerun percent",
+    "internalNotes": null,
+    "customerFacingLabel": "Special pricing",
+    "createdByUserId": null,
+    "createdByEmail": "jennifer@hellotocheers.com",
+    "endedByEmail": "jennifer@hellotocheers.com",
+    "endedAt": "2026-11-09T23:53:34.317+00:00",
+    "endReason": "Phase 5 final rerun end clear",
+    "stripeCouponId": "htc_fnd_pct_15_bc8b8c3629c34ef183",
+    "stripePriceId": "price_1UZj6YErUqJH7nktmVMM7sgB",
+    "reconciliationStatus": "pending",
+    "expectedRecurringAmountCents": 16915,
+    "lastReconcileError": null,
+    "lastReconciledAt": "2026-11-09T23:53:31.674+00:00",
+    "supersedesArrangementId": null,
+    "supersededByArrangementId": null,
+    "relatedTierHoldId": null,
+    "idempotencyKey": "p5-final-1794268409",
+    "audit": [
+      {
+        "at": "2026-11-09T23:53:30.386Z",
+        "by": "jennifer@hellotocheers.com",
+        "kind": "percent_off",
+        "action": "created",
+        "status": "active"
+      },
+      {
+        "at": "2026-11-09T23:53:31.674Z",
+        "error": null,
+        "action": "reconciled",
+        "deferred": false
+      },
+      {
+        "at": "2026-11-09T23:53:34.317Z",
+        "by": "jennifer@hellotocheers.com",
+        "action": "ended",
+        "reason": "Phase 5 final rerun end clear"
+      }
+    ],
+    "metadata": {},
+    "createdAt": "2026-11-09T23:53:30.422544+00:00",
+    "updatedAt": "2026-11-09T23:53:34.366+00:00"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "servingSha": "927c39d5a07a6daf249e0e95ddbc1c29dc3cb500",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/42722588355",
+  "venueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+  "subscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw",
+  "checks": {
+    "readiness_founder_ready": true,
+    "percent_stripe_applied": true,
+    "percent_htc_offer": true,
+    "percent_amount_16915": true,
+    "stripe_coupon_matches": true,
+    "stripe_invoice_preview_16915": true,
+    "htc_invoice_preview_16915": true,
+    "end_ok": true,
+    "end_clears_stripe_coupon": true,
+    "end_restores_catalog_preview": true,
+    "end_htc_standard": true,
+    "fixed_stripe_applied": true,
+    "fixed_live_unit_14900": true,
+    "fixed_end_restores_unit_19900": true,
+    "tier_freeze_hold": true,
+    "phase3_deferral": true
+  },
+  "ok": true
+}
