@@ -201,9 +201,18 @@ export async function executeStripeScheduleUpgrade(input: {
     let schedule: StripeScheduleLike;
 
     if (!scheduleId) {
+      // Stripe rejects metadata when from_subscription is set — create first,
+      // then stamp HTC ownership metadata on a follow-up update.
       schedule = await input.stripe.subscriptionSchedules.create(
         {
           from_subscription: input.intent.subscriptionId,
+        },
+        { idempotencyKey: `${input.intent.idempotencyKey}:create` },
+      );
+      scheduleId = schedule.id;
+      schedule = await input.stripe.subscriptionSchedules.update(
+        scheduleId,
+        {
           metadata: {
             htc_tier_upgrade: "true",
             htc_tier_upgrade_id: input.upgradeId,
@@ -212,9 +221,8 @@ export async function executeStripeScheduleUpgrade(input: {
               : {}),
           },
         },
-        { idempotencyKey: `${input.intent.idempotencyKey}:create` },
+        { idempotencyKey: `${input.intent.idempotencyKey}:meta` },
       );
-      scheduleId = schedule.id;
     } else {
       schedule = await input.stripe.subscriptionSchedules.retrieve(scheduleId);
       const ownership = htcOwnsSchedule({
