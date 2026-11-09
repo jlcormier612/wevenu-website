@@ -335,7 +335,7 @@ jobs:
               "ParameterKey=StripePriceWhiteGloveWeven,ParameterValue=price_1UZk1EErUqJH7nkt4lWfvbIT" \
               "ParameterKey=PricingWevenV1,ParameterValue=true" \
               "ParameterKey=StripeGroupPercentCouponId,ParameterValue=htc_group_10_forever" \
-              "ParameterKey=PricingGroupV1,ParameterValue=false" \
+              "ParameterKey=PricingGroupV1,ParameterValue=true" \
               "ParameterKey=PricingTierUpgradeStore,ParameterValue=postgres" \
               "ParameterKey=TierUpgradeApplyStripe,ParameterValue=true" \
               "ParameterKey=TierUpgradeSendNotice,ParameterValue=true"
