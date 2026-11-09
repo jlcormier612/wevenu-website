@@ -89,6 +89,7 @@ export const PUBLIC_PATHS = [
   "/api/webhooks/stripe-connect",    // Stripe Connect webhook - no user session, verifies its own signature (Sprint 4)
   "/api/internal/product-access",    // CRM -> product access lock - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
   "/api/internal/enrollment",        // CRM/Workspace -> venue enrollment + activation bridge - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
+  "/api/internal/pricing",           // Phase 3 tier-upgrade evaluate - Bearer PRODUCT_SYNC_API_KEY/CRON_SECRET, not session-guarded
   "/api/health",                     // deployment health check - no session, no secret; read-only, returns booleans only, never data
   // White Glove pre-login intake — token validated in page/API handlers (not session).
   // Do NOT widen to bare "/onboarding" (Self-Setup intake and other onboarding stay authed).
