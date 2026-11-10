@@ -62,7 +62,12 @@ export default async function WorkspaceLayout({
     redirect("/login");
   }
   if (boot.status === "no_memberships") {
-    redirect("/onboarding/intake");
+    // Self-Setup entry for users with no venue yet. Do not redirect when already
+    // on intake — that produced a 307 storm (pathname empty or self-target).
+    if (!pathname.startsWith("/onboarding/intake")) {
+      redirect("/onboarding/intake");
+    }
+    return <>{children}</>;
   }
   if (boot.status === "needs_selection") {
     // Case C/E — fail closed; no arbitrary venue. Minimal picker only.

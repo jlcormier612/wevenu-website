@@ -91,6 +91,9 @@ export const PUBLIC_PATHS = [
   "/api/internal/enrollment",        // CRM/Workspace -> venue enrollment + activation bridge - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
   "/api/internal/pricing",           // Phase 3 tier-upgrade evaluate - Bearer PRODUCT_SYNC_API_KEY/CRON_SECRET, not session-guarded
   "/api/health",                     // deployment health check - no session, no secret; read-only, returns booleans only, never data
+  // Legal enforcement recovery — static unavailable page; no session/tenant data.
+  // Also on LEGAL_ENFORCEMENT_SKIP_PREFIXES so fail-closed redirects cannot loop.
+  "/system/legal-unavailable",
   // White Glove pre-login intake — token validated in page/API handlers (not session).
   // Do NOT widen to bare "/onboarding" (Self-Setup intake and other onboarding stay authed).
   "/onboarding/white-glove",

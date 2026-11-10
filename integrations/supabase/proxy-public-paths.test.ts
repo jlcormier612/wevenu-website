@@ -42,4 +42,12 @@ describe("White Glove public token paths", () => {
     assert.equal(isPublicPath("/portal"), false);
     assert.equal(isPublicPath("/invoices/inv-1/print"), false);
   });
+
+  it("serves the legal enforcement recovery page without a session", () => {
+    assert.equal(isPublicPath("/system/legal-unavailable"), true);
+    assert.equal(isPublicPath("/system/legal-unavailable/"), true);
+    // Do not widen to other /system routes
+    assert.equal(isPublicPath("/system"), false);
+    assert.equal(isPublicPath("/system/other"), false);
+  });
 });
