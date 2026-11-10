@@ -315,6 +315,7 @@ jobs:
               "ParameterKey=CertificateArn,ParameterValue=${{ vars.CERTIFICATE_ARN }}" \
               "ParameterKey=FromEmailAddress,ParameterValue=Hello to Cheers <jennifer@hellotocheers.com>" \
               "ParameterKey=EmailReplyTo,ParameterValue=jennifer@hellotocheers.com" \
+              "ParameterKey=InquiryNotifyEmail,ParameterValue=jennifer@hellotocheers.com" \
               "ParameterKey=SupabaseUrl,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               "ParameterKey=SupabaseAnonKey,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               "ParameterKey=ResendInboundAddress,ParameterValue=${{ vars.RESEND_INBOUND_ADDRESS }}" \
@@ -419,6 +420,7 @@ jobs:
               CertificateArn="${{ vars.CERTIFICATE_ARN }}" \
               FromEmailAddress="Hello to Cheers <jennifer@hellotocheers.com>" \
               EmailReplyTo=jennifer@hellotocheers.com \
+              InquiryNotifyEmail=jennifer@hellotocheers.com \
               SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \

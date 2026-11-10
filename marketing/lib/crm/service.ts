@@ -24,7 +24,6 @@ import {
   storeVenueEnrollment,
 } from "@/lib/crm/store";
 import type { CreateVenueEnrollmentInput, VenueEnrollmentRecord } from "@/lib/crm/types";
-import { onboardingLabel, yesNo } from "@/lib/marketing/enrollment";
 import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
 import { syncEnrollmentToRelationship } from "@/lib/relationships/bridge";
 import { subscriptionMatchAllowsReuse } from "@shared/relationships";
@@ -32,6 +31,8 @@ import {
   resolveWelcomeEmailAttempt,
   welcomeBatchSucceeded,
 } from "@shared/relationships/welcome-email";
+
+export { enrollmentSummaryLines } from "@/lib/crm/enrollment-summary";
 
 /**
  * Create a CRM venue enrollment record when a subscription succeeds.
@@ -320,37 +321,3 @@ export async function createVenueEnrollment(
   return record;
 }
 
-/** Human-readable summary lines for ops notifications. */
-export function enrollmentSummaryLines(record: VenueEnrollmentRecord): string[] {
-  return [
-    "Venue:",
-    record.venueName,
-    "",
-    "Plan:",
-    record.planName || getPlanDisplayName(record.plan),
-    "",
-    "Founding Member:",
-    yesNo(record.foundingMember),
-    "",
-    "Welcome Back:",
-    yesNo(record.welcomeBackRequested),
-    "",
-    "Onboarding:",
-    onboardingLabel(record.onboardingType),
-    "",
-    "Payment:",
-    record.paymentStatus === "successful" ? "Successful" : record.paymentStatus,
-    "",
-    "Customer Email:",
-    record.customerEmail || "—",
-    "",
-    "Stripe Customer:",
-    record.stripeCustomerId || "—",
-    "",
-    "Subscription:",
-    record.stripeSubscriptionId || "—",
-    "",
-    "Purchase Date:",
-    record.createdAt,
-  ];
-}

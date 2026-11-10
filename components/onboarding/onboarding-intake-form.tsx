@@ -194,15 +194,10 @@ export function OnboardingIntakeForm({
       {mode === "white_glove" ? (
         <header className="space-y-2">
           <h1 className="font-heading text-3xl font-medium tracking-tight text-foreground">
-            Let&apos;s get your venue ready
+            Tell us about your venue
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            You&apos;ve chosen White Glove Setup. We&apos;ll build your Hello to Cheers
-            workspace using the information and materials you provide.
-          </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            You don&apos;t need to configure everything yourself. We&apos;ll let you know if we
-            need you to make a decision we can&apos;t make for you.
+            We&apos;ll let you know if we need a decision we can&apos;t make for you.
           </p>
         </header>
       ) : (

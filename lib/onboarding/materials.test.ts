@@ -104,4 +104,28 @@ describe("materials access wiring", () => {
     assert.match(waiting, /wg-waiting-upload/);
     assert.match(waiting, /edit=1/);
   });
+
+  it("shows real upload limits on intake and waiting pages", () => {
+    const intake = readFileSync(
+      resolve("components/onboarding/white-glove-intake-client.tsx"),
+      "utf8",
+    );
+    const waiting = readFileSync(
+      resolve("components/onboarding/white-glove-waiting-client.tsx"),
+      "utf8",
+    );
+    for (const src of [intake, waiting]) {
+      assert.match(src, /WG_MATERIAL_MAX_BYTES/);
+      assert.match(src, /WG_MATERIAL_MAX_COUNT/);
+      assert.match(src, /upload-limits/);
+      assert.match(src, /PDF, Word, Excel, PowerPoint, CSV, images, or ZIP/);
+    }
+    const form = readFileSync(
+      resolve("components/onboarding/onboarding-intake-form.tsx"),
+      "utf8",
+    );
+    assert.match(form, /mode === "white_glove"/);
+    assert.match(form, /Tell us about your venue/);
+    assert.doesNotMatch(form, /You&apos;ve chosen White Glove Setup/);
+  });
 });

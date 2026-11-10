@@ -9,6 +9,12 @@ import Link from "next/link";
 
 import { WhiteGloveBrandChrome } from "@/components/onboarding/white-glove-brand-chrome";
 import { Button } from "@/components/ui/button";
+import {
+  WG_MATERIAL_MAX_BYTES,
+  WG_MATERIAL_MAX_COUNT,
+} from "@/lib/onboarding/materials";
+
+const WG_UPLOAD_LIMIT_LABEL = `PDF, Word, Excel, PowerPoint, CSV, images, or ZIP · up to ${Math.round(WG_MATERIAL_MAX_BYTES / (1024 * 1024))} MB each · up to ${WG_MATERIAL_MAX_COUNT} files`;
 
 type MaterialRow = {
   id: string;
@@ -154,7 +160,10 @@ export function WhiteGloveWaitingClient({
         <h2 className="text-lg font-medium">Add more materials</h2>
         <p className="text-sm text-muted-foreground">
           Brochures, packages, contracts, floor plans, spreadsheets — keep the names you
-          already use.
+          already use. You can come back anytime to add more until we hand off your workspace.
+        </p>
+        <p className="text-xs text-muted-foreground" data-testid="wg-waiting-upload-limits">
+          {WG_UPLOAD_LIMIT_LABEL}
         </p>
         <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground hover:bg-muted/40">
           <span className="font-medium text-foreground">Drop files here</span>

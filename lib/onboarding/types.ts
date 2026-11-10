@@ -89,19 +89,19 @@ export const BRING_BUSINESS_OPTIONS: {
     key: "honeybook",
     title: "Yes — I use HoneyBook",
     description:
-      "We'll note HoneyBook so our team can guide you through a supported export and review — nothing imports automatically from this answer alone.",
+      "We'll note that you're coming from HoneyBook and help you export what you want us to use — nothing moves over automatically.",
   },
   {
     key: "tripleseat",
     title: "Yes — I use Tripleseat",
     description:
-      "We'll note Tripleseat so our team can guide you through a supported export and review — nothing imports automatically from this answer alone.",
+      "We'll note that you're coming from Tripleseat and help you export what you want us to use — nothing moves over automatically.",
   },
   {
     key: "another_system",
     title: "Yes — I use another system",
     description:
-      "We'll note that you're coming from another system and guide you through exporting and reviewing what you want to bring over.",
+      "Tell us what you use; we'll help you gather the pieces that matter — nothing imports on its own.",
   },
   {
     key: "starting_fresh",

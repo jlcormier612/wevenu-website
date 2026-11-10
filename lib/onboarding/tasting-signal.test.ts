@@ -52,15 +52,16 @@ describe("appointments other than tours signal", () => {
       welcome.indexOf('data-testid="wg-welcome-box"'),
       welcome.indexOf("<WhiteGloveIntakeClient"),
     );
-    assert.match(box, /Welcome to White Glove Setup!/);
+    assert.match(box, /Welcome to White Glove Setup/);
     assert.match(
       box,
-      /We&apos;re excited to help you get Hello to Cheers ready for your venue/,
+      /We&apos;re excited to get Hello to Cheers ready for your venue/,
     );
     assert.match(
       box,
-      /Your account login is already set\. The contact information you provide below helps us/,
+      /You&apos;ll receive access to sign in once we&apos;ve completed setup and activated/,
     );
+    assert.doesNotMatch(box, /Your account login is already set/);
     assert.doesNotMatch(box, /from checkout/);
     assert.doesNotMatch(box, /Account login stays/);
     assert.doesNotMatch(box, /enrollment\.venue_name/);

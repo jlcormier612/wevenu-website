@@ -6,6 +6,12 @@ import Link from "next/link";
 
 import { OnboardingIntakeForm, type IntakePrefill } from "@/components/onboarding/onboarding-intake-form";
 import type { OnboardingIntakeInput } from "@/lib/onboarding/types";
+import {
+  WG_MATERIAL_MAX_BYTES,
+  WG_MATERIAL_MAX_COUNT,
+} from "@/lib/onboarding/materials";
+
+const WG_UPLOAD_LIMIT_LABEL = `PDF, Word, Excel, PowerPoint, CSV, images, or ZIP · up to ${Math.round(WG_MATERIAL_MAX_BYTES / (1024 * 1024))} MB each · up to ${WG_MATERIAL_MAX_COUNT} files`;
 
 export function WhiteGloveIntakeClient({
   intakeToken,
@@ -98,6 +104,9 @@ export function WhiteGloveIntakeClient({
               <li>Spreadsheets/exports</li>
               <li>Other venue information</li>
             </ul>
+            <p className="text-xs text-muted-foreground" data-testid="wg-intake-upload-limits">
+              {WG_UPLOAD_LIMIT_LABEL}
+            </p>
             <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground hover:bg-muted/40">
               <span className="font-medium text-foreground">Drop files here</span>
               <span className="mt-1 text-xs">{uploading ? "Uploading…" : "or click to browse"}</span>

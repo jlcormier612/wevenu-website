@@ -25,6 +25,11 @@ export {
 } from "./send";
 export { sendEnrollmentProductEmails, sendWelcomeHomeEmail, sendReactivationEmail, type EnrollmentEmailContext } from "./enrollment";
 export {
+  resolveInquiryNotifyEmail,
+  sendOpsInternalEmail,
+  type OpsNotifyResult,
+} from "./ops-notify";
+export {
   activationUrlFromToken,
   activationBaseUrl,
   productAppBaseUrl,

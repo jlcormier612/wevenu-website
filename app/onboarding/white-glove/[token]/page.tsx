@@ -90,15 +90,17 @@ export default async function WhiteGloveIntakePage({ params, searchParams }: Pag
           className="rounded-md border border-border/70 bg-muted/10 px-3 py-2.5 text-sm"
           data-testid="wg-welcome-box"
         >
-          <p className="font-medium text-foreground">Welcome to White Glove Setup!</p>
+          <p className="font-medium text-foreground">Welcome to White Glove Setup</p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            We&apos;re excited to help you get Hello to Cheers ready for your venue. Let&apos;s
-            start with a few details about your space and how you work. We&apos;ll take care of
-            the setup from there.
+            We&apos;re excited to get Hello to Cheers ready for your venue. Share a few details
+            about your space and how you work, and upload any materials you already have — you
+            don&apos;t need everything prepared in advance. Our team will build your workspace
+            from there.
           </p>
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            Your account login is already set. The contact information you provide below helps us
-            configure your venue and communicate with you during setup.
+            You&apos;ll receive access to sign in once we&apos;ve completed setup and activated
+            your account. Venue phone and website below help us configure your space and reach you
+            during setup.
           </p>
         </div>
       </div>

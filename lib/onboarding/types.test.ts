@@ -36,6 +36,21 @@ describe("onboarding intake customer-facing choices", () => {
     }
   });
 
+  it("keeps bring-business copy warm without promising automatic migration", () => {
+    const byKey = Object.fromEntries(
+      BRING_BUSINESS_OPTIONS.map((o) => [o.key, o.description]),
+    );
+    assert.match(byKey.honeybook, /help you export/i);
+    assert.match(byKey.honeybook, /nothing moves over automatically/i);
+    assert.match(byKey.tripleseat, /help you export/i);
+    assert.match(byKey.tripleseat, /nothing moves over automatically/i);
+    assert.match(byKey.another_system, /help you gather/i);
+    assert.match(byKey.another_system, /nothing imports on its own/i);
+    for (const text of Object.values(byKey)) {
+      assert.equal(/automatic(ally)? migrate|imports? automatically from this answer alone/i.test(text), false);
+    }
+  });
+
   it("maps bring-business choices to migration routes", () => {
     assert.equal(bringBusinessMigrationHref("starting_fresh"), null);
     assert.match(bringBusinessMigrationHref("honeybook")!, /honeybook/);
