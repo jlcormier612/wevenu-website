@@ -96,11 +96,18 @@ async function main() {
   // Stripe credit is issued against the referrer subscription only).
   const stamp = Date.now();
   const referredName = `DISPOSABLE-P6-REF-${stamp}`;
+  const { data: referrerOwner } = await supabase
+    .from("venues")
+    .select("owner_user_id")
+    .eq("id", referrerVenueId)
+    .maybeSingle();
+
   const { data: referred, error: referredErr } = await supabase
     .from("venues")
     .insert({
       name: referredName,
       website: `https://p6-ref-${stamp}.test`,
+      owner_user_id: referrerOwner?.owner_user_id,
       saas_plan_key: "starter",
       saas_subscription_status: "active",
       saas_stripe_subscription_id: `sub_fake_p6_${stamp}`,

@@ -339,7 +339,7 @@ jobs:
               "ParameterKey=StripeSaasProductId,ParameterValue=prod_V4AgrDDqyO0YGF" \
               "ParameterKey=PricingFounderV1,ParameterValue=true" \
               "ParameterKey=ReferralProgramV1,ParameterValue=true" \
-              "ParameterKey=ReferralRewardIssue,ParameterValue=false" \
+              "ParameterKey=ReferralRewardIssue,ParameterValue=true" \
               "ParameterKey=ReferralQualificationDays,ParameterValue=30" \
               "ParameterKey=PricingTierUpgradeStore,ParameterValue=postgres" \
               "ParameterKey=TierUpgradeApplyStripe,ParameterValue=true" \
@@ -443,7 +443,7 @@ jobs:
               StripeSaasProductId=prod_V4AgrDDqyO0YGF \
               PricingFounderV1=true \
               ReferralProgramV1=true \
-              ReferralRewardIssue=false \
+              ReferralRewardIssue=true \
               ReferralQualificationDays=30 \
               PricingTierUpgradeStore=postgres \
               TierUpgradeApplyStripe=true \
