@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { BillingPortalButton } from "@/components/billing/billing-portal-button";
 import { OrganizationBillingCard } from "@/components/billing/organization-billing-card";
+import { ReferralCreditsCard } from "@/components/billing/referral-credits-card";
 import { SpecialPricingCard } from "@/components/billing/special-pricing-card";
 import { SubscriptionStatusCard } from "@/components/billing/subscription-status-card";
 import { TierUpgradeStatusCard } from "@/components/billing/tier-upgrade-status-card";
@@ -64,6 +65,8 @@ export default async function SubscriptionBillingSettingsPage() {
           />
 
           <SpecialPricingCard />
+
+          <ReferralCreditsCard />
 
           <TierUpgradeStatusCard />
 

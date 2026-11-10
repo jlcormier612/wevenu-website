@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/tier-upgrades", label: "Tier upgrades" },
   { href: "/organizations", label: "Organizations" },
   { href: "/custom-pricing", label: "Custom pricing" },
+  { href: "/referrals", label: "Referrals" },
   { href: "/commissions", label: "Commissions" },
   { href: "/team", label: "Team" },
   { href: "/reports", label: "Reports" },

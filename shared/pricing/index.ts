@@ -53,6 +53,10 @@ export {
   isPricingFounderV1Ready,
   getPricingFounderV1Readiness,
   resolveSaasProductId,
+  isReferralProgramV1FlagEnabled,
+  isReferralRewardIssueEnabled,
+  getReferralProgramReadiness,
+  isReferralProgramReady,
   type PricingLaunchReadiness,
   type PricingLaunchMode,
   type PricingWevenReadiness,
@@ -61,6 +65,8 @@ export {
   type PricingGroupMode,
   type PricingFounderReadiness,
   type PricingFounderMode,
+  type ReferralProgramReadiness,
+  type ReferralProgramMode,
 } from "./readiness";
 
 export {
@@ -360,3 +366,55 @@ export {
   type FounderServiceContext,
   type CreateFounderArrangementInput,
 } from "./founder-service";
+
+export type * from "./referral-types";
+
+export {
+  REFERRAL_POLICY_VERSION,
+  getReferralProgramPolicy,
+  addDaysIso,
+} from "./referral-policy";
+
+export {
+  normalizeWebsite,
+  extractWebsiteDomain,
+  normalizeEmail,
+  validateReferralSubmission,
+  mapCustomerReferralStatus,
+  customerStatusLabel,
+  toCustomerReferralView,
+  domainsMatch,
+} from "./referral-validate";
+
+export { valueReferrerReward } from "./referral-value";
+
+export {
+  createMemoryReferralStore,
+  preferPostgresReferralStore,
+  setReferralStoreForTests,
+  resetReferralStoreForTests,
+  type ReferralStore,
+} from "./referral-store";
+
+export {
+  issueReferralSubscriptionCredit,
+  findAppliedReferralCreditInvoice,
+  referralCreditIdempotencyKey,
+  type StripeReferralExecutor,
+} from "./referral-stripe-execute";
+
+export {
+  submitVenueReferral,
+  listCustomerReferrals,
+  founderUpdateReferral,
+  confirmReferralAttribution,
+  markAttributionPaid,
+  evaluateReferralQualification,
+  approveReferralReward,
+  rejectReferralReward,
+  issueReferralRewardCredit,
+  reconcileIssuedReferralRewards,
+  processReferralLifecycle,
+  type ReferralServiceContext,
+  type ReferralVenueBillingSnapshot,
+} from "./referral-service";

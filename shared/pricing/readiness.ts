@@ -483,3 +483,96 @@ export function isPricingFounderV1Ready(
 ): boolean {
   return readiness.ready;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6 — Refer a Venue (independent; default off)
+// ---------------------------------------------------------------------------
+
+/** Submission + CRM + qualification evaluation. Default false until Sandbox activation. */
+export function isReferralProgramV1FlagEnabled(): boolean {
+  return parseBooleanFlag(process.env.REFERRAL_PROGRAM_V1, false);
+}
+
+/**
+ * Stripe credit issuance kill switch. Keep false until billing acceptance passes.
+ * Independent from submission/qualification so founders can operate CRM first.
+ */
+export function isReferralRewardIssueEnabled(): boolean {
+  return (
+    isReferralProgramV1FlagEnabled() &&
+    parseBooleanFlag(process.env.REFERRAL_REWARD_ISSUE, false)
+  );
+}
+
+export type ReferralProgramMode =
+  | "disabled"
+  | "referral_ready"
+  | "referral_misconfigured";
+
+export type ReferralProgramReadiness = {
+  mode: ReferralProgramMode;
+  ready: boolean;
+  flagEnabled: boolean;
+  rewardIssueEnabled: boolean;
+  missing: string[];
+  qualificationDays: number;
+  diagnosticMessage: string;
+};
+
+export function getReferralProgramReadiness(): ReferralProgramReadiness {
+  const flagEnabled = isReferralProgramV1FlagEnabled();
+  const rewardIssueEnabled = isReferralRewardIssueEnabled();
+  const qualificationDays = (() => {
+    const raw = process.env.REFERRAL_QUALIFICATION_DAYS?.trim();
+    if (!raw) return 30;
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : 30;
+  })();
+
+  const missing: string[] = [];
+  // Referral program does not require extra Stripe Price IDs beyond Phase 1–5.
+  // Reward issue additionally needs a working SaaS Stripe secret (checked at execute time).
+
+  if (!flagEnabled) {
+    return {
+      mode: "disabled",
+      ready: false,
+      flagEnabled: false,
+      rewardIssueEnabled: false,
+      missing: [],
+      qualificationDays,
+      diagnosticMessage:
+        "REFERRAL_PROGRAM_V1 is off — Refer a Venue is not active.",
+    };
+  }
+
+  if (missing.length > 0) {
+    return {
+      mode: "referral_misconfigured",
+      ready: false,
+      flagEnabled: true,
+      rewardIssueEnabled,
+      missing,
+      qualificationDays,
+      diagnosticMessage: `Referral program is enabled but incomplete: missing ${missing.join(", ")}.`,
+    };
+  }
+
+  return {
+    mode: "referral_ready",
+    ready: true,
+    flagEnabled: true,
+    rewardIssueEnabled,
+    missing: [],
+    qualificationDays,
+    diagnosticMessage: rewardIssueEnabled
+      ? "Refer a Venue is ready (submission, qualification, and reward issuance)."
+      : "Refer a Venue is ready for submission and qualification; reward issuance remains gated (REFERRAL_REWARD_ISSUE=false).",
+  };
+}
+
+export function isReferralProgramReady(
+  readiness: ReferralProgramReadiness = getReferralProgramReadiness(),
+): boolean {
+  return readiness.ready;
+}

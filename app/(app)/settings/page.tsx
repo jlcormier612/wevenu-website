@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   CreditCard,
+  HeartHandshake,
   Inbox,
   MessageCircle,
   UsersRound,
@@ -80,6 +81,12 @@ export default async function SettingsPage() {
       title: "Subscription & Billing",
       icon: CreditCard,
       description: "Hello to Cheers plan, payment method, and cancellation.",
+    },
+    {
+      href: "/settings/referrals",
+      title: "Refer a Venue",
+      icon: HeartHandshake,
+      description: "Share HTC with another venue and earn a thank-you credit.",
     },
     {
       href: "/settings/team",
