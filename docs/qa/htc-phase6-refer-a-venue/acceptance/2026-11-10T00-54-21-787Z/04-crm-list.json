@@ -1,0 +1,103 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "readiness": {
+      "mode": "referral_ready",
+      "ready": true,
+      "flagEnabled": true,
+      "rewardIssueEnabled": true,
+      "missing": [],
+      "qualificationDays": 30,
+      "diagnosticMessage": "Refer a Venue is ready (submission, qualification, and reward issuance)."
+    },
+    "referrals": [
+      {
+        "id": "478c364a-c092-45ea-9ad7-ac09cd5ba04c",
+        "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+        "referringOrganizationId": null,
+        "submittedByUserId": null,
+        "submittedByEmail": "jennifer@hellotocheers.com",
+        "referredVenueName": "DISPOSABLE-P6-REF-1794272062269",
+        "referredCity": "Austin",
+        "referredState": "TX",
+        "referredWebsite": "https://p6-ref-1794272062269.test",
+        "referredWebsiteDomain": "p6-ref-1794272062269.test",
+        "referredContactEmail": "contact+p6-1794272062269@hellotocheers.com",
+        "referredContactName": "P6 Contact",
+        "referredContactRole": null,
+        "notes": null,
+        "status": "submitted",
+        "assignedOwnerEmail": null,
+        "linkedRelationshipId": null,
+        "linkedVenueId": null,
+        "isSelfReferral": false,
+        "isSameOrganization": false,
+        "isExistingPayingCustomer": false,
+        "isDuplicateClaim": false,
+        "blockedReason": null,
+        "programPolicyVersion": "referral_v1",
+        "qualificationDays": 30,
+        "audit": [],
+        "metadata": {
+          "harness": "phase6",
+          "disposable": true
+        },
+        "createdAt": "2026-11-10T00:54:22.68399+00:00",
+        "updatedAt": "2026-11-10T00:54:22.68399+00:00"
+      },
+      {
+        "id": "f77458fb-78ef-4af9-9889-11f92030a562",
+        "referringVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+        "referringOrganizationId": null,
+        "submittedByUserId": null,
+        "submittedByEmail": "jennifer@hellotocheers.com",
+        "referredVenueName": "DISPOSABLE-P6-REF-1794271429189",
+        "referredCity": "Austin",
+        "referredState": "TX",
+        "referredWebsite": "https://p6-ref-1794271429189.test",
+        "referredWebsiteDomain": "p6-ref-1794271429189.test",
+        "referredContactEmail": "contact+p6-1794271429189@hellotocheers.com",
+        "referredContactName": "P6 Contact",
+        "referredContactRole": null,
+        "notes": null,
+        "status": "reward_eligible",
+        "assignedOwnerEmail": null,
+        "linkedRelationshipId": null,
+        "linkedVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110",
+        "isSelfReferral": false,
+        "isSameOrganization": false,
+        "isExistingPayingCustomer": false,
+        "isDuplicateClaim": false,
+        "blockedReason": null,
+        "programPolicyVersion": "referral_v1",
+        "qualificationDays": 30,
+        "audit": [
+          {
+            "at": "2026-11-10T00:43:50.334Z",
+            "by": "phase6-harness@hellotocheers.com",
+            "action": "attributed",
+            "referredVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110"
+          },
+          {
+            "at": "2026-11-10T00:43:50.887Z",
+            "by": "phase6-harness@hellotocheers.com",
+            "action": "qualification_pending"
+          },
+          {
+            "at": "2026-11-10T00:43:51.350Z",
+            "by": "phase6-harness@hellotocheers.com",
+            "action": "reward_eligible",
+            "amountCents": 19900
+          }
+        ],
+        "metadata": {
+          "harness": "phase6",
+          "disposable": true
+        },
+        "createdAt": "2026-11-10T00:43:49.574143+00:00",
+        "updatedAt": "2026-11-10T00:43:51.878+00:00"
+      }
+    ]
+  }
+}

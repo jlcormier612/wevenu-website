@@ -1,0 +1,35 @@
+{
+  "servingSha": "846c5143f33de2a88ea60b12d740454f9401bc93",
+  "deployRun": "https://github.com/jlcormier612/wevenu-website/actions/runs/42730594493",
+  "referralId": "478c364a-c092-45ea-9ad7-ac09cd5ba04c",
+  "rewardAmountCents": 19900,
+  "stripeInvoiceItemId": "ii_1Ua3KQErUqJH7nktTccswXHr",
+  "invoiceItem": {
+    "id": "ii_1Ua3KQErUqJH7nktTccswXHr",
+    "amount": -19900,
+    "currency": "usd",
+    "customer": "cus_Vb8Ng5wqMg59Z5",
+    "subscription": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "description": "Hello to Cheers — Refer a Venue thank-you credit (one month)",
+    "metadata": {
+      "htc_credit_kind": "refer_a_venue",
+      "htc_referral_id": "478c364a-c092-45ea-9ad7-ac09cd5ba04c",
+      "htc_referral_reward_id": "795a4e08-8ad4-4cea-9c22-857d5d5143a0",
+      "htc_scope": "saas_subscription"
+    },
+    "invoice": null
+  },
+  "upcomingInvoicePreview": {
+    "total": 0,
+    "amount_due": 0,
+    "creditLines": [
+      {
+        "amount": -19900,
+        "description": "Hello to Cheers — Refer a Venue thank-you credit (one month)",
+        "invoice_item": "ii_1Ua3KQErUqJH7nktTccswXHr"
+      }
+    ]
+  },
+  "subscriptionScoped": true,
+  "noCustomerBalanceUsed": true
+}
