@@ -1,7 +1,10 @@
 /**
  * Legal compliance enforcement helper for the Next.js proxy (WP4).
- * Uses the Legal Acceptance Engine; fails open when admin/env is unavailable
- * so local/dev without service role is not bricked.
+ * Uses the Legal Acceptance Engine.
+ *
+ * Sandbox/Production fail closed when the service role is missing or the
+ * engine/admin path throws. Local development may opt into fail-open only via
+ * LEGAL_ENFORCEMENT_FAIL_OPEN=1 (rejected in deployed runtimes).
  */
 
 import type { User } from "@supabase/supabase-js";
@@ -9,6 +12,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { legalAcceptanceService } from "@/lib/legal/acceptance-engine";
+import {
+  buildLegalEnforcementFailureDecision,
+  isLegalEnforcementFailOpenEnabled,
+  logLegalEnforcementFailure,
+  type LegalEnforcementFailureReason,
+} from "@/lib/legal/enforcement-fail-mode";
 import {
   mayFallThroughToVendorOnVenuePath,
   selectVenueStaffMembership,
@@ -32,8 +41,21 @@ export type ProxyLegalDecision =
   | {
       action: "block_api";
       welcomePath: string;
-      code: "legal_acceptance_required";
+      code: "legal_acceptance_required" | "legal_enforcement_unavailable";
+    }
+  | {
+      action: "unavailable";
+      recoveryPath: string;
+      code: "legal_enforcement_unavailable";
     };
+
+/** Optional seams for focused failure-injection tests. */
+export type DecideLegalProxyEnforcementDeps = {
+  createAdminClient?: typeof createAdminClient;
+  requiresAcceptance?: typeof legalAcceptanceService.requiresAcceptance;
+  resolveUserType?: typeof resolveUserTypeForProxy;
+  failOpenEnabled?: () => boolean;
+};
 
 /** Exported for focused regression tests. */
 export async function resolveUserTypeForProxy(
@@ -116,6 +138,28 @@ export async function resolveUserTypeForProxy(
   );
 }
 
+function failureDecision(
+  pathname: string,
+  reason: LegalEnforcementFailureReason,
+  userId: string | null | undefined,
+  error?: unknown,
+): ProxyLegalDecision {
+  logLegalEnforcementFailure({ reason, pathname, userId, error });
+  const decision = buildLegalEnforcementFailureDecision({ pathname, reason });
+  if (decision.action === "unavailable") {
+    return {
+      action: "unavailable",
+      recoveryPath: decision.recoveryPath,
+      code: decision.code,
+    };
+  }
+  return {
+    action: "block_api",
+    welcomePath: decision.welcomePath,
+    code: decision.code,
+  };
+}
+
 /**
  * Ask the engine whether this authenticated user may proceed.
  * `@supabaseClient` is unused today but kept for future cookie-scoped checks.
@@ -127,28 +171,69 @@ export async function resolveUserTypeForProxy(
  * Pass `activeVenueId` from `htc_active_venue_id` on venue paths so multi-venue
  * staff resolve against the venue being accessed.
  */
-export async function decideLegalProxyEnforcement(input: {
-  user: User;
-  pathname: string;
-  search: string;
-  supabase?: SupabaseClient;
-  prefer?: "vendor" | "venue";
-  activeVenueId?: string | null;
-}): Promise<ProxyLegalDecision> {
+export async function decideLegalProxyEnforcement(
+  input: {
+    user: User;
+    pathname: string;
+    search: string;
+    supabase?: SupabaseClient;
+    prefer?: "vendor" | "venue";
+    activeVenueId?: string | null;
+  },
+  deps: DecideLegalProxyEnforcementDeps = {},
+): Promise<ProxyLegalDecision> {
+  const failOpen =
+    deps.failOpenEnabled?.() ?? isLegalEnforcementFailOpenEnabled();
+
   try {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-      return { action: "allow" };
+      if (failOpen) {
+        console.warn(
+          "[legal] proxy enforcement fail-open (local override): missing service role",
+        );
+        return { action: "allow" };
+      }
+      return failureDecision(
+        input.pathname,
+        "missing_service_role",
+        input.user.id,
+      );
     }
 
-    const admin = createAdminClient();
+    let admin: ReturnType<typeof createAdminClient>;
+    try {
+      const createAdmin = deps.createAdminClient ?? createAdminClient;
+      admin = createAdmin();
+    } catch (error) {
+      if (failOpen) {
+        console.warn(
+          "[legal] proxy enforcement fail-open (local override): admin client",
+          error instanceof Error ? error.message : error,
+        );
+        return { action: "allow" };
+      }
+      return failureDecision(
+        input.pathname,
+        "admin_client_failure",
+        input.user.id,
+        error,
+      );
+    }
+
     const prefer = input.prefer ?? "vendor";
-    const resolved = await resolveUserTypeForProxy(
+    const resolveUserType = deps.resolveUserType ?? resolveUserTypeForProxy;
+    const resolved = await resolveUserType(
       admin,
       input.user.id,
       prefer,
       prefer === "venue" ? input.activeVenueId : null,
     );
-    const status = await legalAcceptanceService.requiresAcceptance({
+
+    const requiresAcceptance =
+      deps.requiresAcceptance ??
+      legalAcceptanceService.requiresAcceptance.bind(legalAcceptanceService);
+
+    const status = await requiresAcceptance({
       userId: input.user.id,
       userType: resolved.userType,
     });
@@ -183,9 +268,20 @@ export async function decideLegalProxyEnforcement(input: {
       code: "legal_acceptance_required",
     };
   } catch (error) {
-    // Fail open — never take down the app if legal infra is mid-migrate.
-    // Must NOT clear Supabase cookies or call signOut; callers only redirect/allow.
-    console.error("[legal] proxy enforcement failed open", error);
-    return { action: "allow" };
+    if (failOpen) {
+      console.warn(
+        "[legal] proxy enforcement fail-open (local override)",
+        error instanceof Error ? error.message : error,
+      );
+      return { action: "allow" };
+    }
+    // Fail closed — do not treat infra failure as terms acceptance or rejection.
+    // Must NOT clear Supabase cookies or call signOut.
+    return failureDecision(
+      input.pathname,
+      "engine_error",
+      input.user.id,
+      error,
+    );
   }
 }

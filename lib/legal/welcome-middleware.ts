@@ -13,6 +13,7 @@ import {
 const PUBLIC_LEGAL_PREFIXES = [
   "/terms",
   "/privacy",
+  "/cookie-policy",
   "/cookies",
   "/acceptable-use",
   "/end-user-terms",
@@ -34,6 +35,8 @@ const LEGAL_ENFORCEMENT_SKIP_PREFIXES = [
   "/api/portal/legal",
   "/api/auth",
   "/billing/suspended",
+  // Legal enforcement unavailable recovery (fail-closed proxy redirect target)
+  "/system/legal-unavailable",
   // Public couple / vendor invitation claim surfaces
   "/client/accept",
   "/client/accept-participant",

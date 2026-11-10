@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-11-10T19:00:57.632Z",
+  "note": "Sandbox host still serves pre-fail-closed commit until separately authorized deploy. Healthy gates must still PASS.",
+  "servingExpectedPreDeploy": "960cad1242cbd2c5236acc39e11a5cec0e8bcf66",
+  "results": [
+    {
+      "id": "outdated-owner-welcome",
+      "status": "PASS",
+      "observed": "https://app.sandbox.hellotocheers.com/welcome?returnTo=%2Fdashboard&context=versionUpdate; acc 7->7"
+    },
+    {
+      "id": "current-owner-proceeds",
+      "status": "PASS",
+      "observed": "https://app.sandbox.hellotocheers.com/dashboard; acc 5->5"
+    },
+    {
+      "id": "vendor-only-routing",
+      "status": "PASS",
+      "observed": "https://app.sandbox.hellotocheers.com/welcome?returnTo=%2Fvendor%2Fdashboard&context=versionUpdate; vsa=false; privacy=true"
+    },
+    {
+      "id": "login-reachable",
+      "status": "PASS",
+      "observed": "login ok=true"
+    },
+    {
+      "id": "recovery-page-on-deployed-sandbox",
+      "status": "BLOCKED",
+      "observed": "Not deployed yet on Sandbox (https://app.sandbox.hellotocheers.com/login?next=%2Fsystem%2Flegal-unavailable); local page exists. body=Welcome back\nSign in to your Hello to Cheers workspace to continue.\nEmail\nPassword\nForgot password?\nSign in"
+    }
+  ],
+  "summary": {
+    "pass": 4,
+    "fail": 0,
+    "blocked": 1
+  }
+}

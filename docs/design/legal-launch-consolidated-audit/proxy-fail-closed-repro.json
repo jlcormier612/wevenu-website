@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-11-10T19:00:40.166Z",
+  "missingServiceRoleKey": {
+    "action": "unavailable",
+    "recoveryPath": "/system/legal-unavailable",
+    "code": "legal_enforcement_unavailable"
+  },
+  "adminClientFailure": {
+    "action": "unavailable",
+    "recoveryPath": "/system/legal-unavailable",
+    "code": "legal_enforcement_unavailable"
+  },
+  "engineErrorApi": {
+    "action": "block_api",
+    "welcomePath": "/system/legal-unavailable",
+    "code": "legal_enforcement_unavailable"
+  },
+  "recoveryPath": "/system/legal-unavailable",
+  "verdict": "decideLegalProxyEnforcement fails closed (unavailable / 503 API) when service role missing, admin init fails, or engine throws — unless local LEGAL_ENFORCEMENT_FAIL_OPEN override is active"
+}

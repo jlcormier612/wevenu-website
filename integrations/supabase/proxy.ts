@@ -185,7 +185,7 @@ function nextWithPathname(request: NextRequest, pathname: string): NextResponse 
  * Copy Set-Cookie headers from the session-bearing response onto a new one.
  * Redirects / JSON after getUser() must preserve refreshed auth cookies -
  * otherwise a silent JWT refresh is dropped and the next navigation looks logged out.
- * Never clears cookies on fail-open legal / lock paths.
+ * Never clears cookies on legal fail-closed / lock paths.
  */
 function withSessionCookies(
   from: NextResponse,
@@ -431,7 +431,7 @@ export async function updateSession(
 
   // Legal Acceptance Middleware (WP4) - one enforcement path for returning
   // users + signup/setup. Compliant users pass through unchanged.
-  // Fail-open (inside decideLegalProxyEnforcement) never clears cookies.
+  // Fail-closed on enforcement infra failure never clears cookies.
   if (
     user &&
     !isPublicPath(pathname) &&
@@ -456,16 +456,28 @@ export async function updateSession(
         ),
       );
     }
+    if (legalDecision.action === "unavailable") {
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(
+          new URL(legalDecision.recoveryPath, request.nextUrl.origin),
+        ),
+      );
+    }
     if (legalDecision.action === "block_api") {
+      const unavailable =
+        legalDecision.code === "legal_enforcement_unavailable";
       return withSessionCookies(
         supabaseResponse,
         NextResponse.json(
           {
-            error: "Legal acceptance required.",
+            error: unavailable
+              ? "Legal compliance check is temporarily unavailable. Please try again shortly."
+              : "Legal acceptance required.",
             code: legalDecision.code,
             welcomePath: legalDecision.welcomePath,
           },
-          { status: 403 },
+          { status: unavailable ? 503 : 403 },
         ),
       );
     }
