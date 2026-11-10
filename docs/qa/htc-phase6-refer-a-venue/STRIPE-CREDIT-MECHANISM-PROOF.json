@@ -1,0 +1,32 @@
+{
+  "provenAt": "2026-11-10T00:33:00Z",
+  "mechanism": "subscription_scoped_negative_invoice_item",
+  "notUsed": ["customer_balance", "permanent_coupon", "percent_coupon"],
+  "referrer": {
+    "venueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+    "customerId": "cus_Vb8Ng5wqMg59Z5",
+    "subscriptionId": "sub_1UZw74ErUqJH7nkta71f0YMw"
+  },
+  "valuation": {
+    "planKey": "starter",
+    "amountCents": 19900,
+    "source": "standard"
+  },
+  "issued": {
+    "invoiceItemId": "ii_1Ua2zUErUqJH7nktVipahqMu",
+    "amount": -19900,
+    "currency": "usd",
+    "subscription": "sub_1UZw74ErUqJH7nkta71f0YMw",
+    "metadata": {
+      "htc_credit_kind": "refer_a_venue",
+      "htc_scope": "saas_subscription"
+    },
+    "cleanedAfterProof": true
+  },
+  "invoicePreview": {
+    "total": 0,
+    "amount_due": 0,
+    "creditLinePresent": true,
+    "note": "Preview SaaS invoice total went to $0 with the -19900 thank-you line on the same subscription — proves subscription-scoped application, not customer-wide balance leakage."
+  }
+}
