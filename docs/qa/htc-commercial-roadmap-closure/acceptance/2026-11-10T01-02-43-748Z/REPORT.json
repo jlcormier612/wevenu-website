@@ -1,0 +1,71 @@
+{
+  "servingExpected": "846c5143+",
+  "venueId": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+  "subscriptionId": "sub_1UZvv7ErUqJH7nktxwGc9vmC",
+  "checks": {
+    "phase5_ready": true,
+    "phase6_ready": true,
+    "phase6_issue_enabled": true,
+    "phase5_crm_custom_pricing_ui": true,
+    "phase5_create_ok": true,
+    "phase5_amount_ok": true,
+    "venue_session_ok": true,
+    "phase5_billing_special_pricing_visible": true,
+    "phase5_end_ok": true,
+    "phase6_copy_ok": true,
+    "phase6_submit_confirmation": true,
+    "phase6_history_shows": true,
+    "phase6_crm_api_sees_referral": true
+  },
+  "steps": [
+    {
+      "name": "readiness",
+      "at": "2026-11-10T01:02:46.393Z",
+      "phase5": true,
+      "phase6": true,
+      "issue": true
+    },
+    {
+      "name": "phase5_crm_ui",
+      "at": "2026-11-10T01:02:58.105Z",
+      "ok": true,
+      "url": "https://workspace.sandbox.hellotocheers.com/custom-pricing"
+    },
+    {
+      "name": "phase5_create",
+      "at": "2026-11-10T01:03:00.077Z",
+      "ok": true,
+      "amount": 21165,
+      "arrangementId": "3c309304-2ef9-46f8-8272-efa0e757beed"
+    },
+    {
+      "name": "phase5_billing",
+      "at": "2026-11-10T01:03:23.247Z",
+      "ok": true,
+      "snippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\n[DISPOSABLE-P3-REHEARSAL] 1794243588\nSearch\n⌘K\nJ\njennifer@hellotocheers.com\nSubscription & Billing\n\nManage yo"
+    },
+    {
+      "name": "phase5_end",
+      "at": "2026-11-10T01:03:24.410Z",
+      "ok": true
+    },
+    {
+      "name": "phase6_copy",
+      "at": "2026-11-10T01:03:31.230Z",
+      "ok": true
+    },
+    {
+      "name": "phase6_submit",
+      "at": "2026-11-10T01:03:34.471Z",
+      "confirmation": true,
+      "history": true
+    },
+    {
+      "name": "phase6_referral_row",
+      "at": "2026-11-10T01:03:34.608Z",
+      "referralId": "e9736984-1640-41a1-a0a1-a337668e3fa0"
+    }
+  ],
+  "ok": false,
+  "error": "TimeoutError: locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('input[type=\"email\"], input[name=\"email\"]').first()\n"
+}

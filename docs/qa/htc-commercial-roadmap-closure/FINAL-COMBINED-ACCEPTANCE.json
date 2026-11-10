@@ -1,0 +1,133 @@
+{
+  "servingExpected": "846c5143+",
+  "venueId": "f9427d5e-84f9-48bc-a9fa-8a2bcb95af7f",
+  "subscriptionId": "sub_1UZvv7ErUqJH7nktxwGc9vmC",
+  "checks": {
+    "phase5_ready": true,
+    "phase6_ready": true,
+    "phase6_issue_enabled": true,
+    "phase5_crm_custom_pricing_ui": true,
+    "phase5_create_ok": true,
+    "phase5_amount_ok": true,
+    "venue_session_ok": true,
+    "phase5_billing_special_pricing_visible": true,
+    "phase5_end_ok": true,
+    "phase6_copy_ok": true,
+    "phase6_submit_confirmation": true,
+    "phase6_history_shows": true,
+    "phase6_crm_api_sees_referral": true,
+    "phase6_crm_referrals_ui": true,
+    "phase6_attributed": true,
+    "phase6_marked_paid": true,
+    "phase6_qualified": true,
+    "phase6_valuation_celebrate": true,
+    "phase6_approved": true,
+    "phase6_issued": true,
+    "phase6_credit_subscription_scoped": true,
+    "phase6_finalized_invoice_has_credit": true,
+    "phase6_finalized_invoice_paid_or_open": true,
+    "phase6_invoice_paid": true,
+    "phase6_reward_applied": true,
+    "phase6_applied_invoice_matches": true,
+    "phase6_billing_credit_visible": true
+  },
+  "steps": [
+    {
+      "name": "readiness",
+      "at": "2026-11-10T01:04:21.367Z",
+      "phase5": true,
+      "phase6": true,
+      "issue": true
+    },
+    {
+      "name": "phase5_crm_ui",
+      "at": "2026-11-10T01:04:31.845Z",
+      "ok": true,
+      "url": "https://workspace.sandbox.hellotocheers.com/custom-pricing"
+    },
+    {
+      "name": "phase5_create",
+      "at": "2026-11-10T01:04:33.709Z",
+      "ok": true,
+      "amount": 21165,
+      "arrangementId": "aefc8ee8-309f-44ea-9c35-f059333b7b22"
+    },
+    {
+      "name": "phase5_billing",
+      "at": "2026-11-10T01:04:55.155Z",
+      "ok": true,
+      "snippet": "OVERVIEW\n\nDashboard\n\nYOUR RELATIONSHIPS\n\nLeads\nClients\nVendors\n\nSCHEDULING\n\nCalendar\nTours\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nLIBRARY\n\nTemplates\nDocuments\n\nFINANCIALS\n\nContracts\nPayments\n\nTO DO’S\n\nTask Center\nRequests\n\nYOUR VENUE\n\nSetup\nSettings\nGuidance\nVenue Guide\nReports\nHelp & Feedback\n[DISPOSABLE-P3-REHEARSAL] 1794243588\nSearch\n⌘K\nJ\njennifer@hellotocheers.com\nSubscription & Billing\n\nManage yo"
+    },
+    {
+      "name": "phase5_end",
+      "at": "2026-11-10T01:04:56.203Z",
+      "ok": true
+    },
+    {
+      "name": "phase6_copy",
+      "at": "2026-11-10T01:05:03.396Z",
+      "ok": true
+    },
+    {
+      "name": "phase6_submit",
+      "at": "2026-11-10T01:05:06.636Z",
+      "confirmation": true,
+      "history": true
+    },
+    {
+      "name": "phase6_referral_row",
+      "at": "2026-11-10T01:05:06.760Z",
+      "referralId": "db898afa-c1c8-41fe-91e2-725f70070cce"
+    },
+    {
+      "name": "phase6_crm_ui",
+      "at": "2026-11-10T01:05:12.486Z",
+      "ok": true
+    },
+    {
+      "name": "phase6_qualify",
+      "at": "2026-11-10T01:05:15.109Z",
+      "ok": true,
+      "amount": 24900
+    },
+    {
+      "name": "phase6_issue",
+      "at": "2026-11-10T01:05:16.304Z",
+      "ok": true,
+      "invoiceItemId": "ii_1Ua3UtErUqJH7nktl9ZkqlMA",
+      "amount": 24900
+    },
+    {
+      "name": "phase6_clock_advance_start",
+      "at": "2026-11-10T01:05:16.789Z",
+      "from": 1796835708,
+      "to": 1799514108,
+      "periodEnd": 1799513988
+    },
+    {
+      "name": "phase6_finalized_invoice",
+      "at": "2026-11-10T01:05:26.347Z",
+      "id": "in_1Ua3UzErUqJH7nkturUieO32",
+      "status": "paid",
+      "total": 0
+    },
+    {
+      "name": "phase6_reward_applied",
+      "at": "2026-11-10T01:05:28.093Z",
+      "status": "applied",
+      "appliedInvoiceId": "in_1Ua3UzErUqJH7nkturUieO32"
+    },
+    {
+      "name": "phase6_billing_credit",
+      "at": "2026-11-10T01:05:38.411Z",
+      "ok": true
+    }
+  ],
+  "ok": true,
+  "out": "/Users/jensmac/Developer/wevenu-website/docs/qa/htc-commercial-roadmap-closure/acceptance/2026-11-10T01-04-18-627Z",
+  "referralId": "db898afa-c1c8-41fe-91e2-725f70070cce",
+  "rewardId": "6097ac77-24db-4745-b5af-f89ebae4991d",
+  "stripeInvoiceItemId": "ii_1Ua3UtErUqJH7nktl9ZkqlMA",
+  "appliedInvoiceId": "in_1Ua3UzErUqJH7nkturUieO32",
+  "rewardAmountCents": 24900
+}

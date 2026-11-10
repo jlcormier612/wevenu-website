@@ -1,0 +1,18 @@
+{
+  "id": "in_1Ua3UzErUqJH7nkturUieO32",
+  "status": "paid",
+  "total": 0,
+  "amount_due": 0,
+  "amount_paid": 0,
+  "lines": [
+    {
+      "amount": -24900,
+      "description": "Hello to Cheers — Refer a Venue thank-you credit (one month)",
+      "invoice_item": "ii_1Ua3UtErUqJH7nktl9ZkqlMA"
+    },
+    {
+      "amount": 24900,
+      "description": "1 × Celebrate (at $249.00 / month)"
+    }
+  ]
+}

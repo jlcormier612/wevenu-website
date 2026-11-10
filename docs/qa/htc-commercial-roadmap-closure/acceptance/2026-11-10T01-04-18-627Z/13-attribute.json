@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "attribution": {
+      "id": "cad779cd-56b5-4b5a-b629-b25861334bb7",
+      "referralId": "db898afa-c1c8-41fe-91e2-725f70070cce",
+      "referredVenueId": "a1c1b043-974d-4755-97bf-d899905f7db1",
+      "referredStripeSubscriptionId": "sub_fake_close_1794272703396",
+      "referredStripeCustomerId": "cus_fake_close_1794272703396",
+      "matchMethod": "founder_confirmed",
+      "matchEvidence": {},
+      "confirmedByEmail": "jennifer@hellotocheers.com",
+      "confirmedAt": "2026-11-10T01:05:13.144+00:00",
+      "convertedAt": "2026-11-10T01:05:13.144+00:00",
+      "firstPaidInvoiceId": null,
+      "firstPaidInvoiceAt": null,
+      "qualificationStartsAt": null,
+      "qualificationEndsAt": null,
+      "status": "confirmed",
+      "rejectionReason": null,
+      "idempotencyKey": "attr:v1:db898afa-c1c8-41fe-91e2-725f70070cce:a1c1b043-974d-4755-97bf-d899905f7db1",
+      "audit": [
+        {
+          "at": "2026-11-10T01:05:13.174Z",
+          "action": "created",
+          "status": "confirmed"
+        },
+        {
+          "at": "2026-11-10T01:05:13.144Z",
+          "by": "jennifer@hellotocheers.com",
+          "action": "confirmed"
+        }
+      ],
+      "createdAt": "2026-11-10T01:05:13.207001+00:00",
+      "updatedAt": "2026-11-10T01:05:13.285+00:00"
+    }
+  }
+}
