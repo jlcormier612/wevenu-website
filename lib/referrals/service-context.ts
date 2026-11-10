@@ -108,10 +108,15 @@ export async function loadReferralVenueSnapshot(
   };
 }
 
-export function createReferralServiceContext(opts?: {
+export async function createReferralServiceContext(opts?: {
   includeStripe?: boolean;
-}): ReferralServiceContext {
+}): Promise<ReferralServiceContext> {
   const includeStripe = opts?.includeStripe !== false;
+  let stripe: ReferralServiceContext["stripe"] = null;
+  if (includeStripe) {
+    const client = await createSaasStripeClient();
+    stripe = client.stripe as unknown as ReferralServiceContext["stripe"];
+  }
   return {
     store: getReferralStore(),
     loadVenue: loadReferralVenueSnapshot,
@@ -124,8 +129,6 @@ export function createReferralServiceContext(opts?: {
         .eq("status", "active");
       return (data ?? []).map((r) => r.venue_id as string);
     },
-    stripe: includeStripe
-      ? (createSaasStripeClient() as unknown as ReferralServiceContext["stripe"])
-      : null,
+    stripe,
   };
 }

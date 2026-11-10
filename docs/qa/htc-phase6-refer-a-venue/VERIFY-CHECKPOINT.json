@@ -1,0 +1,36 @@
+{
+  "phase": 6,
+  "baselineServingShaBefore": "927c39d5a07a6daf249e0e95ddbc1c29dc3cb500",
+  "phase5ApiAcceptance": "GREEN (FINAL-RERUN-ACCEPTANCE.json)",
+  "phase5BrowserCrmSmoke": "outstanding / previously blocked",
+  "implementationCommits": [
+    "a2ff90a2 Implement Phase 6 Refer a Venue referral and reward program.",
+    "24fda30d Enable Phase 6 Sandbox referral reward issuance after local readiness.",
+    "81d86b9d Record Phase 6 Stripe Test subscription-scoped credit proof."
+  ],
+  "migration": {
+    "file": "20270114120000_saas_pricing_phase6_referrals.sql",
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/42728784499",
+    "result": "success",
+    "tables": [
+      "saas_venue_referrals",
+      "saas_referral_attributions",
+      "saas_referral_rewards",
+      "saas_referral_activity"
+    ]
+  },
+  "deploy": {
+    "run": "https://github.com/jlcormier612/wevenu-website/actions/runs/42729070993",
+    "targetSha": "24fda30d8907ffa5ff63bcb02c9277116cd4faa3",
+    "flags": {
+      "REFERRAL_PROGRAM_V1": true,
+      "REFERRAL_REWARD_ISSUE": true,
+      "REFERRAL_QUALIFICATION_DAYS": "30"
+    }
+  },
+  "localTests": {
+    "referralPhase6": "10/10 pass",
+    "phase1to5Regressions": "111/111 pass"
+  },
+  "stripeMechanismProof": "docs/qa/htc-phase6-refer-a-venue/STRIPE-CREDIT-MECHANISM-PROOF.json"
+}

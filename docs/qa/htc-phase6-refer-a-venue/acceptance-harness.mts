@@ -12,6 +12,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { config } from "dotenv";
@@ -21,9 +22,46 @@ config({ path: ".env.local", quiet: true });
 const VENUE_APP =
   process.env.VENUE_APP_BASE_URL?.replace(/\/$/, "") ||
   "https://app.sandbox.hellotocheers.com";
-const PRODUCT_KEY = process.env.PRODUCT_SYNC_API_KEY?.trim() || "";
-const CRON_SECRET = process.env.CRON_SECRET?.trim() || "";
-const AUTH = PRODUCT_KEY || CRON_SECRET;
+
+function resolveProductSyncApiKey(): string {
+  if (process.env.PRODUCT_SYNC_API_KEY?.trim()) {
+    return process.env.PRODUCT_SYNC_API_KEY.trim();
+  }
+  if (process.env.CRON_SECRET?.trim()) {
+    return process.env.CRON_SECRET.trim();
+  }
+  try {
+    const raw = execFileSync(
+      "aws",
+      [
+        "secretsmanager",
+        "get-secret-value",
+        "--secret-id",
+        "htc/sandbox/product-sync-api-key",
+        "--query",
+        "SecretString",
+        "--output",
+        "text",
+      ],
+      { encoding: "utf8" },
+    ).trim();
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      return (
+        parsed.value ||
+        parsed.PRODUCT_SYNC_API_KEY ||
+        parsed.api_key ||
+        raw
+      );
+    } catch {
+      return raw;
+    }
+  } catch {
+    return "";
+  }
+}
+
+const AUTH = resolveProductSyncApiKey();
 
 const OUT = join(
   "docs/qa/htc-phase6-refer-a-venue",

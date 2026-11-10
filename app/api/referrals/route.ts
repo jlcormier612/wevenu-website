@@ -37,7 +37,7 @@ export async function GET() {
     });
   }
 
-  const ctx = createReferralServiceContext({ includeStripe: false });
+  const ctx = await createReferralServiceContext({ includeStripe: false });
   const referrals = await listCustomerReferrals(ctx, venue.id);
   return NextResponse.json({
     ok: true,
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
-  const ctx = createReferralServiceContext({ includeStripe: false });
+  const ctx = await createReferralServiceContext({ includeStripe: false });
   const result = await submitVenueReferral(ctx, {
     referringVenueId: venue.id,
     submittedByUserId: user?.id ?? null,

@@ -1,0 +1,24 @@
+{
+  "ok": false,
+  "rewardIssueEnabled": true,
+  "checks": {
+    "readiness_ok": true,
+    "program_ready": true,
+    "referrer_loaded": true,
+    "referred_created": true,
+    "referral_inserted": true,
+    "crm_lists_referral": true,
+    "attributed": true,
+    "marked_paid": true,
+    "qualified": true,
+    "approved": true,
+    "issued": false,
+    "issue_amount_matches": true
+  },
+  "referralId": "f77458fb-78ef-4af9-9889-11f92030a562",
+  "referredVenueId": "6d3abc3e-c323-4c30-be64-b3ab899b6110",
+  "referrerVenueId": "9336a6cb-6a49-4a38-82bc-ff3b2361e8a3",
+  "rewardAmountCents": 19900,
+  "stripeInvoiceItemId": null,
+  "out": "docs/qa/htc-phase6-refer-a-venue/acceptance/2026-11-10T00-43-48-742Z"
+}

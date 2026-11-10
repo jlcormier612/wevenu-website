@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       ? body.actorEmail.trim()
       : "founder";
 
-  const ctx = createReferralServiceContext({ includeStripe: true });
+  const ctx = await createReferralServiceContext({ includeStripe: true });
 
   try {
     switch (action) {

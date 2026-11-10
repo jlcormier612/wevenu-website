@@ -47,7 +47,7 @@ async function handle(request: Request) {
     url.searchParams.get("autoIssue") === "1" ||
     isReferralRewardIssueEnabled();
 
-  const ctx = createReferralServiceContext({ includeStripe: true });
+  const ctx = await createReferralServiceContext({ includeStripe: true });
   const result = await processReferralLifecycle(ctx, {
     limit: 25,
     autoIssueApproved: autoIssue,

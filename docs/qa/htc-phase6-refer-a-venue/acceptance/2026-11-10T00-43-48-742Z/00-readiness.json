@@ -1,0 +1,16 @@
+{
+  "status": 200,
+  "json": {
+    "ok": true,
+    "readiness": {
+      "mode": "referral_ready",
+      "ready": true,
+      "flagEnabled": true,
+      "rewardIssueEnabled": true,
+      "missing": [],
+      "qualificationDays": 30,
+      "diagnosticMessage": "Refer a Venue is ready (submission, qualification, and reward issuance)."
+    },
+    "referrals": []
+  }
+}
