@@ -437,12 +437,16 @@ export async function updateSession(
     !isPublicPath(pathname) &&
     !shouldSkipLegalEnforcement(pathname)
   ) {
+    const activeVenueId = vendorPath
+      ? null
+      : request.cookies.get("htc_active_venue_id")?.value?.trim() || null;
     const legalDecision = await decideLegalProxyEnforcement({
       user,
       pathname,
       search: request.nextUrl.search,
       supabase,
       prefer: vendorPath ? "vendor" : "venue",
+      activeVenueId,
     });
     if (legalDecision.action === "redirect_welcome") {
       return withSessionCookies(

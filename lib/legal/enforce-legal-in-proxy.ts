@@ -10,6 +10,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { legalAcceptanceService } from "@/lib/legal/acceptance-engine";
 import {
+  mayFallThroughToVendorOnVenuePath,
+  selectVenueStaffMembership,
+  type VenueStaffMembershipRow,
+} from "@/lib/legal/resolve-venue-staff-membership";
+import {
   inferWelcomeContext,
   mapStaffRoleToLegalUserType,
   outstandingImpliesPriorAcceptance,
@@ -30,10 +35,12 @@ export type ProxyLegalDecision =
       code: "legal_acceptance_required";
     };
 
-async function resolveUserTypeForProxy(
+/** Exported for focused regression tests. */
+export async function resolveUserTypeForProxy(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   prefer: "vendor" | "venue" = "vendor",
+  activeVenueId?: string | null,
 ): Promise<{
   userType: Exclude<
     import("@/lib/legal/required-documents").LegalAcceptanceUserType,
@@ -41,7 +48,7 @@ async function resolveUserTypeForProxy(
   >;
   kind: "vendor" | "venue_staff" | "venue_owner_signup";
 }> {
-  const [{ data: vendorRows }, { data: staffRow }] = await Promise.all([
+  const [{ data: vendorRows }, staffQuery] = await Promise.all([
     admin
       .from("vendor_users")
       .select("vendor_id")
@@ -50,11 +57,16 @@ async function resolveUserTypeForProxy(
       .limit(1),
     admin
       .from("venue_staff")
-      .select("role, is_owner")
+      .select("venue_id, role, is_owner, is_active")
       .eq("user_id", userId)
-      .maybeSingle<{ role: string; is_owner: boolean }>(),
+      .eq("is_active", true),
   ]);
   const vendorRow = Array.isArray(vendorRows) ? vendorRows[0] : vendorRows;
+  const staffResolution = selectVenueStaffMembership({
+    rows: (staffQuery.data ?? null) as VenueStaffMembershipRow[] | null,
+    error: staffQuery.error,
+    activeVenueId,
+  });
 
   const asVendor = () =>
     vendorRow?.vendor_id
@@ -62,8 +74,9 @@ async function resolveUserTypeForProxy(
       : null;
 
   const asStaff = () => {
-    if (!staffRow) return null;
-    const role = staffRow.is_owner ? "owner" : staffRow.role;
+    if (staffResolution.status !== "resolved") return null;
+    const row = staffResolution.row;
+    const role = row.is_owner ? "owner" : row.role;
     return {
       userType: mapStaffRoleToLegalUserType(role),
       kind: "venue_staff" as const,
@@ -71,13 +84,27 @@ async function resolveUserTypeForProxy(
   };
 
   if (prefer === "venue") {
-    return (
-      asStaff() ??
-      asVendor() ?? {
-        userType: "venue_owner",
-        kind: "venue_owner_signup",
-      }
-    );
+    if (staffResolution.status === "resolved") {
+      return asStaff()!;
+    }
+    if (mayFallThroughToVendorOnVenuePath(staffResolution)) {
+      return (
+        asVendor() ?? {
+          userType: "venue_owner",
+          kind: "venue_owner_signup",
+        }
+      );
+    }
+    if (staffResolution.status === "error") {
+      console.error(
+        "[legal] proxy venue_staff lookup error; failing closed to venue_owner",
+        staffResolution.message,
+      );
+    }
+    return {
+      userType: "venue_owner",
+      kind: "venue_owner_signup",
+    };
   }
 
   return (
@@ -96,6 +123,9 @@ async function resolveUserTypeForProxy(
  * Pass `prefer: "venue"` on venue app paths so dual-role accounts are not
  * forced through vendor legal while using the venue session. Vendor app paths
  * keep the default vendor preference.
+ *
+ * Pass `activeVenueId` from `htc_active_venue_id` on venue paths so multi-venue
+ * staff resolve against the venue being accessed.
  */
 export async function decideLegalProxyEnforcement(input: {
   user: User;
@@ -103,6 +133,7 @@ export async function decideLegalProxyEnforcement(input: {
   search: string;
   supabase?: SupabaseClient;
   prefer?: "vendor" | "venue";
+  activeVenueId?: string | null;
 }): Promise<ProxyLegalDecision> {
   try {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
@@ -115,6 +146,7 @@ export async function decideLegalProxyEnforcement(input: {
       admin,
       input.user.id,
       prefer,
+      prefer === "venue" ? input.activeVenueId : null,
     );
     const status = await legalAcceptanceService.requiresAcceptance({
       userId: input.user.id,
